@@ -226,7 +226,7 @@ class Piece(object):
 
 class Tile(object):
 
-  TYPES = ["wood", "clay", "ore", "sheep", "water", "space", "desert"]
+  TYPES = ["olivine", "clay", "metal", "sulfur", "water", "space", "desert"]
 
   def __init__(self, x, y, tile_type, number, rotation=0):
     self.location = TileLocation(x, y)
@@ -249,7 +249,7 @@ class Tile(object):
 class CatanState(object):
 
   TRADE_SIDES = ["want", "give"]
-  TRADABLE_RESOURCES = ["sheep", "wood", "water", "clay", "ore"]
+  TRADABLE_RESOURCES = ["sulfur", "olivine", "water", "clay", "metal"]
   WANT = TRADE_SIDES.index("want")
   GIVE = TRADE_SIDES.index("give")
   PLAYABLE_DEV_CARDS = ["yearofplenty", "monopoly", "roadbuilding", "knight"]
@@ -535,7 +535,7 @@ class CatanState(object):
         self.dev_roads_placed = 0
         self.turn_phase = "main"
     # Check resources and deduct from player.
-    resources = [("wood", 1), ("clay", 1)]
+    resources = [("olivine", 1), ("clay", 1)]
     self._remove_resources(resources, player, "road")
 
     self.add_road(Road(location, "road", player))
@@ -568,7 +568,7 @@ class CatanState(object):
     else:
       raise InvalidMove("You must place your settlement next to one of your roads.")
     # Check resources and deduct from player.
-    resources = [("sheep", 1), ("wood", 1), ("water", 1), ("clay", 1)]
+    resources = [("sulfur", 1), ("olivine", 1), ("water", 1), ("clay", 1)]
     self._remove_resources(resources, player, "settlement")
 
     self._build_settlement(location, player)
@@ -595,7 +595,7 @@ class CatanState(object):
     if piece.piece_type != "settlement":
       raise InvalidMove("You can only upgrade a settlement to a city.")
     # Check resources and deduct from player.
-    resources = [("water", 2), ("ore", 3)]
+    resources = [("water", 2), ("metal", 3)]
     self._remove_resources(resources, player, "city")
 
     del self.pieces[tuple(location)]
@@ -604,7 +604,7 @@ class CatanState(object):
   def handle_buy_dev(self, player):
     # Check that this is the right part of the turn.
     self._check_main_phase("buy a development card")
-    resources = [("sheep", 1), ("water", 1), ("ore", 1)]
+    resources = [("sulfur", 1), ("water", 1), ("metal", 1)]
     if len(self.dev_cards) < 1:
       raise InvalidMove("There are no development cards left.")
     self._remove_resources(resources, player, "development card")
@@ -708,10 +708,10 @@ class CatanState(object):
 
   def init_normal(self):
     tile_types = [
-      "wood", "wood", "wood", "wood",
-      "ore", "ore", "ore",
+      "olivine", "olivine", "olivine", "olivine",
+      "metal", "metal", "metal",
       "clay", "clay", "clay",
-      "sheep", "sheep", "sheep", "sheep",
+      "sulfur", "sulfur", "sulfur", "sulfur",
       "water", "water", "water", "water",
       "desert"]
     random.shuffle(tile_types)
