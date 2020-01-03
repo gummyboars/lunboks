@@ -226,7 +226,7 @@ class Piece(object):
 
 class Tile(object):
 
-  TYPES = ["wood", "brick", "ore", "sheep", "water", "space", "desert"]
+  TYPES = ["wood", "clay", "ore", "sheep", "water", "space", "desert"]
 
   def __init__(self, x, y, tile_type, number, rotation=0):
     self.location = TileLocation(x, y)
@@ -249,7 +249,7 @@ class Tile(object):
 class CatanState(object):
 
   TRADE_SIDES = ["want", "give"]
-  TRADABLE_RESOURCES = ["sheep", "wood", "water", "brick", "ore"]
+  TRADABLE_RESOURCES = ["sheep", "wood", "water", "clay", "ore"]
   WANT = TRADE_SIDES.index("want")
   GIVE = TRADE_SIDES.index("give")
   PLAYABLE_DEV_CARDS = ["yearofplenty", "monopoly", "roadbuilding", "knight"]
@@ -535,7 +535,7 @@ class CatanState(object):
         self.dev_roads_placed = 0
         self.turn_phase = "main"
     # Check resources and deduct from player.
-    resources = [("wood", 1), ("brick", 1)]
+    resources = [("wood", 1), ("clay", 1)]
     self._remove_resources(resources, player, "road")
 
     self.add_road(Road(location, "road", player))
@@ -568,7 +568,7 @@ class CatanState(object):
     else:
       raise InvalidMove("You must place your settlement next to one of your roads.")
     # Check resources and deduct from player.
-    resources = [("sheep", 1), ("wood", 1), ("water", 1), ("brick", 1)]
+    resources = [("sheep", 1), ("wood", 1), ("water", 1), ("clay", 1)]
     self._remove_resources(resources, player, "settlement")
 
     self._build_settlement(location, player)
@@ -710,7 +710,7 @@ class CatanState(object):
     tile_types = [
       "wood", "wood", "wood", "wood",
       "ore", "ore", "ore",
-      "brick", "brick", "brick",
+      "clay", "clay", "clay",
       "sheep", "sheep", "sheep", "sheep",
       "water", "water", "water", "water",
       "desert"]
