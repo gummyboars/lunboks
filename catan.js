@@ -1,4 +1,6 @@
 // Constants.
+// Haha, canvas height/width is no longer constant. Set on page load.
+// TODO: update on resize.
 canWidth = 1011;
 canHeight = 876;
 tileWidth = 337 / 2;
@@ -7,7 +9,6 @@ cardResources = ["sheep", "wood", "grain", "brick", "ore"];
 devCards = ["knight", "roadbuilding", "yearofplenty", "monopoly", "palace", "chapel", "university", "library", "market"];
 cardWidth = 145;
 cardHeight = 210;
-diceSize = 40;
 pieceRadius = 10;
 margin = 50;  // For dice and trade toggle button.
 
@@ -54,12 +55,6 @@ function tradeButtons(partner) {
   // tradePButtons.push({x: tradeButtonX() + tradeWidth / 2 - tradeButtonWidth / 2, y: tradeButtonY(), text: "Yolo"});
   return buttons;
 }
-function tradeToggleButton() {
-  return {x: canWidth - margin - tradeButtonWidth, y: margin, text: "Trade"};
-}
-function tradeBankButton() {
-  return {x: canWidth - margin - tradeButtonWidth, y: margin + tradeButtonHeight * 1.5, text: "Bank"};
-}
 
 // Game state.
 myColor = null;
@@ -102,6 +97,29 @@ function toggleDebug() {
 function toggleTradeWindow(partner) {
   tradeWindowActive = !tradeWindowActive;
   tradePartner = partner;
+  if (tradeWindowActive) {
+    let activeButton = null;
+    let disabledButton = null;
+    if (tradePartner == "player") {
+      activeButton = document.getElementById("tradeplayer");
+      disabledButton = document.getElementById("tradebank");
+    } else if (tradePartner == "bank") {
+      activeButton = document.getElementById("tradebank");
+      disabledButton = document.getElementById("tradeplayer");
+    }
+    activeButton.classList.add("active");
+    disabledButton.classList.add("disabled");
+    disabledButton.disabled = true;
+  } else {
+    playerButton = document.getElementById("tradeplayer");
+    bankButton = document.getElementById("tradebank");
+    playerButton.classList.remove("active");
+    playerButton.classList.remove("disabled");
+    playerButton.disabled = false;
+    bankButton.classList.remove("active");
+    bankButton.classList.remove("disabled");
+    bankButton.disabled = false;
+  }
 }
 function rollDice() {
   let msg = {
@@ -143,14 +161,8 @@ function draw() {
   drawRobber(context);
   drawDebug(context);
   context.restore();
-  drawCards(context);
   if (gamePhase == "main") {
-    drawEndTurn(context);
-    drawDevCardPile(context);
-    drawDice(context);
-    drawTradeButton(context, tradeToggleButton(), tradePartner == "player" || !tradeWindowActive);
-    drawTradeButton(context, tradeBankButton(), tradePartner == "bank" || !tradeWindowActive);
-    // TODO: should the tradeWindow just be a separate canvas?
+    // TODO: the tradeWindow should be its own div.
     drawTradeWindow(context);
   }
   window.requestAnimationFrame(draw);
@@ -180,116 +192,59 @@ function coordToTileCenter(loc) {
   let ul = coordToTileUpperLeft(loc);
   return {x: ul.x + tileWidth/2, y: ul.y + tileHeight/2};
 }
-function getClickedDice(eventX, eventY) {
-  if (eventX >= margin && eventX <= margin + 2.5 * diceSize &&
-      eventY >= margin && eventY <= margin + diceSize) {
-    return true;
+function populateCards() {
+  newContainer = document.createElement("DIV");
+  newContainer.classList.add("uicards");
+  newContainer.classList.add("noclick");
+  oldContainer = document.getElementById("uibottom").firstChild;
+  if (cards) {
+    for (let i = 0; i < cardResources.length; i++) {
+      for (let j = 0; j < cards[cardResources[i]]; j++) {
+        addCard(newContainer, cardResources[i] + "card", false);
+      }
+    }
+    for (let i = 0; i < devCards.length; i++) {
+      for (let j = 0; j < cards[devCards[i]]; j++) {
+        addCard(newContainer, devCards[i], true);
+      }
+    }
   }
-  return false;
+  if (newContainer.childElementCount > 0) {
+    newContainer.lastChild.classList.add("shown");
+  }
+  // TODO: how do we avoid the problem of having flicker?
+  document.getElementById("uibottom").replaceChild(newContainer, oldContainer);
 }
-function drawDice(ctx) {
-  let dice0 = "?";
-  let dice1 = "?";
-  if (diceRoll == null) {
-    if (turnPhase != "dice") {
-      return;
+function addCard(cardContainer, elemId, usable) {
+  let orig = document.getElementById(elemId);
+  let img = document.createElement("IMG");
+  img.src = orig.src;
+  img.classList.add("clickable");
+  img.width = cardWidth;
+  img.height = cardHeight;
+  img.style.display = "block";
+  let div = document.createElement("DIV");
+  div.classList.add("clickable");
+  div.classList.add("uicard");
+  div.appendChild(img);
+  div.onmouseenter = bringforward;
+  div.onmouseleave = pushbackward;
+  if (usable) {
+    div.onclick = function(e) {
+      devCardModal(elemId);
     }
-  } else {
-    dice0 = diceRoll[0];
-    dice1 = diceRoll[1];
   }
-  ctx.fillStyle = 'red';
-  ctx.fillRect(margin, margin, diceSize, diceSize);
-  ctx.fillStyle = 'wheat';
-  ctx.fillRect(margin + diceSize + diceSize/2, margin, diceSize, diceSize);
-  ctx.textAlign = 'center';
-  ctx.font = 'bold 36px sans-serif';
-  ctx.fillStyle = 'wheat';
-  ctx.fillText(dice0, margin + diceSize/2, margin + diceSize/2 + 12);
-  ctx.fillStyle = 'red';
-  ctx.fillText(dice1, margin + 2 * diceSize, margin + diceSize/2 + 12);
+  cardContainer.appendChild(div);
 }
-function getClickedEndTurn(eventX, eventY) {
-  if (turn != myColor || turnPhase != "main") {
-    return false;
-  }
-  if (eventX >= margin && eventX <= margin + 4 * diceSize &&
-      eventY >= margin + 1.5 * diceSize && eventY <= margin + 2.5 * diceSize) {
-    return true;
-  }
-  return false;
+function bringforward(e) {
+  e.currentTarget.style.overflowX = "visible";
 }
-function drawEndTurn(ctx) {
-  if (turn == myColor) {
-    let fillStyle = 'red';
-    let textStyle = 'wheat';
-    let text = 'End Turn';
-    if (turnPhase != "main") {
-      fillStyle = 'wheat';
-      textStyle = 'black';
-      text = 'Your Turn';
-    } 
-    ctx.fillStyle = fillStyle;
-    ctx.fillRect(margin, margin + 1.5 * diceSize, 4 * diceSize, diceSize);
-    ctx.textAlign = 'center';
-    ctx.font = 'bold 32px sans-serif';
-    ctx.fillStyle = textStyle;
-    ctx.fillText(text, margin + 2 * diceSize, margin + 2.5 * diceSize - 10);
-  }
+function pushbackward(e) {
+  e.currentTarget.style.overflowX = "hidden";
 }
-function drawCards(ctx) {
-  if (!cards) {
-    return;
-  }
-  let sum = 0;
-  for (let i = 0; i < cardResources.length; i++) {
-    if (cards[cardResources[i]]) {
-      sum += cards[cardResources[i]];
-    }
-  }
-  for (let i = 0; i < devCards.length; i++) {
-    if (cards[devCards[i]]) {
-      sum += cards[devCards[i]];
-    }
-  }
-  if (sum == 0) {
-    return;
-  }
-  // Cards should take 50% of the bottom of the canvas, with a
-  // 10% buffer on each side.
-  let step = (0.5 * canWidth - cardWidth) / sum;
-  let leftX = 0.05 * canWidth;
-  for (let i = 0; i < cardResources.length; i++) {
-    if (!cards[cardResources[i]]) {
-      continue;
-    }
-    let img = document.getElementById(cardResources[i] + "card");
-    for (let j = 0; j < cards[cardResources[i]]; j++) {
-      ctx.drawImage(img, leftX, canHeight - cardHeight, cardWidth, cardHeight);
-      leftX += step;
-    }
-  }
-  for (let i = 0; i < devCards.length; i++) {
-    if (!cards[devCards[i]]) {
-      continue;
-    }
-    let img = document.getElementById(devCards[i]);
-    for (let j = 0; j < cards[devCards[i]]; j++) {
-      ctx.drawImage(img, leftX, canHeight - cardHeight, cardWidth, cardHeight);
-      leftX += step;
-    }
-  }
-}
-function drawDevCardPile(ctx) {
-  let img = document.getElementById("devcard");
-  ctx.drawImage(img, canWidth - 1.5 * cardWidth, canHeight - cardHeight, cardWidth, cardHeight);
-}
-function getClickedDevPile(eventX, eventY) {
-  if (eventX >= canWidth - 1.5 * cardWidth && eventX <= canWidth - 0.5 * cardWidth &&
-      eventY >= canHeight - cardHeight && eventY <= canHeight) {
-    return true;
-  }
-  return false;
+function devCardModal(cardType) {
+  // TODO: show a dialog based on the card type. will probably need a resource picker.
+  console.log(cardType);
 }
 function getClickedResource(eventX, eventY) {
   let centerX = canWidth / 2;
@@ -518,7 +473,7 @@ function clearTradeOffer() {
 function onclickTrade(event) {
   if (event.clientX < canWidth/2 - tradeWidth/2 || event.clientX > canWidth/2 + tradeWidth/2 ||
       event.clientY < canHeight/2 - tradeHeight/2 || event.clientY > canHeight/2 + tradeHeight/2) {
-    tradeWindowActive = false;
+    toggleTradeWindow(tradePartner);
     return;
   }
 
@@ -572,11 +527,6 @@ function onclick(event) {
   if (event.button != 0) {
     return;
   }
-  let clickedTrade = getClickedTradeButton(event.clientX, event.clientY, [tradeToggleButton(), tradeBankButton()]);
-  if (clickedTrade == "Trade" || clickedTrade == "Bank") {
-    toggleTradeWindow(clickedTrade == "Trade" ? "player" : "bank");
-    return;
-  }
   if (tradeWindowActive) {
     onclickTrade(event);
     return;
@@ -614,15 +564,9 @@ function onclick(event) {
     };
     ws.send(JSON.stringify(msg));
   }
-  if (getClickedDice(event.clientX, event.clientY)) {
-    rollDice();
-  }
-  if (getClickedEndTurn(event.clientX, event.clientY)) {
-    endTurn();
-  }
-  if (getClickedDevPile(event.clientX, event.clientY)) {
-    ws.send(JSON.stringify({type: "buy_dev"}));
-  }
+}
+function buyDevCard() {
+  ws.send(JSON.stringify({type: "buy_dev"}));
 }
 function onmove(event) {
   let hoverLoc = getTile(event.clientX, event.clientY);
@@ -689,10 +633,28 @@ function onout(event) {
   hoverEdge = null;
   onup(event);
 }
+function clearerror() {
+  etxt = document.getElementById("errorText")
+  if (etxt.holdSeconds > 0) {
+    etxt.holdSeconds -= 0.1;
+    setTimeout(clearerror, 100);
+  } else {
+    newOpac = etxt.style.opacity - 0.02;
+    etxt.style.opacity = newOpac;
+    if (newOpac <= 0.1) {
+      etxt.innerText = null;
+    } else {
+      setTimeout(clearerror, 50);
+    }
+  }
+}
 function onmsg(event) {
   var data = JSON.parse(event.data);
   if (data.type == "error") {
-    alert(data.message);
+    document.getElementById("errorText").holdSeconds = 3;
+    document.getElementById("errorText").style.opacity = 1.0;
+    document.getElementById("errorText").innerText = data.message;
+    setTimeout(clearerror, 100);
     return;
   }
   // data.type should be game_state now - maybe handle more later
@@ -723,17 +685,48 @@ function onmsg(event) {
   if (firstMsg) {
     centerCanvas();
   }
-  // let diceDisabled = false;
-  // if (diceRoll != null) {
-  //   diceDisabled = true;
-  // }
-  // if (turn != myColor) {
-  //   diceDisabled = true;
-  //   document.getElementById('endturn').disabled = true;
-  // } else {
-  //   document.getElementById('endturn').disabled = false;
-  // }
-  // document.getElementById('rolldice').disabled = diceDisabled;
+  populateCards();
+  updateDice();
+  updateUI("buydev");
+  updateUI("endturn");
+  updateUI("tradeplayer");
+  updateUI("tradebank");
+  updateEndTurn();
+}
+function updateUI(elemName) {
+  if (gamePhase != "main" || turn != myColor || turnPhase != "main") {
+    document.getElementById(elemName).classList.add("disabled");
+    document.getElementById(elemName).disabled = true;
+  } else {
+    document.getElementById(elemName).classList.remove("disabled");
+    document.getElementById(elemName).disabled = false;
+  }
+}
+function updateDice() {
+  diceEl = document.getElementById("uidice");
+  if (diceRoll == null && turnPhase != "dice") {
+    diceEl.style.display = "none";
+  } else {
+    diceEl.style.display = "block";
+  }
+  if (diceRoll == null) {
+    document.getElementById("reddie").firstChild.firstChild.innerText = "?";
+    document.getElementById("whitedie").firstChild.firstChild.innerText = "?";
+  } else {
+    document.getElementById("reddie").firstChild.firstChild.innerText = diceRoll[0];
+    document.getElementById("whitedie").firstChild.firstChild.innerText = diceRoll[1];
+  }
+  if (turn != myColor) {
+    if (!diceEl.classList.contains("noclick")) {
+      diceEl.classList.remove("clickable");
+      diceEl.classList.add("noclick");
+    }
+  } else {
+    if (!diceEl.classList.contains("clickable")) {
+      diceEl.classList.remove("noclick");
+      diceEl.classList.add("clickable");
+    }
+  }
 }
 function centerCanvas() {
   if (tiles.length < 1) {
@@ -754,6 +747,7 @@ function centerCanvas() {
   offsetX = canWidth / 2 - (minX + maxX) / 2;
   offsetY = canHeight / 2 - (minY + maxY) / 2;
 }
+// TODO: persist this in a cookie or something
 function login() {
   let msg = {
     type: "player",
@@ -764,12 +758,19 @@ function login() {
   ws.send(JSON.stringify(msg));
 }
 function init() {
-  canWidth = document.documentElement.clientWidth;
-  canHeight = document.documentElement.clientHeight - 5;  // Someone's adding a few pixels padding somewhere.
-  document.getElementById('ui').style.width = canWidth + "px";
-  document.getElementById('ui').style.height = canHeight + "px";
+  totalWidth = document.documentElement.clientWidth;
+  totalHeight = document.documentElement.clientHeight;
+  document.getElementById('ui').style.width = totalWidth + "px";
+  document.getElementById('ui').style.height = totalHeight + "px";
+  document.getElementById('uibottom').style.width = totalWidth + "px";
+  document.getElementById('uiright').style.height = (totalHeight - cardHeight) + "px";
+  document.getElementById('uileft').style.height = (totalHeight - cardHeight) + "px";
+  canWidth = totalWidth - document.getElementById('uiright').offsetWidth;
+  canHeight = totalHeight;
   document.getElementById('myCanvas').width = canWidth;
   document.getElementById('myCanvas').height = canHeight;
+  document.getElementById('buydev').width = cardWidth;
+  document.getElementById('buydev').height = cardHeight;
   window.requestAnimationFrame(draw);
   let l = window.location;
   ws = new WebSocket("ws://" + l.hostname + ":8081/");

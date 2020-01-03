@@ -6,12 +6,189 @@
         margin: 0px;
         padding: 0px;
         background: #CCCCFF;
+        overflow: hidden;
       }
-      .uiparent {
+      div {
+        display: block;
+        margin: 0px;
+      }
+      .noclick {
         pointer-events: none;
       }
-      .uichild {
+      .clickable {
         pointer-events: auto;
+      }
+      #ui {
+        position: absolute;
+        width: 500px;
+        height: 500px;
+        top: 0;
+        left: 0;
+        margin: 0px;
+      }
+      #errorText {
+        position: absolute;
+        top: 10px;
+        left: 50%; /* don't...don't ask */
+        margin-right: -50%;
+        transform: translateX(-50%);
+        text-align: center;
+        font-size: 36px;
+        color: red;
+        background: white;
+        z-index: 1; /* error should be shown over everything else */
+      }
+      #uileft {
+        position: absolute;
+        top: 0px;
+        left: 50px;
+      }
+      #leftcontainer {
+        margin-top: 20px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+      }
+      #uidice {
+        position: relative;
+        padding: 3px;
+        background: rgba(255, 255, 255, 0.3);
+        border: 1px solid gray;
+        display: block;
+      }
+      #uiright {
+        position: absolute;
+        right: 0px;
+        top: 0px;
+        padding: 0px;
+        width: auto;
+        height: 100%;
+      }
+      #tradebuttons {
+        position: absolute;
+        top: 20px;
+        width: auto;
+        left: 50%;
+        margin-right: -50%;
+        transform: translateX(-50%);
+      }
+      #bottombutton {
+        position: absolute;
+        bottom: 20px;
+        width: auto;
+        left: 50%;
+        margin-right: -50%;
+        transform: translateX(-50%);
+      }
+      #uibottom {
+        position: absolute;
+        left: 0px;
+        bottom: 0px;
+        padding: 0px;
+        width: 100%;
+        height: auto;
+      }
+      .die {
+        display: inline-block;
+        width: 50px;
+        height: 50px;
+        margin: 12px;
+      }
+      .diecontainer {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0px;
+        padding: 0px;
+        font-size: 36px;
+      }
+      #reddie {
+        background: red;
+        color: wheat;
+      }
+      #whitedie {
+        background: wheat;
+        color: red;
+      }
+      #buydev {
+        margin-top: 25px;
+      }
+      .uicards {
+        width: 100%;
+        height: 210;
+        padding: 0px;
+        margin: 0px;
+        display: flex;
+      }
+      .uicard {
+        flex: 1 0 0;
+        overflow-x: hidden;
+      }
+      .uicard.shown {
+        flex: 0 0 auto;
+      }
+      .button {
+        display: inline-block;
+        cursor: pointer;
+        text-align: center;
+        outline: none;
+        border: none;
+        border-radius: 15px;
+        box-shadow: 0 9px #999;
+      }
+      .button:active {
+        box-shadow: 0 5px #666;
+        transform: translateY(4px);
+      }
+      .button.active {
+        box-shadow: 0 5px #666;
+        transform: translateY(4px);
+      }
+      .endturnbutton {
+        padding: 15px 25px;
+        font-size: 32px;
+        margin: 10px;
+        text-decoration: none;
+        color: #fff;
+        background-color: #f33;
+          white-space: nowrap;
+      }
+      .endturnbutton:hover {
+        background-color: #c33;
+      }
+      .endturnbutton:active {
+        background-color: #c33;
+      }
+      .endturnbutton.active { /* keep the buttons active when the window is open */
+        background-color: #c33;
+      }
+      .endturnbutton.disabled {
+        background-color: #f99;
+      }
+      .tradebutton {
+        padding: 15px 25px;
+        font-size: 24px;
+        margin: 10px;
+        text-decoration: none;
+        color: #fff;
+        background-color: #66f;
+      }
+      .tradebutton:hover {
+        background-color: #33c;
+      }
+      .tradebutton:active {
+        background-color: #33c;
+      }
+      .tradebutton.active { /* keep the buttons active when the window is open */
+        background-color: #33c;
+      }
+      .tradebutton.disabled {
+        background-color: #99f;
+      }
+      .disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
       }
     </style>
   </head>
@@ -23,11 +200,6 @@
     <img src="/orecard.png" id="orecard" style="display: none;">
     <img src="/sheepcard.png" id="sheepcard" style="display: none;">
     <img src="/graincard.png" id="graincard" style="display: none;">
-    <img src="/wood4.png" id="wood4" style="display: none;">
-    <img src="/brick4.png" id="brick4" style="display: none;">
-    <img src="/ore4.png" id="ore4" style="display: none;">
-    <img src="/sheep4.png" id="sheep4" style="display: none;">
-    <img src="/grain4.png" id="grain4" style="display: none;">
     <img src="/devcard.png" id="devcard" style="display: none;">
     <img src="/knight.png" id="knight" style="display: none;">
     <img src="/yearofplenty.png" id="yearofplenty" style="display: none;">
@@ -53,19 +225,32 @@
     <img src="/grainport.png" id="grainport" style="display: none;">
     <img src="/robber2.png" id="robber" style="display: none;">
     <canvas id="myCanvas" width="678" height="730"></canvas>
-    <div id="ui" class="uiparent" style="position:absolute; width: 500px; height:500px; top:0; left:0;">
-      lorem ipsum
-      <br />
-      glad you could make it, uther.
-      <br />
-      watch your tone with me, boy. you may be the prince, but i'm still your superior as a paladin.
-      <br />
-      as if i could forget. listen, uther. there's something about the plage you should know.
-      <div class="uiparent" style="position: absolute; left: 10px; bottom:10px;" />
-        <input class="uichild" type="text" id="name" />
-        <input class="uichild" type="button" value="Change Name" onclick="login()" />
+    <div id="ui" class="noclick">
+      <p id="errorText" class="noclick"></p>
+      <div id="uiright" class="noclick">
+        <div id="tradebuttons" class="noclick">
+          <button id="tradeplayer" class="button tradebutton clickable" onclick="toggleTradeWindow('player')">Player</button>
+          <button id="tradebank" class="button tradebutton clickable" onclick="toggleTradeWindow('bank')">Bank</button>
+        </div>
+        <input class="clickable" type="text" id="name" />
+        <input class="clickable" type="button" value="Change Name" onclick="login()" />
         <br />
-        <input class="uichild" type="button" value="Toggle Debug" onclick="toggleDebug()" />
+        <input class="clickable" type="button" value="Toggle Debug" onclick="toggleDebug()" />
+      </div>
+      <div id="uileft" class="noclick">
+        <div id="leftcontainer" class="noclick">
+          <div id="uidice" class="clickable" onclick="rollDice()">
+            <div id="reddie" class="die"><div class="diecontainer"><p style="margin: 0">?</p></div></div>
+            <div id="whitedie" class="die"><div class="diecontainer"><p style="margin: 0">?</p></div></div>
+          </div>
+          <div style="display: block;"><img id="buydev" src="/devcard.png" class="clickable" onclick="buyDevCard()" /></div>
+        </div>
+        <div id="bottombutton" class="noclick">
+          <button id="endturn" class="button endturnbutton clickable" onclick="endTurn()">End Turn</button>
+        </div>
+      </div>
+      <div id="uibottom" class="noclick">
+        <div class="uicards noclick"></div>
       </div>
     </div>
   </body>

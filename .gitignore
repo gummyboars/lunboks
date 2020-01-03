@@ -3,6 +3,14 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+# Any images that may be present in the project
+*.png
+images.zip
+
+# swp files from vim
+*.swp
+*.swo
+
 # C extensions
 *.so
 
