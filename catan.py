@@ -226,7 +226,7 @@ class Piece(object):
 
 class Tile(object):
 
-  TYPES = ["wood", "brick", "ore", "sheep", "grain", "water", "desert"]
+  TYPES = ["wood", "brick", "ore", "sheep", "permafrost", "water", "desert"]
 
   def __init__(self, x, y, tile_type, number, rotation=0):
     self.location = TileLocation(x, y)
@@ -249,7 +249,7 @@ class Tile(object):
 class CatanState(object):
 
   TRADE_SIDES = ["want", "give"]
-  TRADABLE_RESOURCES = ["sheep", "wood", "grain", "brick", "ore"]
+  TRADABLE_RESOURCES = ["sheep", "wood", "water", "brick", "ore"]
   WANT = TRADE_SIDES.index("want")
   GIVE = TRADE_SIDES.index("give")
   PLAYABLE_DEV_CARDS = ["yearofplenty", "monopoly", "roadbuilding", "knight"]
@@ -568,7 +568,7 @@ class CatanState(object):
     else:
       raise InvalidMove("You must place your settlement next to one of your roads.")
     # Check resources and deduct from player.
-    resources = [("sheep", 1), ("wood", 1), ("grain", 1), ("brick", 1)]
+    resources = [("sheep", 1), ("wood", 1), ("water", 1), ("brick", 1)]
     self._remove_resources(resources, player, "settlement")
 
     self._build_settlement(location, player)
@@ -595,7 +595,7 @@ class CatanState(object):
     if piece.piece_type != "settlement":
       raise InvalidMove("You can only upgrade a settlement to a city.")
     # Check resources and deduct from player.
-    resources = [("grain", 2), ("ore", 3)]
+    resources = [("water", 2), ("ore", 3)]
     self._remove_resources(resources, player, "city")
 
     del self.pieces[tuple(location)]
@@ -604,7 +604,7 @@ class CatanState(object):
   def handle_buy_dev(self, player):
     # Check that this is the right part of the turn.
     self._check_main_phase("buy a development card")
-    resources = [("sheep", 1), ("grain", 1), ("ore", 1)]
+    resources = [("sheep", 1), ("water", 1), ("ore", 1)]
     if len(self.dev_cards) < 1:
       raise InvalidMove("There are no development cards left.")
     self._remove_resources(resources, player, "development card")
@@ -712,7 +712,7 @@ class CatanState(object):
       "ore", "ore", "ore",
       "brick", "brick", "brick",
       "sheep", "sheep", "sheep", "sheep",
-      "grain", "grain", "grain", "grain",
+      "permafrost", "permafrost", "permafrost", "permafrost",
       "desert"]
     random.shuffle(tile_types)
     numbers = [5, 2, 6, 3, 8, 10, 9, 12, 11, 4, 8, 10, 9, 4, 5, 6, 3, 11]
