@@ -226,7 +226,7 @@ class Piece(object):
 
 class Tile(object):
 
-  TYPES = ["wood", "brick", "ore", "sheep", "permafrost", "water", "desert"]
+  TYPES = ["wood", "brick", "ore", "sheep", "water", "space", "desert"]
 
   def __init__(self, x, y, tile_type, number, rotation=0):
     self.location = TileLocation(x, y)
@@ -298,7 +298,7 @@ class CatanState(object):
     # TODO: instead of sending a list of corners, we should send something like
     # a list of legal moves for tiles, corners, and edges.
     for tile in self.tiles.values():
-      if tile.tile_type == "water":
+      if tile.tile_type == "space":
         continue
       # Triple-count each corner and dedup.
       for corner_loc in tile.location.get_corner_locations():
@@ -712,7 +712,7 @@ class CatanState(object):
       "ore", "ore", "ore",
       "brick", "brick", "brick",
       "sheep", "sheep", "sheep", "sheep",
-      "permafrost", "permafrost", "permafrost", "permafrost",
+      "water", "water", "water", "water",
       "desert"]
     random.shuffle(tile_types)
     numbers = [5, 2, 6, 3, 8, 10, 9, 12, 11, 4, 8, 10, 9, 4, 5, 6, 3, 11]
@@ -734,7 +734,7 @@ class CatanState(object):
         number = numbers[num_idx]
         num_idx += 1
       self.add_tile(Tile(sequence[idx][0], sequence[idx][1], tile_types[idx], number))
-    water_tiles = [
+    space_tiles = [
         (2, 1), (4, 0), (6, -1), (8, 0), (10, 1), (12, 2),  # around the top
         (12, 4), (12, 6), (12, 8),  # down the right side
         (10, 9), (8, 10), (6, 11), (4, 10), (2, 9), (0, 8),  # around the bottom
@@ -744,10 +744,10 @@ class CatanState(object):
              "sheepport", "brickport", "woodport", "oreport", "grainport"]
     rotations = [-1, 0, 1, 1, 2, 3, 3, -2, -1]
     random.shuffle(ports)
-    if len(ports) != len(water_tiles) / 2 or len(ports) != len(rotations):
+    if len(ports) != len(space_tiles) / 2 or len(ports) != len(rotations):
       raise RuntimeError("you screwed it up")
-    for idx, loc in enumerate(water_tiles):
-      tile_name = "water"
+    for idx, loc in enumerate(space_tiles):
+      tile_name = "space"
       if idx % 2 == 0:
         tile_name = ports[idx//2]
       self.add_tile(Tile(loc[0], loc[1], tile_name, None, rotations[idx//2]))
