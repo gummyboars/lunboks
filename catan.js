@@ -15,6 +15,18 @@ selectCardHeight = 41 * 3;
 // Other constants.
 cardResources = ["sulfur", "olivine", "water", "clay", "metal"];
 devCards = ["knight", "roadbuilding", "yearofplenty", "monopoly", "palace", "chapel", "university", "library", "market"];
+devResourceSelection = {
+  monopoly: {
+    topText: "Choose a resource to monopolize.",
+    okText: "Monopoly!",
+    cancelText: "Cancel",
+  },
+  yearofplenty: {
+    topText: "Choose two resources to receive from the bank.",
+    okText: "OK",
+    cancelText: "Cancel",
+  },
+};
 tradeSides = ["Want", "Give"];
 
 // Game state.
@@ -40,10 +52,11 @@ hoverTile = null;
 hoverCorner = null;
 hoverEdge = null;
 resourceSelectorActive = false;
-resourceSelectorType = "trade";
+resourceSelectorType = "trade";  // values are trade, dev, and discard
 resourceSelection = {"top": {}, "bottom": {}};
 tradeActiveOffer = [{}, {}];
 tradePartner = "player";  // player or bank
+devCardType = "knight";
 
 // For dragging the canvas.
 isDragging = false;
@@ -72,13 +85,25 @@ function confirmSelection(event) {
     };
     ws.send(JSON.stringify(msg));
     return;
+  } else if (resourceSelectorType == "dev") {
+    let msg = {
+      type: "play_dev",
+      card_type: devCardType,
+      selection: resourceSelection["bottom"],
+    };
+    ws.send(JSON.stringify(msg));
+    return;
   } else {
     // TODO: fill this in.
   }
 }
+function clearResourceSelection(side) {
+  resourceSelection[side] = {};
+}
 function clearTradeOffer() {
   if (resourceSelectorType == "trade") {
-    resourceSelection = {"top": {}, "bottom": {}};
+    clearResourceSelection("top");
+    clearResourceSelection("bottom");
     updateSelectCounts();
   }
 }
@@ -86,6 +111,8 @@ function cancelSelection(event) {
   if (resourceSelectorType == "trade") {
     resourceSelection = {"top": {}, "bottom": {}};
     updateSelectCounts();
+  } else if (resourceSelectorType == "dev") {
+    document.getElementById("resourcepopup").style.display = 'none';
   } else {
     // TODO: fill this in.
   }
@@ -134,7 +161,7 @@ function toggleTradeWindow(partner) {
     resourceSelectorType = "trade";
     document.getElementById("topselecttitle").innerText = 'You Want';
     document.getElementById("bottomselecttitle").innerText = 'You Give';
-    document.getElementById("topselectbox").style.display = 'flex';
+    document.getElementById("uitopselect").style.display = 'flex';
     updateSelectCounts();
     if (tradePartner == 'player') {
       document.getElementById("selectconfirm").innerText = 'Offer';
@@ -292,7 +319,7 @@ function addCard(cardContainer, elemId, usable) {
   div.onmouseleave = pushbackward;
   if (usable) {
     div.onclick = function(e) {
-      devCardModal(elemId);
+      playDevCard(elemId);
     }
   }
   cardContainer.appendChild(div);
@@ -308,9 +335,21 @@ function pushbackward(e) {
 function buyDevCard() {
   ws.send(JSON.stringify({type: "buy_dev"}));
 }
-function devCardModal(cardType) {
-  // TODO: show a dialog based on the card type. will probably need a resource picker.
-  console.log(cardType);
+function playDevCard(cardType) {
+  devCardType = cardType;
+  let selectInfo = devResourceSelection[cardType];
+  if (selectInfo) {
+    resourceSelectorType = "dev";
+    document.getElementById("bottomselecttitle").innerText = selectInfo.topText;
+    document.getElementById("uitopselect").style.display = 'none';
+    clearResourceSelection("bottom");
+    updateSelectCounts();
+    document.getElementById("selectconfirm").innerText = selectInfo.okText;
+    document.getElementById("selectcancel").innerText = selectInfo.cancelText;
+    document.getElementById("resourcepopup").style.display = 'block';
+  } else {
+    ws.send(JSON.stringify({type: "play_dev", card_type: cardType}));
+  }
 }
 function drawRoad(roadLoc, style, ctx) {
   let leftCorner = coordToCornerCenter([roadLoc[0], roadLoc[1]]);

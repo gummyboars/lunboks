@@ -373,7 +373,7 @@ class CatanState(object):
     if data.get("type") == "buy_dev":
       self.handle_buy_dev(player)
     if data.get("type") == "play_dev":
-      self.handle_play_dev(data.get("card_type"), player)
+      self.handle_play_dev(data.get("card_type"), data.get("selection"), player)
     if data.get("type") == "settle":
       self._validate_location(location)
       self.handle_settle(location, player)
@@ -443,7 +443,10 @@ class CatanState(object):
     if self.turn_phase != "robber":
       raise InvalidMove("You cannot play the robber right now.")
     self.robber = TileLocation(*location)
-    self.turn_phase = "main"
+    if self.dice_roll is None:
+      self.turn_phase = "dice"
+    else:
+      self.turn_phase = "main"
 
   def _check_resources(self, resources, player, build_type):
     errors = []
@@ -534,6 +537,7 @@ class CatanState(object):
       if self.dev_roads_placed == 2:
         self.dev_roads_placed = 0
         self.turn_phase = "main"
+      return
     # Check resources and deduct from player.
     resources = [("olivine", 1), ("clay", 1)]
     self._remove_resources(resources, player, "road")
@@ -610,7 +614,7 @@ class CatanState(object):
     self._remove_resources(resources, player, "development card")
     self.add_dev_card(player)
 
-  def handle_play_dev(self, card_type, player):
+  def handle_play_dev(self, card_type, resource_selection, player):
     if card_type not in self.PLAYABLE_DEV_CARDS:
       raise InvalidMove("%s is not a playable development card." % card_type)
     if card_type == "knight":
@@ -624,7 +628,61 @@ class CatanState(object):
       raise InvalidMove("You cannot play development cards on the turn you buy them.")
     if self.played_dev:
       raise InvalidMove("You cannot play more than one development card per turn.")
+    if card_type == "knight":
+      self._handle_knight()
+    elif card_type == "yearofplenty":
+      self._handle_year_of_plenty(player, resource_selection)
+    elif card_type == "monopoly":
+      self._handle_monopoly(player, resource_selection)
+    elif card_type == "roadbuilding":
+      self._handle_road_building()
+    else:
+      # How would this even happen?
+      raise InvalidMove("%s is not a playable development card." % card_type)
+    self.cards[player][card_type] -= 1
     self.played_dev += 1
+
+  def _handle_knight(self):
+    self.turn_phase = "robber"
+
+  def _handle_road_building(self):
+    self.turn_phase = "dev_road"
+
+  def _handle_year_of_plenty(self, player, resource_selection):
+    if not resource_selection or not isinstance(resource_selection, dict):
+      raise InvalidMove("You must select 2 resources to receive.")
+    if set(resource_selection.keys()) - set(self.TRADABLE_RESOURCES):
+      raise InvalidMove("You may only receive tradable resources.")
+    if not all([isinstance(value, int) and value >= 0 for value in resource_selection.values()]):
+      raise InvalidMove("You may only request a positive integer number of resources.")
+    if sum([resource_selection.get(key, 0) for key in self.TRADABLE_RESOURCES]) != 2:
+      raise InvalidMove("You must request exactly two resources.")
+    for card_type, value in resource_selection.items():
+      self.cards[player][card_type] += value
+
+  def _handle_monopoly(self, player, resource_selection):
+    if not resource_selection or not isinstance(resource_selection, dict):
+      raise InvalidMove("You must select 1 resources to monopolize.")
+    if set(resource_selection.keys()) - set(self.TRADABLE_RESOURCES):
+      raise InvalidMove("You may only monopolize tradable resources.")
+    if not all([value in (0, 1) for value in resource_selection.values()]):
+      raise InvalidMove("Invalid number of resources requested.")
+    if sum([resource_selection.get(key, 0) for key in self.TRADABLE_RESOURCES]) != 1:
+      raise InvalidMove("You must choose exactly one resource to monopolize.")
+    card_type = None
+    for key, value in resource_selection.items():
+      if value == 1:
+        card_type = key
+        break
+    if not card_type:
+      # This should never happen, but you never know.
+      raise InvalidMove("You must choose exactly one resource to monopolize.")
+    for opponent in self.cards:
+      if opponent == player:
+        continue
+      opp_count = self.cards[opponent][card_type]
+      self.cards[opponent][card_type] -= opp_count
+      self.cards[player][card_type] += opp_count
 
   def add_dev_card(self, player):
     card_type = self.dev_cards.pop()
