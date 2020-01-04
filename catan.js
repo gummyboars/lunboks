@@ -1,60 +1,21 @@
 // Constants.
 // Haha, canvas height/width is no longer constant. Set on page load.
 // TODO: update on resize.
+// Constants for drawing on the canvas.
 canWidth = 1011;
 canHeight = 876;
 tileWidth = 337 / 2;
 tileHeight = 292 / 2;
-cardResources = ["sulfur", "olivine", "water", "clay", "metal"];
-devCards = ["knight", "roadbuilding", "yearofplenty", "monopoly", "palace", "chapel", "university", "library", "market"];
+pieceRadius = 10;
+// Constants for sizing items on the page.
 cardWidth = 145;
 cardHeight = 210;
-pieceRadius = 10;
-margin = 50;  // For dice and trade toggle button.
-
-// Trade window.
-tradeCardWidth = 29 * 3;
-tradeCardHeight = 41 * 3;
-tradeVertBuffer = 40;
-tradeWidth = tradeCardWidth * cardResources.length * 1.5 + (tradeCardWidth/2);
-tradeOneHeight = tradeCardHeight + 2 * tradeVertBuffer;
-tradeExtraHeight = 70;
-tradeHeight = 2 * tradeOneHeight + tradeExtraHeight;
+selectCardWidth = 29 * 3;
+selectCardHeight = 41 * 3;
+// Other constants.
+cardResources = ["sulfur", "olivine", "water", "clay", "metal"];
+devCards = ["knight", "roadbuilding", "yearofplenty", "monopoly", "palace", "chapel", "university", "library", "market"];
 tradeSides = ["Want", "Give"];
-// Trade buttons.
-tradeButtonWidth = 1.5 * tradeCardWidth;
-tradeButtonHeight = 28;
-function tradeButtonX() {
-  return canWidth / 2 - tradeWidth / 2;
-}
-function tradeButtonY() {
-  return canHeight / 2 - tradeHeight / 2 + tradeSides.length * tradeOneHeight + tradeExtraHeight / 2 - tradeButtonHeight / 2;
-}
-function tradeButtons(partner) {
-  let buttons = [];
-  if (partner == "player") {
-    // Offer (left) button.
-    buttons.push({x: tradeButtonX() + tradeCardWidth / 2, y: tradeButtonY(), text: "Offer"});
-    // Clear (right) button.
-    buttons.push({
-      x: tradeButtonX() + tradeWidth - tradeCardWidth / 2 - tradeButtonWidth,
-      y: tradeButtonY(),
-      text: "Clear",
-    });
-  } else if (partner == "bank") {
-    // Accept (left) button.
-    buttons.push({x: tradeButtonX() + tradeCardWidth / 2, y: tradeButtonY(), text: "Accept"});
-    // Clear (right) button.
-    buttons.push({
-      x: tradeButtonX() + tradeWidth - tradeCardWidth / 2 - tradeButtonWidth,
-      y: tradeButtonY(),
-      text: "Clear",
-    });
-  }
-  // Accept (center) button.
-  // tradePButtons.push({x: tradeButtonX() + tradeWidth / 2 - tradeButtonWidth / 2, y: tradeButtonY(), text: "Yolo"});
-  return buttons;
-}
 
 // Game state.
 myColor = null;
@@ -78,7 +39,9 @@ scale = 1;
 hoverTile = null;
 hoverCorner = null;
 hoverEdge = null;
-tradeWindowActive = false;
+resourceSelectorActive = false;
+resourceSelectorType = "trade";
+resourceSelection = {"top": {}, "bottom": {}};
 tradeActiveOffer = [{}, {}];
 tradePartner = "player";  // player or bank
 
@@ -94,32 +57,127 @@ dY = 0;
 function toggleDebug() {
   debug = !debug;
 }
+function confirmSelection(event) {
+  if (resourceSelectorType == "trade" && tradePartner == "bank") {
+    let msg = {
+      type: "trade_bank",
+      offer: [resourceSelection["top"], resourceSelection["bottom"]],
+    };
+    ws.send(JSON.stringify(msg));
+    return;
+  } else if (resourceSelectorType == "trade" && tradePartner == "player") {
+    let msg = {
+      type: "trade_offer",
+      offer: [resourceSelection["top"], resourceSelection["bottom"]],
+    };
+    ws.send(JSON.stringify(msg));
+    return;
+  } else {
+    // TODO: fill this in.
+  }
+}
+function clearTradeOffer() {
+  if (resourceSelectorType == "trade") {
+    resourceSelection = {"top": {}, "bottom": {}};
+    updateSelectCounts();
+  }
+}
+function cancelSelection(event) {
+  if (resourceSelectorType == "trade") {
+    resourceSelection = {"top": {}, "bottom": {}};
+    updateSelectCounts();
+  } else {
+    // TODO: fill this in.
+  }
+}
+function selectResource(event, windowName, rsrc) {
+  // Ignore right/middle-click.
+  if (event.button != 0) {
+    return;
+  }
+  let num = 1;
+  if (event.shiftKey) {
+    num = -1;
+  }
+  let current = resourceSelection[windowName][rsrc] || 0;
+  resourceSelection[windowName][rsrc] = current + num;
+  if (resourceSelection[windowName][rsrc] < 0) {
+    resourceSelection[windowName][rsrc] = 0;
+  }
+  updateSelectCounts();
+}
+function updateSelectCounts() {
+  for (let key in resourceSelection) {
+    let container = document.getElementById(key + "selectbox");
+    for (let i = 0; i < cardResources.length; i++) {
+      let subcontainer = container.getElementsByClassName(cardResources[i])[0];
+      let counter = subcontainer.getElementsByClassName("selectcount")[0];
+      counter.innerText = "x" + (resourceSelection[key][cardResources[i]] || 0);
+    }
+  }
+}
 function toggleTradeWindow(partner) {
-  tradeWindowActive = !tradeWindowActive;
+  if (resourceSelectorActive && resourceSelectorType == "trade" && tradePartner == partner) {
+    resourceSelectorActive = false;
+  } else {
+    resourceSelectorActive = true;
+  }
   tradePartner = partner;
-  if (tradeWindowActive) {
+  if (resourceSelectorActive) {
+    resourceSelectorType = "trade";
+    document.getElementById("topselecttitle").innerText = 'You Want';
+    document.getElementById("bottomselecttitle").innerText = 'You Give';
+    document.getElementById("topselectbox").style.display = 'flex';
+    updateSelectCounts();
+    if (tradePartner == 'player') {
+      document.getElementById("selectconfirm").innerText = 'Offer';
+    } else if (tradePartner == 'bank') {
+      document.getElementById("selectconfirm").innerText = 'Trade';
+    }
+    document.getElementById("selectcancel").innerText = 'Reset';
+    document.getElementById("resourcepopup").style.display = 'block';
+  } else {
+    document.getElementById("resourcepopup").style.display = 'none';
+  }
+  updateTradeButtons();
+}
+function updateTradeButtons() {
+  let playerButton = document.getElementById("tradeplayer");
+  let bankButton = document.getElementById("tradebank");
+  if (resourceSelectorActive && resourceSelectorType != "trade") {
+    for (let button of [playerButton, bankButton]) {
+      button.classList.remove("active");
+      if (!button.classList.contains("disabled")) {
+        button.classList.add("disabled");
+      }
+      button.disabled = true;
+    }
+  } else if (resourceSelectorActive && resourceSelectorType == "trade") {
     let activeButton = null;
-    let disabledButton = null;
+    let inactiveButton = null;
     if (tradePartner == "player") {
       activeButton = document.getElementById("tradeplayer");
-      disabledButton = document.getElementById("tradebank");
+      inactiveButton = document.getElementById("tradebank");
     } else if (tradePartner == "bank") {
       activeButton = document.getElementById("tradebank");
-      disabledButton = document.getElementById("tradeplayer");
+      inactiveButton = document.getElementById("tradeplayer");
     }
     activeButton.classList.add("active");
-    disabledButton.classList.add("disabled");
-    disabledButton.disabled = true;
+    inactiveButton.classList.remove("active");
   } else {
-    playerButton = document.getElementById("tradeplayer");
-    bankButton = document.getElementById("tradebank");
-    playerButton.classList.remove("active");
-    playerButton.classList.remove("disabled");
-    playerButton.disabled = false;
-    bankButton.classList.remove("active");
-    bankButton.classList.remove("disabled");
-    bankButton.disabled = false;
+    for (let button of [playerButton, bankButton]) {
+      button.classList.remove("active");
+      button.classList.remove("disabled");
+      button.disabled = false;
+    }
   }
+  /*
+  // The above code handles just the cases where we're opening/closing the
+  // resource selection window. The below code handles disabling the buttons
+  // if it's not this player's turn.
+  updateUI("tradeplayer");
+  updateUI("tradebank");
+  */
 }
 function rollDice() {
   let msg = {
@@ -161,10 +219,6 @@ function draw() {
   drawRobber(context);
   drawDebug(context);
   context.restore();
-  if (gamePhase == "main") {
-    // TODO: the tradeWindow should be its own div.
-    drawTradeWindow(context);
-  }
   window.requestAnimationFrame(draw);
 }
 function coordsToEdgeCenter(loc) {
@@ -237,94 +291,19 @@ function addCard(cardContainer, elemId, usable) {
   cardContainer.appendChild(div);
 }
 function bringforward(e) {
+  e.currentTarget.classList.add("selected");
   e.currentTarget.style.overflowX = "visible";
 }
 function pushbackward(e) {
+  e.currentTarget.classList.remove("selected");
   e.currentTarget.style.overflowX = "hidden";
+}
+function buyDevCard() {
+  ws.send(JSON.stringify({type: "buy_dev"}));
 }
 function devCardModal(cardType) {
   // TODO: show a dialog based on the card type. will probably need a resource picker.
   console.log(cardType);
-}
-function getClickedResource(eventX, eventY) {
-  let centerX = canWidth / 2;
-  let centerY = canHeight / 2;
-  let leftX = centerX - tradeWidth / 2;
-  let leftY = centerY - tradeHeight / 2;
-  for (let side = 0; side < tradeSides.length; side++) {
-    for (let i = 0; i < cardResources.length; i++) {
-      let cardX = leftX + 1.5 * tradeCardWidth * i + tradeCardWidth / 2;
-      let cardY = leftY + tradeVertBuffer + side * tradeOneHeight;
-      if (eventX >= cardX && eventX <= cardX + tradeCardWidth &&
-          eventY >= cardY && eventY <= cardY + tradeCardHeight) {
-        return {
-          resource: cardResources[i],
-          side: side,
-        };
-      }
-    }
-  }
-  return null;
-}
-function getClickedTradeButton(eventX, eventY, buttons) {
-  for (let i = 0; i < buttons.length; i++) {
-    if (eventX >= buttons[i].x && eventX <= buttons[i].x + tradeButtonWidth &&
-        eventY >= buttons[i].y && eventY <= buttons[i].y + tradeButtonHeight) {
-      return buttons[i].text;
-    }
-  }
-  return null;
-}
-function drawTradeButton(ctx, button, isActive) {
-  ctx.fillStyle = isActive ? 'darkkhaki' : 'lightgray';
-  ctx.fillRect(button.x, button.y, tradeButtonWidth, tradeButtonHeight);
-  ctx.fillStyle = isActive ? 'black' : 'darkgray';
-  ctx.textAlign = 'center';
-  ctx.font = tradeButtonHeight + 'px sans-serif';
-  ctx.fillText(button.text, button.x + tradeButtonWidth/2, button.y + tradeButtonHeight - 4);
-}
-function drawTradeWindow(ctx) {
-  if (!tradeWindowActive) {
-    return;
-  }
-  let centerX = canWidth / 2;
-  let centerY = canHeight / 2;
-  let leftX = centerX - tradeWidth / 2;
-  let leftY = centerY - tradeHeight / 2;
-  ctx.fillStyle = '#6666FF';
-  ctx.fillRect(leftX, leftY, tradeWidth, tradeHeight);
-  // Draw buttons.
-  let buttonList = tradeButtons(tradePartner);
-  for (let i = 0; i < buttonList.length; i++) {
-    drawTradeButton(ctx, buttonList[i], true);
-  }
-  // Draw trading windows.
-  for (let side = 0; side < tradeSides.length; side++) {
-    // Draw the You Want/Give text.
-    ctx.font = '18px sans-serif';
-    ctx.fillStyle = 'black';
-    ctx.textAlign = 'left';
-    ctx.fillText("You " + tradeSides[side], leftX, leftY + side * tradeOneHeight + 18);
-    // Draw the separator.
-    ctx.lineWidth = 1;
-    ctx.strokeStyle = 'black';
-    ctx.beginPath();
-    ctx.moveTo(leftX, leftY + (side + 1) * tradeOneHeight);
-    ctx.lineTo(leftX + tradeWidth, leftY + (side + 1) * tradeOneHeight);
-    ctx.stroke();
-    // Draw the resources.
-    for (let i = 0; i < cardResources.length; i++) {
-      let img = document.getElementById(cardResources[i] + "card");
-      let cardX = leftX + 1.5 * tradeCardWidth * i + tradeCardWidth / 2;
-      let cardY = leftY + tradeVertBuffer + side * tradeOneHeight;
-      ctx.drawImage(img, cardX, cardY, tradeCardWidth, tradeCardHeight);
-      let num = tradeActiveOffer[side][cardResources[i]] || 0;
-      ctx.textAlign = 'center';
-      let textX = cardX + tradeCardWidth / 2;
-      let textY = cardY + tradeCardHeight + tradeVertBuffer / 2;
-      ctx.fillText("x" + num, textX, textY);
-    }
-  }
 }
 function drawRoad(roadLoc, style, ctx) {
   let leftCorner = coordToCornerCenter([roadLoc[0], roadLoc[1]]);
@@ -465,51 +444,6 @@ function getTile(eventX, eventY) {
   }
   return null;
 }
-function clearTradeOffer() {
-  for (side = 0; side < tradeSides.length; side++) {
-    tradeActiveOffer[side] = {};
-  }
-}
-function onclickTrade(event) {
-  if (event.clientX < canWidth/2 - tradeWidth/2 || event.clientX > canWidth/2 + tradeWidth/2 ||
-      event.clientY < canHeight/2 - tradeHeight/2 || event.clientY > canHeight/2 + tradeHeight/2) {
-    toggleTradeWindow(tradePartner);
-    return;
-  }
-
-  let chosenResource = getClickedResource(event.clientX, event.clientY);
-  if (chosenResource) {
-    let num = 1;
-    if (event.shiftKey) {
-      num = -1;
-    }
-    let rsrc = chosenResource.resource;
-    let side = chosenResource.side;
-    current = tradeActiveOffer[side][rsrc] || 0;
-    tradeActiveOffer[side][rsrc] = current + num;
-    if (tradeActiveOffer[side][rsrc] < 0) {
-      tradeActiveOffer[side][rsrc] = 0;
-    }
-  }
-  let clickedButton = getClickedTradeButton(event.clientX, event.clientY, tradeButtons(tradePartner));
-  if (clickedButton == "Clear") {
-    clearTradeOffer();
-  }
-  if (clickedButton == "Offer" && tradePartner == "player") {
-    let msg = {
-      type: "trade_offer",
-      offer: tradeActiveOffer,
-    };
-    ws.send(JSON.stringify(msg));
-  }
-  if (clickedButton == "Accept" && tradePartner == "bank") {
-    let msg = {
-      type: "trade_bank",
-      offer: tradeActiveOffer,
-    };
-    ws.send(JSON.stringify(msg));
-  }
-}
 function onkey(event) {
   let thing = event.which || event.keyCode; // Cross-browser compatibility.
   console.log("keypress " + thing);
@@ -525,10 +459,6 @@ function onkey(event) {
 function onclick(event) {
   // Ignore right/middle-click.
   if (event.button != 0) {
-    return;
-  }
-  if (tradeWindowActive) {
-    onclickTrade(event);
     return;
   }
   let clickTile = getTile(event.clientX, event.clientY);
@@ -564,9 +494,6 @@ function onclick(event) {
     };
     ws.send(JSON.stringify(msg));
   }
-}
-function buyDevCard() {
-  ws.send(JSON.stringify({type: "buy_dev"}));
 }
 function onmove(event) {
   let hoverLoc = getTile(event.clientX, event.clientY);
@@ -607,9 +534,6 @@ function onwheel(event) {
 function ondown(event) {
   // Ignore right/middle-click.
   if (event.button != 0) {
-    return;
-  }
-  if (tradeWindowActive) {
     return;
   }
   startX = event.clientX;
@@ -674,6 +598,7 @@ function onmsg(event) {
   edges = data.edges;
   robberLoc = data.robber;
   if (cards != data.cards) {
+    // TODO: revisit this.
     console.log("cards changed; clearing active offer");
     clearTradeOffer();
   }
@@ -691,7 +616,6 @@ function onmsg(event) {
   updateUI("endturn");
   updateUI("tradeplayer");
   updateUI("tradebank");
-  updateEndTurn();
 }
 function updateUI(elemName) {
   if (gamePhase != "main" || turn != myColor || turnPhase != "main") {
@@ -771,6 +695,11 @@ function init() {
   document.getElementById('myCanvas').height = canHeight;
   document.getElementById('buydev').width = cardWidth;
   document.getElementById('buydev').height = cardHeight;
+  let selectors = document.getElementsByClassName('selector');
+  for (let i = 0; i < selectors.length; i++) {
+    selectors[i].width = selectCardWidth;
+    selectors[i].Height = selectCardHeight;
+  }
   window.requestAnimationFrame(draw);
   let l = window.location;
   ws = new WebSocket("ws://" + l.hostname + ":8081/");
