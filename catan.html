@@ -20,7 +20,7 @@
       }
       #ui {
         position: absolute;
-        width: 500px;
+        width: 500px; /* width and height will be overridden by js */
         height: 500px;
         top: 0;
         left: 0;
@@ -37,6 +37,65 @@
         color: red;
         background: white;
         z-index: 1; /* error should be shown over everything else */
+      }
+      #resourcepopup {
+        position: absolute;
+        display: none;
+        left: 50%;
+        margin-right: -50%;
+        top: 50%;
+        margin-bottom: -50%;
+        transform: translate(-50%, -50%);
+        background: palegoldenrod;
+        border: 1px solid black;
+      }
+      .uiselect {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+      }
+      #uiselectbuttons {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        justify-content: center;
+        border-top: 1px solid black;
+      }
+      .leftbutton {
+        flex: 1 0 auto;
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        justify-content: flex-start;
+      }
+      .rightbutton {
+        flex: 1 0 auto;
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        justify-content: flex-end;
+      }
+      #uitopselect {
+        /* display: none; */
+        border-bottom: 1px solid black;
+      }
+      .resourceselectbox {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        justify-content: center;
+      }
+      .selectcontainer {
+        margin: 20px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+      }
+      .selector {
+        width: 87;
+        height: 123;
       }
       #uileft {
         position: absolute;
@@ -105,10 +164,10 @@
       }
       #reddie {
         background: red;
-        color: wheat;
+        color: blanchedalmond;
       }
       #whitedie {
-        background: wheat;
+        background: blanchedalmond;
         color: red;
       }
       #buydev {
@@ -122,11 +181,15 @@
         display: flex;
       }
       .uicard {
-        flex: 1 0 0;
+        flex: 0 1 auto;
         overflow-x: hidden;
+        transform: translateY(30%);
       }
       .uicard.shown {
         flex: 0 0 auto;
+      }
+      .uicard.selected {
+        transform: none;
       }
       .button {
         display: inline-block;
@@ -186,6 +249,21 @@
       .tradebutton.disabled {
         background-color: #99f;
       }
+      .selectbutton {
+        padding: 15px 25px;
+        font-size: 18px;
+        margin: 20px;
+        margin-top: 10px;
+        margin-bottom: 16px;
+        text-decoration: none;
+        color: #fff;
+        background-color: #66f;
+        box-shadow: 0 6px #999;
+      }
+      .selectbutton:active {
+        box-shadow: 0 3px #666;
+        transform: translateY(2px);
+      }
       .disabled {
         opacity: 0.6;
         cursor: not-allowed;
@@ -227,6 +305,66 @@
     <canvas id="myCanvas" width="678" height="730"></canvas>
     <div id="ui" class="noclick">
       <p id="errorText" class="noclick"></p>
+      <div id="resourcepopup" class="clickable">
+        <div id="uitopselect" class="uiselect">
+          <div id="topselecttitle" class="selecttitle">You Want</div>
+          <div id="topselectbox" class="resourceselectbox">
+            <div class="selectcontainer sheep">
+              <img class="selector clickable" src="/sheepcard.png" onclick="selectResource(event, 'top', 'sheep')" />
+              <div class="selectcount noclick">x0</div>
+            </div>
+            <div class="selectcontainer wood">
+              <img class="selector clickable" src="/woodcard.png" onclick="selectResource(event, 'top', 'wood')" />
+              <div class="selectcount noclick">x0</div>
+            </div>
+            <div class="selectcontainer grain">
+              <img class="selector clickable" src="/graincard.png" onclick="selectResource(event, 'top', 'grain')" />
+              <div class="selectcount noclick">x0</div>
+            </div>
+            <div class="selectcontainer brick">
+              <img class="selector clickable" src="/brickcard.png" onclick="selectResource(event, 'top', 'brick')" />
+              <div class="selectcount noclick">x0</div>
+            </div>
+            <div class="selectcontainer ore">
+              <img class="selector clickable" src="/orecard.png" onclick="selectResource(event, 'top', 'ore')" />
+              <div class="selectcount noclick">x0</div>
+            </div>
+          </div>
+        </div>
+        <div id="uibottomselect" class="uiselect">
+          <div id="bottomselecttitle" class="selecttitle">You Give</div>
+          <div id="bottomselectbox" class="resourceselectbox">
+            <div class="selectcontainer sheep">
+              <img class="selector clickable" src="/sheepcard.png" onclick="selectResource(event, 'bottom', 'sheep')" />
+              <div class="selectcount noclick">x0</div>
+            </div>
+            <div class="selectcontainer wood">
+              <img class="selector clickable" src="/woodcard.png" onclick="selectResource(event, 'bottom', 'wood')" />
+              <div class="selectcount noclick">x0</div>
+            </div>
+            <div class="selectcontainer grain">
+              <img class="selector clickable" src="/graincard.png" onclick="selectResource(event, 'bottom', 'grain')" />
+              <div class="selectcount noclick">x0</div>
+            </div>
+            <div class="selectcontainer brick">
+              <img class="selector clickable" src="/brickcard.png" onclick="selectResource(event, 'bottom', 'brick')" />
+              <div class="selectcount noclick">x0</div>
+            </div>
+            <div class="selectcontainer ore">
+              <img class="selector clickable" src="/orecard.png" onclick="selectResource(event, 'bottom', 'ore')" />
+              <div class="selectcount noclick">x0</div>
+            </div>
+          </div>
+        </div>
+        <div id="uiselectbuttons">
+          <div class="leftbutton">
+            <button id="selectconfirm" class="selectbutton button clickable" onclick="confirmSelection(event)">Confirm</button>
+          </div>
+          <div class="rightbutton">
+            <button id="selectcancel" class="selectbutton button clickable" onclick="cancelSelection(event)">Cancel</button>
+          </div>
+        </div>
+      </div>
       <div id="uiright" class="noclick">
         <div id="tradebuttons" class="noclick">
           <button id="tradeplayer" class="button tradebutton clickable" onclick="toggleTradeWindow('player')">Player</button>
@@ -236,6 +374,7 @@
         <input class="clickable" type="button" value="Change Name" onclick="login()" />
         <br />
         <input class="clickable" type="button" value="Toggle Debug" onclick="toggleDebug()" />
+        <p>this area reserved for player information boxes</p>
       </div>
       <div id="uileft" class="noclick">
         <div id="leftcontainer" class="noclick">
