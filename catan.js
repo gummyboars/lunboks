@@ -13,7 +13,45 @@ cardHeight = 210;
 selectCardWidth = 29 * 3;
 selectCardHeight = 41 * 3;
 // Other constants.
-cardResources = ["sulfur", "olivine", "water", "clay", "metal"];
+cardResources = ["rsrc1", "rsrc2", "rsrc3", "rsrc4", "rsrc5"];
+globalNames = {
+  rsrc1: "sulfur",
+  rsrc2: "olivine",
+  rsrc3: "water",
+  rsrc4: "clay",
+  rsrc5: "metal",
+  norsrc: "desert",
+  space: "space",
+};
+imageNames = {
+  rsrc1: "/sulfur.png",
+  rsrc2: "/olivine.png",
+  rsrc3: "/permafrost.png",
+  rsrc4: "/clay.png",
+  rsrc5: "/metal.png",
+  rsrc1card: "/sulfurcard.png",
+  rsrc2card: "/olivinecard.png",
+  rsrc3card: "/watercard.png",
+  rsrc4card: "/claycard.png",
+  rsrc5card: "/metalcard.png",
+  norsrc: "/desert.png",
+  space: "/space.png",
+  rsrc1port: "/sulfurport.png",
+  rsrc2port: "/olivineport.png",
+  rsrc3port: "/waterport.png",
+  rsrc4port: "/clayport.png",
+  rsrc5port: "/metalport.png",
+  "3port": "/3port.png",
+  knight: "/knight.png",
+  roadbuilding: "/roadbuilding.png",
+  yearofplenty: "/yearofplenty.png",
+  monopoly: "/monopoly.png",
+  palace: "/palace.png",
+  chapel: "/chapel.png",
+  university: "/university.png",
+  library: "/library.png",
+  market: "/market.png",
+};
 devCards = ["knight", "roadbuilding", "yearofplenty", "monopoly", "palace", "chapel", "university", "library", "market"];
 devResourceSelection = {
   monopoly: {
@@ -66,6 +104,14 @@ offsetX = 0;
 offsetY = 0;
 dX = 0;
 dY = 0;
+
+function formatServerString(serverString) {
+  var str = serverString;
+  for (rsrc in globalNames) {
+    str = str.replace(new RegExp("\\{" + rsrc + "\\}", "gi"), globalNames[rsrc]);
+  }
+  return str;
+}
 
 function toggleDebug() {
   debug = !debug;
@@ -281,10 +327,10 @@ function coordToTileCenter(loc) {
   return {x: ul.x + tileWidth/2, y: ul.y + tileHeight/2};
 }
 function populateCards() {
-  newContainer = document.createElement("DIV");
+  let newContainer = document.createElement("DIV");
   newContainer.classList.add("uicards");
   newContainer.classList.add("noclick");
-  oldContainer = document.getElementById("uibottom").firstChild;
+  let oldContainer = document.getElementById("uibottom").firstChild;
   if (cards) {
     for (let i = 0; i < cardResources.length; i++) {
       for (let j = 0; j < cards[cardResources[i]]; j++) {
@@ -304,9 +350,8 @@ function populateCards() {
   document.getElementById("uibottom").replaceChild(newContainer, oldContainer);
 }
 function addCard(cardContainer, elemId, usable) {
-  let orig = document.getElementById(elemId);
   let img = document.createElement("IMG");
-  img.src = orig.src;
+  img.src = imageNames[elemId];
   img.classList.add("clickable");
   img.width = cardWidth;
   img.height = cardHeight;
@@ -385,6 +430,13 @@ function drawPiece(pieceData, ctx) {
 }
 function drawTile(tileData, ctx) {
   let img = document.getElementById(tileData.tile_type);
+  if (!img) {
+    img = document.createElement("IMG");
+    img.id = tileData.tile_type;
+    img.src = imageNames[tileData.tile_type];
+    img.style.display = "none";
+    document.getElementsByTagName("BODY")[0].appendChild(img);
+  }
   let canvasLoc = coordToTileCenter(tileData.location);
   ctx.save();
   ctx.translate(canvasLoc.x, canvasLoc.y);
@@ -623,7 +675,7 @@ function onmsg(event) {
   if (data.type == "error") {
     document.getElementById("errorText").holdSeconds = 3;
     document.getElementById("errorText").style.opacity = 1.0;
-    document.getElementById("errorText").innerText = data.message;
+    document.getElementById("errorText").innerText = formatServerString(data.message);
     setTimeout(clearerror, 100);
     return;
   }
@@ -727,6 +779,33 @@ function login() {
   };
   ws.send(JSON.stringify(msg));
 }
+function createSelectors() {
+  for (selectBox of ["top", "bottom"]) {
+    let box = document.getElementById(selectBox + "selectbox");
+    for (cardRsrc of cardResources) {
+      let boxCopy = selectBox;
+      let rsrcCopy = cardRsrc;
+      let img = document.createElement("IMG");
+      img.classList.add("selector");
+      img.classList.add("clickable");
+      img.width = selectCardWidth;
+      img.height = selectCardHeight;
+      img.src = imageNames[cardRsrc + "card"];
+      img.onclick = function(e) { selectResource(e, boxCopy, rsrcCopy); };
+      img.oncontextmenu = function(e) { deselectResource(e, boxCopy, rsrcCopy); };
+      let counter = document.createElement("DIV");
+      counter.innerText = "x0";
+      counter.classList.add("selectcount");
+      counter.classList.add("noclick");
+      let container = document.createElement("DIV");
+      container.classList.add("selectcontainer");
+      container.classList.add(cardRsrc);
+      container.appendChild(img);
+      container.appendChild(counter);
+      box.appendChild(container);
+    }
+  }
+}
 function init() {
   totalWidth = document.documentElement.clientWidth;
   totalHeight = document.documentElement.clientHeight;
@@ -741,11 +820,7 @@ function init() {
   document.getElementById('myCanvas').height = canHeight;
   document.getElementById('buydev').width = cardWidth;
   document.getElementById('buydev').height = cardHeight;
-  let selectors = document.getElementsByClassName('selector');
-  for (let i = 0; i < selectors.length; i++) {
-    selectors[i].width = selectCardWidth;
-    selectors[i].Height = selectCardHeight;
-  }
+  createSelectors();
   window.requestAnimationFrame(draw);
   let l = window.location;
   ws = new WebSocket("ws://" + l.hostname + ":8081/");

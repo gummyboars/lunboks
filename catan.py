@@ -1,10 +1,11 @@
-import asyncio
 import collections
 import json
 import os
 import random
 
 from game import InvalidMove
+
+RESOURCES = ["rsrc1", "rsrc2", "rsrc3", "rsrc4", "rsrc5"]
 
 
 class CustomEncoder(json.JSONEncoder):
@@ -226,11 +227,10 @@ class Piece(object):
 
 class Tile(object):
 
-  TYPES = ["olivine", "clay", "metal", "sulfur", "water", "space", "desert"]
-
-  def __init__(self, x, y, tile_type, number, rotation=0):
+  def __init__(self, x, y, tile_type, is_land, number, rotation=0):
     self.location = TileLocation(x, y)
     self.tile_type = tile_type
+    self.is_land = is_land
     self.number = number
     self.rotation = rotation
 
@@ -238,6 +238,7 @@ class Tile(object):
     return {
         "location": self.location,
         "tile_type": self.tile_type,
+        "is_land": self.is_land,
         "number": self.number,
         "rotation": self.rotation,
     }
@@ -249,7 +250,6 @@ class Tile(object):
 class CatanState(object):
 
   TRADE_SIDES = ["want", "give"]
-  TRADABLE_RESOURCES = ["sulfur", "olivine", "water", "clay", "metal"]
   WANT = TRADE_SIDES.index("want")
   GIVE = TRADE_SIDES.index("give")
   PLAYABLE_DEV_CARDS = ["yearofplenty", "monopoly", "roadbuilding", "knight"]
@@ -298,7 +298,7 @@ class CatanState(object):
     # TODO: instead of sending a list of corners, we should send something like
     # a list of legal moves for tiles, corners, and edges.
     for tile in self.tiles.values():
-      if tile.tile_type == "space":
+      if not tile.is_land:
         continue
       # Triple-count each corner and dedup.
       for corner_loc in tile.location.get_corner_locations():
@@ -452,7 +452,7 @@ class CatanState(object):
     errors = []
     for resource, count in resources:
       if self.cards[player][resource] < count:
-        errors.append("%s %s" % (count - self.cards[player][resource], resource))
+        errors.append("%s {%s}" % (count - self.cards[player][resource], resource))
     if errors:
       raise InvalidMove("You would need an extra %s to buy a %s." % (", ".join(errors), build_type))
 
@@ -539,7 +539,7 @@ class CatanState(object):
         self.turn_phase = "main"
       return
     # Check resources and deduct from player.
-    resources = [("olivine", 1), ("clay", 1)]
+    resources = [("rsrc2", 1), ("rsrc4", 1)]
     self._remove_resources(resources, player, "road")
 
     self.add_road(Road(location, "road", player))
@@ -572,7 +572,7 @@ class CatanState(object):
     else:
       raise InvalidMove("You must place your settlement next to one of your roads.")
     # Check resources and deduct from player.
-    resources = [("sulfur", 1), ("olivine", 1), ("water", 1), ("clay", 1)]
+    resources = [("rsrc1", 1), ("rsrc2", 1), ("rsrc3", 1), ("rsrc4", 1)]
     self._remove_resources(resources, player, "settlement")
 
     self._build_settlement(location, player)
@@ -582,7 +582,7 @@ class CatanState(object):
     self.add_piece(Piece(location[0], location[1], "settlement", player))
     port_type = self.ports.get(tuple(location))
     if port_type == "3":
-      for rsrc in self.TRADABLE_RESOURCES:
+      for rsrc in RESOURCES:
         self.trade_ratios[player][rsrc] = min(self.trade_ratios[player][rsrc], 3)
     elif port_type:
       self.trade_ratios[player][port_type] = min(self.trade_ratios[player][port_type], 2)
@@ -599,7 +599,7 @@ class CatanState(object):
     if piece.piece_type != "settlement":
       raise InvalidMove("You can only upgrade a settlement to a city.")
     # Check resources and deduct from player.
-    resources = [("water", 2), ("metal", 3)]
+    resources = [("rsrc3", 2), ("rsrc5", 3)]
     self._remove_resources(resources, player, "city")
 
     del self.pieces[tuple(location)]
@@ -608,7 +608,7 @@ class CatanState(object):
   def handle_buy_dev(self, player):
     # Check that this is the right part of the turn.
     self._check_main_phase("buy a development card")
-    resources = [("sulfur", 1), ("water", 1), ("metal", 1)]
+    resources = [("rsrc1", 1), ("rsrc3", 1), ("rsrc5", 1)]
     if len(self.dev_cards) < 1:
       raise InvalidMove("There are no development cards left.")
     self._remove_resources(resources, player, "development card")
@@ -651,11 +651,11 @@ class CatanState(object):
   def _handle_year_of_plenty(self, player, resource_selection):
     if not resource_selection or not isinstance(resource_selection, dict):
       raise InvalidMove("You must select 2 resources to receive.")
-    if set(resource_selection.keys()) - set(self.TRADABLE_RESOURCES):
+    if set(resource_selection.keys()) - set(RESOURCES):
       raise InvalidMove("You may only receive tradable resources.")
     if not all([isinstance(value, int) and value >= 0 for value in resource_selection.values()]):
       raise InvalidMove("You may only request a positive integer number of resources.")
-    if sum([resource_selection.get(key, 0) for key in self.TRADABLE_RESOURCES]) != 2:
+    if sum([resource_selection.get(key, 0) for key in RESOURCES]) != 2:
       raise InvalidMove("You must request exactly two resources.")
     for card_type, value in resource_selection.items():
       self.cards[player][card_type] += value
@@ -663,11 +663,11 @@ class CatanState(object):
   def _handle_monopoly(self, player, resource_selection):
     if not resource_selection or not isinstance(resource_selection, dict):
       raise InvalidMove("You must select 1 resources to monopolize.")
-    if set(resource_selection.keys()) - set(self.TRADABLE_RESOURCES):
+    if set(resource_selection.keys()) - set(RESOURCES):
       raise InvalidMove("You may only monopolize tradable resources.")
     if not all([value in (0, 1) for value in resource_selection.values()]):
       raise InvalidMove("Invalid number of resources requested.")
-    if sum([resource_selection.get(key, 0) for key in self.TRADABLE_RESOURCES]) != 1:
+    if sum([resource_selection.get(key, 0) for key in RESOURCES]) != 1:
       raise InvalidMove("You must choose exactly one resource to monopolize.")
     card_type = None
     for key, value in resource_selection.items():
@@ -697,13 +697,13 @@ class CatanState(object):
       if not isinstance(offer[idx], dict):
         raise RuntimeError("invalid offer format - each side must be a dict")
     for rsrc, count in offer[self.WANT].items():
-      if rsrc not in self.TRADABLE_RESOURCES:
-        raise InvalidMove("%s is not tradable." % rsrc)
+      if rsrc not in RESOURCES:
+        raise InvalidMove("{%s} is not tradable." % rsrc)
       if count < 0:
         raise InvalidMove("You cannot trade a negative quantity.")
     for rsrc, count in offer[self.GIVE].items():
       if self.cards[player][rsrc] < count:
-        raise InvalidMove("You do not have enough %s." % rsrc)
+        raise InvalidMove("You do not have enough {%s}." % rsrc)
       if count < 0:
         raise InvalidMove("You cannot trade a negative quantity.")
 
@@ -723,7 +723,7 @@ class CatanState(object):
         continue
       ratio = self.trade_ratios[player][rsrc]
       if give % ratio != 0:
-        raise InvalidMove("You must trade %s with the bank at a %s:1 ratio." % (rsrc, ratio))
+        raise InvalidMove("You must trade {%s} with the bank at a %s:1 ratio." % (rsrc, ratio))
       available += give / ratio
     if available != requested:
       raise InvalidMove("You should receive %s resources, but you requested %s." % (available, requested))
@@ -766,12 +766,12 @@ class CatanState(object):
 
   def init_normal(self):
     tile_types = [
-      "olivine", "olivine", "olivine", "olivine",
-      "metal", "metal", "metal",
-      "clay", "clay", "clay",
-      "sulfur", "sulfur", "sulfur", "sulfur",
-      "water", "water", "water", "water",
-      "desert"]
+      "rsrc1", "rsrc1", "rsrc1", "rsrc1",
+      "rsrc2", "rsrc2", "rsrc2", "rsrc2",
+      "rsrc3", "rsrc3", "rsrc3", "rsrc3",
+      "rsrc4", "rsrc4", "rsrc4",
+      "rsrc5", "rsrc5", "rsrc5",
+      "norsrc"]
     random.shuffle(tile_types)
     numbers = [5, 2, 6, 3, 8, 10, 9, 12, 11, 4, 8, 10, 9, 4, 5, 6, 3, 11]
     sequence = [
@@ -785,13 +785,13 @@ class CatanState(object):
     num_idx = 0
     robber_loc = None
     for idx, loc in enumerate(sequence):
-      if tile_types[idx] == "desert":
+      if tile_types[idx] == "norsrc":
         robber_loc = TileLocation(*sequence[idx])
         number = None
       else:
         number = numbers[num_idx]
         num_idx += 1
-      self.add_tile(Tile(sequence[idx][0], sequence[idx][1], tile_types[idx], number))
+      self.add_tile(Tile(sequence[idx][0], sequence[idx][1], tile_types[idx], True, number))
     space_tiles = [
         (2, 1), (4, 0), (6, -1), (8, 0), (10, 1), (12, 2),  # around the top
         (12, 4), (12, 6), (12, 8),  # down the right side
@@ -799,16 +799,16 @@ class CatanState(object):
         (0, 6), (0, 4), (0, 2)  # up the left side
         ]
     ports = ["3port", "3port", "3port", "3port",
-             "sulfurport", "clayport", "olivineport", "metalport", "waterport"]
-    rotations = [-1, 0, 1, 1, 2, 3, 3, -2, -1]
+             "rsrc1port", "rsrc2port", "rsrc3port", "rsrc4port", "rsrc5port"]
     random.shuffle(ports)
+    rotations = [-1, 0, 1, 1, 2, 3, 3, -2, -1]
     if len(ports) != len(space_tiles) / 2 or len(ports) != len(rotations):
       raise RuntimeError("you screwed it up")
     for idx, loc in enumerate(space_tiles):
       tile_name = "space"
       if idx % 2 == 0:
         tile_name = ports[idx//2]
-      self.add_tile(Tile(loc[0], loc[1], tile_name, None, rotations[idx//2]))
+      self.add_tile(Tile(loc[0], loc[1], tile_name, False, None, rotations[idx//2]))
     self.compute_ports()
     self.robber = robber_loc
     dev_cards = ["knight"] * 14 + ["monopoly"] * 2 + ["roadbuilding"] * 2 + ["yearofplenty"] * 2
