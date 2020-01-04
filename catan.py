@@ -741,7 +741,7 @@ class CatanState(object):
         (0, 6), (0, 4), (0, 2)  # up the left side
         ]
     ports = ["3port", "3port", "3port", "3port",
-             "sheepport", "brickport", "woodport", "oreport", "grainport"]
+             "sulfurport", "clayport", "olivineport", "metalport", "waterport"]
     rotations = [-1, 0, 1, 1, 2, 3, 3, -2, -1]
     random.shuffle(ports)
     if len(ports) != len(space_tiles) / 2 or len(ports) != len(rotations):
