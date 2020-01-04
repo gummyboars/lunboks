@@ -99,6 +99,13 @@ function selectResource(event, windowName, rsrc) {
   if (event.shiftKey) {
     num = -1;
   }
+  selectResourceHelper(windowName, rsrc, num);
+}
+function deselectResource(event, windowName, rsrc) {
+  event.preventDefault();
+  selectResourceHelper(windowName, rsrc, -1);
+}
+function selectResourceHelper(windowName, rsrc, num) {
   let current = resourceSelection[windowName][rsrc] || 0;
   resourceSelection[windowName][rsrc] = current + num;
   if (resourceSelection[windowName][rsrc] < 0) {
