@@ -269,6 +269,7 @@ class CatanState(object):
     self.unusable = collections.defaultdict(int)
     self.dev_roads_placed = 0
     self.played_dev = 0
+    self.discard_players = {}  # Map of player to number of cards they have.
     self.turn_idx = None
     self.turn_order = []
     self.dice_roll = None
@@ -290,7 +291,8 @@ class CatanState(object):
 
   def json_repr(self):
     ret = dict([(name, getattr(self, name)) for name in
-      ["robber", "pirate", "turn_order", "dice_roll", "player_colors", "trade_offer", "game_phase", "turn_phase"]])
+      ["game_phase", "turn_phase", "player_colors", "turn_order", "dice_roll",
+       "robber", "pirate", "trade_offer", "discard_players"]])
     more = dict([(name, list(getattr(self, name).values())) for name in
       ["ports", "tiles", "pieces", "roads"]])
     ret.update(more)
@@ -361,8 +363,10 @@ class CatanState(object):
     player = self.player_colors.get(player_name)
     if not player:
       return
+    if data.get("type") == "discard":
+      self.handle_discard(data.get("selection"), player)
+      return
     # Insert before turn check:
-    # - discarding cards
     # - trade offer acceptance
     # - trade counter-offers
     if self.turn_order[self.turn_idx] != player:
@@ -440,19 +444,35 @@ class CatanState(object):
     white = random.randint(1, 6)
     self.dice_roll = (red, white)
     if (red + white) == 7:
-      self.turn_phase = "robber"
+      discard_players = self._get_players_with_too_many_resources()
+      if discard_players:
+        self.discard_players = discard_players
+        self.turn_phase = "discard"
+      else:
+        self.turn_phase = "robber"
       return
     self.distribute_resources(red + white)
     self.turn_phase = "main"
 
   def handle_robber(self, location):
     if self.turn_phase != "robber":
+      if self.turn_phase == "discard":
+        raise InvalidMove("Waiting for players to discard.")
       raise InvalidMove("You cannot play the robber right now.")
     self.robber = TileLocation(*location)
+    # TODO: rob!
     if self.dice_roll is None:
       self.turn_phase = "dice"
     else:
       self.turn_phase = "main"
+
+  def _get_players_with_too_many_resources(self):
+    the_players = {}
+    for player in self.cards:
+      count = sum(self.cards[player].get(rsrc, 0) for rsrc in RESOURCES)
+      if count >= 8:
+        the_players[player] = count
+    return the_players
 
   def _check_resources(self, resources, player, action_string):
     errors = []
@@ -516,6 +536,8 @@ class CatanState(object):
         raise InvalidMove("You must roll the dice first.")
       elif self.turn_phase == "robber":
         raise InvalidMove("You must move the robber first.")
+      elif self.turn_phase == "discard":
+        raise InvalidMove("Waiting for players to discard.")
       else:
         raise InvalidMove("You cannot %s right now." % text)
 
@@ -619,6 +641,21 @@ class CatanState(object):
       raise InvalidMove("There are no development cards left.")
     self._remove_resources(resources, player, "buy a development card")
     self.add_dev_card(player)
+
+  def handle_discard(self, selection, player):
+    if self.turn_phase != "discard":
+      raise InvalidMove("You cannot discard cards right now.")
+    self._validate_selection(selection)
+    if player not in self.discard_players:
+      raise InvalidMove("You do not need to discard any cards.")
+    discard_count = sum([selection.get(rsrc, 0) for rsrc in RESOURCES])
+    if discard_count != self.discard_players[player] // 2:
+      raise InvalidMove("You have %s resource cards and must discard %s." %
+                        (self.discard_players[player], self.discard_players[player] // 2))
+    self._remove_resources(selection.items(), player, "discard those cards")
+    del self.discard_players[player]
+    if not self.discard_players:
+      self.turn_phase = "robber"
 
   def _validate_selection(self, selection):
     """Selection should be a dict of rsrc -> count."""

@@ -106,6 +106,7 @@ robberLoc = null;
 tradeOffer = null;
 gamePhase = null;
 turnPhase = null;
+discardPlayers = {};
 
 // Local state.
 debug = false;
@@ -294,7 +295,7 @@ function maybeShowActiveTradeOffer() {
   if (tradeActiveOffer && (tradeActiveOffer["want"] || tradeActiveOffer["give"])) {
     copyActiveOffer();
     updateSelectCounts();
-    resourceSelectorType = "tradeCounterOffer"
+    resourceSelectorType = "tradeCounterOffer";
     showResourceUI(resourceSelectorType);
   } else {
     hideSelectorWindow();
@@ -345,6 +346,19 @@ function disableButton(elem) {
 function enableButton(elem) {
   elem.classList.remove("disabled");
   elem.disabled = false;
+}
+function maybeShowDiscardWindow() {
+  if (turnPhase == "discard" && discardPlayers[myColor]) {
+    if (resourceSelectorType != "discard") {
+      // Clear selection counts only if we just popped the window up.
+      clearResourceSelection("bottom");
+      updateSelectCounts();
+    }
+    resourceSelectorType = "discard";
+    showResourceUI(resourceSelectorType);
+  } else if (turnPhase == "discard" || turnPhase == "robber") {
+    hideSelectorWindow();
+  }
 }
 function rollDice() {
   let msg = {
@@ -822,6 +836,7 @@ function onmsg(event) {
   pieces = data.pieces;
   roads = data.roads;
   turn = data.turn;
+  discardPlayers = data.discard_players;
   tradeActiveOffer = data.trade_offer;
   if (firstMsg) {
     centerCanvas();
@@ -832,6 +847,7 @@ function onmsg(event) {
   updateUI("endturn");
   updateTradeButtons();
   maybeShowActiveTradeOffer();
+  maybeShowDiscardWindow();
 }
 function updateUI(elemName) {
   if (gamePhase != "main" || turn != myColor || turnPhase != "main") {
