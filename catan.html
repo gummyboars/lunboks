@@ -18,6 +18,9 @@
       .clickable {
         pointer-events: auto;
       }
+      .selectable {
+        cursor: pointer;
+      }
       #ui {
         position: absolute;
         width: 500px; /* width and height will be overridden by js */
@@ -36,7 +39,7 @@
         font-size: 36px;
         color: red;
         background: white;
-        z-index: 1; /* error should be shown over everything else */
+        z-index: 2; /* error should be shown over everything else */
       }
       #resourcepopup {
         position: absolute;
@@ -48,6 +51,7 @@
         transform: translate(-50%, -50%);
         background: palegoldenrod;
         border: 1px solid black;
+        z-index: 1; /* show over other elements */
       }
       .uiselect {
         display: flex;
@@ -59,25 +63,10 @@
         display: flex;
         flex-direction: row;
         align-items: center;
-        justify-content: center;
+        justify-content: space-between;
         border-top: 1px solid black;
       }
-      .leftbutton {
-        flex: 1 0 auto;
-        display: flex;
-        flex-direction: row;
-        align-items: center;
-        justify-content: flex-start;
-      }
-      .rightbutton {
-        flex: 1 0 auto;
-        display: flex;
-        flex-direction: row;
-        align-items: center;
-        justify-content: flex-end;
-      }
       #uitopselect {
-        /* display: none; */
         border-bottom: 1px solid black;
       }
       .resourceselectbox {
@@ -229,6 +218,27 @@
       .endturnbutton.disabled {
         background-color: #f99;
       }
+      .leftbutton {
+        flex: 1 0 1px;
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        justify-content: flex-start;
+      }
+      .centerbutton {
+        flex: 1 0 1px;
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        justify-content: center;
+      }
+      .rightbutton {
+        flex: 1 0 1px;
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        justify-content: flex-end;
+      }
       .tradebutton {
         padding: 15px 25px;
         font-size: 24px;
@@ -298,18 +308,15 @@
           <div id="bottomselectbox" class="resourceselectbox"></div>
         </div>
         <div id="uiselectbuttons">
-          <div class="leftbutton">
-            <button id="selectconfirm" class="selectbutton button clickable" onclick="confirmSelection(event)">Confirm</button>
-          </div>
-          <div class="rightbutton">
-            <button id="selectcancel" class="selectbutton button clickable" onclick="cancelSelection(event)">Cancel</button>
-          </div>
+          <div class="leftbutton"><button id="selectconfirm" class="selectbutton button clickable" onclick="confirmSelection(event)">Confirm</button></div>
+          <div class="centerbutton"><button id="selectreset" class="selectbutton button clickable" onclick="resetSelection(event)">Reset</button></div>
+          <div class="rightbutton"><button id="selectcancel" class="selectbutton button clickable" onclick="cancelSelection(event)">Cancel</button></div>
         </div>
       </div>
       <div id="uiright" class="noclick">
         <div id="tradebuttons" class="noclick">
-          <button id="tradeplayer" class="button tradebutton clickable" onclick="toggleTradeWindow('player')">Player</button>
-          <button id="tradebank" class="button tradebutton clickable" onclick="toggleTradeWindow('bank')">Bank</button>
+          <button id="tradeplayer" class="button tradebutton resourceselector clickable" onclick="toggleTradeWindow('player')">Player</button>
+          <button id="tradebank" class="button tradebutton resourceselector clickable" onclick="toggleTradeWindow('bank')">Bank</button>
         </div>
         <input class="clickable" type="text" id="name" />
         <input class="clickable" type="button" value="Change Name" onclick="login()" />

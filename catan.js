@@ -53,19 +53,43 @@ imageNames = {
   market: "/market.png",
 };
 devCards = ["knight", "roadbuilding", "yearofplenty", "monopoly", "palace", "chapel", "university", "library", "market"];
-devResourceSelection = {
+resourceSelectionUI = {
+  tradeOffer: {
+    topPanelText: "You Want",
+    bottomPanelText: "You Give",
+    okText: "Offer",
+    cancelText: "Cancel",
+    resetText: "Reset",
+  },
+  tradeBank: {
+    topPanelText: "You Want",
+    bottomPanelText: "You Give",
+    okText: "Trade",
+    cancelText: "Cancel",
+    resetText: "Reset",
+  },
+  tradeCounterOffer: {
+    topPanelText: "They Offer",
+    bottomPanelText: "You Give",
+    okText: "Accept",
+    resetText: "Reset",
+    cancelText: "Reject",
+  },
   monopoly: {
-    topText: "Choose a resource to monopolize.",
+    bottomPanelText: "Choose a resource to monopolize.",
     okText: "Monopoly!",
     cancelText: "Cancel",
   },
   yearofplenty: {
-    topText: "Choose two resources to receive from the bank.",
+    bottomPanelText: "Choose two resources to receive from the bank.",
     okText: "OK",
     cancelText: "Cancel",
   },
+  discard: {
+    bottomPanelText: "Choose cards to discard.",
+    okText: "Discard",
+  },
 };
-tradeSides = ["Want", "Give"];
 
 // Game state.
 myColor = null;
@@ -90,11 +114,10 @@ hoverTile = null;
 hoverCorner = null;
 hoverEdge = null;
 resourceSelectorActive = false;
-resourceSelectorType = "trade";  // values are trade, dev, and discard
+resourceSelectorType = null;  // values are tradeOffer, tradeBank, tradeCounterOffer, dev, and discard
 resourceSelection = {"top": {}, "bottom": {}};
-tradeActiveOffer = [{}, {}];
-tradePartner = "player";  // player or bank
-devCardType = "knight";
+tradeActiveOffer = {"want": {}, "give": {}};  // null until someone makes an offer.
+devCardType = null;  // knight, yearofplenty, roadbuilding, monopoly
 
 // For dragging the canvas.
 isDragging = false;
@@ -117,17 +140,17 @@ function toggleDebug() {
   debug = !debug;
 }
 function confirmSelection(event) {
-  if (resourceSelectorType == "trade" && tradePartner == "bank") {
+  if (resourceSelectorType == "tradeBank") {
     let msg = {
       type: "trade_bank",
-      offer: [resourceSelection["top"], resourceSelection["bottom"]],
+      offer: {"want": resourceSelection["top"], "give": resourceSelection["bottom"]},
     };
     ws.send(JSON.stringify(msg));
     return;
-  } else if (resourceSelectorType == "trade" && tradePartner == "player") {
+  } else if (resourceSelectorType == "tradeOffer") {
     let msg = {
       type: "trade_offer",
-      offer: [resourceSelection["top"], resourceSelection["bottom"]],
+      offer: {"want": resourceSelection["top"], "give": resourceSelection["bottom"]},
     };
     ws.send(JSON.stringify(msg));
     return;
@@ -139,6 +162,13 @@ function confirmSelection(event) {
     };
     ws.send(JSON.stringify(msg));
     return;
+  } else if (resourceSelectorType == "discard") {
+    let msg = {
+      type: "discard",
+      selection: resourceSelection["bottom"],
+    };
+    ws.send(JSON.stringify(msg));
+    return;
   } else {
     // TODO: fill this in.
   }
@@ -146,21 +176,33 @@ function confirmSelection(event) {
 function clearResourceSelection(side) {
   resourceSelection[side] = {};
 }
-function clearTradeOffer() {
-  if (resourceSelectorType == "trade") {
-    clearResourceSelection("top");
-    clearResourceSelection("bottom");
+function resetSelection(event) {
+  if (resourceSelectorType == "tradeCounterOffer") {
+    copyActiveOffer();
+    updateSelectCounts();
+  } else {
+    // TODO: Are there any scenarios where we wouldn't want to reset this?
+    resourceSelection = {"top": {}, "bottom": {}};
     updateSelectCounts();
   }
 }
 function cancelSelection(event) {
-  if (resourceSelectorType == "trade") {
-    resourceSelection = {"top": {}, "bottom": {}};
-    updateSelectCounts();
-  } else if (resourceSelectorType == "dev") {
-    document.getElementById("resourcepopup").style.display = 'none';
+  if (resourceSelectorType == "tradeCounterOffer") {
+    // TODO: add a message to reject the offer.
+  } else if (resourceSelectorType == "discard") {
+    // You can't cancel discarding.
+    return;
+  } else if (resourceSelectorType == "tradeOffer") {
+    clearResourceSelection("top");
+    clearResourceSelection("bottom");
+    let msg = {
+      type: "trade_offer",
+      offer: {"want": resourceSelection["top"], "give": resourceSelection["bottom"]},
+    };
+    ws.send(JSON.stringify(msg));
+    hideSelectorWindow();
   } else {
-    // TODO: fill this in.
+    hideSelectorWindow();
   }
 }
 function selectResource(event, windowName, rsrc) {
@@ -175,6 +217,7 @@ function selectResource(event, windowName, rsrc) {
   selectResourceHelper(windowName, rsrc, num);
 }
 function deselectResource(event, windowName, rsrc) {
+  // Only called for right-click - prevents context menu from appearing.
   event.preventDefault();
   selectResourceHelper(windowName, rsrc, -1);
 }
@@ -197,67 +240,111 @@ function updateSelectCounts() {
   }
 }
 function toggleTradeWindow(partner) {
-  if (resourceSelectorActive && resourceSelectorType == "trade" && tradePartner == partner) {
+  let selectorType;
+  if (turn != myColor && partner == "player") {
+    selectorType = "tradeCounterOffer";
+  } else if (turn == myColor && partner == "player") {
+    selectorType = "tradeOffer";
+  } else if (turn == myColor && partner == "bank") {
+    selectorType = "tradeBank";
+  } else {
+    return;
+  }
+  if (resourceSelectorActive && resourceSelectorType == selectorType) {
     resourceSelectorActive = false;
   } else {
     resourceSelectorActive = true;
+    resourceSelectorType = selectorType;
   }
-  tradePartner = partner;
   if (resourceSelectorActive) {
-    resourceSelectorType = "trade";
-    document.getElementById("topselecttitle").innerText = 'You Want';
-    document.getElementById("bottomselecttitle").innerText = 'You Give';
-    document.getElementById("uitopselect").style.display = 'flex';
-    updateSelectCounts();
-    if (tradePartner == 'player') {
-      document.getElementById("selectconfirm").innerText = 'Offer';
-    } else if (tradePartner == 'bank') {
-      document.getElementById("selectconfirm").innerText = 'Trade';
-    }
-    document.getElementById("selectcancel").innerText = 'Reset';
-    document.getElementById("resourcepopup").style.display = 'block';
+    showResourceUI(resourceSelectorType);
   } else {
-    document.getElementById("resourcepopup").style.display = 'none';
+    hideSelectorWindow();
   }
+}
+function hideSelectorWindow() {
+  resourceSelectorActive = false;
+  document.getElementById("resourcepopup").style.display = 'none';
   updateTradeButtons();
+}
+function rememberActiveOffer() {
+  // When the current player opens the trading UI after closing it (maybe they
+  // wanted to look behind it?), we restore the trade offer that they have made.
+  if (tradeActiveOffer && (tradeActiveOffer["want"] || tradeActiveOffer["give"])) {
+    resourceSelection["top"] = Object.assign({}, tradeActiveOffer["want"]);
+    resourceSelection["bottom"] = Object.assign({}, tradeActiveOffer["give"]);
+  } else {
+    clearResourceSelection("top");
+    clearResourceSelection("bottom");
+  }
+}
+function copyActiveOffer() {
+  // This function puts the active offer into the resource selector for all players
+  // except the player that is making the offer.
+  // Note that we switch these around to make it more intuitive for the player
+  // receiving the trade offer - the stuff they will give will still be on bottom.
+  resourceSelection["top"] = Object.assign({}, tradeActiveOffer["give"]);
+  resourceSelection["bottom"] = Object.assign({}, tradeActiveOffer["want"]);
+}
+function maybeShowActiveTradeOffer() {
+  // Do not change the trade window for the player offering the trade.
+  if (turn == myColor) {
+    return;
+  }
+  if (tradeActiveOffer && (tradeActiveOffer["want"] || tradeActiveOffer["give"])) {
+    copyActiveOffer();
+    updateSelectCounts();
+    resourceSelectorType = "tradeCounterOffer"
+    showResourceUI(resourceSelectorType);
+  } else {
+    hideSelectorWindow();
+  }
 }
 function updateTradeButtons() {
   let playerButton = document.getElementById("tradeplayer");
   let bankButton = document.getElementById("tradebank");
-  if (resourceSelectorActive && resourceSelectorType != "trade") {
-    for (let button of [playerButton, bankButton]) {
-      button.classList.remove("active");
-      if (!button.classList.contains("disabled")) {
-        button.classList.add("disabled");
-      }
-      button.disabled = true;
-    }
-  } else if (resourceSelectorActive && resourceSelectorType == "trade") {
+  if (resourceSelectorActive && resourceSelectorType.startsWith("trade")) {
     let activeButton = null;
     let inactiveButton = null;
-    if (tradePartner == "player") {
-      activeButton = document.getElementById("tradeplayer");
-      inactiveButton = document.getElementById("tradebank");
-    } else if (tradePartner == "bank") {
-      activeButton = document.getElementById("tradebank");
-      inactiveButton = document.getElementById("tradeplayer");
+    if (resourceSelectorType == "tradeBank") {
+      activeButton = bankButton;
+      inactiveButton = playerButton;
+    } else {
+      activeButton = playerButton;
+      inactiveButton = bankButton;
     }
     activeButton.classList.add("active");
     inactiveButton.classList.remove("active");
   } else {
     for (let button of [playerButton, bankButton]) {
       button.classList.remove("active");
-      button.classList.remove("disabled");
-      button.disabled = false;
+      enableButton(button);
     }
   }
-  /*
-  // The above code handles just the cases where we're opening/closing the
-  // resource selection window. The below code handles disabling the buttons
-  // if it's not this player's turn.
-  updateUI("tradeplayer");
-  updateUI("tradebank");
-  */
+  // Disable buttons if it's not the player's turn.
+  if (turn != myColor) {
+    if (!bankButton.classList.contains("disabled")) {
+      disableButton(bankButton);
+    }
+    // Disable unless there is an active trade offer.
+    if (!tradeActiveOffer || !(tradeActiveOffer["want"] || tradeActiveOffer["give"])) {
+      disableButton(playerButton);
+    }
+  }
+  if (gamePhase != "main" || turnPhase != "main") {
+    disableButton(playerButton);
+    disableButton(bankButton);
+  }
+}
+function disableButton(elem) {
+  if (!elem.classList.contains("disabled")) {
+    elem.classList.add("disabled");
+    elem.disabled = true;
+  }
+}
+function enableButton(elem) {
+  elem.classList.remove("disabled");
+  elem.disabled = false;
 }
 function rollDice() {
   let msg = {
@@ -366,6 +453,7 @@ function addCard(cardContainer, elemId, usable) {
     div.onclick = function(e) {
       playDevCard(elemId);
     }
+    div.classList.add("resourceselector");
   }
   cardContainer.appendChild(div);
 }
@@ -382,19 +470,45 @@ function buyDevCard() {
 }
 function playDevCard(cardType) {
   devCardType = cardType;
-  let selectInfo = devResourceSelection[cardType];
+  let selectInfo = resourceSelectionUI[cardType];
   if (selectInfo) {
-    resourceSelectorType = "dev";
-    document.getElementById("bottomselecttitle").innerText = selectInfo.topText;
-    document.getElementById("uitopselect").style.display = 'none';
     clearResourceSelection("bottom");
+    resourceSelectorType = "dev";
     updateSelectCounts();
-    document.getElementById("selectconfirm").innerText = selectInfo.okText;
-    document.getElementById("selectcancel").innerText = selectInfo.cancelText;
-    document.getElementById("resourcepopup").style.display = 'block';
+    showResourceUI(cardType);
   } else {
     ws.send(JSON.stringify({type: "play_dev", card_type: cardType}));
   }
+}
+function showResourceUI(uiType) {
+  let selectInfo = resourceSelectionUI[uiType];
+  if (!selectInfo) {
+    console.log("unknown selector " + uiType);
+    return;
+  }
+  if (selectInfo.topPanelText) {
+    document.getElementById("uitopselect").style.display = 'flex';
+    document.getElementById("topselecttitle").innerText = selectInfo.topPanelText;
+  } else {
+    document.getElementById("uitopselect").style.display = 'none';
+  }
+  document.getElementById("bottomselecttitle").innerText = selectInfo.bottomPanelText;
+  let buttons = {"okText": "selectconfirm", "resetText": "selectreset", "cancelText": "selectcancel"};
+  for (let button in buttons) {
+    if (selectInfo[button]) {
+      document.getElementById(buttons[button]).innerText = selectInfo[button];
+      document.getElementById(buttons[button]).style.display = 'inline-block';
+    } else {
+      document.getElementById(buttons[button]).style.display = 'none';
+    }
+  }
+  resourceSelectorActive = true;
+  if (resourceSelectorType == "tradeOffer" && turn == myColor) {
+    rememberActiveOffer();
+  }
+  updateSelectCounts();
+  document.getElementById("resourcepopup").style.display = 'block';
+  updateTradeButtons();
 }
 function drawRoad(roadLoc, style, ctx) {
   let leftCorner = coordToCornerCenter([roadLoc[0], roadLoc[1]]);
@@ -472,12 +586,15 @@ function drawHover(ctx) {
   if (turn != myColor) {
     return;
   }
+  let canvas = document.getElementById("myCanvas");
   if (hoverTile != null) {
     let canvasLoc = coordToTileCenter(hoverTile);
     ctx.fillStyle = 'rgba(127, 127, 127, 0.5)';
     ctx.beginPath();
     ctx.arc(canvasLoc.x, canvasLoc.y, 28, 0, Math.PI * 2, true);
     ctx.fill();
+    canvas.style.cursor = "pointer";
+    return;
   }
   if (hoverCorner != null) {
     let canvasLoc = coordToCornerCenter(hoverCorner);
@@ -485,10 +602,15 @@ function drawHover(ctx) {
     ctx.beginPath();
     ctx.arc(canvasLoc.x, canvasLoc.y, pieceRadius, 0, Math.PI * 2, true);
     ctx.fill();
+    canvas.style.cursor = "pointer";
+    return;
   }
   if (hoverEdge != null) {
     drawRoad(hoverEdge, 'rgba(127, 127, 127, 0.5)', ctx);
+    canvas.style.cursor = "pointer";
+    return;
   }
+  canvas.style.cursor = "auto";
 }
 function drawRobber(ctx) {
   if (robberLoc != null) {
@@ -695,16 +817,12 @@ function onmsg(event) {
   corners = data.corners;
   edges = data.edges;
   robberLoc = data.robber;
-  if (cards != data.cards) {
-    // TODO: revisit this.
-    console.log("cards changed; clearing active offer");
-    clearTradeOffer();
-  }
   cards = data.cards;
   diceRoll = data.dice_roll;
   pieces = data.pieces;
   roads = data.roads;
   turn = data.turn;
+  tradeActiveOffer = data.trade_offer;
   if (firstMsg) {
     centerCanvas();
   }
@@ -712,8 +830,8 @@ function onmsg(event) {
   updateDice();
   updateUI("buydev");
   updateUI("endturn");
-  updateUI("tradeplayer");
-  updateUI("tradebank");
+  updateTradeButtons();
+  maybeShowActiveTradeOffer();
 }
 function updateUI(elemName) {
   if (gamePhase != "main" || turn != myColor || turnPhase != "main") {
@@ -740,6 +858,7 @@ function updateDice() {
   }
   if (turn != myColor) {
     if (!diceEl.classList.contains("noclick")) {
+      diceEl.classList.remove("selectable");
       diceEl.classList.remove("clickable");
       diceEl.classList.add("noclick");
     }
@@ -747,6 +866,7 @@ function updateDice() {
     if (!diceEl.classList.contains("clickable")) {
       diceEl.classList.remove("noclick");
       diceEl.classList.add("clickable");
+      diceEl.classList.add("selectable");
     }
   }
 }
@@ -831,8 +951,34 @@ function init() {
   document.getElementById('myCanvas').onmouseup = onup;
   document.getElementById('myCanvas').onmouseout = onout;
   document.getElementById('myCanvas').onkeydown = onkey;
+  document.body.onclick = onBodyClick;
   // TODO: zoom in/out should come later.
   // document.getElementById('myCanvas').onwheel = onwheel;
+}
+function onBodyClick(event) {
+  // Ignore right/middle-click.
+  if (event.button != 0) {
+    return;
+  }
+  let hideSelector = true;
+  if (resourceSelectorActive) {
+    let target = event.target;
+    while (target != null) {
+      if (target.id == "resourcepopup") {
+        hideSelector = false;
+        break;
+      }
+      if (target.classList && target.classList.contains("resourceselector")) {
+        hideSelector = false;
+        break;
+      }
+      target = target.parentNode;
+    }
+    if (hideSelector) {
+      resourceSelectorActive = false;
+      hideSelectorWindow();
+    }
+  }
 }
 function getCookie(cname) {
   var name = cname + "=";
@@ -868,7 +1014,6 @@ function initializeImageLocations() {
 }
 function initializeNames() {
   let overrides = JSON.parse(getCookie("names") || "");
-  console.log(overrides);
   if (!overrides) {
     return;
   }
@@ -878,7 +1023,6 @@ function initializeNames() {
       newNames[name] = overrides[name];
     }
   }
-  console.log(newNames);
   for (let name in newNames) {
     globalNames[name] = newNames[name];
   }

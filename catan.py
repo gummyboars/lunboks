@@ -249,9 +249,9 @@ class Tile(object):
 
 class CatanState(object):
 
-  TRADE_SIDES = ["want", "give"]
-  WANT = TRADE_SIDES.index("want")
-  GIVE = TRADE_SIDES.index("give")
+  WANT = "want"
+  GIVE = "give"
+  TRADE_SIDES = [WANT, GIVE]
   PLAYABLE_DEV_CARDS = ["yearofplenty", "monopoly", "roadbuilding", "knight"]
   VICTORY_CARDS = ["palace", "chapel", "university", "market", "library"]
 
@@ -345,13 +345,19 @@ class CatanState(object):
 
   def handle(self, data, player_name):
     # TODO list:
+    # - pre-game "not started" state
+    # - fix the number of players at the start of the game
+    # - save/restore functionality
     # - the robber needs to rob
     # - players must discard at 8+ cards if a 7 is rolled
     # - check buildings against players' total supply (e.g. 15 roads)
-    # - must be able to trade with other players
-    # - able to play development cards
     # - longest road and largest army
     # - victory conditions
+    # - trading:
+    #   - partner must be able to accept an offer
+    #   - partner must be able to make a counter-offer
+    #   - partner must be able to reject an offer
+    #   - player must be able to select an accepted offer or counter-offer
     player = self.player_colors.get(player_name)
     if not player:
       return
@@ -448,13 +454,13 @@ class CatanState(object):
     else:
       self.turn_phase = "main"
 
-  def _check_resources(self, resources, player, build_type):
+  def _check_resources(self, resources, player, action_string):
     errors = []
     for resource, count in resources:
       if self.cards[player][resource] < count:
         errors.append("%s {%s}" % (count - self.cards[player][resource], resource))
     if errors:
-      raise InvalidMove("You would need an extra %s to buy a %s." % (", ".join(errors), build_type))
+      raise InvalidMove("You would need an extra %s to %s." % (", ".join(errors), action_string))
 
   def _remove_resources(self, resources, player, build_type):
     self._check_resources(resources, player, build_type)
@@ -540,7 +546,7 @@ class CatanState(object):
       return
     # Check resources and deduct from player.
     resources = [("rsrc2", 1), ("rsrc4", 1)]
-    self._remove_resources(resources, player, "road")
+    self._remove_resources(resources, player, "build a road")
 
     self.add_road(Road(location, "road", player))
 
@@ -573,7 +579,7 @@ class CatanState(object):
       raise InvalidMove("You must place your settlement next to one of your roads.")
     # Check resources and deduct from player.
     resources = [("rsrc1", 1), ("rsrc2", 1), ("rsrc3", 1), ("rsrc4", 1)]
-    self._remove_resources(resources, player, "settlement")
+    self._remove_resources(resources, player, "build a settlement")
 
     self._build_settlement(location, player)
 
@@ -600,7 +606,7 @@ class CatanState(object):
       raise InvalidMove("You can only upgrade a settlement to a city.")
     # Check resources and deduct from player.
     resources = [("rsrc3", 2), ("rsrc5", 3)]
-    self._remove_resources(resources, player, "city")
+    self._remove_resources(resources, player, "build a city")
 
     del self.pieces[tuple(location)]
     self.add_piece(Piece(location[0], location[1], "city", player))
@@ -611,8 +617,17 @@ class CatanState(object):
     resources = [("rsrc1", 1), ("rsrc3", 1), ("rsrc5", 1)]
     if len(self.dev_cards) < 1:
       raise InvalidMove("There are no development cards left.")
-    self._remove_resources(resources, player, "development card")
+    self._remove_resources(resources, player, "buy a development card")
     self.add_dev_card(player)
+
+  def _validate_selection(self, selection):
+    """Selection should be a dict of rsrc -> count."""
+    if not selection or not isinstance(selection, dict):
+      raise InvalidMove("Invalid resource selection.")
+    if set(selection.keys()) - set(RESOURCES):
+      raise InvalidMove("Invalid resource selection - unknown or untradable resource.")
+    if not all([isinstance(value, int) and value >= 0 for value in selection.values()]):
+      raise InvalidMove("Invalid resource selection - must be positive integers.")
 
   def handle_play_dev(self, card_type, resource_selection, player):
     if card_type not in self.PLAYABLE_DEV_CARDS:
@@ -649,24 +664,16 @@ class CatanState(object):
     self.turn_phase = "dev_road"
 
   def _handle_year_of_plenty(self, player, resource_selection):
-    if not resource_selection or not isinstance(resource_selection, dict):
-      raise InvalidMove("You must select 2 resources to receive.")
-    if set(resource_selection.keys()) - set(RESOURCES):
-      raise InvalidMove("You may only receive tradable resources.")
-    if not all([isinstance(value, int) and value >= 0 for value in resource_selection.values()]):
-      raise InvalidMove("You may only request a positive integer number of resources.")
+    self._validate_selection(resource_selection)
     if sum([resource_selection.get(key, 0) for key in RESOURCES]) != 2:
       raise InvalidMove("You must request exactly two resources.")
     for card_type, value in resource_selection.items():
       self.cards[player][card_type] += value
 
   def _handle_monopoly(self, player, resource_selection):
-    if not resource_selection or not isinstance(resource_selection, dict):
-      raise InvalidMove("You must select 1 resources to monopolize.")
-    if set(resource_selection.keys()) - set(RESOURCES):
-      raise InvalidMove("You may only monopolize tradable resources.")
+    self._validate_selection(resource_selection)
     if not all([value in (0, 1) for value in resource_selection.values()]):
-      raise InvalidMove("Invalid number of resources requested.")
+      raise InvalidMove("You must choose exactly one resource to monopolize.")
     if sum([resource_selection.get(key, 0) for key in RESOURCES]) != 1:
       raise InvalidMove("You must choose exactly one resource to monopolize.")
     card_type = None
@@ -691,21 +698,19 @@ class CatanState(object):
 
   def _validate_trade(self, offer, player):
     """Validates a well-formed trade & that the player has enough resources."""
-    if not isinstance(offer, (list, tuple)) or len(offer) != len(self.TRADE_SIDES):
-      raise RuntimeError("invalid offer format - must be a list of two sides")
-    for idx in range(len(self.TRADE_SIDES)):
-      if not isinstance(offer[idx], dict):
+    if not isinstance(offer, dict) or set(offer.keys()) != set(self.TRADE_SIDES):
+      raise RuntimeError("invalid offer format - must be a dict of two sides")
+    for side in self.TRADE_SIDES:
+      if not isinstance(offer[side], dict):
         raise RuntimeError("invalid offer format - each side must be a dict")
-    for rsrc, count in offer[self.WANT].items():
-      if rsrc not in RESOURCES:
-        raise InvalidMove("{%s} is not tradable." % rsrc)
-      if count < 0:
-        raise InvalidMove("You cannot trade a negative quantity.")
+      for rsrc, count in offer[side].items():
+        if rsrc not in RESOURCES:
+          raise InvalidMove("{%s} is not tradable." % rsrc)
+        if not isinstance(count, int) or count < 0:
+          raise InvalidMove("You must trade an non-negative integer quantity.")
     for rsrc, count in offer[self.GIVE].items():
       if self.cards[player][rsrc] < count:
         raise InvalidMove("You do not have enough {%s}." % rsrc)
-      if count < 0:
-        raise InvalidMove("You cannot trade a negative quantity.")
 
   def handle_trade_offer(self, offer, player):
     self._check_main_phase("make a trade")
