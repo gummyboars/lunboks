@@ -324,9 +324,7 @@ function updateTradeButtons() {
   }
   // Disable buttons if it's not the player's turn.
   if (turn != myColor) {
-    if (!bankButton.classList.contains("disabled")) {
-      disableButton(bankButton);
-    }
+    disableButton(bankButton);
     // Disable unless there is an active trade offer.
     if (!tradeActiveOffer || !(tradeActiveOffer["want"] || tradeActiveOffer["give"])) {
       disableButton(playerButton);
@@ -338,10 +336,8 @@ function updateTradeButtons() {
   }
 }
 function disableButton(elem) {
-  if (!elem.classList.contains("disabled")) {
-    elem.classList.add("disabled");
-    elem.disabled = true;
-  }
+  elem.classList.add("disabled");
+  elem.disabled = true;
 }
 function enableButton(elem) {
   elem.classList.remove("disabled");
@@ -361,6 +357,9 @@ function maybeShowDiscardWindow() {
   }
 }
 function rollDice() {
+  if (turn != myColor) {
+    return;
+  }
   let msg = {
     type: "roll_dice",
   };
@@ -851,9 +850,11 @@ function onmsg(event) {
 }
 function updateUI(elemName) {
   if (gamePhase != "main" || turn != myColor || turnPhase != "main") {
+    document.getElementById(elemName).classList.remove("selectable");
     document.getElementById(elemName).classList.add("disabled");
     document.getElementById(elemName).disabled = true;
   } else {
+    document.getElementById(elemName).classList.add("selectable");
     document.getElementById(elemName).classList.remove("disabled");
     document.getElementById(elemName).disabled = false;
   }
@@ -873,17 +874,11 @@ function updateDice() {
     document.getElementById("whitedie").firstChild.firstChild.innerText = diceRoll[1];
   }
   if (turn != myColor) {
-    if (!diceEl.classList.contains("noclick")) {
-      diceEl.classList.remove("selectable");
-      diceEl.classList.remove("clickable");
-      diceEl.classList.add("noclick");
-    }
+    diceEl.classList.remove("selectable");
+    diceEl.classList.add("unallowed");
   } else {
-    if (!diceEl.classList.contains("clickable")) {
-      diceEl.classList.remove("noclick");
-      diceEl.classList.add("clickable");
-      diceEl.classList.add("selectable");
-    }
+    diceEl.classList.remove("unallowed");
+    diceEl.classList.add("selectable");
   }
 }
 function centerCanvas() {
@@ -942,20 +937,20 @@ function createSelectors() {
     }
   }
 }
-function init() {
+function sizeThings() {
   totalWidth = document.documentElement.clientWidth;
   totalHeight = document.documentElement.clientHeight;
   document.getElementById('ui').style.width = totalWidth + "px";
   document.getElementById('ui').style.height = totalHeight + "px";
-  document.getElementById('uibottom').style.width = totalWidth + "px";
-  document.getElementById('uiright').style.height = (totalHeight - cardHeight) + "px";
-  document.getElementById('uileft').style.height = (totalHeight - cardHeight) + "px";
   canWidth = totalWidth - document.getElementById('uiright').offsetWidth;
   canHeight = totalHeight;
   document.getElementById('myCanvas').width = canWidth;
   document.getElementById('myCanvas').height = canHeight;
   document.getElementById('buydev').width = cardWidth;
   document.getElementById('buydev').height = cardHeight;
+}
+function init() {
+  sizeThings();
   createSelectors();
   window.requestAnimationFrame(draw);
   let l = window.location;
@@ -967,9 +962,10 @@ function init() {
   document.getElementById('myCanvas').onmouseup = onup;
   document.getElementById('myCanvas').onmouseout = onout;
   document.getElementById('myCanvas').onkeydown = onkey;
-  document.body.onclick = onBodyClick;
   // TODO: zoom in/out should come later.
   // document.getElementById('myCanvas').onwheel = onwheel;
+  document.body.onclick = onBodyClick;
+  window.onresize = sizeThings;
 }
 function onBodyClick(event) {
   // Ignore right/middle-click.

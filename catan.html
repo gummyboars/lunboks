@@ -1,5 +1,7 @@
 <!DOCTYPE HTML>
 <html>
+  <meta content="text/html;charset=utf-8" http-equiv="Content-Type">
+  <meta content="utf-8" http-equiv="encoding">
   <head>
     <style type="text/css">
       body {
@@ -21,13 +23,17 @@
       .selectable {
         cursor: pointer;
       }
+      .unallowed {
+        cursor: not-allowed;
+      }
       #ui {
         position: absolute;
-        width: 500px; /* width and height will be overridden by js */
-        height: 500px;
+        width: 100%; /* width and height will be overridden by js */
+        height: 100%;
         top: 0;
         left: 0;
         margin: 0px;
+        display: flex;
       }
       #errorText {
         position: absolute;
@@ -86,13 +92,26 @@
         width: 87;
         height: 123;
       }
+      #uioverlay {
+        flex: 1 0 auto;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+      #uimain {
+        flex: 1 0 auto;
+        display: flex;
+        flex-direction: row;
+        justify-content: flex-start;
+        width: 100%;
+      }
       #uileft {
-        position: absolute;
-        top: 0px;
-        left: 50px;
+        flex: 0 0 auto;
+        display: flex;
+        flex-direction: column;
+        margin: 20px;
       }
       #leftcontainer {
-        margin-top: 20px;
         display: flex;
         flex-direction: column;
         align-items: center;
@@ -106,36 +125,22 @@
         display: block;
       }
       #uiright {
-        position: absolute;
-        right: 0px;
-        top: 0px;
+        flex: 0 0 20%;
         padding: 0px;
-        width: auto;
         height: 100%;
-      }
-      #tradebuttons {
-        position: absolute;
-        top: 20px;
-        width: auto;
-        left: 50%;
-        margin-right: -50%;
-        transform: translateX(-50%);
+        /* border: 1px solid black; */
       }
       #bottombutton {
-        position: absolute;
-        bottom: 20px;
-        width: auto;
-        left: 50%;
-        margin-right: -50%;
-        transform: translateX(-50%);
+        flex: 1 0 auto;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-end;
       }
       #uibottom {
-        position: absolute;
-        left: 0px;
-        bottom: 0px;
+        flex: 0 0 210px;
         padding: 0px;
         width: 100%;
-        height: auto;
+        height: 210px;
       }
       .die {
         display: inline-block;
@@ -197,14 +202,16 @@
         box-shadow: 0 5px #666;
         transform: translateY(4px);
       }
-      .endturnbutton {
+      .bigbutton {
         padding: 15px 25px;
-        font-size: 32px;
         margin: 10px;
+        font-size: 32px;
         text-decoration: none;
+        white-space: nowrap;
+      }
+      .endturnbutton {
         color: #fff;
         background-color: #f33;
-          white-space: nowrap;
       }
       .endturnbutton:hover {
         background-color: #c33;
@@ -240,10 +247,6 @@
         justify-content: flex-end;
       }
       .tradebutton {
-        padding: 15px 25px;
-        font-size: 24px;
-        margin: 10px;
-        text-decoration: none;
         color: #fff;
         background-color: #66f;
       }
@@ -313,31 +316,34 @@
           <div class="rightbutton"><button id="selectcancel" class="selectbutton button clickable" onclick="cancelSelection(event)">Cancel</button></div>
         </div>
       </div>
-      <div id="uiright" class="noclick">
-        <div id="tradebuttons" class="noclick">
-          <button id="tradeplayer" class="button tradebutton resourceselector clickable" onclick="toggleTradeWindow('player')">Player</button>
-          <button id="tradebank" class="button tradebutton resourceselector clickable" onclick="toggleTradeWindow('bank')">Bank</button>
+      <div id="uioverlay" class="noclick">
+        <div id="uimain" class="noclick">
+          <div id="uileft" class="noclick">
+            <div id="leftcontainer" class="noclick">
+              <div id="uidice" class="clickable" onclick="rollDice()">
+                <div id="reddie" class="die"><div class="diecontainer"><p style="margin: 0">?</p></div></div>
+                <div id="whitedie" class="die"><div class="diecontainer"><p style="margin: 0">?</p></div></div>
+              </div>
+              <div style="display: block;"><img id="buydev" src="/devcard.png" class="clickable selectable" onclick="buyDevCard()" /></div>
+            </div>
+            <div id="bottombutton" class="noclick">
+              <button id="tradeplayer" class="button bigbutton tradebutton resourceselector clickable" onclick="toggleTradeWindow('player')">Player</button>
+              <button id="tradebank" class="button bigbutton tradebutton resourceselector clickable" onclick="toggleTradeWindow('bank')">Bank</button>
+              <!-- maybe use 🔄 and 🏦 eventually -->
+              <button id="endturn" class="button bigbutton endturnbutton clickable" onclick="endTurn()">End Turn</button>
+            </div>
+          </div>
         </div>
+        <div id="uibottom" class="noclick">
+          <div class="uicards noclick"></div>
+        </div>
+      </div>
+      <div id="uiright" class="noclick">
         <input class="clickable" type="text" id="name" />
         <input class="clickable" type="button" value="Change Name" onclick="login()" />
         <br />
         <input class="clickable" type="button" value="Toggle Debug" onclick="toggleDebug()" />
         <p>this area reserved for player information boxes</p>
-      </div>
-      <div id="uileft" class="noclick">
-        <div id="leftcontainer" class="noclick">
-          <div id="uidice" class="clickable" onclick="rollDice()">
-            <div id="reddie" class="die"><div class="diecontainer"><p style="margin: 0">?</p></div></div>
-            <div id="whitedie" class="die"><div class="diecontainer"><p style="margin: 0">?</p></div></div>
-          </div>
-          <div style="display: block;"><img id="buydev" src="/devcard.png" class="clickable" onclick="buyDevCard()" /></div>
-        </div>
-        <div id="bottombutton" class="noclick">
-          <button id="endturn" class="button endturnbutton clickable" onclick="endTurn()">End Turn</button>
-        </div>
-      </div>
-      <div id="uibottom" class="noclick">
-        <div class="uicards noclick"></div>
       </div>
     </div>
   </body>

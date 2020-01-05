@@ -351,7 +351,6 @@ class CatanState(object):
     # - fix the number of players at the start of the game
     # - save/restore functionality
     # - the robber needs to rob
-    # - players must discard at 8+ cards if a 7 is rolled
     # - check buildings against players' total supply (e.g. 15 roads)
     # - longest road and largest army
     # - victory conditions
