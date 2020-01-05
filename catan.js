@@ -834,3 +834,54 @@ function init() {
   // TODO: zoom in/out should come later.
   // document.getElementById('myCanvas').onwheel = onwheel;
 }
+function getCookie(cname) {
+  var name = cname + "=";
+  var decodedCookie = decodeURIComponent(document.cookie);
+  var ca = decodedCookie.split(';');
+  for(var i = 0; i <ca.length; i++) {
+    var c = ca[i];
+    while (c.charAt(0) == ' ') {
+      c = c.substring(1);
+    }
+    if (c.indexOf(name) == 0) {
+      return c.substring(name.length, c.length);
+    }
+  }
+  return null;
+}
+function initializeImageLocations() {
+  // TODO: is there a way people can use their local directories?
+  let prefixDir = getCookie("image_prefix");
+  let newImages = {};
+  for (imgName in imageNames) {
+    let imgPath = getCookie(imgName);
+    if (imgPath && prefixDir) {
+      // TODO: be smart about joining i.e. look for URI prefixes.
+      newImages[imgName] = prefixDir + "/" + imgPath;
+    } else if (imgPath) {
+      newImages[imgName] = imgPath;
+    }
+  }
+  for (imgName in newImages) {
+    imageNames[imgName] = newImages[imgName];
+  }
+}
+function initializeNames() {
+  let overrides = JSON.parse(getCookie("names") || "");
+  console.log(overrides);
+  if (!overrides) {
+    return;
+  }
+  let newNames = {};
+  for (let name in globalNames) {
+    if (overrides[name]) {
+      newNames[name] = overrides[name];
+    }
+  }
+  console.log(newNames);
+  for (let name in newNames) {
+    globalNames[name] = newNames[name];
+  }
+}
+initializeImageLocations();
+initializeNames();
