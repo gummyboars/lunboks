@@ -94,6 +94,7 @@ resourceSelectionUI = {
 // Game state.
 myColor = null;
 playerColors = null;
+turnOrder = [];
 tiles = [];
 corners = [];
 pieces = [];
@@ -238,6 +239,110 @@ function updateSelectCounts() {
       let counter = subcontainer.getElementsByClassName("selectcount")[0];
       counter.innerText = "x" + (resourceSelection[key][cardResources[i]] || 0);
     }
+  }
+  updateSelectSummary();
+}
+function comparePlayers(nameA, nameB) {
+  return turnOrder.indexOf(playerColors[nameA]) - turnOrder.indexOf(playerColors[nameB]);
+}
+function updateSelectSummary() {
+  // TODO: fix the width of these summary windows and don't let them make the whole
+  // resource popup wider when the user selects a ridiculous number of resources.
+  let summary = document.getElementById("tradesummary");
+  if (resourceSelectorType != "tradeOffer" && resourceSelectorType != "tradeCounterOffer") {
+    summary.style.display = "none";
+    return;
+  } else {
+    summary.style.display = "flex";
+  }
+  let leftText = document.getElementById("selfsummary").getElementsByClassName("summaryfixed")[0];
+  let rightText = document.getElementById("selfsummary").getElementsByClassName("summaryfixed")[2];
+  leftText.firstChild.innerText = document.getElementById("topselecttitle").innerText;
+  rightText.firstChild.innerText = document.getElementById("bottomselecttitle").innerText;
+  for (let key in resourceSelection) {
+    let side;
+    if (key == "top") {
+      side = "left";
+    } else {
+      side = "right";
+    }
+    let selectPanel = document.getElementById("selfsummary").getElementsByClassName("summary" + side)[0];
+    while (selectPanel.getElementsByClassName("summarycard").length) {
+      selectPanel.removeChild(selectPanel.getElementsByClassName("summarycard")[0]);
+    }
+    for (let rsrc of cardResources) {
+      let count = resourceSelection[key][rsrc] || 0;
+      for (let i = 0; i < count; i++) {
+        let div = document.createElement("DIV");
+        div.classList.add("summarycard");
+        let img = document.createElement("IMG");
+        img.src = imageNames[rsrc + "card"];
+        img.classList.add("noclick");
+        img.width = selectCardWidth / 3;
+        img.height = selectCardHeight / 3;
+        img.style.display = "block";
+        div.appendChild(img);
+        selectPanel.appendChild(div);
+      }
+    }
+  }
+  updateCounterOfferSummary();
+}
+function updateCounterOfferSummary() {
+  let container = document.getElementById("tradesummary");
+  while (container.getElementsByClassName("countersummary").length) {
+    container.removeChild(container.getElementsByClassName("countersummary")[0]);
+  }
+  let playerNames = Object.keys(playerColors);
+  playerNames.sort(comparePlayers);
+  for (let p of playerNames) {
+    if (playerColors[p] == myColor) {
+      continue;
+    }
+    let newsummary = document.createElement("DIV");
+    newsummary.classList.add("selectsummary");
+    newsummary.classList.add("countersummary");
+    let leftText = document.createElement("DIV");
+    leftText.classList.add("summaryfixed");
+    let newp = document.createElement("P");
+    let namespan = document.createElement("SPAN");
+    namespan.innerText = p;
+    namespan.style.color = playerColors[p];
+    let textspan = document.createElement("SPAN");
+    textspan.innerText = " offers";
+    textspan.style.color = "black";
+    newp.appendChild(namespan);
+    newp.appendChild(textspan);
+    leftText.appendChild(newp);
+    let rightText = document.createElement("DIV");
+    rightText.classList.add("summaryfixed");
+    newp = document.createElement("P");
+    namespan = document.createElement("SPAN");
+    namespan.innerText = p;
+    namespan.style.color = playerColors[p];
+    textspan = document.createElement("SPAN");
+    textspan.innerText = " wants";
+    textspan.style.color = "black";
+    newp.appendChild(namespan);
+    newp.appendChild(textspan);
+    rightText.appendChild(newp);
+    let centerText = document.createElement("DIV");
+    centerText.classList.add("summaryfixed");
+    newp = document.createElement("P");
+    newp.innerText = "🔄";
+    let summaryLeft = document.createElement("DIV");
+    summaryLeft.classList.add("summaryleft");
+    summaryLeft.classList.add("summarypanel");
+    let summaryRight = document.createElement("DIV");
+    summaryRight.classList.add("summaryleft");
+    summaryRight.classList.add("summarypanel");
+    centerText.appendChild(newp);
+    newsummary.appendChild(leftText);
+    newsummary.appendChild(summaryLeft);
+    newsummary.appendChild(centerText);
+    newsummary.appendChild(summaryRight);
+    newsummary.appendChild(rightText);
+    container.appendChild(newsummary);
   }
 }
 function toggleTradeWindow(partner) {
@@ -500,10 +605,10 @@ function showResourceUI(uiType) {
     return;
   }
   if (selectInfo.topPanelText) {
-    document.getElementById("uitopselect").style.display = 'flex';
+    document.getElementById("topselect").style.display = 'flex';
     document.getElementById("topselecttitle").innerText = selectInfo.topPanelText;
   } else {
-    document.getElementById("uitopselect").style.display = 'none';
+    document.getElementById("topselect").style.display = 'none';
   }
   document.getElementById("bottomselecttitle").innerText = selectInfo.bottomPanelText;
   let buttons = {"okText": "selectconfirm", "resetText": "selectreset", "cancelText": "selectcancel"};
@@ -520,7 +625,7 @@ function showResourceUI(uiType) {
     rememberActiveOffer();
   }
   updateSelectCounts();
-  document.getElementById("resourcepopup").style.display = 'block';
+  document.getElementById("resourcepopup").style.display = 'flex';
   updateTradeButtons();
 }
 function drawRoad(roadLoc, style, ctx) {
@@ -835,11 +940,13 @@ function onmsg(event) {
   pieces = data.pieces;
   roads = data.roads;
   turn = data.turn;
+  turnOrder = data.turn_order;
   discardPlayers = data.discard_players;
   tradeActiveOffer = data.trade_offer;
   if (firstMsg) {
     centerCanvas();
   }
+  // createPlayerTabs();
   populateCards();
   updateDice();
   updateUI("buydev");
@@ -937,6 +1044,29 @@ function createSelectors() {
     }
   }
 }
+function createPlayerTabs() {
+  let container = document.getElementById('tabcontainer');
+  let elems = container.getElementsByClassName("playertab");
+  // Delete whatever was there before.
+  while (elems.length > 0) {
+    container.removeChild(elems[0]);
+    // We recalculate each time because otherwise there's some weird
+    // modify-array-while-iterating behavior that skips some elements.
+    elems = container.getElementsByClassName("playertab");
+  }
+  let playerNames = Object.keys(playerColors);
+  playerNames.sort(comparePlayers);
+  for (let p of playerNames) {
+    let newtab = document.createElement("DIV");
+    newtab.classList.add("resourcetab");
+    newtab.classList.add("playertab");
+    let newp = document.createElement("P");
+    newp.innerText = p;
+    newp.style.color = playerColors[p];
+    newtab.appendChild(newp);
+    container.appendChild(newtab);
+  }
+}
 function sizeThings() {
   totalWidth = document.documentElement.clientWidth;
   totalHeight = document.documentElement.clientHeight;
@@ -944,6 +1074,7 @@ function sizeThings() {
   document.getElementById('ui').style.height = totalHeight + "px";
   canWidth = totalWidth - document.getElementById('uiright').offsetWidth;
   canHeight = totalHeight;
+  document.getElementById('uibottom').style.width = canWidth + "px";
   document.getElementById('myCanvas').width = canWidth;
   document.getElementById('myCanvas').height = canHeight;
   document.getElementById('buydev').width = cardWidth;
@@ -973,6 +1104,9 @@ function onBodyClick(event) {
     return;
   }
   let hideSelector = true;
+  if (resourceSelectorType == "discard") {
+    return;
+  }
   if (resourceSelectorActive) {
     let target = event.target;
     while (target != null) {
