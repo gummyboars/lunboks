@@ -946,7 +946,6 @@ function onmsg(event) {
   if (firstMsg) {
     centerCanvas();
   }
-  // createPlayerTabs();
   populateCards();
   updateDice();
   updateUI("buydev");
@@ -1042,29 +1041,6 @@ function createSelectors() {
       container.appendChild(counter);
       box.appendChild(container);
     }
-  }
-}
-function createPlayerTabs() {
-  let container = document.getElementById('tabcontainer');
-  let elems = container.getElementsByClassName("playertab");
-  // Delete whatever was there before.
-  while (elems.length > 0) {
-    container.removeChild(elems[0]);
-    // We recalculate each time because otherwise there's some weird
-    // modify-array-while-iterating behavior that skips some elements.
-    elems = container.getElementsByClassName("playertab");
-  }
-  let playerNames = Object.keys(playerColors);
-  playerNames.sort(comparePlayers);
-  for (let p of playerNames) {
-    let newtab = document.createElement("DIV");
-    newtab.classList.add("resourcetab");
-    newtab.classList.add("playertab");
-    let newp = document.createElement("P");
-    newp.innerText = p;
-    newp.style.color = playerColors[p];
-    newtab.appendChild(newp);
-    container.appendChild(newtab);
   }
 }
 function sizeThings() {
