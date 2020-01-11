@@ -69,7 +69,7 @@ resourceSelectionUI = {
     resetText: "Reset",
   },
   tradeCounterOffer: {
-    topPanelText: "They Offer",
+    topPanelText: "You Want",
     bottomPanelText: "You Give",
     okText: "Accept",
     resetText: "Reset",
@@ -241,6 +241,14 @@ function updateSelectCounts() {
     }
   }
   updateSelectSummary();
+  if (resourceSelectorType == "tradeCounterOffer") {
+    let myOffer = {"want": resourceSelection["top"], "give": resourceSelection["bottom"]};
+    if (areOffersEqual(myOffer, tradeActiveOffer, true)) {
+      document.getElementById("selectconfirm").innerText = "Accept";
+    } else {
+      document.getElementById("selectconfirm").innerText = "Counter";
+    }
+  }
 }
 function comparePlayers(nameA, nameB) {
   return turnOrder.indexOf(playerColors[nameA]) - turnOrder.indexOf(playerColors[nameB]);
@@ -270,23 +278,26 @@ function updateSelectSummary() {
     while (selectPanel.getElementsByClassName("summarycard").length) {
       selectPanel.removeChild(selectPanel.getElementsByClassName("summarycard")[0]);
     }
-    for (let rsrc of cardResources) {
-      let count = resourceSelection[key][rsrc] || 0;
-      for (let i = 0; i < count; i++) {
-        let div = document.createElement("DIV");
-        div.classList.add("summarycard");
-        let img = document.createElement("IMG");
-        img.src = imageNames[rsrc + "card"];
-        img.classList.add("noclick");
-        img.width = selectCardWidth / 3;
-        img.height = selectCardHeight / 3;
-        img.style.display = "block";
-        div.appendChild(img);
-        selectPanel.appendChild(div);
-      }
-    }
+    addSelectionToPanel(resourceSelection[key], selectPanel);
   }
   updateCounterOfferSummary();
+}
+function addSelectionToPanel(selection, panel) {
+  for (let rsrc of cardResources) {
+    let count = selection[rsrc] || 0;
+    for (let i = 0; i < count; i++) {
+      let div = document.createElement("DIV");
+      div.classList.add("summarycard");
+      let img = document.createElement("IMG");
+      img.src = imageNames[rsrc + "card"];
+      img.classList.add("noclick");
+      img.width = selectCardWidth / 3;
+      img.height = selectCardHeight / 3;
+      img.style.display = "block";
+      div.appendChild(img);
+      panel.appendChild(div);
+    }
+  }
 }
 function updateCounterOfferSummary() {
   let container = document.getElementById("tradesummary");
@@ -334,8 +345,13 @@ function updateCounterOfferSummary() {
     summaryLeft.classList.add("summaryleft");
     summaryLeft.classList.add("summarypanel");
     let summaryRight = document.createElement("DIV");
-    summaryRight.classList.add("summaryleft");
+    summaryRight.classList.add("summaryright");
     summaryRight.classList.add("summarypanel");
+    if (playerColors[p] == turn) {
+      addSelectionToPanel(tradeActiveOffer["give"], summaryLeft);
+      addSelectionToPanel(tradeActiveOffer["want"], summaryRight);
+      newsummary.style.order = "-1";
+    }
     centerText.appendChild(newp);
     newsummary.appendChild(leftText);
     newsummary.appendChild(summaryLeft);
@@ -392,18 +408,67 @@ function copyActiveOffer() {
   resourceSelection["top"] = Object.assign({}, tradeActiveOffer["give"]);
   resourceSelection["bottom"] = Object.assign({}, tradeActiveOffer["want"]);
 }
-function maybeShowActiveTradeOffer() {
+function areOffersEqual(offerA, offerB, swapSides) {
+  for (let aside of ["want", "give"]) {
+    let bside = aside;
+    if (swapSides) {
+      bside = (aside == "want") ? "give" : "want";
+    }
+    console.log("comparing");
+    console.log(offerA);
+    console.log(offerB);
+    if (offerA[aside] == null && offerB[bside] != null) {
+      console.log(aside + " is null for a but not for b");
+      return false;
+    }
+    if (offerB[bside] == null && offerA[aside] != null) {
+      console.log(bside + " is null for b but not for a");
+      return false;
+    }
+    if (offerB[bside] == null && offerA[aside] == null) {
+      continue;
+    }
+    for (let key in offerA[aside]) {
+      // dict[resource] == 0 and a dict without the resource should be equivalent.
+      if (offerA[aside][key] == 0 && !offerB[bside][key]) {
+        continue;
+      }
+      if (offerA[aside][key] != offerB[bside][key]) {
+        console.log("offerA " + key + " != offerB " + key);
+        return false;
+      }
+    }
+    for (let key in offerB[bside]) {
+      // dict[resource] == 0 and a dict without the resource should be equivalent.
+      if (offerB[bside][key] == 0 && !offerA[aside][key]) {
+        continue;
+      }
+      if (offerB[bside][key] != offerA[aside][key]) {
+        console.log("offerB " + key + " != offerA " + key);
+        return false;
+      }
+    }
+  }
+  return true;
+}
+function maybeShowActiveTradeOffer(oldActiveOffer) {
   // Do not change the trade window for the player offering the trade.
   if (turn == myColor) {
     return;
   }
-  if (tradeActiveOffer && (tradeActiveOffer["want"] || tradeActiveOffer["give"])) {
+  // Do nothing when the trade hasn't actually changed.
+  let equalOffers = areOffersEqual(tradeActiveOffer, oldActiveOffer, false);
+  if (equalOffers) {
+    return;
+  }
+  // If they're not actively looking at the trade window, update the selection.
+  if (!resourceSelectorActive) {
     copyActiveOffer();
+  }
+  if (tradeActiveOffer && (tradeActiveOffer["want"] || tradeActiveOffer["give"])) {
     updateSelectCounts();
     resourceSelectorType = "tradeCounterOffer";
     showResourceUI(resourceSelectorType);
-  } else {
-    hideSelectorWindow();
   }
 }
 function updateTradeButtons() {
@@ -939,9 +1004,11 @@ function onmsg(event) {
   diceRoll = data.dice_roll;
   pieces = data.pieces;
   roads = data.roads;
+  let oldTurn = turn;
   turn = data.turn;
   turnOrder = data.turn_order;
   discardPlayers = data.discard_players;
+  let oldActiveOffer = tradeActiveOffer;
   tradeActiveOffer = data.trade_offer;
   if (firstMsg) {
     centerCanvas();
@@ -951,7 +1018,10 @@ function onmsg(event) {
   updateUI("buydev");
   updateUI("endturn");
   updateTradeButtons();
-  maybeShowActiveTradeOffer();
+  maybeShowActiveTradeOffer(oldActiveOffer);
+  if (oldTurn != turn) {
+    hideSelectorWindow();
+  }
   maybeShowDiscardWindow();
 }
 function updateUI(elemName) {
