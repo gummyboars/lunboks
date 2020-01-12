@@ -119,6 +119,7 @@ resourceSelectorActive = false;
 resourceSelectorType = null;  // values are tradeOffer, tradeBank, tradeCounterOffer, dev, and discard
 resourceSelection = {"top": {}, "bottom": {}};
 tradeActiveOffer = {"want": {}, "give": {}};  // null until someone makes an offer.
+counterOffers = {};
 devCardType = null;  // knight, yearofplenty, roadbuilding, monopoly
 
 // For dragging the canvas.
@@ -141,6 +142,14 @@ function formatServerString(serverString) {
 function toggleDebug() {
   debug = !debug;
 }
+function acceptCounter(event, player, offer) {
+  let msg = {
+    type: "accept_counter",
+    counter_player: player,
+    counter_offer: offer,
+  };
+  ws.send(JSON.stringify(msg));
+}
 function confirmSelection(event) {
   if (resourceSelectorType == "tradeBank") {
     let msg = {
@@ -152,6 +161,13 @@ function confirmSelection(event) {
   } else if (resourceSelectorType == "tradeOffer") {
     let msg = {
       type: "trade_offer",
+      offer: {"want": resourceSelection["top"], "give": resourceSelection["bottom"]},
+    };
+    ws.send(JSON.stringify(msg));
+    return;
+  } else if (resourceSelectorType == "tradeCounterOffer") {
+    let msg = {
+      type: "counter_offer",
       offer: {"want": resourceSelection["top"], "give": resourceSelection["bottom"]},
     };
     ws.send(JSON.stringify(msg));
@@ -190,7 +206,13 @@ function resetSelection(event) {
 }
 function cancelSelection(event) {
   if (resourceSelectorType == "tradeCounterOffer") {
-    // TODO: add a message to reject the offer.
+    let msg = {
+      type: "counter_offer",
+      offer: null,
+    };
+    ws.send(JSON.stringify(msg));
+    hideSelectorWindow();
+    return;
   } else if (resourceSelectorType == "discard") {
     // You can't cancel discarding.
     return;
@@ -265,24 +287,34 @@ function updateSelectSummary() {
   }
   let leftText = document.getElementById("selfsummary").getElementsByClassName("summaryfixed")[0];
   let rightText = document.getElementById("selfsummary").getElementsByClassName("summaryfixed")[2];
-  leftText.firstChild.innerText = document.getElementById("topselecttitle").innerText;
-  rightText.firstChild.innerText = document.getElementById("bottomselecttitle").innerText;
-  for (let key in resourceSelection) {
+  leftText.firstChild.innerText = document.getElementById("bottomselecttitle").innerText;
+  rightText.firstChild.innerText = document.getElementById("topselecttitle").innerText;
+  let mySelection;
+  if (turn == myColor) {
+    mySelection = tradeActiveOffer;
+  } else {
+    mySelection = {"want": resourceSelection["top"], "give": resourceSelection["bottom"]};
+  }
+  for (let key in mySelection) {
     let side;
-    if (key == "top") {
-      side = "left";
-    } else {
+    if (key == "want") {
       side = "right";
+    } else {
+      side = "left";
     }
     let selectPanel = document.getElementById("selfsummary").getElementsByClassName("summary" + side)[0];
     while (selectPanel.getElementsByClassName("summarycard").length) {
       selectPanel.removeChild(selectPanel.getElementsByClassName("summarycard")[0]);
     }
-    addSelectionToPanel(resourceSelection[key], selectPanel);
+    addSelectionToPanel(mySelection[key], selectPanel);
   }
   updateCounterOfferSummary();
 }
 function addSelectionToPanel(selection, panel) {
+  // TODO: how does this happen?
+  if (!selection) {
+    return;
+  }
   for (let rsrc of cardResources) {
     let count = selection[rsrc] || 0;
     for (let i = 0; i < count; i++) {
@@ -307,9 +339,12 @@ function updateCounterOfferSummary() {
   let playerNames = Object.keys(playerColors);
   playerNames.sort(comparePlayers);
   for (let p of playerNames) {
-    if (playerColors[p] == myColor) {
+    let pColor = playerColors[p];
+    if (pColor == myColor) {
       continue;
     }
+    let leftSide = "want";
+    let rightSide = "give";
     let newsummary = document.createElement("DIV");
     newsummary.classList.add("selectsummary");
     newsummary.classList.add("countersummary");
@@ -318,46 +353,84 @@ function updateCounterOfferSummary() {
     let newp = document.createElement("P");
     let namespan = document.createElement("SPAN");
     namespan.innerText = p;
-    namespan.style.color = playerColors[p];
+    namespan.style.color = pColor;
+    namespan.style.fontWeight = "bold";
     let textspan = document.createElement("SPAN");
-    textspan.innerText = " offers";
+    textspan.innerText = leftSide == "want" ? " wants" : " offers";
     textspan.style.color = "black";
     newp.appendChild(namespan);
     newp.appendChild(textspan);
     leftText.appendChild(newp);
-    let rightText = document.createElement("DIV");
-    rightText.classList.add("summaryfixed");
-    newp = document.createElement("P");
-    namespan = document.createElement("SPAN");
-    namespan.innerText = p;
-    namespan.style.color = playerColors[p];
-    textspan = document.createElement("SPAN");
-    textspan.innerText = " wants";
-    textspan.style.color = "black";
-    newp.appendChild(namespan);
-    newp.appendChild(textspan);
-    rightText.appendChild(newp);
-    let centerText = document.createElement("DIV");
-    centerText.classList.add("summaryfixed");
-    newp = document.createElement("P");
-    newp.innerText = "🔄";
-    let summaryLeft = document.createElement("DIV");
-    summaryLeft.classList.add("summaryleft");
-    summaryLeft.classList.add("summarypanel");
-    let summaryRight = document.createElement("DIV");
-    summaryRight.classList.add("summaryright");
-    summaryRight.classList.add("summarypanel");
-    if (playerColors[p] == turn) {
-      addSelectionToPanel(tradeActiveOffer["give"], summaryLeft);
-      addSelectionToPanel(tradeActiveOffer["want"], summaryRight);
-      newsummary.style.order = "-1";
+    let showMore = true;
+    let canAccept = (myColor == turn);
+    if (pColor != turn) {
+      var counterOffer = counterOffers[pColor];
+      if (counterOffer === undefined) {
+        textspan.innerText = " is considering...";
+        canAccept = false;
+        showMore = false;
+      } else if (!counterOffer) {
+        textspan.innerText = " rejects the offer.";
+        newsummary.classList.add("rejected");
+        canAccept = false;
+        showMore = false;
+      } else if (areOffersEqual(tradeActiveOffer, counterOffer, true)) {
+        // The user may change their selection without updating their offer,
+        // so we make sure that the selection and the offer match the counter offer.
+        let currentOffer = {want: resourceSelection["top"], give: resourceSelection["bottom"]};
+        if (areOffersEqual(currentOffer, counterOffer, true)) {
+          textspan.innerText = " accepts.";
+          showMore = false;
+        }
+      }
     }
-    centerText.appendChild(newp);
     newsummary.appendChild(leftText);
-    newsummary.appendChild(summaryLeft);
-    newsummary.appendChild(centerText);
-    newsummary.appendChild(summaryRight);
-    newsummary.appendChild(rightText);
+    if (showMore) {
+      let rightText = document.createElement("DIV");
+      rightText.classList.add("summaryfixed");
+      newp = document.createElement("P");
+      namespan = document.createElement("SPAN");
+      namespan.innerText = p;
+      namespan.style.color = pColor;
+      namespan.style.fontWeight = "bold";
+      textspan = document.createElement("SPAN");
+      textspan.innerText = rightSide == "want" ? " wants" : " offers";
+      textspan.style.color = "black";
+      newp.appendChild(namespan);
+      newp.appendChild(textspan);
+      rightText.appendChild(newp);
+      let centerText = document.createElement("DIV");
+      centerText.classList.add("summaryfixed");
+      newp = document.createElement("P");
+      newp.innerText = "🔄";
+      let summaryLeft = document.createElement("DIV");
+      summaryLeft.classList.add("summaryleft");
+      summaryLeft.classList.add("summarypanel");
+      let summaryRight = document.createElement("DIV");
+      summaryRight.classList.add("summaryright");
+      summaryRight.classList.add("summarypanel");
+      if (pColor == turn) {
+        addSelectionToPanel(tradeActiveOffer[leftSide], summaryLeft);
+        addSelectionToPanel(tradeActiveOffer[rightSide], summaryRight);
+        newsummary.style.order = "-1";
+      } else if (counterOffers[pColor]) {
+        addSelectionToPanel(counterOffers[pColor][leftSide], summaryLeft);
+        addSelectionToPanel(counterOffers[pColor][rightSide], summaryRight);
+      }
+      centerText.appendChild(newp);
+      newsummary.appendChild(summaryLeft);
+      newsummary.appendChild(centerText);
+      newsummary.appendChild(summaryRight);
+      newsummary.appendChild(rightText);
+    }
+    if (canAccept) {
+      newsummary.classList.add("clickable");
+      newsummary.classList.add("selectable");
+      newsummary.classList.add("acceptable");
+      newsummary.onclick = function(event) {
+        acceptCounter(event, pColor, counterOffers[pColor]);
+      }
+    }
     container.appendChild(newsummary);
   }
 }
@@ -408,21 +481,28 @@ function copyActiveOffer() {
   resourceSelection["top"] = Object.assign({}, tradeActiveOffer["give"]);
   resourceSelection["bottom"] = Object.assign({}, tradeActiveOffer["want"]);
 }
+function copyPreviousCounterOffer(offer) {
+  // This function is only called the first time the user connects, and is used
+  // to restore any counter-offer they had previously made.
+  resourceSelection["top"] = Object.assign({}, offer["want"]);
+  resourceSelection["bottom"] = Object.assign({}, offer["give"]);
+}
 function areOffersEqual(offerA, offerB, swapSides) {
+  if (offerA == null && offerB == null) {
+    return true;
+  }
+  if (offerA == null || offerB == null) {
+    return false;
+  }
   for (let aside of ["want", "give"]) {
     let bside = aside;
     if (swapSides) {
       bside = (aside == "want") ? "give" : "want";
     }
-    console.log("comparing");
-    console.log(offerA);
-    console.log(offerB);
     if (offerA[aside] == null && offerB[bside] != null) {
-      console.log(aside + " is null for a but not for b");
       return false;
     }
     if (offerB[bside] == null && offerA[aside] != null) {
-      console.log(bside + " is null for b but not for a");
       return false;
     }
     if (offerB[bside] == null && offerA[aside] == null) {
@@ -434,7 +514,6 @@ function areOffersEqual(offerA, offerB, swapSides) {
         continue;
       }
       if (offerA[aside][key] != offerB[bside][key]) {
-        console.log("offerA " + key + " != offerB " + key);
         return false;
       }
     }
@@ -444,7 +523,6 @@ function areOffersEqual(offerA, offerB, swapSides) {
         continue;
       }
       if (offerB[bside][key] != offerA[aside][key]) {
-        console.log("offerB " + key + " != offerA " + key);
         return false;
       }
     }
@@ -452,6 +530,8 @@ function areOffersEqual(offerA, offerB, swapSides) {
   return true;
 }
 function maybeShowActiveTradeOffer(oldActiveOffer) {
+  // Update any counter-offers.
+  updateSelectCounts();
   // Do not change the trade window for the player offering the trade.
   if (turn == myColor) {
     return;
@@ -461,14 +541,35 @@ function maybeShowActiveTradeOffer(oldActiveOffer) {
   if (equalOffers) {
     return;
   }
+  let shouldCopy = false;
   // If they're not actively looking at the trade window, update the selection.
   if (!resourceSelectorActive) {
-    copyActiveOffer();
+    shouldCopy = true;
   }
-  if (tradeActiveOffer && (tradeActiveOffer["want"] || tradeActiveOffer["give"])) {
-    updateSelectCounts();
-    resourceSelectorType = "tradeCounterOffer";
-    showResourceUI(resourceSelectorType);
+  // If they haven't touched the trade offer and haven't made a counter offer, update it.
+  if (!counterOffers[myColor] && areOffersEqual(oldActiveOffer, {want: resourceSelection["top"], give: resourceSelection["bottom"]}, true)) {
+    shouldCopy = true;
+  }
+  // If they have no selection (e.g. if the window was already open when the offer was made),
+  // then we should show them the new offer.
+  if (!Object.keys(resourceSelection["top"]) && !Object.keys(resourceSelection["bottom"])) {
+    shouldCopy = true;
+  }
+  if (shouldCopy) {
+    if (counterOffers[myColor]) {
+      copyPreviousCounterOffer(counterOffers[myColor]);
+    } else {
+      copyActiveOffer();
+    }
+  }
+  updateSelectCounts();
+  if (tradeActiveOffer && (Object.keys(tradeActiveOffer.want).length || Object.keys(tradeActiveOffer.give).length)) {
+    if (counterOffers[myColor] !== null) {
+      resourceSelectorType = "tradeCounterOffer";
+      showResourceUI(resourceSelectorType);
+    }
+  } else {
+    hideSelectorWindow();
   }
 }
 function updateTradeButtons() {
@@ -1010,6 +1111,7 @@ function onmsg(event) {
   discardPlayers = data.discard_players;
   let oldActiveOffer = tradeActiveOffer;
   tradeActiveOffer = data.trade_offer;
+  counterOffers = data.counter_offers;
   if (firstMsg) {
     centerCanvas();
   }
@@ -1018,8 +1120,11 @@ function onmsg(event) {
   updateUI("buydev");
   updateUI("endturn");
   updateTradeButtons();
+  if (firstMsg && counterOffers[myColor]) {
+    copyPreviousCounterOffer(counterOffers[myColor]);
+  }
   maybeShowActiveTradeOffer(oldActiveOffer);
-  if (oldTurn != turn) {
+  if (oldTurn != null && oldTurn != turn) {
     hideSelectorWindow();
   }
   maybeShowDiscardWindow();

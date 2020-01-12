@@ -274,8 +274,12 @@ class CatanState(object):
     self.turn_order = []
     self.dice_roll = None
     self.trade_offer = None
+    self.counter_offers = {}  # Map of player to counter offer.
+    # Special values for counter-offers: not present in dictionary means they have not
+    # yet made a counter-offer. An null/None counter-offer indicates that they have
+    # rejected the trade offer. A counter-offer equal to the original means they accept.
     self.game_phase = "place1"  # valid values are place1, place2, main
-    self.turn_phase = "settle"  # valid values are settle, road, dice, robber, main
+    self.turn_phase = "settle"  # valid values are settle, road, dice, discard, robber, dev_road, main
 
   def save(self, filename):
     # TODO: finish this. problem is, a lot of custom classes need a json -> class converter.
@@ -292,7 +296,7 @@ class CatanState(object):
   def json_repr(self):
     ret = dict([(name, getattr(self, name)) for name in
       ["game_phase", "turn_phase", "player_colors", "turn_order", "dice_roll",
-       "robber", "pirate", "trade_offer", "discard_players"]])
+       "robber", "pirate", "trade_offer", "counter_offers", "discard_players"]])
     more = dict([(name, list(getattr(self, name).values())) for name in
       ["ports", "tiles", "pieces", "roads"]])
     ret.update(more)
@@ -354,20 +358,15 @@ class CatanState(object):
     # - check buildings against players' total supply (e.g. 15 roads)
     # - longest road and largest army
     # - victory conditions
-    # - trading:
-    #   - partner must be able to accept an offer
-    #   - partner must be able to make a counter-offer
-    #   - partner must be able to reject an offer
-    #   - player must be able to select an accepted offer or counter-offer
     player = self.player_colors.get(player_name)
     if not player:
       return
     if data.get("type") == "discard":
       self.handle_discard(data.get("selection"), player)
       return
-    # Insert before turn check:
-    # - trade offer acceptance
-    # - trade counter-offers
+    if data.get("type") == "counter_offer":
+      self.handle_counter_offer(data.get("offer"), player)
+      return
     if self.turn_order[self.turn_idx] != player:
       raise InvalidMove("It is not %s's turn." % player_name)
     location = data.get("location")
@@ -391,6 +390,8 @@ class CatanState(object):
       self.handle_city(location, player)
     if data.get("type") == "trade_offer":
       self.handle_trade_offer(data.get("offer"), player)
+    if data.get("type") == "accept_counter":
+      self.handle_accept_counter(data.get("counter_offer"), data.get("counter_player"), player)
     if data.get("type") == "trade_bank":
       self.handle_trade_bank(data.get("offer"), player)
     if data.get("type") == "end_turn":
@@ -408,6 +409,8 @@ class CatanState(object):
   def handle_end_turn(self):
     self.unusable.clear()
     self.played_dev = 0
+    self.trade_offer = {}
+    self.counter_offers = {}
     if self.game_phase == "main":
       self.turn_idx += 1
       self.turn_idx = self.turn_idx % len(self.turn_order)
@@ -752,6 +755,58 @@ class CatanState(object):
     self._check_main_phase("make a trade")
     self._validate_trade(offer, player)
     self.trade_offer = offer
+    counter_players = list(self.counter_offers.keys())
+    for p in counter_players:
+      del self.counter_offers[p]
+
+  def handle_counter_offer(self, offer, player):
+    if self.turn_order[self.turn_idx] == player:
+      raise InvalidMove("You cannot make a counter-offer on your turn.")
+    self._check_main_phase("make a counter-offer")
+    if offer is None:  # offer rejection
+      self.counter_offers[player] = offer
+      return
+    self._validate_trade(offer, player)
+    self.counter_offers[player] = offer
+
+  def handle_accept_counter(self, counter_offer, counter_player, player):
+    if counter_player not in self.player_colors.values():
+      raise InvalidMove("The player %s is unknown." % counter_player)
+    if counter_player == player:
+      raise InvalidMove("You cannot trade with yourself.")
+    self._check_main_phase("make a trade")
+    my_want = counter_offer[self.GIVE]
+    my_give = counter_offer[self.WANT]
+    their_want = self.counter_offers[counter_player][self.WANT]
+    their_give = self.counter_offers[counter_player][self.GIVE]
+    # my_want and my_give are pulled from the message the player sent,
+    # their_want and their_give are pulled from saved counter-offers.
+    # We validate that they are the same to avoid any scenarios where the player
+    # might accept a different offer than the counter-party is giving.
+    for rsrc in RESOURCES:
+      for trade_dict in [my_want, my_give, their_want, their_give]:
+        if trade_dict.get(rsrc) == 0:
+          del trade_dict[rsrc]
+    if sorted(my_want.items()) != sorted(their_give.items()):
+      print("Offers do not match - %s vs %s" % (sorted(my_want.items()), sorted(their_give.items())))
+      raise InvalidMove("The player changed their offer.")
+    if sorted(my_give.items()) != sorted(their_want.items()):
+      print("Offers do not match - %s vs %s" % (sorted(my_give.items()), sorted(their_want.items())))
+      raise InvalidMove("The player changed their offer.")
+
+    # Validate that both players have the resources to make the trade.
+    self._validate_trade({self.WANT: my_want, self.GIVE: my_give}, player)
+    self._validate_trade({self.WANT: their_want, self.GIVE: their_give}, counter_player)
+
+    for rsrc, count in my_give.items():
+      self.cards[player][rsrc] -= count
+      self.cards[counter_player][rsrc] += count
+    for rsrc, count in my_want.items():
+      self.cards[player][rsrc] += count
+      self.cards[counter_player][rsrc] -= count
+
+    self.counter_offers = {}
+    # TODO: Do we want to reset the trade offer here?
 
   def handle_trade_bank(self, offer, player):
     self._check_main_phase("make a trade")
