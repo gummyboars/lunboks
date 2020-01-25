@@ -6,6 +6,8 @@ import random
 from game import InvalidMove
 
 RESOURCES = ["rsrc1", "rsrc2", "rsrc3", "rsrc4", "rsrc5"]
+PLAYABLE_DEV_CARDS = ["yearofplenty", "monopoly", "roadbuilding", "knight"]
+VICTORY_CARDS = ["palace", "chapel", "university", "market", "library"]
 
 
 class CustomEncoder(json.JSONEncoder):
@@ -252,8 +254,6 @@ class CatanState(object):
   WANT = "want"
   GIVE = "give"
   TRADE_SIDES = [WANT, GIVE]
-  PLAYABLE_DEV_CARDS = ["yearofplenty", "monopoly", "roadbuilding", "knight"]
-  VICTORY_CARDS = ["palace", "chapel", "university", "market", "library"]
 
   def __init__(self):
     self.player_colors = {}
@@ -318,12 +318,24 @@ class CatanState(object):
     ret["edges"] = list(edges.values())
     return ret
 
-  def for_player(self, player):
+  def for_player(self, current_player):
     data = self.json_repr()
     data["type"] = "game_state"
     data["turn"] = self.turn_order[self.turn_idx]
-    data["you"] = {"name": player}
-    color = self.player_colors.get(player)
+    data["you"] = {"name": current_player}
+    data["card_counts"] = {}
+    data["points"] = {}
+    data["armies"] = {}
+    data["longest_roads"] = {}
+    color = self.player_colors.get(current_player)
+    for player in self.turn_order:
+      # TODO: fill these three in
+      data["points"][player] = 0
+      data["armies"][player] = 0
+      data["longest_roads"][player] = 0
+      count = sum(self.cards[player].get(rsrc, 0) for rsrc in RESOURCES)
+      dev_count = sum(self.cards[player].get(crd, 0) for crd in PLAYABLE_DEV_CARDS + VICTORY_CARDS)
+      data["card_counts"][player] = {"resource": count, "dev": dev_count}
     if color:
       data["cards"] = self.cards.get(color)
       data["trade_ratios"] = self.trade_ratios.get(color)
@@ -669,7 +681,7 @@ class CatanState(object):
       raise InvalidMove("Invalid resource selection - must be positive integers.")
 
   def handle_play_dev(self, card_type, resource_selection, player):
-    if card_type not in self.PLAYABLE_DEV_CARDS:
+    if card_type not in PLAYABLE_DEV_CARDS:
       raise InvalidMove("%s is not a playable development card." % card_type)
     if card_type == "knight":
       if self.turn_phase not in ["dice", "main"]:
@@ -908,7 +920,7 @@ class CatanState(object):
     self.compute_ports()
     self.robber = robber_loc
     dev_cards = ["knight"] * 14 + ["monopoly"] * 2 + ["roadbuilding"] * 2 + ["yearofplenty"] * 2
-    dev_cards.extend(self.VICTORY_CARDS)
+    dev_cards.extend(VICTORY_CARDS)
     random.shuffle(dev_cards)
     self.dev_cards = dev_cards
 

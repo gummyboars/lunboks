@@ -26,6 +26,14 @@
       .unallowed {
         cursor: not-allowed;
       }
+      .hide {
+        position: absolute;
+        height: 0px;
+        overflow: hidden;
+        margin: 0;
+        padding: 0;
+        white-space: pre;
+      }
       #ui {
         position: absolute;
         width: 100%; /* width and height will be overridden by js */
@@ -172,6 +180,10 @@
         display: block;
       }
       #uiright {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
         flex: 0 0 20%;
         padding: 0px;
         height: 100%;
@@ -212,6 +224,68 @@
       }
       #buydev {
         margin-top: 25px;
+      }
+      .playerinfo {
+        flex: "1 0 100%";
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        height: 100%;
+        width: 100%;
+      }
+      .playername {
+        color: white;
+        font-weight: bold;
+        font-size: 24px;
+        font-family: sans-serif;
+        margin-top: 10px;
+        margin-bottom: 10px;
+        position: relative;
+      }
+      .nameinput {
+        border: none;
+        color: white;
+        font-weight: bold;
+        font-size: 24px;
+        font-family: sans-serif;
+      }
+      .turnmarker {
+        display: block;
+        left: 0;
+        top: 0;
+        padding-right: 10px;
+        position: absolute;
+        font-size: 24px;
+        font-family: sans-serif;
+        transform: translateX(-100%);
+      }
+      .phasemarker {
+        display: block;
+        right: 0;
+        top: 0;
+        padding-left: 10px;
+        position: absolute;
+        font-size: 24px;
+        font-family: sans-serif;
+        transform: translateX(100%);
+      }
+      .cardinfo {
+        display: flex;
+        width: 100%;
+        align-items: center;
+        justify-content: center;
+        margin-top: 10px;
+      }
+      .cardback {
+        flex: 0 1 auto;
+        overflow-x: hidden;
+      }
+      .cardseparator {
+        flex: 0 0 auto;
+      }
+      .playerdata {
+        display: flex;
+        width: 100%;
       }
       .uicards {
         width: 100%;
@@ -395,12 +469,8 @@
           <div class="uicards noclick"></div>
         </div>
       </div>
-      <div id="uiright" class="noclick">
-        <input class="clickable" type="text" id="name" />
-        <input class="clickable" type="button" value="Change Name" onclick="login()" />
-        <br />
+      <div id="uiright">
         <input class="clickable" type="button" value="Toggle Debug" onclick="toggleDebug()" />
-        <p>this area reserved for player information boxes</p>
       </div>
     </div>
   </body>

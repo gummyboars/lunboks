@@ -109,6 +109,9 @@ async def WebLoop(websocket, path):
             await PushError(name, "Player names must be printable.")
             continue
           if playerdata["name"] in GLOBAL_WS:
+            # Check to see if it's just duplicating the name they already have.
+            if GLOBAL_WS[playerdata["name"]] == websocket:
+              continue
             await PushError(name, "There is already a player named %s. Nice try." % playerdata["name"])
             continue
           if len(playerdata["name"]) > 50:

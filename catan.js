@@ -10,8 +10,10 @@ pieceRadius = 10;
 // Constants for sizing items on the page.
 cardWidth = 145;
 cardHeight = 210;
-selectCardWidth = 29 * 3;
-selectCardHeight = 41 * 3;
+summaryCardWidth = 29;
+summaryCardHeight = 41;
+selectCardWidth = summaryCardWidth * 3;
+selectCardHeight = summaryCardHeight * 3;
 // Other constants.
 cardResources = ["rsrc1", "rsrc2", "rsrc3", "rsrc4", "rsrc5"];
 globalNames = {
@@ -51,6 +53,8 @@ imageNames = {
   university: "/university.png",
   library: "/library.png",
   market: "/market.png",
+  cardback: "/cardback.png",
+  devcard: "/devcard.png",
 };
 devCards = ["knight", "roadbuilding", "yearofplenty", "monopoly", "palace", "chapel", "university", "library", "market"];
 resourceSelectionUI = {
@@ -101,6 +105,10 @@ pieces = [];
 edges = [];
 roads = [];
 cards = {};
+cardCounts = {};
+points = {};
+armies = {};
+longestRoads = {};
 turn = null;
 diceRoll = null;
 robberLoc = null;
@@ -323,8 +331,8 @@ function addSelectionToPanel(selection, panel) {
       let img = document.createElement("IMG");
       img.src = imageNames[rsrc + "card"];
       img.classList.add("noclick");
-      img.width = selectCardWidth / 3;
-      img.height = selectCardHeight / 3;
+      img.width = summaryCardWidth;
+      img.height = summaryCardHeight;
       img.style.display = "block";
       div.appendChild(img);
       panel.appendChild(div);
@@ -563,7 +571,7 @@ function maybeShowActiveTradeOffer(oldActiveOffer) {
     }
   }
   updateSelectCounts();
-  if (tradeActiveOffer && (Object.keys(tradeActiveOffer.want).length || Object.keys(tradeActiveOffer.give).length)) {
+  if (tradeActiveOffer && ((tradeActiveOffer.want && Object.keys(tradeActiveOffer.want).length) || (tradeActiveOffer.give && Object.keys(tradeActiveOffer.give).length))) {
     if (counterOffers[myColor] !== null) {
       resourceSelectorType = "tradeCounterOffer";
       showResourceUI(resourceSelectorType);
@@ -1085,15 +1093,11 @@ function onmsg(event) {
     setTimeout(clearerror, 100);
     return;
   }
-  // data.type should be game_state now - maybe handle more later
-  if (data.you) {
-    document.getElementById('name').value = data.you.name;
-    myColor = data.you.color;
-  }
   let firstMsg = false;
   if (tiles.length < 1) {
     firstMsg = true;
   }
+  // data.type should be game_state now - maybe handle more later
   playerColors = data.player_colors;
   gamePhase = data.game_phase;
   turnPhase = data.turn_phase;
@@ -1102,6 +1106,10 @@ function onmsg(event) {
   edges = data.edges;
   robberLoc = data.robber;
   cards = data.cards;
+  cardCounts = data.card_counts;
+  points = data.points;
+  armies = data.armies;
+  longestRoads = data.longest_roads;
   diceRoll = data.dice_roll;
   pieces = data.pieces;
   roads = data.roads;
@@ -1112,14 +1120,31 @@ function onmsg(event) {
   let oldActiveOffer = tradeActiveOffer;
   tradeActiveOffer = data.trade_offer;
   counterOffers = data.counter_offers;
+  if (data.you) {
+    myColor = data.you.color;
+  }
   if (firstMsg) {
     centerCanvas();
+    initPlayerData();
+    initializePlayerName();
+  }
+  if (data.you) {
+    if (document.getElementById('nameInput').value == data.you.name) {
+      if (getCookie("playername") != data.you.name) {
+        document.cookie = "playername=" + data.you.name;
+      }
+    }
+    if (!document.getElementById('nameInput').value) {
+      document.getElementById('nameInput').value = data.you.name;
+    }
+    fixNameSize(null);
   }
   populateCards();
   updateDice();
   updateUI("buydev");
   updateUI("endturn");
   updateTradeButtons();
+  updatePlayerData();
   if (firstMsg && counterOffers[myColor]) {
     copyPreviousCounterOffer(counterOffers[myColor]);
   }
@@ -1182,14 +1207,185 @@ function centerCanvas() {
   offsetY = canHeight / 2 - (minY + maxY) / 2;
 }
 // TODO: persist this in a cookie or something
-function login() {
+function login(e) {
   let msg = {
     type: "player",
     player: {
-      name: document.getElementById('name').value,
+      name: document.getElementById('nameInput').value,
     },
   };
   ws.send(JSON.stringify(msg));
+}
+function fixNameSize(e) {
+  let nameInput = document.getElementById("nameInput");
+  let sizeCalculator = document.getElementById("sizeCalculator");
+  sizeCalculator.textContent = nameInput.value;
+  nameInput.style.width = sizeCalculator.offsetWidth + "px";
+}
+function initPlayerData() {
+  let rightUI = document.getElementById("uiright");
+  while (rightUI.firstChild) {
+    rightUI.removeChild(rightUI.firstChild);
+  }
+  let playerNames = Object.keys(playerColors);
+  playerNames.sort(comparePlayers);
+  for (let p of playerNames) {
+    createPlayerData(p);
+  }
+  fixNameSize(null);
+}
+function createPlayerData(p) {
+  let rightUI = document.getElementById("uiright");
+  let pColor = playerColors[p];
+  let newdiv = document.createElement("DIV");
+  newdiv.style.background = pColor;
+  newdiv.classList.add(pColor + "player");
+  newdiv.classList.add("playerinfo");
+
+  let username = p;
+  let topText = document.createElement("DIV");
+  topText.classList.add("playername");
+  if (pColor == myColor) {
+    let sizeCalculator = document.createElement("SPAN");
+    sizeCalculator.id = "sizeCalculator";
+    sizeCalculator.classList.add("hide");
+    let nameInput = document.createElement("INPUT");
+    nameInput.id = "nameInput";
+    nameInput.type = "text";
+    // nameInput.contentEditable = true;
+    nameInput.classList.add("nameinput");
+    nameInput.classList.add("clickable");
+    nameInput.style.background = pColor;
+    nameInput.innerText = username;
+    nameInput.maxlength = 16;
+    nameInput.oninput = fixNameSize;
+    // Setting nameInput.onfocusout does not work in webkit browsers.
+    nameInput.addEventListener("focusout", login);
+    topText.appendChild(sizeCalculator);
+    topText.appendChild(nameInput);
+  } else {
+    let nameDiv = document.createElement("DIV");
+    nameDiv.innerText = username;
+    nameDiv.classList.add("nametext");
+    topText.appendChild(nameDiv);
+  }
+  let turnMarker = document.createElement("DIV");
+  turnMarker.innerText = "👉";  // ▶️ looks bad.
+  turnMarker.classList.add("turnmarker");
+  topText.appendChild(turnMarker);
+  let phaseMarker = document.createElement("DIV");
+  phaseMarker.innerText = "";
+  phaseMarker.classList.add("phasemarker");
+  topText.appendChild(phaseMarker);
+  newdiv.appendChild(topText);
+  let cardDiv = document.createElement("DIV");
+  let rightWidth = document.getElementById("uiright").offsetWidth;
+  cardDiv.style.width = 0.8 * rightWidth + "px";
+  cardDiv.classList.add("cardinfo");
+  newdiv.appendChild(cardDiv);
+  /*
+   * TODO: add data about # of cities, army size, longest road, victory points
+  let dataDiv = document.createElement("DIV");
+  newdiv.appendChild(dataDiv);
+  */
+  rightUI.appendChild(newdiv);
+  return newdiv;
+}
+function updatePlayerData() {
+  let rightUI = document.getElementById("uiright");
+  let playerNames = Object.keys(playerColors);
+  playerNames.sort(comparePlayers);
+  for (let p of playerNames) {
+    let pColor = playerColors[p];
+    let thediv = null;
+    for (let somediv of rightUI.getElementsByClassName("playerinfo")) {
+      if (somediv.classList.contains(pColor + "player")) {
+        thediv = somediv;
+        break;
+      }
+    }
+    if (!thediv) {
+      thediv = createPlayerData(p);
+    }
+    if (pColor != myColor) {
+      let namediv = thediv.getElementsByClassName("nametext")[0];
+      namediv.innerText = p;
+    }
+
+    let turnMarker = thediv.getElementsByClassName("turnmarker")[0];
+    let phaseMarker = thediv.getElementsByClassName("phasemarker")[0];
+    if (!turnMarker || !phaseMarker) {  // TODO: better error checking.
+      continue;
+    }
+    if (turnPhase == "discard") {
+      if (discardPlayers[pColor]) {
+        phaseMarker.style.display = "block";
+        phaseMarker.innerText = "🖐️";
+      } else {
+        phaseMarker.innerText = "";
+      }
+      continue;
+    }
+    if (turn == pColor) {
+      turnMarker.style.display = "block";
+      phaseMarker.style.display = "block";
+      if (turnPhase == "robber") {
+        phaseMarker.innerText = "💂";
+      } else if (turnPhase == "dice") {
+        phaseMarker.innerText = "🎲";
+      } else if (turnPhase == "main") {
+        phaseMarker.innerText = "";
+      } else if (turnPhase == "settle") {
+        phaseMarker.innerText = "🏠";
+      } else if (turnPhase == "road" || turnPhase == "dev_road") {
+        phaseMarker.innerText = "🛣️";
+      } else {
+        // ?
+        phaseMarker.innerText = "";
+      }
+      // TODO: use 🛡️
+    } else {
+      turnMarker.style.display = "none";
+      phaseMarker.style.display = "none";
+    }
+    let cardDiv = thediv.getElementsByClassName("cardinfo")[0];
+    updatePlayerCardInfo(pColor, cardDiv);
+  }
+  fixNameSize(null);
+}
+function updatePlayerCardInfo(pColor, cardDiv) {
+  while (cardDiv.firstChild) {
+    cardDiv.removeChild(cardDiv.firstChild);
+  }
+  if (!cardCounts[pColor]) {
+    return;
+  }
+  if (cardCounts[pColor]["resource"] && cardCounts[pColor]["dev"]) {
+    let sepDiv = document.createElement("DIV");
+    sepDiv.classList.add("cardseparator");
+    sepDiv.style.width = summaryCardWidth / 2 + "px";
+    sepDiv.style.height = summaryCardHeight + "px";
+    sepDiv.style.order = 1;
+    cardDiv.appendChild(sepDiv);
+  }
+  let orders = {resource: 0, dev: 2};
+  let imgs = {resource: imageNames.cardback, dev: imageNames.devcard};
+  for (let cardType of ["resource", "dev"]) {
+    for (let i = 0; i < cardCounts[pColor][cardType]; i++) {
+      let contDiv = document.createElement("DIV");
+      contDiv.classList.add("cardback");
+      contDiv.style.order = orders[cardType];
+      let backImg = document.createElement("IMG");
+      backImg.src = imgs[cardType];
+      backImg.width = summaryCardWidth;
+      backImg.height = summaryCardHeight;
+      contDiv.appendChild(backImg);
+      if (i == cardCounts[pColor][cardType]-1) {
+        contDiv.style.flex = "0 0 auto";
+      }
+      cardDiv.appendChild(contDiv);
+    }
+  }
 }
 function createSelectors() {
   for (selectBox of ["top", "bottom"]) {
@@ -1219,17 +1415,21 @@ function createSelectors() {
   }
 }
 function sizeThings() {
-  totalWidth = document.documentElement.clientWidth;
-  totalHeight = document.documentElement.clientHeight;
+  let totalWidth = document.documentElement.clientWidth;
+  let totalHeight = document.documentElement.clientHeight;
   document.getElementById('ui').style.width = totalWidth + "px";
   document.getElementById('ui').style.height = totalHeight + "px";
-  canWidth = totalWidth - document.getElementById('uiright').offsetWidth;
+  rightWidth = document.getElementById('uiright').offsetWidth;
+  canWidth = totalWidth - rightWidth;
   canHeight = totalHeight;
   document.getElementById('uibottom').style.width = canWidth + "px";
   document.getElementById('myCanvas').width = canWidth;
   document.getElementById('myCanvas').height = canHeight;
   document.getElementById('buydev').width = cardWidth;
   document.getElementById('buydev').height = cardHeight;
+  for (let pdiv of document.getElementsByClassName("cardinfo")) {
+    pdiv.style.width = 0.8 * rightWidth + "px";
+  }
 }
 function init() {
   sizeThings();
@@ -1322,6 +1522,14 @@ function initializeNames() {
   }
   for (let name in newNames) {
     globalNames[name] = newNames[name];
+  }
+}
+function initializePlayerName() {
+  let pName = getCookie("playername");
+  if (pName) {
+    document.getElementById("nameInput").value = pName;
+    fixNameSize(null);
+    login(null);
   }
 }
 initializeImageLocations();
