@@ -116,6 +116,7 @@ tradeOffer = null;
 gamePhase = null;
 turnPhase = null;
 discardPlayers = {};
+robPlayers = [];
 
 // Local state.
 debug = false;
@@ -623,6 +624,74 @@ function maybeShowDiscardWindow() {
     hideSelectorWindow();
   }
 }
+function maybeShowRobWindow() {
+  let playerpopup = document.getElementById("playerpopup");
+  if (turnPhase == "rob" && turn == myColor) {
+    while (playerpopup.firstChild) {
+      playerpopup.removeChild(playerpopup.firstChild);
+    }
+    let titleDiv = document.createElement("DIV");
+    titleDiv.innerText = "Select a player to steal from";
+    titleDiv.style.padding = "5px";
+    playerpopup.appendChild(titleDiv);
+    let playerNames = Object.keys(playerColors);
+    playerNames.sort(comparePlayers);
+    for (let robPlayer of playerNames) {
+      let pColor = playerColors[robPlayer];
+      if (!robPlayers.includes(pColor)) {
+        continue;
+      }
+      let selectDiv = document.createElement("DIV");
+      selectDiv.classList.add("selectsummary");
+      selectDiv.classList.add("selectable");
+      selectDiv.classList.add("acceptable");
+      selectDiv.style.position = "relative";
+      selectDiv.style.padding = "5px 0px 5px 0px";
+      let nameOuter = document.createElement("DIV");
+      nameOuter.style.flexGrow = "0";
+      nameOuter.style.flexShrink = "0";
+      nameOuter.style.flexBasis = "auto";
+      nameOuter.style.margin = "0px 5px 0px 5px";
+      let nameDiv = document.createElement("DIV");
+      nameDiv.style.display = "flex";
+      nameDiv.style.flexDirection = "row";
+      nameDiv.style.justifyContent = "flex-start";
+      nameDiv.style.color = pColor;
+      nameDiv.style.fontWeight = "bold";
+      nameDiv.innerText = robPlayer;
+      nameOuter.appendChild(nameDiv);
+      let cardsOuter = document.createElement("DIV");
+      cardsOuter.classList.add("summarypanel");
+      cardsOuter.style.width = "100%";
+      cardsOuter.style.flexBasis = "100%";
+      cardsOuter.style.margin = "0px 5px 0px 5px";
+      let cardsDiv = document.createElement("DIV");
+      cardsDiv.style.display = "flex";
+      cardsDiv.style.flexDirection = "row";
+      cardsDiv.style.justifyContent = "flex-end";
+      cardsDiv.style.width = "100%";
+      updatePlayerCardInfo(pColor, cardsDiv, false);
+      cardsOuter.appendChild(cardsDiv);
+      selectDiv.appendChild(nameOuter);
+      selectDiv.appendChild(cardsOuter);
+      selectDiv.onclick = function(e) {
+        let msg = {
+          type: "rob",
+          player: pColor,
+        };
+        ws.send(JSON.stringify(msg));
+      }
+      playerpopup.appendChild(selectDiv);
+    }
+    popupMaxWidth = selectCardWidth * 5 + 100;
+    playerpopup.style.display = 'flex';
+    if (playerpopup.offsetWidth > popupMaxWidth) {
+      playerpopup.style.width = popupMaxWidth + "px";
+    }
+  } else {
+    playerpopup.style.display = 'none';
+  }
+}
 function rollDice() {
   if (turn != myColor) {
     return;
@@ -798,6 +867,7 @@ function onmsg(event) {
   let oldActiveOffer = tradeActiveOffer;
   tradeActiveOffer = data.trade_offer;
   counterOffers = data.counter_offers;
+  robPlayers = data.rob_players;
   if (data.you) {
     myColor = data.you.color;
   }
@@ -831,6 +901,7 @@ function onmsg(event) {
     hideSelectorWindow();
   }
   maybeShowDiscardWindow();
+  maybeShowRobWindow();
 }
 function updateUI(elemName) {
   if (gamePhase != "main" || turn != myColor || turnPhase != "main") {
@@ -1007,18 +1078,18 @@ function updatePlayerData() {
       phaseMarker.style.display = "none";
     }
     let cardDiv = thediv.getElementsByClassName("cardinfo")[0];
-    updatePlayerCardInfo(pColor, cardDiv);
+    updatePlayerCardInfo(pColor, cardDiv, true);
   }
   fixNameSize(null);
 }
-function updatePlayerCardInfo(pColor, cardDiv) {
+function updatePlayerCardInfo(pColor, cardDiv, showDev) {
   while (cardDiv.firstChild) {
     cardDiv.removeChild(cardDiv.firstChild);
   }
   if (!cardCounts[pColor]) {
     return;
   }
-  if (cardCounts[pColor]["resource"] && cardCounts[pColor]["dev"]) {
+  if (showDev && cardCounts[pColor]["resource"] && cardCounts[pColor]["dev"]) {
     let sepDiv = document.createElement("DIV");
     sepDiv.classList.add("cardseparator");
     sepDiv.style.width = summaryCardWidth / 2 + "px";
@@ -1028,7 +1099,11 @@ function updatePlayerCardInfo(pColor, cardDiv) {
   }
   let orders = {resource: 0, dev: 2};
   let imgs = {resource: imageNames.cardback, dev: imageNames.devcard};
-  for (let cardType of ["resource", "dev"]) {
+  let typeList = ["resource", "dev"];
+  if (!showDev) {
+    typeList = ["resource"];
+  }
+  for (let cardType of typeList) {
     for (let i = 0; i < cardCounts[pColor][cardType]; i++) {
       let contDiv = document.createElement("DIV");
       contDiv.classList.add("cardback");

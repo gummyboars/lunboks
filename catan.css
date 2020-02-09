@@ -74,6 +74,21 @@ div {
   align-items: center;
   justify-content: center;
 }
+#playerpopup {
+  position: absolute;
+  display: none;
+  background: palegoldenrod;
+  border: 1px solid black;
+  border-radius: 15px 15px 0px 0px;
+  box-shadow: 2px 2px 10px;
+  left: 50%;
+  margin-right: -50%;
+  top: 50%;
+  margin-bottom: -50%;
+  transform: translate(-50%, -50%);
+  flex-direction: column;
+  z-index: 1; /* show over other elements */
+}
 #tradesummary {
   flex: 0 1 100%;
 }

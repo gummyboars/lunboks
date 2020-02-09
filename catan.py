@@ -387,6 +387,8 @@ class CatanState(object):
     if data.get("type") == "robber":
       self._validate_location(location)
       self.handle_robber(location)
+    if data.get("type") == "rob":
+      self.handle_rob(data.get("player"))
     if data.get("type") == "road":
       self._validate_location(location, num_entries=4)
       self.handle_road(location, player)
@@ -479,6 +481,10 @@ class CatanState(object):
       self.turn_phase = "dice"
     else:
       self.turn_phase = "main"
+
+  def handle_rob(self, player):
+    # TODO
+    pass
 
   def _get_players_with_too_many_resources(self):
     the_players = {}
