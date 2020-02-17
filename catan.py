@@ -270,6 +270,7 @@ class CatanState(object):
     self.dev_roads_placed = 0
     self.played_dev = 0
     self.discard_players = {}  # Map of player to number of cards they have.
+    self.rob_players = []  # List of players that can be robbed by this robber.
     self.turn_idx = None
     self.turn_order = []
     self.dice_roll = None
@@ -295,7 +296,7 @@ class CatanState(object):
 
   def json_repr(self):
     ret = dict([(name, getattr(self, name)) for name in
-      ["game_phase", "turn_phase", "player_colors", "turn_order", "dice_roll",
+      ["game_phase", "turn_phase", "player_colors", "turn_order", "dice_roll", "rob_players",
        "robber", "pirate", "trade_offer", "counter_offers", "discard_players"]])
     more = dict([(name, list(getattr(self, name).values())) for name in
       ["ports", "tiles", "pieces", "roads"]])
@@ -366,8 +367,8 @@ class CatanState(object):
     # - pre-game "not started" state
     # - fix the number of players at the start of the game
     # - save/restore functionality
-    # - the robber needs to rob
     # - check buildings against players' total supply (e.g. 15 roads)
+    # - check resources against total card supply
     # - longest road and largest army
     # - victory conditions
     player = self.player_colors.get(player_name)
@@ -386,9 +387,9 @@ class CatanState(object):
       self.handle_roll_dice()
     if data.get("type") == "robber":
       self._validate_location(location)
-      self.handle_robber(location)
+      self.handle_robber(location, player)
     if data.get("type") == "rob":
-      self.handle_rob(data.get("player"))
+      self.handle_rob(data.get("player"), player)
     if data.get("type") == "road":
       self._validate_location(location, num_entries=4)
       self.handle_road(location, player)
@@ -470,21 +471,52 @@ class CatanState(object):
     self.distribute_resources(red + white)
     self.turn_phase = "main"
 
-  def handle_robber(self, location):
+  def handle_robber(self, location, current_player):
     if self.turn_phase != "robber":
       if self.turn_phase == "discard":
         raise InvalidMove("Waiting for players to discard.")
       raise InvalidMove("You cannot play the robber right now.")
     self.robber = TileLocation(*location)
-    # TODO: rob!
+    corners = self.robber.get_corner_locations()
+    robbable_players = set([])
+    for corner in corners:
+      maybe_piece = self.pieces.get(corner.as_tuple())
+      if maybe_piece:
+        count = sum(self.cards[maybe_piece.player].get(rsrc, 0) for rsrc in RESOURCES)
+        if count > 0:
+          robbable_players.add(maybe_piece.player)
+    if len(robbable_players) > 1:
+      self.rob_players = list(robbable_players)
+      self.turn_phase = "rob"
+      return
+    elif len(robbable_players) == 1:
+      self._rob_player(list(robbable_players)[0], current_player)
     if self.dice_roll is None:
       self.turn_phase = "dice"
     else:
       self.turn_phase = "main"
 
-  def handle_rob(self, player):
-    # TODO
-    pass
+  def handle_rob(self, rob_player, current_player):
+    if self.turn_phase != "rob":
+      raise InvalidMove("You cannot rob without playing the robber.")
+    if rob_player not in self.rob_players:
+      raise InvalidMove("You cannot rob from that player with that robber placement.")
+    self._rob_player(rob_player, current_player)
+    self.rob_players = []  # Reset after successful rob.
+    if self.dice_roll is None:
+      self.turn_phase = "dice"
+    else:
+      self.turn_phase = "main"
+
+  def _rob_player(self, rob_player, current_player):
+    all_rsrc_cards = []
+    for rsrc in RESOURCES:
+      all_rsrc_cards.extend([rsrc] * self.cards[rob_player].get(rsrc, 0))
+    if len(all_rsrc_cards) <= 0:
+      raise InvalidMove("You cannot rob from a player without any resources.")
+    chosen_rsrc = random.choice(all_rsrc_cards)
+    self.cards[rob_player][chosen_rsrc] -= 1
+    self.cards[current_player][chosen_rsrc] += 1
 
   def _get_players_with_too_many_resources(self):
     the_players = {}
