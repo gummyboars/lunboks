@@ -217,6 +217,10 @@ class Road(object):
         "player": self.player,
     }
 
+  @staticmethod
+  def parse_json(value):
+    return Road(value["location"], value["road_type"], value["player"])
+
   def __str__(self):
     return str(self.json_repr())
 
@@ -236,6 +240,10 @@ class Piece(object):
         "piece_type": self.piece_type,
         "player": self.player,
     }
+
+  @staticmethod
+  def parse_json(value):
+    return Piece(value["location"][0], value["location"][1], value["piece_type"], value["player"])
 
   def __str__(self):
     return str(self.json_repr())
@@ -259,6 +267,11 @@ class Tile(object):
         "rotation": self.rotation,
     }
 
+  @staticmethod
+  def parse_json(value):
+    return Tile(value["location"][0], value["location"][1], value["tile_type"],
+        value["is_land"], value["number"], value["rotation"])
+
   def __str__(self):
     return str(self.json_repr())
 
@@ -268,6 +281,10 @@ class CatanState(object):
   WANT = "want"
   GIVE = "give"
   TRADE_SIDES = [WANT, GIVE]
+  LOCATION_ATTRIBUTES = ["tiles", "pieces", "roads"]
+  HIDDEN_ATTRIBUTES = [
+      "dev_cards", "cards", "trade_ratios", "unusable", "dev_roads_placed",
+      "played_dev", "turn_idx"]
 
   def __init__(self):
     self.player_colors = {}
@@ -296,25 +313,53 @@ class CatanState(object):
     self.game_phase = "place1"  # valid values are place1, place2, main
     self.turn_phase = "settle"  # valid values are settle, road, dice, discard, robber, dev_road, main
 
-  def save(self, filename):
-    # TODO: finish this. problem is, a lot of custom classes need a json -> class converter.
-    # TODO: maybe this should just return a json blob, and the server should save it?
-    path = "/".join([ROOT_DIR, filename])
-    path = os.path.abspath(path)
-    if os.path.dirname(path) != ROOT_DIR:
-      raise RuntimeError("dirname is %s but root is %s" % (os.path.dirname(path), ROOT_DIR))
-    if os.exists(filename):
-      raise RuntimeError("save file %s already exists" % filename)
-    with open(filename, "w") as fileobj:
-      json.dump(self.__dict__, fileobj, cls=CustomEncoder)
+  @staticmethod
+  def parse_json(json_str):
+    gamedata = json.loads(json_str)
+    cstate = CatanState()
+    defaultdict_attrs = ["cards", "trade_ratios", "unusable"]
+
+    # Regular attributes
+    for attr in cstate.__dict__:
+      if attr not in (CatanState.LOCATION_ATTRIBUTES + defaultdict_attrs + ["ports"]):
+        setattr(cstate, attr, gamedata[attr])
+
+    # Defaultdicts should start empty and be updated with values from json.
+    for attr in defaultdict_attrs:
+      dictval = gamedata[attr]
+      getattr(cstate, attr).update(dictval)
+
+    # Location dictionaries are updated with their respective items.
+    for tile_json in gamedata["tiles"]:
+      tile = Tile.parse_json(tile_json)
+      cstate.add_tile(tile)
+    for piece_json in gamedata["pieces"]:
+      piece = Piece.parse_json(piece_json)
+      cstate.add_piece(piece)
+    for road_json in gamedata["roads"]:
+      road = Road.parse_json(road_json)
+      cstate.add_road(road)
+
+    cstate._compute_ports()
+    return cstate
+
+  def json_str(self):
+    return json.dumps(self.json_repr(), cls=CustomEncoder)
 
   def json_repr(self):
     ret = dict([(name, getattr(self, name)) for name in
       ["game_phase", "turn_phase", "player_colors", "turn_order", "dice_roll", "rob_players",
        "robber", "pirate", "trade_offer", "counter_offers", "discard_players"]])
-    more = dict([(name, list(getattr(self, name).values())) for name in
-      ["ports", "tiles", "pieces", "roads"]])
+    more = dict([(name, list(getattr(self, name).values())) for name in self.LOCATION_ATTRIBUTES])
     ret.update(more)
+    hidden = dict([(name, getattr(self, name)) for name in self.HIDDEN_ATTRIBUTES])
+    ret.update(hidden)
+    return ret
+
+  def json_for_player(self):
+    ret = self.json_repr()
+    for name in self.HIDDEN_ATTRIBUTES:
+      del ret[name]
     corners = {}
     # TODO: instead of sending a list of corners, we should send something like
     # a list of legal moves for tiles, corners, and edges.
@@ -334,7 +379,7 @@ class CatanState(object):
     return ret
 
   def for_player(self, current_player):
-    data = self.json_repr()
+    data = self.json_for_player()
     data["type"] = "game_state"
     data["turn"] = self.turn_order[self.turn_idx]
     data["you"] = {"name": current_player}

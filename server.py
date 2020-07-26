@@ -25,9 +25,16 @@ GLOBAL_LOOP = None
 
 class MyHandler(BaseHTTPRequestHandler):
 
+  # TODO: Try SimpleHTTPRequestHandler
   def do_GET(self):
     start = time.time()
     self_path = urllib.parse.urlparse(self.path).path
+    if self_path.rstrip("/") in ("/dump", "/json", "/save"):
+      value = GAME_STATE.json_str().encode('ascii')
+      self.send_response(HTTPStatus.OK.value)
+      self.end_headers()
+      self.wfile.write(value)
+      return
     if self_path == "/":
       path = "/".join([ROOT_DIR, "catan.html"])
     else:
@@ -50,6 +57,7 @@ class MyHandler(BaseHTTPRequestHandler):
       self.wfile.write(w.read())
 
   def do_POST(self):
+    global GAME_STATE
     req = urllib.parse.urlparse(self.path)
     self_path = req.path
     if self_path.rstrip("/") == "/reset":
@@ -65,6 +73,18 @@ class MyHandler(BaseHTTPRequestHandler):
       except:
         count = 1
       GAME_STATE.handle_force_dice(count)
+      self.send_response(HTTPStatus.NO_CONTENT.value)
+      self.end_headers()
+      fut = asyncio.run_coroutine_threadsafe(PushState(), GLOBAL_LOOP)
+      fut.result(10)
+    elif self_path.rstrip("/") == "/load":
+      data = self.rfile.read(int(self.headers["content-length"]))
+      try:
+        cstate = catan.CatanState.parse_json(data)
+      except Exception as e:
+        self.send_error(HTTPStatus.BAD_REQUEST.value, str(e))
+        return
+      GAME_STATE = cstate
       self.send_response(HTTPStatus.NO_CONTENT.value)
       self.end_headers()
       fut = asyncio.run_coroutine_threadsafe(PushState(), GLOBAL_LOOP)
@@ -183,9 +203,9 @@ if __name__ == '__main__':
   loop = asyncio.get_event_loop()
   GLOBAL_LOOP = loop
   t2 = threading.Thread(target=ws_main, args=(loop,))
+  t2.daemon = True
   t2.start()
   GAME_STATE = catan.CatanState()
   GAME_STATE.init_normal()
   main()
   loop.stop()
-  loop.close()
