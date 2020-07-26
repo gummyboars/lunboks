@@ -8,6 +8,20 @@ from game import InvalidMove
 RESOURCES = ["rsrc1", "rsrc2", "rsrc3", "rsrc4", "rsrc5"]
 PLAYABLE_DEV_CARDS = ["yearofplenty", "monopoly", "roadbuilding", "knight"]
 VICTORY_CARDS = ["palace", "chapel", "university", "market", "library"]
+TILE_NUMBERS = [5, 2, 6, 3, 8, 10, 9, 12, 11, 4, 8, 10, 9, 4, 5, 6, 3, 11]
+TILE_SEQUENCE = [
+    (2, 3), (4, 2), (6, 1), (8, 2), (10, 3),  # around the top
+    (10, 5), (10, 7), (8, 8), (6, 9),  # down the side to the bottom
+    (4, 8), (2, 7), (2, 5),  # back up the left side
+    (4, 4), (6, 3), (8, 4), (8, 6), (6, 7), (4, 6), (6, 5)  # inner loop
+    ]
+SPACE_TILE_SEQUENCE = [
+    (2, 1), (4, 0), (6, -1), (8, 0), (10, 1), (12, 2),  # around the top
+    (12, 4), (12, 6), (12, 8),  # down the right side
+    (10, 9), (8, 10), (6, 11), (4, 10), (2, 9), (0, 8),  # around the bottom
+    (0, 6), (0, 4), (0, 2)  # up the left side
+    ]
+SPACE_TILE_ROTATIONS = [0, 0, 1, 2, 2, 3, -2, -2, -1]
 
 
 class CustomEncoder(json.JSONEncoder):
@@ -73,7 +87,7 @@ class TileLocation(Location):
 
   def get_right_corner(self):
     return CornerLocation(self.x+2, self.y+1)
-  
+
   def get_lower_right_corner(self):
     return CornerLocation(self.x+1, self.y+2)
 
@@ -126,7 +140,7 @@ class CornerLocation(Location):
     If this is a right corner (even x-coordinate), we look right, up-left,
     and down-left. If it is a left corner (odd x-coordinate), we look left,
     up-right, and down-right. 
-    
+
     """
     if self.x % 2 == 0:
       return [
@@ -910,22 +924,7 @@ class CatanState(object):
   def add_road(self, road):
     self.roads[road.location.as_tuple()] = road
 
-  def init_normal(self):
-    tile_types = [
-      "rsrc1", "rsrc1", "rsrc1", "rsrc1",
-      "rsrc2", "rsrc2", "rsrc2", "rsrc2",
-      "rsrc3", "rsrc3", "rsrc3", "rsrc3",
-      "rsrc4", "rsrc4", "rsrc4",
-      "rsrc5", "rsrc5", "rsrc5",
-      "norsrc"]
-    random.shuffle(tile_types)
-    numbers = [5, 2, 6, 3, 8, 10, 9, 12, 11, 4, 8, 10, 9, 4, 5, 6, 3, 11]
-    sequence = [
-        (2, 3), (4, 2), (6, 1), (8, 2), (10, 3),  # around the top
-        (10, 5), (10, 7), (8, 8), (6, 9),  # down the side to the bottom
-        (4, 8), (2, 7), (2, 5),  # back up the left side
-        (4, 4), (6, 3), (8, 4), (8, 6), (6, 7), (4, 6), (6, 5)  # inner loop
-        ]
+  def _init_tiles(self, tile_types, sequence, tile_numbers):
     if len(sequence) != len(tile_types):
       raise RuntimeError("you screwed it up")
     num_idx = 0
@@ -935,34 +934,27 @@ class CatanState(object):
         robber_loc = TileLocation(*sequence[idx])
         number = None
       else:
-        number = numbers[num_idx]
+        number = tile_numbers[num_idx]
         num_idx += 1
       self.add_tile(Tile(sequence[idx][0], sequence[idx][1], tile_types[idx], True, number))
-    space_tiles = [
-        (2, 1), (4, 0), (6, -1), (8, 0), (10, 1), (12, 2),  # around the top
-        (12, 4), (12, 6), (12, 8),  # down the right side
-        (10, 9), (8, 10), (6, 11), (4, 10), (2, 9), (0, 8),  # around the bottom
-        (0, 6), (0, 4), (0, 2)  # up the left side
-        ]
-    ports = ["3port", "3port", "3port", "3port",
-             "rsrc1port", "rsrc2port", "rsrc3port", "rsrc4port", "rsrc5port"]
-    random.shuffle(ports)
-    rotations = [-1, 0, 1, 1, 2, 3, 3, -2, -1]
+    self.robber = robber_loc
+
+  def _init_space(self, space_tiles, rotations, ports):
     if len(ports) != len(space_tiles) / 2 or len(ports) != len(rotations):
       raise RuntimeError("you screwed it up")
     for idx, loc in enumerate(space_tiles):
       tile_name = "space"
-      if idx % 2 == 0:
+      if idx % 2 == 1:
         tile_name = ports[idx//2]
       self.add_tile(Tile(loc[0], loc[1], tile_name, False, None, rotations[idx//2]))
-    self.compute_ports()
-    self.robber = robber_loc
+
+  def _init_dev_cards(self):
     dev_cards = ["knight"] * 14 + ["monopoly"] * 2 + ["roadbuilding"] * 2 + ["yearofplenty"] * 2
     dev_cards.extend(VICTORY_CARDS)
     random.shuffle(dev_cards)
     self.dev_cards = dev_cards
 
-  def compute_ports(self):
+  def _compute_ports(self):
     for tile in self.tiles.values():
       if not tile.tile_type.endswith("port"):
         continue
@@ -982,3 +974,32 @@ class CatanState(object):
         port_corners = [tile.location.get_lower_right_corner(), tile.location.get_right_corner()]
       for corner in port_corners:
         self.ports[corner.as_tuple()] = port_type
+
+  def init_beginner(self):
+    tile_types = [
+        "rsrc5", "rsrc3", "rsrc2", "rsrc5", "rsrc3", "rsrc1", "rsrc3", "rsrc1", "rsrc2", "rsrc4",
+        "norsrc", "rsrc4", "rsrc1", "rsrc1", "rsrc2", "rsrc4", "rsrc5", "rsrc2", "rsrc3"]
+    self._init_tiles(tile_types, TILE_SEQUENCE, TILE_NUMBERS)
+    ports = [
+        "rsrc2port", "rsrc4port", "3port", "3port", "rsrc1port", "3port",
+        "rsrc5port", "rsrc3port", "3port"]
+    self._init_space(SPACE_TILE_SEQUENCE, SPACE_TILE_ROTATIONS, ports)
+    self._compute_ports()
+    self._init_dev_cards()
+
+  def init_normal(self):
+    tile_types = [
+      "rsrc1", "rsrc1", "rsrc1", "rsrc1",
+      "rsrc2", "rsrc2", "rsrc2", "rsrc2",
+      "rsrc3", "rsrc3", "rsrc3", "rsrc3",
+      "rsrc4", "rsrc4", "rsrc4",
+      "rsrc5", "rsrc5", "rsrc5",
+      "norsrc"]
+    random.shuffle(tile_types)
+    self._init_tiles(tile_types, TILE_SEQUENCE, TILE_NUMBERS)
+    ports = ["3port", "3port", "3port", "3port",
+             "rsrc1port", "rsrc2port", "rsrc3port", "rsrc4port", "rsrc5port"]
+    random.shuffle(ports)
+    self._init_space(SPACE_TILE_SEQUENCE, SPACE_TILE_ROTATIONS, ports)
+    self._compute_ports()
+    self._init_dev_cards()
