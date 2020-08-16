@@ -159,7 +159,7 @@ async def WebLoop(websocket, path):
       else:
         try:
           GAME_STATE.handle(data, name)
-        except game.InvalidMove as e:
+        except (game.InvalidMove, AssertionError) as e:
           await PushError(name, str(e))
         except Exception as e:
           print(sys.exc_info()[0])

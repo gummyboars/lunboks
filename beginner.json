@@ -1,0 +1,474 @@
+{
+  "game_phase": "main",
+  "turn_phase": "main",
+  "player_colors": {
+    "Player1": "red"
+  },
+  "turn_order": [
+    "red"
+  ],
+  "dice_roll": [
+    2,
+    2
+  ],
+  "rob_players": [],
+  "robber": [
+    2,
+    7
+  ],
+  "pirate": null,
+  "trade_offer": {},
+  "counter_offers": {},
+  "discard_players": {},
+  "tiles": [
+    {
+      "location": [
+        2,
+        3
+      ],
+      "tile_type": "rsrc5",
+      "is_land": true,
+      "number": 5,
+      "rotation": 0
+    },
+    {
+      "location": [
+        4,
+        2
+      ],
+      "tile_type": "rsrc3",
+      "is_land": true,
+      "number": 2,
+      "rotation": 0
+    },
+    {
+      "location": [
+        6,
+        1
+      ],
+      "tile_type": "rsrc2",
+      "is_land": true,
+      "number": 6,
+      "rotation": 0
+    },
+    {
+      "location": [
+        8,
+        2
+      ],
+      "tile_type": "rsrc5",
+      "is_land": true,
+      "number": 3,
+      "rotation": 0
+    },
+    {
+      "location": [
+        10,
+        3
+      ],
+      "tile_type": "rsrc3",
+      "is_land": true,
+      "number": 8,
+      "rotation": 0
+    },
+    {
+      "location": [
+        10,
+        5
+      ],
+      "tile_type": "rsrc1",
+      "is_land": true,
+      "number": 10,
+      "rotation": 0
+    },
+    {
+      "location": [
+        10,
+        7
+      ],
+      "tile_type": "rsrc3",
+      "is_land": true,
+      "number": 9,
+      "rotation": 0
+    },
+    {
+      "location": [
+        8,
+        8
+      ],
+      "tile_type": "rsrc1",
+      "is_land": true,
+      "number": 12,
+      "rotation": 0
+    },
+    {
+      "location": [
+        6,
+        9
+      ],
+      "tile_type": "rsrc2",
+      "is_land": true,
+      "number": 11,
+      "rotation": 0
+    },
+    {
+      "location": [
+        4,
+        8
+      ],
+      "tile_type": "rsrc4",
+      "is_land": true,
+      "number": 4,
+      "rotation": 0
+    },
+    {
+      "location": [
+        2,
+        7
+      ],
+      "tile_type": "norsrc",
+      "is_land": true,
+      "number": null,
+      "rotation": 0
+    },
+    {
+      "location": [
+        2,
+        5
+      ],
+      "tile_type": "rsrc4",
+      "is_land": true,
+      "number": 8,
+      "rotation": 0
+    },
+    {
+      "location": [
+        4,
+        4
+      ],
+      "tile_type": "rsrc1",
+      "is_land": true,
+      "number": 10,
+      "rotation": 0
+    },
+    {
+      "location": [
+        6,
+        3
+      ],
+      "tile_type": "rsrc1",
+      "is_land": true,
+      "number": 9,
+      "rotation": 0
+    },
+    {
+      "location": [
+        8,
+        4
+      ],
+      "tile_type": "rsrc2",
+      "is_land": true,
+      "number": 4,
+      "rotation": 0
+    },
+    {
+      "location": [
+        8,
+        6
+      ],
+      "tile_type": "rsrc4",
+      "is_land": true,
+      "number": 5,
+      "rotation": 0
+    },
+    {
+      "location": [
+        6,
+        7
+      ],
+      "tile_type": "rsrc5",
+      "is_land": true,
+      "number": 6,
+      "rotation": 0
+    },
+    {
+      "location": [
+        4,
+        6
+      ],
+      "tile_type": "rsrc2",
+      "is_land": true,
+      "number": 3,
+      "rotation": 0
+    },
+    {
+      "location": [
+        6,
+        5
+      ],
+      "tile_type": "rsrc3",
+      "is_land": true,
+      "number": 11,
+      "rotation": 0
+    },
+    {
+      "location": [
+        2,
+        1
+      ],
+      "tile_type": "space",
+      "is_land": false,
+      "number": null,
+      "rotation": 0
+    },
+    {
+      "location": [
+        4,
+        0
+      ],
+      "tile_type": "rsrc2port",
+      "is_land": false,
+      "number": null,
+      "rotation": 0
+    },
+    {
+      "location": [
+        6,
+        -1
+      ],
+      "tile_type": "space",
+      "is_land": false,
+      "number": null,
+      "rotation": 0
+    },
+    {
+      "location": [
+        8,
+        0
+      ],
+      "tile_type": "rsrc4port",
+      "is_land": false,
+      "number": null,
+      "rotation": 0
+    },
+    {
+      "location": [
+        10,
+        1
+      ],
+      "tile_type": "space",
+      "is_land": false,
+      "number": null,
+      "rotation": 1
+    },
+    {
+      "location": [
+        12,
+        2
+      ],
+      "tile_type": "3port",
+      "is_land": false,
+      "number": null,
+      "rotation": 1
+    },
+    {
+      "location": [
+        12,
+        4
+      ],
+      "tile_type": "space",
+      "is_land": false,
+      "number": null,
+      "rotation": 2
+    },
+    {
+      "location": [
+        12,
+        6
+      ],
+      "tile_type": "3port",
+      "is_land": false,
+      "number": null,
+      "rotation": 2
+    },
+    {
+      "location": [
+        12,
+        8
+      ],
+      "tile_type": "space",
+      "is_land": false,
+      "number": null,
+      "rotation": 2
+    },
+    {
+      "location": [
+        10,
+        9
+      ],
+      "tile_type": "rsrc1port",
+      "is_land": false,
+      "number": null,
+      "rotation": 2
+    },
+    {
+      "location": [
+        8,
+        10
+      ],
+      "tile_type": "space",
+      "is_land": false,
+      "number": null,
+      "rotation": 3
+    },
+    {
+      "location": [
+        6,
+        11
+      ],
+      "tile_type": "3port",
+      "is_land": false,
+      "number": null,
+      "rotation": 3
+    },
+    {
+      "location": [
+        4,
+        10
+      ],
+      "tile_type": "space",
+      "is_land": false,
+      "number": null,
+      "rotation": -2
+    },
+    {
+      "location": [
+        2,
+        9
+      ],
+      "tile_type": "rsrc5port",
+      "is_land": false,
+      "number": null,
+      "rotation": -2
+    },
+    {
+      "location": [
+        0,
+        8
+      ],
+      "tile_type": "space",
+      "is_land": false,
+      "number": null,
+      "rotation": -2
+    },
+    {
+      "location": [
+        0,
+        6
+      ],
+      "tile_type": "rsrc3port",
+      "is_land": false,
+      "number": null,
+      "rotation": -2
+    },
+    {
+      "location": [
+        0,
+        4
+      ],
+      "tile_type": "space",
+      "is_land": false,
+      "number": null,
+      "rotation": -1
+    },
+    {
+      "location": [
+        0,
+        2
+      ],
+      "tile_type": "3port",
+      "is_land": false,
+      "number": null,
+      "rotation": -1
+    }
+  ],
+  "pieces": [
+    {
+      "location": [
+        3,
+        5
+      ],
+      "piece_type": "settlement",
+      "player": "red"
+    },
+    {
+      "location": [
+        9,
+        6
+      ],
+      "piece_type": "settlement",
+      "player": "red"
+    }
+  ],
+  "roads": [
+    {
+      "location": [
+        3,
+        5,
+        4,
+        4
+      ],
+      "road_type": "road",
+      "player": "red"
+    },
+    {
+      "location": [
+        9,
+        6,
+        10,
+        7
+      ],
+      "road_type": "road",
+      "player": "red"
+    }
+  ],
+  "dev_cards": [
+    "knight",
+    "monopoly",
+    "knight",
+    "knight",
+    "yearofplenty",
+    "palace",
+    "roadbuilding",
+    "library",
+    "market",
+    "chapel",
+    "roadbuilding",
+    "knight",
+    "knight",
+    "knight",
+    "knight",
+    "knight",
+    "knight",
+    "knight",
+    "knight",
+    "knight",
+    "knight",
+    "monopoly",
+    "knight",
+    "yearofplenty",
+    "university"
+  ],
+  "cards": {
+    "red": {
+      "rsrc4": 1,
+      "rsrc1": 1,
+      "rsrc2": 2
+    }
+  },
+  "trade_ratios": {},
+  "unusable": {},
+  "dev_roads_placed": 0,
+  "played_dev": 0,
+  "turn_idx": 0
+}

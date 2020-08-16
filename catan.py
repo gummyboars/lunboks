@@ -54,11 +54,11 @@ class Location(object):
 class TileLocation(Location):
 
   def __init__(self, x, y):
-    assert x % 2 == 0
+    assert x % 2 == 0, "tiles x location must be even"
     if x % 4 == 0:
-      assert y % 2 == 0
+      assert y % 2 == 0, "tiles must line up correctly"
     else:
-      assert y % 2 == 1
+      assert y % 2 == 1, "tiles must line up correctly"
     Location.__init__(self, x, y)
 
   def get_upper_left_tile(self):
@@ -177,12 +177,12 @@ class EdgeLocation(object):
       corner_left, corner_right = args
       assert isinstance(corner_left, CornerLocation)
       assert isinstance(corner_right, CornerLocation)
-      assert corner_left.x < corner_right.x
+      assert corner_left.x < corner_right.x, "first corner must be left of second corner"
       self.corner_left = corner_left
       self.corner_right = corner_right
     elif len(args) == 4:
       leftx, lefty, rightx, righty = args
-      assert leftx < rightx
+      assert leftx < rightx, "first corner must be left of second corner"
       self.corner_left = CornerLocation(leftx, lefty)
       self.corner_right = CornerLocation(rightx, righty)
     else:
@@ -199,6 +199,11 @@ class EdgeLocation(object):
 
   def __eq__(self, other):
     return self.__class__ == other.__class__ and self.json_repr() == other.json_repr()
+
+  def get_adjacent_tiles(self):
+    """Returns the two TileLocations that share a border at this edge."""
+    right_locations = [tile.as_tuple() for tile in self.corner_right.get_tiles()]
+    return [tile for tile in self.corner_left.get_tiles() if tile.as_tuple() in right_locations]
 
 
 class Road(object):
@@ -327,7 +332,12 @@ class CatanState(object):
     # Defaultdicts should start empty and be updated with values from json.
     for attr in defaultdict_attrs:
       dictval = gamedata[attr]
-      getattr(cstate, attr).update(dictval)
+      for key, val in dictval.items():
+        if isinstance(val, dict):
+          # Preserve the type of the defaultdict entries.
+          getattr(cstate, attr)[key].update(val)
+        else:
+          getattr(cstate, attr)[key] = val
 
     # Location dictionaries are updated with their respective items.
     for tile_json in gamedata["tiles"]:
@@ -478,7 +488,7 @@ class CatanState(object):
   def _validate_location(self, location, num_entries=2):
     if isinstance(location, (tuple, list)) and len(location) == num_entries:
       return
-    raise RuntimeError("location %s should be a tuple of size %s" % (location, num_entries))
+    raise InvalidMove("location %s should be a tuple of size %s" % (location, num_entries))
 
   def handle_end_turn(self):
     self.unusable.clear()
@@ -601,6 +611,16 @@ class CatanState(object):
   def _check_road_building(self, location, player):
     left_corner = location.corner_left
     right_corner = location.corner_right
+    # Validate that this is an actual edge.
+    if location.as_tuple() not in [edge.as_tuple() for edge in left_corner.get_edges()]:
+      raise InvalidMove("%s is not a valid edge" % location)
+    # Validate that one side of the road is land.
+    for tile_loc in location.get_adjacent_tiles():
+      tile = self.tiles.get(tile_loc.as_tuple())
+      if tile and tile.is_land:
+        break
+    else:
+      raise InvalidMove("One side of your road must be land.")
     for corner in [left_corner, right_corner]:
       # Check whether this corner has one of the player's settlements.
       maybe_piece = self.pieces.get(corner.as_tuple())
@@ -719,6 +739,10 @@ class CatanState(object):
   def _build_settlement(self, location, player):
     """Build assuming all checks have been done."""
     self.add_piece(Piece(location[0], location[1], "settlement", player))
+    self._add_player_port(location, player)
+
+  def _add_player_port(self, location, player):
+    """Sets the trade ratios for a player who built a settlement at this location."""
     port_type = self.ports.get(tuple(location))
     if port_type == "3":
       for rsrc in RESOURCES:
@@ -1046,5 +1070,15 @@ class CatanState(object):
              "rsrc1port", "rsrc2port", "rsrc3port", "rsrc4port", "rsrc5port"]
     random.shuffle(ports)
     self._init_space(SPACE_TILE_SEQUENCE, SPACE_TILE_ROTATIONS, ports)
+    self._compute_ports()
+    self._init_dev_cards()
+
+  def init_test(self):
+    tile_types = ["rsrc5", "rsrc3", "rsrc1", "rsrc4"]
+    self._init_tiles(tile_types, [(2, 3), (4, 2), (2, 5), (4, 4)], [6, 9, 9, 5])
+    ports = ["3port", "rsrc1port", "3port", "rsrc3port", "rsrc2port"]
+    self._init_space(
+        [(2, 1), (4, 0), (6, 1), (6, 3), (6, 5), (4, 6), (2, 7), (0, 6), (0, 4), (0, 2)],
+        [0, 1, 3, -2, -1], ports)
     self._compute_ports()
     self._init_dev_cards()
