@@ -1,9 +1,5 @@
 {
-    "cards": {
-        "blue": {"rsrc1": 3, "rsrc2": 3, "rsrc3": 2, "rsrc4": 1, "rsrc5": 5},
-        "red": {"rsrc1": 4, "rsrc2": 2, "rsrc3": 1, "rsrc4": 2, "rsrc5": 2}
-    },
-    "counter_offers": {},
+    "counter_offers": [null, null],
     "dev_cards": [
         "knight",
         "knight",
@@ -33,7 +29,7 @@
     ],
     "dev_roads_placed": 0,
     "dice_roll": null,
-    "discard_players": {},
+    "discard_players": [0, 0],
     "game_phase": "main",
     "pieces": [
         {
@@ -42,7 +38,7 @@
                 4
             ],
             "piece_type": "settlement",
-            "player": "red"
+            "player": 0
         },
         {
             "location": [
@@ -50,15 +46,28 @@
                 5
             ],
             "piece_type": "settlement",
-            "player": "blue"
+            "player": 1
         }
     ],
     "pirate": null,
     "played_dev": 0,
-    "player_colors": {
-        "Player1": "red",
-        "Player2": "blue"
-    },
+    "player_sessions": {"Player1": 0, "Player2": 1},
+    "player_data": [
+      {
+        "color": "red",
+        "name": "Casey",
+        "cards": {"rsrc1": 4, "rsrc2": 2, "rsrc3": 1, "rsrc4": 2, "rsrc5": 2},
+        "trade_ratios": {"rsrc1": 2},
+        "unusable": {}
+      },
+      {
+        "color": "blue",
+        "name": "Andy",
+        "cards": {"rsrc1": 3, "rsrc2": 3, "rsrc3": 2, "rsrc4": 1, "rsrc5": 5},
+        "trade_ratios": {},
+        "unusable": {}
+      }
+    ],
     "roads": [
         {
             "location": [
@@ -67,7 +76,7 @@
                 5,
                 4
             ],
-            "player": "red",
+            "player": 0,
             "road_type": "road"
         },
         {
@@ -77,7 +86,7 @@
                 4,
                 6
             ],
-            "player": "blue",
+            "player": 1,
             "road_type": "road"
         }
     ],
@@ -226,16 +235,6 @@
         }
     ],
     "trade_offer": {},
-    "trade_ratios": {
-        "red": {
-            "rsrc1": 2
-        }
-    },
     "turn_idx": 0,
-    "turn_order": [
-        "red",
-        "blue"
-    ],
-    "turn_phase": "main",
-    "unusable": {}
+    "turn_phase": "main"
 }

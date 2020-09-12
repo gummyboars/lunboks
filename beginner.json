@@ -1,11 +1,19 @@
 {
   "game_phase": "main",
   "turn_phase": "main",
-  "player_colors": {
-    "Player1": "red"
-  },
-  "turn_order": [
-    "red"
+  "player_sessions": {"abcd": 0},
+  "player_data": [
+    {
+      "color": "red",
+      "name": "Bob",
+      "cards": {
+        "rsrc4": 1,
+        "rsrc1": 1,
+        "rsrc2": 2
+      },
+      "trade_ratios": {},
+      "unusable": {}
+    }
   ],
   "dice_roll": [
     2,
@@ -18,8 +26,8 @@
   ],
   "pirate": null,
   "trade_offer": {},
-  "counter_offers": {},
-  "discard_players": {},
+  "counter_offers": [null],
+  "discard_players": [0],
   "tiles": [
     {
       "location": [
@@ -399,7 +407,7 @@
         5
       ],
       "piece_type": "settlement",
-      "player": "red"
+      "player": 0
     },
     {
       "location": [
@@ -407,7 +415,7 @@
         6
       ],
       "piece_type": "settlement",
-      "player": "red"
+      "player": 0
     }
   ],
   "roads": [
@@ -419,7 +427,7 @@
         4
       ],
       "road_type": "road",
-      "player": "red"
+      "player": 0
     },
     {
       "location": [
@@ -429,7 +437,7 @@
         7
       ],
       "road_type": "road",
-      "player": "red"
+      "player": 0
     }
   ],
   "dev_cards": [
@@ -459,15 +467,6 @@
     "yearofplenty",
     "university"
   ],
-  "cards": {
-    "red": {
-      "rsrc4": 1,
-      "rsrc1": 1,
-      "rsrc2": 2
-    }
-  },
-  "trade_ratios": {},
-  "unusable": {},
   "dev_roads_placed": 0,
   "played_dev": 0,
   "turn_idx": 0

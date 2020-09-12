@@ -3,7 +3,7 @@ import json
 import os
 import random
 
-from game import InvalidMove
+from game import InvalidMove, InvalidPlayer, TooManyPlayers, ValidatePlayer
 
 RESOURCES = ["rsrc1", "rsrc2", "rsrc3", "rsrc4", "rsrc5"]
 PLAYABLE_DEV_CARDS = ["yearofplenty", "monopoly", "roadbuilding", "knight"]
@@ -287,12 +287,15 @@ class CatanState(object):
   GIVE = "give"
   TRADE_SIDES = [WANT, GIVE]
   LOCATION_ATTRIBUTES = ["tiles", "pieces", "roads"]
-  HIDDEN_ATTRIBUTES = [
-      "dev_cards", "cards", "trade_ratios", "unusable", "dev_roads_placed",
-      "played_dev", "turn_idx"]
+  HIDDEN_ATTRIBUTES = ["dev_cards", "dev_roads_placed", "played_dev", "turn_idx", "player_sessions"]
 
   def __init__(self):
-    self.player_colors = {}
+    # Players are identified by integers starting at 0. Sessions is a dict mapping the session
+    # number to the player index.
+    # Player data is just a sequential list of maps. Maps contain color, name, trade ratios,
+    # cards, and unusable dev cards.
+    self.player_sessions = {}
+    self.player_data = []
     self.tiles = {}
     self.ports = {}
     self.pieces = {}
@@ -300,18 +303,14 @@ class CatanState(object):
     self.robber = None
     self.pirate = None
     self.dev_cards = []
-    self.cards = collections.defaultdict(lambda: collections.defaultdict(int))
-    self.trade_ratios = collections.defaultdict(lambda: collections.defaultdict(lambda: 4))
-    self.unusable = collections.defaultdict(int)
     self.dev_roads_placed = 0
     self.played_dev = 0
-    self.discard_players = {}  # Map of player to number of cards they have.
+    self.discard_players = []  # Map of player to number of cards they have.
     self.rob_players = []  # List of players that can be robbed by this robber.
-    self.turn_idx = None
-    self.turn_order = []
+    self.turn_idx = 0
     self.dice_roll = None
     self.trade_offer = None
-    self.counter_offers = {}  # Map of player to counter offer.
+    self.counter_offers = []  # Map of player to counter offer.
     # Special values for counter-offers: not present in dictionary means they have not
     # yet made a counter-offer. An null/None counter-offer indicates that they have
     # rejected the trade offer. A counter-offer equal to the original means they accept.
@@ -322,22 +321,21 @@ class CatanState(object):
   def parse_json(json_str):
     gamedata = json.loads(json_str)
     cstate = CatanState()
-    defaultdict_attrs = ["cards", "trade_ratios", "unusable"]
 
     # Regular attributes
     for attr in cstate.__dict__:
-      if attr not in (CatanState.LOCATION_ATTRIBUTES + defaultdict_attrs + ["ports"]):
+      if attr not in (CatanState.LOCATION_ATTRIBUTES + ["player_data", "ports"]):
         setattr(cstate, attr, gamedata[attr])
 
-    # Defaultdicts should start empty and be updated with values from json.
-    for attr in defaultdict_attrs:
-      dictval = gamedata[attr]
-      for key, val in dictval.items():
-        if isinstance(val, dict):
-          # Preserve the type of the defaultdict entries.
-          getattr(cstate, attr)[key].update(val)
-        else:
-          getattr(cstate, attr)[key] = val
+    # Parse the players. TODO: make a player class.
+    for i, parsed_player in enumerate(gamedata["player_data"]):
+      cstate._add_player()
+      # Parse the special player attributes.
+      for attr in ["color", "name"]:
+        cstate.player_data[i][attr] = parsed_player[attr]
+      # Defaultdicts should start empty and be updated with values from json.
+      for attr in ["cards", "trade_ratios", "unusable"]:
+        cstate.player_data[i][attr].update(parsed_player[attr])
 
     # Location dictionaries are updated with their respective items.
     for tile_json in gamedata["tiles"]:
@@ -357,8 +355,9 @@ class CatanState(object):
     return json.dumps(self.json_repr(), cls=CustomEncoder)
 
   def json_repr(self):
+    # TODO: maybe don't hard-code this list.
     ret = dict([(name, getattr(self, name)) for name in
-      ["game_phase", "turn_phase", "player_colors", "turn_order", "dice_roll", "rob_players",
+      ["game_phase", "turn_phase", "player_data", "dice_roll", "rob_players",
        "robber", "pirate", "trade_offer", "counter_offers", "discard_players"]])
     more = dict([(name, list(getattr(self, name).values())) for name in self.LOCATION_ATTRIBUTES])
     ret.update(more)
@@ -388,68 +387,101 @@ class CatanState(object):
     ret["edges"] = list(edges.values())
     return ret
 
-  def for_player(self, current_player):
+  def for_player(self, player_session):
     data = self.json_for_player()
     data["type"] = "game_state"
-    data["turn"] = self.turn_order[self.turn_idx]
-    data["you"] = {"name": current_player}
+    data["turn"] = self.turn_idx
     data["card_counts"] = {}
     data["points"] = {}
     data["armies"] = {}
     data["longest_roads"] = {}
-    color = self.player_colors.get(current_player)
-    for player in self.turn_order:
+    for idx, player in enumerate(self.player_data):
       # TODO: fill these three in
-      data["points"][player] = 0
-      data["armies"][player] = 0
-      data["longest_roads"][player] = 0
-      count = sum(self.cards[player].get(rsrc, 0) for rsrc in RESOURCES)
-      dev_count = sum(self.cards[player].get(crd, 0) for crd in PLAYABLE_DEV_CARDS + VICTORY_CARDS)
-      data["card_counts"][player] = {"resource": count, "dev": dev_count}
-    if color:
-      data["cards"] = self.cards.get(color)
-      data["trade_ratios"] = self.trade_ratios.get(color)
-      data["you"].update({"color": color})
+      data["points"][idx] = 0
+      data["armies"][idx] = 0
+      data["longest_roads"][idx] = 0
+      count = sum(player["cards"].get(rsrc, 0) for rsrc in RESOURCES)
+      dev_count = sum(player["cards"].get(crd, 0) for crd in PLAYABLE_DEV_CARDS + VICTORY_CARDS)
+      data["card_counts"][idx] = {"resource": count, "dev": dev_count}
+
+    player_idx = self.player_sessions.get(player_session)
+    if player_idx is not None:
+      data["you"] = player_idx
+      data["cards"] = self.player_data[player_idx]["cards"]
+      data["trade_ratios"] = self.player_data[player_idx]["trade_ratios"]
     return json.dumps(data, cls=CustomEncoder)
 
-  def rename_player(self, old_player, new_player):
-    self.player_colors[new_player] = self.player_colors[old_player]
-    del self.player_colors[old_player]
+  def rename_player(self, player_idx, player_dict):
+    ValidatePlayer(player_dict)
+    player_name = player_dict["name"].strip()
+    if player_name == self.player_data[player_idx]["name"]:  # No name change.
+      return
+    used_names = set([player["name"] for player in self.player_data])
+    if player_name in used_names:
+      raise InvalidPlayer("There is already a player named %s" % player_name)
+    if len(player_name) > 50:
+      unused_names = set(["Joey", "Ross", "Chandler", "Phoebe", "Rachel", "Monica"]) - used_names
+      if unused_names:
+        new_name = random.choice(list(unused_names))
+        self.player_data[player_idx]["name"] = new_name
+        raise InvalidPlayer("Oh, is that how you want to play it? Well, you know what? I'm just gonna call you %s." % new_name)
+    if len(player_name) > 16:
+      raise InvalidPlayer("Max name length is 16.")
+    self.player_data[player_idx]["name"] = player_name
 
-  def remove_player(self, player):
-    del self.player_colors[player]
+  def disconnect_player(self, session):
+    # TODO: is this actually the right thing to do? maybe just hold onto it?
+    # del self.player_sessions[session]
+    pass
 
-  def add_player(self, player):
-    colors = ["red", "blue", "limegreen", "darkviolet", "saddlebrown", "cyan"]
-    for color in colors:
-      if color not in self.player_colors.values():
-        self.player_colors[player] = color
-        if color not in self.turn_order:
-          self.turn_order.append(color)
-        if self.turn_idx is None:
-          self.turn_idx = self.turn_order.index(color)
-        return
-    raise RuntimeError("There are too many players.")
+  def add_player(self, session):
+    if session in self.player_sessions and len(self.player_data) > self.player_sessions[session]:
+      return
+    if len(self.player_data) >= 4:
+      raise TooManyPlayers("There are too many players.")
+    next_player = self._add_player()
+    self.player_sessions[session] = next_player
 
-  def handle(self, data, player_name):
+  def _add_player(self):
+    colors = set(["red", "blue", "forestgreen", "darkviolet", "saddlebrown", "deepskyblue"])
+    unused_colors = colors - set([data["color"] for data in self.player_data])
+    if not unused_colors:
+      raise TooManyPlayers("There are too many players.")
+    next_color = list(unused_colors)[0]
+
+    next_player = len(self.player_data)
+    self.player_data.append({
+      "color": next_color,
+      "name": "Player%s" % (next_player + 1),
+      "cards": collections.defaultdict(int),
+      "trade_ratios": collections.defaultdict(lambda: 4),
+      "unusable": collections.defaultdict(int)})
+    self.discard_players.append(0)
+    self.counter_offers.append(None)
+    return next_player
+
+  def handle(self, session, data):
     # TODO list:
     # - pre-game "not started" state
     # - fix the number of players at the start of the game
-    # - save/restore functionality
     # - check buildings against players' total supply (e.g. 15 roads)
     # - check resources against total card supply
     # - longest road and largest army
     # - victory conditions
-    player = self.player_colors.get(player_name)
-    if not player:
+    player = self.player_sessions.get(session)
+    if player is None:
+      raise InvalidPlayer("Unknown player.")
+    if data.get("type") == "player":
+      self.rename_player(player, data.get("player"))
       return
+    player_name = self.player_data[player]["name"]
     if data.get("type") == "discard":
       self.handle_discard(data.get("selection"), player)
       return
     if data.get("type") == "counter_offer":
       self.handle_counter_offer(data.get("offer"), player)
       return
-    if self.turn_order[self.turn_idx] != player:
+    if self.turn_idx != player:
       raise InvalidMove("It is not %s's turn." % player_name)
     location = data.get("location")
     if data.get("type") == "roll_dice":
@@ -491,19 +523,19 @@ class CatanState(object):
     raise InvalidMove("location %s should be a tuple of size %s" % (location, num_entries))
 
   def handle_end_turn(self):
-    self.unusable.clear()
+    self.player_data[self.turn_idx]["unusable"].clear()
     self.played_dev = 0
     self.trade_offer = {}
-    self.counter_offers = {}
+    self.counter_offers = [None] * len(self.player_data)
     if self.game_phase == "main":
       self.turn_idx += 1
-      self.turn_idx = self.turn_idx % len(self.turn_order)
+      self.turn_idx = self.turn_idx % len(self.player_data)
       self.turn_phase = "dice"
       self.dice_roll = None
       return
     if self.game_phase == "place1":
       self.turn_phase = "settle"
-      if self.turn_idx == len(self.turn_order) - 1:
+      if self.turn_idx == len(self.player_data) - 1:
         self.game_phase = "place2"
         return
       self.turn_idx += 1
@@ -531,7 +563,7 @@ class CatanState(object):
     self.dice_roll = (red, white)
     if (red + white) == 7:
       discard_players = self._get_players_with_too_many_resources()
-      if discard_players:
+      if sum(discard_players):
         self.discard_players = discard_players
         self.turn_phase = "discard"
       else:
@@ -551,7 +583,7 @@ class CatanState(object):
     for corner in corners:
       maybe_piece = self.pieces.get(corner.as_tuple())
       if maybe_piece:
-        count = sum(self.cards[maybe_piece.player].get(rsrc, 0) for rsrc in RESOURCES)
+        count = sum(self.player_data[maybe_piece.player]["cards"].get(rsrc, 0) for rsrc in RESOURCES)
         if count > 0:
           robbable_players.add(maybe_piece.player)
     if len(robbable_players) > 1:
@@ -580,33 +612,34 @@ class CatanState(object):
   def _rob_player(self, rob_player, current_player):
     all_rsrc_cards = []
     for rsrc in RESOURCES:
-      all_rsrc_cards.extend([rsrc] * self.cards[rob_player].get(rsrc, 0))
+      all_rsrc_cards.extend([rsrc] * self.player_data[rob_player]["cards"].get(rsrc, 0))
     if len(all_rsrc_cards) <= 0:
       raise InvalidMove("You cannot rob from a player without any resources.")
     chosen_rsrc = random.choice(all_rsrc_cards)
-    self.cards[rob_player][chosen_rsrc] -= 1
-    self.cards[current_player][chosen_rsrc] += 1
+    self.player_data[rob_player]["cards"][chosen_rsrc] -= 1
+    self.player_data[current_player]["cards"][chosen_rsrc] += 1
 
+  # TODO: tell the player how many resources they need to discard
   def _get_players_with_too_many_resources(self):
-    the_players = {}
-    for player in self.cards:
-      count = sum(self.cards[player].get(rsrc, 0) for rsrc in RESOURCES)
+    card_counts = [0] * len(self.player_data)
+    for player, player_data in enumerate(self.player_data):
+      count = sum(player_data["cards"].get(rsrc, 0) for rsrc in RESOURCES)
       if count >= 8:
-        the_players[player] = count
-    return the_players
+        card_counts[player] = count
+    return card_counts
 
   def _check_resources(self, resources, player, action_string):
     errors = []
     for resource, count in resources:
-      if self.cards[player][resource] < count:
-        errors.append("%s {%s}" % (count - self.cards[player][resource], resource))
+      if self.player_data[player]["cards"][resource] < count:
+        errors.append("%s {%s}" % (count - self.player_data[player]["cards"][resource], resource))
     if errors:
       raise InvalidMove("You would need an extra %s to %s." % (", ".join(errors), action_string))
 
   def _remove_resources(self, resources, player, build_type):
     self._check_resources(resources, player, build_type)
     for resource, count in resources:
-      self.cards[player][resource] -= count
+      self.player_data[player]["cards"][resource] -= count
 
   def _check_road_building(self, location, player):
     left_corner = location.corner_left
@@ -746,9 +779,9 @@ class CatanState(object):
     port_type = self.ports.get(tuple(location))
     if port_type == "3":
       for rsrc in RESOURCES:
-        self.trade_ratios[player][rsrc] = min(self.trade_ratios[player][rsrc], 3)
+        self.player_data[player]["trade_ratios"][rsrc] = min(self.player_data[player]["trade_ratios"][rsrc], 3)
     elif port_type:
-      self.trade_ratios[player][port_type] = min(self.trade_ratios[player][port_type], 2)
+      self.player_data[player]["trade_ratios"][port_type] = min(self.player_data[player]["trade_ratios"][port_type], 2)
 
   def handle_city(self, location, player):
     # Check that this is the right part of the turn.
@@ -781,15 +814,15 @@ class CatanState(object):
     if self.turn_phase != "discard":
       raise InvalidMove("You cannot discard cards right now.")
     self._validate_selection(selection)
-    if player not in self.discard_players:
+    if self.discard_players[player] <= 0:
       raise InvalidMove("You do not need to discard any cards.")
     discard_count = sum([selection.get(rsrc, 0) for rsrc in RESOURCES])
     if discard_count != self.discard_players[player] // 2:
       raise InvalidMove("You have %s resource cards and must discard %s." %
                         (self.discard_players[player], self.discard_players[player] // 2))
     self._remove_resources(selection.items(), player, "discard those cards")
-    del self.discard_players[player]
-    if not self.discard_players:
+    self.discard_players[player] = 0
+    if sum(self.discard_players) == 0:
       self.turn_phase = "robber"
 
   def _validate_selection(self, selection):
@@ -809,9 +842,9 @@ class CatanState(object):
         raise InvalidMove("You must play the knight before you roll the dice or during the build/trade part of your turn.")
     else:
       self._check_main_phase("play a development card")
-    if self.cards[player][card_type] < 1:
+    if self.player_data[player]["cards"][card_type] < 1:
       raise InvalidMove("You do not have any %s cards." % card_type)
-    if self.cards[player][card_type] - self.unusable[card_type] < 1:
+    if self.player_data[player]["cards"][card_type] - self.player_data[player]["unusable"][card_type] < 1:
       raise InvalidMove("You cannot play development cards on the turn you buy them.")
     if self.played_dev:
       raise InvalidMove("You cannot play more than one development card per turn.")
@@ -826,7 +859,7 @@ class CatanState(object):
     else:
       # How would this even happen?
       raise InvalidMove("%s is not a playable development card." % card_type)
-    self.cards[player][card_type] -= 1
+    self.player_data[player]["cards"][card_type] -= 1
     self.played_dev += 1
 
   def _handle_knight(self):
@@ -840,7 +873,7 @@ class CatanState(object):
     if sum([resource_selection.get(key, 0) for key in RESOURCES]) != 2:
       raise InvalidMove("You must request exactly two resources.")
     for card_type, value in resource_selection.items():
-      self.cards[player][card_type] += value
+      self.player_data[player]["cards"][card_type] += value
 
   def _handle_monopoly(self, player, resource_selection):
     self._validate_selection(resource_selection)
@@ -856,17 +889,17 @@ class CatanState(object):
     if not card_type:
       # This should never happen, but you never know.
       raise InvalidMove("You must choose exactly one resource to monopolize.")
-    for opponent in self.cards:
-      if opponent == player:
+    for idx, opponent in enumerate(self.player_data):
+      if player == idx:
         continue
-      opp_count = self.cards[opponent][card_type]
-      self.cards[opponent][card_type] -= opp_count
-      self.cards[player][card_type] += opp_count
+      opp_count = self.player_data[opponent]["cards"][card_type]
+      self.player_data[opponent]["cards"][card_type] -= opp_count
+      self.player_data[player]["cards"][card_type] += opp_count
 
   def add_dev_card(self, player):
     card_type = self.dev_cards.pop()
-    self.cards[player][card_type] += 1
-    self.unusable[card_type] += 1
+    self.player_data[player]["cards"][card_type] += 1
+    self.player_data[player]["unusable"][card_type] += 1
 
   def _validate_trade(self, offer, player):
     """Validates a well-formed trade & that the player has enough resources."""
@@ -881,30 +914,28 @@ class CatanState(object):
         if not isinstance(count, int) or count < 0:
           raise InvalidMove("You must trade an non-negative integer quantity.")
     for rsrc, count in offer[self.GIVE].items():
-      if self.cards[player][rsrc] < count:
+      if self.player_data[player]["cards"][rsrc] < count:
         raise InvalidMove("You do not have enough {%s}." % rsrc)
 
   def handle_trade_offer(self, offer, player):
     self._check_main_phase("make a trade")
     self._validate_trade(offer, player)
     self.trade_offer = offer
-    counter_players = list(self.counter_offers.keys())
-    for p in counter_players:
-      del self.counter_offers[p]
+    self.counter_offers = [None] * len(self.player_data)
 
   def handle_counter_offer(self, offer, player):
-    if self.turn_order[self.turn_idx] == player:
+    if self.turn_idx == player:
       raise InvalidMove("You cannot make a counter-offer on your turn.")
     self._check_main_phase("make a counter-offer")
-    if offer is None:  # offer rejection
+    if offer == 0:  # offer rejection
       self.counter_offers[player] = offer
       return
     self._validate_trade(offer, player)
     self.counter_offers[player] = offer
 
   def handle_accept_counter(self, counter_offer, counter_player, player):
-    if counter_player not in self.player_colors.values():
-      raise InvalidMove("The player %s is unknown." % counter_player)
+    if counter_player < 0 or counter_player >= len(self.player_data):
+      raise InvalidMove("Invalid player.")
     if counter_player == player:
       raise InvalidMove("You cannot trade with yourself.")
     self._check_main_phase("make a trade")
@@ -932,13 +963,13 @@ class CatanState(object):
     self._validate_trade({self.WANT: their_want, self.GIVE: their_give}, counter_player)
 
     for rsrc, count in my_give.items():
-      self.cards[player][rsrc] -= count
-      self.cards[counter_player][rsrc] += count
+      self.player_data[player]["cards"][rsrc] -= count
+      self.player_data[counter_player]["cards"][rsrc] += count
     for rsrc, count in my_want.items():
-      self.cards[player][rsrc] += count
-      self.cards[counter_player][rsrc] -= count
+      self.player_data[player]["cards"][rsrc] += count
+      self.player_data[counter_player]["cards"][rsrc] -= count
 
-    self.counter_offers = {}
+    self.counter_offers = [None] * len(self.player_data)
     # TODO: Do we want to reset the trade offer here?
 
   def handle_trade_bank(self, offer, player):
@@ -950,7 +981,7 @@ class CatanState(object):
     for rsrc, give in offer[self.GIVE].items():
       if give == 0:
         continue
-      ratio = self.trade_ratios[player][rsrc]
+      ratio = self.player_data[player]["trade_ratios"][rsrc]
       if give % ratio != 0:
         raise InvalidMove("You must trade {%s} with the bank at a %s:1 ratio." % (rsrc, ratio))
       available += give / ratio
@@ -958,9 +989,9 @@ class CatanState(object):
       raise InvalidMove("You should receive %s resources, but you requested %s." % (available, requested))
     # Now, make the trade.
     for rsrc, want in offer[self.WANT].items():
-      self.cards[player][rsrc] += want
+      self.player_data[player]["cards"][rsrc] += want
     for rsrc, give in offer[self.GIVE].items():
-      self.cards[player][rsrc] -= give
+      self.player_data[player]["cards"][rsrc] -= give
 
   def distribute_resources(self, number):
     for tile in self.tiles.values():
@@ -973,16 +1004,16 @@ class CatanState(object):
         # TODO: handle cases where there's not enough in the supply.
         piece = self.pieces.get(corner_loc)
         if piece and piece.piece_type == "settlement":
-          self.cards[piece.player][tile.tile_type] += 1
+          self.player_data[piece.player]["cards"][tile.tile_type] += 1
         elif piece and piece.piece_type == "city":
-          self.cards[piece.player][tile.tile_type] += 2
+          self.player_data[piece.player]["cards"][tile.tile_type] += 2
 
   def give_second_resources(self, player, corner_loc):
     tile_locs = set([loc.as_tuple() for loc in corner_loc.get_tiles()])
     for tile_loc in tile_locs:
       tile = self.tiles.get(tile_loc)
       if tile and tile.number:
-        self.cards[player][tile.tile_type] += 1
+        self.player_data[player]["cards"][tile.tile_type] += 1
 
   def add_tile(self, tile):
     self.tiles[tile.location.as_tuple()] = tile

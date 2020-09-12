@@ -34,7 +34,7 @@ function draw() {
     drawPiece(pieces[i], context);
   }
   for (let i = 0; i < roads.length; i++) {
-    drawRoad(roads[i].location, roads[i].player, context);
+    drawRoad(roads[i].location, playerData[roads[i].player].color, context);
   }
   drawHover(context);
   drawRobber(context);
@@ -88,7 +88,7 @@ function drawDebug(ctx) {
 }
 function drawPiece(pieceData, ctx) {
   let canvasLoc = coordToCornerCenter(pieceData.location);
-  ctx.fillStyle = pieceData.player;
+  ctx.fillStyle = playerData[pieceData.player].color;
   if (pieceData.piece_type == "settlement") {
     ctx.beginPath();
     ctx.arc(canvasLoc.x, canvasLoc.y, pieceRadius, 0, Math.PI * 2, true);
@@ -141,7 +141,7 @@ function drawNumber(tileData, ctx) {
   }
 }
 function drawHover(ctx) {
-  if (turn != myColor) {
+  if (turn != myIdx) {
     return;
   }
   let canvas = document.getElementById("myCanvas");
@@ -236,7 +236,7 @@ function onclick(event) {
     ws.send(JSON.stringify(msg));
   }
   let clickPiece = getCorner(event.clientX, event.clientY, pieces);
-  if (clickPiece != null && pieces[clickPiece].player == myColor) {
+  if (clickPiece != null && pieces[clickPiece].player == myIdx) {
     let msg = {
       type: "city",
       location: pieces[clickPiece].location,

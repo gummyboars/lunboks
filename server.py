@@ -12,6 +12,7 @@ import threading
 import time
 import traceback
 import urllib
+import uuid
 import websockets
 
 import catan
@@ -48,10 +49,24 @@ class MyHandler(BaseHTTPRequestHandler):
       self.send_error(HTTPStatus.NOT_FOUND.value, "File %s not found" % self_path)
       return
 
-    end = time.time()
-
     self.send_response(HTTPStatus.OK.value)
+
+    session = None
+    cookie_str = self.headers["Cookie"]
+    if cookie_str:
+      cookies = dict([x.strip().split("=", 1) for x in cookie_str.split(";")])
+      session = cookies.get("session")
+      try:
+        uuid.UUID(session)
+      except (TypeError, ValueError):
+        session = None
+    if not session:
+      new_session = "session=%s" % (uuid.uuid4())
+      self.send_header("Set-Cookie", new_session)
+      print("setting session cookie %s" % new_session)
+
     self.end_headers()
+    end = time.time()
 
     with open(path, 'rb') as w:
       self.wfile.write(w.read())
@@ -82,6 +97,9 @@ class MyHandler(BaseHTTPRequestHandler):
       try:
         cstate = catan.CatanState.parse_json(data)
       except Exception as e:
+        print(sys.exc_info()[0])
+        print(sys.exc_info()[1])
+        traceback.print_tb(sys.exc_info()[2])
         self.send_error(HTTPStatus.BAD_REQUEST.value, str(e))
         return
       GAME_STATE = cstate
@@ -94,84 +112,63 @@ class MyHandler(BaseHTTPRequestHandler):
 
 
 async def PushState():
-  for name, ws in GLOBAL_WS.items():
-    await ws.send(GAME_STATE.for_player(name))
+  for session, ws_list in GLOBAL_WS.items():
+    for ws in ws_list:
+      await ws.send(GAME_STATE.for_player(session))
 
 
-async def PushError(player, e):
-  await GLOBAL_WS[player].send(json.dumps({"type": "error", "message": e}))
+async def PushError(ws, e):
+  await ws.send(json.dumps({"type": "error", "message": e}))
 
 
 async def WebLoop(websocket, path):
-  name = None
-  for i in range(len(GLOBAL_WS) + 1):
-    name = "Player%s" % (i+1) 
-    if name not in GLOBAL_WS:
-      break
-  else:
-    await websocket.close()
-    return
-  GLOBAL_WS[name] = websocket
-  GAME_STATE.add_player(name)
-  print("added %s (%s) to the global registry" % (name, websocket))
+  # TODO: possible cross-site request forgery of websocket data
+  # https://christian-schneider.net/CrossSiteWebSocketHijacking.html
+  cookie_str = websocket.request_headers["Cookie"]
+  cookies = dict([x.strip().split("=", 1) for x in cookie_str.split(";")])
+  session = cookies.get("session")
+  missing_cookie = False
+  if not session:
+    session = str(uuid.uuid4())
+    missing_cookie = True
+  # Add this user to the global registry.
+  if session not in GLOBAL_WS:
+    GLOBAL_WS[session] = set([])
+  GLOBAL_WS[session].add(websocket)
+  print("added %s to the global registry" % session)
+
+  if missing_cookie:
+    await PushError(websocket, "Session cookie not set; you will not be able to resume if you close this tab.")
+  try:
+    GAME_STATE.add_player(session)
+  except game.TooManyPlayers:
+    await PushError(websocket, "The game has too many players. You will be in observer mode.")
   await PushState()
   try:
     async for raw in websocket:
       try:
         data = json.loads(raw, object_pairs_hook=collections.OrderedDict)
       except Exception as e:
-        await PushError(str(e))
+        await PushError(websocket, str(e))
         continue
-      if data.get("type") == "player":
-        playerdata = data.get("player")
-        if isinstance(playerdata, dict) and isinstance(playerdata.get("name"), str):
-          if not playerdata["name"].isprintable():
-            await PushError(name, "Player names must be printable.")
-            continue
-          if playerdata["name"] in GLOBAL_WS:
-            # Check to see if it's just duplicating the name they already have.
-            if GLOBAL_WS[playerdata["name"]] == websocket:
-              continue
-            await PushError(name, "There is already a player named %s. Nice try." % playerdata["name"])
-            continue
-          if len(playerdata["name"]) > 50:
-            friend_names = ["Joey", "Ross", "Chandler", "Phoebe", "Rachel", "Monica"]
-            random.shuffle(friend_names)
-            new_name = None
-            for some_name in friend_names:
-              if some_name not in GLOBAL_WS:
-                new_name = some_name
-                break
-            if new_name:
-              await PushError(name, "Oh, is that how you want to play it? Well, you know what? I'm just gonna call you %s." % new_name)
-              playerdata["name"] = new_name
-          if len(playerdata["name"]) > 16:
-            await PushError(name, "Max name length is 16.")
-            continue
-          del GLOBAL_WS[name]
-          print("player %s changing name to %s" % (name, playerdata["name"]))
-          GAME_STATE.rename_player(name, playerdata["name"])
-          name = playerdata["name"]
-          GLOBAL_WS[name] = websocket
-        else:
-          await PushError("invalid player data")
-          continue
-      else:
-        try:
-          GAME_STATE.handle(data, name)
-        except (game.InvalidMove, AssertionError) as e:
-          await PushError(name, str(e))
-        except Exception as e:
-          print(sys.exc_info()[0])
-          print(sys.exc_info()[1])
-          traceback.print_tb(sys.exc_info()[2])
-          await PushError(name, "unexpected error of type %s: %s" % (sys.exc_info()[0], sys.exc_info()[1]))
+      try:
+        GAME_STATE.handle(session, data)
+      except (game.InvalidMove, game.InvalidPlayer, game.TooManyPlayers, AssertionError) as e:
+        await PushError(websocket, str(e))
+        # Intentionally fall through so that we can push the new state.
+      except Exception as e:
+        print(sys.exc_info()[0])
+        print(sys.exc_info()[1])
+        traceback.print_tb(sys.exc_info()[2])
+        await PushError(websocket, "unexpected error of type %s: %s" % (sys.exc_info()[0], sys.exc_info()[1]))
+        continue
 
       await PushState()
   finally:
-    print("removing %s (%s) from the global registry" % (name, websocket))
-    del GLOBAL_WS[name]
-    GAME_STATE.remove_player(name)
+    print("removing %s from the global registry" % session)
+    GLOBAL_WS[session].remove(websocket)
+    # TODO: figure out the right model here
+    # GAME_STATE.disconnect_player(session)
 
 
 def ws_main(loop):

@@ -96,9 +96,8 @@ resourceSelectionUI = {
 };
 
 // Game state.
-myColor = null;
-playerColors = null;
-turnOrder = [];
+myIdx = null;
+playerData = [];
 tiles = [];
 corners = [];
 pieces = [];
@@ -124,7 +123,7 @@ resourceSelectorActive = false;
 resourceSelectorType = null;  // values are tradeOffer, tradeBank, tradeCounterOffer, dev, and discard
 resourceSelection = {"top": {}, "bottom": {}};
 tradeActiveOffer = {"want": {}, "give": {}};  // null until someone makes an offer.
-counterOffers = {};
+counterOffers = [];
 devCardType = null;  // knight, yearofplenty, roadbuilding, monopoly
 
 
@@ -205,7 +204,7 @@ function cancelSelection(event) {
   if (resourceSelectorType == "tradeCounterOffer") {
     let msg = {
       type: "counter_offer",
-      offer: null,
+      offer: 0,
     };
     ws.send(JSON.stringify(msg));
     hideSelectorWindow();
@@ -269,9 +268,6 @@ function updateSelectCounts() {
     }
   }
 }
-function comparePlayers(nameA, nameB) {
-  return turnOrder.indexOf(playerColors[nameA]) - turnOrder.indexOf(playerColors[nameB]);
-}
 function updateSelectSummary() {
   // TODO: fix the width of these summary windows and don't let them make the whole
   // resource popup wider when the user selects a ridiculous number of resources.
@@ -287,7 +283,7 @@ function updateSelectSummary() {
   leftText.firstChild.innerText = document.getElementById("bottomselecttitle").innerText;
   rightText.firstChild.innerText = document.getElementById("topselecttitle").innerText;
   let mySelection;
-  if (turn == myColor) {
+  if (turn == myIdx) {
     mySelection = tradeActiveOffer;
   } else {
     mySelection = {"want": resourceSelection["top"], "give": resourceSelection["bottom"]};
@@ -333,13 +329,11 @@ function updateCounterOfferSummary() {
   while (container.getElementsByClassName("countersummary").length) {
     container.removeChild(container.getElementsByClassName("countersummary")[0]);
   }
-  let playerNames = Object.keys(playerColors);
-  playerNames.sort(comparePlayers);
-  for (let p of playerNames) {
-    let pColor = playerColors[p];
-    if (pColor == myColor) {
+  for (let i = 0; i < playerData.length; i++) {
+    if (i == myIdx) {
       continue;
     }
+    let playerIdx = i;  // Capture for onclick function.
     let leftSide = "want";
     let rightSide = "give";
     let newsummary = document.createElement("DIV");
@@ -349,8 +343,8 @@ function updateCounterOfferSummary() {
     leftText.classList.add("summaryfixed");
     let newp = document.createElement("P");
     let namespan = document.createElement("SPAN");
-    namespan.innerText = p;
-    namespan.style.color = pColor;
+    namespan.innerText = playerData[i].name;
+    namespan.style.color = playerData[i].color;
     namespan.style.fontWeight = "bold";
     let textspan = document.createElement("SPAN");
     textspan.innerText = leftSide == "want" ? " wants" : " offers";
@@ -359,10 +353,10 @@ function updateCounterOfferSummary() {
     newp.appendChild(textspan);
     leftText.appendChild(newp);
     let showMore = true;
-    let canAccept = (myColor == turn);
-    if (pColor != turn) {
-      var counterOffer = counterOffers[pColor];
-      if (counterOffer === undefined) {
+    let canAccept = (myIdx == turn);
+    if (i != turn) {
+      var counterOffer = counterOffers[i];
+      if (counterOffer === null) {
         textspan.innerText = " is considering...";
         canAccept = false;
         showMore = false;
@@ -387,8 +381,8 @@ function updateCounterOfferSummary() {
       rightText.classList.add("summaryfixed");
       newp = document.createElement("P");
       namespan = document.createElement("SPAN");
-      namespan.innerText = p;
-      namespan.style.color = pColor;
+      namespan.innerText = playerData[i].name;
+      namespan.style.color = playerData[i].color;
       namespan.style.fontWeight = "bold";
       textspan = document.createElement("SPAN");
       textspan.innerText = rightSide == "want" ? " wants" : " offers";
@@ -406,13 +400,13 @@ function updateCounterOfferSummary() {
       let summaryRight = document.createElement("DIV");
       summaryRight.classList.add("summaryright");
       summaryRight.classList.add("summarypanel");
-      if (pColor == turn) {
+      if (i == turn) {
         addSelectionToPanel(tradeActiveOffer[leftSide], summaryLeft);
         addSelectionToPanel(tradeActiveOffer[rightSide], summaryRight);
         newsummary.style.order = "-1";
-      } else if (counterOffers[pColor]) {
-        addSelectionToPanel(counterOffers[pColor][leftSide], summaryLeft);
-        addSelectionToPanel(counterOffers[pColor][rightSide], summaryRight);
+      } else if (counterOffers[i]) {
+        addSelectionToPanel(counterOffers[i][leftSide], summaryLeft);
+        addSelectionToPanel(counterOffers[i][rightSide], summaryRight);
       }
       centerText.appendChild(newp);
       newsummary.appendChild(summaryLeft);
@@ -425,7 +419,7 @@ function updateCounterOfferSummary() {
       newsummary.classList.add("selectable");
       newsummary.classList.add("acceptable");
       newsummary.onclick = function(event) {
-        acceptCounter(event, pColor, counterOffers[pColor]);
+        acceptCounter(event, playerIdx, counterOffers[i]);
       }
     }
     container.appendChild(newsummary);
@@ -433,11 +427,11 @@ function updateCounterOfferSummary() {
 }
 function toggleTradeWindow(partner) {
   let selectorType;
-  if (turn != myColor && partner == "player") {
+  if (turn != myIdx && partner == "player") {
     selectorType = "tradeCounterOffer";
-  } else if (turn == myColor && partner == "player") {
+  } else if (turn == myIdx && partner == "player") {
     selectorType = "tradeOffer";
-  } else if (turn == myColor && partner == "bank") {
+  } else if (turn == myIdx && partner == "bank") {
     selectorType = "tradeBank";
   } else {
     return;
@@ -530,7 +524,7 @@ function maybeShowActiveTradeOffer(oldActiveOffer) {
   // Update any counter-offers.
   updateSelectCounts();
   // Do not change the trade window for the player offering the trade.
-  if (turn == myColor) {
+  if (turn == myIdx) {
     return;
   }
   // Do nothing when the trade hasn't actually changed.
@@ -544,7 +538,7 @@ function maybeShowActiveTradeOffer(oldActiveOffer) {
     shouldCopy = true;
   }
   // If they haven't touched the trade offer and haven't made a counter offer, update it.
-  if (!counterOffers[myColor] && areOffersEqual(oldActiveOffer, {want: resourceSelection["top"], give: resourceSelection["bottom"]}, true)) {
+  if (!counterOffers[myIdx] && areOffersEqual(oldActiveOffer, {want: resourceSelection["top"], give: resourceSelection["bottom"]}, true)) {
     shouldCopy = true;
   }
   // If they have no selection (e.g. if the window was already open when the offer was made),
@@ -553,15 +547,15 @@ function maybeShowActiveTradeOffer(oldActiveOffer) {
     shouldCopy = true;
   }
   if (shouldCopy) {
-    if (counterOffers[myColor]) {
-      copyPreviousCounterOffer(counterOffers[myColor]);
+    if (counterOffers[myIdx]) {
+      copyPreviousCounterOffer(counterOffers[myIdx]);
     } else {
       copyActiveOffer();
     }
   }
   updateSelectCounts();
   if (tradeActiveOffer && ((tradeActiveOffer.want && Object.keys(tradeActiveOffer.want).length) || (tradeActiveOffer.give && Object.keys(tradeActiveOffer.give).length))) {
-    if (counterOffers[myColor] !== null) {
+    if (counterOffers[myIdx] != 0) {
       resourceSelectorType = "tradeCounterOffer";
       showResourceUI(resourceSelectorType);
     }
@@ -591,7 +585,7 @@ function updateTradeButtons() {
     }
   }
   // Disable buttons if it's not the player's turn.
-  if (turn != myColor) {
+  if (turn != myIdx) {
     disableButton(bankButton);
     // Disable unless there is an active trade offer.
     if (!tradeActiveOffer || !(tradeActiveOffer["want"] || tradeActiveOffer["give"])) {
@@ -612,7 +606,7 @@ function enableButton(elem) {
   elem.disabled = false;
 }
 function maybeShowDiscardWindow() {
-  if (turnPhase == "discard" && discardPlayers[myColor]) {
+  if (turnPhase == "discard" && discardPlayers[myIdx]) {
     if (resourceSelectorType != "discard") {
       // Clear selection counts only if we just popped the window up.
       clearResourceSelection("bottom");
@@ -626,7 +620,7 @@ function maybeShowDiscardWindow() {
 }
 function maybeShowRobWindow() {
   let playerpopup = document.getElementById("playerpopup");
-  if (turnPhase == "rob" && turn == myColor) {
+  if (turnPhase == "rob" && turn == myIdx) {
     while (playerpopup.firstChild) {
       playerpopup.removeChild(playerpopup.firstChild);
     }
@@ -634,11 +628,9 @@ function maybeShowRobWindow() {
     titleDiv.innerText = "Select a player to steal from";
     titleDiv.style.padding = "5px";
     playerpopup.appendChild(titleDiv);
-    let playerNames = Object.keys(playerColors);
-    playerNames.sort(comparePlayers);
-    for (let robPlayer of playerNames) {
-      let pColor = playerColors[robPlayer];
-      if (!robPlayers.includes(pColor)) {
+    for (let i = 0; i < playerData.length; i++) {
+      let playerIdx = i;  // capture for onclick function.
+      if (!robPlayers.includes(i)) {
         continue;
       }
       let selectDiv = document.createElement("DIV");
@@ -656,9 +648,9 @@ function maybeShowRobWindow() {
       nameDiv.style.display = "flex";
       nameDiv.style.flexDirection = "row";
       nameDiv.style.justifyContent = "flex-start";
-      nameDiv.style.color = pColor;
+      nameDiv.style.color = playerData[i].color;
       nameDiv.style.fontWeight = "bold";
-      nameDiv.innerText = robPlayer;
+      nameDiv.innerText = playerData[i].name;
       nameOuter.appendChild(nameDiv);
       let cardsOuter = document.createElement("DIV");
       cardsOuter.classList.add("summarypanel");
@@ -670,14 +662,14 @@ function maybeShowRobWindow() {
       cardsDiv.style.flexDirection = "row";
       cardsDiv.style.justifyContent = "flex-end";
       cardsDiv.style.width = "100%";
-      updatePlayerCardInfo(pColor, cardsDiv, false);
+      updatePlayerCardInfo(i, cardsDiv, false);
       cardsOuter.appendChild(cardsDiv);
       selectDiv.appendChild(nameOuter);
       selectDiv.appendChild(cardsOuter);
       selectDiv.onclick = function(e) {
         let msg = {
           type: "rob",
-          player: pColor,
+          player: playerIdx,
         };
         ws.send(JSON.stringify(msg));
       }
@@ -693,7 +685,7 @@ function maybeShowRobWindow() {
   }
 }
 function rollDice() {
-  if (turn != myColor) {
+  if (turn != myIdx) {
     return;
   }
   let msg = {
@@ -797,7 +789,7 @@ function showResourceUI(uiType) {
     }
   }
   resourceSelectorActive = true;
-  if (resourceSelectorType == "tradeOffer" && turn == myColor) {
+  if (resourceSelectorType == "tradeOffer" && turn == myIdx) {
     rememberActiveOffer();
   }
   updateSelectCounts();
@@ -845,7 +837,7 @@ function onmsg(event) {
     firstMsg = true;
   }
   // data.type should be game_state now - maybe handle more later
-  playerColors = data.player_colors;
+  playerData = data.player_data;
   gamePhase = data.game_phase;
   turnPhase = data.turn_phase;
   tiles = data.tiles;
@@ -862,28 +854,21 @@ function onmsg(event) {
   roads = data.roads;
   let oldTurn = turn;
   turn = data.turn;
-  turnOrder = data.turn_order;
   discardPlayers = data.discard_players;
   let oldActiveOffer = tradeActiveOffer;
   tradeActiveOffer = data.trade_offer;
   counterOffers = data.counter_offers;
   robPlayers = data.rob_players;
-  if (data.you) {
-    myColor = data.you.color;
+  if ("you" in data) {
+    myIdx = data.you;
   }
   if (firstMsg) {
     centerCanvas();
     initPlayerData();
-    initializePlayerName();
   }
-  if (data.you) {
-    if (document.getElementById('nameInput').value == data.you.name) {
-      if (getCookie("playername") != data.you.name) {
-        document.cookie = "playername=" + data.you.name;
-      }
-    }
-    if (!document.getElementById('nameInput').value) {
-      document.getElementById('nameInput').value = data.you.name;
+  if (myIdx != null) {
+    if (document.getElementById('nameInput') != document.activeElement) {
+      document.getElementById('nameInput').value = playerData[myIdx].name;
     }
     fixNameSize(null);
   }
@@ -893,8 +878,8 @@ function onmsg(event) {
   updateUI("endturn");
   updateTradeButtons();
   updatePlayerData();
-  if (firstMsg && counterOffers[myColor]) {
-    copyPreviousCounterOffer(counterOffers[myColor]);
+  if (firstMsg && counterOffers[myIdx]) {
+    copyPreviousCounterOffer(counterOffers[myIdx]);
   }
   maybeShowActiveTradeOffer(oldActiveOffer);
   if (oldTurn != null && oldTurn != turn) {
@@ -904,7 +889,7 @@ function onmsg(event) {
   maybeShowRobWindow();
 }
 function updateUI(elemName) {
-  if (gamePhase != "main" || turn != myColor || turnPhase != "main") {
+  if (gamePhase != "main" || turn != myIdx || turnPhase != "main") {
     document.getElementById(elemName).classList.remove("selectable");
     document.getElementById(elemName).classList.add("disabled");
     document.getElementById(elemName).disabled = true;
@@ -928,7 +913,7 @@ function updateDice() {
     document.getElementById("reddie").firstChild.firstChild.innerText = diceRoll[0];
     document.getElementById("whitedie").firstChild.firstChild.innerText = diceRoll[1];
   }
-  if (turn != myColor) {
+  if (turn != myIdx) {
     diceEl.classList.remove("selectable");
     diceEl.classList.add("unallowed");
   } else {
@@ -956,25 +941,23 @@ function initPlayerData() {
   while (rightUI.firstChild) {
     rightUI.removeChild(rightUI.firstChild);
   }
-  let playerNames = Object.keys(playerColors);
-  playerNames.sort(comparePlayers);
-  for (let p of playerNames) {
-    createPlayerData(p);
+  for (let i = 0; i < playerData.length; i++) {
+    createPlayerData(i);
   }
   fixNameSize(null);
 }
-function createPlayerData(p) {
+function createPlayerData(i) {
   let rightUI = document.getElementById("uiright");
-  let pColor = playerColors[p];
+  let pColor = playerData[i].color;
   let newdiv = document.createElement("DIV");
   newdiv.style.background = pColor;
   newdiv.classList.add(pColor + "player");
   newdiv.classList.add("playerinfo");
 
-  let username = p;
+  let username = playerData[i].name;
   let topText = document.createElement("DIV");
   topText.classList.add("playername");
-  if (pColor == myColor) {
+  if (i == myIdx) {
     let sizeCalculator = document.createElement("SPAN");
     sizeCalculator.id = "sizeCalculator";
     sizeCalculator.classList.add("hide");
@@ -1022,10 +1005,8 @@ function createPlayerData(p) {
 }
 function updatePlayerData() {
   let rightUI = document.getElementById("uiright");
-  let playerNames = Object.keys(playerColors);
-  playerNames.sort(comparePlayers);
-  for (let p of playerNames) {
-    let pColor = playerColors[p];
+  for (let i = 0; i < playerData.length; i++) {
+    let pColor = playerData[i].color;
     let thediv = null;
     for (let somediv of rightUI.getElementsByClassName("playerinfo")) {
       if (somediv.classList.contains(pColor + "player")) {
@@ -1034,11 +1015,11 @@ function updatePlayerData() {
       }
     }
     if (!thediv) {
-      thediv = createPlayerData(p);
+      thediv = createPlayerData(i);
     }
-    if (pColor != myColor) {
+    if (i != myIdx) {
       let namediv = thediv.getElementsByClassName("nametext")[0];
-      namediv.innerText = p;
+      namediv.innerText = playerData[i].name;
     }
 
     let turnMarker = thediv.getElementsByClassName("turnmarker")[0];
@@ -1047,7 +1028,7 @@ function updatePlayerData() {
       continue;
     }
     if (turnPhase == "discard") {
-      if (discardPlayers[pColor]) {
+      if (discardPlayers[i]) {
         phaseMarker.style.display = "block";
         phaseMarker.innerText = "🖐️";
       } else {
@@ -1055,7 +1036,7 @@ function updatePlayerData() {
       }
       continue;
     }
-    if (turn == pColor) {
+    if (turn == i) {
       turnMarker.style.display = "block";
       phaseMarker.style.display = "block";
       if (turnPhase == "robber") {
@@ -1078,18 +1059,18 @@ function updatePlayerData() {
       phaseMarker.style.display = "none";
     }
     let cardDiv = thediv.getElementsByClassName("cardinfo")[0];
-    updatePlayerCardInfo(pColor, cardDiv, true);
+    updatePlayerCardInfo(i, cardDiv, true);
   }
   fixNameSize(null);
 }
-function updatePlayerCardInfo(pColor, cardDiv, showDev) {
+function updatePlayerCardInfo(idx, cardDiv, showDev) {
   while (cardDiv.firstChild) {
     cardDiv.removeChild(cardDiv.firstChild);
   }
-  if (!cardCounts[pColor]) {
+  if (!cardCounts[idx]) {
     return;
   }
-  if (showDev && cardCounts[pColor]["resource"] && cardCounts[pColor]["dev"]) {
+  if (showDev && cardCounts[idx]["resource"] && cardCounts[idx]["dev"]) {
     let sepDiv = document.createElement("DIV");
     sepDiv.classList.add("cardseparator");
     sepDiv.style.width = summaryCardWidth / 2 + "px";
@@ -1104,7 +1085,7 @@ function updatePlayerCardInfo(pColor, cardDiv, showDev) {
     typeList = ["resource"];
   }
   for (let cardType of typeList) {
-    for (let i = 0; i < cardCounts[pColor][cardType]; i++) {
+    for (let i = 0; i < cardCounts[idx][cardType]; i++) {
       let contDiv = document.createElement("DIV");
       contDiv.classList.add("cardback");
       contDiv.style.order = orders[cardType];
@@ -1113,7 +1094,7 @@ function updatePlayerCardInfo(pColor, cardDiv, showDev) {
       backImg.width = summaryCardWidth;
       backImg.height = summaryCardHeight;
       contDiv.appendChild(backImg);
-      if (i == cardCounts[pColor][cardType]-1) {
+      if (i == cardCounts[idx][cardType]-1) {
         contDiv.style.flex = "0 0 auto";
       }
       cardDiv.appendChild(contDiv);
@@ -1243,7 +1224,7 @@ function initializeImageLocations() {
   }
 }
 function initializeNames() {
-  let overrides = JSON.parse(getCookie("names") || "");
+  let overrides = JSON.parse(getCookie("names") || "{}");
   if (!overrides) {
     return;
   }
@@ -1255,14 +1236,6 @@ function initializeNames() {
   }
   for (let name in newNames) {
     globalNames[name] = newNames[name];
-  }
-}
-function initializePlayerName() {
-  let pName = getCookie("playername");
-  if (pName) {
-    document.getElementById("nameInput").value = pName;
-    fixNameSize(null);
-    login(null);
   }
 }
 initializeImageLocations();
