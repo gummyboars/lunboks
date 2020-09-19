@@ -50,6 +50,9 @@ class Location(object):
   def __eq__(self, other):
     return self.__class__ == other.__class__ and self.json_repr() == other.json_repr()
 
+  def __hash__(self):
+    return hash(self.as_tuple())
+
 
 class TileLocation(Location):
 
@@ -155,18 +158,19 @@ class CornerLocation(Location):
           CornerLocation(self.x + 1, self.y + 1),
       ]
 
+  def get_edge(self, other_corner):
+    """Returns edge coordinates linking this corner to the other corner."""
+    if other_corner.x < self.x:
+      return EdgeLocation(other_corner, self)
+    else:
+      return EdgeLocation(self, other_corner)
+
   def get_edges(self):
     """Returns edge coordinates of edges adjacent to this corner.
 
     Edge coordinates must be given left-to-right.
     """
-    edges = []
-    for corner in self.get_adjacent_corners():
-      if corner.x < self.x:
-        edges.append(EdgeLocation(corner, self))
-      else:
-        edges.append(EdgeLocation(self, corner))
-    return edges
+    return [self.get_edge(corner) for corner in self.get_adjacent_corners()]
 
 
 class EdgeLocation(object):
@@ -199,6 +203,9 @@ class EdgeLocation(object):
 
   def __eq__(self, other):
     return self.__class__ == other.__class__ and self.json_repr() == other.json_repr()
+
+  def __hash__(self):
+    return hash(self.as_tuple())
 
   def get_adjacent_tiles(self):
     """Returns the two TileLocations that share a border at this edge."""
@@ -281,6 +288,50 @@ class Tile(object):
     return str(self.json_repr())
 
 
+class CatanPlayer(object):
+
+  def __init__(self, color, name):
+    self.color = color
+    self.name = name
+    self.knights_played = 0
+    self.longest_route = 0
+    self.cards = collections.defaultdict(int)
+    self.trade_ratios = collections.defaultdict(lambda: 4)
+    self.unusable = collections.defaultdict(int)
+
+  def json_repr(self):
+    return {attr: getattr(self, attr) for attr in self.__dict__}
+
+  @staticmethod
+  def parse_json(value):
+    defaultdict_attrs = ["cards", "trade_ratios", "unusable"]
+    p = CatanPlayer(None, None)
+    for attr in defaultdict_attrs:
+      getattr(p, attr).update(value[attr])
+    for attr in set(p.__dict__.keys()) - set(defaultdict_attrs):
+      setattr(p, attr, value[attr])
+    return p
+
+  def __str__(self):
+    return str(self.json_repr())
+
+  def json_for_player(self):
+    return {
+        "color": self.color,
+        "name": self.name,
+        "armies": self.knights_played,
+        "longest_route": self.longest_route,
+        "resource_cards": self.resource_card_count(),
+        "dev_cards": self.dev_card_count(),
+    }
+
+  def resource_card_count(self):
+    return sum([self.cards[x] for x in RESOURCES])
+
+  def dev_card_count(self):
+    return sum([self.cards[x] for x in PLAYABLE_DEV_CARDS + VICTORY_CARDS])
+
+
 class CatanState(object):
 
   WANT = "want"
@@ -308,6 +359,8 @@ class CatanState(object):
     self.discard_players = []  # Map of player to number of cards they have.
     self.rob_players = []  # List of players that can be robbed by this robber.
     self.turn_idx = 0
+    self.largest_army_player = None
+    self.longest_route_player = None
     self.dice_roll = None
     self.trade_offer = None
     self.counter_offers = []  # Map of player to counter offer.
@@ -327,15 +380,11 @@ class CatanState(object):
       if attr not in (CatanState.LOCATION_ATTRIBUTES + ["player_data", "ports"]):
         setattr(cstate, attr, gamedata[attr])
 
-    # Parse the players. TODO: make a player class.
+    # Parse the players. TODO: move more info inside player class, avoid this special case?
     for i, parsed_player in enumerate(gamedata["player_data"]):
-      cstate._add_player()
-      # Parse the special player attributes.
-      for attr in ["color", "name"]:
-        cstate.player_data[i][attr] = parsed_player[attr]
-      # Defaultdicts should start empty and be updated with values from json.
-      for attr in ["cards", "trade_ratios", "unusable"]:
-        cstate.player_data[i][attr].update(parsed_player[attr])
+      cstate.player_data.append(CatanPlayer.parse_json(parsed_player))
+      cstate.discard_players.append(0)
+      cstate.counter_offers.append(None)
 
     # Location dictionaries are updated with their respective items.
     for tile_json in gamedata["tiles"]:
@@ -357,18 +406,21 @@ class CatanState(object):
   def json_repr(self):
     # TODO: maybe don't hard-code this list.
     ret = dict([(name, getattr(self, name)) for name in
-      ["game_phase", "turn_phase", "player_data", "dice_roll", "rob_players",
+      ["game_phase", "turn_phase", "dice_roll", "rob_players",
        "robber", "pirate", "trade_offer", "counter_offers", "discard_players"]])
     more = dict([(name, list(getattr(self, name).values())) for name in self.LOCATION_ATTRIBUTES])
     ret.update(more)
     hidden = dict([(name, getattr(self, name)) for name in self.HIDDEN_ATTRIBUTES])
     ret.update(hidden)
+    ret["player_data"] = [player.json_repr() for player in self.player_data]
     return ret
 
   def json_for_player(self):
     ret = self.json_repr()
     for name in self.HIDDEN_ATTRIBUTES:
       del ret[name]
+    del ret["player_data"]
+
     corners = {}
     # TODO: instead of sending a list of corners, we should send something like
     # a list of legal moves for tiles, corners, and edges.
@@ -385,49 +437,57 @@ class CatanState(object):
       for edge in corner["location"].get_edges():
         edges[edge.as_tuple()] = {"location": edge}
     ret["edges"] = list(edges.values())
+
+    ret["player_data"] = [player.json_for_player() for player in self.player_data]
+    for idx in range(len(self.player_data)):
+      ret["player_data"][idx]["points"] = self.player_points(idx, visible=True)
     return ret
+
+  def player_points(self, player_idx, visible):
+    count = 0
+    for piece in self.pieces.values():
+      if piece.player == player_idx:
+        if piece.piece_type == "settlement":
+          count += 1
+        elif piece.piece_type == "city":
+          count += 2
+    if self.largest_army_player == player_idx:
+      count += 2
+    if self.longest_route_player == player_idx:
+      count += 2
+    if not visible:
+      count += sum([self.player_data[player_idx].cards[card] for card in VICTORY_CARDS])
+    return count
 
   def for_player(self, player_session):
     data = self.json_for_player()
     data["type"] = "game_state"
     data["turn"] = self.turn_idx
-    data["card_counts"] = {}
-    data["points"] = {}
-    data["armies"] = {}
-    data["longest_roads"] = {}
-    for idx, player in enumerate(self.player_data):
-      # TODO: fill these three in
-      data["points"][idx] = 0
-      data["armies"][idx] = 0
-      data["longest_roads"][idx] = 0
-      count = sum(player["cards"].get(rsrc, 0) for rsrc in RESOURCES)
-      dev_count = sum(player["cards"].get(crd, 0) for crd in PLAYABLE_DEV_CARDS + VICTORY_CARDS)
-      data["card_counts"][idx] = {"resource": count, "dev": dev_count}
 
     player_idx = self.player_sessions.get(player_session)
     if player_idx is not None:
       data["you"] = player_idx
-      data["cards"] = self.player_data[player_idx]["cards"]
-      data["trade_ratios"] = self.player_data[player_idx]["trade_ratios"]
+      data["cards"] = self.player_data[player_idx].cards
+      data["trade_ratios"] = self.player_data[player_idx].trade_ratios
     return json.dumps(data, cls=CustomEncoder)
 
   def rename_player(self, player_idx, player_dict):
     ValidatePlayer(player_dict)
     player_name = player_dict["name"].strip()
-    if player_name == self.player_data[player_idx]["name"]:  # No name change.
+    if player_name == self.player_data[player_idx].name:  # No name change.
       return
-    used_names = set([player["name"] for player in self.player_data])
+    used_names = set([player.name for player in self.player_data])
     if player_name in used_names:
       raise InvalidPlayer("There is already a player named %s" % player_name)
     if len(player_name) > 50:
       unused_names = set(["Joey", "Ross", "Chandler", "Phoebe", "Rachel", "Monica"]) - used_names
       if unused_names:
         new_name = random.choice(list(unused_names))
-        self.player_data[player_idx]["name"] = new_name
+        self.player_data[player_idx].name = new_name
         raise InvalidPlayer("Oh, is that how you want to play it? Well, you know what? I'm just gonna call you %s." % new_name)
     if len(player_name) > 16:
       raise InvalidPlayer("Max name length is 16.")
-    self.player_data[player_idx]["name"] = player_name
+    self.player_data[player_idx].name = player_name
 
   def disconnect_player(self, session):
     # TODO: is this actually the right thing to do? maybe just hold onto it?
@@ -444,18 +504,13 @@ class CatanState(object):
 
   def _add_player(self):
     colors = set(["red", "blue", "forestgreen", "darkviolet", "saddlebrown", "deepskyblue"])
-    unused_colors = colors - set([data["color"] for data in self.player_data])
+    unused_colors = colors - set([data.color for data in self.player_data])
     if not unused_colors:
       raise TooManyPlayers("There are too many players.")
     next_color = list(unused_colors)[0]
 
     next_player = len(self.player_data)
-    self.player_data.append({
-      "color": next_color,
-      "name": "Player%s" % (next_player + 1),
-      "cards": collections.defaultdict(int),
-      "trade_ratios": collections.defaultdict(lambda: 4),
-      "unusable": collections.defaultdict(int)})
+    self.player_data.append(CatanPlayer(next_color, "Player%s" % (next_player + 1)))
     self.discard_players.append(0)
     self.counter_offers.append(None)
     return next_player
@@ -466,7 +521,6 @@ class CatanState(object):
     # - fix the number of players at the start of the game
     # - check buildings against players' total supply (e.g. 15 roads)
     # - check resources against total card supply
-    # - longest road and largest army
     # - victory conditions
     player = self.player_sessions.get(session)
     if player is None:
@@ -474,7 +528,7 @@ class CatanState(object):
     if data.get("type") == "player":
       self.rename_player(player, data.get("player"))
       return
-    player_name = self.player_data[player]["name"]
+    player_name = self.player_data[player].name
     if data.get("type") == "discard":
       self.handle_discard(data.get("selection"), player)
       return
@@ -523,7 +577,7 @@ class CatanState(object):
     raise InvalidMove("location %s should be a tuple of size %s" % (location, num_entries))
 
   def handle_end_turn(self):
-    self.player_data[self.turn_idx]["unusable"].clear()
+    self.player_data[self.turn_idx].unusable.clear()
     self.played_dev = 0
     self.trade_offer = {}
     self.counter_offers = [None] * len(self.player_data)
@@ -583,7 +637,7 @@ class CatanState(object):
     for corner in corners:
       maybe_piece = self.pieces.get(corner.as_tuple())
       if maybe_piece:
-        count = sum(self.player_data[maybe_piece.player]["cards"].get(rsrc, 0) for rsrc in RESOURCES)
+        count = self.player_data[maybe_piece.player].resource_card_count()
         if count > 0:
           robbable_players.add(maybe_piece.player)
     if len(robbable_players) > 1:
@@ -612,34 +666,35 @@ class CatanState(object):
   def _rob_player(self, rob_player, current_player):
     all_rsrc_cards = []
     for rsrc in RESOURCES:
-      all_rsrc_cards.extend([rsrc] * self.player_data[rob_player]["cards"].get(rsrc, 0))
+      all_rsrc_cards.extend([rsrc] * self.player_data[rob_player].cards[rsrc])
     if len(all_rsrc_cards) <= 0:
       raise InvalidMove("You cannot rob from a player without any resources.")
     chosen_rsrc = random.choice(all_rsrc_cards)
-    self.player_data[rob_player]["cards"][chosen_rsrc] -= 1
-    self.player_data[current_player]["cards"][chosen_rsrc] += 1
+    self.player_data[rob_player].cards[chosen_rsrc] -= 1
+    self.player_data[current_player].cards[chosen_rsrc] += 1
 
   # TODO: tell the player how many resources they need to discard
   def _get_players_with_too_many_resources(self):
     card_counts = [0] * len(self.player_data)
     for player, player_data in enumerate(self.player_data):
-      count = sum(player_data["cards"].get(rsrc, 0) for rsrc in RESOURCES)
+      count = player_data.resource_card_count()
       if count >= 8:
         card_counts[player] = count
     return card_counts
 
+  # TODO: move into the player class?
   def _check_resources(self, resources, player, action_string):
     errors = []
     for resource, count in resources:
-      if self.player_data[player]["cards"][resource] < count:
-        errors.append("%s {%s}" % (count - self.player_data[player]["cards"][resource], resource))
+      if self.player_data[player].cards[resource] < count:
+        errors.append("%s {%s}" % (count - self.player_data[player].cards[resource], resource))
     if errors:
       raise InvalidMove("You would need an extra %s to %s." % (", ".join(errors), action_string))
 
   def _remove_resources(self, resources, player, build_type):
     self._check_resources(resources, player, build_type)
     for resource, count in resources:
-      self.player_data[player]["cards"][resource] -= count
+      self.player_data[player].cards[resource] -= count
 
   def _check_road_building(self, location, player):
     left_corner = location.corner_left
@@ -779,9 +834,9 @@ class CatanState(object):
     port_type = self.ports.get(tuple(location))
     if port_type == "3":
       for rsrc in RESOURCES:
-        self.player_data[player]["trade_ratios"][rsrc] = min(self.player_data[player]["trade_ratios"][rsrc], 3)
+        self.player_data[player].trade_ratios[rsrc] = min(self.player_data[player].trade_ratios[rsrc], 3)
     elif port_type:
-      self.player_data[player]["trade_ratios"][port_type] = min(self.player_data[player]["trade_ratios"][port_type], 2)
+      self.player_data[player].trade_ratios[port_type] = min(self.player_data[player].trade_ratios[port_type], 2)
 
   def handle_city(self, location, player):
     # Check that this is the right part of the turn.
@@ -798,6 +853,7 @@ class CatanState(object):
     resources = [("rsrc3", 2), ("rsrc5", 3)]
     self._remove_resources(resources, player, "build a city")
 
+    # TODO: should we just change the type instead of deleting and adding?
     del self.pieces[tuple(location)]
     self.add_piece(Piece(location[0], location[1], "city", player))
 
@@ -842,14 +898,14 @@ class CatanState(object):
         raise InvalidMove("You must play the knight before you roll the dice or during the build/trade part of your turn.")
     else:
       self._check_main_phase("play a development card")
-    if self.player_data[player]["cards"][card_type] < 1:
+    if self.player_data[player].cards[card_type] < 1:
       raise InvalidMove("You do not have any %s cards." % card_type)
-    if self.player_data[player]["cards"][card_type] - self.player_data[player]["unusable"][card_type] < 1:
+    if self.player_data[player].cards[card_type] - self.player_data[player].unusable[card_type] < 1:
       raise InvalidMove("You cannot play development cards on the turn you buy them.")
     if self.played_dev:
       raise InvalidMove("You cannot play more than one development card per turn.")
     if card_type == "knight":
-      self._handle_knight()
+      self._handle_knight(player)
     elif card_type == "yearofplenty":
       self._handle_year_of_plenty(player, resource_selection)
     elif card_type == "monopoly":
@@ -859,10 +915,14 @@ class CatanState(object):
     else:
       # How would this even happen?
       raise InvalidMove("%s is not a playable development card." % card_type)
-    self.player_data[player]["cards"][card_type] -= 1
+    self.player_data[player].cards[card_type] -= 1
     self.played_dev += 1
 
-  def _handle_knight(self):
+  def _handle_knight(self, player_idx):
+    current_max = max([player.knights_played for player in self.player_data])
+    self.player_data[player_idx].knights_played += 1
+    if self.player_data[player_idx].knights_played > current_max and current_max >= 2:
+      self.largest_army_player = player_idx
     self.turn_phase = "robber"
 
   def _handle_road_building(self):
@@ -873,7 +933,7 @@ class CatanState(object):
     if sum([resource_selection.get(key, 0) for key in RESOURCES]) != 2:
       raise InvalidMove("You must request exactly two resources.")
     for card_type, value in resource_selection.items():
-      self.player_data[player]["cards"][card_type] += value
+      self.player_data[player].cards[card_type] += value
 
   def _handle_monopoly(self, player, resource_selection):
     self._validate_selection(resource_selection)
@@ -889,17 +949,17 @@ class CatanState(object):
     if not card_type:
       # This should never happen, but you never know.
       raise InvalidMove("You must choose exactly one resource to monopolize.")
-    for idx, opponent in enumerate(self.player_data):
-      if player == idx:
+    for opponent_idx in range(len(self.player_data)):
+      if player == opponent_idx:
         continue
-      opp_count = self.player_data[opponent]["cards"][card_type]
-      self.player_data[opponent]["cards"][card_type] -= opp_count
-      self.player_data[player]["cards"][card_type] += opp_count
+      opp_count = self.player_data[opponent_idx].cards[card_type]
+      self.player_data[opponent_idx].cards[card_type] -= opp_count
+      self.player_data[player].cards[card_type] += opp_count
 
   def add_dev_card(self, player):
     card_type = self.dev_cards.pop()
-    self.player_data[player]["cards"][card_type] += 1
-    self.player_data[player]["unusable"][card_type] += 1
+    self.player_data[player].cards[card_type] += 1
+    self.player_data[player].unusable[card_type] += 1
 
   def _validate_trade(self, offer, player):
     """Validates a well-formed trade & that the player has enough resources."""
@@ -914,7 +974,7 @@ class CatanState(object):
         if not isinstance(count, int) or count < 0:
           raise InvalidMove("You must trade an non-negative integer quantity.")
     for rsrc, count in offer[self.GIVE].items():
-      if self.player_data[player]["cards"][rsrc] < count:
+      if self.player_data[player].cards[rsrc] < count:
         raise InvalidMove("You do not have enough {%s}." % rsrc)
 
   def handle_trade_offer(self, offer, player):
@@ -963,11 +1023,11 @@ class CatanState(object):
     self._validate_trade({self.WANT: their_want, self.GIVE: their_give}, counter_player)
 
     for rsrc, count in my_give.items():
-      self.player_data[player]["cards"][rsrc] -= count
-      self.player_data[counter_player]["cards"][rsrc] += count
+      self.player_data[player].cards[rsrc] -= count
+      self.player_data[counter_player].cards[rsrc] += count
     for rsrc, count in my_want.items():
-      self.player_data[player]["cards"][rsrc] += count
-      self.player_data[counter_player]["cards"][rsrc] -= count
+      self.player_data[player].cards[rsrc] += count
+      self.player_data[counter_player].cards[rsrc] -= count
 
     self.counter_offers = [None] * len(self.player_data)
     # TODO: Do we want to reset the trade offer here?
@@ -981,7 +1041,7 @@ class CatanState(object):
     for rsrc, give in offer[self.GIVE].items():
       if give == 0:
         continue
-      ratio = self.player_data[player]["trade_ratios"][rsrc]
+      ratio = self.player_data[player].trade_ratios[rsrc]
       if give % ratio != 0:
         raise InvalidMove("You must trade {%s} with the bank at a %s:1 ratio." % (rsrc, ratio))
       available += give / ratio
@@ -989,9 +1049,9 @@ class CatanState(object):
       raise InvalidMove("You should receive %s resources, but you requested %s." % (available, requested))
     # Now, make the trade.
     for rsrc, want in offer[self.WANT].items():
-      self.player_data[player]["cards"][rsrc] += want
+      self.player_data[player].cards[rsrc] += want
     for rsrc, give in offer[self.GIVE].items():
-      self.player_data[player]["cards"][rsrc] -= give
+      self.player_data[player].cards[rsrc] -= give
 
   def distribute_resources(self, number):
     for tile in self.tiles.values():
@@ -1004,16 +1064,16 @@ class CatanState(object):
         # TODO: handle cases where there's not enough in the supply.
         piece = self.pieces.get(corner_loc)
         if piece and piece.piece_type == "settlement":
-          self.player_data[piece.player]["cards"][tile.tile_type] += 1
+          self.player_data[piece.player].cards[tile.tile_type] += 1
         elif piece and piece.piece_type == "city":
-          self.player_data[piece.player]["cards"][tile.tile_type] += 2
+          self.player_data[piece.player].cards[tile.tile_type] += 2
 
   def give_second_resources(self, player, corner_loc):
     tile_locs = set([loc.as_tuple() for loc in corner_loc.get_tiles()])
     for tile_loc in tile_locs:
       tile = self.tiles.get(tile_loc)
       if tile and tile.number:
-        self.player_data[player]["cards"][tile.tile_type] += 1
+        self.player_data[player].cards[tile.tile_type] += 1
 
   def add_tile(self, tile):
     self.tiles[tile.location.as_tuple()] = tile
@@ -1021,8 +1081,113 @@ class CatanState(object):
   def add_piece(self, piece):
     self.pieces[piece.location.as_tuple()] = piece
 
+    # Check for breaking an existing longest road.
+    old_max = max([p.longest_route for p in self.player_data])
+    # Start by calculating any players with an adjacent road/ship.
+    players_to_check = set([])
+    edges = piece.location.get_edges()
+    for edge in edges:
+      maybe_road = self.roads.get(edge.as_tuple())
+      if maybe_road:
+        players_to_check.add(maybe_road.player)
+
+    # Recompute longest road for each of these players.
+    for player_idx in players_to_check:
+      self.player_data[player_idx].longest_route = self._calculate_longest_road(player_idx)
+    new_max = max([p.longest_route for p in self.player_data])
+
+    # No additional computation needed if nobody has longest road.
+    if self.longest_route_player is None:
+      return
+
+    # If the player with the longest road kept the same length, no additional work needed.
+    if self.player_data[self.longest_route_player].longest_route == old_max:
+      return
+
+    # If nobody meets the conditions for longest road, nobody takes the card. After this,
+    # we may assume that the longest road has at least 5 segments.
+    if new_max < 5:
+      self.longest_route_player = None
+      return
+
+    # If the player with the longest road still has the longest road, they keep the longest
+    # road card, even if they are now tied with another player.
+    if self.player_data[self.longest_route_player].longest_route == new_max:
+      return
+
+    # The previous card holder must now give up the longest road card. We calculate any players
+    # that meet the conditions for taking the longest road card.
+    eligible = [idx for idx, data in enumerate(self.player_data) if data.longest_route == new_max]
+    if len(eligible) == 1:
+      self.longest_route_player = eligible[0]
+    else:
+      self.longest_route_player = None
+
   def add_road(self, road):
     self.roads[road.location.as_tuple()] = road
+
+    # Check for increase in longest road, update longest road player if necessary.
+    old_max = max([p.longest_route for p in self.player_data])
+    player_new_max = self._calculate_longest_road(road.player)
+    self.player_data[road.player].longest_route = player_new_max
+    if player_new_max > old_max and player_new_max >= 5:
+      self.longest_route_player = road.player
+
+  def _calculate_longest_road(self, player):
+    # Get all corners of all roads for this player.
+    all_corners = set([])
+    for road in self.roads.values():
+      if road.player != player:
+        continue
+      all_corners.add(road.location.corner_left)
+      all_corners.add(road.location.corner_right)
+
+    # For each corner, do a DFS and find the depth.
+    max_length = 0
+    for corner in all_corners:
+      seen = set([])
+      max_length = max(max_length, self._dfs_depth(player, corner, seen, None))
+
+    return max_length
+
+  def _dfs_depth(self, player, corner, seen_edges, prev_edge):
+    # First, use the type of the piece at this corner to set a baseline. If it belongs to
+    # another player, the route ends. If it belongs to this player, the next edge in the route
+    # may be either a road or a ship. If there is no piece, then the type of the next edge
+    # must match the type of the previous edge (except for the first edge in the DFS).
+    this_piece = self.pieces.get(corner.as_tuple())
+    if prev_edge is None:
+      # First road can be anything. Can also be adjacent to another player's settlement.
+      valid_types = Road.TYPES
+    else:
+      if this_piece is None:
+        if self.roads.get(prev_edge.as_tuple()) is not None:
+          valid_types = [self.roads[prev_edge.as_tuple()].road_type]
+        else:
+          raise RuntimeError("you screwed it up")
+      elif this_piece.player != player:
+        return 0
+      else:
+        valid_types = Road.TYPES
+
+    # Next, get the three corners next to this corner. We can determine an edge from each one,
+    # and we will throw away any edges that either do not belong to the player or that we have
+    # seen before or that do not match our expected edge type.
+    unseen_edges = [edge for edge in corner.get_edges() if edge not in seen_edges]
+    valid_edges = []
+    for edge in unseen_edges:
+      edge_piece = self.roads.get(edge.as_tuple())
+      if edge_piece and edge_piece.player == player and edge_piece.road_type in valid_types:
+        valid_edges.append(edge)
+
+    max_depth = 0
+    for edge in valid_edges:
+      other_corner = edge.corner_left if edge.corner_right == corner else edge.corner_right
+      seen_edges.add(edge)
+      sub_depth = self._dfs_depth(player, other_corner, seen_edges, edge)
+      max_depth = max(max_depth, 1 + sub_depth)
+      seen_edges.remove(edge)
+    return max_depth
 
   def _init_tiles(self, tile_types, sequence, tile_numbers):
     if len(sequence) != len(tile_types):

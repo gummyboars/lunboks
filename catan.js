@@ -104,10 +104,6 @@ pieces = [];
 edges = [];
 roads = [];
 cards = {};
-cardCounts = {};
-points = {};
-armies = {};
-longestRoads = {};
 turn = null;
 diceRoll = null;
 robberLoc = null;
@@ -845,10 +841,6 @@ function onmsg(event) {
   edges = data.edges;
   robberLoc = data.robber;
   cards = data.cards;
-  cardCounts = data.card_counts;
-  points = data.points;
-  armies = data.armies;
-  longestRoads = data.longest_roads;
   diceRoll = data.dice_roll;
   pieces = data.pieces;
   roads = data.roads;
@@ -995,11 +987,10 @@ function createPlayerData(i) {
   cardDiv.style.width = 0.8 * rightWidth + "px";
   cardDiv.classList.add("cardinfo");
   newdiv.appendChild(cardDiv);
-  /*
-   * TODO: add data about # of cities, army size, longest road, victory points
   let dataDiv = document.createElement("DIV");
+  dataDiv.style.width = 0.8 * rightWidth + "px";
+  dataDiv.classList.add("otherinfo");
   newdiv.appendChild(dataDiv);
-  */
   rightUI.appendChild(newdiv);
   return newdiv;
 }
@@ -1048,29 +1039,50 @@ function updatePlayerData() {
       } else if (turnPhase == "settle") {
         phaseMarker.innerText = "🏠";
       } else if (turnPhase == "road" || turnPhase == "dev_road") {
-        phaseMarker.innerText = "🛣️";
+        phaseMarker.innerText = "🛤️";  // I didn't like 🛣️
       } else {
         // ?
         phaseMarker.innerText = "";
       }
-      // TODO: use 🛡️
     } else {
       turnMarker.style.display = "none";
       phaseMarker.style.display = "none";
     }
     let cardDiv = thediv.getElementsByClassName("cardinfo")[0];
     updatePlayerCardInfo(i, cardDiv, true);
+    let dataDiv = thediv.getElementsByClassName("otherinfo")[0];
+    updatePlayerInfo(i, dataDiv);
   }
   fixNameSize(null);
+}
+function updatePlayerInfo(idx, dataDiv) {
+  while (dataDiv.firstChild) {
+    dataDiv.removeChild(dataDiv.firstChild);
+  }
+  let points = document.createElement("DIV");
+  points.innerText = playerData[idx].points + " ⭐";
+  points.classList.add("otheritem");
+  points.style.marginRight = "30px";
+  let armySize = document.createElement("DIV");
+  armySize.innerText = playerData[idx].armies + " 🛡️";
+  armySize.classList.add("otheritem");
+  armySize.style.marginRight = "30px";
+  let longRoute = document.createElement("DIV");
+  longRoute.innerText = playerData[idx].longest_route + " 🔗";
+  longRoute.classList.add("otheritem");
+  // TODO: use 👑 or 🏆?
+  dataDiv.appendChild(points);
+  dataDiv.appendChild(armySize);
+  dataDiv.appendChild(longRoute);
 }
 function updatePlayerCardInfo(idx, cardDiv, showDev) {
   while (cardDiv.firstChild) {
     cardDiv.removeChild(cardDiv.firstChild);
   }
-  if (!cardCounts[idx]) {
+  if (!playerData[idx].resource_cards && !playerData[idx].dev_cards) {
     return;
   }
-  if (showDev && cardCounts[idx]["resource"] && cardCounts[idx]["dev"]) {
+  if (showDev && playerData[idx].resource_cards && playerData[idx].dev_cards) {
     let sepDiv = document.createElement("DIV");
     sepDiv.classList.add("cardseparator");
     sepDiv.style.width = summaryCardWidth / 2 + "px";
@@ -1078,14 +1090,14 @@ function updatePlayerCardInfo(idx, cardDiv, showDev) {
     sepDiv.style.order = 1;
     cardDiv.appendChild(sepDiv);
   }
-  let orders = {resource: 0, dev: 2};
-  let imgs = {resource: imageNames.cardback, dev: imageNames.devcard};
-  let typeList = ["resource", "dev"];
+  let orders = {resource_cards: 0, dev_cards: 2};
+  let imgs = {resource_cards: imageNames.cardback, dev_cards: imageNames.devcard};
+  let typeList = ["resource_cards", "dev_cards"];
   if (!showDev) {
-    typeList = ["resource"];
+    typeList = ["resource_cards"];
   }
   for (let cardType of typeList) {
-    for (let i = 0; i < cardCounts[idx][cardType]; i++) {
+    for (let i = 0; i < playerData[idx][cardType]; i++) {
       let contDiv = document.createElement("DIV");
       contDiv.classList.add("cardback");
       contDiv.style.order = orders[cardType];
@@ -1094,7 +1106,7 @@ function updatePlayerCardInfo(idx, cardDiv, showDev) {
       backImg.width = summaryCardWidth;
       backImg.height = summaryCardHeight;
       contDiv.appendChild(backImg);
-      if (i == cardCounts[idx][cardType]-1) {
+      if (i == playerData[idx][cardType]-1) {
         contDiv.style.flex = "0 0 auto";
       }
       cardDiv.appendChild(contDiv);

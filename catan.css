@@ -285,6 +285,19 @@ div {
   justify-content: center;
   margin-top: 10px;
 }
+.otherinfo {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  margin-top: 20px;
+}
+.otheritem {
+  color: white;
+  font-weight: bold;
+  font-size: 18px;
+  font-family: sans-serif;
+}
 .cardback {
   flex: 0 1 auto;
   overflow-x: hidden;

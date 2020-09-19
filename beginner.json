@@ -6,6 +6,8 @@
     {
       "color": "red",
       "name": "Bob",
+      "knights_played": 0,
+      "longest_route": 1,
       "cards": {
         "rsrc4": 1,
         "rsrc1": 1,
@@ -15,6 +17,8 @@
       "unusable": {}
     }
   ],
+  "largest_army_player": null,
+  "longest_route_player": null,
   "dice_roll": [
     2,
     2
@@ -431,10 +435,10 @@
     },
     {
       "location": [
-        9,
+        8,
         6,
-        10,
-        7
+        9,
+        6
       ],
       "road_type": "road",
       "player": 0

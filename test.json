@@ -31,6 +31,8 @@
     "dice_roll": null,
     "discard_players": [0, 0],
     "game_phase": "main",
+    "largest_army_player": null,
+    "longest_route_player": null,
     "pieces": [
         {
             "location": [
@@ -56,6 +58,8 @@
       {
         "color": "red",
         "name": "Casey",
+        "knights_played": 0,
+        "longest_route": 1,
         "cards": {"rsrc1": 4, "rsrc2": 2, "rsrc3": 1, "rsrc4": 2, "rsrc5": 2},
         "trade_ratios": {"rsrc1": 2},
         "unusable": {}
@@ -63,6 +67,8 @@
       {
         "color": "blue",
         "name": "Andy",
+        "knights_played": 0,
+        "longest_route": 1,
         "cards": {"rsrc1": 3, "rsrc2": 3, "rsrc3": 2, "rsrc4": 1, "rsrc5": 5},
         "trade_ratios": {},
         "unusable": {}
