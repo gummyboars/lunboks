@@ -139,10 +139,7 @@ async def WebLoop(websocket, path):
 
   if missing_cookie:
     await PushError(websocket, "Session cookie not set; you will not be able to resume if you close this tab.")
-  try:
-    GAME_STATE.add_player(session)
-  except game.TooManyPlayers:
-    await PushError(websocket, "The game has too many players. You will be in observer mode.")
+  GAME_STATE.connect_user(session)
   await PushState()
   try:
     async for raw in websocket:
@@ -167,8 +164,10 @@ async def WebLoop(websocket, path):
   finally:
     print("removing %s from the global registry" % session)
     GLOBAL_WS[session].remove(websocket)
-    # TODO: figure out the right model here
-    # GAME_STATE.disconnect_player(session)
+    if not GLOBAL_WS[session]:
+      del GLOBAL_WS[session]
+      GAME_STATE.disconnect_user(session)
+      await PushState()
 
 
 def ws_main(loop):
@@ -203,6 +202,5 @@ if __name__ == '__main__':
   t2.daemon = True
   t2.start()
   GAME_STATE = catan.CatanState()
-  GAME_STATE.init_normal()
   main()
   loop.stop()

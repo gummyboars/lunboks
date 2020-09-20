@@ -1,4 +1,6 @@
 {
+  "started": true,
+  "host": null,
   "game_phase": "main",
   "turn_phase": "main",
   "player_sessions": {"abcd": 0},

@@ -96,7 +96,9 @@ resourceSelectionUI = {
 };
 
 // Game state.
+gameStarted = false;
 myIdx = null;
+amHost = false;
 playerData = [];
 tiles = [];
 corners = [];
@@ -465,6 +467,9 @@ function copyActiveOffer() {
   // except the player that is making the offer.
   // Note that we switch these around to make it more intuitive for the player
   // receiving the trade offer - the stuff they will give will still be on bottom.
+  if (tradeActiveOffer == null) {
+    return;
+  }
   resourceSelection["top"] = Object.assign({}, tradeActiveOffer["give"]);
   resourceSelection["bottom"] = Object.assign({}, tradeActiveOffer["want"]);
 }
@@ -830,9 +835,11 @@ function onmsg(event) {
   }
   let firstMsg = false;
   if (tiles.length < 1) {
-    firstMsg = true;
+    firstMsg = true; // TODO: update this.
   }
   // data.type should be game_state now - maybe handle more later
+  gameStarted = data.started;
+  amHost = data.host;
   playerData = data.player_data;
   gamePhase = data.game_phase;
   turnPhase = data.turn_phase;
@@ -864,6 +871,7 @@ function onmsg(event) {
     }
     fixNameSize(null);
   }
+  updateJoinWindow();
   populateCards();
   updateDice();
   updateUI("buydev");
@@ -913,18 +921,48 @@ function updateDice() {
     diceEl.classList.add("selectable");
   }
 }
-function login(e) {
+function updateJoinWindow() {
+  if (myIdx != null) {
+    disableButton(document.getElementById("join"));
+    disableButton(document.getElementById("observe"));
+  }
+  if (amHost) {
+    enableButton(document.getElementById("start"));
+  }
+  if (gameStarted) {
+    document.getElementById("uijoin").style.display = "none";
+  }
+}
+function observe(e) {
+  document.getElementById("uijoin").style.display = "none";
+}
+function startGame(e) {
   let msg = {
-    type: "player",
-    player: {
-      name: document.getElementById('nameInput').value,
-    },
+    type: "start",
+    scenario: "standard",
+  };
+  ws.send(JSON.stringify(msg));
+}
+function joinGame(e) {
+  let msg = {
+    type: "join",
+    name: document.getElementById("joinnameinput").value,
+  };
+  ws.send(JSON.stringify(msg));
+}
+function rename(e) {
+  let msg = {
+    type: "rename",
+    name: document.getElementById('nameInput').value,
   };
   ws.send(JSON.stringify(msg));
 }
 function fixNameSize(e) {
   let nameInput = document.getElementById("nameInput");
   let sizeCalculator = document.getElementById("sizeCalculator");
+  if (nameInput == null || sizeCalculator == null) {
+    return;
+  }
   sizeCalculator.textContent = nameInput.value;
   nameInput.style.width = sizeCalculator.offsetWidth + "px";
 }
@@ -964,12 +1002,16 @@ function createPlayerData(i) {
     nameInput.maxlength = 16;
     nameInput.oninput = fixNameSize;
     // Setting nameInput.onfocusout does not work in webkit browsers.
-    nameInput.addEventListener("focusout", login);
+    nameInput.addEventListener("focusout", rename);
     topText.appendChild(sizeCalculator);
     topText.appendChild(nameInput);
   } else {
     let nameDiv = document.createElement("DIV");
     nameDiv.innerText = username;
+    if (playerData[i].disconnected) {
+      nameDiv.innerText = "<empty slot>";
+      nameDiv.style.fontStyle = "italic";
+    }
     nameDiv.classList.add("nametext");
     topText.appendChild(nameDiv);
   }
@@ -1011,6 +1053,10 @@ function updatePlayerData() {
     if (i != myIdx) {
       let namediv = thediv.getElementsByClassName("nametext")[0];
       namediv.innerText = playerData[i].name;
+      if (playerData[i].disconnected) {
+        namediv.innerText = "<empty slot>";
+        namediv.style.fontStyle = "italic";
+      }
     }
 
     let turnMarker = thediv.getElementsByClassName("turnmarker")[0];

@@ -47,7 +47,43 @@ div {
   font-size: 36px;
   color: red;
   background: white;
-  z-index: 2; /* error should be shown over everything else */
+  z-index: 3; /* error should be shown over everything else */
+}
+#uijoin {
+  position: absolute;
+  display: flex;
+  width: 30%;
+  left: 50%;
+  margin-right: -50%;
+  top: 50%;
+  margin-bottom: -50%;
+  transform: translate(-50%, -50%);
+  flex-direction: column;
+  z-index: 2; /* show over other elements */
+  border-right: 1px solid black;
+  border-radius: 15px;
+  background: khaki;
+  border: 1px solid black;
+  box-shadow: 2px 2px 10px;
+}
+#joinbuttons {
+  display: flex;
+}
+#joinname {
+  display: flex;
+  color: black;
+  font-weight: bold;
+  font-size: 28px;
+  font-family: sans-serif;
+  flex-direction: row;
+  justify-content: space-around;
+}
+#joinnameinput {
+  color: black;
+  font-weight: bold;
+  font-size: 24px;
+  font-family: sans-serif;
+  background-color: palegoldenrod;
 }
 #resourcepopup {
   position: absolute;

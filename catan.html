@@ -23,6 +23,17 @@
     <canvas id="myCanvas" width="678" height="730"></canvas>
     <div id="ui" class="noclick">
       <p id="errorText" class="noclick"></p>
+      <div id="uijoin" class="clickable">
+        <div id="joinname" class="clickable">
+          <div>Name:</div>
+          <input type="text" id="joinnameinput" class="clickable" maxlength="16"></input>
+        </div>
+        <div id="joinbuttons" class="clickable">
+          <div class="leftbutton noclick"><button id="observe" class="selectbutton button clickable" onclick="observe(event)">Observe</button></div>
+          <div class="centerbutton noclick"><button id="start" disabled="true" class="selectbutton button clickable disabled" onclick="startGame(event)">Start</button></div>
+          <div class="rightbutton noclick"><button id="join" class="selectbutton button clickable" onclick="joinGame(event)">Join</button></div>
+        </div>
+      </div>
       <div id="uioverlay" class="noclick">
         <div id="uimain" class="noclick">
           <div id="playerpopup" class="clickable uiselect">

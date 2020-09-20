@@ -346,6 +346,8 @@ class CatanState(object):
     # Player data is just a sequential list of maps. Maps contain color, name, trade ratios,
     # cards, and unusable dev cards.
     self.player_sessions = {}
+    self.started = False
+    self.host = None
     self.player_data = []
     self.tiles = {}
     self.ports = {}
@@ -406,7 +408,7 @@ class CatanState(object):
   def json_repr(self):
     # TODO: maybe don't hard-code this list.
     ret = dict([(name, getattr(self, name)) for name in
-      ["game_phase", "turn_phase", "dice_roll", "rob_players",
+      ["game_phase", "turn_phase", "dice_roll", "rob_players", "started", "host",
        "robber", "pirate", "trade_offer", "counter_offers", "discard_players"]])
     more = dict([(name, list(getattr(self, name).values())) for name in self.LOCATION_ATTRIBUTES])
     ret.update(more)
@@ -420,6 +422,7 @@ class CatanState(object):
     for name in self.HIDDEN_ATTRIBUTES:
       del ret[name]
     del ret["player_data"]
+    del ret["host"]
 
     corners = {}
     # TODO: instead of sending a list of corners, we should send something like
@@ -441,6 +444,8 @@ class CatanState(object):
     ret["player_data"] = [player.json_for_player() for player in self.player_data]
     for idx in range(len(self.player_data)):
       ret["player_data"][idx]["points"] = self.player_points(idx, visible=True)
+      is_disconnected = not self.started and idx not in self.player_sessions.values()
+      ret["player_data"][idx]["disconnected"] = is_disconnected
     return ret
 
   def player_points(self, player_idx, visible):
@@ -469,64 +474,108 @@ class CatanState(object):
       data["you"] = player_idx
       data["cards"] = self.player_data[player_idx].cards
       data["trade_ratios"] = self.player_data[player_idx].trade_ratios
+      data["host"] = self.host == player_session
     return json.dumps(data, cls=CustomEncoder)
 
-  def rename_player(self, player_idx, player_dict):
-    ValidatePlayer(player_dict)
-    player_name = player_dict["name"].strip()
-    if player_name == self.player_data[player_idx].name:  # No name change.
+  def connect_user(self, session):
+    if self.started:
       return
+    self.player_sessions[session] = None
+    if self.host is None:
+      self.host = session
+
+  def disconnect_user(self, session):
+    if self.started:
+      return
+    # Only delete from player sessions if the game hasn't started yet.
+    del self.player_sessions[session]
+    if self.host == session:
+      if not self.player_sessions:
+        self.host = None
+      else:
+        self.host = list(self.player_sessions.keys())[0]
+
+  def handle_join(self, session, data):
+    if self.started:
+      raise InvalidPlayer("The game has already started.")
+    if self.player_sessions.get(session) is not None:
+      raise InvalidPlayer("You have already joined the game.")
+    self._validate_name(None, data)
+
+    taken_slots = set([x for x in self.player_sessions.values() if x is not None])
+    for player_slot in range(4):  # Max players TODO: configurable
+      if player_slot not in taken_slots:
+        new_slot = player_slot
+        break
+    else:
+      raise TooManyPlayers("There are no open slots.")
+
+    if new_slot > len(self.player_data):
+      # Don't think this can happen, but just in case.
+      raise InvalidPlayer("Could not join the game.")
+    elif new_slot < len(self.player_data):
+      # Fill an existing slot by just renaming the player and assigning the session.
+      self.rename_player(new_slot, data)
+      self.player_sessions[session] = new_slot
+      return
+    else:
+      # Create new player and add it to player data.
+      self._add_player(data["name"].strip())
+      self.player_sessions[session] = new_slot
+
+
+  def _validate_name(self, player_idx, data):
+    ValidatePlayer(data)
+    new_name = data["name"].strip()
+    if player_idx is not None and new_name == self.player_data[player_idx].name:  # No name change.
+      return
+    # TODO: names used by disconnected players should not count.
     used_names = set([player.name for player in self.player_data])
-    if player_name in used_names:
-      raise InvalidPlayer("There is already a player named %s" % player_name)
+    if new_name in used_names:
+      raise InvalidPlayer("There is already a player named %s" % new_name)
+    if len(new_name) > 16:
+      raise InvalidPlayer("Max name length is 16.")
+
+  def rename_player(self, player_idx, player_dict):
+    self._validate_name(player_idx, player_dict)
+    '''
+    TODO: re-enable this easter egg
     if len(player_name) > 50:
       unused_names = set(["Joey", "Ross", "Chandler", "Phoebe", "Rachel", "Monica"]) - used_names
       if unused_names:
         new_name = random.choice(list(unused_names))
         self.player_data[player_idx].name = new_name
         raise InvalidPlayer("Oh, is that how you want to play it? Well, you know what? I'm just gonna call you %s." % new_name)
-    if len(player_name) > 16:
-      raise InvalidPlayer("Max name length is 16.")
-    self.player_data[player_idx].name = player_name
+    '''
+    self.player_data[player_idx].name = player_dict["name"].strip()
 
-  def disconnect_player(self, session):
-    # TODO: is this actually the right thing to do? maybe just hold onto it?
-    # del self.player_sessions[session]
-    pass
-
-  def add_player(self, session):
-    if session in self.player_sessions and len(self.player_data) > self.player_sessions[session]:
-      return
-    if len(self.player_data) >= 4:
-      raise TooManyPlayers("There are too many players.")
-    next_player = self._add_player()
-    self.player_sessions[session] = next_player
-
-  def _add_player(self):
+  def _add_player(self, name):
     colors = set(["red", "blue", "forestgreen", "darkviolet", "saddlebrown", "deepskyblue"])
     unused_colors = colors - set([data.color for data in self.player_data])
     if not unused_colors:
       raise TooManyPlayers("There are too many players.")
     next_color = list(unused_colors)[0]
 
-    next_player = len(self.player_data)
-    self.player_data.append(CatanPlayer(next_color, "Player%s" % (next_player + 1)))
+    self.player_data.append(CatanPlayer(next_color, name))
     self.discard_players.append(0)
     self.counter_offers.append(None)
-    return next_player
 
   def handle(self, session, data):
     # TODO list:
-    # - pre-game "not started" state
-    # - fix the number of players at the start of the game
     # - check buildings against players' total supply (e.g. 15 roads)
     # - check resources against total card supply
     # - victory conditions
+    if data.get("type") == "join":
+      self.handle_join(session, data)
+      return
+    if data.get("type") == "start":
+      self.handle_start(session, data)
+      return
     player = self.player_sessions.get(session)
     if player is None:
       raise InvalidPlayer("Unknown player.")
-    if data.get("type") == "player":
-      self.rename_player(player, data.get("player"))
+    if data.get("type") == "rename":
+      self.rename_player(player, data)
       return
     player_name = self.player_data[player].name
     if data.get("type") == "discard":
@@ -575,6 +624,42 @@ class CatanState(object):
     if isinstance(location, (tuple, list)) and len(location) == num_entries:
       return
     raise InvalidMove("location %s should be a tuple of size %s" % (location, num_entries))
+
+  def handle_start(self, session, data):
+    if self.started:
+      raise InvalidMove("The game has already started.")
+    if session != self.host:
+      raise InvalidMove("You are not the host. Only the host can start the game.")
+
+    joined_players = len([x for x in self.player_sessions.values() if x is not None])
+    if joined_players < 2:
+      raise InvalidMove("The game must have at least two players to start.")
+
+    if data.get("scenario") not in ["standard", "beginner", "test"]:
+      raise InvalidMove("Unknown scenario %s" % data.get("scenario"))
+
+    # Compact the player data, since players can leave after joining.
+    new_player_data = []
+    session_remap = {}
+    for idx, player_data in enumerate(self.player_data):
+      if idx in self.player_sessions.values():
+        session_remap[idx] = len(new_player_data)
+        new_player_data.append(player_data)
+    self.player_data = new_player_data
+    self.discard_players = [0] * len(self.player_data)
+    self.counter_offers = [None] * len(self.player_data)
+    for session in self.player_sessions:
+      if self.player_sessions[session] is not None:
+        self.player_sessions[session] = session_remap[self.player_sessions[session]]
+
+    if data.get("scenario") == "standard":
+      self.init_normal()
+    elif data.get("scenario") == "beginner":
+      self.init_beginner()
+    elif data.get("scenario") == "test":
+      self.init_test()
+    self.started = True
+    self.host = None
 
   def handle_end_turn(self):
     self.player_data[self.turn_idx].unusable.clear()

@@ -31,6 +31,7 @@
     "dice_roll": null,
     "discard_players": [0, 0],
     "game_phase": "main",
+    "host": null,
     "largest_army_player": null,
     "longest_route_player": null,
     "pieces": [
@@ -98,6 +99,7 @@
     ],
     "rob_players": [],
     "robber": null,
+    "started": true,
     "tiles": [
         {
             "is_land": true,

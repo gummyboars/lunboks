@@ -154,7 +154,9 @@ class TestCalculateRobPlayers(BaseInputHandlerTest):
 
   def setUp(self):
     BaseInputHandlerTest.setUp(self)
-    self.c.add_player("Player3")
+    self.c.started = False  # To allow new players to join.
+    self.c.handle_join("Player3", {"name": "Player3"})
+    self.c.started = True
     self.c.turn_idx = 2
     self.c.dice_roll = (6, 1)
     self.c.turn_phase = "robber"
@@ -347,15 +349,17 @@ class TestLongestRouteAssignment(unittest.TestCase):
     with open("beginner.json") as json_file:
       json_data = json_file.read()
     self.c = catan.CatanState.parse_json(json_data)
+    self.c.started = False  # To allow new players to join
+    self.c.handle_join("PlayerA", {"name": "PlayerA"})
+    self.c.handle_join("PlayerB", {"name": "PlayerB"})
+    self.c.started = True
     self.c.add_road(Road([4, 4, 5, 4], "road", 0))
     self.c.add_road(Road([5, 4, 6, 5], "road", 0))
     self.c.add_road(Road([7, 5, 8, 6], "road", 0))
-    self.c.add_player("PlayerA")
     self.c.add_road(Road([3, 3, 4, 2], "road", 1))
     self.c.add_road(Road([4, 2, 5, 2], "road", 1))
     self.c.add_road(Road([5, 2, 6, 1], "road", 1))
     self.c.add_road(Road([6, 1, 7, 1], "road", 1))
-    self.c.add_player("PlayerB")
     self.c.add_road(Road([3, 7, 4, 8], "road", 2))
     self.c.add_road(Road([4, 8, 5, 8], "road", 2))
     self.c.add_road(Road([5, 8, 6, 9], "road", 2))
@@ -460,6 +464,101 @@ class TestLargestArmy(BaseInputHandlerTest):
     self.c._handle_knight(1)
     self.assertEqual(self.c.player_data[1].knights_played, 4)
     self.assertEqual(self.c.largest_army_player, 1)
+
+
+class TestUnstartedGame(unittest.TestCase):
+
+  def setUp(self):
+    self.c = catan.CatanState()
+
+  def testConnectAndDisconnect(self):
+    self.c.connect_user("one")
+    self.c.connect_user("two")
+    self.c.connect_user("three")
+    self.c.disconnect_user("two")
+    self.assertDictEqual(self.c.player_sessions, {"one": None, "three": None})
+
+  def testChangeHost(self):
+    self.c.connect_user("one")
+    self.c.connect_user("two")
+    self.c.connect_user("three")
+    self.assertEqual(self.c.host, "one")
+    self.c.disconnect_user("two")
+    self.assertEqual(self.c.host, "one")
+    self.c.disconnect_user("one")
+    self.assertEqual(self.c.host, "three")
+    self.c.disconnect_user("three")
+    self.assertIsNone(self.c.host)
+    self.c.connect_user("four")
+    self.assertEqual(self.c.host, "four")
+
+  def testJoinAndLeave(self):
+    self.c.connect_user("one")
+    self.c.connect_user("two")
+    self.c.connect_user("three")
+    self.c.handle_join("one", {"name": "player1"})
+    self.c.handle_join("two", {"name": "player2"})
+    self.c.handle_join("three", {"name": "player3"})
+    self.assertDictEqual(self.c.player_sessions, {"one": 0, "two": 1, "three": 2})
+    self.assertEqual(self.c.host, "one")
+    self.c.disconnect_user("two")
+    self.assertDictEqual(self.c.player_sessions, {"one": 0, "three": 2})
+    self.c.connect_user("four")
+    self.c.handle_join("four", {"name": "player4"})
+    self.assertDictEqual(self.c.player_sessions, {"one": 0, "four": 1, "three": 2})
+    self.assertEqual(self.c.player_data[1].name, "player4")
+
+  def testStartGame(self):
+    self.assertFalse(self.c.started)
+    self.assertDictEqual(self.c.tiles, {})
+    self.c.connect_user("one")
+    self.c.connect_user("two")
+    self.c.connect_user("three")
+    self.c.connect_user("four")
+    with self.assertRaisesRegex(InvalidMove, "at least two players"):
+      self.c.handle_start("one", {"scenario": "standard"})
+
+    self.c.handle_join("one", {"name": "player1"})
+    self.c.handle_join("two", {"name": "player2"})
+    self.c.handle_join("three", {"name": "player3"})
+    self.c.handle_join("four", {"name": "player4"})
+    with self.assertRaisesRegex(InvalidMove, "not the host"):
+      self.c.handle_start("two", {"scenario": "standard"})
+    with self.assertRaisesRegex(InvalidMove, "Unknown scenario"):
+      self.c.handle_start("one", {"scenario": "nsaoeu"})
+    with self.assertRaisesRegex(InvalidMove, "Unknown scenario"):
+      self.c.handle_start("one", {})
+    self.assertFalse(self.c.started)
+
+    self.c.handle_start("one", {"scenario": "standard"})
+    self.assertTrue(self.c.started)
+    self.assertIsNone(self.c.host)
+    self.assertGreater(len(self.c.tiles.keys()), 0)
+
+    with self.assertRaisesRegex(InvalidMove, "already started"):
+      self.c.handle_start("one", {"scenario": "standard"})
+    with self.assertRaisesRegex(catan.InvalidPlayer, "already started"):
+      self.c.handle_join("one", {"name": "troll"})
+
+  def testDiscardDisconnectedPlayers(self):
+    self.c.connect_user("one")
+    self.c.connect_user("two")
+    self.c.connect_user("three")
+    self.c.connect_user("four")
+    self.c.connect_user("five")
+    self.c.handle_join("one", {"name": "player1"})
+    self.c.handle_join("two", {"name": "player2"})
+    self.c.handle_join("three", {"name": "player3"})
+    self.c.handle_join("four", {"name": "player4"})
+    self.c.disconnect_user("one")
+    self.c.disconnect_user("three")
+    self.c.handle_start(self.c.host, {"scenario": "standard"})
+
+    self.assertTrue(self.c.started)
+    self.assertEqual(len(self.c.player_data), 2)
+    self.assertDictEqual(self.c.player_sessions, {"two": 0, "four": 1, "five": None})
+    self.assertEqual(self.c.discard_players, [0, 0])
+    self.assertEqual(self.c.counter_offers, [None, None])
 
 
 if __name__ == '__main__':
