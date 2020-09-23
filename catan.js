@@ -978,10 +978,8 @@ function initPlayerData() {
 }
 function createPlayerData(i) {
   let rightUI = document.getElementById("uiright");
-  let pColor = playerData[i].color;
   let newdiv = document.createElement("DIV");
-  newdiv.style.background = pColor;
-  newdiv.classList.add(pColor + "player");
+  newdiv.style.background = playerData[i].color;
   newdiv.classList.add("playerinfo");
 
   let username = playerData[i].name;
@@ -997,7 +995,7 @@ function createPlayerData(i) {
     // nameInput.contentEditable = true;
     nameInput.classList.add("nameinput");
     nameInput.classList.add("clickable");
-    nameInput.style.background = pColor;
+    nameInput.style.background = playerData[i].color;
     nameInput.innerText = username;
     nameInput.maxlength = 16;
     nameInput.oninput = fixNameSize;
@@ -1039,19 +1037,12 @@ function createPlayerData(i) {
 function updatePlayerData() {
   let rightUI = document.getElementById("uiright");
   for (let i = 0; i < playerData.length; i++) {
-    let pColor = playerData[i].color;
-    let thediv = null;
-    for (let somediv of rightUI.getElementsByClassName("playerinfo")) {
-      if (somediv.classList.contains(pColor + "player")) {
-        thediv = somediv;
-        break;
-      }
-    }
-    if (!thediv) {
-      thediv = createPlayerData(i);
+    let playerDiv = rightUI.children.item(i);
+    if (playerDiv == null) {
+      playerDiv = createPlayerData(i);
     }
     if (i != myIdx) {
-      let namediv = thediv.getElementsByClassName("nametext")[0];
+      let namediv = playerDiv.getElementsByClassName("nametext")[0];
       namediv.innerText = playerData[i].name;
       if (playerData[i].disconnected) {
         namediv.innerText = "<empty slot>";
@@ -1059,8 +1050,8 @@ function updatePlayerData() {
       }
     }
 
-    let turnMarker = thediv.getElementsByClassName("turnmarker")[0];
-    let phaseMarker = thediv.getElementsByClassName("phasemarker")[0];
+    let turnMarker = playerDiv.getElementsByClassName("turnmarker")[0];
+    let phaseMarker = playerDiv.getElementsByClassName("phasemarker")[0];
     if (!turnMarker || !phaseMarker) {  // TODO: better error checking.
       continue;
     }
@@ -1097,9 +1088,9 @@ function updatePlayerData() {
       turnMarker.style.display = "none";
       phaseMarker.style.display = "none";
     }
-    let cardDiv = thediv.getElementsByClassName("cardinfo")[0];
+    let cardDiv = playerDiv.getElementsByClassName("cardinfo")[0];
     updatePlayerCardInfo(i, cardDiv, true);
-    let dataDiv = thediv.getElementsByClassName("otherinfo")[0];
+    let dataDiv = playerDiv.getElementsByClassName("otherinfo")[0];
     updatePlayerInfo(i, dataDiv);
   }
   fixNameSize(null);
