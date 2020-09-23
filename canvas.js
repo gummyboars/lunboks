@@ -30,11 +30,12 @@ function draw() {
     drawTile(tiles[i], context);
     drawNumber(tiles[i], context);
   }
-  for (let i = 0; i < pieces.length; i++) {
-    drawPiece(pieces[i], context);
-  }
   for (let i = 0; i < roads.length; i++) {
     drawRoad(roads[i].location, playerData[roads[i].player].color, context);
+  }
+  // Draw pieces over roads.
+  for (let i = 0; i < pieces.length; i++) {
+    drawPiece(pieces[i].location, playerData[pieces[i].player].color, pieces[i].piece_type, context);
   }
   drawHover(context);
   drawRobber(context);
@@ -86,18 +87,37 @@ function drawRoad(roadLoc, style, ctx) {
 function drawDebug(ctx) {
   return;
 }
-function drawPiece(pieceData, ctx) {
-  let canvasLoc = coordToCornerCenter(pieceData.location);
-  ctx.fillStyle = playerData[pieceData.player].color;
-  if (pieceData.piece_type == "settlement") {
+function drawPiece(pieceLoc, style, pieceType, ctx) {
+  let canvasLoc = coordToCornerCenter(pieceLoc);
+  ctx.fillStyle = style;
+  if (pieceType == "settlement") {
     ctx.beginPath();
-    ctx.arc(canvasLoc.x, canvasLoc.y, pieceRadius, 0, Math.PI * 2, true);
+    ctx.moveTo(canvasLoc.x - pieceRadius, canvasLoc.y + pieceRadius * 3/2);
+    ctx.lineTo(canvasLoc.x + pieceRadius, canvasLoc.y + pieceRadius * 3/2);
+    ctx.lineTo(canvasLoc.x + pieceRadius, canvasLoc.y - pieceRadius * 1/2);
+    ctx.lineTo(canvasLoc.x, canvasLoc.y - pieceRadius * 3/2);
+    ctx.lineTo(canvasLoc.x - pieceRadius, canvasLoc.y - pieceRadius * 1/2);
+    ctx.closePath();
     ctx.fill();
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = "black";
+    ctx.stroke();
   }
-  if (pieceData.piece_type == "city") {
-    let startX = canvasLoc.x - pieceRadius;
-    let startY = canvasLoc.y - pieceRadius;
-    ctx.fillRect(startX, startY, pieceRadius * 2, pieceRadius * 2);
+  if (pieceType == "city") {
+    let radius = pieceRadius * 1.5;
+    ctx.beginPath();
+    ctx.moveTo(canvasLoc.x - radius, canvasLoc.y + radius);
+    ctx.lineTo(canvasLoc.x + radius, canvasLoc.y + radius);
+    ctx.lineTo(canvasLoc.x + radius, canvasLoc.y - radius/2);
+    ctx.lineTo(canvasLoc.x + radius/2, canvasLoc.y - radius);
+    ctx.lineTo(canvasLoc.x, canvasLoc.y - radius/2);
+    ctx.lineTo(canvasLoc.x, canvasLoc.y);
+    ctx.lineTo(canvasLoc.x - radius, canvasLoc.y);
+    ctx.closePath();
+    ctx.fill();
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = "black";
+    ctx.stroke();
   }
 }
 function drawTile(tileData, ctx) {
@@ -155,11 +175,16 @@ function drawHover(ctx) {
     return;
   }
   if (hoverCorner != null) {
-    let canvasLoc = coordToCornerCenter(hoverCorner);
-    ctx.fillStyle = 'rgba(127, 127, 127, 0.5)';
-    ctx.beginPath();
-    ctx.arc(canvasLoc.x, canvasLoc.y, pieceRadius, 0, Math.PI * 2, true);
-    ctx.fill();
+    let drawType = "settlement";
+    for (let i = 0; i < pieces.length; i++) {
+      if (pieces[i].location[0] == hoverCorner[0] && pieces[i].location[1] == hoverCorner[1]) {
+        if (pieces[i].player == myIdx) {
+          drawType = "city";
+        }
+        break;
+      }
+    }
+    drawPiece(hoverCorner, 'rgba(127, 127, 127, 0.5)', drawType, ctx);
     canvas.style.cursor = "pointer";
     return;
   }
