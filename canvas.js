@@ -26,19 +26,31 @@ function draw() {
   context.translate(offsetX + dX, offsetY + dY);
   context.scale(scale, scale);
   context.textAlign = 'center';
+  context.save();
   for (let i = 0; i < tiles.length; i++) {
     drawTile(tiles[i], context);
     drawNumber(tiles[i], context);
   }
+  context.restore();
+  context.save();
   for (let i = 0; i < roads.length; i++) {
     drawRoad(roads[i].location, playerData[roads[i].player].color, context);
   }
+  context.restore();
+  context.save();
   // Draw pieces over roads.
   for (let i = 0; i < pieces.length; i++) {
     drawPiece(pieces[i].location, playerData[pieces[i].player].color, pieces[i].piece_type, context);
   }
+  context.restore();
+  context.save();
   drawHover(context);
-  drawRobber(context);
+  context.restore();
+  context.save();
+  if (robberLoc == null || hoverTile == null || hoverTile[0] != robberLoc[0] || hoverTile[1] != robberLoc[1]) {
+    drawRobber(context, robberLoc, 1);
+  }
+  context.restore();
   drawDebug(context);
   context.restore();
   window.requestAnimationFrame(draw);
@@ -166,11 +178,7 @@ function drawHover(ctx) {
   }
   let canvas = document.getElementById("myCanvas");
   if (hoverTile != null) {
-    let canvasLoc = coordToTileCenter(hoverTile);
-    ctx.fillStyle = 'rgba(127, 127, 127, 0.5)';
-    ctx.beginPath();
-    ctx.arc(canvasLoc.x, canvasLoc.y, 28, 0, Math.PI * 2, true);
-    ctx.fill();
+    drawRobber(ctx, hoverTile, 0.5);
     canvas.style.cursor = "pointer";
     return;
   }
@@ -195,12 +203,13 @@ function drawHover(ctx) {
   }
   canvas.style.cursor = "auto";
 }
-function drawRobber(ctx) {
-  if (robberLoc != null) {
-    let canvasLoc = coordToTileCenter(robberLoc);
+function drawRobber(ctx, loc, alpha) {
+  if (loc != null) {
+    let canvasLoc = coordToTileCenter(loc);
     let robimg = document.getElementById("robber");
     let robwidth = 26;
     let robheight = 60;
+    ctx.globalAlpha = alpha;
     ctx.drawImage(robimg, canvasLoc.x - robwidth/2, canvasLoc.y - robheight/2, robwidth, robheight);
   }
 }
