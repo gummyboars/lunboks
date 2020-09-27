@@ -12,6 +12,24 @@ hoverTile = null;
 hoverCorner = null;
 hoverEdge = null;
 
+function locationsEqual(locA, locB) {
+  if (locA == null && locB == null) {
+    return true;
+  }
+  if (locA == null || locB == null) {
+    return false;
+  }
+  if (locA.length != locB.length) {
+    return false;
+  }
+  for (let i = 0; i < locA.length; i++) {
+    if (locA[i] != locB[i]) {
+      return false;
+    }
+  }
+  return true;
+}
+
 function draw() {
   var canvas = document.getElementById('myCanvas');
   var context = canvas.getContext('2d');
@@ -47,7 +65,7 @@ function draw() {
   drawHover(context);
   context.restore();
   context.save();
-  if (robberLoc == null || hoverTile == null || hoverTile[0] != robberLoc[0] || hoverTile[1] != robberLoc[1]) {
+  if (robberLoc != null && !locationsEqual(robberLoc, hoverTile)) {
     drawRobber(context, robberLoc, 1);
   }
   context.restore();
@@ -185,7 +203,7 @@ function drawHover(ctx) {
   if (hoverCorner != null) {
     let drawType = "settlement";
     for (let i = 0; i < pieces.length; i++) {
-      if (pieces[i].location[0] == hoverCorner[0] && pieces[i].location[1] == hoverCorner[1]) {
+      if (locationsEqual(pieces[i].location, hoverCorner)) {
         if (pieces[i].player == myIdx) {
           drawType = "city";
         }
@@ -204,14 +222,29 @@ function drawHover(ctx) {
   canvas.style.cursor = "auto";
 }
 function drawRobber(ctx, loc, alpha) {
-  if (loc != null) {
-    let canvasLoc = coordToTileCenter(loc);
-    let robimg = document.getElementById("robber");
-    let robwidth = 26;
-    let robheight = 60;
-    ctx.globalAlpha = alpha;
-    ctx.drawImage(robimg, canvasLoc.x - robwidth/2, canvasLoc.y - robheight/2, robwidth, robheight);
+  if (loc == null) {
+    return;
   }
+  let isLand = true;
+  for (let tile of tiles) {
+    if (locationsEqual(tile.location, loc)) {
+      isLand = tile.is_land;
+      break;
+    }
+  }
+  let canvasLoc = coordToTileCenter(loc);
+  let robimg, robWidth, robHeight;
+  if (isLand) {
+    robimg = document.getElementById("robber");
+    robwidth = 26;
+    robheight = 60;
+  } else {
+    robimg = document.getElementById("pirate");
+    robwidth = 45;
+    robheight = 40;
+  }
+  ctx.globalAlpha = alpha;
+  ctx.drawImage(robimg, canvasLoc.x - robwidth/2, canvasLoc.y - robheight/2, robwidth, robheight);
 }
 function getEdge(eventX, eventY) {
   for (let i = 0; i < edges.length; i++) {
