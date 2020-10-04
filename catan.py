@@ -409,7 +409,8 @@ class CatanState(object):
     # TODO: maybe don't hard-code this list.
     ret = dict([(name, getattr(self, name)) for name in
       ["game_phase", "turn_phase", "dice_roll", "rob_players", "started", "host",
-       "robber", "pirate", "trade_offer", "counter_offers", "discard_players"]])
+       "robber", "pirate", "trade_offer", "counter_offers", "discard_players",
+       "largest_army_player", "longest_route_player"]])
     more = dict([(name, list(getattr(self, name).values())) for name in self.LOCATION_ATTRIBUTES])
     ret.update(more)
     hidden = dict([(name, getattr(self, name)) for name in self.HIDDEN_ATTRIBUTES])
@@ -562,7 +563,6 @@ class CatanState(object):
 
   def handle(self, session, data):
     # TODO list:
-    # - check buildings against players' total supply (e.g. 15 roads)
     # - check resources against total card supply
     # - victory conditions
     if data.get("type") == "join":
@@ -857,6 +857,10 @@ class CatanState(object):
       raise InvalidMove("There is already a road there.")
     # Check that this attaches to their existing network.
     self._check_road_building(EdgeLocation(*location), player)
+    # Check that the player has enough roads left.
+    road_count = len([r for r in self.roads.values() if r.player == player and r.road_type == "road"])
+    if road_count >= 15:
+      raise InvalidMove("You have no roads remaining.")
     # Handle special settlement phase.
     if self.game_phase.startswith("place"):
       self._check_road_next_to_empty_settlement(EdgeLocation(*location), player)
@@ -866,7 +870,8 @@ class CatanState(object):
     if self.turn_phase == "dev_road":
       self.add_road(Road(location, "road", player))
       self.dev_roads_placed += 1
-      if self.dev_roads_placed == 2:
+      # Road building ends if they placed 2 roads or ran out of roads.
+      if self.dev_roads_placed == 2 or road_count + 1 >= 15:
         self.dev_roads_placed = 0
         self.turn_phase = "main"
       return
@@ -903,6 +908,10 @@ class CatanState(object):
         break
     else:
       raise InvalidMove("You must place your settlement next to one of your roads.")
+    # Check player has enough settlements left.
+    settle_count = len([p for p in self.pieces.values() if p.player == player and p.piece_type == "settlement"])
+    if settle_count >= 5:
+      raise InvalidMove("You have no settlements remaining.")
     # Check resources and deduct from player.
     resources = [("rsrc1", 1), ("rsrc2", 1), ("rsrc3", 1), ("rsrc4", 1)]
     self._remove_resources(resources, player, "build a settlement")
@@ -934,13 +943,15 @@ class CatanState(object):
       raise InvalidMove("You cannot upgrade another player's %s." % piece.piece_type)
     if piece.piece_type != "settlement":
       raise InvalidMove("You can only upgrade a settlement to a city.")
+    # Check player has enough cities left.
+    city_count = len([p for p in self.pieces.values() if p.player == player and p.piece_type == "city"])
+    if city_count >= 4:
+      raise InvalidMove("You have no cities remaining.")
     # Check resources and deduct from player.
     resources = [("rsrc3", 2), ("rsrc5", 3)]
     self._remove_resources(resources, player, "build a city")
 
-    # TODO: should we just change the type instead of deleting and adding?
-    del self.pieces[tuple(location)]
-    self.add_piece(Piece(location[0], location[1], "city", player))
+    self.pieces[tuple(location)].piece_type = "city"
 
   def handle_buy_dev(self, player):
     # Check that this is the right part of the turn.
@@ -996,7 +1007,7 @@ class CatanState(object):
     elif card_type == "monopoly":
       self._handle_monopoly(player, resource_selection)
     elif card_type == "roadbuilding":
-      self._handle_road_building()
+      self._handle_road_building(player)
     else:
       # How would this even happen?
       raise InvalidMove("%s is not a playable development card." % card_type)
@@ -1010,7 +1021,11 @@ class CatanState(object):
       self.largest_army_player = player_idx
     self.turn_phase = "robber"
 
-  def _handle_road_building(self):
+  def _handle_road_building(self, player):
+    # Check that the player has enough roads left.
+    road_count = len([r for r in self.roads.values() if r.player == player and r.road_type == "road"])
+    if road_count >= 15:
+      raise InvalidMove("You have no roads remaining.")
     self.turn_phase = "dev_road"
 
   def _handle_year_of_plenty(self, player, resource_selection):

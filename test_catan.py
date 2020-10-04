@@ -2,6 +2,7 @@
 
 import collections
 import unittest
+import json
 
 import catan
 
@@ -31,6 +32,12 @@ class TestLoadState(unittest.TestCase):
     self.assertIsInstance(c.player_data[0].cards, collections.defaultdict)
     self.assertIsInstance(c.player_data[0].trade_ratios, collections.defaultdict)
     # TODO: add some more assertions here
+
+  def testDumpAndLoad(self):
+    c = catan.CatanState()
+    c.init_normal()
+    data = c.json_str()
+    d = catan.CatanState.parse_json(data)
 
 
 class BaseInputHandlerTest(unittest.TestCase):
@@ -100,8 +107,38 @@ class TestHandleSettleInput(BaseInputHandlerTest):
     with self.assertRaisesRegex(InvalidMove, "should be a tuple of size 2"):
       self.c.handle("Player1", {"type": "settle", "location": [2]})
 
+  def testCannotBuildTooManySettlements(self):
+    self.c.add_piece(catan.Piece(1, 4, "settlement", 0))
+    self.c.add_piece(catan.Piece(1, 6, "settlement", 0))
+    self.c.add_piece(catan.Piece(5, 6, "settlement", 0))
+    self.c.add_piece(catan.Piece(5, 2, "settlement", 0))
+    with self.assertRaisesRegex(InvalidMove, "settlements remaining"):
+      self.c.handle("Player1", {"type": "settle", "location": [3, 3]})
+
+    self.c.pieces[(1, 4)].piece_type = "city"
+    self.c.pieces[(1, 6)].piece_type = "city"
+    self.c.pieces[(5, 6)].piece_type = "city"
+    self.c.pieces[(5, 2)].piece_type = "city"
+    with self.assertRaisesRegex(InvalidMove, "cities remaining"):
+      self.c.handle("Player1", {"type": "city", "location": [5, 4]})
+
 
 class TestHandleRoadInput(BaseInputHandlerTest):
+
+  def addThirteenRoads(self):
+    self.c.add_road(Road([5, 4, 6, 3], "road", 0))
+    self.c.add_road(Road([5, 2, 6, 3], "road", 0))
+    self.c.add_road(Road([4, 2, 5, 2], "road", 0))
+    self.c.add_road(Road([3, 3, 4, 2], "road", 0))
+    self.c.add_road(Road([2, 3, 3, 3], "road", 0))
+    self.c.add_road(Road([1, 4, 2, 3], "road", 0))
+    self.c.add_road(Road([1, 4, 2, 5], "road", 0))
+    self.c.add_road(Road([1, 6, 2, 5], "road", 0))
+    self.c.add_road(Road([1, 6, 2, 7], "road", 0))
+    self.c.add_road(Road([2, 7, 3, 7], "road", 0))
+    self.c.add_road(Road([3, 7, 4, 6], "road", 0))
+    self.c.add_road(Road([4, 6, 5, 6], "road", 0))
+    self.c.add_road(Road([5, 6, 6, 5], "road", 0))
 
   def testRoadsMustConnect(self):
     with self.assertRaisesRegex(InvalidMove, "must be connected"):
@@ -123,6 +160,26 @@ class TestHandleRoadInput(BaseInputHandlerTest):
     self.c.handle("Player1", {"type": "road", "location": [5, 4, 6, 3]})
     self.assertEqual(self.c.player_data[0].cards["rsrc2"], count2 - 2)
     self.assertEqual(self.c.player_data[0].cards["rsrc4"], count4 - 2)
+
+  def testCannotBuildTooManyRoads(self):
+    self.addThirteenRoads()
+    self.c.handle("Player1", {"type": "road", "location": [5, 4, 6, 5]})
+    with self.assertRaisesRegex(InvalidMove, "no roads remaining"):
+      self.c.handle("Player1", {"type": "road", "location": [3, 3, 4, 4]})
+
+  def testCanPlayRoadBuildingWithOneRoadLeft(self):
+    self.addThirteenRoads()
+    self.c.player_data[0].cards["roadbuilding"] += 1
+    self.c.handle("Player1", {"type": "play_dev", "card_type": "roadbuilding"})
+    self.c.handle("Player1", {"type": "road", "location": [5, 4, 6, 5]})
+    self.assertEqual(self.c.turn_phase, "main")
+
+  def testCannotPlayRoadBuildingAtMaxRoads(self):
+    self.addThirteenRoads()
+    self.c.handle("Player1", {"type": "road", "location": [5, 4, 6, 5]})
+    self.c.player_data[0].cards["roadbuilding"] += 1
+    with self.assertRaisesRegex(InvalidMove, "no roads remaining"):
+      self.c.handle("Player1", {"type": "play_dev", "card_type": "roadbuilding"})
 
   def testCannotBuildWithoutResources(self):
     self.c.player_data[0].cards["rsrc2"] = 0
