@@ -60,6 +60,34 @@ class TestLoadTestData(BaseInputHandlerTest):
     self.assertEqual(self.c.player_data[1].trade_ratios["rsrc1"], 4)
 
 
+class TestDistributeResources(BaseInputHandlerTest):
+
+  def setUp(self):
+    BaseInputHandlerTest.setUp(self)
+    self.c.add_piece(catan.Piece(3, 3, "city", 0))
+    self.c.pieces[(3, 5)].piece_type = "city"
+    for rsrc in ["rsrc3", "rsrc4", "rsrc5"]:
+      self.c.player_data[0].cards[rsrc] = 8
+      self.c.player_data[1].cards[rsrc] = 9
+    self.c.player_data[0].cards["rsrc1"] = 0
+    self.c.player_data[1].cards["rsrc1"] = 0
+
+  def testTooManyResources(self):
+    self.c.distribute_resources(5)
+    self.assertEqual(self.c.player_data[0].cards["rsrc4"], 8)
+    self.assertEqual(self.c.player_data[1].cards["rsrc4"], 9)
+
+    self.c.distribute_resources(6)
+    self.assertEqual(self.c.player_data[0].cards["rsrc5"], 8)
+    self.assertEqual(self.c.player_data[1].cards["rsrc5"], 9)
+
+  def testTooManyResourcesOnlyOnePlayer(self):
+    self.c.distribute_resources(9)
+    self.assertEqual(self.c.player_data[0].cards["rsrc3"], 10)
+    self.assertEqual(self.c.player_data[1].cards["rsrc3"], 9)
+    self.assertEqual(self.c.player_data[1].cards["rsrc1"], 2)
+
+
 class TestHandleSettleInput(BaseInputHandlerTest):
 
   def setUp(self):

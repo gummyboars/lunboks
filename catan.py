@@ -563,7 +563,6 @@ class CatanState(object):
 
   def handle(self, session, data):
     # TODO list:
-    # - check resources against total card supply
     # - victory conditions
     if data.get("type") == "join":
       self.handle_join(session, data)
@@ -1154,6 +1153,8 @@ class CatanState(object):
       self.player_data[player].cards[rsrc] -= give
 
   def distribute_resources(self, number):
+    # Figure out which players are due how many resources.
+    to_receive = collections.defaultdict(lambda: collections.defaultdict(int))
     for tile in self.tiles.values():
       if tile.number != number:
         continue
@@ -1161,12 +1162,33 @@ class CatanState(object):
         continue
       corner_locations = set([a.as_tuple() for a in tile.location.get_corner_locations()])
       for corner_loc in corner_locations:
-        # TODO: handle cases where there's not enough in the supply.
         piece = self.pieces.get(corner_loc)
         if piece and piece.piece_type == "settlement":
-          self.player_data[piece.player].cards[tile.tile_type] += 1
+          to_receive[tile.tile_type][piece.player] += 1
         elif piece and piece.piece_type == "city":
-          self.player_data[piece.player].cards[tile.tile_type] += 2
+          to_receive[tile.tile_type][piece.player] += 2
+
+    # Changes the values of to_receive as it iterates through them.
+    max_rsrcs = 19
+    for rsrc, receive_players in to_receive.items():
+      currently_owned = sum([p.cards[rsrc] for p in self.player_data])
+      # If there are enough resources to go around, no problem.
+      if sum(receive_players.values()) + currently_owned <= max_rsrcs:
+        continue
+      # If there is only one player receiving this resource, they receive all of the
+      # remaining cards for this resources type.
+      if len(receive_players) == 1:
+        the_player = list(receive_players.keys())[0]
+        receive_players[the_player] = max_rsrcs - currently_owned
+        continue
+      # If there is more than one player receiving this resource, and there is not enough
+      # in the supply, then no players receive any of this resource.
+      receive_players.clear()
+
+    # Do the actual resource distribution.
+    for rsrc, receive_players in to_receive.items():
+      for player, count in receive_players.items():
+        self.player_data[player].cards[rsrc] += count
 
   def give_second_resources(self, player, corner_loc):
     tile_locs = set([loc.as_tuple() for loc in corner_loc.get_tiles()])
