@@ -315,8 +315,8 @@ class CatanPlayer(object):
   def __str__(self):
     return str(self.json_repr())
 
-  def json_for_player(self):
-    return {
+  def json_for_player(self, is_over):
+    ret = {
         "color": self.color,
         "name": self.name,
         "armies": self.knights_played,
@@ -324,6 +324,11 @@ class CatanPlayer(object):
         "resource_cards": self.resource_card_count(),
         "dev_cards": self.dev_card_count(),
     }
+    if is_over:
+      ret["dev_cards"] = {
+          name: count for name, count in self.cards.items()
+          if name in (PLAYABLE_DEV_CARDS + VICTORY_CARDS)}
+    return ret
 
   def resource_card_count(self):
     return sum([self.cards[x] for x in RESOURCES])
@@ -369,7 +374,7 @@ class CatanState(object):
     # Special values for counter-offers: not present in dictionary means they have not
     # yet made a counter-offer. An null/None counter-offer indicates that they have
     # rejected the trade offer. A counter-offer equal to the original means they accept.
-    self.game_phase = "place1"  # valid values are place1, place2, main
+    self.game_phase = "place1"  # valid values are place1, place2, main, victory
     self.turn_phase = "settle"  # valid values are settle, road, dice, discard, robber, dev_road, main
 
   @staticmethod
@@ -442,9 +447,10 @@ class CatanState(object):
         edges[edge.as_tuple()] = {"location": edge}
     ret["edges"] = list(edges.values())
 
-    ret["player_data"] = [player.json_for_player() for player in self.player_data]
+    is_over = (self.game_phase == "victory")
+    ret["player_data"] = [player.json_for_player(is_over) for player in self.player_data]
     for idx in range(len(self.player_data)):
-      ret["player_data"][idx]["points"] = self.player_points(idx, visible=True)
+      ret["player_data"][idx]["points"] = self.player_points(idx, visible=(not is_over))
       is_disconnected = not self.started and idx not in self.player_sessions.values()
       ret["player_data"][idx]["disconnected"] = is_disconnected
     return ret
@@ -573,6 +579,8 @@ class CatanState(object):
     player = self.player_sessions.get(session)
     if player is None:
       raise InvalidPlayer("Unknown player.")
+    if self.game_phase == "victory":
+      raise InvalidMove("The game is over.")
     if data.get("type") == "rename":
       self.rename_player(player, data)
       return
@@ -618,11 +626,21 @@ class CatanState(object):
         raise InvalidMove("You MUST place your first settlement/roads.")
       self._check_main_phase("end your turn")
       self.handle_end_turn()
+    # NOTE: use turn_idx here, since it is possible for a player to get to 10 points when it is
+    # not their turn (e.g. because someone else's longest road was broken), but the rules say
+    # you can only win on YOUR turn. So we check for victory after we have handled the end of
+    # the previous turn, in case the next player wins at the start of their turn.
+    # TODO: victory points should be configurable.
+    if self.player_points(self.turn_idx, visible=False) >= 10:
+      self.handle_victory()
 
   def _validate_location(self, location, num_entries=2):
     if isinstance(location, (tuple, list)) and len(location) == num_entries:
       return
     raise InvalidMove("location %s should be a tuple of size %s" % (location, num_entries))
+
+  def handle_victory(self):
+    self.game_phase = "victory"
 
   def handle_start(self, session, data):
     if self.started:

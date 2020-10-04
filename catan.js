@@ -1076,7 +1076,10 @@ function updatePlayerData() {
     if (turn == i) {
       turnMarker.style.display = "block";
       phaseMarker.style.display = "block";
-      if (turnPhase == "robber") {
+      if (gamePhase == "victory") {
+        turnMarker.innerText = "🏆";
+        phaseMarker.innerText = "🏆";
+      } else if (turnPhase == "robber") {
         phaseMarker.innerText = "💂";
       } else if (turnPhase == "dice") {
         phaseMarker.innerText = "🎲";
@@ -1137,27 +1140,44 @@ function updatePlayerCardInfo(idx, cardDiv, showDev) {
     cardDiv.appendChild(sepDiv);
   }
   let orders = {resource_cards: 0, dev_cards: 2};
-  let imgs = {resource_cards: imageNames.cardback, dev_cards: imageNames.devcard};
+  let imgs = {resource_cards: "cardback", dev_cards: "devcard"};
   let typeList = ["resource_cards", "dev_cards"];
   if (!showDev) {
     typeList = ["resource_cards"];
   }
   for (let cardType of typeList) {
-    for (let i = 0; i < playerData[idx][cardType]; i++) {
-      let contDiv = document.createElement("DIV");
-      contDiv.classList.add("cardback");
-      contDiv.style.order = orders[cardType];
-      let backImg = document.createElement("IMG");
-      backImg.src = imgs[cardType];
-      backImg.width = summaryCardWidth;
-      backImg.height = summaryCardHeight;
-      contDiv.appendChild(backImg);
-      if (i == playerData[idx][cardType]-1) {
-        contDiv.style.flex = "0 0 auto";
+    if (Number.isInteger(playerData[idx][cardType])) {
+      let count = playerData[idx][cardType];
+      for (let i = 0; i < count; i++) {
+        addSummaryCard(cardDiv, orders[cardType], imgs[cardType], (i == count-1));
       }
-      cardDiv.appendChild(contDiv);
+    } else {
+      for (cardName in playerData[idx][cardType]) {
+        let count = playerData[idx][cardType][cardName]; 
+        let assetName = cardName;
+        if (cardType == "resource_cards") {
+          assetName += "card";
+        }
+        for (let i = 0; i < count; i++) {
+          addSummaryCard(cardDiv, orders[cardType], assetName, (i == count-1));
+        }
+      }
     }
   }
+}
+function addSummaryCard(cardContainer, order, cardName, isLast) {
+  let contDiv = document.createElement("DIV");
+  contDiv.classList.add("cardback");
+  contDiv.style.order = order;
+  let backImg = document.createElement("IMG");
+  backImg.src = imageNames[cardName];
+  backImg.width = summaryCardWidth;
+  backImg.height = summaryCardHeight;
+  contDiv.appendChild(backImg);
+  if (isLast) {
+    contDiv.style.flex = "0 0 auto";
+  }
+  cardContainer.appendChild(contDiv);
 }
 function createSelectors() {
   for (selectBox of ["top", "bottom"]) {
