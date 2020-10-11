@@ -60,6 +60,10 @@
                 <div id="whitedie" class="die"><div class="diecontainer"><p style="margin: 0">?</p></div></div>
               </div>
               <div style="display: block;"><canvas id="buydev" class="clickable selectable" onclick="buyDevCard()"></canvas></div>
+              <select id="skinchoice" onchange="chooseSkin(event)" class="clickable">
+                <option value="none">Change Skin...</option>
+                <option value="space">Space Explorer</option>
+              </select>
             </div>
             <div id="bottombutton" class="noclick">
               <button id="tradeplayer" class="button bigbutton tradebutton resourceselector clickable" onclick="toggleTradeWindow('player')">Player</button>

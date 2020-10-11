@@ -55,6 +55,9 @@ resourceSelectionUI = {
   },
 };
 
+// The websocket
+ws = null;
+
 // Game state.
 gameStarted = false;
 myIdx = null;
@@ -1156,6 +1159,9 @@ function addSummaryCard(cardContainer, order, cardName, isLast) {
 function createSelectors() {
   for (selectBox of ["top", "bottom"]) {
     let box = document.getElementById(selectBox + "selectbox");
+    while (box.firstChild) {
+      box.removeChild(box.firstChild);
+    }
     for (cardRsrc of cardResources) {
       let boxCopy = selectBox;
       let rsrcCopy = cardRsrc;
@@ -1215,18 +1221,41 @@ function createBuyDev() {
   ctx.drawImage(prerendered, 0, 0);
   ctx.restore();
 }
+function chooseSkin(e) {
+  let chosen = document.getElementById("skinchoice").value;
+  if (chosen == "none") {
+    return;
+  }
+  for (let key in imageInfo) {
+    localStorage.removeItem(key);
+  }
+  localStorage.removeItem("names");
+  if (chosen == "space") {
+    initializeSpace();
+  }
+  init();
+}
+function initDefaultSkin() {
+  let norsrc = localStorage.getItem("norsrc");
+  if (norsrc == null) {
+    initializeSpace();
+  }
+}
 function init() {
+  initDefaultSkin();
+  initializeImageData();
+  initializeNames();
   let promise = initializeImages();
   promise.then(continueInit, continueInit);
   sizeThings();
 }
 function continueInit() {
+  // TODO: we've kind of mixed first-time initialization with other initialization here
+  // to make it possible to switch skins while playing.
   createBuyDev();
   createSelectors();
+  populateCards();
   window.requestAnimationFrame(draw);
-  let l = window.location;
-  ws = new WebSocket("ws://" + l.hostname + ":8081/");
-  ws.onmessage = onmsg;
   document.getElementById('myCanvas').onmousemove = onmove;
   document.getElementById('myCanvas').onclick = onclick;
   document.getElementById('myCanvas').onmousedown = ondown;
@@ -1264,5 +1293,6 @@ function onBodyClick(event) {
     }
   }
 }
-initializeImageData();
-initializeNames();
+let l = window.location;
+ws = new WebSocket("ws://" + l.hostname + ":8081/");
+ws.onmessage = onmsg;

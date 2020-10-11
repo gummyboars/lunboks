@@ -526,9 +526,19 @@ function renderSource(assetName, cnv, img, filter) {
   renderLoops[assetName] = 2;
 }
 function initializeImages() {
+  // Reset to make sure we wait for all assets to load again.
+  renderLoops = {};
   let assets = document.getElementById("assets");
   for (let iname in imageInfo) {
     let assetName = iname;
+    let oldImg = document.getElementById("img" + assetName);
+    if (oldImg != null) {
+      assets.removeChild(oldImg);
+    }
+    let oldCnv = document.getElementById("canvas" + assetName);
+    if (oldCnv != null) {
+      assets.removeChild(oldCnv);
+    }
     // Some variants (such as a corner tile for space) don't exist, so skip them.
     if (imageInfo[assetName].src == null) {
       renderLoops[assetName] = 2;
