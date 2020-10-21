@@ -7,6 +7,7 @@ from http.server import HTTPServer,BaseHTTPRequestHandler
 import json
 import os
 import random
+from socketserver import ThreadingMixIn
 import sys
 import threading
 import time
@@ -22,6 +23,10 @@ ROOT_DIR = os.path.abspath(os.path.dirname(__file__))
 GAME_STATE = None
 GLOBAL_WS = collections.OrderedDict([])
 GLOBAL_LOOP = None
+
+
+class ThreadingHTTPServer(ThreadingMixIn, HTTPServer):
+  pass
 
 
 class MyHandler(BaseHTTPRequestHandler):
@@ -64,6 +69,8 @@ class MyHandler(BaseHTTPRequestHandler):
       new_session = "session=%s" % (uuid.uuid4())
       self.send_header("Set-Cookie", new_session)
       print("setting session cookie %s" % new_session)
+    if path.endswith(".jpg") or path.endswith(".jpeg") or path.endswith(".png"):
+      self.send_header("Cache-Control", "public, max-age=604800")
 
     self.end_headers()
     end = time.time()
@@ -173,7 +180,7 @@ async def WebLoop(websocket, path):
 def ws_main(loop):
   asyncio.set_event_loop(loop)
   ws_port = 8081
-  start_server = websockets.serve(WebLoop, '127.0.0.1', ws_port)
+  start_server = websockets.serve(WebLoop, '', ws_port)
   loop.run_until_complete(start_server)
   print("Websocket server started on port %d" % ws_port)
   loop.run_forever()
@@ -182,7 +189,7 @@ def ws_main(loop):
 def main():
   try:
     port = 8080
-    server = HTTPServer(('127.0.0.1', port), MyHandler)
+    server = ThreadingHTTPServer(('', port), MyHandler)
     print('Started server on port %d' % port)
     server.serve_forever()
   except KeyboardInterrupt:
