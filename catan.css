@@ -354,14 +354,20 @@ div {
 }
 .uicard {
   flex: 0 1 auto;
-  overflow-x: hidden;
   transform: translateY(30%);
 }
 .uicard.shown {
   flex: 0 0 auto;
 }
 .uicard.selected {
-  transform: none;
+  transform: translateY(0%);
+  z-index: 1;
+}
+.innercard {
+  position: absolute;
+  top: 0;
+  left: 0;
+  margin: 0px;
 }
 .button {
   display: inline-block;

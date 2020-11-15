@@ -700,9 +700,13 @@ function addCard(cardContainer, elemId, usable) {
   cnv.height = cardHeight;
   cnv.style.display = "block";
   cnv.classList.add("clickable");
+  cnv.classList.add("innercard");
   let div = document.createElement("DIV");
   div.classList.add("clickable");
   div.classList.add("uicard");
+  div.style.maxWidth = cardWidth + "px";
+  div.style.width = cardWidth + "px";
+  div.style.height = cardHeight + "px";
   div.appendChild(cnv);
   div.onmouseenter = bringforward;
   div.onmouseleave = pushbackward;
@@ -721,11 +725,9 @@ function addCard(cardContainer, elemId, usable) {
 }
 function bringforward(e) {
   e.currentTarget.classList.add("selected");
-  e.currentTarget.style.overflowX = "visible";
 }
 function pushbackward(e) {
   e.currentTarget.classList.remove("selected");
-  e.currentTarget.style.overflowX = "hidden";
 }
 function buyDevCard() {
   ws.send(JSON.stringify({type: "buy_dev"}));
@@ -1229,9 +1231,7 @@ function continueInit() {
   document.getElementById('myCanvas').onclick = onclick;
   document.getElementById('myCanvas').onmousedown = ondown;
   document.getElementById('myCanvas').onmouseup = onup;
-  document.getElementById('myCanvas').onmouseout = onout;
   document.getElementById('myCanvas').onkeydown = onkey;
-  // TODO: zoom in/out should come later.
   document.getElementById('myCanvas').onwheel = onwheel;
   document.body.onclick = onBodyClick;
   window.onresize = sizeThings;

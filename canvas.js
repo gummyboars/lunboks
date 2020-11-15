@@ -1,5 +1,6 @@
 // For manipulating the canvas.
 isDragging = false;
+ignoreNextClick = false;
 startX = null;
 startY = null;
 offsetX = 0;
@@ -7,6 +8,8 @@ offsetY = 0;
 dX = 0;
 dY = 0;
 scale = 1;
+eventX = null;
+eventY = null;
 
 hoverTile = null;
 hoverCorner = null;
@@ -146,6 +149,8 @@ function drawDebug(ctx) {
     ctx.moveTo(0, -10000);
     ctx.lineTo(0, 10000);
     ctx.stroke();
+    ctx.fillStyle = "black";
+    ctx.fillText("" + eventX + ", " + eventY, 0, 0);
   }
 }
 function drawPiece(pieceLoc, style, pieceType, ctx) {
@@ -328,12 +333,12 @@ function drawRobber(ctx, loc, alpha) {
 function getEdge(eventX, eventY) {
   for (let i = 0; i < edges.length; i++) {
     let edgeCenter = coordsToEdgeCenter(edges[i].location);
-    let centerX = edgeCenter.x + offsetX + dX;
-    let centerY = edgeCenter.y + offsetY + dY;
+    let centerX = edgeCenter.x * scale + offsetX + dX;
+    let centerY = edgeCenter.y * scale + offsetY + dY;
     let distanceX = eventX - centerX;
     let distanceY = eventY - centerY;
     let distance = distanceX * distanceX + distanceY * distanceY;
-    let radius = pieceRadius;
+    let radius = pieceRadius * scale;
     if (distance < radius * radius) {
       return i;
     }
@@ -342,12 +347,12 @@ function getEdge(eventX, eventY) {
 function getCorner(eventX, eventY, cList) {
   for (let i = 0; i < cList.length; i++) {
     let canvasLoc = coordToCornerCenter(cList[i].location);
-    let centerX = canvasLoc.x + offsetX + dX;
-    let centerY = canvasLoc.y + offsetY + dY;
+    let centerX = canvasLoc.x * scale + offsetX + dX;
+    let centerY = canvasLoc.y * scale + offsetY + dY;
     let distanceX = eventX - centerX;
     let distanceY = eventY - centerY;
     let distance = distanceX * distanceX + distanceY * distanceY;
-    let radius = pieceRadius;
+    let radius = pieceRadius * scale;
     if (distance < radius * radius) {
       return i;
     }
@@ -356,12 +361,12 @@ function getCorner(eventX, eventY, cList) {
 function getTile(eventX, eventY) {
   for (let i = 0; i < tiles.length; i++) {
     let canvasLoc = coordToTileCenter(tiles[i].location);
-    let centerX = canvasLoc.x + offsetX + dX;
-    let centerY = canvasLoc.y + offsetY + dY;
+    let centerX = canvasLoc.x * scale + offsetX + dX;
+    let centerY = canvasLoc.y * scale + offsetY + dY;
     let distanceX = eventX - centerX;
     let distanceY = eventY - centerY;
     let distance = distanceX * distanceX + distanceY * distanceY;
-    let radius = 50;
+    let radius = 50 * scale;
     if (distance < radius * radius) {
       return i;
     }
@@ -369,6 +374,10 @@ function getTile(eventX, eventY) {
   return null;
 }
 function onclick(event) {
+  if (ignoreNextClick) {
+    ignoreNextClick = false;
+    return;
+  }
   // Ignore right/middle-click.
   if (event.button != 0) {
     return;
@@ -408,6 +417,8 @@ function onclick(event) {
   }
 }
 function onmove(event) {
+  eventX = event.clientX;
+  eventY = event.clientY;
   let hoverLoc = getTile(event.clientX, event.clientY);
   if (hoverLoc != null) {
     hoverTile = tiles[hoverLoc].location;
@@ -436,12 +447,15 @@ function onmove(event) {
 }
 function onwheel(event) {
   event.preventDefault();
+  let oldScale = scale;
   if (event.deltaY < 0) {
-    scale += 0.125;
+    scale += 0.05;
   } else if (event.deltaY > 0) {
-    scale -= 0.125;
+    scale -= 0.05;
   }
   scale = Math.min(Math.max(0.125, scale), 4);
+  offsetX = event.clientX - ((event.clientX - offsetX) * scale / oldScale);
+  offsetY = event.clientY - ((event.clientY - offsetY) * scale / oldScale);
 }
 function ondown(event) {
   // Ignore right/middle-click.
@@ -457,17 +471,14 @@ function onup(event) {
   if (event.button != 0) {
     return;
   }
+  if (isDragging && (dX != 0 || dY != 0)) {
+    ignoreNextClick = true;
+  }
   isDragging = false;
   offsetX += dX;
   offsetY += dY;
   dX = 0;
   dY = 0;
-}
-function onout(event) {
-  hoverTile = null;
-  hoverCorner = null;
-  hoverEdge = null;
-  onup(event);
 }
 function centerCanvas() {
   if (tiles.length < 1) {
