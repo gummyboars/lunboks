@@ -16,46 +16,6 @@ selectCardWidth = summaryCardWidth * 3;
 selectCardHeight = summaryCardHeight * 3;
 // Other constants.
 cardResources = ["rsrc1", "rsrc2", "rsrc3", "rsrc4", "rsrc5"];
-globalNames = {
-  rsrc1: "sulfur",
-  rsrc2: "olivine",
-  rsrc3: "water",
-  rsrc4: "clay",
-  rsrc5: "metal",
-  norsrc: "desert",
-  space: "space",
-};
-imageNames = {
-  rsrc1: "/sulfur.png",
-  rsrc2: "/olivine.png",
-  rsrc3: "/permafrost.png",
-  rsrc4: "/clay.png",
-  rsrc5: "/metal.png",
-  rsrc1card: "/sulfurcard.png",
-  rsrc2card: "/olivinecard.png",
-  rsrc3card: "/watercard.png",
-  rsrc4card: "/claycard.png",
-  rsrc5card: "/metalcard.png",
-  norsrc: "/desert.png",
-  space: "/space.png",
-  rsrc1port: "/sulfurport.png",
-  rsrc2port: "/olivineport.png",
-  rsrc3port: "/waterport.png",
-  rsrc4port: "/clayport.png",
-  rsrc5port: "/metalport.png",
-  "3port": "/3port.png",
-  knight: "/knight.png",
-  roadbuilding: "/roadbuilding.png",
-  yearofplenty: "/yearofplenty.png",
-  monopoly: "/monopoly.png",
-  palace: "/palace.png",
-  chapel: "/chapel.png",
-  university: "/university.png",
-  library: "/library.png",
-  market: "/market.png",
-  cardback: "/cardback.png",
-  devcard: "/devcard.png",
-};
 devCards = ["knight", "roadbuilding", "yearofplenty", "monopoly", "palace", "chapel", "university", "library", "market"];
 resourceSelectionUI = {
   tradeOffer: {
@@ -101,6 +61,7 @@ myIdx = null;
 amHost = false;
 playerData = [];
 tiles = [];
+ports = [];
 corners = [];
 pieces = [];
 edges = [];
@@ -311,14 +272,19 @@ function addSelectionToPanel(selection, panel) {
     for (let i = 0; i < count; i++) {
       let div = document.createElement("DIV");
       div.classList.add("summarycard");
-      let img = document.createElement("IMG");
-      img.src = imageNames[rsrc + "card"];
+      let img = document.createElement("CANVAS");
       img.classList.add("noclick");
       img.width = summaryCardWidth;
       img.height = summaryCardHeight;
       img.style.display = "block";
       div.appendChild(img);
       panel.appendChild(div);
+      let prerendered = document.getElementById("canvas" + rsrc + "card");
+      let ctx = img.getContext("2d");
+      ctx.save();
+      ctx.scale(summaryCardWidth / prerendered.width, summaryCardHeight / prerendered.height);
+      ctx.drawImage(prerendered, 0, 0);
+      ctx.restore();
     }
   }
 }
@@ -705,6 +671,7 @@ function populateCards() {
   newContainer.classList.add("uicards");
   newContainer.classList.add("noclick");
   let oldContainer = document.getElementById("uibottom").firstChild;
+  document.getElementById("uibottom").replaceChild(newContainer, oldContainer);
   if (cards) {
     for (let i = 0; i < cardResources.length; i++) {
       for (let j = 0; j < cards[cardResources[i]]; j++) {
@@ -721,19 +688,22 @@ function populateCards() {
     newContainer.lastChild.classList.add("shown");
   }
   // TODO: how do we avoid the problem of having flicker?
-  document.getElementById("uibottom").replaceChild(newContainer, oldContainer);
 }
 function addCard(cardContainer, elemId, usable) {
-  let img = document.createElement("IMG");
-  img.src = imageNames[elemId];
-  img.classList.add("clickable");
-  img.width = cardWidth;
-  img.height = cardHeight;
-  img.style.display = "block";
+  let prerendered = document.getElementById("canvas" + elemId);
+  if (prerendered == null) {
+    console.log("oops couldn't find canvas" + elemId);
+    return;
+  }
+  let cnv = document.createElement("CANVAS");
+  cnv.width = cardWidth;
+  cnv.height = cardHeight;
+  cnv.style.display = "block";
+  cnv.classList.add("clickable");
   let div = document.createElement("DIV");
   div.classList.add("clickable");
   div.classList.add("uicard");
-  div.appendChild(img);
+  div.appendChild(cnv);
   div.onmouseenter = bringforward;
   div.onmouseleave = pushbackward;
   if (usable) {
@@ -743,6 +713,11 @@ function addCard(cardContainer, elemId, usable) {
     div.classList.add("resourceselector");
   }
   cardContainer.appendChild(div);
+  let ctx = cnv.getContext('2d');
+  ctx.save();
+  ctx.scale(cardWidth / prerendered.width, cardHeight / prerendered.height);
+  ctx.drawImage(prerendered, 0, 0);
+  ctx.restore();
 }
 function bringforward(e) {
   e.currentTarget.classList.add("selected");
@@ -844,6 +819,7 @@ function onmsg(event) {
   gamePhase = data.game_phase;
   turnPhase = data.turn_phase;
   tiles = data.tiles;
+  ports = data.ports;
   corners = data.corners;
   edges = data.edges;
   robberLoc = data.robber;
@@ -1160,8 +1136,7 @@ function addSummaryCard(cardContainer, order, cardName, isLast) {
   let contDiv = document.createElement("DIV");
   contDiv.classList.add("cardback");
   contDiv.style.order = order;
-  let backImg = document.createElement("IMG");
-  backImg.src = imageNames[cardName];
+  let backImg = document.createElement("CANVAS");
   backImg.width = summaryCardWidth;
   backImg.height = summaryCardHeight;
   contDiv.appendChild(backImg);
@@ -1169,6 +1144,12 @@ function addSummaryCard(cardContainer, order, cardName, isLast) {
     contDiv.style.flex = "0 0 auto";
   }
   cardContainer.appendChild(contDiv);
+  let prerendered = document.getElementById("canvas" + cardName);
+  let ctx = backImg.getContext("2d");
+  ctx.save();
+  ctx.scale(summaryCardWidth / prerendered.width, summaryCardHeight / prerendered.height);
+  ctx.drawImage(prerendered, 0, 0);
+  ctx.restore();
 }
 function createSelectors() {
   for (selectBox of ["top", "bottom"]) {
@@ -1176,12 +1157,11 @@ function createSelectors() {
     for (cardRsrc of cardResources) {
       let boxCopy = selectBox;
       let rsrcCopy = cardRsrc;
-      let img = document.createElement("IMG");
+      let img = document.createElement("CANVAS");
       img.classList.add("selector");
       img.classList.add("clickable");
       img.width = selectCardWidth;
       img.height = selectCardHeight;
-      img.src = imageNames[cardRsrc + "card"];
       img.onclick = function(e) { selectResource(e, boxCopy, rsrcCopy); };
       img.oncontextmenu = function(e) { deselectResource(e, boxCopy, rsrcCopy); };
       let counter = document.createElement("DIV");
@@ -1194,6 +1174,16 @@ function createSelectors() {
       container.appendChild(img);
       container.appendChild(counter);
       box.appendChild(container);
+      let prerendered = document.getElementById("canvas" + cardRsrc + "card");
+      if (prerendered == null) {
+        console.log("unable to find canvas" + cardRsrc + "card");
+        continue;
+      }
+      let ctx = img.getContext("2d");
+      ctx.save();
+      ctx.scale(selectCardWidth / prerendered.width, selectCardHeight / prerendered.height);
+      ctx.drawImage(prerendered, 0, 0);
+      ctx.restore();
     }
   }
 }
@@ -1208,14 +1198,28 @@ function sizeThings() {
   document.getElementById('uibottom').style.width = canWidth + "px";
   document.getElementById('myCanvas').width = canWidth;
   document.getElementById('myCanvas').height = canHeight;
-  document.getElementById('buydev').width = cardWidth;
-  document.getElementById('buydev').height = cardHeight;
   for (let pdiv of document.getElementsByClassName("cardinfo")) {
     pdiv.style.width = 0.8 * rightWidth + "px";
   }
 }
+function createBuyDev() {
+  let buydev = document.getElementById('buydev');
+  buydev.width = cardWidth;
+  buydev.height = cardHeight;
+  let ctx = buydev.getContext('2d');
+  let prerendered = document.getElementById('canvasdevcard');
+  ctx.save();
+  ctx.scale(cardWidth / prerendered.width, cardHeight / prerendered.height);
+  ctx.drawImage(prerendered, 0, 0);
+  ctx.restore();
+}
 function init() {
+  let promise = initializeImages();
+  promise.then(continueInit, continueInit);
   sizeThings();
+}
+function continueInit() {
+  createBuyDev();
   createSelectors();
   window.requestAnimationFrame(draw);
   let l = window.location;
@@ -1228,7 +1232,7 @@ function init() {
   document.getElementById('myCanvas').onmouseout = onout;
   document.getElementById('myCanvas').onkeydown = onkey;
   // TODO: zoom in/out should come later.
-  // document.getElementById('myCanvas').onwheel = onwheel;
+  document.getElementById('myCanvas').onwheel = onwheel;
   document.body.onclick = onBodyClick;
   window.onresize = sizeThings;
 }
@@ -1260,52 +1264,5 @@ function onBodyClick(event) {
     }
   }
 }
-function getCookie(cname) {
-  var name = cname + "=";
-  var decodedCookie = decodeURIComponent(document.cookie);
-  var ca = decodedCookie.split(';');
-  for(var i = 0; i <ca.length; i++) {
-    var c = ca[i];
-    while (c.charAt(0) == ' ') {
-      c = c.substring(1);
-    }
-    if (c.indexOf(name) == 0) {
-      return c.substring(name.length, c.length);
-    }
-  }
-  return null;
-}
-function initializeImageLocations() {
-  // TODO: is there a way people can use their local directories?
-  let prefixDir = getCookie("image_prefix");
-  let newImages = {};
-  for (imgName in imageNames) {
-    let imgPath = getCookie(imgName);
-    if (imgPath && prefixDir) {
-      // TODO: be smart about joining i.e. look for URI prefixes.
-      newImages[imgName] = prefixDir + "/" + imgPath;
-    } else if (imgPath) {
-      newImages[imgName] = imgPath;
-    }
-  }
-  for (imgName in newImages) {
-    imageNames[imgName] = newImages[imgName];
-  }
-}
-function initializeNames() {
-  let overrides = JSON.parse(getCookie("names") || "{}");
-  if (!overrides) {
-    return;
-  }
-  let newNames = {};
-  for (let name in globalNames) {
-    if (overrides[name]) {
-      newNames[name] = overrides[name];
-    }
-  }
-  for (let name in newNames) {
-    globalNames[name] = newNames[name];
-  }
-}
-initializeImageLocations();
+initializeImageData();
 initializeNames();

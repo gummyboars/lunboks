@@ -39,6 +39,23 @@ class TestLoadState(unittest.TestCase):
     data = c.json_str()
     d = catan.CatanState.parse_json(data)
 
+    for loc_attr in ["tiles", "ports", "port_corners", "pieces", "roads"]:
+      keys = getattr(c, loc_attr).keys()
+      self.assertCountEqual(keys, getattr(d, loc_attr).keys())
+      for key in keys:
+        old_item = getattr(c, loc_attr)[key]
+        new_item = getattr(d, loc_attr)[key]
+        # Direct comparison for primitives.
+        if not hasattr(old_item, "__dict__"):
+          self.assertEqual(old_item, new_item, "%s [%s] old == new" % (loc_attr, key))
+          continue
+        # Attribute-by-attribute comparison for objects.
+        self.assertCountEqual(old_item.__dict__.keys(), new_item.__dict__.keys())
+        for attr in old_item.__dict__:
+          self.assertEqual(
+              getattr(old_item, attr), getattr(new_item, attr),
+              "%s [%s]: %s old == new" % (loc_attr, key, attr))
+
 
 class BaseInputHandlerTest(unittest.TestCase):
 

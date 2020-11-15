@@ -1,5 +1,8 @@
 {
-    "counter_offers": [null, null],
+    "counter_offers": [
+        null,
+        null
+    ],
     "dev_cards": [
         "knight",
         "knight",
@@ -29,7 +32,10 @@
     ],
     "dev_roads_placed": 0,
     "dice_roll": null,
-    "discard_players": [0, 0],
+    "discard_players": [
+        0,
+        0
+    ],
     "game_phase": "main",
     "host": null,
     "largest_army_player": null,
@@ -54,26 +60,43 @@
     ],
     "pirate": null,
     "played_dev": 0,
-    "player_sessions": {"Player1": 0, "Player2": 1},
+    "player_sessions": {
+        "Player1": 0,
+        "Player2": 1
+    },
     "player_data": [
-      {
-        "color": "red",
-        "name": "Casey",
-        "knights_played": 0,
-        "longest_route": 1,
-        "cards": {"rsrc1": 4, "rsrc2": 2, "rsrc3": 1, "rsrc4": 2, "rsrc5": 2},
-        "trade_ratios": {"rsrc1": 2},
-        "unusable": {}
-      },
-      {
-        "color": "blue",
-        "name": "Andy",
-        "knights_played": 0,
-        "longest_route": 1,
-        "cards": {"rsrc1": 3, "rsrc2": 3, "rsrc3": 2, "rsrc4": 1, "rsrc5": 5},
-        "trade_ratios": {},
-        "unusable": {}
-      }
+        {
+            "color": "red",
+            "name": "Casey",
+            "knights_played": 0,
+            "longest_route": 1,
+            "cards": {
+                "rsrc1": 4,
+                "rsrc2": 2,
+                "rsrc3": 1,
+                "rsrc4": 2,
+                "rsrc5": 2
+            },
+            "trade_ratios": {
+                "rsrc1": 2
+            },
+            "unusable": {}
+        },
+        {
+            "color": "blue",
+            "name": "Andy",
+            "knights_played": 0,
+            "longest_route": 1,
+            "cards": {
+                "rsrc1": 3,
+                "rsrc2": 3,
+                "rsrc3": 2,
+                "rsrc4": 1,
+                "rsrc5": 5
+            },
+            "trade_ratios": {},
+            "unusable": {}
+        }
     ],
     "roads": [
         {
@@ -109,6 +132,7 @@
             ],
             "number": 6,
             "rotation": 0,
+            "variant": "",
             "tile_type": "rsrc5"
         },
         {
@@ -119,6 +143,7 @@
             ],
             "number": 9,
             "rotation": 0,
+            "variant": "",
             "tile_type": "rsrc3"
         },
         {
@@ -129,6 +154,7 @@
             ],
             "number": 9,
             "rotation": 0,
+            "variant": "",
             "tile_type": "rsrc1"
         },
         {
@@ -139,6 +165,7 @@
             ],
             "number": 5,
             "rotation": 0,
+            "variant": "",
             "tile_type": "rsrc4"
         },
         {
@@ -149,6 +176,7 @@
             ],
             "number": null,
             "rotation": 0,
+            "variant": "",
             "tile_type": "space"
         },
         {
@@ -159,7 +187,8 @@
             ],
             "number": null,
             "rotation": 0,
-            "tile_type": "3port"
+            "variant": "",
+            "tile_type": "space"
         },
         {
             "is_land": false,
@@ -169,6 +198,7 @@
             ],
             "number": null,
             "rotation": 1,
+            "variant": "",
             "tile_type": "space"
         },
         {
@@ -179,7 +209,8 @@
             ],
             "number": null,
             "rotation": 1,
-            "tile_type": "rsrc1port"
+            "variant": "",
+            "tile_type": "space"
         },
         {
             "is_land": false,
@@ -189,6 +220,7 @@
             ],
             "number": null,
             "rotation": 3,
+            "variant": "",
             "tile_type": "space"
         },
         {
@@ -199,7 +231,8 @@
             ],
             "number": null,
             "rotation": 3,
-            "tile_type": "3port"
+            "variant": "",
+            "tile_type": "space"
         },
         {
             "is_land": false,
@@ -208,7 +241,8 @@
                 7
             ],
             "number": null,
-            "rotation": -2,
+            "rotation": 4,
+            "variant": "",
             "tile_type": "space"
         },
         {
@@ -218,8 +252,9 @@
                 6
             ],
             "number": null,
-            "rotation": -2,
-            "tile_type": "rsrc3port"
+            "rotation": 4,
+            "variant": "",
+            "tile_type": "space"
         },
         {
             "is_land": false,
@@ -228,7 +263,8 @@
                 4
             ],
             "number": null,
-            "rotation": -1,
+            "rotation": 5,
+            "variant": "",
             "tile_type": "space"
         },
         {
@@ -238,11 +274,54 @@
                 2
             ],
             "number": null,
-            "rotation": -1,
-            "tile_type": "rsrc2port"
+            "rotation": 5,
+            "variant": "",
+            "tile_type": "space"
         }
     ],
     "trade_offer": {},
     "turn_idx": 0,
-    "turn_phase": "main"
+    "turn_phase": "main",
+    "ports": [
+        {
+            "location": [
+                4,
+                0
+            ],
+            "port_type": "3",
+            "rotation": 0
+        },
+        {
+            "location": [
+                6,
+                3
+            ],
+            "port_type": "rsrc1",
+            "rotation": 1
+        },
+        {
+            "location": [
+                4,
+                6
+            ],
+            "port_type": "3",
+            "rotation": 3
+        },
+        {
+            "location": [
+                0,
+                6
+            ],
+            "port_type": "rsrc3",
+            "rotation": 4
+        },
+        {
+            "location": [
+                0,
+                2
+            ],
+            "port_type": "rsrc2",
+            "rotation": 5
+        }
+    ]
 }

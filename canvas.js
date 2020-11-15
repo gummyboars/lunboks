@@ -12,6 +12,8 @@ hoverTile = null;
 hoverCorner = null;
 hoverEdge = null;
 
+renderLoops = {};
+
 function locationsEqual(locA, locB) {
   if (locA == null && locB == null) {
     return true;
@@ -44,10 +46,27 @@ function draw() {
   context.translate(offsetX + dX, offsetY + dY);
   context.scale(scale, scale);
   context.textAlign = 'center';
+  let portMap = {};
+  for (let i = 0; i < ports.length; i++) {
+    let loc = ports[i].location.toString();
+    portMap[loc] = ports[i];
+  }
   context.save();
   for (let i = 0; i < tiles.length; i++) {
     drawTile(tiles[i], context);
     drawNumber(tiles[i], context);
+  }
+  context.restore();
+  context.save();
+  for (let i = 0; i < ports.length; i++) {
+    drawPort(ports[i], context);
+  }
+  context.restore();
+  context.save();
+  for (let i = 0; i < tiles.length; i++) {
+    if (!tiles[i].is_land) {
+      drawCoast(tiles[i], portMap, context);
+    }
   }
   context.restore();
   context.save();
@@ -65,9 +84,11 @@ function draw() {
   drawHover(context);
   context.restore();
   context.save();
-  if (robberLoc != null && !locationsEqual(robberLoc, hoverTile)) {
-    drawRobber(context, robberLoc, 1);
+  let robberOpacity = 1;
+  if (robberLoc != null && locationsEqual(robberLoc, hoverTile)) {
+    robberOpacity = 0.5;
   }
+  drawRobber(context, robberLoc, robberOpacity);
   context.restore();
   drawDebug(context);
   context.restore();
@@ -115,7 +136,17 @@ function drawRoad(roadLoc, style, ctx) {
   ctx.stroke();
 }
 function drawDebug(ctx) {
-  return;
+  if (debug) {
+    ctx.strokeStyle = "black";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(-10000, 0);
+    ctx.lineTo(10000, 0);
+    ctx.stroke();
+    ctx.moveTo(0, -10000);
+    ctx.lineTo(0, 10000);
+    ctx.stroke();
+  }
 }
 function drawPiece(pieceLoc, style, pieceType, ctx) {
   let canvasLoc = coordToCornerCenter(pieceLoc);
@@ -151,13 +182,9 @@ function drawPiece(pieceLoc, style, pieceType, ctx) {
   }
 }
 function drawTile(tileData, ctx) {
-  let img = document.getElementById(tileData.tile_type);
-  if (!img) {
-    img = document.createElement("IMG");
-    img.id = tileData.tile_type;
-    img.src = imageNames[tileData.tile_type];
-    img.style.display = "none";
-    document.getElementsByTagName("BODY")[0].appendChild(img);
+  let img = document.getElementById("canvas" + tileData.tile_type + tileData.variant);
+  if (img == null) {
+    img = document.getElementById("canvas" + tileData.tile_type);
   }
   let canvasLoc = coordToTileCenter(tileData.location);
   ctx.save();
@@ -167,6 +194,56 @@ function drawTile(tileData, ctx) {
   }
   if (img != null) {
     ctx.drawImage(img, -tileWidth/2, -tileHeight/2, tileWidth, tileHeight);
+  }
+  ctx.restore();
+}
+function drawPort(portData, ctx) {
+  let portImg = document.getElementById("canvasport" + portData.variant);
+  if (portImg == null) {
+    portImg = document.getElementById("canvasport");
+  }
+  let img = document.getElementById("canvas" + portData.port_type + "port" + portData.variant);
+  if (img == null) {
+    img = document.getElementById("canvas" + portData.port_type + "port");
+  }
+  let canvasLoc = coordToTileCenter(portData.location);
+  ctx.save();
+  ctx.translate(canvasLoc.x, canvasLoc.y);
+  if (portData.rotation) {
+    ctx.rotate(Math.PI * portData.rotation / 3);
+  }
+  if (portImg != null) {
+    ctx.drawImage(portImg, -tileWidth/2, -tileHeight/2, tileWidth, tileHeight);
+  }
+  if (img != null) {
+    ctx.drawImage(img, -tileWidth/2, -tileHeight/2, tileWidth, tileHeight);
+  }
+  ctx.restore();
+}
+function drawCoast(tileData, portMap, ctx) {
+  coastImg = document.getElementById("canvascoast" + tileData.variant);
+  if (coastImg == null) {
+    coastImg = document.getElementById("canvascoast");
+  }
+  if (coastImg == null || !Array.isArray(tileData.land_rotations)) {
+    return;
+  }
+  let portData = portMap[tileData.location.toString()];
+  let portRotation = null;
+  if (portData != null) {
+    portRotation = (portData.rotation + 6) % 6;
+  }
+  let canvasLoc = coordToTileCenter(tileData.location);
+  ctx.save();
+  ctx.translate(canvasLoc.x, canvasLoc.y);
+  for (let rotation of tileData.land_rotations) {
+    if ((rotation+6)%6 == portRotation) {
+      continue;
+    }
+    ctx.save();
+    ctx.rotate(Math.PI * rotation / 3);
+    ctx.drawImage(coastImg, -tileWidth/2, -tileHeight/2, tileWidth, tileHeight);
+    ctx.restore();
   }
   ctx.restore();
 }
@@ -196,8 +273,10 @@ function drawHover(ctx) {
   }
   let canvas = document.getElementById("myCanvas");
   if (hoverTile != null) {
-    drawRobber(ctx, hoverTile, 0.5);
-    canvas.style.cursor = "pointer";
+    if (!locationsEqual(robberLoc, hoverTile)) {
+      drawRobber(ctx, hoverTile, 0.5);
+      canvas.style.cursor = "pointer";
+    }
     return;
   }
   if (hoverCorner != null) {
@@ -408,4 +487,91 @@ function centerCanvas() {
   }
   offsetX = canWidth / 2 - (minX + maxX) / 2;
   offsetY = canHeight / 2 - (minY + maxY) / 2;
+}
+function finishImgLoad(assetName) {
+  renderLoops[assetName] = 2;
+}
+function renderSource(assetName, cnv, img, filter) {
+  if (!renderLoops[assetName]) {
+    renderLoops[assetName] = 1;
+    return;
+  }
+  cnv.width = filter.naturalWidth;
+  cnv.height = filter.naturalHeight;
+  let context = cnv.getContext('2d');
+  let xoff = imageInfo[assetName].xoff || 0;
+  let yoff = imageInfo[assetName].yoff || 0;
+  let rotation = imageInfo[assetName].rotation || 0;
+  let scale = imageInfo[assetName].scale || 1;
+  context.clearRect(0, 0, filter.width, filter.height);
+  context.save();
+  context.translate(filter.width/2, filter.height/2);
+  context.drawImage(filter, -filter.width/2, -filter.height/2);
+  context.rotate(Math.PI * rotation / 180);
+  context.scale(scale, scale);
+  context.globalCompositeOperation = "source-in";
+  context.drawImage(img, -xoff, -yoff);
+  context.restore();
+  renderLoops[assetName] = 2;
+}
+function initializeImages() {
+  let assets = document.getElementById("assets");
+  for (let iname in imageInfo) {
+    let assetName = iname;
+    // Some variants (such as a corner tile for space) don't exist, so skip them.
+    if (imageInfo[assetName].src == null) {
+      renderLoops[assetName] = 2;
+      continue
+    }
+    let img = document.createElement("IMG");
+    img.src = imageInfo[assetName].src;
+    img.id = "img" + assetName;
+    assets.appendChild(img);
+    if (imageInfo[assetName].filter == null) {
+      renderLoops[assetName] = 1;
+      img.id = "canvas" + assetName;
+      img.onload = function(e) {
+        finishImgLoad(assetName);
+      };
+      continue;
+    }
+    let filter = document.createElement("IMG");
+    filter.src = imageInfo[assetName].filter;
+    filter.id = "filter" + assetName;
+    assets.appendChild(filter);
+    let cnv = document.createElement("CANVAS");
+    cnv.id = "canvas" + assetName;
+    assets.appendChild(cnv);
+    img.onload = function(e) {
+      renderSource(assetName, cnv, img, filter);
+    };
+    filter.onload = function(e) {
+      renderSource(assetName, cnv, img, filter);
+    };
+  }
+  // There's probably a better way to do this (create many promises and resolve them from inside
+  // renderSource? How do we get the resolve function in renderSource? Anyway, I'm not going to
+  // try to figure it out right now.
+  somePromise = new Promise((resolve, reject) => {
+    setTimeout(function() { checkInitDone(resolve, reject, 300) }, 100);
+  });
+  return somePromise;
+}
+function checkInitDone(resolver, rejecter, maxTries) {
+  if (!maxTries) {
+    rejecter("deadline exceeded");
+    return;
+  }
+  let allDone = true;
+  for (let iname in imageInfo) {
+    if (renderLoops[iname] != 2) {
+      allDone = false;
+      break;
+    }
+  }
+  if (!allDone) {
+    setTimeout(function() { checkInitDone(resolver, rejecter, maxTries - 1) }, 100);
+    return;
+  }
+  resolver("loaded");
 }

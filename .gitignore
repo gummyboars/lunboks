@@ -4,7 +4,10 @@ __pycache__/
 *$py.class
 
 # Any images that may be present in the project
+*.jpeg
+*.jpg
 *.png
+*.svg
 images.zip
 
 # swp files from vim

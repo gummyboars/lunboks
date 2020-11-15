@@ -1,0 +1,28 @@
+<!DOCTYPE HTML>
+<html>
+  <meta content="text/html;charset=utf-8" http-equiv="Content-Type">
+  <meta content="utf-8" http-equiv="encoding">
+  <head>
+    <script type="text/javascript" src="/names.js"></script>
+    <script type="text/javascript" src="/customization.js"></script>
+  </head>
+  <body style="background: #4cb7d9" onload="initializeImageData(); initializeNameOptions();">
+    <canvas id="orig" width="800" height="600" onmousemove="onmove(event)" onmousedown="ondown(event)" onmouseup="onup(event)" onwheel="wheelie(event)"></canvas>
+    <canvas id="myCanvas" width="418" height="362"></canvas>
+    <div style="display: flex; flex-direction: row;">
+      <select id="imgname" onchange="choosenew(event)"></select>
+      X Offset<input type="text" value="0" id="xoff" onchange="update(null)" />
+      Y Offset<input type="text" value="0" id="yoff" onchange="update(null)" />
+      Rotation<input type="text" value="0" id="rotation" onchange="draw(null)" />
+      Scale<input type="text" value="1" id="scale" onchange="update(null)" />
+    </div>
+    <div style="display: flex; flex-direction: row; margin-top: 10px;">
+      Image source:<input type="text" id="imgSrc" onchange="loadimg()">
+      Filter source:<input type="text" id="filterSrc" value="/hex.png" onchange="loadfilter()">
+    </div>
+    <input type="button" value="Save" onclick="saveimg()"></input>
+    <p>Background color (for testing)<input id="bgcolor" type="text" value="#00bfff" onchange="changebg(null)" /></p>
+    <img src="/hex.png" id="sourceimg" style="display: none" />
+    <img src="/hex.png" id="filter" style="display: none" />
+  </body>
+</html>

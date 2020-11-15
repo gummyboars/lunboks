@@ -21,7 +21,7 @@ SPACE_TILE_SEQUENCE = [
     (10, 9), (8, 10), (6, 11), (4, 10), (2, 9), (0, 8),  # around the bottom
     (0, 6), (0, 4), (0, 2)  # up the left side
     ]
-SPACE_TILE_ROTATIONS = [0, 0, 1, 2, 2, 3, -2, -2, -1]
+SPACE_TILE_ROTATIONS = [5, 0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5]
 
 
 class CustomEncoder(json.JSONEncoder):
@@ -65,22 +65,22 @@ class TileLocation(Location):
     Location.__init__(self, x, y)
 
   def get_upper_left_tile(self):
-    return (self.x - 2, self.y - 1)
+    return TileLocation(self.x - 2, self.y - 1)
 
   def get_upper_tile(self):
-    return self.x, self.y - 2
+    return TileLocation(self.x, self.y - 2)
 
   def get_upper_right_tile(self):
-    return (self.x + 2, self.y - 1)
+    return TileLocation(self.x + 2, self.y - 1)
 
   def get_lower_right_tile(self):
-    return (self.x + 2, self.y + 1)
+    return TileLocation(self.x + 2, self.y + 1)
 
   def get_lower_tile(self):
-    return self.x, self.y + 2
+    return TileLocation(self.x, self.y + 2)
 
   def get_lower_left_tile(self):
-    return (self.x - 2, self.y + 1)
+    return TileLocation(self.x - 2, self.y + 1)
 
   def get_upper_left_corner(self):
     return CornerLocation(self.x, self.y)
@@ -99,6 +99,12 @@ class TileLocation(Location):
 
   def get_left_corner(self):
     return CornerLocation(self.x-1, self.y+1)
+
+  def get_adjacent_tiles(self):
+    # NOTE: order matters here. Index in this array lines up with rotation semantics.
+    return [self.get_lower_tile(), self.get_lower_left_tile(),
+            self.get_upper_left_tile(), self.get_upper_tile(),
+            self.get_upper_right_tile(), self.get_lower_right_tile()]
 
   def get_corner_locations(self):
     return [self.get_upper_left_corner(), self.get_upper_right_corner(),
@@ -263,12 +269,14 @@ class Piece(object):
 
 class Tile(object):
 
-  def __init__(self, x, y, tile_type, is_land, number, rotation=0):
+  def __init__(self, x, y, tile_type, is_land, number, rotation=0, variant="", land_rotations=None):
     self.location = TileLocation(x, y)
     self.tile_type = tile_type
     self.is_land = is_land
     self.number = number
     self.rotation = rotation
+    self.variant = variant
+    self.land_rotations = land_rotations or []
 
   def json_repr(self):
     return {
@@ -277,12 +285,36 @@ class Tile(object):
         "is_land": self.is_land,
         "number": self.number,
         "rotation": self.rotation,
+        "variant": self.variant,
+        "land_rotations": self.land_rotations,
     }
 
   @staticmethod
   def parse_json(value):
     return Tile(value["location"][0], value["location"][1], value["tile_type"],
-        value["is_land"], value["number"], value["rotation"])
+        value["is_land"], value["number"], value["rotation"], value.get("variant") or "",
+        value.get("land_rotations") or [])
+
+  def __str__(self):
+    return str(self.json_repr())
+
+
+class Port(object):
+  def __init__(self, x, y, port_type, rotation=0):
+    self.location = TileLocation(x, y)
+    self.port_type = port_type
+    self.rotation = rotation
+
+  def json_repr(self):
+    return {
+        "location": self.location,
+        "port_type": self.port_type,
+        "rotation": self.rotation,
+    }
+
+  @staticmethod
+  def parse_json(value):
+    return Port(value["location"][0], value["location"][1], value["port_type"], value["rotation"])
 
   def __str__(self):
     return str(self.json_repr())
@@ -342,7 +374,7 @@ class CatanState(object):
   WANT = "want"
   GIVE = "give"
   TRADE_SIDES = [WANT, GIVE]
-  LOCATION_ATTRIBUTES = ["tiles", "pieces", "roads"]
+  LOCATION_ATTRIBUTES = ["tiles", "ports", "pieces", "roads"]
   HIDDEN_ATTRIBUTES = ["dev_cards", "dev_roads_placed", "played_dev", "turn_idx", "player_sessions"]
 
   def __init__(self):
@@ -356,6 +388,7 @@ class CatanState(object):
     self.player_data = []
     self.tiles = {}
     self.ports = {}
+    self.port_corners = {}
     self.pieces = {}
     self.roads = {}  # includes ships
     self.robber = None
@@ -384,10 +417,12 @@ class CatanState(object):
 
     # Regular attributes
     for attr in cstate.__dict__:
-      if attr not in (CatanState.LOCATION_ATTRIBUTES + ["player_data", "ports"]):
+      if attr not in (CatanState.LOCATION_ATTRIBUTES + ["player_data", "port_corners"]):
         setattr(cstate, attr, gamedata[attr])
 
     # Parse the players. TODO: move more info inside player class, avoid this special case?
+    cstate.discard_players.clear()
+    cstate.counter_offers.clear()
     for i, parsed_player in enumerate(gamedata["player_data"]):
       cstate.player_data.append(CatanPlayer.parse_json(parsed_player))
       cstate.discard_players.append(0)
@@ -403,8 +438,12 @@ class CatanState(object):
     for road_json in gamedata["roads"]:
       road = Road.parse_json(road_json)
       cstate.add_road(road)
+    for port_json in gamedata["ports"]:
+      port = Port.parse_json(port_json)
+      cstate.add_port(port)
 
-    cstate._compute_ports()
+    cstate._compute_coast()  # Sets land_rotations for all space tiles.
+    cstate._compute_ports()  # Sets port_corners.
     return cstate
 
   def json_str(self):
@@ -942,7 +981,7 @@ class CatanState(object):
 
   def _add_player_port(self, location, player):
     """Sets the trade ratios for a player who built a settlement at this location."""
-    port_type = self.ports.get(tuple(location))
+    port_type = self.port_corners.get(tuple(location))
     if port_type == "3":
       for rsrc in RESOURCES:
         self.player_data[player].trade_ratios[rsrc] = min(self.player_data[player].trade_ratios[rsrc], 3)
@@ -1218,6 +1257,9 @@ class CatanState(object):
   def add_tile(self, tile):
     self.tiles[tile.location.as_tuple()] = tile
 
+  def add_port(self, port):
+    self.ports[port.location.as_tuple()] = port
+
   def add_piece(self, piece):
     self.pieces[piece.location.as_tuple()] = piece
 
@@ -1344,14 +1386,44 @@ class CatanState(object):
       self.add_tile(Tile(sequence[idx][0], sequence[idx][1], tile_types[idx], True, number))
     self.robber = robber_loc
 
-  def _init_space(self, space_tiles, rotations, ports):
-    if len(ports) != len(space_tiles) / 2 or len(ports) != len(rotations):
+  def _init_space(self, space_tiles, rotations):
+    if len(space_tiles) != len(rotations):
       raise RuntimeError("you screwed it up")
     for idx, loc in enumerate(space_tiles):
-      tile_name = "space"
+      self.add_tile(Tile(loc[0], loc[1], "space", False, None, rotations[idx]))
+
+    # Go back and figure out which ones are corners.
+    # TODO: turn this into a function and unit test it.
+    for idx, location in enumerate(space_tiles):
+      locs = TileLocation(location[0], location[1]).get_adjacent_tiles()
+      exists = [loc.as_tuple() in self.tiles for loc in locs]
+      tile_rotation = self.tiles[location].rotation
+      if exists.count(True) > 4:
+        self.tiles[location].variant = ""
+      elif exists.count(True) == 3:
+        self.tiles[location].variant = "corner"
+      else:
+        # Takes advantage of the return order of get_adjacent_tiles.
+        upper_left = locs[(tile_rotation+2)%6].as_tuple()
+        if upper_left in self.tiles:
+          self.tiles[location].variant = "edgeleft"
+        else:
+          self.tiles[location].variant = "edgeright"
+
+  def _create_port_every_other_tile(self, space_tiles, rotations, ports):
+    for idx, loc in enumerate(space_tiles):
       if idx % 2 == 1:
-        tile_name = ports[idx//2]
-      self.add_tile(Tile(loc[0], loc[1], tile_name, False, None, rotations[idx//2]))
+        port_type = ports[idx//2]
+        self.add_port(Port(loc[0], loc[1], port_type, rotations[idx]))
+
+  def _compute_coast(self):
+    for location, tile_data in self.tiles.items():
+      if tile_data.is_land:
+        continue
+      locs = TileLocation(location[0], location[1]).get_adjacent_tiles()
+      exists = [loc.as_tuple() in self.tiles for loc in locs]
+      lands = [idx for idx, loc in enumerate(locs) if exists[idx] and self.tiles[loc.as_tuple()].is_land]
+      self.tiles[location].land_rotations = lands
 
   def _init_dev_cards(self):
     dev_cards = ["knight"] * 14 + ["monopoly"] * 2 + ["roadbuilding"] * 2 + ["yearofplenty"] * 2
@@ -1360,35 +1432,32 @@ class CatanState(object):
     self.dev_cards = dev_cards
 
   def _compute_ports(self):
-    for tile in self.tiles.values():
-      if not tile.tile_type.endswith("port"):
-        continue
-      port_type = tile.tile_type[:-4]
-      rotation = (tile.rotation + 6) % 6
+    for port in self.ports.values():
+      rotation = (port.rotation + 6) % 6
       if rotation == 0:
-        port_corners = [tile.location.get_lower_left_corner(), tile.location.get_lower_right_corner()]
+        port_corners = [port.location.get_lower_left_corner(), port.location.get_lower_right_corner()]
       if rotation == 1:
-        port_corners = [tile.location.get_lower_left_corner(), tile.location.get_left_corner()]
+        port_corners = [port.location.get_lower_left_corner(), port.location.get_left_corner()]
       if rotation == 2:
-        port_corners = [tile.location.get_upper_left_corner(), tile.location.get_left_corner()]
+        port_corners = [port.location.get_upper_left_corner(), port.location.get_left_corner()]
       if rotation == 3:
-        port_corners = [tile.location.get_upper_left_corner(), tile.location.get_upper_right_corner()]
+        port_corners = [port.location.get_upper_left_corner(), port.location.get_upper_right_corner()]
       if rotation == 4:
-        port_corners = [tile.location.get_upper_right_corner(), tile.location.get_right_corner()]
+        port_corners = [port.location.get_upper_right_corner(), port.location.get_right_corner()]
       if rotation == 5:
-        port_corners = [tile.location.get_lower_right_corner(), tile.location.get_right_corner()]
+        port_corners = [port.location.get_lower_right_corner(), port.location.get_right_corner()]
       for corner in port_corners:
-        self.ports[corner.as_tuple()] = port_type
+        self.port_corners[corner.as_tuple()] = port.port_type
 
   def init_beginner(self):
     tile_types = [
         "rsrc5", "rsrc3", "rsrc2", "rsrc5", "rsrc3", "rsrc1", "rsrc3", "rsrc1", "rsrc2", "rsrc4",
         "norsrc", "rsrc4", "rsrc1", "rsrc1", "rsrc2", "rsrc4", "rsrc5", "rsrc2", "rsrc3"]
     self._init_tiles(tile_types, TILE_SEQUENCE, TILE_NUMBERS)
-    ports = [
-        "rsrc2port", "rsrc4port", "3port", "3port", "rsrc1port", "3port",
-        "rsrc5port", "rsrc3port", "3port"]
-    self._init_space(SPACE_TILE_SEQUENCE, SPACE_TILE_ROTATIONS, ports)
+    ports = ["rsrc2", "rsrc4", "3", "3", "rsrc1", "3", "rsrc5", "rsrc3", "3"]
+    self._init_space(SPACE_TILE_SEQUENCE, SPACE_TILE_ROTATIONS)
+    self._create_port_every_other_tile(SPACE_TILE_SEQUENCE, SPACE_TILE_ROTATIONS, ports)
+    self._compute_coast()
     self._compute_ports()
     self._init_dev_cards()
 
@@ -1402,19 +1471,22 @@ class CatanState(object):
       "norsrc"]
     random.shuffle(tile_types)
     self._init_tiles(tile_types, TILE_SEQUENCE, TILE_NUMBERS)
-    ports = ["3port", "3port", "3port", "3port",
-             "rsrc1port", "rsrc2port", "rsrc3port", "rsrc4port", "rsrc5port"]
+    ports = ["3", "3", "3", "3", "rsrc1", "rsrc2", "rsrc3", "rsrc4", "rsrc5"]
     random.shuffle(ports)
-    self._init_space(SPACE_TILE_SEQUENCE, SPACE_TILE_ROTATIONS, ports)
+    self._init_space(SPACE_TILE_SEQUENCE, SPACE_TILE_ROTATIONS)
+    self._create_port_every_other_tile(SPACE_TILE_SEQUENCE, SPACE_TILE_ROTATIONS, ports)
+    self._compute_coast()
     self._compute_ports()
     self._init_dev_cards()
 
   def init_test(self):
     tile_types = ["rsrc5", "rsrc3", "rsrc1", "rsrc4"]
     self._init_tiles(tile_types, [(2, 3), (4, 2), (2, 5), (4, 4)], [6, 9, 9, 5])
-    ports = ["3port", "rsrc1port", "3port", "rsrc3port", "rsrc2port"]
-    self._init_space(
-        [(2, 1), (4, 0), (6, 1), (6, 3), (6, 5), (4, 6), (2, 7), (0, 6), (0, 4), (0, 2)],
-        [0, 1, 3, -2, -1], ports)
+    space_seq = [(2, 1), (4, 0), (6, 1), (6, 3), (6, 5), (4, 6), (2, 7), (0, 6), (0, 4), (0, 2)]
+    rotations = [0, 0, 1, 1, 3, 3, -2, -2, -1, -1]
+    ports = ["3", "rsrc1", "3", "rsrc3", "rsrc2"]
+    self._init_space(space_seq, rotations)
+    self._create_port_every_other_tile(space_seq, rotations, ports)
+    self._compute_coast()
     self._compute_ports()
     self._init_dev_cards()
