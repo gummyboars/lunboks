@@ -42,6 +42,8 @@ imageInfo = {
   market: {"src": "/market.png"},
   cardback: {"src": "/cardback.png"},
   devcard: {"src": "/devcard.png"},
+  longestroute: {"src": "/longestroad.png"},
+  largestarmy: {"src": "/largestarmy.png"},
 };
 
 function initializeImageData() {
@@ -109,4 +111,6 @@ function initializeSpace() {
   localStorage.setItem("market", '{"src": "/market.png"}');
   localStorage.setItem("cardback", '{"src": "/cardback.png"}');
   localStorage.setItem("devcard", '{"src": "/devcard.png"}');
+  localStorage.setItem("longestroute", '{"src": "/longestroad.png"}');
+  localStorage.setItem("largestarmy", '{"src": "/largestarmy.png"}');
 }

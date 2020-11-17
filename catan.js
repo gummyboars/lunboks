@@ -80,6 +80,8 @@ gamePhase = null;
 turnPhase = null;
 discardPlayers = {};
 robPlayers = [];
+longestRoutePlayer = null;
+largestArmyPlayer = null;
 
 // Local state.
 debug = false;
@@ -638,7 +640,7 @@ function maybeShowRobWindow() {
       cardsDiv.style.flexDirection = "row";
       cardsDiv.style.justifyContent = "flex-end";
       cardsDiv.style.width = "100%";
-      updatePlayerCardInfo(i, cardsDiv, false);
+      updatePlayerCardInfo(i, cardsDiv, true);
       cardsOuter.appendChild(cardsDiv);
       selectDiv.appendChild(nameOuter);
       selectDiv.appendChild(cardsOuter);
@@ -849,6 +851,8 @@ function onmsg(event) {
   tradeActiveOffer = data.trade_offer;
   counterOffers = data.counter_offers;
   robPlayers = data.rob_players;
+  longestRoutePlayer = data.longest_route_player;
+  largestArmyPlayer = data.largest_army_player;
   if ("you" in data) {
     myIdx = data.you;
   }
@@ -1081,7 +1085,7 @@ function updatePlayerData() {
       phaseMarker.style.display = "none";
     }
     let cardDiv = playerDiv.getElementsByClassName("cardinfo")[0];
-    updatePlayerCardInfo(i, cardDiv, true);
+    updatePlayerCardInfo(i, cardDiv, false);
     let dataDiv = playerDiv.getElementsByClassName("otherinfo")[0];
     updatePlayerInfo(i, dataDiv);
   }
@@ -1094,17 +1098,34 @@ function updatePlayerInfo(idx, dataDiv) {
   let cardCount = document.createElement("DIV");
   cardCount.innerText = playerData[idx].resource_cards + " 🎴";
   cardCount.classList.add("otheritem");
-  cardCount.style.marginRight = "30px";
   let points = document.createElement("DIV");
   points.innerText = playerData[idx].points + " ⭐";
   points.classList.add("otheritem");
-  points.style.marginRight = "30px";
   let armySize = document.createElement("DIV");
-  armySize.innerText = playerData[idx].armies + " 🛡️";
+  let armyText = document.createElement("SPAN");
+  armyText.innerText = playerData[idx].armies;
+  if (idx === largestArmyPlayer) {
+    armyText.style.padding = "2px";
+    armyText.style.border = "2px white solid";
+    armyText.style.borderRadius = "50%";
+  }
+  let shieldText = document.createElement("SPAN");
+  shieldText.innerText = " 🛡️";
+  armySize.appendChild(armyText);
+  armySize.appendChild(shieldText);
   armySize.classList.add("otheritem");
-  armySize.style.marginRight = "30px";
   let longRoute = document.createElement("DIV");
-  longRoute.innerText = playerData[idx].longest_route + " 🔗";
+  let routeText = document.createElement("SPAN");
+  routeText.innerText = playerData[idx].longest_route;
+  if (idx === longestRoutePlayer) {
+    routeText.style.padding = "2px";
+    routeText.style.border = "2px white solid";
+    routeText.style.borderRadius = "50%";
+  }
+  let linkText = document.createElement("SPAN");
+  linkText.innerText = " 🔗";
+  longRoute.appendChild(routeText);
+  longRoute.appendChild(linkText);
   longRoute.classList.add("otheritem");
   // TODO: use 👑 or 🏆?
   dataDiv.appendChild(points);
@@ -1112,14 +1133,11 @@ function updatePlayerInfo(idx, dataDiv) {
   dataDiv.appendChild(armySize);
   dataDiv.appendChild(longRoute);
 }
-function updatePlayerCardInfo(idx, cardDiv, showDev) {
+function updatePlayerCardInfo(idx, cardDiv, onlyResources) {
   while (cardDiv.firstChild) {
     cardDiv.removeChild(cardDiv.firstChild);
   }
-  if (!playerData[idx].resource_cards && !playerData[idx].dev_cards) {
-    return;
-  }
-  if (showDev && playerData[idx].resource_cards && playerData[idx].dev_cards) {
+  if (!onlyResources && playerData[idx].resource_cards && playerData[idx].dev_cards) {
     let sepDiv = document.createElement("DIV");
     sepDiv.classList.add("cardseparator");
     sepDiv.style.width = summaryCardWidth / 2 + "px";
@@ -1130,7 +1148,7 @@ function updatePlayerCardInfo(idx, cardDiv, showDev) {
   let orders = {resource_cards: 0, dev_cards: 2};
   let imgs = {resource_cards: "cardback", dev_cards: "devcard"};
   let typeList = ["resource_cards", "dev_cards"];
-  if (!showDev) {
+  if (onlyResources) {
     typeList = ["resource_cards"];
   }
   for (let cardType of typeList) {
@@ -1152,6 +1170,15 @@ function updatePlayerCardInfo(idx, cardDiv, showDev) {
       }
     }
   }
+  if (onlyResources) {
+    return;
+  }
+  if (longestRoutePlayer === idx) {
+    addBonusCard(cardDiv, 3, "longestroute");
+  }
+  if (largestArmyPlayer === idx) {
+    addBonusCard(cardDiv, 5, "largestarmy");
+  }
 }
 function addSummaryCard(cardContainer, order, cardName, isLast) {
   let contDiv = document.createElement("DIV");
@@ -1169,6 +1196,28 @@ function addSummaryCard(cardContainer, order, cardName, isLast) {
   let ctx = backImg.getContext("2d");
   ctx.save();
   ctx.scale(summaryCardWidth / prerendered.width, summaryCardHeight / prerendered.height);
+  ctx.drawImage(prerendered, 0, 0);
+  ctx.restore();
+}
+function addBonusCard(cardContainer, order, cardName) {
+  let sepDiv = document.createElement("DIV");
+  sepDiv.classList.add("cardseparator");
+  sepDiv.style.width = summaryCardWidth / 2 + "px";
+  sepDiv.style.height = summaryCardHeight + "px";
+  sepDiv.style.order = order;
+  cardContainer.appendChild(sepDiv);
+  let itemDiv = document.createElement("DIV");
+  itemDiv.classList.add("cardseparator");
+  itemDiv.style.order = order+1;
+  cardContainer.appendChild(itemDiv);
+  let prerendered = document.getElementById("canvas" + cardName);
+  let img = document.createElement("CANVAS");
+  img.height = summaryCardHeight;
+  img.width = summaryCardHeight / prerendered.height * prerendered.width;
+  itemDiv.appendChild(img);
+  let ctx = img.getContext("2d");
+  ctx.save();
+  ctx.scale(summaryCardHeight / prerendered.height, summaryCardHeight / prerendered.height);
   ctx.drawImage(prerendered, 0, 0);
   ctx.restore();
 }
