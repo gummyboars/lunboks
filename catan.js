@@ -50,7 +50,7 @@ resourceSelectionUI = {
     cancelText: "Cancel",
   },
   discard: {
-    bottomPanelText: "Choose cards to discard.",
+    bottomPanelText: "Choose {} cards to discard.",
     okText: "Discard",
   },
 };
@@ -71,6 +71,7 @@ pieces = [];
 edges = [];
 roads = [];
 cards = {};
+devCardCount = 0;
 turn = null;
 diceRoll = null;
 robberLoc = null;
@@ -96,6 +97,10 @@ function formatServerString(serverString) {
     str = str.replace(new RegExp("\\{" + rsrc + "\\}", "gi"), globalNames[rsrc]);
   }
   return str;
+}
+
+function formatStringWithParam(fmtString, param) {
+  return fmtString.replace(new RegExp("\\{\\}", "gi"), "" + param);
 }
 
 function toggleDebug() {
@@ -411,7 +416,7 @@ function toggleTradeWindow(partner) {
     resourceSelectorType = selectorType;
   }
   if (resourceSelectorActive) {
-    showResourceUI(resourceSelectorType);
+    showResourceUI(resourceSelectorType, null);
   } else {
     hideSelectorWindow();
   }
@@ -528,7 +533,7 @@ function maybeShowActiveTradeOffer(oldActiveOffer) {
   if (tradeActiveOffer && ((tradeActiveOffer.want && Object.keys(tradeActiveOffer.want).length) || (tradeActiveOffer.give && Object.keys(tradeActiveOffer.give).length))) {
     if (counterOffers[myIdx] != 0) {
       resourceSelectorType = "tradeCounterOffer";
-      showResourceUI(resourceSelectorType);
+      showResourceUI(resourceSelectorType, null);
     }
   } else {
     hideSelectorWindow();
@@ -584,7 +589,7 @@ function maybeShowDiscardWindow() {
       updateSelectCounts();
     }
     resourceSelectorType = "discard";
-    showResourceUI(resourceSelectorType);
+    showResourceUI(resourceSelectorType, discardPlayers[myIdx]);
   } else if (turnPhase == "discard" || turnPhase == "robber") {
     hideSelectorWindow();
   }
@@ -744,24 +749,26 @@ function playDevCard(cardType) {
     clearResourceSelection("bottom");
     resourceSelectorType = "dev";
     updateSelectCounts();
-    showResourceUI(cardType);
+    showResourceUI(cardType, null);
   } else {
     ws.send(JSON.stringify({type: "play_dev", card_type: cardType}));
   }
 }
-function showResourceUI(uiType) {
+function showResourceUI(uiType, param) {
   let selectInfo = resourceSelectionUI[uiType];
   if (!selectInfo) {
     console.log("unknown selector " + uiType);
     return;
   }
   if (selectInfo.topPanelText) {
+    let topText = formatStringWithParam(selectInfo.topPanelText, param);
     document.getElementById("topselect").style.display = 'flex';
-    document.getElementById("topselecttitle").innerText = selectInfo.topPanelText;
+    document.getElementById("topselecttitle").innerText = topText;
   } else {
     document.getElementById("topselect").style.display = 'none';
   }
-  document.getElementById("bottomselecttitle").innerText = selectInfo.bottomPanelText;
+  let bottomText = formatStringWithParam(selectInfo.bottomPanelText, param);
+  document.getElementById("bottomselecttitle").innerText = bottomText;
   let buttons = {"okText": "selectconfirm", "resetText": "selectreset", "cancelText": "selectcancel"};
   for (let button in buttons) {
     if (selectInfo[button]) {
@@ -831,6 +838,7 @@ function onmsg(event) {
   edges = data.edges;
   robberLoc = data.robber;
   cards = data.cards;
+  devCardCount = data.dev_cards;
   diceRoll = data.dice_roll;
   pieces = data.pieces;
   roads = data.roads;
@@ -856,6 +864,7 @@ function onmsg(event) {
   }
   updateJoinWindow();
   populateCards();
+  updateBuyDev();
   updateDice();
   updateUI("buydev");
   updateUI("endturn");
@@ -1082,6 +1091,10 @@ function updatePlayerInfo(idx, dataDiv) {
   while (dataDiv.firstChild) {
     dataDiv.removeChild(dataDiv.firstChild);
   }
+  let cardCount = document.createElement("DIV");
+  cardCount.innerText = playerData[idx].resource_cards + " 🎴";
+  cardCount.classList.add("otheritem");
+  cardCount.style.marginRight = "30px";
   let points = document.createElement("DIV");
   points.innerText = playerData[idx].points + " ⭐";
   points.classList.add("otheritem");
@@ -1095,6 +1108,7 @@ function updatePlayerInfo(idx, dataDiv) {
   longRoute.classList.add("otheritem");
   // TODO: use 👑 or 🏆?
   dataDiv.appendChild(points);
+  dataDiv.appendChild(cardCount);
   dataDiv.appendChild(armySize);
   dataDiv.appendChild(longRoute);
 }
@@ -1212,16 +1226,35 @@ function sizeThings() {
     pdiv.style.width = 0.8 * rightWidth + "px";
   }
 }
-function createBuyDev() {
-  let buydev = document.getElementById('buydev');
-  buydev.width = cardWidth;
-  buydev.height = cardHeight;
-  let ctx = buydev.getContext('2d');
+function updateBuyDev() {
+  let block = document.getElementById('buydev');
+  while (block.firstChild) {
+      block.removeChild(block.firstChild);
+  }
+  block.style.width = (cardWidth + devCardCount) + "px";
+  block.style.height = (cardHeight + devCardCount) + "px";
   let prerendered = document.getElementById('canvasdevcard');
-  ctx.save();
-  ctx.scale(cardWidth / prerendered.width, cardHeight / prerendered.height);
-  ctx.drawImage(prerendered, 0, 0);
-  ctx.restore();
+  if (prerendered == null) {
+    return;
+  }
+  for (let i = 0; i < devCardCount; i++) {
+    let buydev = document.createElement("CANVAS");
+    buydev.width = cardWidth;
+    buydev.height = cardHeight;
+    let ctx = buydev.getContext('2d');
+    ctx.save();
+    ctx.scale(cardWidth / prerendered.width, cardHeight / prerendered.height);
+    ctx.drawImage(prerendered, 0, 0);
+    ctx.restore();
+    let offset = devCardCount - i - 1;
+    buydev.style.position = "absolute";
+    if (i == devCardCount-1) {
+      buydev.classList.add("buyactive");
+    } else {
+      buydev.style.transform = "translate(" + offset + "px," + offset + "px)";
+    }
+    block.appendChild(buydev);
+  }
 }
 function chooseSkin(e) {
   let chosen = document.getElementById("skinchoice").value;
@@ -1254,7 +1287,6 @@ function init() {
 function continueInit() {
   // TODO: we've kind of mixed first-time initialization with other initialization here
   // to make it possible to switch skins while playing.
-  createBuyDev();
   createSelectors();
   populateCards();
   window.requestAnimationFrame(draw);

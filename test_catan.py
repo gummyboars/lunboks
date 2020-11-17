@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 
 import collections
-import unittest
 import json
+import unittest
+from unittest import mock
 
 import catan
 
@@ -566,6 +567,77 @@ class TestLargestArmy(BaseInputHandlerTest):
     self.c._handle_knight(1)
     self.assertEqual(self.c.player_data[1].knights_played, 4)
     self.assertEqual(self.c.largest_army_player, 1)
+
+
+@mock.patch("random.randint", return_value=3.5)
+class TestDiscard(BaseInputHandlerTest):
+
+  def setUp(self):
+    BaseInputHandlerTest.setUp(self)
+    self.c.started = False  # To allow new players to join.
+    self.c.handle_join("Player3", {"name": "Player3"})
+    self.c.started = True
+    for pdata in self.c.player_data:
+      pdata.cards.clear()
+
+  def testCalculateDiscardPlayers(self, randint):
+    self.c.player_data[0].cards.update({"rsrc1": 4, "rsrc2": 4, "rsrc3": 4, "rsrc5": 4})
+    self.c.player_data[1].cards.update({"rsrc1": 4, "rsrc3": 2, "rsrc5": 1, "knight": 5})
+    self.c.player_data[2].cards.update({"rsrc1": 2, "rsrc2": 4, "rsrc3": 2, "rsrc5": 1})
+    self.c.turn_phase = "dice"
+    self.c.handle_roll_dice()
+    self.assertEqual(self.c.turn_phase, "discard")
+    # Player 0 has 16 cards, and must discard 8.
+    # Player 1 does not have to discard because dev cards don't count.
+    # Player 2 must discard 9/2 rounded down = 4.
+    self.assertListEqual(self.c.discard_players, [8, 0, 4])
+
+    # Player 1 does not need to discard.
+    with self.assertRaisesRegex(InvalidMove, "do not need to discard"):
+      self.c.handle_discard({"rsrc1": 4}, 1)
+    # Player 2 must discard the correct number of cards.
+    with self.assertRaisesRegex(InvalidMove, "must discard 4"):
+      self.c.handle_discard({"rsrc2": 4, "rsrc5": 1}, 2)
+    # Player 0 cannot discard cards they don't have.
+    with self.assertRaisesRegex(InvalidMove, "would need"):
+      self.c.handle_discard({"rsrc1": 4, "rsrc4": 4}, 0)
+
+    self.assertEqual(self.c.turn_phase, "discard")
+    self.c.handle_discard({"rsrc2": 4}, 2)
+    self.assertEqual(self.c.turn_phase, "discard")
+    self.c.handle_discard({"rsrc1": 4, "rsrc2": 4}, 0)
+    self.assertEqual(self.c.turn_phase, "robber")
+
+  def testNobodyDiscards(self, randint):
+    self.c.player_data[0].cards.update({"rsrc1": 2, "rsrc2": 2, "rsrc3": 1, "rsrc5": 1})
+    self.c.player_data[1].cards.update({"rsrc1": 4, "rsrc3": 2, "rsrc5": 1, "knight": 5})
+    self.c.player_data[2].cards.update({"rsrc1": 2, "rsrc2": 0, "rsrc3": 2, "rsrc5": 1})
+    self.c.turn_phase = "dice"
+    self.c.handle_roll_dice()
+    self.assertEqual(self.c.turn_phase, "robber")
+
+
+class TestBuyDevCard(BaseInputHandlerTest):
+
+  def setUp(self):
+    BaseInputHandlerTest.setUp(self)
+    self.c.player_data[0].cards.update({"rsrc1": 4, "rsrc3": 4, "rsrc5": 4})
+    self.c.player_data[1].cards.update({"rsrc1": 2, "rsrc3": 2, "rsrc5": 1})
+    self.c.dev_cards = ["knight", "yearofplenty", "knight"]
+
+  def testBuyNotEnoughResources(self):
+    self.c.handle_buy_dev(1)
+    with self.assertRaisesRegex(InvalidMove, "need an extra"):
+      self.c.handle_buy_dev(1)
+
+  def testBuyNoCardsLeft(self):
+    self.c.handle_buy_dev(0)
+    self.c.handle_buy_dev(0)
+    self.c.handle_buy_dev(0)
+    with self.assertRaisesRegex(InvalidMove, "no development cards left"):
+      self.c.handle_buy_dev(0)
+    self.assertEqual(self.c.player_data[0].cards["knight"], 2)
+    self.assertEqual(self.c.player_data[0].cards["yearofplenty"], 1)
 
 
 class TestUnstartedGame(unittest.TestCase):

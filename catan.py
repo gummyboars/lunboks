@@ -396,7 +396,7 @@ class CatanState(object):
     self.dev_cards = []
     self.dev_roads_placed = 0
     self.played_dev = 0
-    self.discard_players = []  # Map of player to number of cards they have.
+    self.discard_players = []  # Map of player to number of cards they must discard.
     self.rob_players = []  # List of players that can be robbed by this robber.
     self.turn_idx = 0
     self.largest_army_player = None
@@ -468,6 +468,7 @@ class CatanState(object):
       del ret[name]
     del ret["player_data"]
     del ret["host"]
+    ret["dev_cards"] = len(self.dev_cards)
 
     corners = {}
     # TODO: instead of sending a list of corners, we should send something like
@@ -820,7 +821,7 @@ class CatanState(object):
     for player, player_data in enumerate(self.player_data):
       count = player_data.resource_card_count()
       if count >= 8:
-        card_counts[player] = count
+        card_counts[player] = count // 2
     return card_counts
 
   # TODO: move into the player class?
@@ -1025,9 +1026,10 @@ class CatanState(object):
     if self.discard_players[player] <= 0:
       raise InvalidMove("You do not need to discard any cards.")
     discard_count = sum([selection.get(rsrc, 0) for rsrc in RESOURCES])
-    if discard_count != self.discard_players[player] // 2:
+    if discard_count != self.discard_players[player]:
       raise InvalidMove("You have %s resource cards and must discard %s." %
-                        (self.discard_players[player], self.discard_players[player] // 2))
+                        (self.player_data[player].resource_card_count(),
+                         self.discard_players[player]))
     self._remove_resources(selection.items(), player, "discard those cards")
     self.discard_players[player] = 0
     if sum(self.discard_players) == 0:
