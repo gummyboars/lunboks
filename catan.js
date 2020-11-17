@@ -22,14 +22,14 @@ resourceSelectionUI = {
     topPanelText: "You Want",
     bottomPanelText: "You Give",
     okText: "Offer",
-    cancelText: "Cancel",
+    cancelText: "Close",
     resetText: "Reset",
   },
   tradeBank: {
     topPanelText: "You Want",
     bottomPanelText: "You Give",
     okText: "Trade",
-    cancelText: "Cancel",
+    cancelText: "Close",
     resetText: "Reset",
   },
   tradeCounterOffer: {
