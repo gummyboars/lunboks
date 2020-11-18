@@ -54,6 +54,7 @@ resourceSelectionUI = {
     okText: "Discard",
   },
 };
+var snd1 = new Audio("beep.mp3");
 
 // The websocket
 ws = null;
@@ -664,6 +665,7 @@ function rollDice() {
   ws.send(JSON.stringify(msg));
 }
 function endTurn() {
+  snd1.play();
   let msg = {
     type: "end_turn",
   };
