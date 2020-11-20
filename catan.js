@@ -853,11 +853,15 @@ function onmsg(event) {
   robPlayers = data.rob_players;
   longestRoutePlayer = data.longest_route_player;
   largestArmyPlayer = data.largest_army_player;
+  // TODO: this is just messy. Clean up initPlayerData.
+  let myOld = myIdx;
   if ("you" in data) {
     myIdx = data.you;
   }
   if (firstMsg) {
     centerCanvas();
+    initPlayerData();
+  } else if (myOld != myIdx) {
     initPlayerData();
   }
   if (myIdx != null) {
@@ -925,7 +929,9 @@ function updateJoinWindow() {
   if (amHost) {
     enableButton(document.getElementById("start"));
   }
-  if (gameStarted) {
+  if (!gameStarted) {
+    document.getElementById("uijoin").style.display = "flex";
+  } else {
     document.getElementById("uijoin").style.display = "none";
   }
 }
@@ -950,6 +956,13 @@ function rename(e) {
   let msg = {
     type: "rename",
     name: document.getElementById('nameInput').value,
+  };
+  ws.send(JSON.stringify(msg));
+}
+function takeover(e, idx) {
+  let msg = {
+    type: "takeover",
+    player: idx,
   };
   ws.send(JSON.stringify(msg));
 }
@@ -1002,12 +1015,23 @@ function createPlayerData(i) {
   } else {
     let nameDiv = document.createElement("DIV");
     nameDiv.innerText = username;
-    if (playerData[i].disconnected) {
-      nameDiv.innerText = "<empty slot>";
-      nameDiv.style.fontStyle = "italic";
-    }
     nameDiv.classList.add("nametext");
     topText.appendChild(nameDiv);
+    let joinButton = document.createElement("BUTTON");
+    joinButton.classList.add("takeoverbutton", "button", "clickable");
+    joinButton.innerText = "Take Over";
+    joinButton.style.display = "none";
+    joinButton.onclick = function(e) { takeover(e, i) };
+    topText.appendChild(joinButton);
+    if (playerData[i].disconnected) {
+      nameDiv.classList.add("disconnectedplayer");
+      if (myIdx == null) {
+        joinButton.style.display = "inline-block";
+      }
+      if (!gameStarted) {
+        nameDiv.innerText = "<empty slot>";
+      }
+    }
   }
   let turnMarker = document.createElement("DIV");
   turnMarker.innerText = "👉";  // ▶️ looks bad.
@@ -1038,11 +1062,21 @@ function updatePlayerData() {
       playerDiv = createPlayerData(i);
     }
     if (i != myIdx) {
-      let namediv = playerDiv.getElementsByClassName("nametext")[0];
-      namediv.innerText = playerData[i].name;
+      let nameDiv = playerDiv.getElementsByClassName("nametext")[0];
+      let joinButton = playerDiv.getElementsByClassName("button")[0];
+      nameDiv.innerText = playerData[i].name;
       if (playerData[i].disconnected) {
-        namediv.innerText = "<empty slot>";
-        namediv.style.fontStyle = "italic";
+        nameDiv.classList.add("disconnectedplayer");
+        if (!gameStarted) {
+          nameDiv.innerText = "<empty slot>";
+        }
+      } else {
+        nameDiv.classList.remove("disconnectedplayer");
+      }
+      if (playerData[i].disconnected && gameStarted && myIdx == null) {
+        joinButton.style.display = "inline-block";
+      } else {
+        joinButton.style.display = "none";
       }
     }
 
@@ -1352,6 +1386,8 @@ function continueInit() {
   // to make it possible to switch skins while playing.
   createSelectors();
   populateCards();
+  updatePlayerData();
+  updateBuyDev();
   window.requestAnimationFrame(draw);
   document.getElementById('myCanvas').onmousemove = onmove;
   document.getElementById('myCanvas').onclick = onclick;

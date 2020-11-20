@@ -385,6 +385,7 @@ class CatanState(object):
     self.player_sessions = {}
     self.started = False
     self.host = None
+    self.connected = set()
     self.player_data = []
     self.tiles = {}
     self.ports = {}
@@ -417,7 +418,7 @@ class CatanState(object):
 
     # Regular attributes
     for attr in cstate.__dict__:
-      if attr not in (CatanState.LOCATION_ATTRIBUTES + ["player_data", "port_corners"]):
+      if attr not in (CatanState.LOCATION_ATTRIBUTES + ["player_data", "port_corners", "connected"]):
         setattr(cstate, attr, gamedata[attr])
 
     # Parse the players. TODO: move more info inside player class, avoid this special case?
@@ -488,11 +489,16 @@ class CatanState(object):
     ret["edges"] = list(edges.values())
 
     is_over = (self.game_phase == "victory")
+
+    if not self.started:
+      connected_players = set(self.player_sessions.values())
+    else:
+      connected_players = set(
+          [idx for session, idx in self.player_sessions.items() if session in self.connected])
     ret["player_data"] = [player.json_for_player(is_over) for player in self.player_data]
     for idx in range(len(self.player_data)):
       ret["player_data"][idx]["points"] = self.player_points(idx, visible=(not is_over))
-      is_disconnected = not self.started and idx not in self.player_sessions.values()
-      ret["player_data"][idx]["disconnected"] = is_disconnected
+      ret["player_data"][idx]["disconnected"] = idx not in connected_players
     return ret
 
   def player_points(self, player_idx, visible):
@@ -525,6 +531,7 @@ class CatanState(object):
     return json.dumps(data, cls=CustomEncoder)
 
   def connect_user(self, session):
+    self.connected.add(session)
     if self.started:
       return
     self.player_sessions[session] = None
@@ -532,6 +539,7 @@ class CatanState(object):
       self.host = session
 
   def disconnect_user(self, session):
+    self.connected.remove(session)
     if self.started:
       return
     # Only delete from player sessions if the game hasn't started yet.
@@ -570,6 +578,23 @@ class CatanState(object):
       self._add_player(data["name"].strip())
       self.player_sessions[session] = new_slot
 
+  def handle_takeover(self, session, data):
+    if not self.started:
+      raise InvalidPlayer("The game has not started yet; you must join instead.")
+    if session in self.player_sessions:
+      raise InvalidPlayer("You are already playing.")
+    try:
+      want_idx = int(data["player"])
+    except:
+      raise InvalidPlayer("Invalid player.")
+    old_sessions = [session for session, idx in self.player_sessions.items() if idx == want_idx]
+    if len(old_sessions) < 1:
+      raise InvalidPlayer("Invalid player.")
+    old_session = old_sessions[0]
+    if old_session in self.connected:
+      raise InvalidPlayer("That player is still connected.")
+    del self.player_sessions[old_session]
+    self.player_sessions[session] = want_idx
 
   def _validate_name(self, player_idx, data):
     ValidatePlayer(data)
@@ -608,13 +633,14 @@ class CatanState(object):
     self.counter_offers.append(None)
 
   def handle(self, session, data):
-    # TODO list:
-    # - victory conditions
     if data.get("type") == "join":
       self.handle_join(session, data)
       return
     if data.get("type") == "start":
       self.handle_start(session, data)
+      return
+    if data.get("type") == "takeover":
+      self.handle_takeover(session, data)
       return
     player = self.player_sessions.get(session)
     if player is None:

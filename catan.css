@@ -51,7 +51,7 @@ div {
 }
 #uijoin {
   position: absolute;
-  display: flex;
+  display: none;
   width: 30%;
   left: 50%;
   margin-right: -50%;
@@ -307,6 +307,13 @@ div {
   margin-top: 10px;
   margin-bottom: 10px;
   position: relative;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+.disconnectedplayer {
+  color: silver;
+  font-style: italic;
 }
 .nameinput {
   border: none;
@@ -483,6 +490,16 @@ div {
 }
 .selectbutton:active {
   box-shadow: 0 3px #666;
+  transform: translateY(2px);
+}
+.takeoverbutton {
+  margin: 5px;
+  margin-left: 15px;
+  background-color: #66f;
+  box-shadow: 0 3px #999;
+}
+.takeoverbutton:active {
+  box-shadow: 0 1px #666;
   transform: translateY(2px);
 }
 .disabled {
