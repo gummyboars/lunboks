@@ -47,7 +47,7 @@ div {
   font-size: 36px;
   color: red;
   background: white;
-  z-index: 3; /* error should be shown over everything else */
+  z-index: 40; /* error should be shown over everything else */
 }
 #uijoin {
   position: absolute;
@@ -59,7 +59,7 @@ div {
   margin-bottom: -50%;
   transform: translate(-50%, -50%);
   flex-direction: column;
-  z-index: 2; /* show over other elements */
+  z-index: 30; /* show over other elements */
   border-right: 1px solid black;
   border-radius: 15px;
   background: khaki;
@@ -115,7 +115,7 @@ div {
   margin-bottom: -50%;
   transform: translate(-50%, -50%);
   flex-direction: row;
-  z-index: 1; /* show over other elements */
+  z-index: 20; /* show over other elements */
 }
 #resourceselect {
   flex: 0 0 auto;
@@ -144,7 +144,7 @@ div {
   margin-bottom: -50%;
   transform: translate(-50%, -50%);
   flex-direction: column;
-  z-index: 1; /* show over other elements */
+  z-index: 20; /* show over other elements */
 }
 #tradesummary {
   flex: 0 1 100%;
@@ -389,7 +389,17 @@ div {
 }
 .uicard.selected {
   transform: translateY(0%);
-  z-index: 1;
+}
+.uicard.changed {
+  transition: transform 2s, opacity 2s, width 2s;
+}
+.uicard.enter {
+  transform: translateY(-100%);
+  opacity: 0;
+}
+.uicard.leave {
+  transform: translateY(-100%);
+  opacity: 0;
 }
 .innercard {
   position: absolute;

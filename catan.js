@@ -678,35 +678,66 @@ function endTurn() {
   };
   ws.send(JSON.stringify(msg));
 }
-function populateCards() {
-  let newContainer = document.createElement("DIV");
-  newContainer.classList.add("uicards");
-  newContainer.classList.add("noclick");
-  let oldContainer = document.getElementById("uibottom").firstChild;
-  document.getElementById("uibottom").replaceChild(newContainer, oldContainer);
-  if (cards) {
-    for (let i = 0; i < cardResources.length; i++) {
-      for (let j = 0; j < cards[cardResources[i]]; j++) {
-        addCard(newContainer, cardResources[i] + "card", false);
-      }
-    }
-    for (let i = 0; i < devCards.length; i++) {
-      for (let j = 0; j < cards[devCards[i]]; j++) {
-        addCard(newContainer, devCards[i], true);
-      }
-    }
-  }
-  if (newContainer.childElementCount > 0) {
-    newContainer.lastChild.classList.add("shown");
-  }
-  // TODO: how do we avoid the problem of having flicker?
-}
-function addCard(cardContainer, elemId, usable) {
-  let prerendered = document.getElementById("canvas" + elemId);
-  if (prerendered == null) {
-    console.log("oops couldn't find canvas" + elemId);
+function updateCards() {
+  if (cards == null) {
     return;
   }
+  let container = document.getElementById("uibottom").firstChild;
+  cfgs = [
+    {
+      clist: cardResources,
+      clickable: false,
+      suffix: "card",
+    },
+    {
+      clist: devCards,
+      clickable: true,
+      suffix: "",
+    }
+  ];
+  for (child of container.children) {
+    child.classList.remove("shown");
+  }
+  let oldCards = {};
+  let ordering = 0;
+  for (cfg of cfgs) {
+    for (let cardType of cfg.clist) {
+      if (!cards[cardType]) {
+        cards[cardType] = 0;
+      }
+      oldCards[cardType] = countOldCards(container, cardType + cfg.suffix);
+      for (i = 0; i < cards[cardType] - oldCards[cardType]; i++) {
+        addCard(container, cardType + cfg.suffix, ordering, cfg.clickable);
+      }
+      removeCards(container, oldCards[cardType] - cards[cardType], cardType + cfg.suffix);
+      ordering++;
+    }
+  }
+  for (child of container.children) {
+    updateCard(child);
+  }
+  let maxOrder = 0;
+  let maxChild = null;
+  for (child of container.children) {
+    if (child.style.order >= maxOrder && !child.classList.contains("leave")) {
+      maxOrder = child.style.order;
+      maxChild = child;
+    }
+  }
+  if (maxChild != null) {
+    maxChild.classList.add("shown");
+  }
+}
+function countOldCards(container, elemID) {
+  let count = 0;
+  for (child of container.children) {
+    if (child.cardType == elemID && !child.classList.contains("leave")) {
+      count++;
+    }
+  }
+  return count;
+}
+function addCard(cardContainer, elemId, ordering, usable) {
   let cnv = document.createElement("CANVAS");
   cnv.width = cardWidth;
   cnv.height = cardHeight;
@@ -716,12 +747,17 @@ function addCard(cardContainer, elemId, usable) {
   let div = document.createElement("DIV");
   div.classList.add("clickable");
   div.classList.add("uicard");
+  div.classList.add("enter");
+  div.classList.add("changed");
   div.style.maxWidth = cardWidth + "px";
-  div.style.width = cardWidth + "px";
+  div.style.width = "0px";
   div.style.height = cardHeight + "px";
+  div.style.order = ordering;
+  div.style.zIndex = ordering;
   div.appendChild(cnv);
   div.onmouseenter = bringforward;
   div.onmouseleave = pushbackward;
+  div.cardType = elemId;
   if (usable) {
     div.onclick = function(e) {
       playDevCard(elemId);
@@ -729,17 +765,49 @@ function addCard(cardContainer, elemId, usable) {
     div.classList.add("resourceselector");
   }
   cardContainer.appendChild(div);
-  let ctx = cnv.getContext('2d');
+  setTimeout(function() { div.classList.remove("enter"); div.style.width = cardWidth + "px"; }, 5);
+  div.addEventListener('transitionend', function() { div.classList.remove("changed"); });
+  return div;
+}
+function updateCard(div) {
+  let elemId = div.cardType;
+  let prerendered = document.getElementById("canvas" + elemId);
+  if (prerendered == null) {
+    return;
+  }
+  let ctx = div.firstChild.getContext('2d');
   ctx.save();
   ctx.scale(cardWidth / prerendered.width, cardHeight / prerendered.height);
+  ctx.clearRect(0, 0, prerendered.width, prerendered.height);
   ctx.drawImage(prerendered, 0, 0);
   ctx.restore();
 }
+function removeCards(cardContainer, count, cardType) {
+  let removed = 0;
+  for (let child of cardContainer.children) {
+    if (removed >= count) {
+      break;
+    }
+    if (child.cardType == cardType && !child.classList.contains("leave")) {
+      removeCard(cardContainer, child);
+      removed++;
+    }
+  }
+}
+function removeCard(cardContainer, div) {
+  div.classList.add("leave");
+  div.classList.add("changed");
+  div.style.width = "0px";
+  div.addEventListener('transitionend', function() { cardContainer.removeChild(div) });
+}
 function bringforward(e) {
   e.currentTarget.classList.add("selected");
+  e.currentTarget.oldZ = e.currentTarget.style.zIndex;
+  e.currentTarget.style.zIndex = 15;
 }
 function pushbackward(e) {
   e.currentTarget.classList.remove("selected");
+  e.currentTarget.style.zIndex = e.currentTarget.oldZ;
 }
 function buyDevCard() {
   ws.send(JSON.stringify({type: "buy_dev"}));
@@ -871,7 +939,7 @@ function onmsg(event) {
     fixNameSize(null);
   }
   updateJoinWindow();
-  populateCards();
+  updateCards();
   updateBuyDev();
   updateDice();
   updateUI("buydev");
@@ -1385,7 +1453,7 @@ function continueInit() {
   // TODO: we've kind of mixed first-time initialization with other initialization here
   // to make it possible to switch skins while playing.
   createSelectors();
-  populateCards();
+  updateCards();
   updatePlayerData();
   updateBuyDev();
   window.requestAnimationFrame(draw);
