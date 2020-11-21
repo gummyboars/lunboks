@@ -10,6 +10,7 @@ dY = 0;
 scale = 1;
 eventX = null;
 eventY = null;
+flipped = false;
 
 hoverTile = null;
 hoverCorner = null;
@@ -112,15 +113,24 @@ function coordToCornerCenter(loc) {
   if (Math.abs(loc[0]) % 2 == 1) {
     x += tileWidth / 2;
   }
+  if (flipped) {
+    return {x: y, y: x};
+  }
   return {x: x, y: y};
 }
 function coordToTileUpperLeft(loc) {
   let x = loc[0] * tileWidth * 3 / 8 - tileWidth / 4;
   let y = loc[1] * tileHeight / 2;
+  if (flipped) {
+    return {x: y, y: x};
+  }
   return {x: x, y: y};
 }
 function coordToTileCenter(loc) {
   let ul = coordToTileUpperLeft(loc);
+  if (flipped) {
+    return {x: ul.x + tileHeight/2, y: ul.y + tileWidth/2};
+  }
   return {x: ul.x + tileWidth/2, y: ul.y + tileHeight/2};
 }
 function drawRoad(roadLoc, style, ctx) {
@@ -194,8 +204,16 @@ function drawTile(tileData, ctx) {
   let canvasLoc = coordToTileCenter(tileData.location);
   ctx.save();
   ctx.translate(canvasLoc.x, canvasLoc.y);
+  let rotation = 0;
   if (tileData.rotation) {
-    ctx.rotate(Math.PI * tileData.rotation / 3);
+    rotation = (Math.PI * tileData.rotation / 3);
+  }
+  if (flipped) {
+    rotation = -rotation - (Math.PI / 2);
+  }
+  ctx.rotate(rotation);
+  if (flipped) {
+    ctx.transform(-1, 0, 0, 1, 0, 0);
   }
   if (img != null) {
     ctx.drawImage(img, -tileWidth/2, -tileHeight/2, tileWidth, tileHeight);
@@ -214,9 +232,14 @@ function drawPort(portData, ctx) {
   let canvasLoc = coordToTileCenter(portData.location);
   ctx.save();
   ctx.translate(canvasLoc.x, canvasLoc.y);
+  let rotation = 0;
   if (portData.rotation) {
-    ctx.rotate(Math.PI * portData.rotation / 3);
+    rotation = (Math.PI * portData.rotation / 3);
   }
+  if (flipped) {
+    rotation = -rotation - (Math.PI / 2);
+  }
+  ctx.rotate(rotation);
   if (portImg != null) {
     ctx.drawImage(portImg, -tileWidth/2, -tileHeight/2, tileWidth, tileHeight);
   }
@@ -246,7 +269,15 @@ function drawCoast(tileData, portMap, ctx) {
       continue;
     }
     ctx.save();
-    ctx.rotate(Math.PI * rotation / 3);
+    let finalRotation = 0;
+    finalRotation = (Math.PI * rotation / 3);
+    if (flipped) {
+      finalRotation = -finalRotation - (Math.PI / 2);
+    }
+    ctx.rotate(finalRotation);
+    if (flipped) {
+      ctx.transform(-1, 0, 0, 1, 0, 0);
+    }
     ctx.drawImage(coastImg, -tileWidth/2, -tileHeight/2, tileWidth, tileHeight);
     ctx.restore();
   }
@@ -480,9 +511,9 @@ function onup(event) {
   dX = 0;
   dY = 0;
 }
-function centerCanvas() {
+function getCenter() {
   if (tiles.length < 1) {
-    return;
+    return {x: 0, y: 0};
   }
   let tileLoc = coordToTileCenter(tiles[0].location);
   let minX = tileLoc.x;
@@ -496,8 +527,12 @@ function centerCanvas() {
     maxX = Math.max(tileLoc.x, maxX);
     maxY = Math.max(tileLoc.y, maxY);
   }
-  offsetX = canWidth / 2 - (minX + maxX) / 2;
-  offsetY = canHeight / 2 - (minY + maxY) / 2;
+  return {x: (minX + maxX) / 2, y: (minY + maxY) / 2};
+}
+function centerCanvas() {
+  let center = getCenter();
+  offsetX = canWidth / 2 - center.x;
+  offsetY = canHeight / 2 - center.y;
 }
 function finishImgLoad(assetName) {
   renderLoops[assetName] = 2;

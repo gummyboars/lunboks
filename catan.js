@@ -1305,6 +1305,17 @@ function updateBuyDev() {
     block.appendChild(buydev);
   }
 }
+function flip() {
+  flipped = !flipped;
+  if (flipped) {
+    document.getElementById("flipinner").classList.remove("flipnormal");
+    document.getElementById("flipinner").classList.add("flipreverse");
+  } else {
+    document.getElementById("flipinner").classList.remove("flipreverse");
+    document.getElementById("flipinner").classList.add("flipnormal");
+  }
+  localStorage.setItem("flipped", JSON.stringify(flipped));
+}
 function chooseSkin(e) {
   let chosen = document.getElementById("skinchoice").value;
   if (chosen == "none") {
@@ -1332,6 +1343,9 @@ function init() {
   let promise = initializeImages();
   promise.then(continueInit, continueInit);
   sizeThings();
+  if (localStorage.getItem("flipped") === "true") {
+    flip();
+  }
 }
 function continueInit() {
   // TODO: we've kind of mixed first-time initialization with other initialization here

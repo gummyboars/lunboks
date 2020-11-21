@@ -66,6 +66,27 @@ div {
   border: 1px solid black;
   box-shadow: 2px 2px 10px;
 }
+#flipper {
+  position: absolute;
+  display: block;
+  top: 0;
+  right: 0;
+  transform: translate(-100%, 100%);
+  font-size: 28px;
+}
+.flipnormal {
+  transition: transform 0.5s;
+}
+.flipnormal:hover {
+  transform: rotate(-0.25turn);
+}
+.flipreverse {
+  transition: transform 0.5s;
+  transform: rotate(-0.25turn);
+}
+.flipreverse:hover {
+  transform: rotate(0);
+}
 #joinbuttons {
   display: flex;
 }
