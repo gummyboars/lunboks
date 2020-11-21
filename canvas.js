@@ -10,7 +10,7 @@ dY = 0;
 scale = 1;
 eventX = null;
 eventY = null;
-flipped = false;
+turned = false;
 
 hoverTile = null;
 hoverCorner = null;
@@ -113,23 +113,23 @@ function coordToCornerCenter(loc) {
   if (Math.abs(loc[0]) % 2 == 1) {
     x += tileWidth / 2;
   }
-  if (flipped) {
-    return {x: y, y: x};
+  if (turned) {
+    return {x: y, y: -x};
   }
   return {x: x, y: y};
 }
 function coordToTileUpperLeft(loc) {
   let x = loc[0] * tileWidth * 3 / 8 - tileWidth / 4;
   let y = loc[1] * tileHeight / 2;
-  if (flipped) {
-    return {x: y, y: x};
+  if (turned) {
+    return {x: y, y: -x};
   }
   return {x: x, y: y};
 }
 function coordToTileCenter(loc) {
   let ul = coordToTileUpperLeft(loc);
-  if (flipped) {
-    return {x: ul.x + tileHeight/2, y: ul.y + tileWidth/2};
+  if (turned) {
+    return {x: ul.x + tileHeight/2, y: ul.y - tileWidth/2};
   }
   return {x: ul.x + tileWidth/2, y: ul.y + tileHeight/2};
 }
@@ -150,9 +150,6 @@ function drawRoad(roadLoc, style, road_type, closed, movable, ctx) {
     road_type = "ship";
   }
   if (road_type == "coastdown") {
-    ctx.rotate(Math.PI);
-  }
-  if (flipped) {
     ctx.rotate(Math.PI);
   }
   ctx.fillStyle = style;
@@ -273,13 +270,10 @@ function drawTile(tileData, ctx) {
   if (tileData.rotation) {
     rotation = (Math.PI * tileData.rotation / 3);
   }
-  if (flipped) {
-    rotation = -rotation - (Math.PI / 2);
+  if (turned) {
+    rotation = rotation - Math.PI / 2;
   }
   ctx.rotate(rotation);
-  if (flipped) {
-    ctx.transform(-1, 0, 0, 1, 0, 0);
-  }
   if (img != null) {
     ctx.drawImage(img, -tileWidth/2, -tileHeight/2, tileWidth, tileHeight);
   }
@@ -295,8 +289,8 @@ function drawPort(portData, ctx) {
   if (portData.rotation) {
     rotation = (Math.PI * portData.rotation / 3);
   }
-  if (flipped) {
-    rotation = -rotation - (Math.PI / 2);
+  if (turned) {
+    rotation = rotation - Math.PI / 2;
   }
   ctx.rotate(rotation);
   if (portImg != null) {
@@ -327,13 +321,10 @@ function drawCoast(tileData, portMap, ctx) {
     ctx.save();
     let finalRotation = 0;
     finalRotation = (Math.PI * rotation / 3);
-    if (flipped) {
-      finalRotation = -finalRotation - (Math.PI / 2);
+    if (turned) {
+      finalRotation = finalRotation - Math.PI / 2;
     }
     ctx.rotate(finalRotation);
-    if (flipped) {
-      ctx.transform(-1, 0, 0, 1, 0, 0);
-    }
     ctx.drawImage(coastImg, -tileWidth/2, -tileHeight/2, tileWidth, tileHeight);
     ctx.restore();
   }

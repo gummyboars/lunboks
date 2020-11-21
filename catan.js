@@ -1425,15 +1425,16 @@ function updateBuyDev() {
   }
 }
 function flip() {
-  flipped = !flipped;
-  if (flipped) {
+  turned = !turned;
+  if (turned) {
     document.getElementById("flipinner").classList.remove("flipnormal");
     document.getElementById("flipinner").classList.add("flipreverse");
   } else {
     document.getElementById("flipinner").classList.remove("flipreverse");
     document.getElementById("flipinner").classList.add("flipnormal");
   }
-  localStorage.setItem("flipped", JSON.stringify(flipped));
+  localStorage.setItem("flipped", JSON.stringify(turned));
+  centerCanvas();
 }
 function chooseSkin(e) {
   let chosen = document.getElementById("skinchoice").value;
