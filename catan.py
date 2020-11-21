@@ -722,18 +722,21 @@ class CatanState(object):
       raise InvalidMove("Unknown scenario %s" % data.get("scenario"))
 
     # Compact the player data, since players can leave after joining.
-    new_player_data = []
+    # Also randomize the player order.
+    player_indexes = list(range(joined_players))
+    new_player_data = [None] * joined_players
     session_remap = {}
-    for idx, player_data in enumerate(self.player_data):
-      if idx in self.player_sessions.values():
-        session_remap[idx] = len(new_player_data)
-        new_player_data.append(player_data)
+    for session, idx in self.player_sessions.items():
+      if idx is None:
+        continue
+      new_idx = random.choice(player_indexes)
+      player_indexes.remove(new_idx)
+      session_remap[session] = new_idx
+      new_player_data[new_idx] = self.player_data[idx]
+    self.player_sessions = session_remap
     self.player_data = new_player_data
     self.discard_players = [0] * len(self.player_data)
     self.counter_offers = [None] * len(self.player_data)
-    for session in self.player_sessions:
-      if self.player_sessions[session] is not None:
-        self.player_sessions[session] = session_remap[self.player_sessions[session]]
 
     if data.get("scenario") == "standard":
       self.init_normal()

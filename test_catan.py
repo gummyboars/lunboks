@@ -730,7 +730,9 @@ class TestUnstartedGame(unittest.TestCase):
 
     self.assertTrue(self.c.started)
     self.assertEqual(len(self.c.player_data), 2)
-    self.assertDictEqual(self.c.player_sessions, {"two": 0, "four": 1, "five": None})
+    self.assertCountEqual(self.c.player_sessions.keys(), ["two", "four"])
+    self.assertEqual(self.c.player_data[self.c.player_sessions["two"]].name, "player2")
+    self.assertEqual(self.c.player_data[self.c.player_sessions["four"]].name, "player4")
     self.assertEqual(self.c.discard_players, [0, 0])
     self.assertEqual(self.c.counter_offers, [None, None])
 
