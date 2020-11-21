@@ -78,6 +78,26 @@ class TestLoadTestData(BaseInputHandlerTest):
     self.assertEqual(self.c.player_data[1].trade_ratios["rsrc1"], 4)
 
 
+class TestGetEdgeType(BaseInputHandlerTest):
+
+  def setUp(self):
+    BaseInputHandlerTest.setUp(self)
+    self.c.add_road(Road([5, 4, 6, 3], "ship", 0))
+    self.c.add_road(Road([6, 3, 7, 3], "ship", 0))
+
+  def testEdgeTypeUnoccupied(self):
+    self.assertEqual(self.c._get_edge_type(catan.EdgeLocation(3, 3, 4, 4)), "road")
+    self.assertEqual(self.c._get_edge_type(catan.EdgeLocation(3, 3, 4, 2)), "coastup")
+    self.assertEqual(self.c._get_edge_type(catan.EdgeLocation(4, 6, 5, 6)), "coastdown")
+    self.assertEqual(self.c._get_edge_type(catan.EdgeLocation(3, 1, 4, 2)), "ship")
+    self.assertIsNone(self.c._get_edge_type(catan.EdgeLocation(2, 1, 3, 1)))
+
+  def testEdgeTypeOccupied(self):
+    self.assertEqual(self.c._get_edge_type(catan.EdgeLocation(4, 4, 5, 4)), "road")
+    self.assertEqual(self.c._get_edge_type(catan.EdgeLocation(5, 4, 6, 3)), "ship")
+    self.assertEqual(self.c._get_edge_type(catan.EdgeLocation(6, 3, 7, 3)), "ship")
+
+
 class TestDistributeResources(BaseInputHandlerTest):
 
   def setUp(self):

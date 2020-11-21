@@ -73,11 +73,10 @@ function draw() {
     }
   }
   context.restore();
-  context.save();
   for (let i = 0; i < roads.length; i++) {
-    drawRoad(roads[i].location, playerData[roads[i].player].color, context);
+    // Each road does its own context.save() and context.restore();
+    drawRoad(roads[i].location, playerData[roads[i].player].color, roads[i].road_type, context);
   }
-  context.restore();
   context.save();
   // Draw pieces over roads.
   for (let i = 0; i < pieces.length; i++) {
@@ -133,20 +132,51 @@ function coordToTileCenter(loc) {
   }
   return {x: ul.x + tileWidth/2, y: ul.y + tileHeight/2};
 }
-function drawRoad(roadLoc, style, ctx) {
+function drawRoad(roadLoc, style, road_type, ctx) {
+  if (road_type == null) {
+    return;
+  }
   let leftCorner = coordToCornerCenter([roadLoc[0], roadLoc[1]]);
   let rightCorner = coordToCornerCenter([roadLoc[2], roadLoc[3]]);
-  ctx.strokeStyle = style;
-  ctx.lineWidth = pieceRadius;
-  ctx.lineCap = 'butt';
-  ctx.beginPath();
-  let leftX = 0.15 * rightCorner.x + 0.85 * leftCorner.x;
-  let rightX = 0.15 * leftCorner.x + 0.85 * rightCorner.x;
-  let leftY = 0.15 * rightCorner.y + 0.85 * leftCorner.y;
-  let rightY = 0.15 * leftCorner.y + 0.85 * rightCorner.y;
-  ctx.moveTo(leftX, leftY);
-  ctx.lineTo(rightX, rightY);
-  ctx.stroke();
+  ctx.save();
+  let centerX = (leftCorner.x + rightCorner.x) / 2;
+  let centerY = (leftCorner.y + rightCorner.y) / 2;
+  let rectLength = 0.8 * Math.hypot(rightCorner.x - leftCorner.x, rightCorner.y - leftCorner.y);
+  let angle = Math.atan2((rightCorner.y - leftCorner.y), (rightCorner.x - leftCorner.x));
+  ctx.translate(centerX, centerY);
+  ctx.rotate(angle);
+  if (road_type == "coastdown") {
+    ctx.rotate(Math.PI);
+  }
+  if (flipped) {
+    ctx.rotate(Math.PI);
+  }
+  ctx.fillStyle = style;
+  ctx.strokeStyle = "black";
+  if (road_type.startsWith("coast")) {
+    ctx.translate(0, -pieceRadius / 2);
+  }
+  if (road_type != "road") {
+    ctx.beginPath();
+    ctx.moveTo(-rectLength / 2, -pieceRadius / 2);
+    ctx.lineTo(-3 * pieceRadius / 4, -pieceRadius / 2);
+    ctx.arc(-3 * pieceRadius / 4, -pieceRadius / 2, 1.5 * pieceRadius, -Math.PI / 2, 0, false);
+    ctx.lineTo(rectLength / 2, -pieceRadius / 2);
+    ctx.arc(rectLength / 2 - pieceRadius, -pieceRadius / 2, pieceRadius, 0, Math.PI / 2, false);
+    ctx.lineTo(-rectLength / 2 + pieceRadius, pieceRadius / 2);
+    ctx.arc(-rectLength / 2 + pieceRadius, -pieceRadius / 2, pieceRadius, Math.PI / 2 , Math.PI, false);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+  }
+  if (road_type.startsWith("coast")) {
+    ctx.translate(0, pieceRadius);
+  }
+  if (road_type != "ship") {
+    ctx.fillRect(-rectLength / 2, -pieceRadius / 2, rectLength, pieceRadius);
+    ctx.strokeRect(-rectLength / 2, -pieceRadius / 2, rectLength, pieceRadius);
+  }
+  ctx.restore();
 }
 function drawDebug(ctx) {
   if (debug) {
@@ -330,7 +360,7 @@ function drawHover(ctx) {
     return;
   }
   if (hoverEdge != null) {
-    drawRoad(hoverEdge, 'rgba(127, 127, 127, 0.5)', ctx);
+    drawRoad(hoverEdge.location, 'rgba(127, 127, 127, 0.5)', hoverEdge.edge_type, ctx);
     canvas.style.cursor = "pointer";
     return;
   }
@@ -464,7 +494,7 @@ function onmove(event) {
   }
   hoverLoc = getEdge(event.clientX, event.clientY);
   if (hoverLoc != null) {
-    hoverEdge = edges[hoverLoc].location;
+    hoverEdge = edges[hoverLoc];
   } else {
     hoverEdge = null;
   }

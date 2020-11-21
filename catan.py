@@ -485,7 +485,7 @@ class CatanState(object):
     for corner in corners.values():
       # Double-count each edge and dedup.
       for edge in corner["location"].get_edges():
-        edges[edge.as_tuple()] = {"location": edge}
+        edges[edge.as_tuple()] = {"location": edge, "edge_type": self._get_edge_type(edge)}
     ret["edges"] = list(edges.values())
 
     is_over = (self.game_phase == "victory")
@@ -1479,6 +1479,30 @@ class CatanState(object):
         port_corners = [port.location.get_lower_right_corner(), port.location.get_right_corner()]
       for corner in port_corners:
         self.port_corners[corner.as_tuple()] = port.port_type
+
+  def _get_edge_type(self, edge_location):
+    # If there is a road/ship here, just return the type of that road/ship.
+    if self.roads.get(edge_location.as_tuple()) is not None:
+      return self.roads[edge_location.as_tuple()].road_type
+
+    # Otherwise, first verify that there are tiles on both sides of this edge.
+    tile_locations = edge_location.get_adjacent_tiles()
+    if len(tile_locations) != 2:
+      return None
+    if not all([loc.as_tuple() in self.tiles for loc in tile_locations]):
+      return None
+
+    # Then, return based on how many of the two tiles are land.
+    are_lands = [self.tiles[loc.as_tuple()].is_land for loc in tile_locations]
+    if all(are_lands):
+      return "road"
+    if not any(are_lands):
+      return "ship"
+    # For the coast, it matters whether the sea is on top or on bottom.
+    tile_locations.sort(key=lambda loc: loc.y)
+    if self.tiles[tile_locations[0].as_tuple()].is_land:
+      return "coastdown"
+    return "coastup"
 
   def init_beginner(self):
     tile_types = [
