@@ -125,6 +125,39 @@ class TestDistributeResources(BaseInputHandlerTest):
     self.assertEqual(self.c.player_data[1].cards["rsrc3"], 9)
     self.assertEqual(self.c.player_data[1].cards["rsrc1"], 2)
 
+class testRobberMovement(BaseInputHandlerTest):
+  
+  def setUp(self):
+    BaseInputHandlerTest.setUp(self)
+    self.c.turn_phase = "robber"
+    self.c.handle_robber((2, 3), 1)
+    self.c.turn_phase = "robber"
+    
+  def testRobberInvalidMove(self):
+    with self.assertRaises(InvalidMove):
+      self.c.handle_robber((-1,-1),1)
+    
+  def testRobberInvalidMoveRegex(self):
+    with self.assertRaisesRegex(InvalidMove, "Robber would be lost in time and space."):
+      self.c.handle_robber((-1,-1),1)
+
+  def testRobberStationaryMove(self):
+    with self.assertRaises(InvalidMove):
+      self.c.handle_robber(self.c.robber.as_tuple(),1)
+    
+  def testRobberStationaryMoveRegex(self):
+    with self.assertRaisesRegex(InvalidMove, "You must move the robber."):
+      self.c.handle_robber(self.c.robber.as_tuple(),1)
+
+  def testRobberLandMove(self):
+    with self.assertRaises(InvalidMove):
+      self.c.handle_robber((2,1),1)
+
+  def testRobberLandMoveRegex(self):
+    with self.assertRaisesRegex(InvalidMove, "Robbers would drown at sea."):
+      self.c.handle_robber((2,1),1)
+
+
 
 class TestHandleSettleInput(BaseInputHandlerTest):
 

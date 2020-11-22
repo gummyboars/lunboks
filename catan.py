@@ -802,6 +802,12 @@ class CatanState(object):
       if self.turn_phase == "discard":
         raise InvalidMove("Waiting for players to discard.")
       raise InvalidMove("You cannot play the robber right now.")
+    if self.tiles.get(tuple(location)) is None:
+      raise InvalidMove("Robber would be lost in time and space.")
+    if self.robber == TileLocation(*location):
+      raise InvalidMove("You must move the robber.")
+    if not self.tiles[tuple(location)].is_land:
+      raise InvalidMove("Robbers would drown at sea.")
     self.robber = TileLocation(*location)
     corners = self.robber.get_corner_locations()
     robbable_players = set([])
