@@ -1,9 +1,10 @@
 import collections
+from http import HTTPStatus
 import json
 import os
 import random
 
-from game import InvalidMove, InvalidPlayer, TooManyPlayers, ValidatePlayer
+from game import BaseGame, InvalidMove, InvalidPlayer, TooManyPlayers, ValidatePlayer
 
 RESOURCES = ["rsrc1", "rsrc2", "rsrc3", "rsrc4", "rsrc5"]
 PLAYABLE_DEV_CARDS = ["yearofplenty", "monopoly", "roadbuilding", "knight"]
@@ -369,7 +370,7 @@ class CatanPlayer(object):
     return sum([self.cards[x] for x in PLAYABLE_DEV_CARDS + VICTORY_CARDS])
 
 
-class CatanState(object):
+class CatanState(BaseGame):
 
   WANT = "want"
   GIVE = "give"
@@ -530,6 +531,9 @@ class CatanState(object):
       data["host"] = self.host == player_session
     return json.dumps(data, cls=CustomEncoder)
 
+  def game_url(self, game_id):
+    return f"/catan.html?game_id={game_id}"
+
   def connect_user(self, session):
     self.connected.add(session)
     if self.started:
@@ -549,6 +553,21 @@ class CatanState(object):
         self.host = None
       else:
         self.host = list(self.player_sessions.keys())[0]
+
+  def post_urls(self):
+    return ["/dice"]
+
+  def handle_post(self, http_handler, path, args, data):
+    if path == "/dice":
+      try:
+        count = int(args["count"][0])
+      except:
+        count = 1
+      self.handle_force_dice(count)
+      http_handler.send_response(HTTPStatus.NO_CONTENT.value)
+      http_handler.end_headers()
+      return
+    raise RuntimeError
 
   def handle_join(self, session, data):
     if self.started:

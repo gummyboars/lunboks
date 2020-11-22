@@ -1,0 +1,22 @@
+<!DOCTYPE HTML>
+<html>
+  <meta content="text/html;charset=utf-8" http-equiv="Content-Type">
+  <meta content="utf-8" http-equiv="encoding">
+  <head></head>
+  <script type="text/javascript" src="/index.js"></script>
+  <body onload="init()">
+    <div id="error" style="display: none; text-align: center; font-size: 36px; color: red; background: white;"></div>
+    <div id="newgame">
+      <form action="/new" method="post">
+        <select id="gamechoice" style="display:inline-block" onchange="changeval(event)">
+          <option value="catan">Catan</option>
+        </select>
+        <input id="gametype" type="hidden" name="type" value="catan"></input>
+        <input type="submit" style="display:inline-block" value="Create Game"></input>
+      </form>
+    </div>
+    <div id="main">
+      <table id="table"></table>
+    </div>
+  </body>
+</html>

@@ -1497,5 +1497,14 @@ function onBodyClick(event) {
   }
 }
 let l = window.location;
-ws = new WebSocket("ws://" + l.hostname + ":8081/");
-ws.onmessage = onmsg;
+let params = new URLSearchParams(window.location.search);
+if (!params.has("game_id")) {
+  window.addEventListener('load', function() {
+    document.getElementById("errorText").holdSeconds = 0;
+    document.getElementById("errorText").style.opacity = 1.0;
+    document.getElementById("errorText").innerText = "No game id specified.";
+  })
+} else {
+  ws = new WebSocket("ws://" + l.hostname + ":8081/" + params.get("game_id"));
+  ws.onmessage = onmsg;
+}

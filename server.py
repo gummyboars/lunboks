@@ -1,28 +1,29 @@
 #!/usr/bin/env python3
 
 import asyncio
-import collections
 from http import HTTPStatus
 from http.server import HTTPServer,BaseHTTPRequestHandler
 import json
 import os
 import random
 from socketserver import ThreadingMixIn
-import sys
+import string
 import threading
-import time
-import traceback
 import urllib
 import uuid
 import websockets
 
 import catan
-import game
+import game as game_handler
+
 
 ROOT_DIR = os.path.abspath(os.path.dirname(__file__))
-GAME_STATE = None
-GLOBAL_WS = collections.OrderedDict([])
 GLOBAL_LOOP = None
+INDEX_WEBSOCKETS = set()
+GAMES = {}
+GAME_TYPES = {"catan": catan.CatanState}
+# Check to make sure abstract base classes are satisfied.
+[game_class() for game_class in GAME_TYPES.values()]
 
 
 class ThreadingHTTPServer(ThreadingMixIn, HTTPServer):
@@ -31,27 +32,31 @@ class ThreadingHTTPServer(ThreadingMixIn, HTTPServer):
 
 class MyHandler(BaseHTTPRequestHandler):
 
-  # TODO: Try SimpleHTTPRequestHandler
   def do_GET(self):
-    start = time.time()
-    self_path = urllib.parse.urlparse(self.path).path
-    if self_path.rstrip("/") in ("/dump", "/json", "/save"):
-      value = GAME_STATE.json_str().encode('ascii')
-      self.send_response(HTTPStatus.OK.value)
-      self.end_headers()
-      self.wfile.write(value)
+    parsed_url = urllib.parse.urlparse(self.path)
+    path = parsed_url.path
+    args = urllib.parse.parse_qs(parsed_url.query)
+    game_id_arg = args.get("game_id", [])
+    game = GAMES.get(game_id_arg[0]) if game_id_arg else None
+
+    if game_id_arg and not game:
+      self.send_error(HTTPStatus.BAD_REQUEST.value, "Unknown game_id %s" % game_id_arg[0])
       return
-    if self_path == "/":
-      path = "/".join([ROOT_DIR, "catan.html"])
+    if game and path.rstrip("/") in game.get_urls():
+      game.handle_get(GLOBAL_LOOP, self, path.rstrip("/"), args)
+      return
+
+    if path == "/":
+      filepath = "/".join([ROOT_DIR, "index.html"])
     else:
-      path = "/".join([ROOT_DIR, self_path])
-    path = os.path.abspath(path)
-    if os.path.dirname(path) != ROOT_DIR:
-      print("dirname is %s but root is %s" % (os.path.dirname(path), ROOT_DIR))
-      self.send_error(HTTPStatus.FORBIDDEN.value, "Access to %s forbidden" % self_path)
+      filepath = "/".join([ROOT_DIR, path])
+    filepath = os.path.abspath(filepath)
+    if os.path.dirname(filepath) != ROOT_DIR:
+      print("dirname is %s but root is %s" % (os.path.dirname(filepath), ROOT_DIR))
+      self.send_error(HTTPStatus.FORBIDDEN.value, "Access to %s forbidden" % path)
       return
-    if not os.path.exists(path):
-      self.send_error(HTTPStatus.NOT_FOUND.value, "File %s not found" % self_path)
+    if not os.path.exists(filepath):
+      self.send_error(HTTPStatus.NOT_FOUND.value, "File %s not found" % path)
       return
 
     self.send_response(HTTPStatus.OK.value)
@@ -69,118 +74,144 @@ class MyHandler(BaseHTTPRequestHandler):
       new_session = "session=%s" % (uuid.uuid4())
       self.send_header("Set-Cookie", new_session)
       print("setting session cookie %s" % new_session)
-    if path.endswith(".jpg") or path.endswith(".jpeg") or path.endswith(".png"):
+    if filepath.endswith(".jpg") or filepath.endswith(".jpeg") or filepath.endswith(".png"):
       self.send_header("Cache-Control", "public, max-age=604800")
 
     self.end_headers()
-    end = time.time()
 
-    with open(path, 'rb') as w:
+    with open(filepath, 'rb') as w:
       self.wfile.write(w.read())
 
   def do_POST(self):
-    global GAME_STATE
-    req = urllib.parse.urlparse(self.path)
-    self_path = req.path
-    if self_path.rstrip("/") == "/reset":
-      GAME_STATE.init_normal()
-      self.send_response(HTTPStatus.NO_CONTENT.value)
-      self.end_headers()
-      fut = asyncio.run_coroutine_threadsafe(PushState(), GLOBAL_LOOP)
-      fut.result(10)
-    elif self_path.rstrip("/") == "/dice":
-      params = urllib.parse.parse_qs(req.query)
-      try:
-        count = int(params["count"][0])
-      except:
-        count = 1
-      GAME_STATE.handle_force_dice(count)
-      self.send_response(HTTPStatus.NO_CONTENT.value)
-      self.end_headers()
-      fut = asyncio.run_coroutine_threadsafe(PushState(), GLOBAL_LOOP)
-      fut.result(10)
-    elif self_path.rstrip("/") == "/load":
+    parsed_url = urllib.parse.urlparse(self.path)
+    path = parsed_url.path
+    args = urllib.parse.parse_qs(parsed_url.query)
+    data = b""
+    if self.headers["content-length"]:
       data = self.rfile.read(int(self.headers["content-length"]))
-      try:
-        cstate = catan.CatanState.parse_json(data)
-      except Exception as e:
-        print(sys.exc_info()[0])
-        print(sys.exc_info()[1])
-        traceback.print_tb(sys.exc_info()[2])
-        self.send_error(HTTPStatus.BAD_REQUEST.value, str(e))
-        return
-      GAME_STATE = cstate
-      self.send_response(HTTPStatus.NO_CONTENT.value)
-      self.end_headers()
-      fut = asyncio.run_coroutine_threadsafe(PushState(), GLOBAL_LOOP)
-      fut.result(10)
-    else:
-      self.send_error(HTTPStatus.NOT_FOUND.value, "bruh, what is %s?" % self_path)
+
+    if path.rstrip("/") == "/new":
+      # TODO: extract a content encoding from content-type header.
+      CreateGame(self, urllib.parse.parse_qs(data.decode("ascii", "strict")))
+      return
+
+    game_id_arg = args.get("game_id", [])
+    if not game_id_arg:
+      self.send_error(HTTPStatus.BAD_REQUEST.value, "Missing required param game_id")
+      return
+
+    game = GAMES.get(game_id_arg[0])
+    if not game:
+      self.send_error(HTTPStatus.BAD_REQUEST.value, "Game not found: %s" % game_id_arg[0])
+      return
+
+    if path.rstrip("/") not in game.post_urls():
+      self.send_error(HTTPStatus.NOT_FOUND.value, "Unknown path %s" % path)
+      return
+
+    game.handle_post(GLOBAL_LOOP, self, path.rstrip("/"), args, data)
 
 
-async def PushState():
-  for session, ws_list in GLOBAL_WS.items():
-    for ws in ws_list:
-      await ws.send(GAME_STATE.for_player(session))
+def CreateGame(http_handler, data):
+  if not data.get("type"):
+    http_handler.send_error(HTTPStatus.BAD_REQUEST.value, "Missing game type")
+    return
+  game_type = data.get("type")[0]
+  if game_type not in GAME_TYPES:
+    http_handler.send_error(HTTPStatus.BAD_REQUEST.value, f"Unknown game type {game_type}")
+    return
+  generated_id = GenerateId(2)
+  if not generated_id:
+    http_handler.send_error(
+        HTTPStatus.INTERNAL_SERVER_ERROR, "no unique game ids left. probably. i didn't try very hard")
+    return
+  GAMES[generated_id] = game_handler.GameHandler(generated_id, GAME_TYPES[game_type])
+  http_handler.send_response(301)
+  http_handler.send_header('Location', GAMES[generated_id].game_url())
+  http_handler.end_headers()
+  print("Created new game of type %s with id %s" % (game_type, generated_id))
+
+
+def GenerateId(length):
+  generated = None
+  for attempt in range(5):
+    chars = []
+    for x in range(length):
+      chars.append(random.choice(string.ascii_lowercase))
+    generated = "".join(chars)
+    # TODO: concurrency
+    if generated not in GAMES:
+      return generated
+  return None
 
 
 async def PushError(ws, e):
   await ws.send(json.dumps({"type": "error", "message": e}))
 
 
-async def WebLoop(websocket, path):
+async def HandleWebsocket(websocket, path):
+  game_id = path.rstrip("/").lstrip("/")
+  if game_id == "":
+    await SendGames(websocket)
+    return
+  game = GAMES.get(game_id)
+  if game is None:
+    await PushError(websocket, f"Unknown game {game_id}")
+    return
   # TODO: possible cross-site request forgery of websocket data
   # https://christian-schneider.net/CrossSiteWebSocketHijacking.html
   cookie_str = websocket.request_headers["Cookie"]
   cookies = dict([x.strip().split("=", 1) for x in cookie_str.split(";")])
   session = cookies.get("session")
-  missing_cookie = False
   if not session:
     session = str(uuid.uuid4())
-    missing_cookie = True
-  # Add this user to the global registry.
-  if session not in GLOBAL_WS:
-    GLOBAL_WS[session] = set([])
-  GLOBAL_WS[session].add(websocket)
-  print("added %s to the global registry" % session)
-
-  if missing_cookie:
     await PushError(websocket, "Session cookie not set; you will not be able to resume if you close this tab.")
-  GAME_STATE.connect_user(session)
-  await PushState()
+  await GameLoop(websocket, session, game)
+
+
+async def GameLoop(websocket, session, game):
+  print("new websocket connection by %s from %s" % (session, websocket.remote_address))
+  await game.connect_user(session, websocket)
   try:
     async for raw in websocket:
-      try:
-        data = json.loads(raw, object_pairs_hook=collections.OrderedDict)
-      except Exception as e:
-        await PushError(websocket, str(e))
-        continue
-      try:
-        GAME_STATE.handle(session, data)
-      except (game.InvalidMove, game.InvalidPlayer, game.TooManyPlayers, AssertionError) as e:
-        await PushError(websocket, str(e))
-        # Intentionally fall through so that we can push the new state.
-      except Exception as e:
-        print(sys.exc_info()[0])
-        print(sys.exc_info()[1])
-        traceback.print_tb(sys.exc_info()[2])
-        await PushError(websocket, "unexpected error of type %s: %s" % (sys.exc_info()[0], sys.exc_info()[1]))
-        continue
-
-      await PushState()
+      await game.handle(websocket, session, raw)
+  except websockets.exceptions.ConnectionClosedError:
+    print("connection for %s from %s closed unexpectedly" % (session, websocket.remote_address))
   finally:
-    print("removing %s from the global registry" % session)
-    GLOBAL_WS[session].remove(websocket)
-    if not GLOBAL_WS[session]:
-      del GLOBAL_WS[session]
-      GAME_STATE.disconnect_user(session)
-      await PushState()
+    print("closed websocket connection for %s from %s" % (session, websocket.remote_address))
+    await game.disconnect_user(session, websocket)
+
+
+async def SendGames(websocket):
+  INDEX_WEBSOCKETS.add(websocket)
+  try:
+    async for raw in websocket:
+      pass
+  except websockets.exceptions.ConnectionClosedError:
+    pass
+  finally:
+    INDEX_WEBSOCKETS.remove(websocket)
+
+
+async def SendGameUpdates():
+  while True:
+    game_data = []
+    for game_id, game in GAMES.items():
+      game_data.append({
+        "game_id": game_id,
+        "status": "whatever",
+        "url": game.game_url(),
+      })
+    coroutines = [ws.send(json.dumps({"games": game_data})) for ws in INDEX_WEBSOCKETS]
+    asyncio.gather(*coroutines)
+    await asyncio.sleep(1)
 
 
 def ws_main(loop):
   asyncio.set_event_loop(loop)
+  asyncio.ensure_future(SendGameUpdates())
   ws_port = 8081
-  start_server = websockets.serve(WebLoop, '', ws_port)
+  start_server = websockets.serve(HandleWebsocket, '', ws_port)
   loop.run_until_complete(start_server)
   print("Websocket server started on port %d" % ws_port)
   loop.run_forever()
@@ -208,6 +239,5 @@ if __name__ == '__main__':
   t2 = threading.Thread(target=ws_main, args=(loop,))
   t2.daemon = True
   t2.start()
-  GAME_STATE = catan.CatanState()
   main()
   loop.stop()
