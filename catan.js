@@ -672,7 +672,6 @@ function rollDice() {
   ws.send(JSON.stringify(msg));
 }
 function endTurn() {
-  snd1.play();
   let msg = {
     type: "end_turn",
   };
@@ -950,6 +949,9 @@ function onmsg(event) {
     copyPreviousCounterOffer(counterOffers[myIdx]);
   }
   maybeShowActiveTradeOffer(oldActiveOffer);
+  if (data.turn == myIdx && oldTurn != myIdx) {
+    snd1.play();
+  }
   if (oldTurn != null && oldTurn != turn) {
     hideSelectorWindow();
   }
