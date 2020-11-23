@@ -48,6 +48,9 @@ class BaseGame(metaclass=abc.ABCMeta):
   def game_url(self, game_id):
     pass
 
+  def game_status(self):
+    return self.__class__.__name__ + " game"
+
   @abc.abstractmethod
   def connect_user(self):
     pass
@@ -83,6 +86,9 @@ class GameHandler(object):
 
   def game_url(self):
     return self.game.game_url(self.game_id)
+
+  def game_status(self):
+    return self.game.game_status()
 
   def get_urls(self):
     valid = set(self.game.get_urls())

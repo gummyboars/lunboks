@@ -199,7 +199,7 @@ async def SendGameUpdates():
     for game_id, game in GAMES.items():
       game_data.append({
         "game_id": game_id,
-        "status": "whatever",
+        "status": game.game_status(),
         "url": game.game_url(),
       })
     coroutines = [ws.send(json.dumps({"games": game_data})) for ws in INDEX_WEBSOCKETS]

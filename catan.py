@@ -534,6 +534,18 @@ class CatanState(BaseGame):
   def game_url(self, game_id):
     return f"/catan.html?game_id={game_id}"
 
+  def game_status(self):
+    players = ", ".join([p.name for p in self.player_data])
+    if not self.started:
+      players = "%s players" % len([x for x in self.player_sessions.values() if x is not None])
+    pieces = [
+        "catan game ",
+        "(not started) " if not self.started else "",
+        "with ",
+        players,
+    ]
+    return "".join(pieces)
+
   def connect_user(self, session):
     self.connected.add(session)
     if self.started:
