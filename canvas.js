@@ -179,18 +179,44 @@ function drawRoad(roadLoc, style, road_type, ctx) {
   ctx.restore();
 }
 function drawDebug(ctx) {
+  let min, max;
+  [min, max] = getMinMax();
+  let minX = min.x - 2;
+  let minY = min.y;
+  let maxX = max.x + 3;
+  let maxY = max.y + 2;
   if (debug) {
-    ctx.strokeStyle = "black";
+    ctx.strokeStyle = "white";
+    ctx.fillStyle = "white";
     ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(-10000, 0);
-    ctx.lineTo(10000, 0);
-    ctx.stroke();
-    ctx.moveTo(0, -10000);
-    ctx.lineTo(0, 10000);
-    ctx.stroke();
-    ctx.fillStyle = "black";
-    ctx.fillText("" + eventX + ", " + eventY, 0, 0);
+    let i, start, end;
+    for (i = minX; i <= maxX; i++) {
+      start = coordToCornerCenter([i, minY]);
+      end = coordToCornerCenter([i, maxY]);
+      ctx.beginPath();
+      ctx.moveTo(start.x, start.y);
+      ctx.lineTo(end.x, end.y);
+      ctx.stroke();
+      ctx.fillText("" + i, start.x, start.y);
+    }
+    for (i = minY; i <= maxY; i++) {
+      start = coordToCornerCenter([minX, i]);
+      end = coordToCornerCenter([maxX, i]);
+      ctx.beginPath();
+      ctx.moveTo(start.x, start.y);
+      ctx.lineTo(end.x, end.y);
+      ctx.stroke();
+      ctx.fillText("" + i, start.x-10, start.y);
+    }
+    if (hoverTile != null) {
+      ctx.fillText("" + hoverTile[0] + ", " + hoverTile[1], 0, 0);
+    }
+    if (hoverCorner != null) {
+      ctx.fillText("" + hoverCorner[0] + ", " + hoverCorner[1], 0, 0);
+    }
+    if (hoverEdge != null) {
+      ctx.fillText("" + hoverEdge.location, 0, 0);
+    }
   }
 }
 function drawPiece(pieceLoc, style, pieceType, ctx) {
@@ -541,26 +567,33 @@ function onup(event) {
   dX = 0;
   dY = 0;
 }
-function getCenter() {
+function getMinMax() {
   if (tiles.length < 1) {
-    return {x: 0, y: 0};
+    return [{x: 0, y: 0}, {x: 0, y: 0}];
   }
-  let tileLoc = coordToTileCenter(tiles[0].location);
-  let minX = tileLoc.x;
-  let minY = tileLoc.y;
-  let maxX = tileLoc.x;
-  let maxY = tileLoc.y;
+  let minX, maxX, minY, maxY;
+  let loc = tiles[0].location;
+  [minX, maxX, minY, maxY] = [loc[0], loc[0], loc[1], loc[1]];
   for (let i = 0; i < tiles.length; i++) {
-    tileLoc = coordToTileCenter(tiles[i].location);
-    minX = Math.min(tileLoc.x, minX);
-    minY = Math.min(tileLoc.y, minY);
-    maxX = Math.max(tileLoc.x, maxX);
-    maxY = Math.max(tileLoc.y, maxY);
+    if (!tiles[i].is_land) {
+      continue;
+    }
+    minX = Math.min(tiles[i].location[0], minX);
+    minY = Math.min(tiles[i].location[1], minY);
+    maxX = Math.max(tiles[i].location[0], maxX);
+    maxY = Math.max(tiles[i].location[1], maxY);
   }
-  return {x: (minX + maxX) / 2, y: (minY + maxY) / 2};
+  return [{x: minX, y: minY}, {x: maxX, y: maxY}];
+}
+function getCenterCoord() {
+  let min, max;
+  [min, max] = getMinMax();
+  let minLoc = coordToTileCenter([min.x, min.y]);
+  let maxLoc = coordToTileCenter([max.x, max.y]);
+  return {x: (minLoc.x + maxLoc.x) / 2, y: (minLoc.y + maxLoc.y) / 2};
 }
 function centerCanvas() {
-  let center = getCenter();
+  let center = getCenterCoord();
   offsetX = canWidth / 2 - center.x;
   offsetY = canHeight / 2 - center.y;
 }
