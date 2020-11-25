@@ -283,19 +283,14 @@ function addSelectionToPanel(selection, panel) {
     for (let i = 0; i < count; i++) {
       let div = document.createElement("DIV");
       div.classList.add("summarycard");
-      let img = document.createElement("CANVAS");
-      img.classList.add("noclick");
-      img.width = summaryCardWidth;
-      img.height = summaryCardHeight;
-      img.style.display = "block";
-      div.appendChild(img);
+      let cnv = document.createElement("CANVAS");
+      cnv.classList.add("noclick");
+      cnv.width = summaryCardWidth;
+      cnv.height = summaryCardHeight;
+      cnv.style.display = "block";
+      div.appendChild(cnv);
       panel.appendChild(div);
-      let prerendered = document.getElementById("canvas" + rsrc + "card");
-      let ctx = img.getContext("2d");
-      ctx.save();
-      ctx.scale(summaryCardWidth / prerendered.width, summaryCardHeight / prerendered.height);
-      ctx.drawImage(prerendered, 0, 0);
-      ctx.restore();
+      renderAssetToCanvas(rsrc + "card", "", cnv);
     }
   }
 }
@@ -770,16 +765,8 @@ function addCard(cardContainer, elemId, ordering, usable) {
 }
 function updateCard(div) {
   let elemId = div.cardType;
-  let prerendered = document.getElementById("canvas" + elemId);
-  if (prerendered == null) {
-    return;
-  }
-  let ctx = div.firstChild.getContext('2d');
-  ctx.save();
-  ctx.scale(cardWidth / prerendered.width, cardHeight / prerendered.height);
-  ctx.clearRect(0, 0, prerendered.width, prerendered.height);
-  ctx.drawImage(prerendered, 0, 0);
-  ctx.restore();
+  let cnv = div.firstChild;
+  renderAssetToCanvas(elemId, "", cnv);
 }
 function removeCards(cardContainer, count, cardType) {
   let removed = 0;
@@ -1296,12 +1283,7 @@ function addSummaryCard(cardContainer, order, cardName, isLast) {
     contDiv.style.flex = "0 0 auto";
   }
   cardContainer.appendChild(contDiv);
-  let prerendered = document.getElementById("canvas" + cardName);
-  let ctx = backImg.getContext("2d");
-  ctx.save();
-  ctx.scale(summaryCardWidth / prerendered.width, summaryCardHeight / prerendered.height);
-  ctx.drawImage(prerendered, 0, 0);
-  ctx.restore();
+  renderAssetToCanvas(cardName, "", backImg);
 }
 function addBonusCard(cardContainer, order, cardName) {
   let sepDiv = document.createElement("DIV");
@@ -1314,16 +1296,16 @@ function addBonusCard(cardContainer, order, cardName) {
   itemDiv.classList.add("cardseparator");
   itemDiv.style.order = order+1;
   cardContainer.appendChild(itemDiv);
-  let prerendered = document.getElementById("canvas" + cardName);
-  let img = document.createElement("CANVAS");
-  img.height = summaryCardHeight;
-  img.width = summaryCardHeight / prerendered.height * prerendered.width;
-  itemDiv.appendChild(img);
-  let ctx = img.getContext("2d");
-  ctx.save();
-  ctx.scale(summaryCardHeight / prerendered.height, summaryCardHeight / prerendered.height);
-  ctx.drawImage(prerendered, 0, 0);
-  ctx.restore();
+  // TODO: cleaner way of getting the height/width of the bonus card.
+  let prerendered = getAsset(cardName, "");
+  if (prerendered == null) {
+    return;
+  }
+  let cnv = document.createElement("CANVAS");
+  cnv.height = summaryCardHeight;
+  cnv.width = summaryCardHeight / prerendered.height * prerendered.width;
+  itemDiv.appendChild(cnv);
+  renderAssetToCanvas(cardName, "", cnv);
 }
 function createSelectors() {
   for (selectBox of ["top", "bottom"]) {
@@ -1334,13 +1316,13 @@ function createSelectors() {
     for (cardRsrc of cardResources) {
       let boxCopy = selectBox;
       let rsrcCopy = cardRsrc;
-      let img = document.createElement("CANVAS");
-      img.classList.add("selector");
-      img.classList.add("clickable");
-      img.width = selectCardWidth;
-      img.height = selectCardHeight;
-      img.onclick = function(e) { selectResource(e, boxCopy, rsrcCopy); };
-      img.oncontextmenu = function(e) { deselectResource(e, boxCopy, rsrcCopy); };
+      let cnv = document.createElement("CANVAS");
+      cnv.classList.add("selector");
+      cnv.classList.add("clickable");
+      cnv.width = selectCardWidth;
+      cnv.height = selectCardHeight;
+      cnv.onclick = function(e) { selectResource(e, boxCopy, rsrcCopy); };
+      cnv.oncontextmenu = function(e) { deselectResource(e, boxCopy, rsrcCopy); };
       let counter = document.createElement("DIV");
       counter.innerText = "x0";
       counter.classList.add("selectcount");
@@ -1348,19 +1330,10 @@ function createSelectors() {
       let container = document.createElement("DIV");
       container.classList.add("selectcontainer");
       container.classList.add(cardRsrc);
-      container.appendChild(img);
+      container.appendChild(cnv);
       container.appendChild(counter);
       box.appendChild(container);
-      let prerendered = document.getElementById("canvas" + cardRsrc + "card");
-      if (prerendered == null) {
-        console.log("unable to find canvas" + cardRsrc + "card");
-        continue;
-      }
-      let ctx = img.getContext("2d");
-      ctx.save();
-      ctx.scale(selectCardWidth / prerendered.width, selectCardHeight / prerendered.height);
-      ctx.drawImage(prerendered, 0, 0);
-      ctx.restore();
+      renderAssetToCanvas(cardRsrc + "card", "", cnv);
     }
   }
 }
@@ -1386,19 +1359,11 @@ function updateBuyDev() {
   }
   block.style.width = (cardWidth + devCardCount) + "px";
   block.style.height = (cardHeight + devCardCount) + "px";
-  let prerendered = document.getElementById('canvasdevcard');
-  if (prerendered == null) {
-    return;
-  }
   for (let i = 0; i < devCardCount; i++) {
     let buydev = document.createElement("CANVAS");
     buydev.width = cardWidth;
     buydev.height = cardHeight;
-    let ctx = buydev.getContext('2d');
-    ctx.save();
-    ctx.scale(cardWidth / prerendered.width, cardHeight / prerendered.height);
-    ctx.drawImage(prerendered, 0, 0);
-    ctx.restore();
+    renderAssetToCanvas("devcard", "", buydev);
     let offset = devCardCount - i - 1;
     buydev.style.position = "absolute";
     if (i == devCardCount-1) {
