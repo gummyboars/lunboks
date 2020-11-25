@@ -251,7 +251,7 @@ function drawPiece(pieceLoc, style, pieceType, ctx) {
   }
 }
 function drawTile(tileData, ctx) {
-  let img = getAsset(tileData.tile_type, tileData.variant);
+  let img = getAsset(tileData.tile_type + "tile", tileData.variant);
   let canvasLoc = coordToTileCenter(tileData.location);
   ctx.save();
   ctx.translate(canvasLoc.x, canvasLoc.y);

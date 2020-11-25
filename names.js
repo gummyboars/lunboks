@@ -1,4 +1,4 @@
-globalNames = {
+serverNames = {
   rsrc1: "sulfur",
   rsrc2: "olivine",
   rsrc3: "water",
@@ -7,110 +7,120 @@ globalNames = {
   norsrc: "desert",
   space: "space",
 };
-imageInfo = {
-  rsrc1: {"src": "/sulfur.png"},
-  rsrc2: {"src": "/olivine.png"},
-  rsrc3: {"src": "/permafrost.png"},
-  rsrc4: {"src": "/clay.png"},
-  rsrc5: {"src": "/metal.png"},
-  rsrc1card: {"src": "/sulfurcard.png"},
-  rsrc2card: {"src": "/olivinecard.png"},
-  rsrc3card: {"src": "/watercard.png"},
-  rsrc4card: {"src": "/claycard.png"},
-  rsrc5card: {"src": "/metalcard.png"},
-  norsrc: {"src": "/desert.png"},
-  space: {"src": "/space.png"},
-  spaceedgeleft: {},
-  spaceedgeright: {},
-  spacecorner: {},
-  coast: {},
-  port: {},
-  rsrc1port: {"src": "/sulfurport.png"},
-  rsrc2port: {"src": "/olivineport.png"},
-  rsrc3port: {"src": "/waterport.png"},
-  rsrc4port: {"src": "/clayport.png"},
-  rsrc5port: {"src": "/metalport.png"},
-  "3port": {"src": "/3port.png"},
-  knight: {"src": "/knight.png"},
-  roadbuilding: {"src": "/roadbuilding.png"},
-  yearofplenty: {"src": "/yearofplenty.png"},
-  monopoly: {"src": "/monopoly.png"},
-  palace: {"src": "/palace.png"},
-  chapel: {"src": "/chapel.png"},
-  university: {"src": "/university.png"},
-  library: {"src": "/library.png"},
-  market: {"src": "/market.png"},
-  cardback: {"src": "/cardback.png"},
-  devcard: {"src": "/devcard.png"},
-  longestroute: {"src": "/longestroad.png"},
-  largestarmy: {"src": "/largestarmy.png"},
-};
 
-function initializeImageData() {
-  let newImages = {};
-  for (imgName in imageInfo) {
-    let rawData = localStorage.getItem(imgName);
-    let imgData = JSON.parse(rawData || "{}");
-    if (imgData && imgData.src != null) {
-      newImages[imgName] = imgData;
-    } else {
-      newImages[imgName] = {};
-    }
-  }
-  for (imgName in newImages) {
-    imageInfo[imgName] = newImages[imgName];
-  }
-}
+assetNames = [
+  // Tiles
+  "rsrc1tile",
+  "rsrc2tile",
+  "rsrc3tile",
+  "rsrc4tile",
+  "rsrc5tile",
+  "norsrctile",
+  "spacetile",
+  "coast",
+  "port",
+  "rsrc1port",
+  "rsrc2port",
+  "rsrc3port",
+  "rsrc4port",
+  "rsrc5port",
+  "3port",
+  // Cards
+  "rsrc1card",
+  "rsrc2card",
+  "rsrc3card",
+  "rsrc4card",
+  "rsrc5card",
+  "knight",
+  "roadbuilding",
+  "yearofplenty",
+  "monopoly",
+  "palace",
+  "chapel",
+  "university",
+  "library",
+  "market",
+  // Other
+  "devcard",
+  "cardback",
+  "longestroute",
+  "largestarmy",
+  "robber",
+  "pirate",
+];
+
 function initializeNames() {
   let overrides = JSON.parse(localStorage.getItem("names") || "{}");
   if (!overrides) {
     return;
   }
   let newNames = {};
-  for (let name in globalNames) {
+  for (let name in serverNames) {
     if (overrides[name]) {
       newNames[name] = overrides[name];
     }
   }
   for (let name in newNames) {
-    globalNames[name] = newNames[name];
+    serverNames[name] = newNames[name];
   }
 }
+
 function initializeSpace() {
-  localStorage.setItem("rsrc1", '{"src": "/sulfur.png"}');
-  localStorage.setItem("rsrc2", '{"src": "/olivine.png"}');
-  localStorage.setItem("rsrc3", '{"src": "/permafrost.png"}');
-  localStorage.setItem("rsrc4", '{"src": "/clay.png"}');
-  localStorage.setItem("rsrc5", '{"src": "/metal.png"}');
-  localStorage.setItem("rsrc1card", '{"src": "/sulfurcard.png"}');
-  localStorage.setItem("rsrc2card", '{"src": "/olivinecard.png"}');
-  localStorage.setItem("rsrc3card", '{"src": "/watercard.png"}');
-  localStorage.setItem("rsrc4card", '{"src": "/claycard.png"}');
-  localStorage.setItem("rsrc5card", '{"src": "/metalcard.png"}');
-  localStorage.setItem("norsrc", '{"src": "/desert.png"}');
-  localStorage.setItem("space", '{"src": "/space.png"}');
-  localStorage.setItem("spaceedgeleft", '{}');
-  localStorage.setItem("spaceedgeright", '{}');
-  localStorage.setItem("spacecorner", '{}');
-  localStorage.setItem("coast", '{}');
-  localStorage.setItem("port", '{}');
-  localStorage.setItem("rsrc1port", '{"src": "/sulfurport.png"}');
-  localStorage.setItem("rsrc2port", '{"src": "/olivineport.png"}');
-  localStorage.setItem("rsrc3port", '{"src": "/waterport.png"}');
-  localStorage.setItem("rsrc4port", '{"src": "/clayport.png"}');
-  localStorage.setItem("rsrc5port", '{"src": "/metalport.png"}');
-  localStorage.setItem("3port", '{"src": "/3port.png"}');
-  localStorage.setItem("knight", '{"src": "/knight.png"}');
-  localStorage.setItem("roadbuilding", '{"src": "/roadbuilding.png"}');
-  localStorage.setItem("yearofplenty", '{"src": "/yearofplenty.png"}');
-  localStorage.setItem("monopoly", '{"src": "/monopoly.png"}');
-  localStorage.setItem("palace", '{"src": "/palace.png"}');
-  localStorage.setItem("chapel", '{"src": "/chapel.png"}');
-  localStorage.setItem("university", '{"src": "/university.png"}');
-  localStorage.setItem("library", '{"src": "/library.png"}');
-  localStorage.setItem("market", '{"src": "/market.png"}');
-  localStorage.setItem("cardback", '{"src": "/cardback.png"}');
-  localStorage.setItem("devcard", '{"src": "/devcard.png"}');
-  localStorage.setItem("longestroute", '{"src": "/longestroad.png"}');
-  localStorage.setItem("largestarmy", '{"src": "/largestarmy.png"}');
+  localStorage.setItem("sources", JSON.stringify([
+    "/sulfur.png", "/olivine.png", "/permafrost.png", "/clay.png", "/metal.png",
+    "/sulfurcard.png", "/olivinecard.png", "/watercard.png", "/claycard.png", "/metalcard.png",
+    "/sulfurport.png", "/olivineport.png", "/waterport.png", "/clayport.png", "/metalport.png",
+    "/desert.png", "/space.png", "/3port.png",
+    "/knight.png", "/roadbuilding.png", "/yearofplenty.png", "/monopoly.png",
+    "/palace.png", "/chapel.png", "/university.png", "/library.png", "/market.png",
+    "/cardback.png", "/devcard.png", "/longestroad.png", "/largestarmy.png",
+    "/robber2.png", "/pirate.png",
+  ]));
+  localStorage.setItem("variants", "{}");
+  localStorage.setItem("names", JSON.stringify({
+    rsrc1: "sulfur",
+    rsrc2: "olivine",
+    rsrc3: "water",
+    rsrc4: "clay",
+    rsrc5: "metal",
+    norsrc: "desert",
+    space: "space",
+  }));
+  localStorage.setItem("imageinfo", JSON.stringify({
+    "rsrc1tile": {srcnum: 0},
+    "rsrc2tile": {srcnum: 1},
+    "rsrc3tile": {srcnum: 2},
+    "rsrc4tile": {srcnum: 3},
+    "rsrc5tile": {srcnum: 4},
+    "rsrc1card": {srcnum: 5},
+    "rsrc2card": {srcnum: 6},
+    "rsrc3card": {srcnum: 7},
+    "rsrc4card": {srcnum: 8},
+    "rsrc5card": {srcnum: 9},
+    "norsrctile": {srcnum: 15},
+    "spacetile": {srcnum: 16},
+    "coast": {},
+    "port": {},
+    "rsrc1port": {srcnum: 10},
+    "rsrc2port": {srcnum: 11},
+    "rsrc3port": {srcnum: 12},
+    "rsrc4port": {srcnum: 13},
+    "rsrc5port": {srcnum: 14},
+    "3port": {srcnum: 17},
+    "knight": {srcnum: 18},
+    "roadbuilding": {srcnum: 19},
+    "yearofplenty": {srcnum: 20},
+    "monopoly": {srcnum: 21},
+    "palace": {srcnum: 22},
+    "chapel": {srcnum: 23},
+    "university": {srcnum: 24},
+    "library": {srcnum: 25},
+    "market": {srcnum: 26},
+    "cardback": {srcnum: 27},
+    "devcard": {srcnum: 28},
+    "longestroute": {srcnum: 29},
+    "largestarmy": {srcnum: 30},
+    "robber": {srcnum: 31},
+    "pirate": {srcnum: 32},
+  }));
 }

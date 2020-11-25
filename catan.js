@@ -95,8 +95,8 @@ devCardType = null;  // knight, yearofplenty, roadbuilding, monopoly
 
 function formatServerString(serverString) {
   var str = serverString;
-  for (rsrc in globalNames) {
-    str = str.replace(new RegExp("\\{" + rsrc + "\\}", "gi"), globalNames[rsrc]);
+  for (rsrc in serverNames) {
+    str = str.replace(new RegExp("\\{" + rsrc + "\\}", "gi"), serverNames[rsrc]);
   }
   return str;
 }
@@ -290,7 +290,7 @@ function addSelectionToPanel(selection, panel) {
       cnv.style.display = "block";
       div.appendChild(cnv);
       panel.appendChild(div);
-      renderAssetToCanvas(rsrc + "card", "", cnv);
+      renderAssetToCanvas(cnv, rsrc + "card", "");
     }
   }
 }
@@ -766,7 +766,7 @@ function addCard(cardContainer, elemId, ordering, usable) {
 function updateCard(div) {
   let elemId = div.cardType;
   let cnv = div.firstChild;
-  renderAssetToCanvas(elemId, "", cnv);
+  renderAssetToCanvas(cnv, elemId, "");
 }
 function removeCards(cardContainer, count, cardType) {
   let removed = 0;
@@ -784,7 +784,7 @@ function removeCard(cardContainer, div) {
   div.classList.add("leave");
   div.classList.add("changed");
   div.style.width = "0px";
-  div.addEventListener('transitionend', function() { cardContainer.removeChild(div) });
+  div.addEventListener('transitionend', function() { cardContainer.removeChild(div) }, {once: true});
 }
 function bringforward(e) {
   e.currentTarget.classList.add("selected");
@@ -1283,7 +1283,7 @@ function addSummaryCard(cardContainer, order, cardName, isLast) {
     contDiv.style.flex = "0 0 auto";
   }
   cardContainer.appendChild(contDiv);
-  renderAssetToCanvas(cardName, "", backImg);
+  renderAssetToCanvas(backImg, cardName, "");
 }
 function addBonusCard(cardContainer, order, cardName) {
   let sepDiv = document.createElement("DIV");
@@ -1305,7 +1305,7 @@ function addBonusCard(cardContainer, order, cardName) {
   cnv.height = summaryCardHeight;
   cnv.width = summaryCardHeight / prerendered.height * prerendered.width;
   itemDiv.appendChild(cnv);
-  renderAssetToCanvas(cardName, "", cnv);
+  renderAssetToCanvas(cnv, cardName, "");
 }
 function createSelectors() {
   for (selectBox of ["top", "bottom"]) {
@@ -1333,7 +1333,7 @@ function createSelectors() {
       container.appendChild(cnv);
       container.appendChild(counter);
       box.appendChild(container);
-      renderAssetToCanvas(cardRsrc + "card", "", cnv);
+      renderAssetToCanvas(cnv, cardRsrc + "card", "");
     }
   }
 }
@@ -1363,7 +1363,7 @@ function updateBuyDev() {
     let buydev = document.createElement("CANVAS");
     buydev.width = cardWidth;
     buydev.height = cardHeight;
-    renderAssetToCanvas("devcard", "", buydev);
+    renderAssetToCanvas(buydev, "devcard", "");
     let offset = devCardCount - i - 1;
     buydev.style.position = "absolute";
     if (i == devCardCount-1) {
@@ -1400,17 +1400,16 @@ function chooseSkin(e) {
   init();
 }
 function initDefaultSkin() {
-  let norsrc = localStorage.getItem("norsrc");
-  if (norsrc == null) {
+  let sources = localStorage.getItem("sources");
+  if (sources == null) {
     initializeSpace();
   }
 }
 function init() {
   initDefaultSkin();
-  initializeImageData();
   initializeNames();
-  let promise = initializeImages();
-  promise.then(continueInit, continueInit);
+  let promise = renderImages();
+  promise.then(continueInit, showError);
   sizeThings();
   if (localStorage.getItem("flipped") === "true") {
     flip();
@@ -1461,13 +1460,16 @@ function onBodyClick(event) {
     }
   }
 }
+function showError(errText) {
+  document.getElementById("errorText").holdSeconds = 0;
+  document.getElementById("errorText").style.opacity = 1.0;
+  document.getElementById("errorText").innerText = errText;
+}
 let l = window.location;
 let params = new URLSearchParams(window.location.search);
 if (!params.has("game_id")) {
   window.addEventListener('load', function() {
-    document.getElementById("errorText").holdSeconds = 0;
-    document.getElementById("errorText").style.opacity = 1.0;
-    document.getElementById("errorText").innerText = "No game id specified.";
+    showError("No game id specified.");
   })
 } else {
   ws = new WebSocket("ws://" + l.hostname + ":8081/" + params.get("game_id"));
