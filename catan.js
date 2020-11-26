@@ -1397,7 +1397,14 @@ function chooseSkin(e) {
   if (chosen == "space") {
     initializeSpace();
   }
-  init();
+  let promise = renderImages();
+  promise.then(refreshUI, showError);
+}
+function refreshUI() {
+  createSelectors();
+  updateCards();
+  updatePlayerData();
+  updateBuyDev();
 }
 function initDefaultSkin() {
   let sources = localStorage.getItem("sources");
@@ -1406,23 +1413,24 @@ function initDefaultSkin() {
   }
 }
 function init() {
+  let params = new URLSearchParams(window.location.search);
+  if (!params.has("game_id")) {
+    showError("No game id specified.");
+    return;
+  }
+  let gameId = params.get("game_id");
   initializeDefaults();
   initDefaultSkin();
   initializeNames();
-  let promise = renderImages();
-  promise.then(continueInit, showError);
   sizeThings();
   if (localStorage.getItem("flipped") === "true") {
     flip();
   }
+  let promise = renderImages();
+  promise.then(function() { continueInit(gameId); }, showError);
 }
-function continueInit() {
-  // TODO: we've kind of mixed first-time initialization with other initialization here
-  // to make it possible to switch skins while playing.
-  createSelectors();
-  updateCards();
-  updatePlayerData();
-  updateBuyDev();
+function continueInit(gameId) {
+  refreshUI();
   window.requestAnimationFrame(draw);
   document.getElementById('myCanvas').onmousemove = onmove;
   document.getElementById('myCanvas').onclick = onclick;
@@ -1432,6 +1440,8 @@ function continueInit() {
   document.getElementById('myCanvas').onwheel = onwheel;
   document.body.onclick = onBodyClick;
   window.onresize = sizeThings;
+  ws = new WebSocket("ws://" + window.location.hostname + ":8081/" + gameId);
+  ws.onmessage = onmsg;
 }
 function onBodyClick(event) {
   // Ignore right/middle-click.
@@ -1465,14 +1475,4 @@ function showError(errText) {
   document.getElementById("errorText").holdSeconds = 0;
   document.getElementById("errorText").style.opacity = 1.0;
   document.getElementById("errorText").innerText = errText;
-}
-let l = window.location;
-let params = new URLSearchParams(window.location.search);
-if (!params.has("game_id")) {
-  window.addEventListener('load', function() {
-    showError("No game id specified.");
-  })
-} else {
-  ws = new WebSocket("ws://" + l.hostname + ":8081/" + params.get("game_id"));
-  ws.onmessage = onmsg;
 }

@@ -13,6 +13,7 @@ variants = {};
 imageInfo = {};
 totalImages = 0;
 loadedImages = 0;
+errorImages = 0;
 
 function getAsset(assetName, variant) {
   let img = document.getElementById("canvas" + assetName + variant);
@@ -39,8 +40,49 @@ function renderAssetToCanvas(canvas, assetName, variant) {
   ctx.restore();
 }
 
+function incrementLoad() {
+  loadedImages++;
+  updateLoad();
+}
+
+function incrementError() {
+  errorImages++;
+  updateLoad();
+}
+
+function updateLoad() {
+  let loadbar = document.getElementById("loadingbar");
+  if (loadbar != null) {
+    loadbar.style.width = (100 * loadedImages / totalImages) + "%";
+  }
+  let errorbar = document.getElementById("errorbar");
+  if (errorbar != null) {
+    errorbar.style.width = (100 * errorImages / totalImages) + "%";
+  }
+  let loadspan = document.getElementById("loadcount");
+  if (loadspan != null) {
+    let loadCount = String(loadedImages) + " / " + String(totalImages);
+    if (errorImages > 0) {
+      loadCount += " (" + String(errorImages) + " errors)";
+    }
+    loadspan.innerText = loadCount;
+  }
+  let uiload = document.getElementById("uiload");
+  if (uiload != null && (loadedImages + errorImages) == totalImages) {
+    document.getElementById("uiload").style.display = "none";
+  }
+}
+
 function finishImgLoad(assetName) {
   renderLoops[assetName] = 2;
+}
+
+function failRender(assetName, cnv) {
+  console.log("Could not render asset " + assetName);
+  renderLoops[assetName] = 2;
+  if (cnv != null) {  // Can sometimes fail before we even create the canvas.
+    cnv.parentNode.removeChild(cnv);
+  }
 }
 
 function renderSource(assetName, cnv, img, filter) {
@@ -74,15 +116,22 @@ function renderImages() {
   while (assets.firstChild) {
     assets.removeChild(assets.firstChild);
   }
+  if (document.getElementById("uiload") != null) {
+    document.getElementById("uiload").style.display = "block";
+  }
   try {
     let sources = JSON.parse(localStorage.getItem("sources") || "[]");
     totalImages = sources.length;
     loadedImages = 0;
+    errorImages = 0;
+    updateLoad();
     for (let [idx, source] of sources.entries()) {
       let img = document.createElement("IMG");
       img.src = source;
       img.id = "img" + idx;
-      img.addEventListener("load", function(e) { loadedImages++; });
+      img.addEventListener("load", incrementLoad);
+      img.addEventListener("error", incrementError);
+      img.addEventListener("abort", incrementError);
       assets.appendChild(img);
     }
     variants = JSON.parse(localStorage.getItem("variants") || "{}");
@@ -106,6 +155,10 @@ function renderImages() {
           continue;
         }
         let source = document.getElementById("img" + imgData.srcnum);
+        if (source == null) {
+          failRender(assetName + variant, null);
+          continue;
+        }
         if (imgData.filternum == null) {
           renderLoops[assetName + variant] = 1;
           let img = document.createElement("IMG");
@@ -113,18 +166,27 @@ function renderImages() {
           img.id = "canvas" + assetName + variant;
           assets.appendChild(img);
           img.addEventListener("load", function(e) { finishImgLoad(assetName + variant) });
-          // TODO: add listeners for error/abort.
+          img.addEventListener("error", function(e) { failRender(assetName + variant, img) });
+          img.addEventListener("abort", function(e) { failRender(assetName + variant, img) });
         } else {
           let cnv = document.createElement("CANVAS");
           cnv.id = "canvas" + assetName + variant;
           assets.appendChild(cnv);
           let filter = document.getElementById("img" + imgData.filternum);
+          if (filter == null) {
+            failRender(assetName + variant, cnv);
+            continue;
+          }
           source.addEventListener("load", function(e) {
             renderSource(assetName + variant, cnv, source, filter);
           });
+          source.addEventListener("error", function(e) { failRender(assetName + variant, cnv) });
+          source.addEventListener("abort", function(e) { failRender(assetName + variant, cnv) });
           filter.addEventListener("load", function(e) {
             renderSource(assetName + variant, cnv, source, filter);
           });
+          filter.addEventListener("error", function(e) { failRender(assetName + variant, cnv) });
+          filter.addEventListener("abort", function(e) { failRender(assetName + variant, cnv) });
         }
       }
     }

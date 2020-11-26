@@ -49,6 +49,40 @@ div {
   background: white;
   z-index: 40; /* error should be shown over everything else */
 }
+#uiload {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 25%;
+  transform: translate(-50%, -50%);
+  z-index: 30;
+  color: black;
+  background: mediumslateblue;
+  font-size: 36px;
+  text-align: center;
+}
+#loadbar {
+  text-size: 28px;
+  position: relative;
+}
+#loadingbar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 0%;
+  height: 100%;
+  background: darkslateblue;
+  z-index: -1;
+}
+#errorbar {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 0%;
+  height: 100%;
+  background: crimson;
+  z-index: -1;
+}
 #uijoin {
   position: absolute;
   display: none;
