@@ -326,7 +326,7 @@ function drawCoast(tileData, portMap, ctx) {
   ctx.restore();
 }
 function drawNumber(tileData, ctx) {
-  let textHeightOffset = 12; // Adjust as necessary.
+  let textHeightOffset = 12; // Adjust as necessary. TODO: textBaseline = middle?
   let canvasLoc = coordToTileCenter(tileData.location);
   if (tileData.number) {
     // Draw the white circle.
@@ -397,8 +397,8 @@ function drawRobber(ctx, loc, alpha) {
     robheight = 60;
   } else {
     robimg = getAsset("pirate");
-    robwidth = 45;
-    robheight = 40;
+    robwidth = 54;
+    robheight = 48;
   }
   ctx.globalAlpha = alpha;
   if (robimg != null) {

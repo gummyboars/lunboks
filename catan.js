@@ -1406,6 +1406,7 @@ function initDefaultSkin() {
   }
 }
 function init() {
+  initializeDefaults();
   initDefaultSkin();
   initializeNames();
   let promise = renderImages();

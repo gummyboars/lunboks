@@ -98,7 +98,8 @@ function renderImages() {
       for (let variant of assetVariants) {
         let imgData = imageInfo[assetName + variant];
         if (imgData == null) {
-          throw {name: "AssetError", message: "Missing data for asset " + assetName + variant};
+          console.log("Missing data for asset " + assetName + variant);
+          continue;
         }
         // Not every skin will define every asset.
         if (imgData.srcnum == null) {

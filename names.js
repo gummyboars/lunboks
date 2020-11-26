@@ -1,11 +1,11 @@
 serverNames = {
-  rsrc1: "sulfur",
-  rsrc2: "olivine",
-  rsrc3: "water",
-  rsrc4: "clay",
-  rsrc5: "metal",
+  rsrc1: "lime",
+  rsrc2: "green",
+  rsrc3: "yellow",
+  rsrc4: "red",
+  rsrc5: "gray",
   norsrc: "desert",
-  space: "space",
+  space: "water",
 };
 
 assetNames = [
