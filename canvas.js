@@ -15,6 +15,7 @@ flipped = false;
 hoverTile = null;
 hoverCorner = null;
 hoverEdge = null;
+clickEdgeLocation = null;
 
 function locationsEqual(locA, locB) {
   if (locA == null && locB == null) {
@@ -457,6 +458,10 @@ function onclick(event) {
   if (event.button != 0) {
     return;
   }
+  if (clickEdgeLocation != null) {
+    cancelCoast();
+    return;
+  }
   let clickTile = getTile(event.clientX, event.clientY);
   if (clickTile != null) {
     let msg = {
@@ -482,13 +487,22 @@ function onclick(event) {
       ws.send(JSON.stringify(msg));
     }
   }
+  clickEdgeLocation = null;
   let clickEdge = getEdge(event.clientX, event.clientY);
   if (clickEdge != null) {
-    let msg = {
-      type: "road",
-      location: edges[clickEdge].location,
-    };
-    ws.send(JSON.stringify(msg));
+    if (edges[clickEdge].edge_type && edges[clickEdge].edge_type.startsWith("coast")) {
+      clickEdgeLocation = edges[clickEdge].location;
+      showCoastPopup();
+      // Here, we stop propagation to avoid the body's onclick, which will try to close the
+      // popup if the thing clicked on was not the popup.
+      event.stopPropagation();
+    } else {
+      let msg = {
+        type: edges[clickEdge].edge_type,
+        location: edges[clickEdge].location,
+      };
+      ws.send(JSON.stringify(msg));
+    }
   }
 }
 function onmove(event) {

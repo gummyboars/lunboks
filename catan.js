@@ -658,6 +658,19 @@ function maybeShowRobWindow() {
     playerpopup.style.display = 'none';
   }
 }
+function showCoastPopup() {
+  document.getElementById("coastpopup").style.display = "block";
+}
+function cancelCoast() {
+  document.getElementById("coastpopup").style.display = "none";
+  clickEdgeLocation = null;
+}
+function coastSelect(edgeType) {
+  if (clickEdgeLocation != null) {
+    ws.send(JSON.stringify({type: edgeType, location: clickEdgeLocation}));
+  }
+  cancelCoast();
+}
 function rollDice() {
   if (turn != myIdx) {
     return;
@@ -1506,6 +1519,20 @@ function onBodyClick(event) {
     if (hideSelector) {
       resourceSelectorActive = false;
       hideSelectorWindow();
+    }
+  }
+  let hideCoast = true;
+  if (clickEdgeLocation != null) {
+    let target = event.target;
+    while (target != null) {
+      if (target.id == "coastpopup") {
+        hideCoast = false;
+        break;
+      }
+      target = target.parentNode;
+    }
+    if (hideCoast) {
+      cancelCoast();
     }
   }
 }

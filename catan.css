@@ -168,6 +168,23 @@ div {
   align-items: center;
   justify-content: center;
 }
+#coastpopup {
+  position: absolute;
+  display: none;
+  left: 50%;
+  margin-right: -50%;
+  top: 50%;
+  margin-bottom: -50%;
+  transform: translate(-50% -50%);
+  z-index: 20;
+}
+#coastbuttons {
+  display: flex;
+  border: 1px solid black;
+  border-radius: 15px;
+  background: palegoldenrod;
+  flex-direction: row;
+}
 #playerpopup {
   position: absolute;
   display: none;
