@@ -1387,16 +1387,17 @@ function flip() {
 }
 function chooseSkin(e) {
   let chosen = document.getElementById("skinchoice").value;
-  if (chosen == "none") {
+  if (chosen == "null") {
     return;
   }
-  for (let key in imageInfo) {
-    localStorage.removeItem(key);
-  }
   localStorage.removeItem("names");
+  if (chosen == "none") {
+    initializeNone();
+  }
   if (chosen == "space") {
     initializeSpace();
   }
+  initializeNames();
   let promise = renderImages();
   promise.then(refreshUI, showError);
 }

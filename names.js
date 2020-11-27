@@ -124,3 +124,17 @@ function initializeSpace() {
     "pirate": {srcnum: 32},
   }));
 }
+function initializeNone() {
+  localStorage.setItem("names", JSON.stringify({
+    rsrc1: "lime",
+    rsrc2: "green",
+    rsrc3: "yellow",
+    rsrc4: "red",
+    rsrc5: "gray",
+    norsrc: "desert",
+    space: "water",
+  }));
+  localStorage.setItem("sources", "[]");
+  localStorage.setItem("variants", "{}");
+  localStorage.setItem("imageinfo", "{}");
+}
