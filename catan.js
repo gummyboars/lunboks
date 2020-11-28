@@ -61,6 +61,7 @@ ws = null;
 
 // Game state.
 gameStarted = false;
+gameOptions = {};
 myIdx = null;
 amHost = false;
 playerData = [];
@@ -884,6 +885,7 @@ function onmsg(event) {
   }
   // data.type should be game_state now - maybe handle more later
   gameStarted = data.started;
+  gameOptions = data.options;
   amHost = data.host;
   playerData = data.player_data;
   gamePhase = data.game_phase;
@@ -981,6 +983,32 @@ function updateDice() {
   }
 }
 function updateJoinWindow() {
+  let optionDiv = document.getElementById("options");
+  for (let option in gameOptions) {
+    // TODO: yes, this is hacky.
+    let found = false;
+    for (let cbox of document.getElementsByClassName("gameoption")) {
+      if (cbox.value == option) {
+        found = true;
+        cbox.disabled = !amHost;
+        break
+      }
+    }
+    if (found) {
+      continue
+    }
+    let newOpt = document.createElement("DIV");
+    let cbox = document.createElement("INPUT");
+    cbox.classList.add("gameoption");
+    cbox.type = "checkbox";
+    cbox.value = option;
+    cbox.disabled = !amHost;
+    let desc = document.createElement("SPAN");
+    desc.innerText = gameOptions[option];
+    newOpt.appendChild(cbox);
+    newOpt.appendChild(desc);
+    optionDiv.appendChild(newOpt);
+  }
   if (myIdx != null) {
     disableButton(document.getElementById("join"));
     disableButton(document.getElementById("observe"));
@@ -998,8 +1026,15 @@ function observe(e) {
   document.getElementById("uijoin").style.display = "none";
 }
 function startGame(e) {
+  let options = [];
+  for (let cbox of document.getElementsByClassName("gameoption")) {
+    if (cbox.checked) {
+      options.push(cbox.value);
+    }
+  }
   let msg = {
     type: "start",
+    options: options,
     scenario: "standard",
   };
   ws.send(JSON.stringify(msg));

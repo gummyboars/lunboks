@@ -61,12 +61,63 @@ class TestLoadState(unittest.TestCase):
               "%s [%s]: %s old == new" % (loc_attr, key, attr))
 
 
+class DebugRulesTest(unittest.TestCase):
+
+  def testDebugDisabledNormalGame(self):
+    with open("test.json") as json_file:
+      json_data = json_file.read()
+    g = catan.CatanGame.parse_json(json_data)
+    self.assertListEqual(g.post_urls(), [])
+
+    handler = mock.MagicMock()
+    with mock.patch.object(g.game, "distribute_resources") as dist:
+      g.handle_post(handler, "/roll_dice", {"count": ["5"]}, None)
+      self.assertTrue(handler.send_error.called)
+      self.assertFalse(dist.called)
+
+  def testDebugEnabledRollDice(self):
+    with open("test.json") as json_file:
+      json_data = json.loads(json_file.read())
+    json_data["rulesets"].append("debug")
+    g = catan.CatanGame.parse_json(json.dumps(json_data))
+    self.assertCountEqual(g.post_urls(), ["/roll_dice", "/force_dice"])
+    handler = mock.MagicMock()
+    with mock.patch.object(g.game, "distribute_resources") as dist:
+      g.handle_post(handler, "/roll_dice", {"count": ["5"]}, None)
+      self.assertFalse(handler.send_error.called)
+      self.assertEqual(dist.call_count, 5)
+
+  def testDebugEnabledForceDice(self):
+    with open("test.json") as json_file:
+      json_data = json.loads(json_file.read())
+    json_data["rulesets"].append("debug")
+    g = catan.CatanGame.parse_json(json.dumps(json_data))
+    handler = mock.MagicMock()
+    g.handle_post(handler, "/force_dice", {"value": ["5"]}, None)
+    self.assertFalse(handler.send_error.called)
+
+    g.game.turn_phase = "dice"
+    g.game.handle_roll_dice()
+    self.assertTupleEqual(g.game.dice_roll, (2, 3))
+    for _ in range(4):
+      g.game.turn_phase = "dice"
+      g.game.handle_roll_dice()
+      if g.game.dice_roll != (2, 3):
+        break
+    else:
+      self.fail("Dice roll did not reset")
+
+
 class BaseInputHandlerTest(unittest.TestCase):
+
+  EXTRA_RULESETS = []
 
   def setUp(self):
     with open("test.json") as json_file:
-      json_data = json_file.read()
-    self.g = catan.CatanGame.parse_json(json_data)
+      json_data = json.loads(json_file.read())
+    if self.EXTRA_RULESETS:
+      json_data["rulesets"].extend(self.EXTRA_RULESETS)
+    self.g = catan.CatanGame.parse_json(json.dumps(json_data))
     self.c = self.g.game
 
 
@@ -83,6 +134,8 @@ class TestLoadTestData(BaseInputHandlerTest):
 
 
 class TestGetEdgeType(BaseInputHandlerTest):
+
+  EXTRA_RULESETS = ["seafarers"]
 
   def setUp(self):
     BaseInputHandlerTest.setUp(self)

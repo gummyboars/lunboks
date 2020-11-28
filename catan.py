@@ -3,6 +3,7 @@ from http import HTTPStatus
 import json
 import os
 import random
+from unittest import mock
 
 from game import BaseGame, InvalidMove, InvalidPlayer, TooManyPlayers, ValidatePlayer
 
@@ -45,6 +46,9 @@ def _validate_name(current_name, used_names, data):
   '''
   if len(new_name) > 16:
     raise InvalidPlayer("Max name length is 16.")
+
+
+RuleInfo = collections.namedtuple("RuleInfo", ["name", "cls", "display_name"])
 
 
 class CustomEncoder(json.JSONEncoder):
@@ -393,10 +397,6 @@ class CatanPlayer(object):
     return sum([self.cards[x] for x in PLAYABLE_DEV_CARDS + VICTORY_CARDS])
 
 
-class DebugRules(object):
-  pass
-
-
 class CatanState(object):
 
   WANT = "want"
@@ -433,13 +433,25 @@ class CatanState(object):
     self.game_phase = "place1"  # valid values are place1, place2, main, victory
     self.turn_phase = "settle"  # valid values are settle, road, dice, discard, robber, dev_road, main
 
-  @staticmethod
-  def parse_json(gamedata):
-    cstate = CatanState()
+  @classmethod
+  def location_attrs(cls):
+    return cls.LOCATION_ATTRIBUTES
+
+  @classmethod
+  def hidden_attrs(cls):
+    return cls.HIDDEN_ATTRIBUTES
+
+  @classmethod
+  def computed_attrs(cls):
+    return cls.COMPUTED_ATTRIBUTES
+
+  @classmethod
+  def parse_json(cls, gamedata):
+    cstate = cls()
 
     # Regular attributes
     for attr in cstate.__dict__:
-      if attr not in (CatanState.LOCATION_ATTRIBUTES | {"player_data", "port_corners"}):
+      if attr not in (cls.location_attrs() | cls.computed_attrs() | {"player_data"}):
         setattr(cstate, attr, gamedata[attr])
 
     # Parse the players. TODO: move more info inside player class, avoid this special case?
@@ -639,12 +651,6 @@ class CatanState(object):
       self.turn_idx -= 1
       return
 
-  def handle_force_dice(self, count):
-    for i in range(count):
-      red = random.randint(1, 6)
-      white = random.randint(1, 6)
-      self.distribute_resources(red + white)
-
   def handle_roll_dice(self):
     if self.turn_phase != "dice":
       raise InvalidMove("You cannot roll the dice right now.")
@@ -715,7 +721,6 @@ class CatanState(object):
     self.player_data[rob_player].cards[chosen_rsrc] -= 1
     self.player_data[current_player].cards[chosen_rsrc] += 1
 
-  # TODO: tell the player how many resources they need to discard
   def _get_players_with_too_many_resources(self):
     card_counts = [0] * len(self.player_data)
     for player, player_data in enumerate(self.player_data):
@@ -1352,28 +1357,15 @@ class CatanState(object):
         self.port_corners[corner.as_tuple()] = port.port_type
 
   def _get_edge_type(self, edge_location):
-    # If there is a road/ship here, just return the type of that road/ship.
-    if self.roads.get(edge_location.as_tuple()) is not None:
-      return self.roads[edge_location.as_tuple()].road_type
-
-    # Otherwise, first verify that there are tiles on both sides of this edge.
+    # TODO: code duplication?
     tile_locations = edge_location.get_adjacent_tiles()
     if len(tile_locations) != 2:
       return None
     if not all([loc.as_tuple() in self.tiles for loc in tile_locations]):
       return None
-
-    # Then, return based on how many of the two tiles are land.
-    are_lands = [self.tiles[loc.as_tuple()].is_land for loc in tile_locations]
-    if all(are_lands):
-      return "road"
-    if not any(are_lands):
-      return "ship"
-    # For the coast, it matters whether the sea is on top or on bottom.
-    tile_locations.sort(key=lambda loc: loc.y)
-    if self.tiles[tile_locations[0].as_tuple()].is_land:
-      return "coastdown"
-    return "coastup"
+    if not any([self.tiles[loc.as_tuple()].is_land for loc in tile_locations]):
+      return None
+    return "road"
 
   def init(self, data):
     scenario_map = {
@@ -1428,12 +1420,70 @@ class CatanState(object):
     self._init_dev_cards()
 
 
+class DebugRules(object):
+
+  def __init__(self, *args, **kwargs):
+    super(DebugRules, self).__init__(*args, **kwargs)
+    self.debug = True
+    self.next_die_roll = None
+
+  @classmethod
+  def computed_attrs(cls):
+    return super(DebugRules, cls).computed_attrs() | {"debug", "next_die_roll"}
+
+  def debug_roll_dice(self, count):
+    for i in range(count):
+      red = random.randint(1, 6)
+      white = random.randint(1, 6)
+      self.distribute_resources(red + white)
+
+  def debug_force_dice(self, value):
+    self.next_die_roll = value
+
+  def handle_roll_dice(self):
+    if self.next_die_roll is not None:
+      with mock.patch("random.randint") as randint:
+        randint.side_effect=[self.next_die_roll // 2, (self.next_die_roll+1) // 2]
+        super(DebugRules, self).handle_roll_dice()
+      self.next_die_roll = None
+      return
+    super(DebugRules, self).handle_roll_dice()
+
+
+class Seafarers(CatanState):
+
+  def _get_edge_type(self, edge_location):
+    # First verify that there are tiles on both sides of this edge.
+    tile_locations = edge_location.get_adjacent_tiles()
+    if len(tile_locations) != 2:
+      return None
+    if not all([loc.as_tuple() in self.tiles for loc in tile_locations]):
+      return None
+
+    # If there is a road/ship here, just return the type of that road/ship.
+    if self.roads.get(edge_location.as_tuple()) is not None:
+      return self.roads[edge_location.as_tuple()].road_type
+
+    # Then, return based on how many of the two tiles are land.
+    are_lands = [self.tiles[loc.as_tuple()].is_land for loc in tile_locations]
+    if all(are_lands):
+      return "road"
+    if not any(are_lands):
+      return "ship"
+    # For the coast, it matters whether the sea is on top or on bottom.
+    tile_locations.sort(key=lambda loc: loc.y)
+    if self.tiles[tile_locations[0].as_tuple()].is_land:
+      return "coastdown"
+    return "coastup"
+
+
 class CatanGame(BaseGame):
 
-  RULES_MAP = {
-      "base": CatanState,
-      "debug": DebugRules,
-  }
+  RULES_INFO = [
+      RuleInfo(name="base", cls=CatanState, display_name=None),
+      RuleInfo(name="seafarers", cls=Seafarers, display_name="Seafarers"),
+      RuleInfo(name="debug", cls=DebugRules, display_name="Debug Enabled"),
+  ]
 
   def __init__(self):
     self.game = None
@@ -1453,18 +1503,29 @@ class CatanGame(BaseGame):
     return self.game.game_status()
 
   def post_urls(self):
-    return ["/dice"]
+    # TODO: do we want to continue to delegate to individual rulesets?
+    if self.game is not None and getattr(self.game, "debug", False):
+      return ["/roll_dice", "/force_dice"]
+    return []
 
   def handle_post(self, http_handler, path, args, data):
-    if path == "/dice": # TODO: should only go in the debug ruleset
-      if self.game is None:
-        http_handler.send_error(HTTPStatus.BAD_REQUEST.value, "Game has not started")
-        return
-      try:
-        count = int(args["count"][0])
-      except:
-        count = 1
-      self.game.handle_force_dice(count)
+    if self.game is None:
+      http_handler.send_error(HTTPStatus.BAD_REQUEST.value, "Game has not started")
+      return
+    if getattr(self.game, "debug", False):
+      if path == "/roll_dice":
+        try:
+          count = int(args["count"][0])
+        except:
+          count = 1
+        self.game.debug_roll_dice(count)
+      elif path == "/force_dice":
+        try:
+          value = abs(int(args["value"][0]))
+        except:
+          http_handler.send_error(HTTPStatus.BAD_REQUEST.value, "Missing or invalid value")
+          return
+        self.game.debug_force_dice(value)
       http_handler.send_response(HTTPStatus.NO_CONTENT.value)
       http_handler.end_headers()
       return
@@ -1477,7 +1538,7 @@ class CatanGame(BaseGame):
       return cls()
     rulesets = gamedata.pop("rulesets")
     player_sessions = gamedata.pop("player_sessions")
-    rule_classes = [cls.RULES_MAP[ruleset] for ruleset in reversed(rulesets)]
+    rule_classes = [cls.rules_map()[ruleset] for ruleset in reversed(rulesets)]
 
     class GameState(*rule_classes):
       pass
@@ -1512,6 +1573,10 @@ class CatanGame(BaseGame):
         "started": False,
         "player_data": [player.json_for_player(False) for player in self.player_sessions.values()],
       })
+      # TODO: there can be non-rules options, like the number of victory points.
+      options = collections.OrderedDict([(info.name, info.display_name) for info in self.RULES_INFO])
+      options.pop("base")
+      dummy_data["options"] = options
       return json.dumps(dummy_data, cls=CustomEncoder)
     output = self.game.for_player(self.player_sessions.get(session))
     output["started"] = True
@@ -1604,9 +1669,14 @@ class CatanGame(BaseGame):
     if len(player_data) < 2:
       raise InvalidMove("The game must have at least two players to start.")
 
-    # TODO: allow the user to specify the rulesets in data.
+    rulesets = data.get("options", [])
+    for ruleset in rulesets:
+      if ruleset not in self.rules_map():
+        raise InvalidMove(f"Unknown option {ruleset}")
+    if "base" not in rulesets:
+      rulesets.insert(0, "base")
     # TODO: helper function to create the class and instance
-    rule_classes = [self.RULES_MAP[ruleset] for ruleset in reversed(self.rulesets)]
+    rule_classes = [self.rules_map()[ruleset] for ruleset in reversed(rulesets)]
 
     class GameState(*rule_classes):
       pass
@@ -1621,6 +1691,11 @@ class CatanGame(BaseGame):
     # NOTE: only update internal state after computing all new states so that internal state 
     # remains consistent if something above throws an exception.
     self.game = game
+    self.rulesets = rulesets
     self.player_sessions.clear()
     self.player_sessions.update(new_sessions)
     self.host = None
+
+  @classmethod
+  def rules_map(cls):
+    return {info.name: info.cls for info in cls.RULES_INFO}

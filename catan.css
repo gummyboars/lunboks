@@ -124,6 +124,9 @@ div {
 #joinbuttons {
   display: flex;
 }
+#options {
+  margin: 15px;
+}
 #joinname {
   display: flex;
   color: black;
