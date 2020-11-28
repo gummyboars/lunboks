@@ -122,6 +122,7 @@
     ],
     "rob_players": [],
     "robber": null,
+    "rulesets": ["base"],
     "started": true,
     "tiles": [
         {

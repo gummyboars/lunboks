@@ -30,6 +30,7 @@
     2,
     7
   ],
+  "rulesets": ["base"],
   "pirate": null,
   "trade_offer": {},
   "counter_offers": [null],

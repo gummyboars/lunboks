@@ -911,6 +911,8 @@ function onmsg(event) {
   let myOld = myIdx;
   if ("you" in data) {
     myIdx = data.you;
+  } else {
+    myIdx = null;
   }
   if (firstMsg) {
     centerCanvas();

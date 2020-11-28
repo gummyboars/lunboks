@@ -27,7 +27,8 @@ class TestLoadState(unittest.TestCase):
   def testLoadState(self):
     with open("beginner.json") as json_file:
       json_data = json_file.read()
-    c = catan.CatanState.parse_json(json_data)
+    g = catan.CatanGame.parse_json(json_data)
+    c = g.game
     self.assertIsInstance(c.player_data, list)
     self.assertEqual(len(c.player_data), 1)
     self.assertIsInstance(c.player_data[0].cards, collections.defaultdict)
@@ -37,8 +38,10 @@ class TestLoadState(unittest.TestCase):
   def testDumpAndLoad(self):
     c = catan.CatanState()
     c.init_normal()
-    data = c.json_str()
-    d = catan.CatanState.parse_json(data)
+    g = catan.CatanGame()
+    g.game = c
+    data = g.json_str()
+    d = catan.CatanGame.parse_json(data).game
 
     for loc_attr in ["tiles", "ports", "port_corners", "pieces", "roads"]:
       keys = getattr(c, loc_attr).keys()
@@ -63,14 +66,15 @@ class BaseInputHandlerTest(unittest.TestCase):
   def setUp(self):
     with open("test.json") as json_file:
       json_data = json_file.read()
-    self.c = catan.CatanState.parse_json(json_data)
+    self.g = catan.CatanGame.parse_json(json_data)
+    self.c = self.g.game
 
 
 class TestLoadTestData(BaseInputHandlerTest):
 
   def testSessions(self):
-    self.assertIn("Player1", self.c.player_sessions)
-    self.assertEqual(self.c.player_sessions["Player1"], 0)
+    self.assertIn("Player1", self.g.player_sessions)
+    self.assertEqual(self.g.player_sessions["Player1"], 0)
 
   def testTradeRatios(self):
     self.assertEqual(self.c.player_data[0].trade_ratios["rsrc1"], 2)
@@ -158,7 +162,6 @@ class testRobberMovement(BaseInputHandlerTest):
       self.c.handle_robber((2,1),1)
 
 
-
 class TestHandleSettleInput(BaseInputHandlerTest):
 
   def setUp(self):
@@ -170,41 +173,41 @@ class TestHandleSettleInput(BaseInputHandlerTest):
   def testSettle(self):
     resources = ["rsrc1", "rsrc2", "rsrc3", "rsrc4"]
     counts = [self.c.player_data[0].cards[x] for x in resources]
-    self.c.handle("Player1", {"type": "settle", "location": [3, 3]})
+    self.c.handle(0, {"type": "settle", "location": [3, 3]})
     for rsrc, orig_count in zip(resources, counts):
       self.assertEqual(self.c.player_data[0].cards[rsrc], orig_count - 1)
 
   def testMustSettleNextToRoad(self):
     with self.assertRaisesRegex(InvalidMove, "next to one of your roads"):
-      self.c.handle("Player1", {"type": "settle", "location": [2, 3]})
+      self.c.handle(0, {"type": "settle", "location": [2, 3]})
 
   def testMustSettleNextToOwnRoad(self):
     self.c.add_road(Road([4, 6, 5, 6], "road", 1))
     with self.assertRaisesRegex(InvalidMove, "next to one of your roads"):
-      self.c.handle("Player1", {"type": "settle", "location": [5, 6]})
+      self.c.handle(0, {"type": "settle", "location": [5, 6]})
 
   def testCannotSettleTooClose(self):
     self.c.add_road(Road([4, 6, 5, 6], "road", 0))
     with self.assertRaisesRegex(InvalidMove, "cannot.*next to existing"):
-      self.c.handle("Player1", {"type": "settle", "location": [6, 3]})
+      self.c.handle(0, {"type": "settle", "location": [6, 3]})
     # Validate both distance from own settlements and from opponents'.
     with self.assertRaisesRegex(InvalidMove, "cannot.*next to existing"):
-      self.c.handle("Player1", {"type": "settle", "location": [4, 6]})
+      self.c.handle(0, {"type": "settle", "location": [4, 6]})
 
   def testCannotSettleSettledLocation(self):
     self.c.add_road(Road([3, 5, 4, 4], "road", 0))
     with self.assertRaisesRegex(InvalidMove, "cannot.*settle on top of"):
-      self.c.handle("Player1", {"type": "settle", "location": [5, 4]})
+      self.c.handle(0, {"type": "settle", "location": [5, 4]})
     with self.assertRaisesRegex(InvalidMove, "cannot.*settle on top of"):
-      self.c.handle("Player1", {"type": "settle", "location": [3, 5]})
+      self.c.handle(0, {"type": "settle", "location": [3, 5]})
     # Also validate you cannot build on top of a city.
     self.c.handle_city([3, 5], 1)
     with self.assertRaisesRegex(InvalidMove, "cannot.*settle on top of"):
-      self.c.handle("Player1", {"type": "settle", "location": [3, 5]})
+      self.c.handle(0, {"type": "settle", "location": [3, 5]})
 
   def testMustSettleValidLocation(self):
     with self.assertRaisesRegex(InvalidMove, "should be a tuple of size 2"):
-      self.c.handle("Player1", {"type": "settle", "location": [2]})
+      self.c.handle(0, {"type": "settle", "location": [2]})
 
   def testCannotBuildTooManySettlements(self):
     self.c.add_piece(catan.Piece(1, 4, "settlement", 0))
@@ -212,14 +215,14 @@ class TestHandleSettleInput(BaseInputHandlerTest):
     self.c.add_piece(catan.Piece(5, 6, "settlement", 0))
     self.c.add_piece(catan.Piece(5, 2, "settlement", 0))
     with self.assertRaisesRegex(InvalidMove, "settlements remaining"):
-      self.c.handle("Player1", {"type": "settle", "location": [3, 3]})
+      self.c.handle(0, {"type": "settle", "location": [3, 3]})
 
     self.c.pieces[(1, 4)].piece_type = "city"
     self.c.pieces[(1, 6)].piece_type = "city"
     self.c.pieces[(5, 6)].piece_type = "city"
     self.c.pieces[(5, 2)].piece_type = "city"
     with self.assertRaisesRegex(InvalidMove, "cities remaining"):
-      self.c.handle("Player1", {"type": "city", "location": [5, 4]})
+      self.c.handle(0, {"type": "city", "location": [5, 4]})
 
 
 class TestHandleRoadInput(BaseInputHandlerTest):
@@ -241,78 +244,76 @@ class TestHandleRoadInput(BaseInputHandlerTest):
 
   def testRoadsMustConnect(self):
     with self.assertRaisesRegex(InvalidMove, "must be connected"):
-      self.c.handle("Player1", {"type": "road", "location": [2, 3, 3, 3]})
+      self.c.handle(0, {"type": "road", "location": [2, 3, 3, 3]})
 
   def testRoadsMustConnectToSelf(self):
     # Validate that roads must connect to your own roads, not opponents'.
     with self.assertRaisesRegex(InvalidMove, "must be connected"):
-      self.c.handle("Player1", {"type": "road", "location": [4, 6, 5, 6]})
+      self.c.handle(0, {"type": "road", "location": [4, 6, 5, 6]})
 
   def testBuildRoad(self):
     count2 = self.c.player_data[0].cards["rsrc2"]
     count4 = self.c.player_data[0].cards["rsrc4"]
-    self.c.handle("Player1", {"type": "road", "location": [3, 3, 4, 4]})
+    self.c.handle(0, {"type": "road", "location": [3, 3, 4, 4]})
     # Validate that resources were taken away.
     self.assertEqual(self.c.player_data[0].cards["rsrc2"], count2 - 1)
     self.assertEqual(self.c.player_data[0].cards["rsrc4"], count4 - 1)
     # Test both connection to a road and connection to a settlement.
-    self.c.handle("Player1", {"type": "road", "location": [5, 4, 6, 3]})
+    self.c.handle(0, {"type": "road", "location": [5, 4, 6, 3]})
     self.assertEqual(self.c.player_data[0].cards["rsrc2"], count2 - 2)
     self.assertEqual(self.c.player_data[0].cards["rsrc4"], count4 - 2)
 
   def testCannotBuildTooManyRoads(self):
     self.addThirteenRoads()
-    self.c.handle("Player1", {"type": "road", "location": [5, 4, 6, 5]})
+    self.c.handle(0, {"type": "road", "location": [5, 4, 6, 5]})
     with self.assertRaisesRegex(InvalidMove, "no roads remaining"):
-      self.c.handle("Player1", {"type": "road", "location": [3, 3, 4, 4]})
+      self.c.handle(0, {"type": "road", "location": [3, 3, 4, 4]})
 
   def testCanPlayRoadBuildingWithOneRoadLeft(self):
     self.addThirteenRoads()
     self.c.player_data[0].cards["roadbuilding"] += 1
-    self.c.handle("Player1", {"type": "play_dev", "card_type": "roadbuilding"})
-    self.c.handle("Player1", {"type": "road", "location": [5, 4, 6, 5]})
+    self.c.handle(0, {"type": "play_dev", "card_type": "roadbuilding"})
+    self.c.handle(0, {"type": "road", "location": [5, 4, 6, 5]})
     self.assertEqual(self.c.turn_phase, "main")
 
   def testCannotPlayRoadBuildingAtMaxRoads(self):
     self.addThirteenRoads()
-    self.c.handle("Player1", {"type": "road", "location": [5, 4, 6, 5]})
+    self.c.handle(0, {"type": "road", "location": [5, 4, 6, 5]})
     self.c.player_data[0].cards["roadbuilding"] += 1
     with self.assertRaisesRegex(InvalidMove, "no roads remaining"):
-      self.c.handle("Player1", {"type": "play_dev", "card_type": "roadbuilding"})
+      self.c.handle(0, {"type": "play_dev", "card_type": "roadbuilding"})
 
   def testCannotBuildWithoutResources(self):
     self.c.player_data[0].cards["rsrc2"] = 0
     with self.assertRaisesRegex(InvalidMove, "need an extra 1 {rsrc2}"):
-      self.c.handle("Player1", {"type": "road", "location": [3, 3, 4, 4]})
+      self.c.handle(0, {"type": "road", "location": [3, 3, 4, 4]})
 
   def testRoadLocationMustBeAnEdge(self):
     with self.assertRaisesRegex(InvalidMove, "not a valid edge"):
-      self.c.handle("Player1", {"type": "road", "location": [2, 3, 4, 4]})
+      self.c.handle(0, {"type": "road", "location": [2, 3, 4, 4]})
 
   def testRoadLocationMustBeValid(self):
     with self.assertRaisesRegex(InvalidMove, "should be a tuple"):
-      self.c.handle("Player1", {"type": "road", "location": [1, 3, 4]})
+      self.c.handle(0, {"type": "road", "location": [1, 3, 4]})
     with self.assertRaisesRegex(AssertionError, "must be left"):
-      self.c.handle("Player1", {"type": "road", "location": [4, 4, 3, 3]})
+      self.c.handle(0, {"type": "road", "location": [4, 4, 3, 3]})
 
   def testCannotBuildOnWater(self):
     self.c.add_road(Road([5, 4, 6, 5], "road", 0))
     with self.assertRaisesRegex(InvalidMove, "must be land"):
-      self.c.handle("Player1", {"type": "road", "location": [6, 5, 7, 5]})
+      self.c.handle(0, {"type": "road", "location": [6, 5, 7, 5]})
 
   def testCannotBuildAcrossOpponentSettlement(self):
     self.c.add_road(Road([3, 5, 4, 4], "road", 0))
     with self.assertRaisesRegex(InvalidMove, "must be connected"):
-      self.c.handle("Player1", {"type": "road", "location": [2, 5, 3, 5]})
+      self.c.handle(0, {"type": "road", "location": [2, 5, 3, 5]})
 
 
 class TestCalculateRobPlayers(BaseInputHandlerTest):
 
   def setUp(self):
     BaseInputHandlerTest.setUp(self)
-    self.c.started = False  # To allow new players to join.
-    self.c.handle_join("Player3", {"name": "Player3"})
-    self.c.started = True
+    self.c.add_player("green", "Player3")  # New player's index is 2.
     self.c.turn_idx = 2
     self.c.dice_roll = (6, 1)
     self.c.turn_phase = "robber"
@@ -323,7 +324,7 @@ class TestCalculateRobPlayers(BaseInputHandlerTest):
   def testRobNoAdjacentPieces(self):
     p1_old_count = sum(self.c.player_data[0].cards[x] for x in catan.RESOURCES)
     p2_old_count = sum(self.c.player_data[1].cards[x] for x in catan.RESOURCES)
-    self.c.handle("Player3", {"type": "robber", "location": [2, 3]})
+    self.c.handle(2, {"type": "robber", "location": [2, 3]})
     self.assertEqual(self.c.turn_phase, "main")
     p1_new_count = sum(self.c.player_data[0].cards[x] for x in catan.RESOURCES)
     p2_new_count = sum(self.c.player_data[1].cards[x] for x in catan.RESOURCES)
@@ -333,14 +334,14 @@ class TestCalculateRobPlayers(BaseInputHandlerTest):
   def testRobTwoAdjacentPlayers(self):
     p1_old_count = sum(self.c.player_data[0].cards[x] for x in catan.RESOURCES)
     p2_old_count = sum(self.c.player_data[1].cards[x] for x in catan.RESOURCES)
-    self.c.handle("Player3", {"type": "robber", "location": [4, 4]})
+    self.c.handle(2, {"type": "robber", "location": [4, 4]})
     self.assertEqual(self.c.turn_phase, "rob")
     p1_new_count = sum(self.c.player_data[0].cards[x] for x in catan.RESOURCES)
     p2_new_count = sum(self.c.player_data[1].cards[x] for x in catan.RESOURCES)
     self.assertEqual(p1_new_count, p1_old_count)
     self.assertEqual(p2_new_count, p2_old_count)
 
-    self.c.handle("Player3", {"type": "rob", "player": 1})
+    self.c.handle(2, {"type": "rob", "player": 1})
     p1_new_count = sum(self.c.player_data[0].cards[x] for x in catan.RESOURCES)
     p2_new_count = sum(self.c.player_data[1].cards[x] for x in catan.RESOURCES)
     p3_new_count = sum(self.c.player_data[2].cards[x] for x in catan.RESOURCES)
@@ -351,7 +352,7 @@ class TestCalculateRobPlayers(BaseInputHandlerTest):
   def testRobSingleAdjacentPlayer(self):
     p1_old_count = sum(self.c.player_data[0].cards[x] for x in catan.RESOURCES)
     p2_old_count = sum(self.c.player_data[1].cards[x] for x in catan.RESOURCES)
-    self.c.handle("Player3", {"type": "robber", "location": [4, 2]})
+    self.c.handle(2, {"type": "robber", "location": [4, 2]})
     self.assertEqual(self.c.turn_phase, "main")
     p1_new_count = sum(self.c.player_data[0].cards[x] for x in catan.RESOURCES)
     p2_new_count = sum(self.c.player_data[1].cards[x] for x in catan.RESOURCES)
@@ -362,7 +363,7 @@ class TestCalculateRobPlayers(BaseInputHandlerTest):
 
   def testRobSingleAdjacentPlayerWithoutCards(self):
     self.c.player_data[0].cards.clear()
-    self.c.handle("Player3", {"type": "robber", "location": [4, 2]})
+    self.c.handle(2, {"type": "robber", "location": [4, 2]})
     self.assertEqual(self.c.turn_phase, "main")
     p3_new_count = sum(self.c.player_data[2].cards[x] for x in catan.RESOURCES)
     self.assertEqual(p3_new_count, 0)
@@ -370,7 +371,7 @@ class TestCalculateRobPlayers(BaseInputHandlerTest):
   def testRobTwoAdjacentPlayersOneWithoutCards(self):
     p2_old_count = sum(self.c.player_data[1].cards[x] for x in catan.RESOURCES)
     self.c.player_data[0].cards.clear()
-    self.c.handle("Player3", {"type": "robber", "location": [4, 4]})
+    self.c.handle(2, {"type": "robber", "location": [4, 4]})
     self.assertEqual(self.c.turn_phase, "main")
     p2_new_count = sum(self.c.player_data[1].cards[x] for x in catan.RESOURCES)
     p3_new_count = sum(self.c.player_data[2].cards[x] for x in catan.RESOURCES)
@@ -504,11 +505,9 @@ class TestLongestRouteAssignment(unittest.TestCase):
   def setUp(self):
     with open("beginner.json") as json_file:
       json_data = json_file.read()
-    self.c = catan.CatanState.parse_json(json_data)
-    self.c.started = False  # To allow new players to join
-    self.c.handle_join("PlayerA", {"name": "PlayerA"})
-    self.c.handle_join("PlayerB", {"name": "PlayerB"})
-    self.c.started = True
+    self.c = catan.CatanState.parse_json(json.loads(json_data))
+    self.c.add_player("blue", "PlayerA")
+    self.c.add_player("green", "PlayerB")
     self.c.add_road(Road([4, 4, 5, 4], "road", 0))
     self.c.add_road(Road([5, 4, 6, 5], "road", 0))
     self.c.add_road(Road([7, 5, 8, 6], "road", 0))
@@ -627,9 +626,7 @@ class TestDiscard(BaseInputHandlerTest):
 
   def setUp(self):
     BaseInputHandlerTest.setUp(self)
-    self.c.started = False  # To allow new players to join.
-    self.c.handle_join("Player3", {"name": "Player3"})
-    self.c.started = True
+    self.c.add_player("green", "Player3")
     for pdata in self.c.player_data:
       pdata.cards.clear()
 
@@ -696,14 +693,14 @@ class TestBuyDevCard(BaseInputHandlerTest):
 class TestUnstartedGame(unittest.TestCase):
 
   def setUp(self):
-    self.c = catan.CatanState()
+    self.c = catan.CatanGame()
 
   def testConnectAndDisconnect(self):
     self.c.connect_user("one")
     self.c.connect_user("two")
     self.c.connect_user("three")
     self.c.disconnect_user("two")
-    self.assertDictEqual(self.c.player_sessions, {"one": None, "three": None})
+    self.assertSetEqual(self.c.connected, {"one", "three"})
 
   def testChangeHost(self):
     self.c.connect_user("one")
@@ -726,18 +723,18 @@ class TestUnstartedGame(unittest.TestCase):
     self.c.handle_join("one", {"name": "player1"})
     self.c.handle_join("two", {"name": "player2"})
     self.c.handle_join("three", {"name": "player3"})
-    self.assertDictEqual(self.c.player_sessions, {"one": 0, "two": 1, "three": 2})
+    self.assertCountEqual(self.c.player_sessions.keys(), ["one", "two", "three"])
+    for key in ["one", "two", "three"]:
+      self.assertIsInstance(self.c.player_sessions[key], catan.CatanPlayer)
     self.assertEqual(self.c.host, "one")
     self.c.disconnect_user("two")
-    self.assertDictEqual(self.c.player_sessions, {"one": 0, "three": 2})
+    self.assertCountEqual(self.c.player_sessions.keys(), ["one", "three"])
     self.c.connect_user("four")
     self.c.handle_join("four", {"name": "player4"})
-    self.assertDictEqual(self.c.player_sessions, {"one": 0, "four": 1, "three": 2})
-    self.assertEqual(self.c.player_data[1].name, "player4")
+    self.assertCountEqual(self.c.player_sessions.keys(), ["one", "four", "three"])
 
   def testStartGame(self):
-    self.assertFalse(self.c.started)
-    self.assertDictEqual(self.c.tiles, {})
+    self.assertIsNone(self.c.game)
     self.c.connect_user("one")
     self.c.connect_user("two")
     self.c.connect_user("three")
@@ -755,12 +752,12 @@ class TestUnstartedGame(unittest.TestCase):
       self.c.handle_start("one", {"scenario": "nsaoeu"})
     with self.assertRaisesRegex(InvalidMove, "Unknown scenario"):
       self.c.handle_start("one", {})
-    self.assertFalse(self.c.started)
+    self.assertIsNone(self.c.game)
 
     self.c.handle_start("one", {"scenario": "standard"})
-    self.assertTrue(self.c.started)
+    self.assertIsNotNone(self.c.game)
     self.assertIsNone(self.c.host)
-    self.assertGreater(len(self.c.tiles.keys()), 0)
+    self.assertGreater(len(self.c.game.tiles.keys()), 0)
 
     with self.assertRaisesRegex(InvalidMove, "already started"):
       self.c.handle_start("one", {"scenario": "standard"})
@@ -781,13 +778,13 @@ class TestUnstartedGame(unittest.TestCase):
     self.c.disconnect_user("three")
     self.c.handle_start(self.c.host, {"scenario": "standard"})
 
-    self.assertTrue(self.c.started)
-    self.assertEqual(len(self.c.player_data), 2)
+    self.assertIsNotNone(self.c.game)
+    self.assertEqual(len(self.c.game.player_data), 2)
     self.assertCountEqual(self.c.player_sessions.keys(), ["two", "four"])
-    self.assertEqual(self.c.player_data[self.c.player_sessions["two"]].name, "player2")
-    self.assertEqual(self.c.player_data[self.c.player_sessions["four"]].name, "player4")
-    self.assertEqual(self.c.discard_players, [0, 0])
-    self.assertEqual(self.c.counter_offers, [None, None])
+    self.assertEqual(self.c.game.player_data[self.c.player_sessions["two"]].name, "player2")
+    self.assertEqual(self.c.game.player_data[self.c.player_sessions["four"]].name, "player4")
+    self.assertEqual(self.c.game.discard_players, [0, 0])
+    self.assertEqual(self.c.game.counter_offers, [None, None])
 
 
 if __name__ == '__main__':

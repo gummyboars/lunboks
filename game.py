@@ -24,6 +24,8 @@ def ValidatePlayer(playerdata):
     raise InvalidPlayer("Player data should be a dictionary.")
   if "name" not in playerdata:
     raise InvalidPlayer("Player data should have a name.")
+  if not isinstance(playerdata["name"], str):
+    raise InvalidPlayer("Player name must be a string.")
   if not playerdata["name"].strip():
     raise InvalidPlayer("Player name cannot be empty.")
   if not playerdata["name"].isprintable():
@@ -38,10 +40,10 @@ class BaseGame(metaclass=abc.ABCMeta):
   def post_urls(self):
     return []
 
-  def handle_get(self, event_loop, http_handler, path, args):
+  def handle_get(self, http_handler, path, args):
     http_handler.send_error(HTTPStatus.NOT_FOUND.value, "Unknown path %s" % path)
 
-  def handle_post(self, event_loop, http_handler, path, args, data):
+  def handle_post(self, http_handler, path, args, data):
     http_handler.send_error(HTTPStatus.NOT_FOUND.value, "Unknown path %s" % path)
 
   @abc.abstractmethod
@@ -71,8 +73,8 @@ class BaseGame(metaclass=abc.ABCMeta):
   def handle(self, session, data):
     pass
 
-  @abc.abstractstaticmethod
-  def parse_json(data):
+  @abc.abstractclassmethod
+  def parse_json(cls, data):
     return None
 
 
@@ -120,6 +122,8 @@ class GameHandler(object):
         http_handler.send_error(HTTPStatus.BAD_REQUEST.value, str(e))
         return
       self.game = new_game
+      for session in self.websockets:
+        self.game.connect_user(session)
       http_handler.send_response(HTTPStatus.NO_CONTENT.value)
       http_handler.end_headers()
     else:

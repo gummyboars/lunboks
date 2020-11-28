@@ -21,7 +21,7 @@ ROOT_DIR = os.path.abspath(os.path.dirname(__file__))
 GLOBAL_LOOP = None
 INDEX_WEBSOCKETS = set()
 GAMES = {}
-GAME_TYPES = {"catan": catan.CatanState}
+GAME_TYPES = {"catan": catan.CatanGame}
 # Check to make sure abstract base classes are satisfied.
 [game_class() for game_class in GAME_TYPES.values()]
 
