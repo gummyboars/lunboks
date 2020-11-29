@@ -66,17 +66,18 @@ class TestLoadState(unittest.TestCase):
 
 class BaseInputHandlerTest(unittest.TestCase):
 
+  TEST_FILE = "test.json"
   EXTRA_RULESETS = []
 
   def setUp(self):
-    with open("test.json") as json_file:
+    with open(self.TEST_FILE) as json_file:
       json_data = json.loads(json_file.read())
     if self.EXTRA_RULESETS:
       json_data["rulesets"].extend(self.EXTRA_RULESETS)
     self.g = catan.CatanGame.parse_json(json.dumps(json_data))
     self.c = self.g.game
 
-  def break(self):
+  def breakpoint(self):
     t = threading.Thread(target=server.ws_main, args=(server.GLOBAL_LOOP,))
     t.start()
     server.GAMES['test'] = game.GameHandler('test', catan.CatanGame)
@@ -455,6 +456,213 @@ class TestHandleShipInput(BaseInputHandlerTest):
     self.c.add_road(Road([7, 3, 8, 4], "ship", 0))
     with self.assertRaisesRegex(InvalidMove, "no ships remaining"):
       self.c.handle(0, {"type": "ship", "location": [5, 4, 6, 5]})
+
+
+class TestShipOpenClosedCalculation(BaseInputHandlerTest):
+
+  TEST_FILE = "sea_test.json"
+  EXTRA_RULESETS = ["seafarers"]
+
+  def testBasicMovable(self):
+    road1_loc = (2, 5, 3, 5)
+    self.c.add_road(Road(road1_loc, "ship", 0))
+    self.assertTrue(self.c.roads[road1_loc].movable)
+    self.assertFalse(self.c.roads[road1_loc].closed)
+    self.assertEqual(self.c.roads[road1_loc].source.as_tuple(), (2, 5))
+
+    road2_loc = (3, 5, 4, 6)
+    self.c.add_road(Road(road2_loc, "ship", 0))
+    self.assertFalse(self.c.roads[road1_loc].movable)  # Original no longer movable
+    self.assertFalse(self.c.roads[road1_loc].closed)  # Should still be open
+    self.assertEqual(self.c.roads[road1_loc].source.as_tuple(), (2, 5))
+    self.assertTrue(self.c.roads[road2_loc].movable)
+    self.assertFalse(self.c.roads[road2_loc].closed)
+    self.assertEqual(self.c.roads[road2_loc].source.as_tuple(), (2, 5))
+
+  def testBasicOpenClosed(self):
+    road1_loc = (1, 6, 2, 5)
+    road2_loc = (1, 6, 2, 7)
+    self.c.add_road(Road(road1_loc, "ship", 0))
+    self.c.add_road(Road(road2_loc, "ship", 0))
+    self.assertFalse(self.c.roads[road1_loc].movable)
+    self.assertTrue(self.c.roads[road2_loc].movable)
+    self.assertFalse(self.c.roads[road1_loc].closed)
+    self.assertFalse(self.c.roads[road2_loc].closed)
+    self.c.add_piece(catan.Piece(2, 7, "settlement", 0))
+    self.assertTrue(self.c.roads[road1_loc].closed)
+    self.assertTrue(self.c.roads[road2_loc].closed)
+    # We don't assert on movable here - once the shipping path is closed, movable is irrelevant.
+
+  def testCanClosePathFromOtherSide(self):
+    # Same test as basic open closed, but put the settlement in first. The ship's source
+    # will be the far settlement, but this shouldn't stop the DFS from doing its thing.
+    road1_loc = (1, 6, 2, 5)
+    road2_loc = (1, 6, 2, 7)
+    self.c.add_road(Road(road1_loc, "ship", 0))
+    self.c.add_piece(catan.Piece(2, 7, "settlement", 0))
+    self.assertTrue(self.c.roads[road1_loc].movable)
+    self.assertFalse(self.c.roads[road1_loc].closed)
+    self.c.add_road(Road(road2_loc, "ship", 0))
+    self.assertTrue(self.c.roads[road1_loc].closed)
+    self.assertTrue(self.c.roads[road2_loc].closed)
+
+  def testBranchingOpenClosedPaths(self):
+    self.c.add_piece(catan.Piece(5, 6, "settlement", 0))
+    road1_loc = (2, 5, 3, 5)
+    road3_loc = (4, 6, 5, 6)
+    road2_loc = (3, 5, 4, 6)
+    road4_loc = (3, 7, 4, 6)
+
+    # The setup: two settlements build towards eachother (roads 1 and 3), with a branch going
+    # towards a third island.
+    self.c.add_road(Road(road1_loc, "ship", 0))
+    self.c.add_road(Road(road3_loc, "ship", 0))
+    self.assertTrue(self.c.roads[road1_loc].movable)
+    self.assertFalse(self.c.roads[road1_loc].closed)
+    self.assertTrue(self.c.roads[road3_loc].movable)
+    self.assertFalse(self.c.roads[road3_loc].closed)
+    self.c.add_road(Road(road4_loc, "ship", 0))
+    self.assertFalse(self.c.roads[road3_loc].movable)
+    self.assertFalse(self.c.roads[road3_loc].closed)
+
+    # The connection: the settlements get connected by another ship (road 2).
+    self.c.add_road(Road(road2_loc, "ship", 0))
+    self.assertTrue(self.c.roads[road1_loc].closed)
+    self.assertTrue(self.c.roads[road2_loc].closed)
+    self.assertTrue(self.c.roads[road3_loc].closed)
+    self.assertFalse(self.c.roads[road4_loc].closed)
+    self.assertTrue(self.c.roads[road4_loc].movable)
+    self.assertEqual(self.c.roads[road4_loc].source.as_tuple(), (5, 6))
+
+    # The settlement: after settling the third island, all roads should be closed.
+    self.c.add_piece(catan.Piece(3, 7, "settlement", 0))
+    self.assertTrue(self.c.roads[road4_loc].closed)
+
+  def testCloseMiddleOfPath(self):
+    # We build a shipping route past an island, then settle the island, and validate that the
+    # ships on the other side of the route are still open and get updated correctly.
+    locs = [(1, 4, 2, 5), (1, 4, 2, 3), (2, 3, 3, 3), (3, 3, 4, 4)]
+    for loc in locs[:-1]:
+      self.c.add_road(Road(loc, "ship", 0))
+
+    for loc in locs[:-1]:
+      with self.subTest(loc=loc):
+        self.assertEqual(self.c.roads[loc].source.as_tuple(), (2, 5))
+
+    self.c.add_piece(catan.Piece(2, 3, "settlement", 0))
+    for loc in locs[:-1]:
+      with self.subTest(loc=loc):
+        self.assertEqual(self.c.roads[loc].source.as_tuple(), (2, 5))
+    self.assertTrue(self.c.roads[locs[-2]].movable)
+
+    self.c.add_road(Road(locs[-1], "ship", 0))
+    self.assertFalse(self.c.roads[locs[-2]].movable)
+    self.assertTrue(self.c.roads[locs[-1]].movable)
+    self.assertFalse(self.c.roads[locs[-2]].closed)
+    self.assertFalse(self.c.roads[locs[-1]].closed)
+
+  def testReturnToOrigin(self):
+    road_locs = [
+        (2, 5, 3, 5), (3, 5, 4, 6), (3, 7, 4, 6), (2, 7, 3, 7), (1, 6, 2, 7), (1, 6, 2, 5),
+    ]
+    for loc in road_locs:
+      self.c.add_road(Road(loc, "ship", 0))
+    for loc in road_locs:
+      with self.subTest(loc=loc):
+        self.assertFalse(self.c.roads[loc].closed)
+    # The first and last ships should be movable.
+    self.assertTrue(self.c.roads[road_locs[0]].movable)
+    self.assertTrue(self.c.roads[road_locs[-1]].movable)
+    # The rest should not.
+    for loc in road_locs[1:-1]:
+      with self.subTest(loc=loc):
+        self.assertFalse(self.c.roads[loc].movable)
+
+    # Just for fun, add a settlement at 3, 7 and make sure all roads are now marked as closed.
+    self.c.add_piece(catan.Piece(3, 7, "settlement", 0))
+    for loc in road_locs:
+      with self.subTest(loc=loc):
+        self.assertTrue(self.c.roads[loc].closed)
+
+  def testMakeALoop(self):
+    first_loc = (2, 5, 3, 5)
+    self.c.add_road(Road(first_loc, "ship", 0))
+    road_locs = [
+        (3, 5, 4, 4), (4, 4, 5, 4), (5, 4, 6, 5), (3, 5, 4, 6), (4, 6, 5, 6), (5, 6, 6, 5),
+    ]
+    for loc in road_locs:
+      self.c.add_road(Road(loc, "ship", 0))
+    for loc in [first_loc] + road_locs:
+      with self.subTest(loc=loc):
+        self.assertFalse(self.c.roads[loc].closed)
+
+    # The first road is not movable, but everything else is.
+    self.assertFalse(self.c.roads[first_loc].movable)
+    for loc in road_locs:
+      with self.subTest(loc=loc):
+        self.assertTrue(self.c.roads[loc].movable)
+
+  def testLoopAndReturnToOrigin(self):
+    # Okay, smartypants. You want to make a loop on the water and then also return to your
+    # starting point. Because you hate me. The two ships connected to the starting point should
+    # be movable, as well as all the ships in the loop, including the ship that connects the
+    # far loop to the near loop.
+    road_locs = [
+        (2, 5, 3, 5),
+        (3, 5, 4, 4), (4, 4, 5, 4), (5, 4, 6, 5), (3, 5, 4, 6), (4, 6, 5, 6), (5, 6, 6, 5),
+        (3, 7, 4, 6), (2, 7, 3, 7), (1, 6, 2, 7), (1, 6, 2, 5),
+    ]
+
+    for loc in road_locs[:-1]:
+      self.c.add_road(Road(loc, "ship", 0))
+
+    for loc in road_locs[:-1]:
+      with self.subTest(loc=loc):
+        self.assertFalse(self.c.roads[loc].closed)
+
+    for loc in road_locs[1:7]:
+      with self.subTest(loc=loc):
+        self.assertTrue(self.c.roads[loc].movable)
+    self.assertFalse(self.c.roads[road_locs[0]].movable)
+    self.assertFalse(self.c.roads[road_locs[7]].movable)
+    self.assertFalse(self.c.roads[road_locs[8]].movable)
+    self.assertTrue(self.c.roads[road_locs[-2]].movable)
+
+    # Here we go - add the last road, returning to the starting point.
+    self.c.add_road(Road(road_locs[-1], "ship", 0))
+
+    for loc in road_locs:
+      with self.subTest(loc=loc):
+        self.assertFalse(self.c.roads[loc].closed)
+
+    for loc in road_locs[:7]:
+      with self.subTest(loc=loc):
+        self.assertTrue(self.c.roads[loc].movable)
+    for loc in road_locs[8:-1]:
+      with self.subTest(loc=loc):
+        self.assertFalse(self.c.roads[loc].movable)
+    self.assertTrue(self.c.roads[road_locs[-1]].movable)
+
+    # As a bonus, use the last four ships to make an extra loop.
+    bonus_locs = [(3, 3, 4, 4), (2, 3, 3, 3), (1, 4, 2, 3), (1, 4, 2, 5)]
+    for loc in bonus_locs:
+      self.c.add_road(Road(loc, "ship", 0))
+
+    for loc in road_locs + bonus_locs:
+      with self.subTest(loc=loc):
+        self.assertFalse(self.c.roads[loc].closed)
+
+    expected_movable = set(road_locs[:7] + [road_locs[-1]] + [bonus_locs[-1]])
+    for loc in road_locs + bonus_locs:
+      with self.subTest(loc=loc):
+        self.assertEqual(self.c.roads[loc].movable, loc in expected_movable)
+
+    # Lastly, add a settlement on the far island. Since every ship in this triple loop is
+    # on some path from one settlement to the other, all ships should be marked as closed.
+    self.c.add_piece(catan.Piece(6, 5, "settlement", 0))
+    for loc in road_locs + bonus_locs:
+      with self.subTest(loc=loc):
+        self.assertTrue(self.c.roads[loc].closed)
 
 
 class TestCalculateRobPlayers(BaseInputHandlerTest):

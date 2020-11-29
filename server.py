@@ -176,7 +176,7 @@ async def GameLoop(websocket, session, game):
   try:
     async for raw in websocket:
       await game.handle(websocket, session, raw)
-  except websockets.exceptions.ConnectionClosedError:
+  except websockets.exceptions.ConnectionClosed:
     print("connection for %s from %s closed unexpectedly" % (session, websocket.remote_address))
   finally:
     print("closed websocket connection for %s from %s" % (session, websocket.remote_address))
@@ -188,7 +188,7 @@ async def SendGames(websocket):
   try:
     async for raw in websocket:
       pass
-  except websockets.exceptions.ConnectionClosedError:
+  except websockets.exceptions.ConnectionClosed:
     pass
   finally:
     INDEX_WEBSOCKETS.remove(websocket)

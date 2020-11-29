@@ -253,21 +253,35 @@ class Road(object):
 
   TYPES = ["road", "ship"]
 
-  def __init__(self, location, road_type, player):
+  def __init__(self, location, road_type, player, closed=False, movable=True, source=None):
     self.location = EdgeLocation(*location)
     self.road_type = road_type
     self.player = player
+    self.closed = closed
+    self.movable = movable
+    self.source = source
 
   def json_repr(self):
-    return {
+    data = {
         "location": self.location,
         "road_type": self.road_type,
         "player": self.player,
     }
+    if self.road_type == "ship":
+      data.update({
+        "closed": self.closed,
+        "movable": self.movable,
+        "source": self.source,
+      })
+    return data
 
   @staticmethod
   def parse_json(value):
-    return Road(value["location"], value["road_type"], value["player"])
+    # TODO: maybe this assert should go into the constructor?
+    if value["road_type"] == "ship":
+      assert value.get("source") is not None
+    return Road(value["location"], value["road_type"], value["player"], value.get("closed", False),
+        value.get("movable", True), value.get("source"))
 
   def __str__(self):
     return str(self.json_repr())
@@ -509,22 +523,25 @@ class CatanState(object):
     del ret["player_data"]
     ret["dev_cards"] = len(self.dev_cards)
 
-    corners = {}
+    land_corners = {}
+    all_corners = {}
     # TODO: instead of sending a list of corners, we should send something like
     # a list of legal moves for tiles, corners, and edges.
     for tile in self.tiles.values():
-      if not tile.is_land:
-        continue
       # Triple-count each corner and dedup.
       for corner_loc in tile.location.get_corner_locations():
-        corners[corner_loc.as_tuple()] = {"location": corner_loc}
-    ret["corners"] = list(corners.values())
-    # TODO: edges may be attached to more than just land corners.
+        all_corners[corner_loc.as_tuple()] = corner_loc
+        if not tile.is_land:
+          continue
+        land_corners[corner_loc.as_tuple()] = {"location": corner_loc}
+    ret["corners"] = list(land_corners.values())
     edges = {}
-    for corner in corners.values():
+    for corner in all_corners.values():
       # Double-count each edge and dedup.
-      for edge in corner["location"].get_edges():
-        edges[edge.as_tuple()] = {"location": edge, "edge_type": self._get_edge_type(edge)}
+      for edge in corner.get_edges():
+        edge_type = self._get_edge_type(edge)
+        if edge_type is not None:
+          edges[edge.as_tuple()] = {"location": edge, "edge_type": edge_type}
     ret["edges"] = list(edges.values())
 
     is_over = (self.game_phase == "victory")
@@ -1198,6 +1215,8 @@ class CatanState(object):
       self.player_data[player_idx].longest_route = self._calculate_longest_road(player_idx)
     new_max = max([p.longest_route for p in self.player_data])
 
+    # TODO: add a unit test to make sure longest route for each player is recomputed even if
+    # no player currently has longest road.
     # No additional computation needed if nobody has longest road.
     if self.longest_route_player is None:
       return
@@ -1474,6 +1493,95 @@ class Seafarers(CatanState):
     if move_type == "ship":
       return self.handle_road(data.get("location"), player_idx, "ship", [("rsrc1", 1), ("rsrc2", 1)])
     return super(Seafarers, self).inner_handle(player_idx, move_type, data)
+
+  def add_road(self, road):
+    if road.road_type == "ship":
+      road.source = self.get_ship_source(road.location, road.player)
+    super(Seafarers, self).add_road(road)
+    if road.road_type == "ship":
+      self.recalculate_ships(road.source, road.player)
+
+  def add_piece(self, piece):
+    super(Seafarers, self).add_piece(piece)
+    if piece.piece_type == "settlement":
+      self.recalculate_ships(piece.location, piece.player)
+
+  def get_ship_source(self, location, player_idx):
+    edges = []
+    for corner in [location.corner_left, location.corner_right]:
+      maybe_piece = self.pieces.get(corner.as_tuple())
+      if maybe_piece and maybe_piece.player == player_idx:
+        return maybe_piece.location
+      edges.extend(corner.get_edges())
+    for edge in edges:
+      if edge == location:
+        continue
+      maybe_road = self.roads.get(edge.as_tuple())
+      if maybe_road and maybe_road.player == player_idx and maybe_road.road_type == "ship":
+        return maybe_road.source
+    raise InvalidMove("Ships must be connected to your ship network.")
+
+  def recalculate_ships(self, source, player_idx):
+    self._ship_dfs_helper(source, player_idx, [], set(), source, None)
+
+  def _ship_dfs_helper(self, source, player_idx, path, seen, corner, prev):
+    seen.add(corner.as_tuple())
+    edges = corner.get_edges()
+    outgoing_edges = []
+
+    # First, calculate all the outgoing edges.
+    for edge in edges:
+      # This is the edge we just walked down, ignore it.
+      if edge.as_tuple() == prev:
+        continue
+      other_corner = edge.corner_left if edge.corner_right == corner else edge.corner_right
+      # If this edge does not have a ship on it, skip it.
+      maybe_ship = self.roads.get(edge.as_tuple())
+      if not maybe_ship or maybe_ship.road_type != "ship":
+        continue
+      # Now we know there is a ship from corner to other_corner.
+      outgoing_edges.append((edge, other_corner))
+
+    # Then, mark this ship as either movable or unmovable based on number of outgoing edges.
+    if path:  # Skipped for the very first corner, since there is no previous edge.
+      if len(outgoing_edges) == 0:
+        self.roads[path[-1]].movable = True
+      else:
+        self.roads[path[-1]].movable = False
+
+    # Lastly, continue the DFS. Order matters: this may mark some ships as movable that were
+    # previous considered unmovable, overriding that decision (because of cycles).
+    for edge, other_corner in outgoing_edges:
+      if other_corner == source:
+        # Here, we have circled back around to the start. We must mark the two edges at the
+        # beginning and end of the path as movable. We do not touch the rest.
+        self.roads[path[0]].movable = True
+        self.roads[edge.as_tuple()].movable = True
+        continue
+      if other_corner.as_tuple() in seen:
+        # Here, we have created a loop. Every ship on this loop may be movable.
+        start_idx = None
+        for idx, rloc in reversed(list(enumerate(path))):
+          if other_corner.as_tuple() in [rloc[:2], rloc[2:]]:
+            start_idx = idx
+            break
+        else:
+          raise RuntimeError("What happened here? This shouldn't be physically possible.")
+        for idx in range(start_idx, len(path)):
+          self.roads[path[idx]].movable = True
+        self.roads[edge.as_tuple()].movable = True
+        continue
+      maybe_piece = self.pieces.get(other_corner.as_tuple())
+      if maybe_piece and maybe_piece.player == player_idx:
+        # Here, we know that there is a shipping route from one of the player's settlements to
+        # another. Every ship on this shipping route is considered closed.
+        for rloc in path + [edge.as_tuple()]:
+          self.roads[rloc].closed = True
+      # Now we know this ship does not create a loop, so we continue to explore the far corner.
+      path.append(edge.as_tuple())
+      self._ship_dfs_helper(source, player_idx, path, seen, other_corner, edge.as_tuple())
+      path.pop()
+    seen.remove(corner.as_tuple())
 
   def _check_edge_type(self, edge_location, road_type):
     edge_type = self._get_edge_type(edge_location)

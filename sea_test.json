@@ -1,0 +1,267 @@
+{
+    "counter_offers": [
+        null,
+        null
+    ],
+    "dev_cards": [
+        "knight",
+        "knight",
+        "knight",
+        "knight",
+        "monopoly",
+        "roadbuilding",
+        "knight",
+        "knight",
+        "knight",
+        "knight",
+        "palace",
+        "library",
+        "monopoly",
+        "knight",
+        "knight",
+        "yearofplenty",
+        "knight",
+        "roadbuilding",
+        "knight",
+        "market",
+        "yearofplenty",
+        "chapel",
+        "knight",
+        "knight",
+        "university"
+    ],
+    "dev_roads_placed": 0,
+    "dice_roll": null,
+    "discard_players": [
+        0,
+        0
+    ],
+    "game_phase": "main",
+    "host": null,
+    "largest_army_player": null,
+    "longest_route_player": null,
+    "pieces": [
+        {
+            "location": [
+                2,
+                5
+            ],
+            "piece_type": "settlement",
+            "player": 0
+        }
+    ],
+    "pirate": null,
+    "played_dev": 0,
+    "player_sessions": {
+        "Player1": 0,
+        "Player2": 1
+    },
+    "player_data": [
+        {
+            "color": "red",
+            "name": "Casey",
+            "knights_played": 0,
+            "longest_route": 1,
+            "cards": {
+                "rsrc1": 4,
+                "rsrc2": 2,
+                "rsrc3": 1,
+                "rsrc4": 2,
+                "rsrc5": 2
+            },
+            "trade_ratios": {
+                "rsrc1": 2
+            },
+            "unusable": {}
+        },
+        {
+            "color": "blue",
+            "name": "Andy",
+            "knights_played": 0,
+            "longest_route": 1,
+            "cards": {
+                "rsrc1": 3,
+                "rsrc2": 3,
+                "rsrc3": 2,
+                "rsrc4": 1,
+                "rsrc5": 5
+            },
+            "trade_ratios": {},
+            "unusable": {}
+        }
+    ],
+    "roads": [],
+    "rob_players": [],
+    "robber": null,
+    "rulesets": ["base"],
+    "started": true,
+    "tiles": [
+        {
+            "is_land": false,
+            "location": [
+                2,
+                3
+            ],
+            "number": null,
+            "rotation": 0,
+            "variant": "",
+            "tile_type": "space"
+        },
+        {
+            "is_land": false,
+            "location": [
+                4,
+                2
+            ],
+            "number": null,
+            "rotation": 0,
+            "variant": "",
+            "tile_type": "space"
+        },
+        {
+            "is_land": false,
+            "location": [
+                2,
+                5
+            ],
+            "number": null,
+            "rotation": 0,
+            "variant": "",
+            "tile_type": "space"
+        },
+        {
+            "is_land": false,
+            "location": [
+                4,
+                4
+            ],
+            "number": null,
+            "rotation": 0,
+            "variant": "",
+            "tile_type": "space"
+        },
+        {
+            "is_land": false,
+            "location": [
+                2,
+                1
+            ],
+            "number": null,
+            "rotation": 0,
+            "variant": "",
+            "tile_type": "space"
+        },
+        {
+            "is_land": false,
+            "location": [
+                4,
+                0
+            ],
+            "number": null,
+            "rotation": 0,
+            "variant": "",
+            "tile_type": "space"
+        },
+        {
+            "is_land": false,
+            "location": [
+                6,
+                1
+            ],
+            "number": null,
+            "rotation": 1,
+            "variant": "",
+            "tile_type": "space"
+        },
+        {
+            "is_land": false,
+            "location": [
+                6,
+                3
+            ],
+            "number": null,
+            "rotation": 1,
+            "variant": "",
+            "tile_type": "space"
+        },
+        {
+            "is_land": true,
+            "location": [
+                6,
+                5
+            ],
+            "number": 8,
+            "rotation": 0,
+            "variant": "",
+            "tile_type": "rsrc4"
+        },
+        {
+            "is_land": false,
+            "location": [
+                4,
+                6
+            ],
+            "number": null,
+            "rotation": 3,
+            "variant": "",
+            "tile_type": "space"
+        },
+        {
+            "is_land": true,
+            "location": [
+                2,
+                7
+            ],
+            "number": 6,
+            "rotation": 0,
+            "variant": "",
+            "tile_type": "rsrc3"
+        },
+        {
+            "is_land": false,
+            "location": [
+                0,
+                6
+            ],
+            "number": null,
+            "rotation": 4,
+            "variant": "",
+            "tile_type": "space"
+        },
+        {
+            "is_land": true,
+            "location": [
+                0,
+                4
+            ],
+            "number": 5,
+            "rotation": 0,
+            "variant": "",
+            "tile_type": "rsrc1"
+        },
+        {
+            "is_land": true,
+            "location": [
+                0,
+                2
+            ],
+            "number": 9,
+            "rotation": 0,
+            "variant": "",
+            "tile_type": "rsrc2"
+        }
+    ],
+    "trade_offer": {},
+    "turn_idx": 0,
+    "turn_phase": "main",
+    "ports": [
+        {
+            "location": [
+                6,
+                3
+            ],
+            "port_type": "3",
+            "rotation": 0
+        }
+    ]
+}
