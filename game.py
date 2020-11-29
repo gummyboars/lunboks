@@ -7,15 +7,31 @@ import sys
 import traceback
 
 
-class InvalidMove(Exception):
+class GameException(Exception):
   pass
 
 
-class InvalidPlayer(Exception):
+class InvalidInput(GameException):
   pass
 
 
-class TooManyPlayers(Exception):
+class NotYourTurn(GameException):
+  pass
+
+
+class UnknownMove(GameException):
+  pass
+
+
+class InvalidMove(GameException):
+  pass
+
+
+class InvalidPlayer(GameException):
+  pass
+
+
+class TooManyPlayers(GameException):
   pass
 
 
@@ -155,7 +171,7 @@ class GameHandler(object):
       return
     try:
       self.game.handle(session, data)
-    except (InvalidMove, InvalidPlayer, TooManyPlayers, AssertionError) as e:
+    except (GameException, AssertionError) as e:
       await self.push_error(ws, str(e))
       # Intentionally fall through so that we can push the new state.
     except Exception as e:

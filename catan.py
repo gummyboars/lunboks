@@ -5,7 +5,10 @@ import os
 import random
 from unittest import mock
 
-from game import BaseGame, InvalidMove, InvalidPlayer, TooManyPlayers, ValidatePlayer
+from game import (
+    BaseGame, ValidatePlayer, InvalidInput, UnknownMove, InvalidMove,
+    InvalidPlayer, TooManyPlayers, NotYourTurn
+)
 
 RESOURCES = ["rsrc1", "rsrc2", "rsrc3", "rsrc4", "rsrc5"]
 PLAYABLE_DEV_CARDS = ["yearofplenty", "monopoly", "roadbuilding", "knight"]
@@ -557,53 +560,57 @@ class CatanState(object):
     self.counter_offers.append(None)
 
   def handle(self, player_idx, data):
+    if not data.get("type"):
+      raise InvalidInput("Missing move type")
+    self.check_turn_okay(player_idx, data["type"], data)
+    self.inner_handle(player_idx, data["type"], data)
+    self.post_handle(player_idx, data["type"], data)
+
+  def check_turn_okay(self, player_idx, move_type, data):
+    if move_type == "rename":
+      return
     if self.game_phase == "victory":
-      raise InvalidMove("The game is over.")
-    if data.get("type") == "rename":
-      self.rename_player(player_idx, data)
-      return
-    if data.get("type") == "discard":
-      self.handle_discard(data.get("selection"), player_idx)
-      return
-    if data.get("type") == "counter_offer":
-      self.handle_counter_offer(data.get("offer"), player_idx)
-      return
-    player_name = self.player_data[player_idx].name
+      raise NotYourTurn("The game is over.")
     if self.turn_idx != player_idx:
-      raise InvalidMove("It is not %s's turn." % player_name)
+      if move_type in ["discard", "counter_offer"]:
+        return
+      raise NotYourTurn("It is not your turn.")
+
+  def inner_handle(self, player_idx, move_type, data):
+    if move_type == "rename":
+      return self.rename_player(player_idx, data)
+    if move_type == "discard":
+      return self.handle_discard(data.get("selection"), player_idx)
+    if move_type == "counter_offer":
+      return self.handle_counter_offer(data.get("offer"), player_idx)
     location = data.get("location")
-    if data.get("type") == "roll_dice":
-      self.handle_roll_dice()
-    if data.get("type") == "robber":
-      self._validate_location(location)
-      self.handle_robber(location, player_idx)
-    if data.get("type") == "rob":
-      self.handle_rob(data.get("player"), player_idx)
-    if data.get("type") == "road":
-      self._validate_location(location, num_entries=4)
-      self.handle_road(location, player_idx)
-    if data.get("type") == "buy_dev":
-      self.handle_buy_dev(player_idx)
-    if data.get("type") == "play_dev":
-      self.handle_play_dev(data.get("card_type"), data.get("selection"), player_idx)
-    if data.get("type") == "settle":
-      self._validate_location(location)
-      self.handle_settle(location, player_idx)
-    if data.get("type") == "city":
-      self._validate_location(location)
-      self.handle_city(location, player_idx)
-    if data.get("type") == "trade_offer":
-      self.handle_trade_offer(data.get("offer"), player_idx)
-    if data.get("type") == "accept_counter":
-      self.handle_accept_counter(data.get("counter_offer"), data.get("counter_player"), player_idx)
-    if data.get("type") == "trade_bank":
-      self.handle_trade_bank(data.get("offer"), player_idx)
-    if data.get("type") == "end_turn":
-      # TODO: move this error checking into handle_end_turn
-      if self.game_phase != "main":
-        raise InvalidMove("You MUST place your first settlement/roads.")
-      self._check_main_phase("end your turn")
-      self.handle_end_turn()
+    if move_type == "roll_dice":
+      return self.handle_roll_dice()
+    if move_type == "robber":
+      return self.handle_robber(location, player_idx)
+    if move_type == "rob":
+      return self.handle_rob(data.get("player"), player_idx)
+    if move_type == "road":
+      return self.handle_road(location, player_idx, "road", [("rsrc2", 1), ("rsrc4", 1)])
+    if move_type == "buy_dev":
+      return self.handle_buy_dev(player_idx)
+    if move_type == "play_dev":
+      return self.handle_play_dev(data.get("card_type"), data.get("selection"), player_idx)
+    if move_type == "settle":
+      return self.handle_settle(location, player_idx)
+    if move_type == "city":
+      return self.handle_city(location, player_idx)
+    if move_type == "trade_offer":
+      return self.handle_trade_offer(data.get("offer"), player_idx)
+    if move_type == "accept_counter":
+      return self.handle_accept_counter(data.get("counter_offer"), data.get("counter_player"), player_idx)
+    if move_type == "trade_bank":
+      return self.handle_trade_bank(data.get("offer"), player_idx)
+    if move_type == "end_turn":
+      return self.handle_end_turn()
+    raise UnknownMove(f"Unknown move {move_type}")
+
+  def post_handle(self, player_idx, move_type, data):
     # NOTE: use turn_idx here, since it is possible for a player to get to 10 points when it is
     # not their turn (e.g. because someone else's longest road was broken), but the rules say
     # you can only win on YOUR turn. So we check for victory after we have handled the end of
@@ -625,6 +632,12 @@ class CatanState(object):
     self.game_phase = "victory"
 
   def handle_end_turn(self):
+    if self.game_phase != "main":
+      raise InvalidMove("You MUST place your first settlement/roads.")
+    self._check_main_phase("end your turn")
+    self.end_turn()
+
+  def end_turn(self):
     self.player_data[self.turn_idx].unusable.clear()
     self.played_dev = 0
     self.trade_offer = {}
@@ -669,6 +682,7 @@ class CatanState(object):
     self.turn_phase = "main"
 
   def handle_robber(self, location, current_player):
+    self._validate_location(location)
     if self.turn_phase != "robber":
       if self.turn_phase == "discard":
         raise InvalidMove("Waiting for players to discard.")
@@ -743,19 +757,15 @@ class CatanState(object):
     for resource, count in resources:
       self.player_data[player].cards[resource] -= count
 
-  def _check_road_building(self, location, player):
+  def _check_road_building(self, location, player, road_type):
     left_corner = location.corner_left
     right_corner = location.corner_right
     # Validate that this is an actual edge.
     if location.as_tuple() not in [edge.as_tuple() for edge in left_corner.get_edges()]:
       raise InvalidMove("%s is not a valid edge" % location)
     # Validate that one side of the road is land.
-    for tile_loc in location.get_adjacent_tiles():
-      tile = self.tiles.get(tile_loc.as_tuple())
-      if tile and tile.is_land:
-        break
-    else:
-      raise InvalidMove("One side of your road must be land.")
+    self._check_edge_type(location, road_type)
+    # Validate that this connects to either a settlement or another road.
     for corner in [left_corner, right_corner]:
       # Check whether this corner has one of the player's settlements.
       maybe_piece = self.pieces.get(corner.as_tuple())
@@ -772,10 +782,10 @@ class CatanState(object):
         if edge == location:
           continue
         maybe_road = self.roads.get(edge.as_tuple())
-        if maybe_road and maybe_road.player == player:
+        if maybe_road and maybe_road.player == player and maybe_road.road_type == road_type:
           # They have a road leading here - they can build another road.
           return
-    raise InvalidMove("Roads must be connected to your road network.")
+    raise InvalidMove(f"{road_type.capitalize()}s must be connected to your {road_type} network.")
 
   def _check_road_next_to_empty_settlement(self, location, player):
     left_corner = location.corner_left
@@ -807,43 +817,45 @@ class CatanState(object):
       else:
         raise InvalidMove("You cannot %s right now." % text)
 
-  def handle_road(self, location, player):
+  def handle_road(self, location, player, road_type, resources):
+    self._validate_location(location, num_entries=4)
     # Check that this is the right part of the turn.
     if self.game_phase.startswith("place"):
       if self.turn_phase != "road":
         raise InvalidMove("You must build a settlement first.")
     elif self.turn_phase != "dev_road":
-      self._check_main_phase("build a road")
+      self._check_main_phase(f"build a {road_type}")
     # Check nothing else is already there.
     if tuple(location) in self.roads:
-      raise InvalidMove("There is already a road there.")
+      raise InvalidMove("There is already a %s there." % self.roads[tuple(location)].road_type)
     # Check that this attaches to their existing network.
-    self._check_road_building(EdgeLocation(*location), player)
+    self._check_road_building(EdgeLocation(*location), player, road_type)
     # Check that the player has enough roads left.
-    road_count = len([r for r in self.roads.values() if r.player == player and r.road_type == "road"])
+    road_count = len([r for r in self.roads.values() if r.player == player and r.road_type == road_type])
     if road_count >= 15:
-      raise InvalidMove("You have no roads remaining.")
+      raise InvalidMove(f"You have no {road_type}s remaining.")
     # Handle special settlement phase.
     if self.game_phase.startswith("place"):
       self._check_road_next_to_empty_settlement(EdgeLocation(*location), player)
-      self.add_road(Road(location, "road", player)) 
-      self.handle_end_turn()
+      self.add_road(Road(location, road_type, player))
+      self.end_turn()
       return
     if self.turn_phase == "dev_road":
-      self.add_road(Road(location, "road", player))
+      self.add_road(Road(location, road_type, player))
       self.dev_roads_placed += 1
       # Road building ends if they placed 2 roads or ran out of roads.
+      # TODO: replace this with a method to check to see if they have any legal road moves.
       if self.dev_roads_placed == 2 or road_count + 1 >= 15:
         self.dev_roads_placed = 0
         self.turn_phase = "main"
       return
     # Check resources and deduct from player.
-    resources = [("rsrc2", 1), ("rsrc4", 1)]
-    self._remove_resources(resources, player, "build a road")
+    self._remove_resources(resources, player, f"build a {road_type}")
 
-    self.add_road(Road(location, "road", player))
+    self.add_road(Road(location, road_type, player))
 
   def handle_settle(self, location, player):
+    self._validate_location(location)
     # Check that this is the right part of the turn.
     if self.game_phase.startswith("place"):
       if self.turn_phase != "settle":
@@ -895,6 +907,7 @@ class CatanState(object):
       self.player_data[player].trade_ratios[port_type] = min(self.player_data[player].trade_ratios[port_type], 2)
 
   def handle_city(self, location, player):
+    self._validate_location(location)
     # Check that this is the right part of the turn.
     self._check_main_phase("build a city")
     # Check this player already owns a settlement there.
@@ -1356,6 +1369,11 @@ class CatanState(object):
       for corner in port_corners:
         self.port_corners[corner.as_tuple()] = port.port_type
 
+  def _check_edge_type(self, edge_location, road_type):
+    edge_type = self._get_edge_type(edge_location)
+    if edge_type != road_type:
+      raise InvalidMove("Your road must be between two tiles, one of which must be land.")
+
   def _get_edge_type(self, edge_location):
     # TODO: code duplication?
     tile_locations = edge_location.get_adjacent_tiles()
@@ -1451,6 +1469,23 @@ class DebugRules(object):
 
 
 class Seafarers(CatanState):
+
+  def inner_handle(self, player_idx, move_type, data):
+    if move_type == "ship":
+      return self.handle_road(data.get("location"), player_idx, "ship", [("rsrc1", 1), ("rsrc2", 1)])
+    return super(Seafarers, self).inner_handle(player_idx, move_type, data)
+
+  def _check_edge_type(self, edge_location, road_type):
+    edge_type = self._get_edge_type(edge_location)
+    if edge_type is None:
+      raise InvalidMove(f"Your {road_type} must be between two tiles.")
+    if edge_type == road_type or edge_type.startswith("coast"):
+      return
+    if road_type == "road":
+      raise InvalidMove("Your road must be between two tiles, one of which must be land.")
+    if road_type == "ship":
+      raise InvalidMove("Your ship must be between two tiles, one of which must be water.")
+    raise InvalidInput(f"Unknown road type {road_type}")
 
   def _get_edge_type(self, edge_location):
     # First verify that there are tiles on both sides of this edge.

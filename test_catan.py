@@ -61,53 +61,6 @@ class TestLoadState(unittest.TestCase):
               "%s [%s]: %s old == new" % (loc_attr, key, attr))
 
 
-class DebugRulesTest(unittest.TestCase):
-
-  def testDebugDisabledNormalGame(self):
-    with open("test.json") as json_file:
-      json_data = json_file.read()
-    g = catan.CatanGame.parse_json(json_data)
-    self.assertListEqual(g.post_urls(), [])
-
-    handler = mock.MagicMock()
-    with mock.patch.object(g.game, "distribute_resources") as dist:
-      g.handle_post(handler, "/roll_dice", {"count": ["5"]}, None)
-      self.assertTrue(handler.send_error.called)
-      self.assertFalse(dist.called)
-
-  def testDebugEnabledRollDice(self):
-    with open("test.json") as json_file:
-      json_data = json.loads(json_file.read())
-    json_data["rulesets"].append("debug")
-    g = catan.CatanGame.parse_json(json.dumps(json_data))
-    self.assertCountEqual(g.post_urls(), ["/roll_dice", "/force_dice"])
-    handler = mock.MagicMock()
-    with mock.patch.object(g.game, "distribute_resources") as dist:
-      g.handle_post(handler, "/roll_dice", {"count": ["5"]}, None)
-      self.assertFalse(handler.send_error.called)
-      self.assertEqual(dist.call_count, 5)
-
-  def testDebugEnabledForceDice(self):
-    with open("test.json") as json_file:
-      json_data = json.loads(json_file.read())
-    json_data["rulesets"].append("debug")
-    g = catan.CatanGame.parse_json(json.dumps(json_data))
-    handler = mock.MagicMock()
-    g.handle_post(handler, "/force_dice", {"value": ["5"]}, None)
-    self.assertFalse(handler.send_error.called)
-
-    g.game.turn_phase = "dice"
-    g.game.handle_roll_dice()
-    self.assertTupleEqual(g.game.dice_roll, (2, 3))
-    for _ in range(4):
-      g.game.turn_phase = "dice"
-      g.game.handle_roll_dice()
-      if g.game.dice_roll != (2, 3):
-        break
-    else:
-      self.fail("Dice roll did not reset")
-
-
 class BaseInputHandlerTest(unittest.TestCase):
 
   EXTRA_RULESETS = []
@@ -131,6 +84,46 @@ class TestLoadTestData(BaseInputHandlerTest):
     self.assertEqual(self.c.player_data[0].trade_ratios["rsrc1"], 2)
     self.assertEqual(self.c.player_data[0].trade_ratios["rsrc2"], 4)
     self.assertEqual(self.c.player_data[1].trade_ratios["rsrc1"], 4)
+
+
+class DebugRulesOffTest(BaseInputHandlerTest):
+
+  def testDebugDisabledNormalGame(self):
+    self.assertListEqual(self.g.post_urls(), [])
+
+    handler = mock.MagicMock()
+    with mock.patch.object(self.c, "distribute_resources") as dist:
+      self.g.handle_post(handler, "/roll_dice", {"count": ["5"]}, None)
+      self.assertTrue(handler.send_error.called)
+      self.assertFalse(dist.called)
+
+class DebugRulesOnTest(BaseInputHandlerTest):
+
+  EXTRA_RULESETS = ["debug"]
+
+  def testDebugEnabledRollDice(self):
+    self.assertCountEqual(self.g.post_urls(), ["/roll_dice", "/force_dice"])
+    handler = mock.MagicMock()
+    with mock.patch.object(self.c, "distribute_resources") as dist:
+      self.g.handle_post(handler, "/roll_dice", {"count": ["5"]}, None)
+      self.assertFalse(handler.send_error.called)
+      self.assertEqual(dist.call_count, 5)
+
+  def testDebugEnabledForceDice(self):
+    handler = mock.MagicMock()
+    self.g.handle_post(handler, "/force_dice", {"value": ["5"]}, None)
+    self.assertFalse(handler.send_error.called)
+
+    self.c.turn_phase = "dice"
+    self.c.handle_roll_dice()
+    self.assertTupleEqual(self.c.dice_roll, (2, 3))
+    for _ in range(4):  # 1 in 1.68 million chance of failing.
+      self.c.turn_phase = "dice"
+      self.c.handle_roll_dice()
+      if self.c.dice_roll != (2, 3):
+        break
+    else:
+      self.fail("Dice roll did not reset")
 
 
 class TestGetEdgeType(BaseInputHandlerTest):
@@ -278,22 +271,23 @@ class TestHandleSettleInput(BaseInputHandlerTest):
       self.c.handle(0, {"type": "city", "location": [5, 4]})
 
 
-class TestHandleRoadInput(BaseInputHandlerTest):
+def AddThirteenRoads(c):
+  c.add_road(Road([5, 4, 6, 3], "road", 0))
+  c.add_road(Road([5, 2, 6, 3], "road", 0))
+  c.add_road(Road([4, 2, 5, 2], "road", 0))
+  c.add_road(Road([3, 3, 4, 2], "road", 0))
+  c.add_road(Road([2, 3, 3, 3], "road", 0))
+  c.add_road(Road([1, 4, 2, 3], "road", 0))
+  c.add_road(Road([1, 4, 2, 5], "road", 0))
+  c.add_road(Road([1, 6, 2, 5], "road", 0))
+  c.add_road(Road([1, 6, 2, 7], "road", 0))
+  c.add_road(Road([2, 7, 3, 7], "road", 0))
+  c.add_road(Road([3, 7, 4, 6], "road", 0))
+  c.add_road(Road([4, 6, 5, 6], "road", 0))
+  c.add_road(Road([5, 6, 6, 5], "road", 0))
 
-  def addThirteenRoads(self):
-    self.c.add_road(Road([5, 4, 6, 3], "road", 0))
-    self.c.add_road(Road([5, 2, 6, 3], "road", 0))
-    self.c.add_road(Road([4, 2, 5, 2], "road", 0))
-    self.c.add_road(Road([3, 3, 4, 2], "road", 0))
-    self.c.add_road(Road([2, 3, 3, 3], "road", 0))
-    self.c.add_road(Road([1, 4, 2, 3], "road", 0))
-    self.c.add_road(Road([1, 4, 2, 5], "road", 0))
-    self.c.add_road(Road([1, 6, 2, 5], "road", 0))
-    self.c.add_road(Road([1, 6, 2, 7], "road", 0))
-    self.c.add_road(Road([2, 7, 3, 7], "road", 0))
-    self.c.add_road(Road([3, 7, 4, 6], "road", 0))
-    self.c.add_road(Road([4, 6, 5, 6], "road", 0))
-    self.c.add_road(Road([5, 6, 6, 5], "road", 0))
+
+class TestHandleRoadInput(BaseInputHandlerTest):
 
   def testRoadsMustConnect(self):
     with self.assertRaisesRegex(InvalidMove, "must be connected"):
@@ -317,20 +311,20 @@ class TestHandleRoadInput(BaseInputHandlerTest):
     self.assertEqual(self.c.player_data[0].cards["rsrc4"], count4 - 2)
 
   def testCannotBuildTooManyRoads(self):
-    self.addThirteenRoads()
+    AddThirteenRoads(self.c)
     self.c.handle(0, {"type": "road", "location": [5, 4, 6, 5]})
     with self.assertRaisesRegex(InvalidMove, "no roads remaining"):
       self.c.handle(0, {"type": "road", "location": [3, 3, 4, 4]})
 
   def testCanPlayRoadBuildingWithOneRoadLeft(self):
-    self.addThirteenRoads()
+    AddThirteenRoads(self.c)
     self.c.player_data[0].cards["roadbuilding"] += 1
     self.c.handle(0, {"type": "play_dev", "card_type": "roadbuilding"})
     self.c.handle(0, {"type": "road", "location": [5, 4, 6, 5]})
     self.assertEqual(self.c.turn_phase, "main")
 
   def testCannotPlayRoadBuildingAtMaxRoads(self):
-    self.addThirteenRoads()
+    AddThirteenRoads(self.c)
     self.c.handle(0, {"type": "road", "location": [5, 4, 6, 5]})
     self.c.player_data[0].cards["roadbuilding"] += 1
     with self.assertRaisesRegex(InvalidMove, "no roads remaining"):
@@ -352,14 +346,104 @@ class TestHandleRoadInput(BaseInputHandlerTest):
       self.c.handle(0, {"type": "road", "location": [4, 4, 3, 3]})
 
   def testCannotBuildOnWater(self):
-    self.c.add_road(Road([5, 4, 6, 5], "road", 0))
+    self.c.add_road(Road([5, 4, 6, 3], "road", 0))
     with self.assertRaisesRegex(InvalidMove, "must be land"):
-      self.c.handle(0, {"type": "road", "location": [6, 5, 7, 5]})
+      self.c.handle(0, {"type": "road", "location": [6, 3, 7, 3]})
 
   def testCannotBuildAcrossOpponentSettlement(self):
     self.c.add_road(Road([3, 5, 4, 4], "road", 0))
     with self.assertRaisesRegex(InvalidMove, "must be connected"):
       self.c.handle(0, {"type": "road", "location": [2, 5, 3, 5]})
+
+
+class TestHandleShipInput(BaseInputHandlerTest):
+
+  EXTRA_RULESETS = ["seafarers"]
+
+  def setUp(self):
+    BaseInputHandlerTest.setUp(self)
+    self.c.add_road(Road([5, 4, 6, 3], "ship", 0))
+    self.c.add_tile(catan.Tile(8, 2, "space", False, None))
+
+  def testShipsMustConnectToNetwork(self):
+    with self.assertRaisesRegex(InvalidMove, "Ships.*must be connected.*ship network"):
+      self.c.handle(0, {"type": "ship", "location": [5, 6, 6, 5]})
+
+  def testShipsCannotConnectToRoads(self):
+    self.c.add_road(Road([5, 4, 6, 5], "road", 0))
+    with self.assertRaisesRegex(InvalidMove, "must be connected.*ship network"):
+      self.c.handle(0, {"type": "ship", "location": [5, 6, 6, 5]})
+
+  def testBuildShip(self):
+    old_counts = {x: self.c.player_data[0].cards[x] for x in catan.RESOURCES}
+    self.c.handle(0, {"type": "ship", "location": [5, 4, 6, 5]})
+    new_counts = {x: self.c.player_data[0].cards[x] for x in catan.RESOURCES}
+    self.assertEqual(new_counts.pop("rsrc1"), old_counts.pop("rsrc1") - 1)
+    self.assertEqual(new_counts.pop("rsrc2"), old_counts.pop("rsrc2") - 1)
+    # Validate that no other resources were deducted.
+    self.assertDictEqual(new_counts, old_counts)
+
+  def testNotEnoughResources(self):
+    self.c.player_data[0].cards.update({"rsrc1": 0, "rsrc2": 1, "rsrc4": 1})
+    with self.assertRaisesRegex(InvalidMove, "1 {rsrc1}"):
+      self.c.handle(0, {"type": "ship", "location": [5, 4, 6, 5]})
+
+  def testCannotBuildOnLand(self):
+    self.c.add_road(Road([5, 2, 6, 3], "ship", 0))
+    self.c.add_road(Road([4, 2, 5, 2], "ship", 0))
+    self.c.add_road(Road([3, 3, 4, 2], "ship", 0))
+    with self.assertRaisesRegex(InvalidMove, "must be water"):
+      self.c.handle(0, {"type": "ship", "location": [3, 3, 4, 4]})
+
+  def testCannotBuildOnRoad(self):
+    self.c.add_road(Road([5, 4, 6, 5], "road", 0))
+    with self.assertRaisesRegex(InvalidMove, "already a road"):
+      self.c.handle(0, {"type": "ship", "location": [5, 4, 6, 5]})
+
+  def testCanStillBuildWithTooManyRoads(self):
+    AddThirteenRoads(self.c)
+    self.c.add_road(Road([3, 5, 4, 4], "road", 0))
+    self.c.handle(0, {"type": "ship", "location": [5, 4, 6, 5]})
+
+  def testRoadBuildingCanBuildShips(self):
+    self.c.player_data[0].cards.clear()
+    self.c.turn_phase = "dev_road"
+    self.c.handle(0, {"type": "ship", "location": [5, 4, 6, 5]})
+    self.c.handle(0, {"type": "ship", "location": [6, 3, 7, 3]})
+    self.assertEqual(self.c.turn_phase, "main")
+
+  def testRoadBuildingCanBuildMixed(self):
+    self.c.player_data[0].cards.clear()
+    self.c.turn_phase = "dev_road"
+    self.c.handle(0, {"type": "road", "location": [5, 4, 6, 5]})
+    self.c.handle(0, {"type": "ship", "location": [6, 3, 7, 3]})
+    self.assertEqual(self.c.turn_phase, "main")
+
+  def testCanBuildShipInPlacePhase(self):
+    self.c.game_phase = "place2"
+    self.c.turn_phase = "road"
+    self.c.add_piece(catan.Piece(3, 3, "settlement", 0))
+    self.c.handle(0, {"type": "ship", "location": [3, 3, 4, 2]})
+    self.assertEqual(self.c.game_phase, "main")
+
+  def testCannotBuildTooManyShips(self):
+    self.c.add_tile(catan.Tile(8, 4, "space", False, None))
+    self.c.add_road(Road([5, 2, 6, 3], "ship", 0))
+    self.c.add_road(Road([4, 2, 5, 2], "ship", 0))
+    self.c.add_road(Road([3, 3, 4, 2], "ship", 0))
+    self.c.add_road(Road([2, 3, 3, 3], "ship", 0))
+    self.c.add_road(Road([1, 4, 2, 3], "ship", 0))
+    self.c.add_road(Road([1, 4, 2, 5], "ship", 0))
+    self.c.add_road(Road([1, 6, 2, 5], "ship", 0))
+    self.c.add_road(Road([1, 6, 2, 7], "ship", 0))
+    self.c.add_road(Road([2, 7, 3, 7], "ship", 0))
+    self.c.add_road(Road([3, 7, 4, 6], "ship", 0))
+    self.c.add_road(Road([4, 6, 5, 6], "ship", 0))
+    self.c.add_road(Road([5, 6, 6, 5], "ship", 0))
+    self.c.add_road(Road([6, 3, 7, 3], "ship", 0))
+    self.c.add_road(Road([7, 3, 8, 4], "ship", 0))
+    with self.assertRaisesRegex(InvalidMove, "no ships remaining"):
+      self.c.handle(0, {"type": "ship", "location": [5, 4, 6, 5]})
 
 
 class TestCalculateRobPlayers(BaseInputHandlerTest):
