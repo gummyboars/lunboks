@@ -2,10 +2,13 @@
 
 import collections
 import json
+import threading
 import unittest
 from unittest import mock
 
 import catan
+import game
+import server
 
 InvalidMove = catan.InvalidMove
 Road = catan.Road
@@ -72,6 +75,14 @@ class BaseInputHandlerTest(unittest.TestCase):
       json_data["rulesets"].extend(self.EXTRA_RULESETS)
     self.g = catan.CatanGame.parse_json(json.dumps(json_data))
     self.c = self.g.game
+
+  def break(self):
+    t = threading.Thread(target=server.ws_main, args=(server.GLOBAL_LOOP,))
+    t.start()
+    server.GAMES['test'] = game.GameHandler('test', catan.CatanGame)
+    server.GAMES['test'].game = self.g
+    server.main()
+    t.join()
 
 
 class TestLoadTestData(BaseInputHandlerTest):

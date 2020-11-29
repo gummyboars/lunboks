@@ -18,7 +18,8 @@ import game as game_handler
 
 
 ROOT_DIR = os.path.abspath(os.path.dirname(__file__))
-GLOBAL_LOOP = None
+GLOBAL_LOOP = asyncio.get_event_loop()
+GLOBAL_WS_SERVER = None
 INDEX_WEBSOCKETS = set()
 GAMES = {}
 GAME_TYPES = {"catan": catan.CatanGame}
@@ -208,11 +209,12 @@ async def SendGameUpdates():
 
 
 def ws_main(loop):
+  global GLOBAL_WS_SERVER
   asyncio.set_event_loop(loop)
   asyncio.ensure_future(SendGameUpdates())
   ws_port = 8081
   start_server = websockets.serve(HandleWebsocket, '', ws_port)
-  loop.run_until_complete(start_server)
+  GLOBAL_WS_SERVER = loop.run_until_complete(start_server)
   print("Websocket server started on port %d" % ws_port)
   loop.run_forever()
 
@@ -223,21 +225,20 @@ def main():
     server = ThreadingHTTPServer(('', port), MyHandler)
     print('Started server on port %d' % port)
     server.serve_forever()
-  except KeyboardInterrupt:
-    print('keyboard interrupt received; shutting down')
+  except (KeyboardInterrupt, Exception) as e:
+    if isinstance(e, KeyboardInterrupt):
+      print('keyboard interrupt received; shutting down')
+    else:
+      print('%s (%s) occurred; shutting down' % (e, e.__class__))
     server.socket.close()
-    return
-  except Exception as e:
-    print('%s (%s) occurred; shutting down' % (e, e.__class__))
-    server.socket.close()
-    return
+    GLOBAL_WS_SERVER.close()
+    fut = asyncio.run_coroutine_threadsafe(GLOBAL_WS_SERVER.wait_closed(), GLOBAL_LOOP)
+    fut.result(10)
+    GLOBAL_LOOP.stop()
 
 
 if __name__ == '__main__':
-  loop = asyncio.get_event_loop()
-  GLOBAL_LOOP = loop
-  t2 = threading.Thread(target=ws_main, args=(loop,))
-  t2.daemon = True
+  t2 = threading.Thread(target=ws_main, args=(GLOBAL_LOOP,))
   t2.start()
   main()
-  loop.stop()
+  t2.join()
