@@ -448,7 +448,8 @@ class CatanState(object):
     # yet made a counter-offer. An null/None counter-offer indicates that they have
     # rejected the trade offer. A counter-offer equal to the original means they accept.
     self.game_phase = "place1"  # valid values are place1, place2, main, victory
-    self.turn_phase = "settle"  # valid values are settle, road, dice, discard, robber, dev_road, main
+    # valid values are settle, road, dice, discard, robber, rob, dev_road, main
+    self.turn_phase = "settle"
 
   @classmethod
   def location_attrs(cls):
@@ -500,7 +501,7 @@ class CatanState(object):
   def json_repr(self):
     ret = {
         name: getattr(self, name) for name in
-        self.__dict__.keys() - self.LOCATION_ATTRIBUTES - self.COMPUTED_ATTRIBUTES - {"player_data"}
+        self.__dict__.keys() - self.location_attrs() - self.computed_attrs() - {"player_data"}
     }
     ret.update({name: list(getattr(self, name).values()) for name in self.LOCATION_ATTRIBUTES})
     ret["player_data"] = [player.json_repr() for player in self.player_data]
@@ -518,7 +519,7 @@ class CatanState(object):
     ret = self.json_repr()
     ret["type"] = "game_state"
     ret["turn"] = ret.pop("turn_idx")
-    for name in self.HIDDEN_ATTRIBUTES:
+    for name in self.hidden_attrs():
       del ret[name]
     del ret["player_data"]
     ret["dev_cards"] = len(self.dev_cards)
@@ -1201,9 +1202,8 @@ class CatanState(object):
     self.pieces[piece.location.as_tuple()] = piece
 
     # Check for breaking an existing longest road.
-    old_max = max([p.longest_route for p in self.player_data])
     # Start by calculating any players with an adjacent road/ship.
-    players_to_check = set([])
+    players_to_check = set()
     edges = piece.location.get_edges()
     for edge in edges:
       maybe_road = self.roads.get(edge.as_tuple())
@@ -1213,17 +1213,15 @@ class CatanState(object):
     # Recompute longest road for each of these players.
     for player_idx in players_to_check:
       self.player_data[player_idx].longest_route = self._calculate_longest_road(player_idx)
+
+    # Give longest road to the appropriate player.
+    self._update_longest_route_player()
+
+  def _update_longest_route_player(self):
     new_max = max([p.longest_route for p in self.player_data])
-
-    # TODO: add a unit test to make sure longest route for each player is recomputed even if
-    # no player currently has longest road.
-    # No additional computation needed if nobody has longest road.
-    if self.longest_route_player is None:
-      return
-
-    # If the player with the longest road kept the same length, no additional work needed.
-    if self.player_data[self.longest_route_player].longest_route == old_max:
-      return
+    holder_max = None
+    if self.longest_route_player is not None:
+      holder_max = self.player_data[self.longest_route_player].longest_route
 
     # If nobody meets the conditions for longest road, nobody takes the card. After this,
     # we may assume that the longest road has at least 5 segments.
@@ -1233,7 +1231,7 @@ class CatanState(object):
 
     # If the player with the longest road still has the longest road, they keep the longest
     # road card, even if they are now tied with another player.
-    if self.player_data[self.longest_route_player].longest_route == new_max:
+    if holder_max == new_max:
       return
 
     # The previous card holder must now give up the longest road card. We calculate any players
@@ -1247,12 +1245,10 @@ class CatanState(object):
   def add_road(self, road):
     self.roads[road.location.as_tuple()] = road
 
-    # Check for increase in longest road, update longest road player if necessary.
-    old_max = max([p.longest_route for p in self.player_data])
-    player_new_max = self._calculate_longest_road(road.player)
-    self.player_data[road.player].longest_route = player_new_max
-    if player_new_max > old_max and player_new_max >= 5:
-      self.longest_route_player = road.player
+    # Check for increase in longest road, update longest road player if necessary. Also check
+    # for decrease in longest road, which can happen if a player moves a ship.
+    self.player_data[road.player].longest_route = self._calculate_longest_road(road.player)
+    self._update_longest_route_player()
 
   def _calculate_longest_road(self, player):
     # Get all corners of all roads for this player.
@@ -1489,10 +1485,74 @@ class DebugRules(object):
 
 class Seafarers(CatanState):
 
+  def __init__(self, *args, **kwargs):
+    super(Seafarers, self).__init__(*args, **kwargs)
+    self.built_this_turn = []
+    self.ships_moved = 0
+
+  @classmethod
+  def parse_json(cls, gamedata):
+    game = super(Seafarers, cls).parse_json(gamedata)
+    game.built_this_turn = [tuple(loc) for loc in gamedata["built_this_turn"]]
+    return game
+
+  @classmethod
+  def hidden_attrs(cls):
+    return super(Seafarers, cls).hidden_attrs() | {"built_this_turn", "ships_moved"}
+
+  def end_turn(self):
+    super(Seafarers, self).end_turn()
+    self.built_this_turn.clear()
+    self.ships_moved = 0
+
   def inner_handle(self, player_idx, move_type, data):
     if move_type == "ship":
-      return self.handle_road(data.get("location"), player_idx, "ship", [("rsrc1", 1), ("rsrc2", 1)])
+      self.handle_road(data.get("location"), player_idx, "ship", [("rsrc1", 1), ("rsrc2", 1)])
+      self.built_this_turn.append(tuple(data.get("location")))
+      return
+    if move_type == "move_ship":
+      return self.handle_move_ship(data.get("from"), data.get("to"), player_idx)
     return super(Seafarers, self).inner_handle(player_idx, move_type, data)
+
+  def handle_move_ship(self, from_location, to_location, player_idx):
+    self._validate_location(from_location, num_entries=4)
+    self._validate_location(to_location, num_entries=4)
+    # Check that this is the right part of the turn.
+    self._check_main_phase("move a ship")
+    if self.ships_moved:
+      raise InvalidMove("You have already moved a ship this turn.")
+    maybe_ship = self.roads.get(tuple(from_location))
+    if not maybe_ship:
+      raise InvalidMove("You do not have a ship there.")
+    if maybe_ship.road_type != "ship":
+      raise InvalidMove("You may only move ships.")
+    if maybe_ship.player != player_idx:
+      raise InvalidMove("You may only move your ships.")
+    if maybe_ship.closed:
+      raise InvalidMove("You may not move a ship that connects two of your settlements.")
+    if not maybe_ship.movable:
+      raise InvalidMove("You must move a ship at the end of one of your shipping routes.")
+    if tuple(from_location) in self.built_this_turn:
+      raise InvalidMove("You may not move a ship that you built this turn.")
+    maybe_dest = self.roads.get(tuple(to_location))
+    if maybe_dest:
+      raise InvalidMove(f"There is already a {maybe_dest.road_type} at that destination.")
+
+    # Check that this attaches to their existing network, without the original ship.
+    # To do this, remove the old ship first, but restore it if any exception is thrown.
+    old_ship = self.roads.pop(tuple(from_location))
+    old_source = old_ship.source
+    try:
+      self._check_road_building(EdgeLocation(*to_location), player_idx, "ship")
+      self.add_road(Road(to_location, "ship", player_idx))
+    except:
+      self.roads[old_ship.location.as_tuple()] = old_ship
+      raise
+
+    # add_road will automatically recalculate from the new source, but we must still recalculate
+    # ships' movable status from the old source in case the two locations are disconnected.
+    self.recalculate_ships(old_source, player_idx)
+    self.ships_moved = 1
 
   def add_road(self, road):
     if road.road_type == "ship":

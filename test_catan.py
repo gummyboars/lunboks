@@ -38,6 +38,17 @@ class TestLoadState(unittest.TestCase):
     self.assertIsInstance(c.player_data[0].trade_ratios, collections.defaultdict)
     # TODO: add some more assertions here
 
+  def testLoadSeafarerState(self):
+    with open("ship_test.json") as json_file:
+      json_data = json_file.read()
+    g = catan.CatanGame.parse_json(json_data)
+    c = g.game
+    self.assertIsInstance(c, catan.Seafarers)
+    self.assertTrue(hasattr(c, "built_this_turn"))
+    self.assertTrue(hasattr(c, "ships_moved"))
+    self.assertEqual(c.built_this_turn, [(1, 4, 2, 5)])
+    self.assertEqual(c.ships_moved, 1)
+
   def testDumpAndLoad(self):
     c = catan.CatanState()
     c.init_normal()
@@ -140,24 +151,26 @@ class DebugRulesOnTest(BaseInputHandlerTest):
 
 class TestGetEdgeType(BaseInputHandlerTest):
 
-  EXTRA_RULESETS = ["seafarers"]
+  TEST_FILE = "sea_test.json"
 
   def setUp(self):
     BaseInputHandlerTest.setUp(self)
-    self.c.add_road(Road([5, 4, 6, 3], "ship", 0))
-    self.c.add_road(Road([6, 3, 7, 3], "ship", 0))
+    self.c.add_road(Road([1, 4, 2, 5], "road", 0))
+    self.c.add_road(Road([1, 6, 2, 5], "ship", 0))
+    self.c.add_road(Road([2, 5, 3, 5], "ship", 0))
+    self.c.add_tile(catan.Tile(-2, 3, "rsrc5", True, 4))
 
   def testEdgeTypeUnoccupied(self):
-    self.assertEqual(self.c._get_edge_type(catan.EdgeLocation(3, 3, 4, 4)), "road")
-    self.assertEqual(self.c._get_edge_type(catan.EdgeLocation(3, 3, 4, 2)), "coastup")
-    self.assertEqual(self.c._get_edge_type(catan.EdgeLocation(4, 6, 5, 6)), "coastdown")
-    self.assertEqual(self.c._get_edge_type(catan.EdgeLocation(3, 1, 4, 2)), "ship")
-    self.assertIsNone(self.c._get_edge_type(catan.EdgeLocation(2, 1, 3, 1)))
+    self.assertEqual(self.c._get_edge_type(catan.EdgeLocation(0, 4, 1, 4)), "road")
+    self.assertEqual(self.c._get_edge_type(catan.EdgeLocation(5, 6, 6, 5)), "coastup")
+    self.assertEqual(self.c._get_edge_type(catan.EdgeLocation(1, 4, 2, 3)), "coastdown")
+    self.assertEqual(self.c._get_edge_type(catan.EdgeLocation(3, 5, 4, 4)), "ship")
+    self.assertIsNone(self.c._get_edge_type(catan.EdgeLocation(0, 8, 1, 8)))
 
   def testEdgeTypeOccupied(self):
-    self.assertEqual(self.c._get_edge_type(catan.EdgeLocation(4, 4, 5, 4)), "road")
-    self.assertEqual(self.c._get_edge_type(catan.EdgeLocation(5, 4, 6, 3)), "ship")
-    self.assertEqual(self.c._get_edge_type(catan.EdgeLocation(6, 3, 7, 3)), "ship")
+    self.assertEqual(self.c._get_edge_type(catan.EdgeLocation(1, 4, 2, 5)), "road")
+    self.assertEqual(self.c._get_edge_type(catan.EdgeLocation(2, 5, 3, 5)), "ship")
+    self.assertEqual(self.c._get_edge_type(catan.EdgeLocation(1, 6, 2, 5)), "ship")
 
 
 class TestDistributeResources(BaseInputHandlerTest):
@@ -370,25 +383,27 @@ class TestHandleRoadInput(BaseInputHandlerTest):
 
 class TestHandleShipInput(BaseInputHandlerTest):
 
-  EXTRA_RULESETS = ["seafarers"]
+  TEST_FILE = "sea_test.json"
 
   def setUp(self):
     BaseInputHandlerTest.setUp(self)
-    self.c.add_road(Road([5, 4, 6, 3], "ship", 0))
-    self.c.add_tile(catan.Tile(8, 2, "space", False, None))
+    self.c.add_tile(catan.Tile(-2, 5, "space", False, None))
+    self.c.add_tile(catan.Tile(-2, 3, "rsrc5", True, 4))
 
   def testShipsMustConnectToNetwork(self):
     with self.assertRaisesRegex(InvalidMove, "Ships.*must be connected.*ship network"):
-      self.c.handle(0, {"type": "ship", "location": [5, 6, 6, 5]})
+      self.c.handle(0, {"type": "ship", "location": [4, 4, 5, 4]})
 
   def testShipsCannotConnectToRoads(self):
-    self.c.add_road(Road([5, 4, 6, 5], "road", 0))
+    self.c.add_road(Road([1, 4, 2, 5], "road", 0))
     with self.assertRaisesRegex(InvalidMove, "must be connected.*ship network"):
-      self.c.handle(0, {"type": "ship", "location": [5, 6, 6, 5]})
+      self.c.handle(0, {"type": "ship", "location": [1, 4, 2, 3]})
+    # Verify that you can build a road in that same spot that you can't build a ship.
+    self.c.handle(0, {"type": "road", "location": [1, 4, 2, 3]})
 
   def testBuildShip(self):
     old_counts = {x: self.c.player_data[0].cards[x] for x in catan.RESOURCES}
-    self.c.handle(0, {"type": "ship", "location": [5, 4, 6, 5]})
+    self.c.handle(0, {"type": "ship", "location": [2, 5, 3, 5]})
     new_counts = {x: self.c.player_data[0].cards[x] for x in catan.RESOURCES}
     self.assertEqual(new_counts.pop("rsrc1"), old_counts.pop("rsrc1") - 1)
     self.assertEqual(new_counts.pop("rsrc2"), old_counts.pop("rsrc2") - 1)
@@ -398,70 +413,74 @@ class TestHandleShipInput(BaseInputHandlerTest):
   def testNotEnoughResources(self):
     self.c.player_data[0].cards.update({"rsrc1": 0, "rsrc2": 1, "rsrc4": 1})
     with self.assertRaisesRegex(InvalidMove, "1 {rsrc1}"):
-      self.c.handle(0, {"type": "ship", "location": [5, 4, 6, 5]})
+      self.c.handle(0, {"type": "ship", "location": [2, 5, 3, 5]})
 
   def testCannotBuildOnLand(self):
-    self.c.add_road(Road([5, 2, 6, 3], "ship", 0))
-    self.c.add_road(Road([4, 2, 5, 2], "ship", 0))
-    self.c.add_road(Road([3, 3, 4, 2], "ship", 0))
+    self.c.add_road(Road([1, 6, 2, 5], "ship", 0))
+    self.c.add_road(Road([0, 6, 1, 6], "ship", 0))
+    self.c.add_road(Road([-1, 5, 0, 6], "ship", 0))
     with self.assertRaisesRegex(InvalidMove, "must be water"):
-      self.c.handle(0, {"type": "ship", "location": [3, 3, 4, 4]})
+      self.c.handle(0, {"type": "ship", "location": [-1, 5, 0, 4]})
 
   def testCannotBuildOnRoad(self):
-    self.c.add_road(Road([5, 4, 6, 5], "road", 0))
+    self.c.add_road(Road([1, 6, 2, 5], "road", 0))
     with self.assertRaisesRegex(InvalidMove, "already a road"):
-      self.c.handle(0, {"type": "ship", "location": [5, 4, 6, 5]})
+      self.c.handle(0, {"type": "ship", "location": [1, 6, 2, 5]})
 
   def testCanStillBuildWithTooManyRoads(self):
-    AddThirteenRoads(self.c)
-    self.c.add_road(Road([3, 5, 4, 4], "road", 0))
-    self.c.handle(0, {"type": "ship", "location": [5, 4, 6, 5]})
+    roads = [
+        [-3, 4, -2, 3], [-2, 3, -1, 3], [-1, 3, 0, 2], [0, 2, 1, 2], [1, 2, 2, 3],
+        [-3, 4, -2, 5], [-2, 5, -1, 5], [-1, 5, 0, 4], [-1, 3, 0, 4], [0, 4, 1, 4], [1, 4, 2, 3],
+        [-1, 5, 0, 6], [0, 6, 1, 6], [1, 4, 2, 5], [1, 6, 2, 5],
+    ]
+    for road in roads:
+      self.c.add_road(Road(road, "road", 0))
+    self.assertEqual(
+        len([x for x in self.c.roads.values() if x.player == 0 and x.road_type == "road"]), 15)
+    self.c.handle(0, {"type": "ship", "location": [2, 5, 3, 5]})
 
   def testRoadBuildingCanBuildShips(self):
     self.c.player_data[0].cards.clear()
     self.c.turn_phase = "dev_road"
-    self.c.handle(0, {"type": "ship", "location": [5, 4, 6, 5]})
-    self.c.handle(0, {"type": "ship", "location": [6, 3, 7, 3]})
+    self.c.handle(0, {"type": "ship", "location": [2, 5, 3, 5]})
+    self.assertEqual(self.c.turn_phase, "dev_road")
+    self.assertEqual(self.c.dev_roads_placed, 1)
+    self.c.handle(0, {"type": "ship", "location": [3, 5, 4, 4]})
     self.assertEqual(self.c.turn_phase, "main")
 
   def testRoadBuildingCanBuildMixed(self):
     self.c.player_data[0].cards.clear()
     self.c.turn_phase = "dev_road"
-    self.c.handle(0, {"type": "road", "location": [5, 4, 6, 5]})
-    self.c.handle(0, {"type": "ship", "location": [6, 3, 7, 3]})
+    self.c.handle(0, {"type": "road", "location": [1, 4, 2, 5]})
+    self.assertEqual(self.c.turn_phase, "dev_road")
+    self.assertEqual(self.c.dev_roads_placed, 1)
+    self.c.handle(0, {"type": "ship", "location": [2, 5, 3, 5]})
     self.assertEqual(self.c.turn_phase, "main")
 
   def testCanBuildShipInPlacePhase(self):
     self.c.game_phase = "place2"
     self.c.turn_phase = "road"
-    self.c.add_piece(catan.Piece(3, 3, "settlement", 0))
-    self.c.handle(0, {"type": "ship", "location": [3, 3, 4, 2]})
+    self.c.add_piece(catan.Piece(3, 7, "settlement", 0))
+    self.c.handle(0, {"type": "ship", "location": [3, 7, 4, 6]})
     self.assertEqual(self.c.game_phase, "main")
 
   def testCannotBuildTooManyShips(self):
-    self.c.add_tile(catan.Tile(8, 4, "space", False, None))
-    self.c.add_road(Road([5, 2, 6, 3], "ship", 0))
-    self.c.add_road(Road([4, 2, 5, 2], "ship", 0))
-    self.c.add_road(Road([3, 3, 4, 2], "ship", 0))
-    self.c.add_road(Road([2, 3, 3, 3], "ship", 0))
-    self.c.add_road(Road([1, 4, 2, 3], "ship", 0))
-    self.c.add_road(Road([1, 4, 2, 5], "ship", 0))
-    self.c.add_road(Road([1, 6, 2, 5], "ship", 0))
-    self.c.add_road(Road([1, 6, 2, 7], "ship", 0))
-    self.c.add_road(Road([2, 7, 3, 7], "ship", 0))
-    self.c.add_road(Road([3, 7, 4, 6], "ship", 0))
-    self.c.add_road(Road([4, 6, 5, 6], "ship", 0))
-    self.c.add_road(Road([5, 6, 6, 5], "ship", 0))
-    self.c.add_road(Road([6, 3, 7, 3], "ship", 0))
-    self.c.add_road(Road([7, 3, 8, 4], "ship", 0))
+    roads = [
+        [1, 4, 2, 5], [1, 6, 2, 5], [1, 6, 2, 7], [2, 7, 3, 7], [3, 7, 4, 6], [3, 5, 4, 6],
+        [3, 5, 4, 4], [4, 4, 5, 4], [5, 4, 6, 5], [4, 6, 5, 6], [5, 6, 6, 5],
+        [3, 3, 4, 4], [3, 3, 4, 2], [5, 4, 6, 3], [5, 2, 6, 3],
+    ]
+    for road in roads:
+      self.c.add_road(Road(road, "ship", 0))
+    self.assertEqual(
+        len([x for x in self.c.roads.values() if x.player == 0 and x.road_type == "ship"]), 15)
     with self.assertRaisesRegex(InvalidMove, "no ships remaining"):
-      self.c.handle(0, {"type": "ship", "location": [5, 4, 6, 5]})
+      self.c.handle(0, {"type": "ship", "location": [4, 2, 5, 2]})
 
 
 class TestShipOpenClosedCalculation(BaseInputHandlerTest):
 
   TEST_FILE = "sea_test.json"
-  EXTRA_RULESETS = ["seafarers"]
 
   def testBasicMovable(self):
     road1_loc = (2, 5, 3, 5)
@@ -663,6 +682,169 @@ class TestShipOpenClosedCalculation(BaseInputHandlerTest):
     for loc in road_locs + bonus_locs:
       with self.subTest(loc=loc):
         self.assertTrue(self.c.roads[loc].closed)
+
+  def testRecomputeMovableAfterShipMoveToDifferentNetwork(self):
+    self.c.add_piece(catan.Piece(6, 5, "settlement", 0))
+    self.c.add_piece(catan.Piece(2, 7, "settlement", 0))
+    roads = [(1, 6, 2, 5), (5, 4, 6, 5), (4, 4, 5, 4)]
+    for road in roads:
+      self.c.add_road(Road(road, "ship", 0))
+    # Start with one ship attached to 2, 5, and two ships connected to 6, 5.
+    for road in roads:
+      self.assertFalse(self.c.roads[road].closed)
+    self.assertTrue(self.c.roads[roads[0]].movable)
+    self.assertTrue(self.c.roads[roads[2]].movable)
+    self.assertFalse(self.c.roads[roads[1]].movable)
+    self.assertEqual(self.c.roads[roads[0]].source.as_tuple(), (2, 5))
+    self.assertEqual(self.c.roads[roads[1]].source.as_tuple(), (6, 5))
+    self.assertEqual(self.c.roads[roads[2]].source.as_tuple(), (6, 5))
+
+    # Move the outermost ship to attach to 2, 5. Its source should change. Also,
+    # the ship that remains attached to 6, 5 should become movable again.
+    new_loc = (0, 6, 1, 6)
+    self.c.built_this_turn.clear()
+    self.c.handle(0, {"type": "move_ship", "from": roads[2], "to": new_loc})
+    self.assertEqual(self.c.roads[new_loc].source.as_tuple(), (2, 5))
+    self.assertTrue(self.c.roads[new_loc].movable)
+    self.assertFalse(self.c.roads[new_loc].closed)
+    self.assertFalse(self.c.roads[roads[0]].movable)
+    self.assertFalse(self.c.roads[roads[0]].closed)
+    self.assertTrue(self.c.roads[roads[1]].movable)
+    self.assertFalse(self.c.roads[roads[1]].closed)
+
+    # Move the other ship attached to 6, 5 to close the connection between 2, 5 and 2, 7.
+    # These two ships should become closed, the previously moved ship should remain movable.
+    last_loc = (1, 6, 2, 7)
+    self.c.ships_moved = 0
+    self.c.handle(0, {"type": "move_ship", "from": roads[1], "to": last_loc})
+    self.assertIn(self.c.roads[last_loc].source.as_tuple(), [(2, 5), (2, 7)])
+    self.assertTrue(self.c.roads[last_loc].closed)
+    self.assertTrue(self.c.roads[roads[0]].closed)
+    self.assertFalse(self.c.roads[new_loc].closed)
+    self.assertTrue(self.c.roads[new_loc].movable)
+
+
+class TestShipMovement(BaseInputHandlerTest):
+  
+  TEST_FILE = "sea_test.json"
+
+  def setUp(self):
+    super(TestShipMovement, self).setUp()
+    self.c.add_road(Road([2, 5, 3, 5], "ship", 0))
+
+  def testMoveShip(self):
+    self.c.handle(0, {"type": "move_ship", "from": [2, 5, 3, 5], "to": [1, 4, 2, 5]})
+
+  def testInvalidInput(self):
+    with self.assertRaisesRegex(InvalidMove, "should be a tuple of size 4"):
+      self.c.handle(0, {"type": "move_ship", "from": [1, 4, 2, 5], "to": [3, 5, 4]})
+    with self.assertRaisesRegex(InvalidMove, "should be a tuple of size 4"):
+      self.c.handle(0, {"type": "move_ship", "from": [1, 4, 2, 5, 5], "to": [3, 5, 4, 4]})
+
+  def testMustMoveExistingShip(self):
+    with self.assertRaisesRegex(InvalidMove, "do not have a ship"):
+      self.c.handle(0, {"type": "move_ship", "from": [1, 4, 2, 5], "to": [3, 5, 4, 4]})
+
+  def testNewLocationMustConnectToNetwork(self):
+    self.c.add_road(Road([3, 5, 4, 4], "ship", 0))
+    # Extra check: the new location is a location that would be connected to the network
+    # if the ship were not moving.
+    with self.assertRaisesRegex(InvalidMove, "must be connected"):
+      self.c.handle(0, {"type": "move_ship", "from": [3, 5, 4, 4], "to": [4, 4, 5, 4]})
+    # Check that the old ship is still there.
+    self.assertIn((3, 5, 4, 4), self.c.roads)
+
+  def testCannotMoveOnTopOfExistingShip(self):
+    self.c.add_road(Road([1, 4, 2, 5], "ship", 0))
+    with self.assertRaisesRegex(InvalidMove, "already a ship"):
+      self.c.handle(0, {"type": "move_ship", "from": [2, 5, 3, 5], "to": [1, 4, 2, 5]})
+
+  def testCannotMoveRoads(self):
+    self.c.add_road(Road([1, 4, 2, 5], "road", 0))
+    with self.assertRaisesRegex(InvalidMove, "only move ships"):
+      self.c.handle(0, {"type": "move_ship", "from": [1, 4, 2, 5], "to": [1, 6, 2, 5]})
+
+  def testCannotMoveOtherPlayersShips(self):
+    self.c.add_piece(catan.Piece(6, 5, "settlement", 1))
+    self.c.add_road(Road([5, 4, 6, 5], "ship", 1))
+    with self.assertRaisesRegex(InvalidMove, "only move your"):
+      self.c.handle(0, {"type": "move_ship", "from": [5, 4, 6, 5], "to": [1, 4, 2, 5]})
+
+  def testCannotMoveShipOnClosedRoute(self):
+    self.c.add_piece(catan.Piece(2, 7, "settlement", 0))
+    self.c.add_road(Road([1, 6, 2, 5], "ship", 0))
+    self.c.add_road(Road([1, 6, 2, 7], "ship", 0))
+    with self.assertRaisesRegex(InvalidMove, "that connects two"):
+      self.c.handle(0, {"type": "move_ship", "from": [1, 6, 2, 7], "to": [1, 4, 2, 5]})
+    # Validate that moving a different ship here will work.
+    self.c.handle(0, {"type": "move_ship", "from": [2, 5, 3, 5], "to": [1, 4, 2, 5]})
+
+  def testMustMoveShipAtEndOfRoute(self):
+    self.c.add_road(Road([3, 5, 4, 4], "ship", 0))
+    with self.assertRaisesRegex(InvalidMove, "at the end"):
+      self.c.handle(0, {"type": "move_ship", "from": [2, 5, 3, 5], "to": [1, 4, 2, 5]})
+    # Validate that moving a ship at the end of the network will work.
+    self.c.handle(0, {"type": "move_ship", "from": [3, 5, 4, 4], "to": [1, 4, 2, 5]})
+
+  def testCannotMoveTwoShipsInOneTurn(self):
+    self.c.add_road(Road([3, 5, 4, 4], "ship", 0))
+    self.c.handle(0, {"type": "move_ship", "from": [3, 5, 4, 4], "to": [1, 4, 2, 5]})
+    with self.assertRaisesRegex(InvalidMove, "already moved a ship"):
+      self.c.handle(0, {"type": "move_ship", "from": [2, 5, 3, 5], "to": [1, 6, 2, 5]})
+
+  def testCannotMoveShipBuiltThisTurn(self):
+    self.c.handle(0, {"type": "ship", "location": [3, 5, 4, 4]})
+    with self.assertRaisesRegex(InvalidMove, "built this turn"):
+      self.c.handle(0, {"type": "move_ship", "from": [3, 5, 4, 4], "to": [1, 6, 2, 5]})
+
+
+class TestShipMovement(BaseInputHandlerTest):
+  
+  TEST_FILE = "ship_test.json"
+
+  def setUp(self):
+    BaseInputHandlerTest.setUp(self)
+    self.c.add_piece(catan.Piece(6, 5, "settlement", 1))
+    p0_roads = [
+        (1, 4, 2, 3), (2, 3, 3, 3),
+    ]
+    p1_roads = [
+        (5, 6, 6, 5), (5, 4, 6, 5), (5, 4, 6, 3), (5, 2, 6, 3), (6, 5, 7, 5),
+    ]
+    for road in p0_roads:
+      self.c.add_road(Road(road, "ship", 0))
+    for road in p1_roads:
+      self.c.add_road(Road(road, "ship", 1))
+
+    self.assertEqual(self.c.player_data[0].longest_route, 4)
+    self.assertEqual(self.c.player_data[1].longest_route, 4)
+    self.assertIsNone(self.c.longest_route_player)
+    self.c.add_road(Road((3, 3, 4, 2), "ship", 0))
+    self.assertEqual(self.c.player_data[0].longest_route, 5)
+    self.assertEqual(self.c.longest_route_player, 0)
+    self.c.ships_moved = 0
+
+  def testCanMoveShipToMakeLongerRoute(self):
+    self.c.add_road(Road((4, 2, 5, 2), "ship", 1))
+    self.assertEqual(self.c.player_data[1].longest_route, 5)
+    self.assertEqual(self.c.longest_route_player, 0)
+    self.c.handle_move_ship([6, 5, 7, 5], [4, 6, 5, 6], 1)
+    self.assertEqual(self.c.player_data[1].longest_route, 6)
+    self.assertEqual(self.c.longest_route_player, 1)
+
+  def testCanLoseLongestRouteByMovingShip(self):
+    self.c.handle_move_ship([1, 6, 2, 5], [3, 3, 4, 4], 0)
+    self.assertEqual(self.c.player_data[0].longest_route, 4)
+    self.assertIsNone(self.c.longest_route_player)
+
+  def testCanLoseLongestRouteToOtherPlayerByMovingShip(self):
+    self.c.add_road(Road((4, 2, 5, 2), "ship", 1))
+    self.assertEqual(self.c.player_data[1].longest_route, 5)
+    self.assertEqual(self.c.longest_route_player, 0)
+
+    self.c.handle_move_ship([1, 6, 2, 5], [3, 3, 4, 4], 0)
+    self.assertEqual(self.c.player_data[0].longest_route, 4)
+    self.assertEqual(self.c.longest_route_player, 1)
 
 
 class TestCalculateRobPlayers(BaseInputHandlerTest):

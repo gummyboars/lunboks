@@ -1,4 +1,5 @@
 {
+    "built_this_turn": [],
     "counter_offers": [
         null,
         null
@@ -93,8 +94,9 @@
     "roads": [],
     "rob_players": [],
     "robber": null,
-    "rulesets": ["base"],
+    "rulesets": ["base", "seafarers"],
     "started": true,
+    "ships_moved": 0,
     "tiles": [
         {
             "is_land": false,

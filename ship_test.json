@@ -1,0 +1,363 @@
+{
+  "dice_roll": [
+    6,
+    6
+  ],
+  "pirate": null,
+  "longest_route_player": null,
+  "turn_idx": 0,
+  "discard_players": [
+    0,
+    0
+  ],
+  "turn_phase": "main",
+  "played_dev": 0,
+  "game_phase": "main",
+  "ships_moved": 1,
+  "trade_offer": {},
+  "robber": null,
+  "rob_players": [],
+  "largest_army_player": null,
+  "dev_roads_placed": 0,
+  "built_this_turn": [
+    [
+      1,
+      4,
+      2,
+      5
+    ]
+  ],
+  "counter_offers": [
+    null,
+    null
+  ],
+  "dev_cards": [
+    "knight",
+    "knight",
+    "knight",
+    "knight",
+    "monopoly",
+    "roadbuilding",
+    "knight",
+    "knight",
+    "knight",
+    "knight",
+    "palace",
+    "library",
+    "monopoly",
+    "knight",
+    "knight",
+    "yearofplenty",
+    "knight",
+    "roadbuilding",
+    "knight",
+    "market",
+    "yearofplenty",
+    "chapel",
+    "knight",
+    "knight",
+    "university"
+  ],
+  "ports": [
+    {
+      "location": [
+        6,
+        3
+      ],
+      "port_type": "3",
+      "rotation": 0
+    }
+  ],
+  "tiles": [
+    {
+      "location": [
+        2,
+        3
+      ],
+      "tile_type": "space",
+      "is_land": false,
+      "number": null,
+      "rotation": 0,
+      "variant": "",
+      "land_rotations": [
+        1,
+        2
+      ]
+    },
+    {
+      "location": [
+        4,
+        2
+      ],
+      "tile_type": "space",
+      "is_land": false,
+      "number": null,
+      "rotation": 0,
+      "variant": "",
+      "land_rotations": []
+    },
+    {
+      "location": [
+        2,
+        5
+      ],
+      "tile_type": "space",
+      "is_land": false,
+      "number": null,
+      "rotation": 0,
+      "variant": "",
+      "land_rotations": [
+        0,
+        2
+      ]
+    },
+    {
+      "location": [
+        4,
+        4
+      ],
+      "tile_type": "space",
+      "is_land": false,
+      "number": null,
+      "rotation": 0,
+      "variant": "",
+      "land_rotations": [
+        5
+      ]
+    },
+    {
+      "location": [
+        2,
+        1
+      ],
+      "tile_type": "space",
+      "is_land": false,
+      "number": null,
+      "rotation": 0,
+      "variant": "",
+      "land_rotations": [
+        1
+      ]
+    },
+    {
+      "location": [
+        4,
+        0
+      ],
+      "tile_type": "space",
+      "is_land": false,
+      "number": null,
+      "rotation": 0,
+      "variant": "",
+      "land_rotations": []
+    },
+    {
+      "location": [
+        6,
+        1
+      ],
+      "tile_type": "space",
+      "is_land": false,
+      "number": null,
+      "rotation": 1,
+      "variant": "",
+      "land_rotations": []
+    },
+    {
+      "location": [
+        6,
+        3
+      ],
+      "tile_type": "space",
+      "is_land": false,
+      "number": null,
+      "rotation": 1,
+      "variant": "",
+      "land_rotations": [
+        0
+      ]
+    },
+    {
+      "location": [
+        6,
+        5
+      ],
+      "tile_type": "rsrc4",
+      "is_land": true,
+      "number": 8,
+      "rotation": 0,
+      "variant": "",
+      "land_rotations": []
+    },
+    {
+      "location": [
+        4,
+        6
+      ],
+      "tile_type": "space",
+      "is_land": false,
+      "number": null,
+      "rotation": 3,
+      "variant": "",
+      "land_rotations": [
+        1,
+        4
+      ]
+    },
+    {
+      "location": [
+        2,
+        7
+      ],
+      "tile_type": "rsrc3",
+      "is_land": true,
+      "number": 6,
+      "rotation": 0,
+      "variant": "",
+      "land_rotations": []
+    },
+    {
+      "location": [
+        0,
+        6
+      ],
+      "tile_type": "space",
+      "is_land": false,
+      "number": null,
+      "rotation": 4,
+      "variant": "",
+      "land_rotations": [
+        3,
+        5
+      ]
+    },
+    {
+      "location": [
+        0,
+        4
+      ],
+      "tile_type": "rsrc1",
+      "is_land": true,
+      "number": 5,
+      "rotation": 0,
+      "variant": "",
+      "land_rotations": []
+    },
+    {
+      "location": [
+        0,
+        2
+      ],
+      "tile_type": "rsrc2",
+      "is_land": true,
+      "number": 9,
+      "rotation": 0,
+      "variant": "",
+      "land_rotations": []
+    }
+  ],
+  "roads": [
+    {
+      "location": [
+        1,
+        6,
+        2,
+        5
+      ],
+      "road_type": "ship",
+      "player": 0,
+      "closed": false,
+      "movable": true,
+      "source": [
+        2,
+        5
+      ]
+    },
+    {
+      "location": [
+        1,
+        4,
+        2,
+        5
+      ],
+      "road_type": "ship",
+      "player": 0,
+      "closed": false,
+      "movable": true,
+      "source": [
+        2,
+        5
+      ]
+    }
+  ],
+  "pieces": [
+    {
+      "location": [
+        2,
+        5
+      ],
+      "piece_type": "settlement",
+      "player": 0
+    }
+  ],
+  "player_data": [
+    {
+      "color": "red",
+      "name": "Casey",
+      "knights_played": 0,
+      "longest_route": 2,
+      "cards": {
+        "rsrc1": 2,
+        "rsrc2": 0,
+        "rsrc3": 1,
+        "rsrc4": 2,
+        "rsrc5": 2,
+        "yearofplenty": 0,
+        "monopoly": 0,
+        "roadbuilding": 0,
+        "knight": 0,
+        "palace": 0,
+        "chapel": 0,
+        "university": 0,
+        "market": 0,
+        "library": 0
+      },
+      "trade_ratios": {
+        "rsrc1": 2
+      },
+      "unusable": {}
+    },
+    {
+      "color": "blue",
+      "name": "Andy",
+      "knights_played": 0,
+      "longest_route": 1,
+      "cards": {
+        "rsrc1": 3,
+        "rsrc2": 3,
+        "rsrc3": 2,
+        "rsrc4": 1,
+        "rsrc5": 5,
+        "yearofplenty": 0,
+        "monopoly": 0,
+        "roadbuilding": 0,
+        "knight": 0,
+        "palace": 0,
+        "chapel": 0,
+        "university": 0,
+        "market": 0,
+        "library": 0
+      },
+      "trade_ratios": {},
+      "unusable": {}
+    }
+  ],
+  "rulesets": [
+    "base",
+    "seafarers"
+  ],
+  "player_sessions": {
+    "45beb013-7dd6-4ee1-86e3-0e7656b1c1f3": 0,
+    "5a4cf184-63fd-4e0e-976d-11e4b1bada79": 1
+  }
+}
