@@ -80,6 +80,7 @@ function finishImgLoad(assetName) {
 function failRender(assetName, cnv) {
   console.log("Could not render asset " + assetName);
   renderLoops[assetName] = 2;
+  // TODO: this can still be a problem if you are switching to a skin whose sources 404.
   if (cnv != null) {  // Can sometimes fail before we even create the canvas.
     cnv.parentNode.removeChild(cnv);
   }

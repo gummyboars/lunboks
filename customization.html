@@ -6,21 +6,27 @@
     <script type="text/javascript" src="/names.js"></script>
     <script type="text/javascript" src="/customization.js"></script>
   </head>
-  <body style="background: #4cb7d9" onload="initializeImageData(); initializeNameOptions();">
+  <body style="background: #4cb7d9" onload="initializeNameStrings(); initializeAssetNames();">
     <canvas id="orig" width="800" height="600" onmousemove="onmove(event)" onmousedown="ondown(event)" onmouseup="onup(event)" onwheel="wheelie(event)"></canvas>
     <canvas id="myCanvas" width="418" height="362"></canvas>
     <div style="display: flex; flex-direction: row;">
-      <select id="imgname" onchange="choosenew(event)"></select>
-      X Offset<input type="text" value="0" id="xoff" onchange="update(null)" />
-      Y Offset<input type="text" value="0" id="yoff" onchange="update(null)" />
-      Rotation<input type="text" value="0" id="rotation" onchange="draw(null)" />
-      Scale<input type="text" value="1" id="scale" onchange="update(null)" />
+      Asset Name:<select id="imgname" onchange="choosenew(event)"></select>
+      Asset Variant:<input list="variantchoice" id="imgvariant"></input>
+      <datalist id="variantchoice" onchange="choosevariant(event)"></datalist>
+    </div>
+    <div style="display: flex; flex-direction: row; margin-top: 10px;">
+      X Offset:<input type="text" value="0" id="xoff" onchange="update(null)" />
+      Y Offset:<input type="text" value="0" id="yoff" onchange="update(null)" />
+      Rotation:<input type="text" value="0" id="rotation" onchange="draw(null)" />
+      Scale:<input type="text" value="1" id="scale" onchange="update(null)" />
     </div>
     <div style="display: flex; flex-direction: row; margin-top: 10px;">
       Image source:<input type="text" id="imgSrc" onchange="loadimg()">
       Filter source:<input type="text" id="filterSrc" value="/hex.png" onchange="loadfilter()">
     </div>
-    <input type="button" value="Save" onclick="saveimg()"></input>
+    <input type="button" value="Save Image" onclick="saveimg()"></input>
+    <div id="names" style="margin-top: 20px;"></div>
+    <input type="button" value="Save Names" onclick="savenames()"></input>
     <p>Background color (for testing)<input id="bgcolor" type="text" value="#00bfff" onchange="changebg(null)" /></p>
     <img src="/hex.png" id="sourceimg" style="display: none" />
     <img src="/hex.png" id="filter" style="display: none" />

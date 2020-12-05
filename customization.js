@@ -59,8 +59,6 @@ function loadfilter() {
     let filterImg = document.getElementById("filter");
     filterImg.src = document.getElementById("filterSrc").value;
     filterImg.onload = draw;
-    document.getElementById("myCanvas").width = filterImg.width;
-    document.getElementById("myCanvas").height = filterImg.height;
   }
 }
 function update(e) {
@@ -74,6 +72,13 @@ function draw(e) {
   let newImg = document.getElementById("sourceimg");
   let imgWidth = document.getElementById('sourceimg').width;
   let imgHeight = document.getElementById('sourceimg').height;
+  if (document.getElementById("filterSrc").value) {
+    document.getElementById("myCanvas").width = filter.width;
+    document.getElementById("myCanvas").height = filter.height;
+  } else {
+    document.getElementById("myCanvas").width = imgWidth;
+    document.getElementById("myCanvas").height = imgHeight;
+  }
   let orig = document.getElementById('orig');
   orig.width = imgWidth;
   orig.height = imgHeight;
@@ -118,9 +123,18 @@ function changebg(e) {
 }
 function choosenew(e) {
   let chosen = document.getElementById("imgname").value;
-  let imageData = imageInfo[chosen];
-  let src = imageData.src;
-  let filter = imageData.filter || null;
+  let variants = JSON.parse(localStorage.getItem("customvariants") || "{}")[chosen];
+  updatevariants(variants);
+  let imageData = JSON.parse(localStorage.getItem("customimageinfo") || "{}")[chosen];
+  let sources = JSON.parse(localStorage.getItem("customsources") || "[]");
+  if (!imageData) {
+    imageData = {};
+  }
+  let src = sources[imageData.srcnum];
+  let filter = null;
+  if (imageData.filternum != null) {
+    filter = sources[imageData.filternum];
+  }
   let xoff = imageData.xoff || 0;
   let yoff = imageData.yoff || 0;
   let rotation = imageData.rotation || 0;
@@ -135,26 +149,154 @@ function choosenew(e) {
   document.getElementById("scale").value = scale;
   update(null);
 }
+function updatevariants(variants) {
+  let dlist = document.getElementById("variantchoice");
+  while (dlist.firstChild) {
+    dlist.removeChild(dlist.firstChild);
+  }
+  if (!variants) {
+    variants = {"variants": [""]};
+  }
+  for (variant of variants["variants"]) {
+    let opt = document.createElement("OPTION");
+    opt.value = variant;
+    if (variant == "") {
+      opt.text = "(default)";
+    } else {
+      opt.text = variant;
+    }
+    dlist.appendChild(opt);
+  }
+}
 function saveimg() {
+  let imgName = document.getElementById("imgname").value;
+  let imgVariant = document.getElementById("imgvariant").value;
+  let imgSrc = document.getElementById("imgSrc").value;
   let filterSrc = null;
   if (document.getElementById("filterSrc").value) {
     filterSrc = document.getElementById("filterSrc").value;
   }
+  let currentSources = JSON.parse(localStorage.getItem("customsources") || "[]");
+  let imgIdx = currentSources.indexOf(imgSrc);
+  if (imgIdx < 0) {
+    imgIdx = currentSources.length;
+    currentSources.push(imgSrc);
+  }
+  let filterIdx = null;
+  if (filterSrc != null) {
+    filterIdx = currentSources.indexOf(filterSrc);
+    if (filterIdx < 0) {
+      filterIdx = currentSources.length;
+      currentSources.push(filterSrc);
+    }
+  }
+  let variantInfo = JSON.parse(localStorage.getItem("customvariants") || "{}");
+  if (imgVariant != "") {
+    // TODO: cleanup unused image variants. And allow images without a default variant.
+    if (!variantInfo[imgName]) {
+      variantInfo[imgName] = {"variants": [""]};
+    }
+    if (!variantInfo[imgName]["variants"].includes(imgVariant)) {
+      variantInfo[imgName]["variants"].push(imgVariant);
+    }
+  }
+  let imageInfo = JSON.parse(localStorage.getItem("customimageinfo") || "{}");
   let data = {
-    src: document.getElementById("imgSrc").value,
-    filter: filterSrc,
     xoff: parseFloat(document.getElementById("xoff").value),
     yoff: parseFloat(document.getElementById("yoff").value),
     rotation: parseFloat(document.getElementById("rotation").value),
     scale: parseFloat(document.getElementById("scale").value),
+    srcnum: imgIdx,
   }
-  localStorage.setItem(document.getElementById("imgname").value, JSON.stringify(data));
+  if (filterIdx != null) {
+    data.filternum = filterIdx;
+  }
+  imageInfo[imgName + imgVariant] = data;
+  compactSources(currentSources, imageInfo);
+  localStorage.setItem("customsources", JSON.stringify(currentSources));
+  localStorage.setItem("customvariants", JSON.stringify(variantInfo));
+  localStorage.setItem("customimageinfo", JSON.stringify(imageInfo));
+  localStorage.setItem("sources", JSON.stringify(currentSources));
+  localStorage.setItem("variants", JSON.stringify(variantInfo));
+  localStorage.setItem("imageinfo", JSON.stringify(imageInfo));
 }
-function initializeNameOptions() {
-  for (imgName in imageInfo) {
+function compactSources(sources, imageInfo) {
+  let usedIdxs = {};
+  for (let [key, info] of Object.entries(imageInfo)) {
+    if (!usedIdxs[info.srcnum]) {
+      usedIdxs[info.srcnum] = [];
+    }
+    usedIdxs[info.srcnum].push(key);
+    if (info.filternum != null) {
+      if (!usedIdxs[info.filternum]) {
+        usedIdxs[info.filternum] = [];
+      }
+      usedIdxs[info.filternum].push(key);
+    }
+  }
+  let unusedIdxs = [];
+  for (let i = 0; i < sources.length; i++) {
+    if (!usedIdxs[i]) {
+      unusedIdxs.push(i);
+    }
+  }
+  let swaps = {};
+  let count = 0;
+  let i = sources.length;
+  while (count < unusedIdxs.length && i > 0) {
+    i--;
+    if (unusedIdxs.includes(i)) {
+      continue;
+    }
+    swaps[i] = unusedIdxs[count];
+    count++;
+  }
+  for (let [from, to] of Object.entries(swaps)) {
+    sources[to] = sources[from];
+    sources[from] = null;
+    for (let key of usedIdxs[from]) {
+      if (imageInfo[key].srcnum == from) {
+        imageInfo[key].srcnum = to;
+      }
+      if (imageInfo[key].filternum == from) {
+        imageInfo[key].filternum = to;
+      }
+    }
+  }
+  while (sources.length > 0 && sources[sources.length - 1] == null) {
+    sources.pop();
+  }
+}
+function initializeAssetNames() {
+  for (imgName of assetNames) {
     let opt = document.createElement("OPTION");
     opt.value = imgName;
     opt.text = imgName;
     document.getElementById("imgname").appendChild(opt);
   }
+  choosenew();
+}
+function initializeNameStrings() {
+  let nameDiv = document.getElementById("names");
+  let names = JSON.parse(localStorage.getItem("customnames") || "{}");
+  for (let name in serverNames) {
+    let newDiv = document.createElement("DIV");
+    let namespan = document.createElement("SPAN");
+    namespan.innerText = name;
+    let input = document.createElement("INPUT");
+    input.type = "text";
+    input.id = name;
+    input.value = names[name] || serverNames[name];
+    newDiv.appendChild(namespan);
+    newDiv.appendChild(input);
+    nameDiv.appendChild(newDiv);
+  }
+}
+function savenames(e) {
+  let currentNames = JSON.parse(localStorage.getItem("customnames") || "{}");
+  for (let name in serverNames) {
+    currentNames[name] = document.getElementById(name).value;
+  }
+  localStorage.setItem("customnames", JSON.stringify(currentNames));
+  localStorage.setItem("names", JSON.stringify(currentNames));
 }

@@ -1440,12 +1440,19 @@ function chooseSkin(e) {
   if (chosen == "null") {
     return;
   }
+  if (chosen == "custom" && !localStorage.getItem("customsources") && !localStorage.getItem("customnames")) {
+    window.open("/customization.html", "_blank");
+    return;
+  }
   localStorage.removeItem("names");
   if (chosen == "none") {
     initializeNone();
   }
   if (chosen == "space") {
     initializeSpace();
+  }
+  if (chosen == "custom") {
+    initializeCustom();
   }
   initializeNames();
   let promise = renderImages();

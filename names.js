@@ -138,3 +138,13 @@ function initializeNone() {
   localStorage.setItem("variants", "{}");
   localStorage.setItem("imageinfo", "{}");
 }
+function initializeCustom() {
+  let names = localStorage.getItem("customnames") || "{}";
+  let sources = localStorage.getItem("customsources") || "[]";
+  let variants = localStorage.getItem("customvariants") || "{}";
+  let imageinfo = localStorage.getItem("customimageinfo") || "{}";
+  localStorage.setItem("names", names);
+  localStorage.setItem("sources", sources);
+  localStorage.setItem("variants", variants);
+  localStorage.setItem("imageinfo", imageinfo);
+}

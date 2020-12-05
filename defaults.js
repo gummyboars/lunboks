@@ -46,7 +46,7 @@ function initializeDefaults() {
   ctx = portbase.getContext("2d");
   ctx.clearRect(0, 0, cardWidth, cardHeight);
   ctx.save();
-  ctx.lineWidth = 3;
+  ctx.lineWidth = 2;
   ctx.strokeStyle = "black";
   ctx.beginPath();
   ctx.moveTo(tileWidth / 4, tileHeight);
