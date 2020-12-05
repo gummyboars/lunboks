@@ -16,6 +16,7 @@ hoverTile = null;
 hoverCorner = null;
 hoverEdge = null;
 clickEdgeLocation = null;
+moveShipFromLocation = null;
 
 function locationsEqual(locA, locB) {
   if (locA == null && locB == null) {
@@ -145,6 +146,9 @@ function drawRoad(roadLoc, style, road_type, closed, movable, ctx) {
   let angle = Math.atan2((rightCorner.y - leftCorner.y), (rightCorner.x - leftCorner.x));
   ctx.translate(centerX, centerY);
   ctx.rotate(angle);
+  if (road_type.startsWith("coast") && moveShipFromLocation != null) {
+    road_type = "ship";
+  }
   if (road_type == "coastdown") {
     ctx.rotate(Math.PI);
   }
@@ -152,6 +156,9 @@ function drawRoad(roadLoc, style, road_type, closed, movable, ctx) {
     ctx.rotate(Math.PI);
   }
   ctx.fillStyle = style;
+  if (locationsEqual(roadLoc, moveShipFromLocation)) {
+    ctx.globalAlpha = 0.5;
+  }
   if (road_type.startsWith("coast")) {
     ctx.translate(0, -pieceRadius / 2);
   }
@@ -496,6 +503,16 @@ function onclick(event) {
   clickEdgeLocation = null;
   let clickEdge = getEdge(event.clientX, event.clientY);
   if (clickEdge != null) {
+    if (moveShipFromLocation != null) {
+      let msg = {
+        type: "move_ship",
+        from: moveShipFromLocation,
+        to: edges[clickEdge].location,
+      };
+      ws.send(JSON.stringify(msg));
+      moveShipFromLocation = null;
+      return;
+    }
     if (edges[clickEdge].edge_type && edges[clickEdge].edge_type.startsWith("coast")) {
       clickEdgeLocation = edges[clickEdge].location;
       showCoastPopup();
@@ -503,12 +520,24 @@ function onclick(event) {
       // popup if the thing clicked on was not the popup.
       event.stopPropagation();
     } else {
-      let msg = {
-        type: edges[clickEdge].edge_type,
-        location: edges[clickEdge].location,
-      };
-      ws.send(JSON.stringify(msg));
+      for (let road of roads) {
+        if (locationsEqual(road.location, edges[clickEdge].location)) {
+          if (road.player == myIdx && road.road_type == "ship") {
+            moveShipFromLocation = road.location;
+          }
+          break;
+        }
+      }
+      if (moveShipFromLocation == null) {
+        let msg = {
+          type: edges[clickEdge].edge_type,
+          location: edges[clickEdge].location,
+        };
+        ws.send(JSON.stringify(msg));
+      }
     }
+  } else if (moveShipFromLocation != null) {
+    moveShipFromLocation = null;
   }
 }
 function onmove(event) {
