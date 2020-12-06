@@ -61,7 +61,7 @@ ws = null;
 
 // Game state.
 gameStarted = false;
-gameOptions = {};
+gameOptions = [];
 myIdx = null;
 amHost = false;
 playerData = [];
@@ -996,31 +996,31 @@ function updateDice() {
   }
 }
 function updateJoinWindow() {
-  let optionDiv = document.getElementById("options");
-  for (let option in gameOptions) {
-    // TODO: yes, this is hacky.
+  if (gameStarted) {
+    document.getElementById("uijoin").style.display = "none";
+    return;
+  }
+  document.getElementById("uijoin").style.display = "flex";
+  let flagOptionDiv = document.getElementById("flagoptions");
+  let choiceOptionDiv = document.getElementById("choiceoptions");
+  for (let option of gameOptions) {
+    // TODO: yes, this is hacky. Also may need to handle options changing type.
     let found = false;
-    for (let cbox of document.getElementsByClassName("gameoption")) {
-      if (cbox.value == option) {
-        found = true;
-        cbox.disabled = !amHost;
-        break
+    for (let elem of document.getElementsByClassName("gameoption")) {
+      if (elem.optionName == option.name) {
+        found = updateOptionValue(option, elem);
+        break;
       }
     }
     if (found) {
-      continue
+      continue;
     }
-    let newOpt = document.createElement("DIV");
-    let cbox = document.createElement("INPUT");
-    cbox.classList.add("gameoption");
-    cbox.type = "checkbox";
-    cbox.value = option;
-    cbox.disabled = !amHost;
-    let desc = document.createElement("SPAN");
-    desc.innerText = gameOptions[option];
-    newOpt.appendChild(cbox);
-    newOpt.appendChild(desc);
-    optionDiv.appendChild(newOpt);
+    let optDiv = createOption(option);
+    if (option.kind == "choice") {
+      choiceOptionDiv.appendChild(optDiv);
+    } else {
+      flagOptionDiv.appendChild(optDiv);
+    }
   }
   if (myIdx != null) {
     disableButton(document.getElementById("join"));
@@ -1029,26 +1029,90 @@ function updateJoinWindow() {
   if (amHost) {
     enableButton(document.getElementById("start"));
   }
-  if (!gameStarted) {
-    document.getElementById("uijoin").style.display = "flex";
-  } else {
-    document.getElementById("uijoin").style.display = "none";
+}
+function updateOptionValue(option, elem) {
+  elem.disabled = !amHost;
+  if (option.kind == "choice") {
+    if (option.choices.includes(elem.value)) {
+      if (option.value != null) {
+        elem.value = option.value;
+      }
+      return true;
+    } else {
+      // Recreate any selections where the current selection is invalid.
+      elem.parentNode.removeChild(elem);
+      return false;
+    }
   }
+  if (option.value != null) {
+    elem.checked = option.value;
+  }
+  return true;
+}
+function createOption(option) {
+  let optDiv = document.createElement("DIV");
+  let elem;
+  if (option.kind == "choice") {
+    let desc = document.createElement("SPAN");
+    desc.innerText = option.desc + "  ";
+    elem = document.createElement("SELECT");
+    for (let optValue of option.choices) {
+      let opt = document.createElement("OPTION");
+      opt.value = optValue;
+      opt.text = optValue;
+      elem.appendChild(opt);
+    }
+    if (option.value != null) {
+      elem.value = option.value;
+    } else if (option.default != null) {
+      elem.value = option.default;
+    }
+    optDiv.appendChild(desc);
+    optDiv.appendChild(elem);
+  } else {
+    elem = document.createElement("INPUT");
+    elem.type = "checkbox";
+    if (option.value != null) {
+      elem.checked = option.value;
+    } else {
+      elem.checked = option.default;
+    }
+    let desc = document.createElement("SPAN");
+    desc.innerText = option.desc;
+    optDiv.appendChild(elem);
+    optDiv.appendChild(desc);
+  }
+  elem.optionName = option.name;
+  elem.disabled = !amHost;
+  elem.onchange = sendOptions;
+  elem.classList.add("gameoption");
+  return optDiv;
 }
 function observe(e) {
   document.getElementById("uijoin").style.display = "none";
 }
-function startGame(e) {
-  let options = [];
-  for (let cbox of document.getElementsByClassName("gameoption")) {
-    if (cbox.checked) {
-      options.push(cbox.value);
+function collectOptions() {
+  let options = {};
+  for (let elem of document.getElementsByClassName("gameoption")) {
+    if (elem.tagName == "SELECT") {
+      options[elem.optionName] = elem.value;
+    } else {
+      options[elem.optionName] = !!(elem.checked);
     }
   }
+  return options;
+}
+function sendOptions(e) {
+  let msg = {
+    type: "options",
+    options: collectOptions(),
+  };
+  ws.send(JSON.stringify(msg));
+}
+function startGame(e) {
   let msg = {
     type: "start",
-    options: options,
-    scenario: "standard",
+    options: collectOptions(),
   };
   ws.send(JSON.stringify(msg));
 }

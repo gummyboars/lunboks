@@ -51,15 +51,33 @@ def _validate_name(current_name, used_names, data):
     raise InvalidPlayer("Max name length is 16.")
 
 
-RuleInfo = collections.namedtuple("RuleInfo", ["name", "cls", "display_name"])
-
-
 class CustomEncoder(json.JSONEncoder):
 
   def default(self, o):
     if hasattr(o, "json_repr"):
       return o.json_repr()
     return json.JSONEncoder.default(self, o)
+
+
+class GameOption(object):
+
+  def __init__(self, name, kind, desc, default=None, choices=None):
+    assert kind in {"ruleset", "flag", "choice"}
+    self.name = name
+    self.kind = kind
+    self.desc = desc
+    if kind == "flag":
+      assert isinstance(default, bool)
+      assert choices is None
+    if kind == "ruleset":
+      self.default = False
+      self.choices = None
+    else:
+      self.default = default
+      self.choices = choices
+
+  def json_repr(self):
+    return self.__dict__
 
 
 class Location(object):
@@ -1412,15 +1430,36 @@ class CatanState(object):
       return None
     return "road"
 
-  def init(self, data):
+  @classmethod
+  def get_options(cls):
+    scenario = GameOption(
+        name="scenario",
+        kind="choice",
+        desc="scenario",
+        default="standard",
+        choices=["standard", "beginner"],
+    )
+    friendly_robber = GameOption(
+        name="friendly_robber",
+        kind="flag",
+        desc="Friendly Robber",
+        default=False,
+    )
+    return collections.OrderedDict([
+        ("scenario", scenario),
+        ("friendly_robber", friendly_robber),
+    ])
+
+  def init(self, options):
     scenario_map = {
         "beginner": self.init_beginner,
         "standard": self.init_normal,
         "test": self.init_test,
     }
-    if data.get("scenario") not in scenario_map:
-      raise InvalidMove("Unknown scenario %s" % data.get("scenario"))
-    scenario_map[data["scenario"]]()
+    if options.get("scenario") not in scenario_map:
+      raise InvalidMove("Unknown scenario %s" % options.get("scenario"))
+    scenario_map[options["scenario"]]()
+    self.rob_at_two = not options.get("friendly_robber")
 
   def init_beginner(self):
     tile_types = [
@@ -1694,15 +1733,17 @@ class Seafarers(CatanState):
 
 class CatanGame(BaseGame):
 
-  RULES_INFO = [
-      RuleInfo(name="base", cls=CatanState, display_name=None),
-      RuleInfo(name="seafarers", cls=Seafarers, display_name="Seafarers"),
-      RuleInfo(name="debug", cls=DebugRules, display_name="Debug Enabled"),
-  ]
+  # The order of this dictionary determines the method resolution order of the created class.
+  RULES_MAP = collections.OrderedDict([
+      ("base", CatanState),
+      ("seafarers", Seafarers),
+      ("debug", DebugRules),
+  ])
 
   def __init__(self):
     self.game = None
     self.rulesets = ["base"]
+    self.options = {}
     self.connected = set()
     self.host = None
     # player_sessions starts as a map of session to CatanPlayer. once the game
@@ -1753,10 +1794,7 @@ class CatanGame(BaseGame):
       return cls()
     rulesets = gamedata.pop("rulesets")
     player_sessions = gamedata.pop("player_sessions")
-    rule_classes = [cls.rules_map()[ruleset] for ruleset in reversed(rulesets)]
-
-    class GameState(*rule_classes):
-      pass
+    GameState = cls.get_game_class(rulesets)
 
     game_state = GameState.parse_json(gamedata)
     game = cls()
@@ -1780,19 +1818,26 @@ class CatanGame(BaseGame):
         player_idx = list(self.player_sessions.keys()).index(session)
       # TODO: update the javascript to handle undefined values for all of the attributes of
       # the state object that we don't have before the game starts.
-      dummy_data = CatanState().for_player(None)
-      dummy_data.update({
+      GameState = self.get_game_class(self.rulesets)
+      data = GameState().for_player(None)
+      data.update({
         "type": "game_state",
         "host": self.host == session,
         "you": player_idx,
         "started": False,
         "player_data": [player.json_for_player(False) for player in self.player_sessions.values()],
       })
-      # TODO: there can be non-rules options, like the number of victory points.
-      options = collections.OrderedDict([(info.name, info.display_name) for info in self.RULES_INFO])
-      options.pop("base")
-      dummy_data["options"] = options
-      return json.dumps(dummy_data, cls=CustomEncoder)
+      options = GameState.get_options()
+      for ruleset in ["seafarers", "debug"]:
+        options[ruleset] = GameOption(name=ruleset, kind="ruleset", desc=ruleset.capitalize())
+      for name, option in options.items():
+        if name in self.options:
+          option.value = self.options[name]
+        if name in self.rulesets:
+          option.value = True
+      data["options"] = list(options.values())
+      return json.dumps(data, cls=CustomEncoder)
+
     output = self.game.for_player(self.player_sessions.get(session))
     output["started"] = True
     is_connected = {idx: sess in self.connected for sess, idx in self.player_sessions.items()}
@@ -1829,6 +1874,8 @@ class CatanGame(BaseGame):
       return self.handle_start(session, data)
     if data.get("type") == "takeover":
       return self.handle_takeover(session, data)
+    if data.get("type") == "options":
+      return self.handle_select_option(session, data)
     if self.game is None:
       raise InvalidMove("The game has not been started.")
     if self.player_sessions.get(session) is None:
@@ -1884,21 +1931,12 @@ class CatanGame(BaseGame):
     if len(player_data) < 2:
       raise InvalidMove("The game must have at least two players to start.")
 
-    rulesets = data.get("options", [])
-    for ruleset in rulesets:
-      if ruleset not in self.rules_map():
-        raise InvalidMove(f"Unknown option {ruleset}")
-    if "base" not in rulesets:
-      rulesets.insert(0, "base")
-    # TODO: helper function to create the class and instance
-    rule_classes = [self.rules_map()[ruleset] for ruleset in reversed(rulesets)]
-
-    class GameState(*rule_classes):
-      pass
+    self.update_rulesets_and_options(data["options"])
+    GameState = self.get_game_class(self.rulesets)
 
     game = GameState()
     new_sessions = {}
-    game.init(data)
+    game.init(self.options)
     random.shuffle(player_data)
     for idx, (session, player_info) in enumerate(player_data):
       game.add_player(player_info.color, player_info.name)
@@ -1906,11 +1944,34 @@ class CatanGame(BaseGame):
     # NOTE: only update internal state after computing all new states so that internal state 
     # remains consistent if something above throws an exception.
     self.game = game
-    self.rulesets = rulesets
     self.player_sessions.clear()
     self.player_sessions.update(new_sessions)
     self.host = None
 
+  def handle_select_option(self, session, data):
+    if self.game is not None:
+      raise InvalidMove("The game has already started.")
+    if session != self.host:
+      raise InvalidMove("You are not the host. Only the host can select game options.")
+
+    self.update_rulesets_and_options(data["options"])
+
+  def update_rulesets_and_options(self, options):
+    # TODO: error checking to make sure all of these are valid options.
+    self.rulesets = [opt for opt, chosen in options.items() if chosen and opt in self.RULES_MAP]
+    self.options = {opt: value for opt, value in options.items() if opt not in self.RULES_MAP}
+
   @classmethod
-  def rules_map(cls):
-    return {info.name: info.cls for info in cls.RULES_INFO}
+  def get_game_class(cls, rulesets):
+    for ruleset in rulesets:
+      if ruleset not in cls.RULES_MAP:
+        raise InvalidMove(f"Unknown ruleset {ruleset}")
+    if "base" not in rulesets:
+      rulesets.append("base")
+    rulesets.sort(key=list(cls.RULES_MAP.keys()).index, reverse=True)
+    rule_classes = [cls.RULES_MAP[ruleset] for ruleset in rulesets]
+
+    class GameState(*rule_classes):
+      pass
+
+    return GameState
