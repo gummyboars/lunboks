@@ -324,5 +324,6 @@
             "port_type": "rsrc2",
             "rotation": 5
         }
-    ]
+    ],
+    "rob_at_two": true
 }

@@ -587,5 +587,6 @@
   ],
   "dev_roads_placed": 0,
   "played_dev": 0,
-  "turn_idx": 0
+  "turn_idx": 0,
+  "rob_at_two": true
 }

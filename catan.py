@@ -450,6 +450,8 @@ class CatanState(object):
     self.game_phase = "place1"  # valid values are place1, place2, main, victory
     # valid values are settle, road, dice, discard, robber, rob, dev_road, main
     self.turn_phase = "settle"
+    # Flag for the don't allow players to rob at 2 points option
+    self.rob_at_two = True
 
   @classmethod
   def location_attrs(cls):
@@ -711,6 +713,16 @@ class CatanState(object):
       raise InvalidMove("You must move the robber.")
     if not self.tiles[tuple(location)].is_land:
       raise InvalidMove("Robbers would drown at sea.")
+    maybe_robber_location = TileLocation(*location)
+    corners = maybe_robber_location.get_corner_locations()
+    if not self.rob_at_two:
+      for corner in corners:
+        maybe_piece = self.pieces.get(corner.as_tuple())
+        if maybe_piece:
+          if maybe_piece.player != current_player:
+            score = self.player_points(maybe_piece.player,visible=True)
+            if score <= 2:
+              raise InvalidMove("Robbers refuse to rob such poor people.")
     self.robber = TileLocation(*location)
     corners = self.robber.get_corner_locations()
     robbable_players = set([])

@@ -265,5 +265,6 @@
             "port_type": "3",
             "rotation": 0
         }
-    ]
+    ],
+    "rob_at_two": true
 }

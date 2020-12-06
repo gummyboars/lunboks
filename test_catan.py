@@ -232,6 +232,34 @@ class testRobberMovement(BaseInputHandlerTest):
     with self.assertRaisesRegex(InvalidMove, "Robbers would drown at sea."):
       self.c.handle_robber((2,1),1)
 
+  def testNoRobbingFromTwoPointsRegex(self):
+    self.c.rob_at_two = False
+    with self.assertRaisesRegex(InvalidMove, "Robbers refuse to rob such poor people."):
+      self.c.handle_robber((2,5),0)
+
+  def testRobbingFromMoreThanTwoPoints(self):
+    self.c.rob_at_two = False
+    self.c.add_piece(catan.Piece(4,2, "city", 1))
+    self.c.handle_robber((2,5),0)
+
+  def testRobbingFromTwoPointsMixedPlayerRegex(self):
+    self.c.rob_at_two = False
+    self.c.add_piece(catan.Piece(4,2, "city", 1))
+    self.c.add_player("green", "Player3")
+    self.c.add_piece(catan.Piece(1,6, "city", 3))
+    with self.assertRaisesRegex(InvalidMove, "Robbers refuse to rob such poor people."):
+      self.c.handle_robber((2,5),0)
+
+  def testNoRobbingFromTwoPointsWithHiddenRegex(self):
+    self.c.rob_at_two = False
+    self.c.player_data[1].cards.update({"library": 1})
+    with self.assertRaisesRegex(InvalidMove, "Robbers refuse to rob such poor people."):
+      self.c.handle_robber((2,5),0)
+
+  def testRobbingFromSelfAtTwoPoints(self):
+    self.c.rob_at_two = False
+    self.c.add_piece(catan.Piece(4,2, "city", 1))
+    self.c.handle_robber((4,4),0)
 
 class TestHandleSettleInput(BaseInputHandlerTest):
 
