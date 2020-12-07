@@ -5,6 +5,7 @@ serverNames = {
   rsrc4: "red",
   rsrc5: "gray",
   norsrc: "desert",
+  anyrsrc: "bonus",
   space: "water",
 };
 
@@ -16,6 +17,7 @@ assetNames = [
   "rsrc4tile",
   "rsrc5tile",
   "norsrctile",
+  "anyrsrctile",
   "spacetile",
   "coast",
   "port",
@@ -84,6 +86,7 @@ function initializeSpace() {
     rsrc4: "clay",
     rsrc5: "metal",
     norsrc: "desert",
+    anyrsrc: "gold",
     space: "space",
   }));
   localStorage.setItem("imageinfo", JSON.stringify({
@@ -132,6 +135,7 @@ function initializeNone() {
     rsrc4: "red",
     rsrc5: "gray",
     norsrc: "desert",
+    anyrsrc: "bonus",
     space: "water",
   }));
   localStorage.setItem("sources", "[]");

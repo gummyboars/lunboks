@@ -1,5 +1,6 @@
 function initializeDefaults() {
   let assets = document.getElementById("defaultassets");
+  let ctx;
   let resourceDatas = [
     {name: "rsrc1", color: "#95B900"},
     {name: "rsrc2", color: "#2E9A35"},
@@ -7,6 +8,7 @@ function initializeDefaults() {
     {name: "rsrc4", color: "#DE6B2B"},
     {name: "rsrc5", color: "#A7ADA9"},
     {name: "norsrc", color: "#D8D393"},
+    {name: "anyrsrc", color: ["#B8860B", "#0000CD"]},
     {name: "space", color: "#56A4D8"},
   ];
   let devDatas = [
@@ -126,7 +128,15 @@ function createHex(color, id) {
   let ctx = tile.getContext("2d");
   ctx.clearRect(0, 0, tileWidth, tileHeight);
   ctx.save();
-  ctx.fillStyle = color;
+  if (Array.isArray(color)) {
+    let grad = ctx.createLinearGradient(tileWidth/3, tileHeight/3, 3*tileWidth/4, tileHeight);
+    for (let [idx, col] of color.entries()) {
+      grad.addColorStop(idx / (color.length - 1), col);
+    }
+    ctx.fillStyle = grad;
+  } else {
+    ctx.fillStyle = color;
+  }
   ctx.beginPath();
   ctx.moveTo(tileWidth / 4, 0);
   ctx.lineTo(3 * tileWidth / 4, 0);
