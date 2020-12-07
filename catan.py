@@ -105,11 +105,11 @@ class Location(object):
 class TileLocation(Location):
 
   def __init__(self, x, y):
-    assert x % 2 == 0, "tiles x location must be even"
+    assert x % 2 == 0, "tiles x location must be even %s, %s" % (x, y)
     if x % 4 == 0:
-      assert y % 2 == 0, "tiles must line up correctly"
+      assert y % 2 == 0, "tiles must line up correctly %s, %s" % (x, y)
     else:
-      assert y % 2 == 1, "tiles must line up correctly"
+      assert y % 2 == 1, "tiles must line up correctly %s, %s" % (x, y)
     Location.__init__(self, x, y)
 
   def get_upper_left_tile(self):
@@ -510,22 +510,28 @@ class CatanState(object):
           getattr(cstate, attr)[idx] = val
 
     # Location dictionaries are updated with their respective items.
-    for tile_json in gamedata["tiles"]:
-      tile = Tile.parse_json(tile_json)
-      cstate.add_tile(tile)
+    cstate.parse_tiles(gamedata["tiles"])
+    cstate.parse_ports(gamedata["ports"])
     for piece_json in gamedata["pieces"]:
       piece = Piece.parse_json(piece_json)
       cstate._add_piece(piece)
     for road_json in gamedata["roads"]:
       road = Road.parse_json(road_json)
       cstate._add_road(road)
-    for port_json in gamedata["ports"]:
-      port = Port.parse_json(port_json)
-      cstate.add_port(port)
 
     cstate._compute_coast()  # Sets land_rotations for all space tiles.
     cstate._compute_ports()  # Sets port_corners.
     return cstate
+
+  def parse_tiles(self, tiledata):
+    for tile_json in tiledata:
+      tile = Tile.parse_json(tile_json)
+      self.add_tile(tile)
+
+  def parse_ports(self, portdata):
+    for port_json in portdata:
+      port = Port.parse_json(port_json)
+      self.add_port(port)
 
   def json_repr(self):
     ret = {
@@ -1442,6 +1448,12 @@ class CatanState(object):
       return None
     return "road"
 
+  def _shuffle_ports(self):
+    port_types = [port.port_type for port in self.ports.values()]
+    random.shuffle(port_types)
+    for idx, port in enumerate(self.ports.values()):
+      port.port_type = port_types[idx]
+
   @classmethod
   def get_options(cls):
     friendly_robber = GameOption(name="Friendly Robber", default=False)
@@ -1465,9 +1477,9 @@ class RandomMap(CatanState):
     random.shuffle(tile_types)
     self._init_tiles(tile_types, TILE_SEQUENCE, TILE_NUMBERS)
     ports = ["3", "3", "3", "3", "rsrc1", "rsrc2", "rsrc3", "rsrc4", "rsrc5"]
-    random.shuffle(ports)
     self._init_space(SPACE_TILE_SEQUENCE, SPACE_TILE_ROTATIONS)
     self._create_port_every_other_tile(SPACE_TILE_SEQUENCE, SPACE_TILE_ROTATIONS, ports)
+    self._shuffle_ports()
     self._compute_coast()
     self._compute_ports()
     self._init_dev_cards()
@@ -1750,17 +1762,62 @@ class Seafarers(CatanState):
       raise InvalidPlayer("Cannot be played with more than 4 players.")
     super(Seafarers, self).init(options)
 
+  def load_file(self, filename):
+    with open(filename) as data:
+      json_data = json.load(data)
+      self.parse_tiles(json_data["tiles"])
+      self.parse_ports(json_data["ports"])
+    self._compute_coast()
+    self._compute_ports()
+
 
 class SeafarerShores(Seafarers):
-  pass
+
+  def init(self, options):
+    super(SeafarerShores, self).init(options)
+    if len(self.player_data) == 3:
+      self.load_file("shores3.json")
+      self.robber = TileLocation(12 ,2)
+      self.pirate = TileLocation(6, 11)
+    elif len(self.player_data) == 4:
+      self.load_file("shores4.json")
+      self.robber = TileLocation(4, 4)
+      self.pirate = TileLocation(6, 13)
+      self._shuffle_ports()
+    else:
+      raise InvalidPlayer("Must have 3 or 4 players.")
 
 
 class SeafarerIslands(Seafarers):
-  pass
+
+  def init(self, options):
+    super(SeafarerIslands, self).init(options)
+    if len(self.player_data) == 3:
+      self.load_file("islands3.json")
+      self.robber = TileLocation(0 ,2)
+      self.pirate = TileLocation(6, 5)
+    elif len(self.player_data) == 4:
+      self.load_file("islands4.json")
+      self.robber = TileLocation(10, 7)
+      self.pirate = TileLocation(6, 11)
+    else:
+      raise InvalidPlayer("Must have 3 or 4 players.")
 
 
 class SeafarerDesert(Seafarers):
-  pass
+
+  def init(self, options):
+    super(SeafarerDesert, self).init(options)
+    if len(self.player_data) == 3:
+      self.load_file("desert3.json")
+      self.robber = TileLocation(10 ,3)
+      self.pirate = TileLocation(6, 11)
+    elif len(self.player_data) == 4:
+      self.load_file("desert4.json")
+      self.robber = TileLocation(10, 3)
+      self.pirate = TileLocation(6, 13)
+    else:
+      raise InvalidPlayer("Must have 3 or 4 players.")
 
 
 class SeafarerFog(Seafarers):
