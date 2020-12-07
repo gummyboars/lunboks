@@ -89,10 +89,15 @@ function draw() {
   context.restore();
   context.save();
   let robberOpacity = 1;
-  if (robberLoc != null && locationsEqual(robberLoc, hoverTile)) {
+  if (locationsEqual(robberLoc, hoverTile)) {
     robberOpacity = 0.5;
   }
   drawRobber(context, robberLoc, robberOpacity);
+  let pirateOpacity = 1;
+  if (locationsEqual(pirateLoc, hoverTile)) {
+    pirateOpacity = 0.5;
+  }
+  drawRobber(context, pirateLoc, pirateOpacity);
   context.restore();
   drawDebug(context);
   context.restore();

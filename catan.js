@@ -76,6 +76,7 @@ devCardCount = 0;
 turn = null;
 diceRoll = null;
 robberLoc = null;
+pirateLoc = null;
 tradeOffer = null;
 gamePhase = null;
 turnPhase = null;
@@ -908,6 +909,7 @@ function onmsg(event) {
   corners = data.corners;
   edges = data.edges;
   robberLoc = data.robber;
+  pirateLoc = data.pirate;
   cards = data.cards;
   devCardCount = data.dev_cards;
   diceRoll = data.dice_roll;
