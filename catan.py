@@ -1767,6 +1767,76 @@ class SeafarerFog(Seafarers):
   pass
 
 
+class MapMaker(CatanState):
+
+  def init(self, options):
+    self.add_tile(Tile(2, 1, "space", False, None))
+    self.game_phase = "main"
+    self.turn_phase = "main"
+    self.player_data[0].name = "tiles"
+    self.player_data[1].name = "numbers/ports"
+    if len(self.player_data) > 2:
+      self.player_data[2].name = "rotations"
+
+  def handle(self, player_idx, data):
+    if data["type"] not in ["robber", "end_turn"]:
+      raise InvalidMove("This is the mapmaker. You can only change tiles.")
+    if data["type"] == "end_turn":
+      self.turn_idx = (self.turn_idx + 1) % len(self.player_data)
+      return
+    loc = TileLocation(*data["location"])
+    if self.turn_idx == 1 and self.tiles[loc.as_tuple()].is_land:
+      # Numbers
+      num = self.tiles[loc.as_tuple()].number
+      if num is None:
+        num = 2
+      elif num == 12:
+        num = None
+      else:
+        num += 1
+      self.tiles[loc.as_tuple()].number = num
+      return
+    elif self.turn_idx == 1:
+      # Ports
+      port_order = RESOURCES + ["3"]
+      maybe_port = self.ports.get(loc.as_tuple())
+      if not maybe_port:
+        self.add_port(Port(loc.x, loc.y, "rsrc1", 0))
+        return
+      port_idx = port_order.index(maybe_port.port_type)
+      if port_idx + 1 == len(port_order):
+        del self.ports[loc.as_tuple()]
+        return
+      self.ports[loc.as_tuple()].port_type = port_order[port_idx + 1]
+      return
+    if self.turn_idx == 2:
+      # Rotation
+      self.tiles[loc.as_tuple()].rotation += 1
+      self.tiles[loc.as_tuple()].rotation %= 6
+      if loc.as_tuple() in self.ports:
+        self.ports[loc.as_tuple()].rotation += 1
+        self.ports[loc.as_tuple()].rotation %= 6
+      return
+    # Change tile types or add tiles.
+    tile_order = ["space"] + RESOURCES + ["anyrsrc", "norsrc"]
+    idx = tile_order.index(self.tiles[loc.as_tuple()].tile_type)
+    new_type = tile_order[(idx+1) % len(tile_order)]
+    self.tiles[loc.as_tuple()].tile_type = new_type
+    if new_type == "norsrc":
+      self.tiles[loc.as_tuple()].is_land = True
+      self.tiles[loc.as_tuple()].number = None
+    elif new_type != "space":
+      self.tiles[loc.as_tuple()].is_land = True
+      if self.tiles[loc.as_tuple()].number is None:
+        self.tiles[loc.as_tuple()].number = 2
+    else:
+      self.tiles[loc.as_tuple()].is_land = False
+      self.tiles[loc.as_tuple()].number = None
+    for location in loc.get_adjacent_tiles():
+      if location.as_tuple() not in self.tiles:
+        self.add_tile(Tile(location.x, location.y, "space", False, None))
+
+
 class CatanGame(BaseGame):
 
   # The order of this dictionary determines the method resolution order of the created class.
@@ -1778,6 +1848,7 @@ class CatanGame(BaseGame):
       ("The Four Islands", SeafarerIslands),
       ("Through the Desert", SeafarerDesert),
       ("The Fog Islands", SeafarerFog),
+      ("Map Maker", MapMaker),
   ])
   RULES = collections.OrderedDict([
       ("Debug", DebugRules),
