@@ -1003,8 +1003,10 @@ function updateJoinWindow() {
   document.getElementById("uijoin").style.display = "flex";
   let flagOptionDiv = document.getElementById("flagoptions");
   let choiceOptionDiv = document.getElementById("choiceoptions");
+  let allOptions = [];
   for (let option of gameOptions) {
-    // TODO: yes, this is hacky. Also may need to handle options changing type.
+    allOptions.push(option.name);
+    // TODO: yes, this is hacky.
     let found = false;
     for (let elem of document.getElementsByClassName("gameoption")) {
       if (elem.optionName == option.name) {
@@ -1016,10 +1018,17 @@ function updateJoinWindow() {
       continue;
     }
     let optDiv = createOption(option);
-    if (option.kind == "choice") {
+    if (option.choices != null) {
       choiceOptionDiv.appendChild(optDiv);
     } else {
       flagOptionDiv.appendChild(optDiv);
+    }
+  }
+  // Remove options that no longer exist.
+  for (let oDiv of document.getElementsByClassName("gameoption")) {
+    console.log(oDiv.optionName);
+    if (!allOptions.includes(oDiv.optionName)) {
+      oDiv.parentNode.parentNode.removeChild(oDiv.parentNode);
     }
   }
   if (myIdx != null) {
@@ -1031,8 +1040,8 @@ function updateJoinWindow() {
   }
 }
 function updateOptionValue(option, elem) {
-  elem.disabled = !amHost;
-  if (option.kind == "choice") {
+  elem.disabled = !amHost || option.forced;
+  if (option.choices != null) {
     if (option.choices.includes(elem.value)) {
       if (option.value != null) {
         elem.value = option.value;
@@ -1040,7 +1049,8 @@ function updateOptionValue(option, elem) {
       return true;
     } else {
       // Recreate any selections where the current selection is invalid.
-      elem.parentNode.removeChild(elem);
+      // TODO: need to be able to handle the option choices changing.
+      elem.parentNode.parentNode.removeChild(elem.parentNode);
       return false;
     }
   }
@@ -1052,9 +1062,9 @@ function updateOptionValue(option, elem) {
 function createOption(option) {
   let optDiv = document.createElement("DIV");
   let elem;
-  if (option.kind == "choice") {
+  if (option.choices != null) {
     let desc = document.createElement("SPAN");
-    desc.innerText = option.desc + "  ";
+    desc.innerText = option.name + "  ";
     elem = document.createElement("SELECT");
     for (let optValue of option.choices) {
       let opt = document.createElement("OPTION");
@@ -1078,12 +1088,12 @@ function createOption(option) {
       elem.checked = option.default;
     }
     let desc = document.createElement("SPAN");
-    desc.innerText = option.desc;
+    desc.innerText = option.name;
     optDiv.appendChild(elem);
     optDiv.appendChild(desc);
   }
   elem.optionName = option.name;
-  elem.disabled = !amHost;
+  elem.disabled = !amHost || option.forced;
   elem.onchange = sendOptions;
   elem.classList.add("gameoption");
   return optDiv;

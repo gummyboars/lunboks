@@ -122,7 +122,8 @@
     ],
     "rob_players": [],
     "robber": null,
-    "rulesets": ["base"],
+    "rules": [],
+    "scenario": "Test Map",
     "started": true,
     "tiles": [
         {

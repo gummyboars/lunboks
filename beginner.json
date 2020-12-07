@@ -30,7 +30,8 @@
     2,
     7
   ],
-  "rulesets": ["base"],
+  "rules": [],
+  "scenario": "Beginner's Map",
   "pirate": null,
   "trade_offer": {},
   "counter_offers": [null],

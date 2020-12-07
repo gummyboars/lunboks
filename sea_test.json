@@ -94,7 +94,8 @@
     "roads": [],
     "rob_players": [],
     "robber": null,
-    "rulesets": ["base", "seafarers"],
+    "rules": [],
+    "scenario": "The Four Islands",
     "started": true,
     "ships_moved": 0,
     "tiles": [

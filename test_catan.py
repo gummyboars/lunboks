@@ -17,8 +17,8 @@ Road = catan.Road
 class TestInitBoard(unittest.TestCase):
 
   def testBeginner(self):
-    state = catan.CatanState()
-    state.init_beginner()
+    state = catan.BeginnerMap()
+    state.init({})
 
     self.assertEqual(len(state.tiles), 4 + 5 + 6 + 7 + 6 + 5 + 4, "number of tiles")
     for loc, tile in state.tiles.items():
@@ -50,8 +50,8 @@ class TestLoadState(unittest.TestCase):
     self.assertEqual(c.ships_moved, 1)
 
   def testDumpAndLoad(self):
-    c = catan.CatanState()
-    c.init_normal()
+    c = catan.RandomMap()
+    c.init({})
     g = catan.CatanGame()
     g.game = c
     data = g.json_str()
@@ -78,13 +78,13 @@ class TestLoadState(unittest.TestCase):
 class BaseInputHandlerTest(unittest.TestCase):
 
   TEST_FILE = "test.json"
-  EXTRA_RULESETS = []
+  EXTRA_RULES = []
 
   def setUp(self):
     with open(self.TEST_FILE) as json_file:
       json_data = json.loads(json_file.read())
-    if self.EXTRA_RULESETS:
-      json_data["rulesets"].extend(self.EXTRA_RULESETS)
+    if self.EXTRA_RULES:
+      json_data["rules"].extend(self.EXTRA_RULES)
     self.g = catan.CatanGame.parse_json(json.dumps(json_data))
     self.c = self.g.game
 
@@ -122,7 +122,7 @@ class DebugRulesOffTest(BaseInputHandlerTest):
 
 class DebugRulesOnTest(BaseInputHandlerTest):
 
-  EXTRA_RULESETS = ["debug"]
+  EXTRA_RULES = ["Debug"]
 
   def testDebugEnabledRollDice(self):
     self.assertCountEqual(self.g.post_urls(), ["/roll_dice", "/force_dice"])
@@ -1306,27 +1306,27 @@ class TestUnstartedGame(unittest.TestCase):
     self.c.connect_user("three")
     self.c.connect_user("four")
     with self.assertRaisesRegex(InvalidMove, "at least two players"):
-      self.c.handle_start("one", {"scenario": "standard"})
+      self.c.handle_start("one", {"options": {"Scenario": "Random Map"}})
 
     self.c.handle_join("one", {"name": "player1"})
     self.c.handle_join("two", {"name": "player2"})
     self.c.handle_join("three", {"name": "player3"})
     self.c.handle_join("four", {"name": "player4"})
     with self.assertRaisesRegex(InvalidMove, "not the host"):
-      self.c.handle_start("two", {"scenario": "standard"})
+      self.c.handle_start("two", {"options": {"Scenario": "Random Map"}})
     with self.assertRaisesRegex(InvalidMove, "Unknown scenario"):
-      self.c.handle_start("one", {"scenario": "nsaoeu"})
-    with self.assertRaisesRegex(InvalidMove, "Unknown scenario"):
-      self.c.handle_start("one", {})
+      self.c.handle_start("one", {"options": {"Scenario": "nsaoeu"}})
+    with self.assertRaisesRegex(InvalidMove, "must select"):
+      self.c.handle_start("one", {"options": {}})
     self.assertIsNone(self.c.game)
 
-    self.c.handle_start("one", {"scenario": "standard"})
+    self.c.handle_start("one", {"options": {"Scenario": "Random Map"}})
     self.assertIsNotNone(self.c.game)
     self.assertIsNone(self.c.host)
     self.assertGreater(len(self.c.game.tiles.keys()), 0)
 
     with self.assertRaisesRegex(InvalidMove, "already started"):
-      self.c.handle_start("one", {"scenario": "standard"})
+      self.c.handle_start("one", {"options": {"Scenario": "Random Map"}})
     with self.assertRaisesRegex(catan.InvalidPlayer, "already started"):
       self.c.handle_join("one", {"name": "troll"})
 
@@ -1342,7 +1342,7 @@ class TestUnstartedGame(unittest.TestCase):
     self.c.handle_join("four", {"name": "player4"})
     self.c.disconnect_user("one")
     self.c.disconnect_user("three")
-    self.c.handle_start(self.c.host, {"scenario": "standard"})
+    self.c.handle_start(self.c.host, {"options": {"Scenario": "Random Map"}})
 
     self.assertIsNotNone(self.c.game)
     self.assertEqual(len(self.c.game.player_data), 2)
@@ -1351,6 +1351,83 @@ class TestUnstartedGame(unittest.TestCase):
     self.assertEqual(self.c.game.player_data[self.c.player_sessions["four"]].name, "player4")
     self.assertEqual(self.c.game.discard_players, [0, 0])
     self.assertEqual(self.c.game.counter_offers, [None, None])
+
+
+class TestGameOptions(unittest.TestCase):
+
+  def setUp(self):
+    self.c = catan.CatanGame()
+
+  def testInitialState(self):
+    self.assertDictEqual(self.c.choices, {})
+    self.assertSetEqual(self.c.rules, set())
+    self.assertEqual(self.c.scenario, "Random Map")
+    self.assertTrue(issubclass(self.c.game_class, catan.RandomMap))
+    self.assertFalse(issubclass(self.c.game_class, catan.DebugRules))
+
+  def testOptions(self):
+    self.c.scenario = "Beginner's Map"
+    json_for_player = json.loads(self.c.for_player(None))
+    option_data = {option["name"]: option for option in json_for_player["options"]}
+    self.assertIn("Scenario", option_data)
+    self.assertEqual(option_data["Scenario"]["value"], "Beginner's Map")
+    self.assertIn("Debug", option_data)
+    self.assertFalse(option_data["Debug"]["value"])
+    self.assertIsNone(option_data["Debug"]["choices"])
+
+  def testModifyOptions(self):
+    self.c.host = "a"
+    self.c.handle_select_option(
+        "a", {"options": {"Scenario": "Test Map", "Debug": True, "Friendly Robber": True}})
+    self.assertEqual(self.c.scenario, "Test Map")
+    self.assertSetEqual(self.c.rules, {"Debug"})
+    self.assertIn("Friendly Robber", self.c.choices)
+    self.assertTrue(self.c.choices["Friendly Robber"])
+
+    self.c.handle_select_option(
+        "a", {"options": {"Scenario": "Beginner's Map", "Debug": False, "Friendly Robber": True}})
+    self.assertEqual(self.c.scenario, "Beginner's Map")
+    self.assertSetEqual(self.c.rules, set())
+    self.assertIn("Friendly Robber", self.c.choices)
+    self.assertTrue(self.c.choices["Friendly Robber"])
+
+    self.c.handle_select_option(
+        "a", {"options": {"Scenario": "Random Map", "Debug": False, "Friendly Robber": True}})
+    self.assertEqual(self.c.scenario, "Random Map")
+    self.assertSetEqual(self.c.rules, set())
+    self.assertIn("Friendly Robber", self.c.choices)
+    # Friendly robber should be reset to default because the default changed.
+    self.assertFalse(self.c.choices["Friendly Robber"])
+    self.assertCountEqual(self.c.choices.keys(), {"Friendly Robber"})
+
+    self.c.handle_select_option("a", {"options": {"Scenario": "The Four Islands"}})
+    self.assertEqual(self.c.scenario, "The Four Islands")
+    self.assertSetEqual(self.c.rules, set())
+    # Should set the option to its default even if it wasn't in the provided options.
+    self.assertCountEqual(self.c.choices.keys(), {"Friendly Robber", "Seafarers"})
+    self.assertFalse(self.c.choices["Friendly Robber"])
+    self.assertTrue(self.c.choices["Seafarers"])
+
+    self.c.handle_select_option(
+        "a", {"options": {"Scenario": "The Four Islands", "Seafarers": False}})
+    # You cannot override a forced option.
+    self.assertTrue(self.c.choices["Seafarers"])
+
+  def testStartWithOptions(self):
+    self.c.connect_user("one")
+    self.c.connect_user("two")
+    self.c.connect_user("three")
+    self.c.handle_join("one", {"name": "player1"})
+    self.c.handle_join("two", {"name": "player2"})
+    self.c.handle_join("three", {"name": "player3"})
+
+    self.c.handle_select_option("one", {"options": {"Scenario": "Random Map", "Debug": True}})
+    # Completely change the options before starting the game; make sure they're honored.
+    self.c.handle_start(
+        "one", {"options": {"Scenario": "The Four Islands", "Friendly Robber": True}})
+    self.assertIsInstance(self.c.game, catan.SeafarerIslands)
+    self.assertNotIsInstance(self.c.game, catan.DebugRules)
+    self.assertFalse(self.c.game.rob_at_two)
 
 
 if __name__ == '__main__':
