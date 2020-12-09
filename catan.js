@@ -728,8 +728,8 @@ function updateCards() {
   let maxOrder = 0;
   let maxChild = null;
   for (child of container.children) {
-    if (child.style.order >= maxOrder && !child.classList.contains("leave")) {
-      maxOrder = child.style.order;
+    if (parseInt(child.style.order) >= maxOrder && !child.classList.contains("leave")) {
+      maxOrder = parseInt(child.style.order);
       maxChild = child;
     }
   }
