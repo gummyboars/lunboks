@@ -153,7 +153,8 @@ class GameHandler(object):
     if is_new_user:
       print("added %s to the game %s" % (session, self.game_id))
       self.game.connect_user(session)
-      await self.push()
+    # Need to push, since the new connection needs data too.
+    await self.push()
 
   async def disconnect_user(self, session, websocket):
     self.websockets[session].remove(websocket)
