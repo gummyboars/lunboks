@@ -48,6 +48,9 @@ class TestLoadState(unittest.TestCase):
     self.assertTrue(hasattr(c, "ships_moved"))
     self.assertEqual(c.built_this_turn, [(1, 4, 2, 5)])
     self.assertEqual(c.ships_moved, 1)
+    self.assertEqual(len(c.roads), 2)
+    self.assertEqual(list(c.roads.values())[0].road_type, "ship")
+    self.assertIsInstance(list(c.roads.values())[0].source, catan.CornerLocation)
 
   def testDumpAndLoad(self):
     c = catan.RandomMap()
@@ -246,7 +249,7 @@ class testRobberMovement(BaseInputHandlerTest):
     self.c.rob_at_two = False
     self.c.add_piece(catan.Piece(4,2, "city", 1))
     self.c.add_player("green", "Player3")
-    self.c.add_piece(catan.Piece(1,6, "city", 3))
+    self.c.add_piece(catan.Piece(1,6, "city", 2))
     with self.assertRaisesRegex(InvalidMove, "Robbers refuse to rob such poor people."):
       self.c.handle_robber((2,5),0)
 

@@ -295,10 +295,12 @@ class Road(object):
   @staticmethod
   def parse_json(value):
     # TODO: maybe this assert should go into the constructor?
+    source = None
     if value["road_type"] == "ship":
       assert value.get("source") is not None
+      source = CornerLocation(value["source"][0], value["source"][1])
     return Road(value["location"], value["road_type"], value["player"], value.get("closed", False),
-        value.get("movable", True), value.get("source"))
+        value.get("movable", True), source)
 
   def __str__(self):
     return str(self.json_repr())
@@ -505,10 +507,10 @@ class CatanState(object):
       cstate.add_tile(tile)
     for piece_json in gamedata["pieces"]:
       piece = Piece.parse_json(piece_json)
-      cstate.add_piece(piece)
+      cstate._add_piece(piece)
     for road_json in gamedata["roads"]:
       road = Road.parse_json(road_json)
-      cstate.add_road(road)
+      cstate._add_road(road)
     for port_json in gamedata["ports"]:
       port = Port.parse_json(port_json)
       cstate.add_port(port)
@@ -917,7 +919,7 @@ class CatanState(object):
         raise InvalidMove("You cannot place a settlement next to existing settlement.")
     # Handle special settlement phase.
     if self.game_phase.startswith("place"):
-      self._build_settlement(location, player)
+      self.add_piece(Piece(location[0], location[1], "settlement", player))
       if self.game_phase == "place2":
         self.give_second_resources(player, CornerLocation(*location))
       self.turn_phase = "road"
@@ -937,16 +939,11 @@ class CatanState(object):
     resources = [("rsrc1", 1), ("rsrc2", 1), ("rsrc3", 1), ("rsrc4", 1)]
     self._remove_resources(resources, player, "build a settlement")
 
-    self._build_settlement(location, player)
-
-  def _build_settlement(self, location, player):
-    """Build assuming all checks have been done."""
     self.add_piece(Piece(location[0], location[1], "settlement", player))
-    self._add_player_port(location, player)
 
   def _add_player_port(self, location, player):
     """Sets the trade ratios for a player who built a settlement at this location."""
-    port_type = self.port_corners.get(tuple(location))
+    port_type = self.port_corners.get(location.as_tuple())
     if port_type == "3":
       for rsrc in RESOURCES:
         self.player_data[player].trade_ratios[rsrc] = min(self.player_data[player].trade_ratios[rsrc], 3)
@@ -1227,8 +1224,13 @@ class CatanState(object):
   def add_port(self, port):
     self.ports[port.location.as_tuple()] = port
 
-  def add_piece(self, piece):
+  def _add_piece(self, piece):
     self.pieces[piece.location.as_tuple()] = piece
+
+  def add_piece(self, piece):
+    self._add_piece(piece)
+
+    self._add_player_port(piece.location, piece.player)
 
     # Check for breaking an existing longest road.
     # Start by calculating any players with an adjacent road/ship.
@@ -1271,8 +1273,11 @@ class CatanState(object):
     else:
       self.longest_route_player = None
 
-  def add_road(self, road):
+  def _add_road(self, road):
     self.roads[road.location.as_tuple()] = road
+
+  def add_road(self, road):
+    self._add_road(road)
 
     # Check for increase in longest road, update longest road player if necessary. Also check
     # for decrease in longest road, which can happen if a player moves a ship.
