@@ -998,11 +998,15 @@ function updateDice() {
   }
 }
 function updateJoinWindow() {
+  let uiJoin = document.getElementById("uijoin");
   if (gameStarted) {
-    document.getElementById("uijoin").style.display = "none";
+    uiJoin.style.display = "none";
     return;
   }
-  document.getElementById("uijoin").style.display = "flex";
+  if (uiJoin.style.display != "flex" && document.getElementById("joinnameinput").value == "") {
+    document.getElementById("joinnameinput").value = localStorage.getItem("playername") || "";
+  }
+  uiJoin.style.display = "flex";
   let flagOptionDiv = document.getElementById("flagoptions");
   let choiceOptionDiv = document.getElementById("choiceoptions");
   let allOptions = [];
@@ -1134,6 +1138,7 @@ function joinGame(e) {
     name: document.getElementById("joinnameinput").value,
   };
   ws.send(JSON.stringify(msg));
+  localStorage.setItem("playername", document.getElementById("joinnameinput").value);
 }
 function rename(e) {
   let msg = {
@@ -1141,6 +1146,7 @@ function rename(e) {
     name: document.getElementById('nameInput').value,
   };
   ws.send(JSON.stringify(msg));
+  localStorage.setItem("playername", document.getElementById("nameInput").value);
 }
 function takeover(e, idx) {
   let msg = {
