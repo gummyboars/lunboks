@@ -1,6 +1,7 @@
 import collections
 from http import HTTPStatus
 import json
+import operator
 import os
 import random
 from unittest import mock
@@ -441,6 +442,7 @@ class CatanState(object):
   LOCATION_ATTRIBUTES = {"tiles", "ports", "pieces", "roads"}
   HIDDEN_ATTRIBUTES = {"dev_cards", "dev_roads_placed", "played_dev"}
   COMPUTED_ATTRIBUTES = {"port_corners"}
+  INDEXED_ATTRIBUTES = {"counter_offers", "discard_players"}
 
   def __init__(self):
     # Player data is a sequential list of CatanPlayer objects; players are identified by index.
@@ -455,14 +457,14 @@ class CatanState(object):
     self.dev_cards = []
     self.dev_roads_placed = 0
     self.played_dev = 0
-    self.discard_players = []  # Map of player to number of cards they must discard.
+    self.discard_players = {}  # Map of player to number of cards they must discard.
     self.rob_players = []  # List of players that can be robbed by this robber.
     self.turn_idx = 0
     self.largest_army_player = None
     self.longest_route_player = None
     self.dice_roll = None
     self.trade_offer = None
-    self.counter_offers = []  # Map of player to counter offer.
+    self.counter_offers = {}  # Map of player to counter offer.
     # Special values for counter-offers: not present in dictionary means they have not
     # yet made a counter-offer. An null/None counter-offer indicates that they have
     # rejected the trade offer. A counter-offer equal to the original means they accept.
@@ -481,6 +483,10 @@ class CatanState(object):
     return cls.HIDDEN_ATTRIBUTES
 
   @classmethod
+  def indexed_attrs(cls):
+    return cls.INDEXED_ATTRIBUTES
+
+  @classmethod
   def computed_attrs(cls):
     return cls.COMPUTED_ATTRIBUTES
 
@@ -490,16 +496,18 @@ class CatanState(object):
 
     # Regular attributes
     for attr in cstate.__dict__:
-      if attr not in (cls.location_attrs() | cls.computed_attrs() | {"player_data"}):
+      if attr not in (cls.location_attrs() | cls.computed_attrs() | cls.indexed_attrs() | {"player_data"}):
         setattr(cstate, attr, gamedata[attr])
 
-    # Parse the players. TODO: move more info inside player class, avoid this special case?
-    cstate.discard_players.clear()
-    cstate.counter_offers.clear()
+    # Parse the players.
     for parsed_player in gamedata["player_data"]:
       cstate.player_data.append(CatanPlayer.parse_json(parsed_player))
-      cstate.discard_players.append(0)
-      cstate.counter_offers.append(None)
+
+    # Indexed attributes update the corresponding dictionaries.
+    for attr in cls.indexed_attrs():
+      for idx, val in enumerate(gamedata[attr]):
+        if val is not None:
+          getattr(cstate, attr)[idx] = val
 
     # Location dictionaries are updated with their respective items.
     for tile_json in gamedata["tiles"]:
@@ -524,7 +532,9 @@ class CatanState(object):
         name: getattr(self, name) for name in
         self.__dict__.keys() - self.location_attrs() - self.computed_attrs() - {"player_data"}
     }
-    ret.update({name: list(getattr(self, name).values()) for name in self.LOCATION_ATTRIBUTES})
+    ret.update({name: list(getattr(self, name).values()) for name in self.location_attrs()})
+    for attr in self.indexed_attrs():
+      ret.update({attr: [getattr(self, attr).get(idx) for idx in range(len(self.player_data))]})
     ret["player_data"] = [player.json_repr() for player in self.player_data]
     return ret
 
@@ -595,8 +605,6 @@ class CatanState(object):
 
   def add_player(self, color, name):
     self.player_data.append(CatanPlayer(color, name))
-    self.discard_players.append(0)
-    self.counter_offers.append(None)
 
   def handle(self, player_idx, data):
     if not data.get("type"):
@@ -680,7 +688,7 @@ class CatanState(object):
     self.player_data[self.turn_idx].unusable.clear()
     self.played_dev = 0
     self.trade_offer = {}
-    self.counter_offers = [None] * len(self.player_data)
+    self.counter_offers.clear()
     if self.game_phase == "main":
       self.turn_idx += 1
       self.turn_idx = self.turn_idx % len(self.player_data)
@@ -710,9 +718,8 @@ class CatanState(object):
     white = random.randint(1, 6)
     self.dice_roll = (red, white)
     if (red + white) == 7:
-      discard_players = self._get_players_with_too_many_resources()
-      if sum(discard_players):
-        self.discard_players = discard_players
+      self.discard_players = self._get_players_with_too_many_resources()
+      if sum(self.discard_players.values()):
         self.turn_phase = "discard"
       else:
         self.turn_phase = "robber"
@@ -785,12 +792,10 @@ class CatanState(object):
     self.player_data[current_player].cards[chosen_rsrc] += 1
 
   def _get_players_with_too_many_resources(self):
-    card_counts = [0] * len(self.player_data)
-    for player, player_data in enumerate(self.player_data):
-      count = player_data.resource_card_count()
-      if count >= 8:
-        card_counts[player] = count // 2
-    return card_counts
+    return {
+        idx: player.resource_card_count() // 2
+        for idx, player in enumerate(self.player_data) if player.resource_card_count() >= 8
+    }
 
   # TODO: move into the player class?
   def _check_resources(self, resources, player, action_string):
@@ -985,7 +990,7 @@ class CatanState(object):
     if self.turn_phase != "discard":
       raise InvalidMove("You cannot discard cards right now.")
     self._validate_selection(selection)
-    if self.discard_players[player] <= 0:
+    if not self.discard_players.get(player):
       raise InvalidMove("You do not need to discard any cards.")
     discard_count = sum([selection.get(rsrc, 0) for rsrc in RESOURCES])
     if discard_count != self.discard_players[player]:
@@ -993,8 +998,8 @@ class CatanState(object):
                         (self.player_data[player].resource_card_count(),
                          self.discard_players[player]))
     self._remove_resources(selection.items(), player, "discard those cards")
-    self.discard_players[player] = 0
-    if sum(self.discard_players) == 0:
+    del self.discard_players[player]
+    if sum(self.discard_players.values()) == 0:
       self.turn_phase = "robber"
 
   def _validate_selection(self, selection):
@@ -1101,7 +1106,8 @@ class CatanState(object):
     self._check_main_phase("make a trade")
     self._validate_trade(offer, player)
     self.trade_offer = offer
-    self.counter_offers = [None] * len(self.player_data)
+    # TODO: maybe we don't want to actually clear the counter offers?
+    self.counter_offers.clear()
 
   def handle_counter_offer(self, offer, player):
     if self.turn_idx == player:
@@ -1118,6 +1124,8 @@ class CatanState(object):
       raise InvalidMove("Invalid player.")
     if counter_player == player:
       raise InvalidMove("You cannot trade with yourself.")
+    if not self.counter_offers.get(counter_player):
+      raise InvalidMove("That player has not made an offer for you to accept.")
     self._check_main_phase("make a trade")
     my_want = counter_offer[self.GIVE]
     my_give = counter_offer[self.WANT]
@@ -1149,7 +1157,7 @@ class CatanState(object):
       self.player_data[player].cards[rsrc] += count
       self.player_data[counter_player].cards[rsrc] -= count
 
-    self.counter_offers = [None] * len(self.player_data)
+    self.counter_offers.clear()
     # TODO: Do we want to reset the trade offer here?
 
   def handle_trade_bank(self, offer, player):

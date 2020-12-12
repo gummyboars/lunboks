@@ -1209,7 +1209,7 @@ class TestDiscard(BaseInputHandlerTest):
     # Player 0 has 16 cards, and must discard 8.
     # Player 1 does not have to discard because dev cards don't count.
     # Player 2 must discard 9/2 rounded down = 4.
-    self.assertListEqual(self.c.discard_players, [8, 0, 4])
+    self.assertDictEqual(self.c.discard_players, {0: 8, 2: 4})
 
     # Player 1 does not need to discard.
     with self.assertRaisesRegex(InvalidMove, "do not need to discard"):
@@ -1352,8 +1352,8 @@ class TestUnstartedGame(unittest.TestCase):
     self.assertCountEqual(self.c.player_sessions.keys(), ["two", "four"])
     self.assertEqual(self.c.game.player_data[self.c.player_sessions["two"]].name, "player2")
     self.assertEqual(self.c.game.player_data[self.c.player_sessions["four"]].name, "player4")
-    self.assertEqual(self.c.game.discard_players, [0, 0])
-    self.assertEqual(self.c.game.counter_offers, [None, None])
+    self.assertDictEqual(self.c.game.discard_players, {})
+    self.assertDictEqual(self.c.game.counter_offers, {})
 
 
 class TestGameOptions(unittest.TestCase):
