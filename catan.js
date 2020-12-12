@@ -69,6 +69,7 @@ tiles = [];
 ports = [];
 corners = [];
 pieces = [];
+landings = [];
 edges = [];
 roads = [];
 cards = {};
@@ -914,6 +915,7 @@ function onmsg(event) {
   devCardCount = data.dev_cards;
   diceRoll = data.dice_roll;
   pieces = data.pieces;
+  landings = data.landings;
   roads = data.roads;
   let oldTurn = turn;
   turn = data.turn;

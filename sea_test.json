@@ -53,6 +53,8 @@
     ],
     "pirate": null,
     "played_dev": 0,
+    "home_corners": [[[2, 5]]],
+    "foreign_landings": [[]],
     "player_sessions": {
         "Player1": 0,
         "Player2": 1

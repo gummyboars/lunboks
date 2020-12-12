@@ -78,7 +78,156 @@ class TestLoadState(unittest.TestCase):
               "%s [%s]: %s old == new" % (loc_attr, key, attr))
 
 
-class BaseInputHandlerTest(unittest.TestCase):
+class BreakpointTest(unittest.TestCase):
+
+  def breakpoint(self):
+    t = threading.Thread(target=server.ws_main, args=(server.GLOBAL_LOOP,))
+    t.start()
+    server.GAMES['test'] = game.GameHandler('test', catan.CatanGame)
+    server.GAMES['test'].game = self.g
+    server.main()
+    t.join()
+
+
+class CornerComputationTest(unittest.TestCase):
+
+  def testIslandCorners(self):
+    self.c = catan.SeafarerIslands()
+    self.c.load_file("islands3.json")
+    self.c._compute_contiguous_islands()
+    self.assertIn((2, 1), self.c.corners_to_islands)
+    self.assertIn((3, 5), self.c.corners_to_islands)
+    self.assertEqual(self.c.corners_to_islands[(2, 1)], self.c.corners_to_islands[(3, 5)])
+
+    self.assertIn((10, 1), self.c.corners_to_islands)
+    self.assertIn((8, 4), self.c.corners_to_islands)
+    self.assertEqual(self.c.corners_to_islands[(10, 1)], self.c.corners_to_islands[(8, 4)])
+
+    self.assertNotEqual(self.c.corners_to_islands[(2, 1)], self.c.corners_to_islands[(8, 4)])
+
+  def testShoreCorners(self):
+    self.c = catan.SeafarerShores()
+    self.c.load_file("shores4.json")
+    self.c._compute_contiguous_islands()
+    self.assertIn((2, 3), self.c.corners_to_islands)
+    self.assertIn((9, 8), self.c.corners_to_islands)
+    self.assertEqual(self.c.corners_to_islands[(2, 3)], self.c.corners_to_islands[(9, 8)])
+
+    self.assertIn((12, 4), self.c.corners_to_islands)
+    self.assertIn((13, 6), self.c.corners_to_islands)
+    self.assertEqual(self.c.corners_to_islands[(12, 4)], self.c.corners_to_islands[(13, 6)])
+
+    self.assertIn((9, 10), self.c.corners_to_islands)
+    self.assertIn((12, 12), self.c.corners_to_islands)
+    self.assertEqual(self.c.corners_to_islands[(9, 10)], self.c.corners_to_islands[(12, 12)])
+
+    # Assert that the island number for each of these corners is unique.
+    islands = [self.c.corners_to_islands[loc] for loc in [(2, 3), (13, 6), (9, 10)]]
+    self.assertEqual(len(islands), len(set(islands)))
+
+  def testDesertCorners(self):
+    self.c = catan.SeafarerDesert()
+    self.c.load_file("desert3.json")
+    self.c._compute_contiguous_islands()
+    self.assertIn((2, 1), self.c.corners_to_islands)
+    self.assertIn((9, 6), self.c.corners_to_islands)
+    self.assertEqual(self.c.corners_to_islands[(2, 1)], self.c.corners_to_islands[(9, 6)])
+
+    self.assertIn((10, 1), self.c.corners_to_islands)
+    self.assertIn((13, 4), self.c.corners_to_islands)
+    self.assertEqual(self.c.corners_to_islands[(10, 1)], self.c.corners_to_islands[(13, 4)])
+
+    self.assertIn((2, 9), self.c.corners_to_islands)
+
+    # Assert that the island number for each of these corners is unique.
+    islands = [self.c.corners_to_islands[loc] for loc in [(2, 1), (13, 4), (2, 9)]]
+    self.assertEqual(len(islands), len(set(islands)))
+
+    # Desert corner that doesn't touch any other land should not have an island number.
+    self.assertNotIn((14, 5), self.c.corners_to_islands)
+
+
+class TestIslandCalculations(BreakpointTest):
+
+  def setUp(self):
+    self.c = catan.SeafarerIslands()
+    self.c.add_player("red", "player1")
+    self.c.add_player("blue", "player2")
+    self.c.add_player("green", "player3")
+    self.c.init({})
+    self.c.handle(0, {"type": "settle", "location": [8, 4]})
+    self.c.handle(0, {"type": "ship", "location": [7, 3, 8, 4]})
+    self.c.handle(1, {"type": "settle", "location": [3, 5]})
+    self.c.handle(1, {"type": "ship", "location": [3, 5, 4, 6]})
+    self.c.handle(2, {"type": "settle", "location": [5, 8]})
+    self.c.handle(2, {"type": "ship", "location": [5, 8, 6, 7]})
+    self.c.handle(2, {"type": "settle", "location": [12, 8]})
+    self.c.handle(2, {"type": "road", "location": [12, 8, 13, 8]})
+    self.c.handle(1, {"type": "settle", "location": [6, 1]})
+    self.c.handle(1, {"type": "ship", "location": [6, 1, 7, 1]})
+    self.c.game_phase = "main"
+    self.g = catan.CatanGame()
+    self.g.update_rulesets_and_choices({"Scenario": "The Four Islands"})
+    self.g.game = self.c
+
+  def testHomeIslands(self):
+    self.assertCountEqual(self.c.home_corners[0], [(8, 4)])
+    self.assertCountEqual(self.c.home_corners[1], [(3, 5), (6, 1)])
+    self.assertCountEqual(self.c.home_corners[2], [(5, 8), (12, 8)])
+
+  def settleForeignIslands(self):
+    # Player1 settles a foreign island.
+    self.c.add_piece(catan.Piece(6, 3, "settlement", 0))
+    # Player2 settles two foreign islands.
+    self.c.add_piece(catan.Piece(8, 2, "settlement", 1))
+    self.c.add_piece(catan.Piece(3, 7, "settlement", 1))
+    # Two settlements, but only one is on a foreign island.
+    self.c.add_piece(catan.Piece(5, 6, "settlement", 2))
+    self.c.add_piece(catan.Piece(7, 7, "settlement", 2))
+
+  def testForeignIslands(self):
+    self.settleForeignIslands()
+    self.assertCountEqual(self.c.foreign_landings[0], [(6, 3)])
+    self.assertCountEqual(self.c.foreign_landings[1], [(8, 2), (3, 7)])
+    # An extra settlement on a foreign island changes nothing.
+    self.c.add_piece(catan.Piece(1, 8, "settlement", 1))
+    self.assertCountEqual(self.c.foreign_landings[1], [(8, 2), (3, 7)])
+    self.assertCountEqual(self.c.foreign_landings[2], [(5, 6)])
+
+  def testPlayerPoints(self):
+    self.settleForeignIslands()
+    self.assertEqual(self.c.player_points(0, True), 4)
+    self.assertEqual(self.c.player_points(1, True), 8)
+    self.assertEqual(self.c.player_points(2, True), 6)
+
+  def testClientJson(self):
+    self.settleForeignIslands()
+    data = self.c.for_player(None)
+    self.assertIn("landings", data)
+    self.assertCountEqual(
+        data["landings"], [
+          {"player": 0, "location": (6, 3)},
+          {"player": 1, "location": (8, 2)},
+          {"player": 1, "location": (3, 7)},
+          {"player": 2, "location": (5, 6)},
+    ])
+
+  def testSaveAndLoad(self):
+    self.settleForeignIslands()
+    dump = self.g.json_str()
+    loaded = catan.CatanGame.parse_json(dump)
+    game = loaded.game
+    self.assertIsInstance(game.home_corners, collections.defaultdict)
+    self.assertIsInstance(game.foreign_landings, collections.defaultdict)
+    self.assertCountEqual(game.home_corners[0], [(8, 4)])
+    self.assertCountEqual(game.home_corners[1], [(3, 5), (6, 1)])
+    self.assertCountEqual(game.home_corners[2], [(5, 8), (12, 8)])
+    self.assertCountEqual(self.c.foreign_landings[0], [(6, 3)])
+    self.assertCountEqual(self.c.foreign_landings[1], [(8, 2), (3, 7)])
+    self.assertCountEqual(self.c.foreign_landings[2], [(5, 6)])
+
+
+class BaseInputHandlerTest(BreakpointTest):
 
   TEST_FILE = "test.json"
   EXTRA_RULES = []
@@ -90,14 +239,6 @@ class BaseInputHandlerTest(unittest.TestCase):
       json_data["rules"].extend(self.EXTRA_RULES)
     self.g = catan.CatanGame.parse_json(json.dumps(json_data))
     self.c = self.g.game
-
-  def breakpoint(self):
-    t = threading.Thread(target=server.ws_main, args=(server.GLOBAL_LOOP,))
-    t.start()
-    server.GAMES['test'] = game.GameHandler('test', catan.CatanGame)
-    server.GAMES['test'].game = self.g
-    server.main()
-    t.join()
 
 
 class TestLoadTestData(BaseInputHandlerTest):
@@ -263,6 +404,7 @@ class testRobberMovement(BaseInputHandlerTest):
     self.c.rob_at_two = False
     self.c.add_piece(catan.Piece(4,2, "city", 1))
     self.c.handle_robber((4,4),0)
+
 
 class TestHandleSettleInput(BaseInputHandlerTest):
 

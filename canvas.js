@@ -85,6 +85,13 @@ function draw() {
   }
   context.restore();
   context.save();
+  if (landings != null) {
+    for (let i = 0; i < landings.length; i++) {
+      drawLanding(landings[i], context);
+    }
+  }
+  context.restore();
+  context.save();
   drawHover(context);
   context.restore();
   context.save();
@@ -232,6 +239,16 @@ function drawDebug(ctx) {
       ctx.fillText("" + hoverEdge.location, 0, 0);
     }
   }
+}
+function drawLanding(landing, ctx) {
+  let canvasLoc = coordToCornerCenter(landing.location);
+  ctx.strokeStyle = "black";
+  ctx.beginPath;
+  ctx.moveTo(canvasLoc.x, canvasLoc.y - pieceRadius / 2);
+  ctx.lineTo(canvasLoc.x, canvasLoc.y - 2 * pieceRadius);
+  ctx.stroke();
+  ctx.fillStyle = playerData[landing.player].color;
+  ctx.fillRect(canvasLoc.x - pieceRadius, canvasLoc.y - 2*pieceRadius, pieceRadius, pieceRadius/2);
 }
 function drawPiece(pieceLoc, style, pieceType, ctx) {
   let canvasLoc = coordToCornerCenter(pieceLoc);

@@ -1375,9 +1375,10 @@ class CatanState(object):
     for idx, loc in enumerate(space_tiles):
       self.add_tile(Tile(loc[0], loc[1], "space", False, None, rotations[idx]))
 
+  def _compute_edges(self):
     # Go back and figure out which ones are corners.
-    # TODO: turn this into a function and unit test it.
-    for idx, location in enumerate(space_tiles):
+    # TODO: unit test this function.
+    for location in self.tiles:
       locs = TileLocation(location[0], location[1]).get_adjacent_tiles()
       exists = [loc.as_tuple() in self.tiles for loc in locs]
       tile_rotation = self.tiles[location].rotation
@@ -1481,6 +1482,7 @@ class RandomMap(CatanState):
     self._create_port_every_other_tile(SPACE_TILE_SEQUENCE, SPACE_TILE_ROTATIONS, ports)
     self._shuffle_ports()
     self._compute_coast()
+    self._compute_edges()
     self._compute_ports()
     self._init_dev_cards()
 
@@ -1497,6 +1499,7 @@ class BeginnerMap(CatanState):
     self._init_space(SPACE_TILE_SEQUENCE, SPACE_TILE_ROTATIONS)
     self._create_port_every_other_tile(SPACE_TILE_SEQUENCE, SPACE_TILE_ROTATIONS, ports)
     self._compute_coast()
+    self._compute_edges()
     self._compute_ports()
     self._init_dev_cards()
 
@@ -1519,6 +1522,7 @@ class TestMap(CatanState):
     self._init_space(space_seq, rotations)
     self._create_port_every_other_tile(space_seq, rotations, ports)
     self._compute_coast()
+    self._compute_edges()
     self._compute_ports()
     self._init_dev_cards()
 
@@ -1559,16 +1563,47 @@ class Seafarers(CatanState):
     super(Seafarers, self).__init__(*args, **kwargs)
     self.built_this_turn = []
     self.ships_moved = 0
+    self.corners_to_islands = {}  # Map of corner to island (canonical corner location).
+    self.home_corners = collections.defaultdict(list)
+    self.foreign_landings = collections.defaultdict(list)
+    self.foreign_island_points = 2
 
   @classmethod
   def parse_json(cls, gamedata):
     game = super(Seafarers, cls).parse_json(gamedata)
     game.built_this_turn = [tuple(loc) for loc in gamedata["built_this_turn"]]
+    game._compute_contiguous_islands()
+    # When loading json, these islands get turned into lists. Turn them into tuples instead.
+    for attr in ["home_corners", "foreign_landings"]:
+      mapping = getattr(game, attr)
+      for idx, corner_list in mapping.items():
+        for corner in corner_list:
+          assert game.pieces[tuple(corner)].player == idx
+      mapping.update({
+        idx: [tuple(corner) for corner in corner_list] for idx, corner_list in mapping.items()
+      })
     return game
+
+  def json_for_player(self):
+    data = super(Seafarers, self).json_for_player()
+    data["landings"] = []
+    for idx, corner_list in self.foreign_landings.items():
+      data["landings"].extend([{"location": corner, "player": idx} for corner in corner_list])
+    return data
 
   @classmethod
   def hidden_attrs(cls):
-    return super(Seafarers, cls).hidden_attrs() | {"built_this_turn", "ships_moved"}
+    hidden = {"built_this_turn", "ships_moved", "home_corners", "foreign_landings"}
+    return super(Seafarers, cls).hidden_attrs() | hidden
+
+  @classmethod
+  def indexed_attrs(cls):
+    return super(Seafarers, cls).indexed_attrs() | {"home_corners", "foreign_landings"}
+
+  @classmethod
+  def computed_attrs(cls):
+    computed = {"corners_to_islands", "foreign_island_points"}
+    return super(Seafarers, cls).computed_attrs() | computed
 
   @classmethod
   def get_options(cls):
@@ -1641,6 +1676,14 @@ class Seafarers(CatanState):
     super(Seafarers, self).add_piece(piece)
     if piece.piece_type == "settlement":
       self.recalculate_ships(piece.location, piece.player)
+    if self.game_phase.startswith("place"):
+      self.home_corners[piece.player].append(piece.location.as_tuple())
+    else:
+      home_settled = [self.corners_to_islands[loc] for loc in self.home_corners[piece.player]]
+      foreign_landed = [self.corners_to_islands[loc] for loc in self.foreign_landings[piece.player]]
+      current_island = self.corners_to_islands[piece.location.as_tuple()]
+      if current_island not in home_settled + foreign_landed:
+        self.foreign_landings[piece.player].append(piece.location.as_tuple())
 
   def get_ship_source(self, location, player_idx):
     edges = []
@@ -1762,6 +1805,48 @@ class Seafarers(CatanState):
       raise InvalidPlayer("Cannot be played with more than 4 players.")
     super(Seafarers, self).init(options)
 
+  def _is_connecting_tile(self, tile):
+    return tile.is_land
+
+  def _compute_contiguous_islands(self):
+    # Group the corners together into sets that each represent an island.
+    seen_tiles = set()
+    islands = []
+    for location, tile in self.tiles.items():
+      if location in seen_tiles:
+        continue
+      if not self._is_connecting_tile(tile):
+        continue
+      seen_tiles.add(location)
+      islands.append(set())
+      for corner_loc in tile.location.get_corner_locations():
+        islands[-1].add(corner_loc.as_tuple())
+      loc_stack = []
+      loc_stack.extend([loc.as_tuple() for loc in tile.location.get_adjacent_tiles()])
+      while(loc_stack):
+        next_loc = loc_stack.pop()
+        if next_loc in seen_tiles:
+          continue
+        if next_loc not in self.tiles:
+          continue
+        if not self._is_connecting_tile(self.tiles[next_loc]):
+          continue
+        seen_tiles.add(next_loc)
+        loc = TileLocation(*next_loc)
+        for corner_loc in loc.get_corner_locations():
+          islands[-1].add(corner_loc.as_tuple())
+        loc_stack.extend([x.as_tuple() for x in loc.get_adjacent_tiles()])
+
+    # Convert a group of sets into a map of corner -> canonical corner.
+    for corner_set in islands:
+      canonical_corner = min(corner_set)
+      for corner in corner_set:
+        self.corners_to_islands[corner] = canonical_corner
+
+  def player_points(self, idx, visible):
+    points = super(Seafarers, self).player_points(idx, visible)
+    return points + len(self.foreign_landings[idx]) * self.foreign_island_points
+
   def load_file(self, filename):
     with open(filename) as data:
       json_data = json.load(data)
@@ -1786,6 +1871,8 @@ class SeafarerShores(Seafarers):
       self._shuffle_ports()
     else:
       raise InvalidPlayer("Must have 3 or 4 players.")
+    self._compute_contiguous_islands()
+    self._compute_edges()
 
 
 class SeafarerIslands(Seafarers):
@@ -1802,6 +1889,8 @@ class SeafarerIslands(Seafarers):
       self.pirate = TileLocation(6, 11)
     else:
       raise InvalidPlayer("Must have 3 or 4 players.")
+    self._compute_contiguous_islands()
+    self._compute_edges()
 
 
 class SeafarerDesert(Seafarers):
@@ -1818,6 +1907,11 @@ class SeafarerDesert(Seafarers):
       self.pirate = TileLocation(6, 13)
     else:
       raise InvalidPlayer("Must have 3 or 4 players.")
+    self._compute_contiguous_islands()
+    self._compute_edges()
+
+  def _is_connecting_tile(self, tile):
+    return tile.number
 
 
 class SeafarerFog(Seafarers):
