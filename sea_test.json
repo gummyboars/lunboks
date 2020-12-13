@@ -1,5 +1,7 @@
 {
     "built_this_turn": [],
+    "collect_idx": null,
+    "collect_counts": {},
     "counter_offers": [
         null,
         null
@@ -98,6 +100,7 @@
     "robber": null,
     "rules": [],
     "scenario": "The Four Islands",
+    "shortage_resources": [],
     "started": true,
     "ships_moved": 0,
     "tiles": [

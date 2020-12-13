@@ -329,22 +329,273 @@ class TestDistributeResources(BaseInputHandlerTest):
     self.c.player_data[0].cards["rsrc1"] = 0
     self.c.player_data[1].cards["rsrc1"] = 0
 
+  def testRemainingResourceCount(self):
+    self.assertEqual(self.c.remaining_resources("rsrc1"), 19)
+    self.assertEqual(self.c.remaining_resources("rsrc3"), 2)
+
   def testTooManyResources(self):
-    self.c.distribute_resources(5)
+    self.c.distribute_resources(self.c.calculate_resource_distribution((2, 3)))
     self.assertEqual(self.c.player_data[0].cards["rsrc4"], 8)
     self.assertEqual(self.c.player_data[1].cards["rsrc4"], 9)
 
-    self.c.distribute_resources(6)
+    self.c.distribute_resources(self.c.calculate_resource_distribution((3, 3)))
     self.assertEqual(self.c.player_data[0].cards["rsrc5"], 8)
     self.assertEqual(self.c.player_data[1].cards["rsrc5"], 9)
 
   def testTooManyResourcesOnlyOnePlayer(self):
-    self.c.distribute_resources(9)
+    self.c.distribute_resources(self.c.calculate_resource_distribution((4, 5)))
     self.assertEqual(self.c.player_data[0].cards["rsrc3"], 10)
     self.assertEqual(self.c.player_data[1].cards["rsrc3"], 9)
     self.assertEqual(self.c.player_data[1].cards["rsrc1"], 2)
 
-class testRobberMovement(BaseInputHandlerTest):
+
+class TestDevCards(BaseInputHandlerTest):
+
+  def setUp(self):
+    BaseInputHandlerTest.setUp(self)
+    for card in catan.PLAYABLE_DEV_CARDS:
+      self.c.player_data[0].cards[card] = 1
+    for p in self.c.player_data:
+      p.cards["rsrc1"] = 0
+
+  def testYearOfPlenty(self):
+    self.c.player_data[0].cards["rsrc1"] = 3
+    self.c.handle_play_dev("yearofplenty", {"rsrc1": 2}, 0)
+    self.assertEqual(self.c.player_data[0].cards["rsrc1"], 5)
+
+  def testYearOfPlentyDepletedResource(self):
+    self.c.player_data[1].cards["rsrc1"] = 19
+    with self.assertRaisesRegex(InvalidMove, "not enough {rsrc1} in the bank"):
+      self.c.handle_play_dev("yearofplenty", {"rsrc1": 1, "rsrc2": 1}, 0)
+    self.c.handle_play_dev("yearofplenty", {"rsrc2": 2}, 0)
+
+  def testYearOfPlentyMostlyDepletedResource(self):
+    self.c.player_data[1].cards["rsrc1"] = 18
+    with self.assertRaisesRegex(InvalidMove, "not enough {rsrc1} in the bank"):
+      self.c.handle_play_dev("yearofplenty", {"rsrc1": 2}, 0)
+    self.c.handle_play_dev("yearofplenty", {"rsrc1": 1, "rsrc2": 1}, 0)
+
+  def testYearOfPlentyEmptyBank(self):
+    for rsrc in catan.RESOURCES:
+      self.c.player_data[1].cards[rsrc] = 19
+      self.c.player_data[0].cards[rsrc] = 0
+    # There are no cards left in the bank.
+    with self.assertRaisesRegex(InvalidMove, "no resources left"):
+      self.c.handle_play_dev("yearofplenty", {"rsrc1": 2}, 0)
+    self.c.player_data[1].cards["rsrc1"] -= 1
+    # There is only one card left in the bank. You cannot draw two cards.
+    with self.assertRaisesRegex(InvalidMove, "no resources left"):
+      self.c.handle_play_dev("yearofplenty", {"rsrc1": 2}, 0)
+
+  def testMonopoly(self):
+    self.c.player_data[0].cards["rsrc1"] = 2
+    self.c.player_data[0].cards["rsrc2"] = 0
+    self.c.player_data[1].cards["rsrc1"] = 3
+    self.c.player_data[1].cards["rsrc2"] = 3
+    self.c.handle_play_dev("monopoly", {"rsrc1": 1}, 0)
+    # Should receive all rsrc1 cards from the other player.
+    self.assertEqual(self.c.player_data[0].cards["rsrc1"], 5)
+    self.assertEqual(self.c.player_data[1].cards["rsrc1"], 0)
+    # Other resources should remain untouched.
+    self.assertEqual(self.c.player_data[0].cards["rsrc2"], 0)
+    self.assertEqual(self.c.player_data[1].cards["rsrc2"], 3)
+
+  def testMonopolyInvalidSelection(self):
+    with self.assertRaisesRegex(InvalidMove, "exactly one resource"):
+      self.c.handle_play_dev("monopoly", {"rsrc2": 1, "rsrc1": 1}, 0)
+    with self.assertRaisesRegex(InvalidMove, "Invalid resource selection"):
+      self.c.handle_play_dev("monopoly", {}, 0)
+    with self.assertRaisesRegex(InvalidMove, "exactly one resource"):
+      self.c.handle_play_dev("monopoly", {"rsrc2": 2}, 0)
+
+
+class TestCollectResources(BaseInputHandlerTest):
+
+  TEST_FILE = "sea_test.json"
+  EXTRA_RULES = ["Debug"]
+
+  def setUp(self):
+    BaseInputHandlerTest.setUp(self)
+    self.c.add_player("green", "Bob")
+    self.c.add_piece(catan.Piece(0, 4, "city", 1))
+    self.c.add_piece(catan.Piece(0, 6, "city", 2))
+    self.c.tiles[(0, 2)].tile_type = "anyrsrc"
+    self.c.tiles[(0, 4)].tile_type = "anyrsrc"
+    self.c.add_piece(catan.Piece(2, 7, "city", 1))
+    self.c.add_piece(catan.Piece(4, 8, "city", 2))
+    self.c.tiles[(2, 7)].number = 5
+    self.c.add_piece(catan.Piece(6, 5, "settlement", 0))
+    self.c.tiles[(6, 5)].number = 9
+    for p in self.c.player_data:
+      p.cards.clear()
+      p.cards["rsrc3"] = 4
+
+  def testSimpleCollection(self):
+    self.c.turn_phase = "dice"
+    self.c.next_die_roll = 9
+    self.c.handle_roll_dice()
+    self.assertEqual(self.c.player_data[0].cards["rsrc4"], 1)
+    self.assertEqual(self.c.player_data[1].cards["rsrc4"], 0)
+    self.assertEqual(self.c.turn_phase, "collect")
+    self.assertDictEqual(self.c.collect_counts, {1: 2})
+    # With only 2 resources being collected, no need to go in order.
+    self.assertIsNone(self.c.collect_idx)
+    # Player 1 cannot collect; they don't have any bonus tiles on a 9.
+    with self.assertRaisesRegex(catan.NotYourTurn, "not eligible"):
+      self.c.handle(0, {"type": "collect", "selection": {"rsrc3": 1}})
+    # Player 2 should be able to collect even when it is not their turn.
+    self.c.handle(1, {"type": "collect", "selection": {"rsrc3": 2}})
+
+  def testCollectDepletedResource(self):
+    self.c.player_data[0].cards["rsrc3"] = 10
+    self.c.turn_phase = "dice"
+    self.c.next_die_roll = 9
+    self.c.handle_roll_dice()
+    self.assertEqual(self.c.remaining_resources("rsrc3"), 1)
+    self.assertEqual(self.c.turn_phase, "collect")
+    self.assertDictEqual(self.c.collect_counts, {1: 2})
+    with self.assertRaisesRegex(InvalidMove, "not enough {rsrc3} in the bank"):
+      self.c.handle(1, {"type": "collect", "selection": {"rsrc3": 2}})
+    self.c.handle(1, {"type": "collect", "selection": {"rsrc1": 1, "rsrc3": 1}})
+
+  def testCollectScarcityForcesOrder(self):
+    self.c.turn_phase = "dice"
+    self.c.next_die_roll = 5
+    self.c.handle_roll_dice()
+    self.assertEqual(self.c.remaining_resources("rsrc3"), 3)
+    self.assertEqual(self.c.turn_phase, "collect")
+    self.assertDictEqual(self.c.collect_counts, {0: 1, 1: 2, 2: 2})
+    # Players will collect 5 resources, but only 3 rsrc3 remain. They must take turns.
+    # It is Player1's turn, so they should collect first.
+    self.assertEqual(self.c.collect_idx, 0)
+    with self.assertRaisesRegex(catan.NotYourTurn, "Another player.*before you"):
+      self.c.handle(1, {"type": "collect", "selection": {"rsrc3": 2}})
+    self.c.handle(0, {"type": "collect", "selection": {"rsrc3": 1}})
+    self.assertEqual(self.c.player_data[0].cards["rsrc3"], 5)
+    self.assertEqual(self.c.turn_phase, "collect")
+    self.assertDictEqual(self.c.collect_counts, {1: 2, 2: 2})
+    self.assertEqual(self.c.collect_idx, 1)
+
+  def testCollectAbundanceUnordered(self):
+    for p in self.c.player_data:
+      p.cards["rsrc3"] = 3
+    # With more cards available than can be claimed, there should not be a player order.
+    self.c.turn_phase = "dice"
+    self.c.next_die_roll = 5
+    self.c.handle_roll_dice()
+    self.assertEqual(self.c.remaining_resources("rsrc3"), 6)
+    self.assertEqual(self.c.turn_phase, "collect")
+    self.assertDictEqual(self.c.collect_counts, {0: 1, 1: 2, 2: 2})
+    # Players will collect 5 resources, minimum 6 remain. They do not have to take turns.
+    self.assertIsNone(self.c.collect_idx)
+
+  def testCollectScarcityDisappears(self):
+    self.c.turn_idx = 2
+    self.c.turn_phase = "dice"
+    self.c.next_die_roll = 5
+    self.c.handle_roll_dice()
+    self.assertEqual(self.c.turn_phase, "collect")
+    self.assertDictEqual(self.c.collect_counts, {0: 1, 1: 2, 2: 2})
+    self.assertEqual(self.c.remaining_resources("rsrc3"), 3)
+    # Minimum 3 resources remain, but players will collect a total of 5. They must take turns.
+    # Since it is currently player3's turn, they collect first.
+    self.assertEqual(self.c.collect_idx, 2)
+    self.c.handle(2, {"type": "collect", "selection": {"rsrc1": 2}})
+    # The minimum resources available is still 3, but now only 3 resources remain to be collected.
+    # The rest of the players may collect in any order.
+    self.assertDictEqual(self.c.collect_counts, {0: 1, 1: 2})
+    self.assertEqual(self.c.remaining_resources("rsrc3"), 3)
+    self.assertIsNone(self.c.collect_idx)
+
+  def testResourceShortage(self):
+    for p in self.c.player_data:
+      p.cards["rsrc3"] = 6
+    self.c.turn_phase = "dice"
+    self.c.next_die_roll = 5
+    self.c.handle_roll_dice()
+    # Not enough resources means a shortage; this resource cannot be collected.
+    self.assertEqual(self.c.remaining_resources("rsrc3"), 1)
+    self.assertEqual(self.c.turn_phase, "collect")
+    self.assertDictEqual(self.c.collect_counts, {0: 1, 1: 2, 2: 2})
+    self.assertEqual(self.c.shortage_resources, ["rsrc3"])
+    # Only 1 of rsrc3 remains, but it's on the shortage list. Since it is not collectible, there
+    # is enough of every other resource to go around, and players do not have to go in order.
+    self.assertIsNone(self.c.collect_idx)
+    # Assert that you cannot collect resources that suffered a shortage.
+    with self.assertRaisesRegex(InvalidMove, "shortage"):
+      self.c.handle(0, {"type": "collect", "selection": {"rsrc3": 1}})
+    self.c.handle(0, {"type": "collect", "selection": {"rsrc1": 1}})
+    self.assertEqual(self.c.turn_phase, "collect")
+    # Even after one player collects, other players still cannot collect shortage resources.
+    with self.assertRaisesRegex(InvalidMove, "shortage"):
+      self.c.handle(2, {"type": "collect", "selection": {"rsrc3": 2}})
+    self.c.handle(2, {"type": "collect", "selection": {"rsrc4": 2}})
+    self.c.handle(1, {"type": "collect", "selection": {"rsrc2": 2}})
+    # After everyone collects, it should be back to the original player's turn.
+    self.assertEqual(self.c.turn_phase, "main")
+
+  def testNoRemainingResources(self):
+    for idx, p in enumerate(self.c.player_data):
+      for rsrc in catan.RESOURCES:
+        p.cards[rsrc] = 6
+        if idx == 0:
+          p.cards[rsrc] += 1
+    for rsrc in catan.RESOURCES:
+      with self.subTest(rsrc=rsrc):
+        self.assertEqual(self.c.remaining_resources(rsrc), 0)
+    self.c.turn_phase = "dice"
+    self.c.next_die_roll = 5
+    self.c.handle_roll_dice()
+    # If there are no cards left, we have to skip collection.
+    self.assertDictEqual(self.c.collect_counts, {})
+    self.assertIsNone(self.c.collect_idx)
+    self.assertEqual(self.c.turn_phase, "main")
+
+  def testNoRemainingResourcesAfterDistribution(self):
+    for idx, p in enumerate(self.c.player_data):
+      for rsrc in catan.RESOURCES:
+        p.cards[rsrc] = 6
+        if idx == 0:
+          p.cards[rsrc] += 1
+    self.c.player_data[0].cards["rsrc3"] -= 4
+    # There are exactly four rsrc3 remaining. After the initial distribution (where players 2 and
+    # 3 will receive the remaining 4), nobody should be able to collect from the bonus tiles.
+    self.assertEqual(self.c.remaining_resources("rsrc3"), 4)
+    self.c.turn_phase = "dice"
+    self.c.next_die_roll = 5
+    self.c.handle_roll_dice()
+    self.assertDictEqual(self.c.collect_counts, {})
+    self.assertIsNone(self.c.collect_idx)
+    self.assertEqual(self.c.turn_phase, "main")
+
+  def testCollectionConsumesAllResources(self):
+    for idx, p in enumerate(self.c.player_data):
+      for rsrc in catan.RESOURCES:
+        p.cards[rsrc] = 6
+        if idx == 0:
+          p.cards[rsrc] += 1
+    self.c.player_data[0].cards["rsrc1"] -= 2
+    # There are exactly two rsrc1 remaining (and nothing else). Player 1 will collect one of them.
+    self.assertEqual(self.c.remaining_resources("rsrc1"), 2)
+    self.c.turn_phase = "dice"
+    self.c.next_die_roll = 5
+    self.c.handle_roll_dice()
+    self.assertDictEqual(self.c.collect_counts, {0: 1, 1: 2, 2: 2})
+    self.assertEqual(self.c.collect_idx, 0)
+    self.c.handle(0, {"type": "collect", "selection": {"rsrc1": 1}})
+    # There is exactly 1 rsrc1 remaining. Player 2 (next player) should have their count updated.
+    # Player 3's count is not updated yet - that will happen after player 2 collects.
+    self.assertDictEqual(self.c.collect_counts, {1: 1, 2: 2})
+    with self.assertRaisesRegex(InvalidMove, "not enough {rsrc2} in the bank"):
+      self.c.handle(1, {"type": "collect", "selection": {"rsrc2": 1}})
+    self.c.handle(1, {"type": "collect", "selection": {"rsrc1": 1}})
+    # Now that the bank is empty, player 3's collection is skipped.
+    self.assertDictEqual(self.c.collect_counts, {})
+    self.assertIsNone(self.c.collect_idx)
+    self.assertEqual(self.c.turn_phase, "main")
+
+
+class TestRobberMovement(BaseInputHandlerTest):
 
   def setUp(self):
     BaseInputHandlerTest.setUp(self)

@@ -17,6 +17,9 @@
   "trade_offer": {},
   "robber": null,
   "rob_players": [],
+  "shortage_resources": [],
+  "collect_idx": null,
+  "collect_counts": {},
   "largest_army_player": null,
   "dev_roads_placed": 0,
   "built_this_turn": [

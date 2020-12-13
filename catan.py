@@ -469,7 +469,7 @@ class CatanState(object):
     # yet made a counter-offer. An null/None counter-offer indicates that they have
     # rejected the trade offer. A counter-offer equal to the original means they accept.
     self.game_phase = "place1"  # valid values are place1, place2, main, victory
-    # valid values are settle, road, dice, discard, robber, rob, dev_road, main
+    # valid values are settle, road, dice, collect, discard, robber, rob, dev_road, main
     self.turn_phase = "settle"
     # Flag for the don't allow players to rob at 2 points option
     self.rob_at_two = True
@@ -730,8 +730,8 @@ class CatanState(object):
       else:
         self.turn_phase = "robber"
       return
-    self.distribute_resources(red + white)
-    self.turn_phase = "main"
+    to_receive = self.calculate_resource_distribution(self.dice_roll)
+    self.distribute_resources(to_receive)
 
   def handle_robber(self, location, current_player):
     self._validate_location(location)
@@ -796,6 +796,9 @@ class CatanState(object):
     chosen_rsrc = random.choice(all_rsrc_cards)
     self.player_data[rob_player].cards[chosen_rsrc] -= 1
     self.player_data[current_player].cards[chosen_rsrc] += 1
+
+  def remaining_resources(self, rsrc):
+    return 19 - sum([p.cards[rsrc] for p in self.player_data])
 
   def _get_players_with_too_many_resources(self):
     return {
@@ -1059,27 +1062,26 @@ class CatanState(object):
       raise InvalidMove("You have no roads remaining.")
     self.turn_phase = "dev_road"
 
-  def _handle_year_of_plenty(self, player, resource_selection):
-    self._validate_selection(resource_selection)
-    if sum([resource_selection.get(key, 0) for key in RESOURCES]) != 2:
+  def _handle_year_of_plenty(self, player, selection):
+    self._validate_selection(selection)
+    remaining = {rsrc: self.remaining_resources(rsrc) for rsrc in RESOURCES}
+    # TODO: if there is one resource left, do we allow the player to collect just one?
+    if sum(remaining.values()) < 2:
+      raise InvalidMove("There are no resources left in the bank.")
+    if sum(selection.values()) != 2:
       raise InvalidMove("You must request exactly two resources.")
-    for card_type, value in resource_selection.items():
-      self.player_data[player].cards[card_type] += value
+    overdrawn = [rsrc for rsrc in selection if selection[rsrc] > remaining[rsrc]]
+    if overdrawn:
+      raise InvalidMove("There is not enough {%s} in the bank." % "}, {".join(overdrawn))
+    for rsrc, value in selection.items():
+      self.player_data[player].cards[rsrc] += value
 
   def _handle_monopoly(self, player, resource_selection):
     self._validate_selection(resource_selection)
-    if not all([value in (0, 1) for value in resource_selection.values()]):
+    chosen = [rsrc for rsrc, val in resource_selection.items() if val == 1]
+    if len(chosen) != 1:
       raise InvalidMove("You must choose exactly one resource to monopolize.")
-    if sum([resource_selection.get(key, 0) for key in RESOURCES]) != 1:
-      raise InvalidMove("You must choose exactly one resource to monopolize.")
-    card_type = None
-    for key, value in resource_selection.items():
-      if value == 1:
-        card_type = key
-        break
-    if not card_type:
-      # This should never happen, but you never know.
-      raise InvalidMove("You must choose exactly one resource to monopolize.")
+    card_type = chosen[0]
     for opponent_idx in range(len(self.player_data)):
       if player == opponent_idx:
         continue
@@ -1187,11 +1189,11 @@ class CatanState(object):
     for rsrc, give in offer[self.GIVE].items():
       self.player_data[player].cards[rsrc] -= give
 
-  def distribute_resources(self, number):
+  def calculate_resource_distribution(self, dice_roll):
     # Figure out which players are due how many resources.
     to_receive = collections.defaultdict(lambda: collections.defaultdict(int))
     for tile in self.tiles.values():
-      if tile.number != number:
+      if tile.number != sum(dice_roll):
         continue
       if self.robber == tile.location:
         continue
@@ -1203,18 +1205,23 @@ class CatanState(object):
         elif piece and piece.piece_type == "city":
           to_receive[tile.tile_type][piece.player] += 2
 
+    return to_receive
+
+  def distribute_resources(self, to_receive):
+    shortage = []
     # Changes the values of to_receive as it iterates through them.
-    max_rsrcs = 19
     for rsrc, receive_players in to_receive.items():
-      currently_owned = sum([p.cards[rsrc] for p in self.player_data])
+      remaining = self.remaining_resources(rsrc)
       # If there are enough resources to go around, no problem.
-      if sum(receive_players.values()) + currently_owned <= max_rsrcs:
+      if sum(receive_players.values()) <= remaining:
         continue
+      # Otherwise, there is a shortage of this resource.
+      shortage.append(rsrc)
       # If there is only one player receiving this resource, they receive all of the
       # remaining cards for this resources type.
       if len(receive_players) == 1:
         the_player = list(receive_players.keys())[0]
-        receive_players[the_player] = max_rsrcs - currently_owned
+        receive_players[the_player] = remaining
         continue
       # If there is more than one player receiving this resource, and there is not enough
       # in the supply, then no players receive any of this resource.
@@ -1225,7 +1232,11 @@ class CatanState(object):
       for player, count in receive_players.items():
         self.player_data[player].cards[rsrc] += count
 
+    self.turn_phase = "main"
+    return shortage
+
   def give_second_resources(self, player, corner_loc):
+    # TODO: handle collecting resources from the second settlement if on a bonus tile.
     tile_locs = set([loc.as_tuple() for loc in corner_loc.get_tiles()])
     for tile_loc in tile_locs:
       tile = self.tiles.get(tile_loc)
@@ -1542,7 +1553,8 @@ class DebugRules(object):
     for i in range(count):
       red = random.randint(1, 6)
       white = random.randint(1, 6)
-      self.distribute_resources(red + white)
+      dist = self.calculate_resource_distribution((red, white))
+      self.distribute_resources(dist)
 
   def debug_force_dice(self, value):
     self.next_die_roll = value
@@ -1567,6 +1579,9 @@ class Seafarers(CatanState):
     self.home_corners = collections.defaultdict(list)
     self.foreign_landings = collections.defaultdict(list)
     self.foreign_island_points = 2
+    self.shortage_resources = []
+    self.collect_idx = None
+    self.collect_counts = collections.defaultdict(int)
 
   @classmethod
   def parse_json(cls, gamedata):
@@ -1598,7 +1613,8 @@ class Seafarers(CatanState):
 
   @classmethod
   def indexed_attrs(cls):
-    return super(Seafarers, cls).indexed_attrs() | {"home_corners", "foreign_landings"}
+    indexed = {"home_corners", "foreign_landings", "collect_counts"}
+    return super(Seafarers, cls).indexed_attrs() | indexed
 
   @classmethod
   def computed_attrs(cls):
@@ -1611,10 +1627,60 @@ class Seafarers(CatanState):
     options["Seafarers"] = GameOption(name="Seafarers", forced=True, default=True)
     return options
 
+  def calculate_resource_distribution(self, dice_roll):
+    to_receive = super(Seafarers, self).calculate_resource_distribution(dice_roll)
+    if "anyrsrc" in to_receive:
+      self.collect_counts = to_receive.pop("anyrsrc")
+    return to_receive
+
+  def distribute_resources(self, to_receive):
+    self.shortage_resources = super(Seafarers, self).distribute_resources(to_receive)
+    self.next_collect_player()
+    return self.shortage_resources
+
+  def next_collect_player(self):
+    # By default, no player is collecting resources.
+    self.collect_idx = None
+    self.turn_phase = "main"
+    total_collect = sum(self.collect_counts.values())
+    if not total_collect:
+      return
+    available = {}
+    for rsrc in set(RESOURCES) - set(self.shortage_resources):
+      available[rsrc] = self.remaining_resources(rsrc)
+    if sum(available.values()) <= 0:
+      self.collect_counts.clear()
+      return
+    min_available = min(available.values()) # The minimum available of any collectible resource.
+    if min_available >= total_collect:
+      # Special case: if there are enough resources available such that no player can deplete
+      # the bank, all players may collect resources at the same time.
+      self.turn_phase = "collect"
+      self.collect_idx = None
+      return
+    num_players = len(self.player_data)
+    collect_players = [idx for idx, count in self.collect_counts.items() if count]
+    collect_players.sort(key=lambda idx: (idx - self.turn_idx + num_players) % num_players)
+    self.collect_idx = collect_players[0]
+    self.turn_phase = "collect"
+    if sum(available.values()) < self.collect_counts[self.collect_idx]:
+      # If there's not enough left in the bank, the player collects everything that remains.
+      self.collect_counts[self.collect_idx] = sum(available.values())
+
   def end_turn(self):
     super(Seafarers, self).end_turn()
     self.built_this_turn.clear()
     self.ships_moved = 0
+    self.shortage_resources.clear()
+
+  def check_turn_okay(self, player_idx, move_type, data):
+    if self.turn_phase == "collect" and move_type == "collect":
+      if not self.collect_counts.get(player_idx):
+        raise NotYourTurn("You are not eligible to collect any resources.")
+      if self.collect_idx is not None and self.collect_idx != player_idx:
+        raise NotYourTurn("Another player must collect resources before you.")
+      return
+    super(Seafarers, self).check_turn_okay(player_idx, move_type, data)
 
   def inner_handle(self, player_idx, move_type, data):
     if move_type == "ship":
@@ -1623,7 +1689,25 @@ class Seafarers(CatanState):
       return
     if move_type == "move_ship":
       return self.handle_move_ship(data.get("from"), data.get("to"), player_idx)
+    if move_type == "collect":
+      return self.handle_collect(player_idx, data.get("selection"))
     return super(Seafarers, self).inner_handle(player_idx, move_type, data)
+
+  def handle_collect(self, player_idx, selection):
+    self._validate_selection(selection)
+    if sum(selection.values()) != self.collect_counts[player_idx]:
+      raise InvalidMove("You must select %s resources." % self.collect_counts[player_idx])
+    if selection.keys() & set(self.shortage_resources):
+      raise InvalidMove("There is a shortage of {%s}; you cannot collect any." %
+          ("}, {".join(self.shortage_resources)))
+    # TODO: dedup with code from year of plenty
+    overdrawn = [rsrc for rsrc in selection if selection[rsrc] > self.remaining_resources(rsrc)]
+    if overdrawn:
+      raise InvalidMove("There is not enough {%s} in the bank." % "}, {".join(overdrawn))
+    for rsrc, value in selection.items():
+      self.player_data[player_idx].cards[rsrc] += value
+    del self.collect_counts[player_idx]
+    self.next_collect_player()
 
   def handle_move_ship(self, from_location, to_location, player_idx):
     self._validate_location(from_location, num_entries=4)
@@ -1873,6 +1957,7 @@ class SeafarerShores(Seafarers):
       raise InvalidPlayer("Must have 3 or 4 players.")
     self._compute_contiguous_islands()
     self._compute_edges()
+    self._init_dev_cards()
 
 
 class SeafarerIslands(Seafarers):
@@ -1891,6 +1976,7 @@ class SeafarerIslands(Seafarers):
       raise InvalidPlayer("Must have 3 or 4 players.")
     self._compute_contiguous_islands()
     self._compute_edges()
+    self._init_dev_cards()
 
 
 class SeafarerDesert(Seafarers):
@@ -1909,6 +1995,7 @@ class SeafarerDesert(Seafarers):
       raise InvalidPlayer("Must have 3 or 4 players.")
     self._compute_contiguous_islands()
     self._compute_edges()
+    self._init_dev_cards()
 
   def _is_connecting_tile(self, tile):
     return tile.number

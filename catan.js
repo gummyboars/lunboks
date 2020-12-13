@@ -53,6 +53,10 @@ resourceSelectionUI = {
     bottomPanelText: "Choose {} cards to discard.",
     okText: "Discard",
   },
+  collect: {
+    bottomPanelText: "Choose {} resources to collect.",
+    okText: "OK",
+  },
 };
 var snd1 = new Audio("beep.mp3");
 
@@ -75,6 +79,8 @@ roads = [];
 cards = {};
 devCardCount = 0;
 turn = null;
+collectTurn = null;
+collectCounts = [];
 diceRoll = null;
 robberLoc = null;
 pirateLoc = null;
@@ -156,6 +162,13 @@ function confirmSelection(event) {
     };
     ws.send(JSON.stringify(msg));
     return;
+  } else if (resourceSelectorType == "collect") {
+    let msg = {
+      type: "collect",
+      selection: resourceSelection["bottom"],
+    };
+    ws.send(JSON.stringify(msg));
+    return;
   } else {
     // TODO: fill this in.
   }
@@ -182,8 +195,8 @@ function cancelSelection(event) {
     ws.send(JSON.stringify(msg));
     hideSelectorWindow();
     return;
-  } else if (resourceSelectorType == "discard") {
-    // You can't cancel discarding.
+  } else if (resourceSelectorType == "discard" || resourceSelectorType == "collect") {
+    // You can't cancel discarding or collecting resources.
     return;
   } else if (resourceSelectorType == "tradeOffer") {
     clearResourceSelection("top");
@@ -581,6 +594,19 @@ function enableButton(elem) {
   elem.classList.remove("disabled");
   elem.disabled = false;
 }
+function maybeShowCollectWindow(oldPhase) {
+  if (turnPhase == "collect" && (collectTurn == myIdx || (collectTurn == null && collectCounts[myIdx]))) {
+    if (resourceSelectorType != "collect") {
+      // Clear selection counts only if we just popped the window up.
+      clearResourceSelection("bottom");
+      updateSelectCounts();
+    }
+    resourceSelectorType = "collect";
+    showResourceUI(resourceSelectorType, collectCounts[myIdx]);
+  } else if (oldPhase == "collect") {
+    hideSelectorWindow();
+  }
+}
 function maybeShowDiscardWindow() {
   if (turnPhase == "discard" && discardPlayers[myIdx]) {
     if (resourceSelectorType != "discard") {
@@ -904,6 +930,7 @@ function onmsg(event) {
   amHost = data.host;
   playerData = data.player_data;
   gamePhase = data.game_phase;
+  let oldPhase = turnPhase;
   turnPhase = data.turn_phase;
   tiles = data.tiles;
   ports = data.ports;
@@ -919,6 +946,8 @@ function onmsg(event) {
   roads = data.roads;
   let oldTurn = turn;
   turn = data.turn;
+  collectTurn = data.collect_idx;
+  collectCounts = data.collect_counts;
   discardPlayers = data.discard_players;
   let oldActiveOffer = tradeActiveOffer;
   tradeActiveOffer = data.trade_offer;
@@ -963,6 +992,7 @@ function onmsg(event) {
   if (oldTurn != null && oldTurn != turn) {
     hideSelectorWindow();
   }
+  maybeShowCollectWindow(oldPhase);
   maybeShowDiscardWindow();
   maybeShowRobWindow();
 }
@@ -1276,15 +1306,6 @@ function updatePlayerData() {
     if (!turnMarker || !phaseMarker) {  // TODO: better error checking.
       continue;
     }
-    if (turnPhase == "discard") {
-      if (discardPlayers[i]) {
-        phaseMarker.style.display = "block";
-        phaseMarker.innerText = "🖐️";
-      } else {
-        phaseMarker.innerText = "";
-      }
-      continue;
-    }
     if (turn == i) {
       turnMarker.style.display = "block";
       phaseMarker.style.display = "block";
@@ -1308,6 +1329,14 @@ function updatePlayerData() {
     } else {
       turnMarker.style.display = "none";
       phaseMarker.style.display = "none";
+    }
+    if (turnPhase == "discard" && discardPlayers[i]) {
+      phaseMarker.style.display = "block";
+      phaseMarker.innerText = "🖐️";
+    }
+    if (turnPhase == "collect" && (collectTurn == i || (collectTurn == null && collectCounts[i]))) {
+      phaseMarker.style.display = "block";
+      phaseMarker.innerText = "💰";
     }
     let cardDiv = playerDiv.getElementsByClassName("cardinfo")[0];
     updatePlayerCardInfo(i, cardDiv, false);
@@ -1592,7 +1621,7 @@ function onBodyClick(event) {
     return;
   }
   let hideSelector = true;
-  if (resourceSelectorType == "discard") {
+  if (resourceSelectorType == "discard" || resourceSelectorType == "collect") {
     return;
   }
   if (resourceSelectorActive) {
