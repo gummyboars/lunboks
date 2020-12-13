@@ -421,9 +421,9 @@ class TestGetEdgeType(BaseInputHandlerTest):
 
   def setUp(self):
     BaseInputHandlerTest.setUp(self)
-    self.c.add_road(Road([1, 4, 2, 5], "road", 0))
-    self.c.add_road(Road([1, 6, 2, 5], "ship", 0))
-    self.c.add_road(Road([2, 5, 3, 5], "ship", 0))
+    self.c._add_road(Road([1, 4, 2, 5], "road", 0))
+    self.c._add_road(Road([1, 6, 2, 5], "ship", 0))
+    self.c._add_road(Road([2, 5, 3, 5], "ship", 0))
     self.c.add_tile(catan.Tile(-2, 3, "rsrc5", True, 4))
 
   def testEdgeTypeUnoccupied(self):
@@ -785,9 +785,9 @@ class TestHandleSettleInput(BaseInputHandlerTest):
 
   def setUp(self):
     BaseInputHandlerTest.setUp(self)
-    self.c.add_road(Road([3, 3, 4, 4], "road", 0))
-    self.c.add_road(Road([5, 4, 6, 5], "road", 0))
-    self.c.add_road(Road([5, 4, 6, 3], "road", 0))
+    self.c._add_road(Road([3, 3, 4, 4], "road", 0))
+    self.c._add_road(Road([5, 4, 6, 5], "road", 0))
+    self.c._add_road(Road([5, 4, 6, 3], "road", 0))
 
   def testSettle(self):
     resources = ["rsrc1", "rsrc2", "rsrc3", "rsrc4"]
@@ -801,12 +801,12 @@ class TestHandleSettleInput(BaseInputHandlerTest):
       self.c.handle(0, {"type": "settle", "location": [2, 3]})
 
   def testMustSettleNextToOwnRoad(self):
-    self.c.add_road(Road([4, 6, 5, 6], "road", 1))
+    self.c._add_road(Road([4, 6, 5, 6], "road", 1))
     with self.assertRaisesRegex(InvalidMove, "next to one of your roads"):
       self.c.handle(0, {"type": "settle", "location": [5, 6]})
 
   def testCannotSettleTooClose(self):
-    self.c.add_road(Road([4, 6, 5, 6], "road", 0))
+    self.c._add_road(Road([4, 6, 5, 6], "road", 0))
     with self.assertRaisesRegex(InvalidMove, "cannot.*next to existing"):
       self.c.handle(0, {"type": "settle", "location": [6, 3]})
     # Validate both distance from own settlements and from opponents'.
@@ -814,7 +814,7 @@ class TestHandleSettleInput(BaseInputHandlerTest):
       self.c.handle(0, {"type": "settle", "location": [4, 6]})
 
   def testCannotSettleSettledLocation(self):
-    self.c.add_road(Road([3, 5, 4, 4], "road", 0))
+    self.c._add_road(Road([3, 5, 4, 4], "road", 0))
     with self.assertRaisesRegex(InvalidMove, "cannot.*settle on top of"):
       self.c.handle(0, {"type": "settle", "location": [5, 4]})
     with self.assertRaisesRegex(InvalidMove, "cannot.*settle on top of"):
@@ -845,19 +845,19 @@ class TestHandleSettleInput(BaseInputHandlerTest):
 
 
 def AddThirteenRoads(c):
-  c.add_road(Road([5, 4, 6, 3], "road", 0))
-  c.add_road(Road([5, 2, 6, 3], "road", 0))
-  c.add_road(Road([4, 2, 5, 2], "road", 0))
-  c.add_road(Road([3, 3, 4, 2], "road", 0))
-  c.add_road(Road([2, 3, 3, 3], "road", 0))
-  c.add_road(Road([1, 4, 2, 3], "road", 0))
-  c.add_road(Road([1, 4, 2, 5], "road", 0))
-  c.add_road(Road([1, 6, 2, 5], "road", 0))
-  c.add_road(Road([1, 6, 2, 7], "road", 0))
-  c.add_road(Road([2, 7, 3, 7], "road", 0))
-  c.add_road(Road([3, 7, 4, 6], "road", 0))
-  c.add_road(Road([4, 6, 5, 6], "road", 0))
-  c.add_road(Road([5, 6, 6, 5], "road", 0))
+  c._add_road(Road([5, 4, 6, 3], "road", 0))
+  c._add_road(Road([5, 2, 6, 3], "road", 0))
+  c._add_road(Road([4, 2, 5, 2], "road", 0))
+  c._add_road(Road([3, 3, 4, 2], "road", 0))
+  c._add_road(Road([2, 3, 3, 3], "road", 0))
+  c._add_road(Road([1, 4, 2, 3], "road", 0))
+  c._add_road(Road([1, 4, 2, 5], "road", 0))
+  c._add_road(Road([1, 6, 2, 5], "road", 0))
+  c._add_road(Road([1, 6, 2, 7], "road", 0))
+  c._add_road(Road([2, 7, 3, 7], "road", 0))
+  c._add_road(Road([3, 7, 4, 6], "road", 0))
+  c._add_road(Road([4, 6, 5, 6], "road", 0))
+  c._add_road(Road([5, 6, 6, 5], "road", 0))
 
 
 class TestHandleRoadInput(BaseInputHandlerTest):
@@ -919,12 +919,12 @@ class TestHandleRoadInput(BaseInputHandlerTest):
       self.c.handle(0, {"type": "road", "location": [4, 4, 3, 3]})
 
   def testCannotBuildOnWater(self):
-    self.c.add_road(Road([5, 4, 6, 3], "road", 0))
+    self.c._add_road(Road([5, 4, 6, 3], "road", 0))
     with self.assertRaisesRegex(InvalidMove, "must be land"):
       self.c.handle(0, {"type": "road", "location": [6, 3, 7, 3]})
 
   def testCannotBuildAcrossOpponentSettlement(self):
-    self.c.add_road(Road([3, 5, 4, 4], "road", 0))
+    self.c._add_road(Road([3, 5, 4, 4], "road", 0))
     with self.assertRaisesRegex(InvalidMove, "must be connected"):
       self.c.handle(0, {"type": "road", "location": [2, 5, 3, 5]})
 
@@ -943,7 +943,7 @@ class TestHandleShipInput(BaseInputHandlerTest):
       self.c.handle(0, {"type": "ship", "location": [4, 4, 5, 4]})
 
   def testShipsCannotConnectToRoads(self):
-    self.c.add_road(Road([1, 4, 2, 5], "road", 0))
+    self.c._add_road(Road([1, 4, 2, 5], "road", 0))
     with self.assertRaisesRegex(InvalidMove, "must be connected.*ship network"):
       self.c.handle(0, {"type": "ship", "location": [1, 4, 2, 3]})
     # Verify that you can build a road in that same spot that you can't build a ship.
@@ -964,14 +964,14 @@ class TestHandleShipInput(BaseInputHandlerTest):
       self.c.handle(0, {"type": "ship", "location": [2, 5, 3, 5]})
 
   def testCannotBuildOnLand(self):
-    self.c.add_road(Road([1, 6, 2, 5], "ship", 0))
-    self.c.add_road(Road([0, 6, 1, 6], "ship", 0))
-    self.c.add_road(Road([-1, 5, 0, 6], "ship", 0))
+    self.c._add_road(Road([1, 6, 2, 5], "ship", 0))
+    self.c._add_road(Road([0, 6, 1, 6], "ship", 0))
+    self.c._add_road(Road([-1, 5, 0, 6], "ship", 0))
     with self.assertRaisesRegex(InvalidMove, "must be water"):
       self.c.handle(0, {"type": "ship", "location": [-1, 5, 0, 4]})
 
   def testCannotBuildOnRoad(self):
-    self.c.add_road(Road([1, 6, 2, 5], "road", 0))
+    self.c._add_road(Road([1, 6, 2, 5], "road", 0))
     with self.assertRaisesRegex(InvalidMove, "already a road"):
       self.c.handle(0, {"type": "ship", "location": [1, 6, 2, 5]})
 
@@ -982,7 +982,7 @@ class TestHandleShipInput(BaseInputHandlerTest):
         [-1, 5, 0, 6], [0, 6, 1, 6], [1, 4, 2, 5], [1, 6, 2, 5],
     ]
     for road in roads:
-      self.c.add_road(Road(road, "road", 0))
+      self.c._add_road(Road(road, "road", 0))
     self.assertEqual(
         len([x for x in self.c.roads.values() if x.player == 0 and x.road_type == "road"]), 15)
     self.c.handle(0, {"type": "ship", "location": [2, 5, 3, 5]})
@@ -1019,7 +1019,7 @@ class TestHandleShipInput(BaseInputHandlerTest):
         [3, 3, 4, 4], [3, 3, 4, 2], [5, 4, 6, 3], [5, 2, 6, 3],
     ]
     for road in roads:
-      self.c.add_road(Road(road, "ship", 0))
+      self.c._add_road(Road(road, "ship", 0))
     self.assertEqual(
         len([x for x in self.c.roads.values() if x.player == 0 and x.road_type == "ship"]), 15)
     with self.assertRaisesRegex(InvalidMove, "no ships remaining"):
@@ -1517,7 +1517,7 @@ class TestLongestRouteCalculation(BaseInputHandlerTest):
     self.assertEqual(val, 1)
 
   def testTwoRoads(self):
-    self.c.add_road(Road([5, 4, 6, 5], "road", 0))
+    self.c._add_road(Road([5, 4, 6, 5], "road", 0))
     val = self.c._dfs_depth(0, catan.CornerLocation(4, 4), set([]), None)
     self.assertEqual(val, 2)
     val = self.c._dfs_depth(0, catan.CornerLocation(6, 5), set([]), None)
@@ -1527,8 +1527,8 @@ class TestLongestRouteCalculation(BaseInputHandlerTest):
     self.assertEqual(val, 1)
 
   def testThreeRoads(self):
-    self.c.add_road(Road([5, 4, 6, 5], "road", 0))
-    self.c.add_road(Road([5, 4, 6, 3], "road", 0))
+    self.c._add_road(Road([5, 4, 6, 5], "road", 0))
+    self.c._add_road(Road([5, 4, 6, 3], "road", 0))
     # Starting on any end of the network should still get you 2.
     val = self.c._dfs_depth(0, catan.CornerLocation(4, 4), set([]), None)
     self.assertEqual(val, 2)
@@ -1541,8 +1541,8 @@ class TestLongestRouteCalculation(BaseInputHandlerTest):
     self.assertEqual(val, 1)
 
   def testRoadInterruption(self):
-    self.c.add_road(Road([5, 4, 6, 5], "road", 0))
-    self.c.add_road(Road([5, 6, 6, 5], "road", 0))
+    self.c._add_road(Road([5, 4, 6, 5], "road", 0))
+    self.c._add_road(Road([5, 6, 6, 5], "road", 0))
     val = self.c._dfs_depth(0, catan.CornerLocation(4, 4), set([]), None)
     self.assertEqual(val, 3)
     val = self.c._dfs_depth(0, catan.CornerLocation(5, 6), set([]), None)
@@ -1557,9 +1557,9 @@ class TestLongestRouteCalculation(BaseInputHandlerTest):
   def testSandwichedRoad(self):
     # Test that you can still start a road at someone else's settlement.
     self.c.add_piece(catan.Piece(5, 6, "settlement", 1))
-    self.c.add_road(Road([3, 5, 4, 4], "road", 0))
-    self.c.add_road(Road([5, 4, 6, 5], "road", 0))
-    self.c.add_road(Road([5, 6, 6, 5], "road", 0))
+    self.c._add_road(Road([3, 5, 4, 4], "road", 0))
+    self.c._add_road(Road([5, 4, 6, 5], "road", 0))
+    self.c._add_road(Road([5, 6, 6, 5], "road", 0))
     val = self.c._dfs_depth(0, catan.CornerLocation(4, 4), set([]), None)
     self.assertEqual(val, 3)
     val = self.c._dfs_depth(0, catan.CornerLocation(3, 5), set([]), None)
@@ -1568,11 +1568,11 @@ class TestLongestRouteCalculation(BaseInputHandlerTest):
     self.assertEqual(val, 4)
 
   def testCircularRoad(self):
-    self.c.add_road(Road([3, 3, 4, 4], "road", 0))
-    self.c.add_road(Road([3, 3, 4, 2], "road", 0))
-    self.c.add_road(Road([4, 2, 5, 2], "road", 0))
-    self.c.add_road(Road([5, 2, 6, 3], "road", 0))
-    self.c.add_road(Road([5, 4, 6, 3], "road", 0))
+    self.c._add_road(Road([3, 3, 4, 4], "road", 0))
+    self.c._add_road(Road([3, 3, 4, 2], "road", 0))
+    self.c._add_road(Road([4, 2, 5, 2], "road", 0))
+    self.c._add_road(Road([5, 2, 6, 3], "road", 0))
+    self.c._add_road(Road([5, 4, 6, 3], "road", 0))
 
     # Start by testing a simple loop.
     for corner in [(3, 3), (4, 4), (5, 4), (6, 3), (5, 2), (4, 2)]:
@@ -1580,18 +1580,18 @@ class TestLongestRouteCalculation(BaseInputHandlerTest):
       self.assertEqual(val, 6, "loop length for corner %s" % (corner,))
 
     # Add two tips onto the end of the loop. Length from either end should be 7.
-    self.c.add_road(Road([2, 3, 3, 3], "road", 0))
-    self.c.add_road(Road([5, 4, 6, 5], "road", 0))
+    self.c._add_road(Road([2, 3, 3, 3], "road", 0))
+    self.c._add_road(Road([5, 4, 6, 5], "road", 0))
     val = self.c._dfs_depth(0, catan.CornerLocation(2, 3), set([]), None)
     self.assertEqual(val, 7, "enter and loop around")
     val = self.c._dfs_depth(0, catan.CornerLocation(6, 5), set([]), None)
     self.assertEqual(val, 7, "enter and loop around")
 
     # Make the road longer without using the loop than with the loop.
-    self.c.add_road(Road([1, 4, 2, 3], "road", 0))
-    self.c.add_road(Road([1, 4, 2, 5], "road", 0))
-    self.c.add_road(Road([5, 6, 6, 5], "road", 0))
-    self.c.add_road(Road([4, 6, 5, 6], "road", 0))
+    self.c._add_road(Road([1, 4, 2, 3], "road", 0))
+    self.c._add_road(Road([1, 4, 2, 5], "road", 0))
+    self.c._add_road(Road([5, 6, 6, 5], "road", 0))
+    self.c._add_road(Road([4, 6, 5, 6], "road", 0))
     val = self.c._dfs_depth(0, catan.CornerLocation(4, 6), set([]), None)
     self.assertEqual(val, 10, "take long route around loop")
     val = self.c._dfs_depth(0, catan.CornerLocation(2, 5), set([]), None)
@@ -1599,11 +1599,11 @@ class TestLongestRouteCalculation(BaseInputHandlerTest):
 
   def testPortConnection(self):
     # Start with 2 ships and 4 roads, but no connection between them.
-    self.c.add_road(Road([3, 3, 4, 4], "road", 0))
-    self.c.add_road(Road([3, 3, 4, 2], "ship", 0))
-    self.c.add_road(Road([4, 2, 5, 2], "ship", 0))
-    self.c.add_road(Road([5, 2, 6, 3], "road", 0))
-    self.c.add_road(Road([5, 4, 6, 3], "road", 0))
+    self.c._add_road(Road([3, 3, 4, 4], "road", 0))
+    self.c._add_road(Road([3, 3, 4, 2], "ship", 0))
+    self.c._add_road(Road([4, 2, 5, 2], "ship", 0))
+    self.c._add_road(Road([5, 2, 6, 3], "road", 0))
+    self.c._add_road(Road([5, 4, 6, 3], "road", 0))
     val = self.c._dfs_depth(0, catan.CornerLocation(3, 3), set([]), None)
     self.assertEqual(val, 4, "no road -> ship connection")
     val = self.c._dfs_depth(0, catan.CornerLocation(5, 2), set([]), None)
@@ -1631,21 +1631,22 @@ class TestLongestRouteCalculation(BaseInputHandlerTest):
 class TestLongestRouteAssignment(unittest.TestCase):
 
   def setUp(self):
+    # Be sure to call add_road on the last road for each player to recalculate longest road.
     with open("beginner.json") as json_file:
       json_data = json_file.read()
     self.c = catan.CatanState.parse_json(json.loads(json_data))
     self.c.add_player("blue", "PlayerA")
     self.c.add_player("green", "PlayerB")
-    self.c.add_road(Road([4, 4, 5, 4], "road", 0))
-    self.c.add_road(Road([5, 4, 6, 5], "road", 0))
+    self.c._add_road(Road([4, 4, 5, 4], "road", 0))
+    self.c._add_road(Road([5, 4, 6, 5], "road", 0))
     self.c.add_road(Road([7, 5, 8, 6], "road", 0))
-    self.c.add_road(Road([3, 3, 4, 2], "road", 1))
-    self.c.add_road(Road([4, 2, 5, 2], "road", 1))
-    self.c.add_road(Road([5, 2, 6, 1], "road", 1))
+    self.c._add_road(Road([3, 3, 4, 2], "road", 1))
+    self.c._add_road(Road([4, 2, 5, 2], "road", 1))
+    self.c._add_road(Road([5, 2, 6, 1], "road", 1))
     self.c.add_road(Road([6, 1, 7, 1], "road", 1))
-    self.c.add_road(Road([3, 7, 4, 8], "road", 2))
-    self.c.add_road(Road([4, 8, 5, 8], "road", 2))
-    self.c.add_road(Road([5, 8, 6, 9], "road", 2))
+    self.c._add_road(Road([3, 7, 4, 8], "road", 2))
+    self.c._add_road(Road([4, 8, 5, 8], "road", 2))
+    self.c._add_road(Road([5, 8, 6, 9], "road", 2))
     self.c.add_road(Road([6, 9, 7, 9], "road", 2))
 
   def testCreateLongestRoad(self):
