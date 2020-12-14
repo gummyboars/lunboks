@@ -147,6 +147,106 @@ class CornerComputationTest(unittest.TestCase):
     self.assertNotIn((14, 5), self.c.corners_to_islands)
 
 
+class PlacementRestrictionsTest(unittest.TestCase):
+
+  def testSaveAndLoad(self):
+    self.c = catan.SeafarerDesert()
+    self.c.add_player("red", "player1")
+    self.c.add_player("blue", "player2")
+    self.c.add_player("green", "player3")
+    self.c.init({})
+    self.assertCountEqual(self.c.placement_islands, [(-1, 3)])
+    self.g = catan.CatanGame()
+    self.g.update_rulesets_and_choices({"Scenario": "The Four Islands"})
+    self.g.game = self.c
+
+    dump = self.g.json_str()
+    loaded = catan.CatanGame.parse_json(dump)
+    game = loaded.game
+    self.assertCountEqual(game.placement_islands, [(-1, 3)])
+
+  def testDesert3Placement(self):
+    self.c = catan.SeafarerDesert()
+    self.c.add_player("red", "player1")
+    self.c.add_player("blue", "player2")
+    self.c.add_player("green", "player3")
+    self.c.init({})
+    self.assertCountEqual(self.c.placement_islands, [(-1, 3)])
+
+    with self.assertRaisesRegex(InvalidMove, "first settlements"):
+      self.c.handle(0, {"type": "settle", "location": [0, 8]})
+    with self.assertRaisesRegex(InvalidMove, "first settlements"):
+      self.c.handle(0, {"type": "settle", "location": [8, 0]})
+    self.c.handle(0, {"type": "settle", "location": [2, 3]})
+
+    # We're going to skip a bunch of placements.
+    self.c.game_phase = "place2"
+    self.c.turn_phase = "settle"
+    self.c.turn_idx = 1
+
+    with self.assertRaisesRegex(InvalidMove, "first settlements"):
+      self.c.handle(1, {"type": "settle", "location": [6, 9]})
+    self.c.handle(1, {"type": "settle", "location": [2, 5]})
+
+  def testDesert4Placement(self):
+    self.c = catan.SeafarerDesert()
+    self.c.add_player("red", "player1")
+    self.c.add_player("blue", "player2")
+    self.c.add_player("green", "player3")
+    self.c.add_player("violet", "player4")
+    self.c.init({})
+    self.assertCountEqual(self.c.placement_islands, [(-1, 5)])
+
+    with self.assertRaisesRegex(InvalidMove, "first settlements"):
+      self.c.handle(0, {"type": "settle", "location": [0, 8]})
+    with self.assertRaisesRegex(InvalidMove, "first settlements"):
+      self.c.handle(0, {"type": "settle", "location": [8, 0]})
+    self.c.handle(0, {"type": "settle", "location": [2, 3]})
+
+    # We're going to skip a bunch of placements.
+    self.c.game_phase = "place2"
+    self.c.turn_phase = "settle"
+    self.c.turn_idx = 1
+
+    # It should still validate islands in the second placement round.
+    with self.assertRaisesRegex(InvalidMove, "first settlements"):
+      self.c.handle(1, {"type": "settle", "location": [8, 12]})
+    self.c.handle(1, {"type": "settle", "location": [8, 8]})
+
+  def testShores3Placement(self):
+    self.c = catan.SeafarerShores()
+    self.c.add_player("red", "player1")
+    self.c.add_player("blue", "player2")
+    self.c.add_player("green", "player3")
+    self.c.init({})
+    self.assertCountEqual(self.c.placement_islands, [(-1, 3)])
+
+    with self.assertRaisesRegex(InvalidMove, "first settlements"):
+      self.c.handle(0, {"type": "settle", "location": [2, 9]})
+    with self.assertRaisesRegex(InvalidMove, "first settlements"):
+      self.c.handle(0, {"type": "settle", "location": [12, 4]})
+    with self.assertRaisesRegex(InvalidMove, "first settlements"):
+      self.c.handle(0, {"type": "settle", "location": [10, 9]})
+    self.c.handle(0, {"type": "settle", "location": [2, 3]})
+
+  def testShores4Placement(self):
+    self.c = catan.SeafarerShores()
+    self.c.add_player("red", "player1")
+    self.c.add_player("blue", "player2")
+    self.c.add_player("green", "player3")
+    self.c.add_player("violet", "player4")
+    self.c.init({})
+    self.assertCountEqual(self.c.placement_islands, [(-1, 3)])
+
+    with self.assertRaisesRegex(InvalidMove, "first settlements"):
+      self.c.handle(0, {"type": "settle", "location": [2, 11]})
+    with self.assertRaisesRegex(InvalidMove, "first settlements"):
+      self.c.handle(0, {"type": "settle", "location": [12, 4]})
+    with self.assertRaisesRegex(InvalidMove, "first settlements"):
+      self.c.handle(0, {"type": "settle", "location": [11, 11]})
+    self.c.handle(0, {"type": "settle", "location": [2, 3]})
+
+
 class TestIslandCalculations(BreakpointTest):
 
   def setUp(self):

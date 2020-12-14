@@ -1582,6 +1582,7 @@ class Seafarers(CatanState):
     self.shortage_resources = []
     self.collect_idx = None
     self.collect_counts = collections.defaultdict(int)
+    self.placement_islands = None
 
   @classmethod
   def parse_json(cls, gamedata):
@@ -1597,6 +1598,9 @@ class Seafarers(CatanState):
       mapping.update({
         idx: [tuple(corner) for corner in corner_list] for idx, corner_list in mapping.items()
       })
+    # Same idea for placement_islands, except it's a list.
+    if game.placement_islands is not None:
+      game.placement_islands = [tuple(corner) for corner in game.placement_islands]
     return game
 
   def json_for_player(self):
@@ -1608,7 +1612,8 @@ class Seafarers(CatanState):
 
   @classmethod
   def hidden_attrs(cls):
-    hidden = {"built_this_turn", "ships_moved", "home_corners", "foreign_landings"}
+    hidden = {
+        "built_this_turn", "ships_moved", "home_corners", "foreign_landings", "placement_islands"}
     return super(Seafarers, cls).hidden_attrs() | hidden
 
   @classmethod
@@ -1757,6 +1762,10 @@ class Seafarers(CatanState):
       self.recalculate_ships(road.source, road.player)
 
   def add_piece(self, piece):
+    if self.game_phase.startswith("place") and self.placement_islands is not None:
+      canonical_corner = self.corners_to_islands.get(piece.location.as_tuple())
+      if canonical_corner not in self.placement_islands:
+        raise InvalidMove("You cannot place your first settlements in that area.")
     super(Seafarers, self).add_piece(piece)
     if piece.piece_type == "settlement":
       self.recalculate_ships(piece.location, piece.player)
@@ -1958,6 +1967,7 @@ class SeafarerShores(Seafarers):
     self._compute_contiguous_islands()
     self._compute_edges()
     self._init_dev_cards()
+    self.placement_islands = [self.corners_to_islands[(2, 1)]]
 
 
 class SeafarerIslands(Seafarers):
@@ -1996,6 +2006,7 @@ class SeafarerDesert(Seafarers):
     self._compute_contiguous_islands()
     self._compute_edges()
     self._init_dev_cards()
+    self.placement_islands = [self.corners_to_islands[(2, 1)]]
 
   def _is_connecting_tile(self, tile):
     return tile.number

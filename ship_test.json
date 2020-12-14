@@ -355,6 +355,7 @@
       "unusable": {}
     }
   ],
+  "placement_islands": null,
   "rules": [],
   "scenario": "The Four Islands",
   "home_corners": [[[2, 5]]],
