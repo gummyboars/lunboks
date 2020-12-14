@@ -589,5 +589,6 @@
   "dev_roads_placed": 0,
   "played_dev": 0,
   "turn_idx": 0,
+  "victory_points": 10,
   "rob_at_two": true
 }

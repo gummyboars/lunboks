@@ -507,6 +507,8 @@ class TestDevCards(BaseInputHandlerTest):
       self.c.handle_play_dev("monopoly", {}, 0)
     with self.assertRaisesRegex(InvalidMove, "exactly one resource"):
       self.c.handle_play_dev("monopoly", {"rsrc2": 2}, 0)
+    with self.assertRaisesRegex(InvalidMove, "exactly one resource"):
+      self.c.handle_play_dev("monopoly", {"rsrc1": 1, "rsrc2": 2}, 0)
 
 
 class TestCollectResources(BaseInputHandlerTest):
@@ -1894,13 +1896,16 @@ class TestGameOptions(unittest.TestCase):
     self.assertIn("Friendly Robber", self.c.choices)
     # Friendly robber should be reset to default because the default changed.
     self.assertFalse(self.c.choices["Friendly Robber"])
-    self.assertCountEqual(self.c.choices.keys(), {"Friendly Robber"})
+    self.assertIn("Friendly Robber", self.c.choices)
+    self.assertNotIn("Debug", self.c.choices)
+    self.assertNotIn("Scenario", self.c.choices)
 
     self.c.handle_select_option("a", {"options": {"Scenario": "The Four Islands"}})
     self.assertEqual(self.c.scenario, "The Four Islands")
     self.assertSetEqual(self.c.rules, set())
     # Should set the option to its default even if it wasn't in the provided options.
-    self.assertCountEqual(self.c.choices.keys(), {"Friendly Robber", "Seafarers"})
+    self.assertIn("Friendly Robber", self.c.choices)
+    self.assertIn("Seafarers", self.c.choices)
     self.assertFalse(self.c.choices["Friendly Robber"])
     self.assertTrue(self.c.choices["Seafarers"])
 

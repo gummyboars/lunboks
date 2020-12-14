@@ -326,5 +326,6 @@
             "rotation": 5
         }
     ],
+    "victory_points": 10,
     "rob_at_two": true
 }

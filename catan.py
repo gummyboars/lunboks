@@ -473,6 +473,7 @@ class CatanState(object):
     self.turn_phase = "settle"
     # Flag for the don't allow players to rob at 2 points option
     self.rob_at_two = True
+    self.victory_points = 10
 
   @classmethod
   def location_attrs(cls):
@@ -669,7 +670,7 @@ class CatanState(object):
     # you can only win on YOUR turn. So we check for victory after we have handled the end of
     # the previous turn, in case the next player wins at the start of their turn.
     # TODO: victory points should be configurable.
-    if self.player_points(self.turn_idx, visible=False) >= 10:
+    if self.player_points(self.turn_idx, visible=False) >= self.victory_points:
       self.handle_victory()
 
   def _validate_location(self, location, num_entries=2):
@@ -1078,10 +1079,9 @@ class CatanState(object):
 
   def _handle_monopoly(self, player, resource_selection):
     self._validate_selection(resource_selection)
-    chosen = [rsrc for rsrc, val in resource_selection.items() if val == 1]
-    if len(chosen) != 1:
+    if len(resource_selection) != 1 or sum(resource_selection.values()) != 1:
       raise InvalidMove("You must choose exactly one resource to monopolize.")
-    card_type = chosen[0]
+    card_type = list(resource_selection.keys())[0]
     for opponent_idx in range(len(self.player_data)):
       if player == opponent_idx:
         continue
@@ -1469,10 +1469,13 @@ class CatanState(object):
   @classmethod
   def get_options(cls):
     friendly_robber = GameOption(name="Friendly Robber", default=False)
-    return collections.OrderedDict([("Friendly Robber", friendly_robber)])
+    victory = GameOption(name="Victory Points", default=10, choices=[8, 9, 10, 11, 12, 13, 14, 15])
+    return collections.OrderedDict([
+      ("Friendly Robber", friendly_robber), ("Victory Points", victory)])
 
   def init(self, options):
     self.rob_at_two = not options.get("Friendly Robber")
+    self.victory_points = int(options.get("Victory Points", 10))
 
 
 class RandomMap(CatanState):
@@ -1969,6 +1972,12 @@ class SeafarerShores(Seafarers):
     self._init_dev_cards()
     self.placement_islands = [self.corners_to_islands[(2, 1)]]
 
+  @classmethod
+  def get_options(cls):
+    options = super(SeafarerShores, cls).get_options()
+    options["Victory Points"].default = 14
+    return options
+
 
 class SeafarerIslands(Seafarers):
 
@@ -1987,6 +1996,12 @@ class SeafarerIslands(Seafarers):
     self._compute_contiguous_islands()
     self._compute_edges()
     self._init_dev_cards()
+
+  @classmethod
+  def get_options(cls):
+    options = super(SeafarerIslands, cls).get_options()
+    options["Victory Points"].default = 13
+    return options
 
 
 class SeafarerDesert(Seafarers):
@@ -2010,6 +2025,12 @@ class SeafarerDesert(Seafarers):
 
   def _is_connecting_tile(self, tile):
     return tile.number
+
+  @classmethod
+  def get_options(cls):
+    options = super(SeafarerIslands, cls).get_options()
+    options["Victory Points"].default = 14
+    return options
 
 
 class SeafarerFog(Seafarers):
