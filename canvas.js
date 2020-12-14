@@ -491,8 +491,9 @@ function onclick(event) {
   }
   let clickTile = getTile(event.clientX, event.clientY);
   if (clickTile != null) {
+    let clickType = (tiles[clickTile].is_land ? "robber" : "pirate");
     let msg = {
-      type: "robber",
+      type: clickType,
       location: tiles[clickTile].location,
     };
     ws.send(JSON.stringify(msg));

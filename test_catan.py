@@ -289,6 +289,7 @@ class TestIslandCalculations(BreakpointTest):
     self.c.handle(1, {"type": "ship", "location": [6, 1, 7, 1]})
     self.c.game_phase = "main"
     self.c.turn_phase = "main"
+    self.c.pirate = None
     self.g = catan.CatanGame()
     self.g.update_rulesets_and_choices({"Scenario": "The Four Islands"})
     self.g.game = self.c
@@ -750,7 +751,7 @@ class TestRobberMovement(BaseInputHandlerTest):
       self.c.handle_robber((-1,-1),1)
 
   def testRobberInvalidMoveRegex(self):
-    with self.assertRaisesRegex(InvalidMove, "Robber would be lost in time and space."):
+    with self.assertRaisesRegex(InvalidMove, "valid land tile"):
       self.c.handle_robber((-1,-1),1)
 
   def testRobberStationaryMove(self):
@@ -766,7 +767,7 @@ class TestRobberMovement(BaseInputHandlerTest):
       self.c.handle_robber((2,1),1)
 
   def testRobberLandMoveRegex(self):
-    with self.assertRaisesRegex(InvalidMove, "Robbers would drown at sea."):
+    with self.assertRaisesRegex(InvalidMove, "valid land tile"):
       self.c.handle_robber((2,1),1)
 
   def testNoRobbingFromTwoPointsRegex(self):
@@ -802,6 +803,71 @@ class TestRobberMovement(BaseInputHandlerTest):
     self.c.rob_at_two = False
     self.c.add_piece(catan.Piece(4,2, "city", 1))
     self.c.handle_robber((4,4),0)
+
+
+class TestPiratePlacement(BaseInputHandlerTest):
+
+  TEST_FILE = "ship_test.json"
+
+  def setUp(self):
+    BaseInputHandlerTest.setUp(self)
+    self.c.add_piece(catan.Piece(3, 7, "settlement", 1))
+    self.c.add_piece(catan.Piece(5, 6, "settlement", 1))
+    self.c.add_road(Road([4, 6, 5, 6], "ship", 1))
+    self.c.pirate = catan.TileLocation(2, 3)
+    self.c.ships_moved = 0
+    self.c.built_this_turn.clear()
+    self.c.player_data[0].cards["rsrc1"] += 5
+    self.c.player_data[0].cards["rsrc2"] += 5
+
+  def testBuildNearPirate(self):
+    old_count = sum([self.c.player_data[0].cards[x] for x in catan.RESOURCES])
+    with self.assertRaisesRegex(InvalidMove, "next to the pirate"):
+      self.c.handle_road([2, 5, 3, 5], 0, "ship", [("rsrc1", 1), ("rsrc2", 1)])
+    new_count = sum([self.c.player_data[0].cards[x] for x in catan.RESOURCES])
+    self.assertEqual(old_count, new_count)
+    self.c.handle_road([3, 5, 4, 6], 1, "ship", [])
+
+  def testBuildRoadNearPirate(self):
+    self.c.roads[(1, 4, 2, 5)].road_type = "road"
+    self.c.handle_road([1, 4, 2, 3], 0, "road", [])
+
+  def testMoveToPirate(self):
+    with self.assertRaisesRegex(InvalidMove, "next to the pirate"):
+      self.c.handle_move_ship([1, 6, 2, 5], [2, 5, 3, 5], 0)
+
+  def testMoveAwayFromPirate(self):
+    with self.assertRaisesRegex(InvalidMove, "next to the pirate"):
+      self.c.handle_move_ship([1, 4, 2, 5], [2, 5, 3, 5], 0)
+
+  def testMovePirate(self):
+    self.c.add_player("green", "Bob")
+    self.c.turn_idx = 2
+    self.c.turn_phase = "robber"
+    old_count = sum([self.c.player_data[0].cards[x] for x in catan.RESOURCES])
+    self.c.handle_pirate(2, [2, 5])
+    new_count = sum([self.c.player_data[0].cards[x] for x in catan.RESOURCES])
+    self.assertEqual(new_count, old_count - 1)
+    self.assertEqual(self.c.turn_phase, "main")
+
+  def testMovePirateRobTwoPlayers(self):
+    self.c.add_player("green", "Bob")
+    self.c.turn_idx = 2
+    self.c.turn_phase = "robber"
+    self.c._add_road(Road([2, 7, 3, 7], "ship", 1))
+    self.c.handle_pirate(2, [2, 5])
+    self.assertEqual(self.c.event_log[-1].public_text, "{player2} moved the pirate")
+    self.assertEqual(self.c.turn_phase, "rob")
+    self.assertCountEqual(self.c.rob_players, [0, 1])
+
+  def testPirateDoesNotRobRoads(self):
+    self.c.add_player("green", "Bob")
+    self.c.turn_idx = 2
+    self.c.turn_phase = "robber"
+    self.c._add_road(Road([2, 7, 3, 7], "road", 1))
+    self.c.handle_pirate(2, [2, 5])
+    self.assertEqual(self.c.turn_phase, "main")
+    self.assertEqual(self.c.event_log[-1].public_text, "{player2} stole a card from {player0}")
 
 
 class TestHandleSettleInput(BaseInputHandlerTest):

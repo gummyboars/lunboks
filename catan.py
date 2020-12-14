@@ -172,6 +172,17 @@ class TileLocation(Location):
             self.get_lower_left_corner(), self.get_lower_right_corner(),
             self.get_left_corner(), self.get_right_corner()]
 
+  def get_edge_locations(self):
+    # Order matters here.
+    corners = [
+        self.get_left_corner(), self.get_upper_left_corner(), self.get_upper_right_corner(),
+        self.get_right_corner(), self.get_lower_right_corner(), self.get_lower_left_corner(),
+    ]
+    edges = []
+    for idx, corner in enumerate(corners):
+      edges.append(corner.get_edge(corners[(idx+1)%6]))
+    return edges
+
   def old_get_corner_locations(self):
     """Gets coordinates of all the corners surrounding this tile.
 
@@ -769,38 +780,42 @@ class CatanState(object):
     to_receive = self.calculate_resource_distribution(self.dice_roll)
     self.distribute_resources(to_receive)
 
-  def handle_robber(self, location, current_player):
+  def validate_robber_location(self, location, robber_type, land):
     self._validate_location(location)
     if self.turn_phase != "robber":
       if self.turn_phase == "discard":
         raise InvalidMove("Waiting for players to discard.")
-      raise InvalidMove("You cannot play the robber right now.")
-    if self.tiles.get(tuple(location)) is None:
-      raise InvalidMove("Robber would be lost in time and space.")
-    if self.robber == TileLocation(*location):
-      raise InvalidMove("You must move the robber.")
-    if not self.tiles[tuple(location)].is_land:
-      raise InvalidMove("Robbers would drown at sea.")
-    maybe_robber_location = TileLocation(*location)
-    corners = maybe_robber_location.get_corner_locations()
-    if not self.rob_at_two:
-      for corner in corners:
-        maybe_piece = self.pieces.get(corner.as_tuple())
-        if maybe_piece:
-          if maybe_piece.player != current_player:
-            score = self.player_points(maybe_piece.player,visible=True)
-            if score <= 2:
-              raise InvalidMove("Robbers refuse to rob such poor people.")
+      raise InvalidMove("You cannot play the %s right now." % robber_type)
+    chosen_tile = self.tiles.get(tuple(location))
+    if chosen_tile is None or land != chosen_tile.is_land:
+      raise InvalidMove("You must play the %s on a valid %s tile." %
+          (robber_type, "land" if land else "{space}"))
+    new_location = TileLocation(*location)
+    if getattr(self, robber_type) == new_location:
+      raise InvalidMove("You must move the %s to a different tile." % robber_type)
+    return new_location
+
+  def check_friendly_robber(self, current_player, adjacent_players, robber_type):
+    if self.rob_at_two:
+      return
+    poor_players = [idx for idx in adjacent_players if self.player_points(idx, visible=True) <= 2]
+    if set(poor_players) - {current_player}:
+      raise InvalidMove("%ss refuse to rob such poor people." % robber_type.capitalize())
+
+  def handle_robber(self, location, current_player):
+    robber_loc = self.validate_robber_location(location, "robber", land=True)
+    adjacent_players = set([
+      self.pieces[loc.as_tuple()].player for loc in robber_loc.get_corner_locations()
+      if loc.as_tuple() in self.pieces
+    ])
+    self.check_friendly_robber(current_player, adjacent_players, "robber")
     self.event_log.append(Event("robber", "{player%s} moved the robber" % current_player))
-    self.robber = TileLocation(*location)
-    corners = self.robber.get_corner_locations()
-    robbable_players = set([])
-    for corner in corners:
-      maybe_piece = self.pieces.get(corner.as_tuple())
-      if maybe_piece:
-        count = self.player_data[maybe_piece.player].resource_card_count()
-        if count > 0:
-          robbable_players.add(maybe_piece.player)
+    self.robber = robber_loc
+    self.activate_robber(current_player, adjacent_players)
+
+  def activate_robber(self, current_player, adjacent_players):
+    robbable_players = set([
+      idx for idx in adjacent_players if self.player_data[idx].resource_card_count()])
     robbable_players -= {current_player}
     if len(robbable_players) > 1:
       self.rob_players = list(robbable_players)
@@ -1816,7 +1831,20 @@ class Seafarers(CatanState):
       return self.handle_move_ship(data.get("from"), data.get("to"), player_idx)
     if move_type == "collect":
       return self.handle_collect(player_idx, data.get("selection"))
+    if move_type == "pirate":
+      return self.handle_pirate(player_idx, data.get("location"))
     return super(Seafarers, self).inner_handle(player_idx, move_type, data)
+
+  def handle_pirate(self, player_idx, location):
+    pirate_loc = self.validate_robber_location(location, "pirate", land=False)
+    adjacent_players = set([
+      self.roads[edge.as_tuple()].player for edge in pirate_loc.get_edge_locations()
+      if edge.as_tuple() in self.roads and self.roads[edge.as_tuple()].road_type == "ship"
+    ])
+    self.check_friendly_robber(player_idx, adjacent_players, "pirate")
+    self.event_log.append(Event("pirate", "{player%s} moved the pirate" % player_idx))
+    self.pirate = pirate_loc
+    self.activate_robber(player_idx, adjacent_players)
 
   def handle_collect(self, player_idx, selection):
     self._validate_selection(selection)
@@ -1859,6 +1887,9 @@ class Seafarers(CatanState):
     maybe_dest = self.roads.get(tuple(to_location))
     if maybe_dest:
       raise InvalidMove(f"There is already a {maybe_dest.road_type} at that destination.")
+    adjacent_tiles = EdgeLocation(*from_location).get_adjacent_tiles()
+    if self.pirate in adjacent_tiles:
+      raise InvalidMove("You cannot move a ship that is next to the pirate.")
 
     # Check that this attaches to their existing network, without the original ship.
     # To do this, remove the old ship first, but restore it if any exception is thrown.
@@ -1876,6 +1907,13 @@ class Seafarers(CatanState):
     # ships' movable status from the old source in case the two locations are disconnected.
     self.recalculate_ships(old_source, player_idx)
     self.ships_moved = 1
+
+  def _check_road_building(self, location, player, road_type):
+    super(Seafarers, self)._check_road_building(location, player, road_type)
+    if road_type == "ship":
+      adjacent_tiles = location.get_adjacent_tiles()
+      if self.pirate in adjacent_tiles:
+        raise InvalidMove("You cannot place a ship next to the pirate.")
 
   def add_road(self, road):
     if road.road_type == "ship":
