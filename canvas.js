@@ -244,11 +244,12 @@ function drawLanding(landing, ctx) {
   let canvasLoc = coordToCornerCenter(landing.location);
   ctx.strokeStyle = "black";
   ctx.beginPath;
-  ctx.moveTo(canvasLoc.x, canvasLoc.y - pieceRadius / 2);
+  ctx.moveTo(canvasLoc.x, canvasLoc.y - 3 * pieceRadius / 4);
   ctx.lineTo(canvasLoc.x, canvasLoc.y - 2 * pieceRadius);
   ctx.stroke();
   ctx.fillStyle = playerData[landing.player].color;
   ctx.fillRect(canvasLoc.x - pieceRadius, canvasLoc.y - 2*pieceRadius, pieceRadius, pieceRadius/2);
+  ctx.strokeRect(canvasLoc.x - pieceRadius, canvasLoc.y - 2*pieceRadius, pieceRadius, pieceRadius/2);
 }
 function drawPiece(pieceLoc, style, pieceType, ctx) {
   let canvasLoc = coordToCornerCenter(pieceLoc);
