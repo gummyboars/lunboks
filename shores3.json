@@ -196,7 +196,7 @@
       "tile_type": "space",
       "is_land": false,
       "number": null,
-      "rotation": 0,
+      "rotation": 4,
       "variant": "",
       "land_rotations": [
         4
@@ -273,7 +273,7 @@
       "tile_type": "space",
       "is_land": false,
       "number": null,
-      "rotation": 0,
+      "rotation": 3,
       "variant": "",
       "land_rotations": [
         0,
@@ -326,7 +326,7 @@
       "tile_type": "space",
       "is_land": false,
       "number": null,
-      "rotation": 0,
+      "rotation": 1,
       "variant": "",
       "land_rotations": [
         1,
@@ -341,7 +341,7 @@
       "tile_type": "space",
       "is_land": false,
       "number": null,
-      "rotation": 0,
+      "rotation": 1,
       "variant": "",
       "land_rotations": [
         1,
@@ -358,7 +358,7 @@
       "tile_type": "space",
       "is_land": false,
       "number": null,
-      "rotation": 0,
+      "rotation": 3,
       "variant": "",
       "land_rotations": [
         1,
@@ -408,7 +408,7 @@
       "tile_type": "space",
       "is_land": false,
       "number": null,
-      "rotation": 0,
+      "rotation": 2,
       "variant": "",
       "land_rotations": [
         0,
@@ -448,7 +448,7 @@
       "tile_type": "space",
       "is_land": false,
       "number": null,
-      "rotation": 0,
+      "rotation": 1,
       "variant": "",
       "land_rotations": [
         0
@@ -462,7 +462,7 @@
       "tile_type": "space",
       "is_land": false,
       "number": null,
-      "rotation": 0,
+      "rotation": 1,
       "variant": "",
       "land_rotations": [
         1
@@ -476,7 +476,7 @@
       "tile_type": "space",
       "is_land": false,
       "number": null,
-      "rotation": 0,
+      "rotation": 1,
       "variant": "",
       "land_rotations": [
         1,
@@ -491,7 +491,7 @@
       "tile_type": "space",
       "is_land": false,
       "number": null,
-      "rotation": 0,
+      "rotation": 2,
       "variant": "",
       "land_rotations": [
         1,
@@ -506,7 +506,7 @@
       "tile_type": "space",
       "is_land": false,
       "number": null,
-      "rotation": 0,
+      "rotation": 2,
       "variant": "",
       "land_rotations": [
         2
@@ -544,7 +544,7 @@
       "tile_type": "space",
       "is_land": false,
       "number": null,
-      "rotation": 0,
+      "rotation": 3,
       "variant": "",
       "land_rotations": [
         3,
@@ -559,7 +559,7 @@
       "tile_type": "space",
       "is_land": false,
       "number": null,
-      "rotation": 0,
+      "rotation": 4,
       "variant": "",
       "land_rotations": [
         4
@@ -573,7 +573,7 @@
       "tile_type": "space",
       "is_land": false,
       "number": null,
-      "rotation": 0,
+      "rotation": 4,
       "variant": "",
       "land_rotations": [
         5
@@ -587,7 +587,7 @@
       "tile_type": "space",
       "is_land": false,
       "number": null,
-      "rotation": 0,
+      "rotation": 3,
       "variant": "",
       "land_rotations": [
         3
@@ -601,7 +601,7 @@
       "tile_type": "space",
       "is_land": false,
       "number": null,
-      "rotation": 0,
+      "rotation": 3,
       "variant": "",
       "land_rotations": [
         2,
@@ -640,7 +640,7 @@
       "tile_type": "space",
       "is_land": false,
       "number": null,
-      "rotation": 0,
+      "rotation": 3,
       "variant": "",
       "land_rotations": [
         3
@@ -654,7 +654,7 @@
       "tile_type": "space",
       "is_land": false,
       "number": null,
-      "rotation": 0,
+      "rotation": 3,
       "variant": "",
       "land_rotations": [
         2,
@@ -694,7 +694,7 @@
       "tile_type": "space",
       "is_land": false,
       "number": null,
-      "rotation": 0,
+      "rotation": 2,
       "variant": "",
       "land_rotations": [
         1,
@@ -709,7 +709,7 @@
       "tile_type": "space",
       "is_land": false,
       "number": null,
-      "rotation": 0,
+      "rotation": 2,
       "variant": "",
       "land_rotations": [
         3
@@ -723,7 +723,7 @@
       "tile_type": "space",
       "is_land": false,
       "number": null,
-      "rotation": 0,
+      "rotation": 2,
       "variant": "",
       "land_rotations": [
         2
@@ -737,7 +737,7 @@
       "tile_type": "space",
       "is_land": false,
       "number": null,
-      "rotation": 0,
+      "rotation": 3,
       "variant": "",
       "land_rotations": []
     },
@@ -749,7 +749,7 @@
       "tile_type": "space",
       "is_land": false,
       "number": null,
-      "rotation": 0,
+      "rotation": 3,
       "variant": "",
       "land_rotations": []
     },
@@ -761,7 +761,7 @@
       "tile_type": "space",
       "is_land": false,
       "number": null,
-      "rotation": 0,
+      "rotation": 3,
       "variant": "",
       "land_rotations": []
     },
@@ -773,7 +773,7 @@
       "tile_type": "space",
       "is_land": false,
       "number": null,
-      "rotation": 0,
+      "rotation": 2,
       "variant": "",
       "land_rotations": []
     },
@@ -785,7 +785,7 @@
       "tile_type": "space",
       "is_land": false,
       "number": null,
-      "rotation": 0,
+      "rotation": 2,
       "variant": "",
       "land_rotations": []
     },
@@ -821,7 +821,7 @@
       "tile_type": "space",
       "is_land": false,
       "number": null,
-      "rotation": 0,
+      "rotation": 1,
       "variant": "",
       "land_rotations": []
     }
