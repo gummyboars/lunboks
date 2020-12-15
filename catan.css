@@ -311,10 +311,41 @@ div {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   flex: 0 0 20%;
   padding: 0px;
   height: 100%;
+  max-width: 20%;
+}
+#uiplayer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  flex: 0 1 content;
+  width: 100%;
+}
+#uilog {
+  display: float;
+  flex: 1 1 100%;
+  width: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+#eventlog {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-end;
+  flex: 1 1 100%;
+  width: 100%;
+  border: 1px solid black;
+}
+.logevent {
+  margin-top: 0.2em;
+  margin-bottom: 0.2em;
+  margin-left: 0.5em;
+  margin-right: 0.5em;
 }
 #bottombutton {
   flex: 1 0 auto;
@@ -354,20 +385,22 @@ div {
   margin-top: 25px;
 }
 .playerinfo {
-  flex: "1 0 100%";
+  flex: "0 0 content";
   display: flex;
   flex-direction: column;
   align-items: center;
-  height: 100%;
+  justify-content: space-around;
   width: 100%;
+}
+.playerpadding {
+  flex: "0 1 auto";
+  height: 12px;
 }
 .playername {
   color: white;
   font-weight: bold;
   font-size: 24px;
   font-family: sans-serif;
-  margin-top: 10px;
-  margin-bottom: 10px;
   position: relative;
   display: flex;
   flex-direction: row;
@@ -406,17 +439,15 @@ div {
 }
 .cardinfo {
   display: flex;
-  width: 100%;
+  max-width: 90%;
   align-items: center;
   justify-content: center;
-  margin-top: 10px;
 }
 .otherinfo {
   display: flex;
   width: 100%;
   align-items: center;
-  justify-content: space-around;
-  margin-top: 20px;
+  justify-content: space-evenly;
 }
 .otheritem {
   color: white;

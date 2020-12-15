@@ -104,7 +104,7 @@ devCardType = null;  // knight, yearofplenty, roadbuilding, monopoly
 
 function formatServerString(serverString) {
   var str = serverString;
-  for (rsrc in serverNames) {
+  for (let rsrc in serverNames) {
     str = str.replace(new RegExp("\\{" + rsrc + "\\}", "gi"), serverNames[rsrc]);
   }
   return str;
@@ -1064,7 +1064,6 @@ function updateJoinWindow() {
   }
   // Remove options that no longer exist.
   for (let oDiv of document.getElementsByClassName("gameoption")) {
-    console.log(oDiv.optionName);
     if (!allOptions.includes(oDiv.optionName)) {
       oDiv.parentNode.parentNode.removeChild(oDiv.parentNode);
     }
@@ -1197,7 +1196,7 @@ function fixNameSize(e) {
   nameInput.style.width = sizeCalculator.offsetWidth + "px";
 }
 function initPlayerData() {
-  let rightUI = document.getElementById("uiright");
+  let rightUI = document.getElementById("uiplayer");
   while (rightUI.firstChild) {
     rightUI.removeChild(rightUI.firstChild);
   }
@@ -1207,14 +1206,21 @@ function initPlayerData() {
   fixNameSize(null);
 }
 function createPlayerData(i) {
-  let rightUI = document.getElementById("uiright");
-  let newdiv = document.createElement("DIV");
-  newdiv.style.background = playerData[i].color;
-  newdiv.classList.add("playerinfo");
+  let rightUI = document.getElementById("uiplayer");
+  let playerDiv = document.createElement("DIV");
+  playerDiv.style.background = playerData[i].color;
+  playerDiv.classList.add("playerinfo");
+  for (let i of [0, 2, 4, 6]) {
+    let spacer = document.createElement("DIV");
+    spacer.classList.add("playerpadding");
+    spacer.style.order = i;
+    playerDiv.appendChild(spacer);
+  }
 
   let username = playerData[i].name;
   let topText = document.createElement("DIV");
   topText.classList.add("playername");
+  topText.style.order = 1;
   if (i == myIdx) {
     let sizeCalculator = document.createElement("SPAN");
     sizeCalculator.id = "sizeCalculator";
@@ -1262,21 +1268,20 @@ function createPlayerData(i) {
   phaseMarker.innerText = "";
   phaseMarker.classList.add("phasemarker");
   topText.appendChild(phaseMarker);
-  newdiv.appendChild(topText);
+  playerDiv.appendChild(topText);
   let cardDiv = document.createElement("DIV");
-  let rightWidth = document.getElementById("uiright").offsetWidth;
-  cardDiv.style.width = 0.8 * rightWidth + "px";
   cardDiv.classList.add("cardinfo");
-  newdiv.appendChild(cardDiv);
+  cardDiv.style.order = 3;
+  playerDiv.appendChild(cardDiv);
   let dataDiv = document.createElement("DIV");
-  dataDiv.style.width = 0.8 * rightWidth + "px";
   dataDiv.classList.add("otherinfo");
-  newdiv.appendChild(dataDiv);
-  rightUI.appendChild(newdiv);
-  return newdiv;
+  dataDiv.style.order = 5;
+  playerDiv.appendChild(dataDiv);
+  rightUI.appendChild(playerDiv);
+  return playerDiv;
 }
 function updatePlayerData() {
-  let rightUI = document.getElementById("uiright");
+  let rightUI = document.getElementById("uiplayer");
   for (let i = 0; i < playerData.length; i++) {
     let playerDiv = rightUI.children.item(i);
     if (playerDiv == null) {
@@ -1505,15 +1510,12 @@ function sizeThings() {
   let totalHeight = document.documentElement.clientHeight;
   document.getElementById('ui').style.width = totalWidth + "px";
   document.getElementById('ui').style.height = totalHeight + "px";
-  rightWidth = document.getElementById('uiright').offsetWidth;
+  rightWidth = document.getElementById('uiplayer').offsetWidth;
   canWidth = totalWidth - rightWidth;
   canHeight = totalHeight;
   document.getElementById('uibottom').style.width = canWidth + "px";
   document.getElementById('myCanvas').width = canWidth;
   document.getElementById('myCanvas').height = canHeight;
-  for (let pdiv of document.getElementsByClassName("cardinfo")) {
-    pdiv.style.width = 0.8 * rightWidth + "px";
-  }
 }
 function updateBuyDev() {
   let block = document.getElementById('buydev');
