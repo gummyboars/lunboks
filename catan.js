@@ -114,6 +114,33 @@ function formatStringWithParam(fmtString, param) {
   return fmtString.replace(new RegExp("\\{\\}", "gi"), "" + param);
 }
 
+function substitutePlayerName(serverString) {
+  let div = document.createElement("DIV");
+  div.classList.add("logevent");
+  let newstr = formatServerString(serverString);
+  let substrRegex = /(\{player\d+\})/;
+  let splits = newstr.split(substrRegex);
+  for (let piece of splits) {
+    if (!piece.length) {
+      continue;
+    }
+    let match = piece.match(/\{player(\d+)\}/);
+    if (!match) {
+      let normal = document.createElement("SPAN");
+      normal.innerText = piece;
+      div.appendChild(normal);
+      continue;
+    }
+    let playerIdx = parseInt(match[1]);
+    let span = document.createElement("SPAN");
+    span.innerText = playerData[playerIdx].name;
+    span.style.color = playerData[playerIdx].color;
+    span.style.fontWeight = "bold";
+    div.appendChild(span);
+  }
+  return div;
+}
+
 function toggleDebug() {
   debug = !debug;
 }
@@ -955,6 +982,7 @@ function onmsg(event) {
   robPlayers = data.rob_players;
   longestRoutePlayer = data.longest_route_player;
   largestArmyPlayer = data.largest_army_player;
+  eventLog = data.event_log;
   // TODO: this is just messy. Clean up initPlayerData.
   let myOld = myIdx;
   if ("you" in data) {
@@ -982,6 +1010,7 @@ function onmsg(event) {
   updateUI("endturn");
   updateTradeButtons();
   updatePlayerData();
+  updateEventLog();
   if (firstMsg && counterOffers[myIdx]) {
     copyPreviousCounterOffer(counterOffers[myIdx]);
   }
@@ -1504,6 +1533,18 @@ function createSelectors() {
       renderAssetToCanvas(cnv, cardRsrc + "card", "");
     }
   }
+}
+function updateEventLog() {
+  let logDiv = document.getElementById("eventlog");
+  while (logDiv.firstChild) {
+    logDiv.removeChild(logDiv.firstChild);
+  }
+  for (let e of eventLog) {
+    let text = substitutePlayerName(e.text);
+    logDiv.appendChild(text);
+  }
+  let uidiv = document.getElementById("uilog");
+  uidiv.scrollTop = uidiv.scrollHeight;
 }
 function sizeThings() {
   let totalWidth = document.documentElement.clientWidth;

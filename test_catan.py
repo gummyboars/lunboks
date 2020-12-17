@@ -288,6 +288,7 @@ class TestIslandCalculations(BreakpointTest):
     self.c.handle(1, {"type": "settle", "location": [6, 1]})
     self.c.handle(1, {"type": "ship", "location": [6, 1, 7, 1]})
     self.c.game_phase = "main"
+    self.c.turn_phase = "main"
     self.g = catan.CatanGame()
     self.g.update_rulesets_and_choices({"Scenario": "The Four Islands"})
     self.g.game = self.c
@@ -298,14 +299,26 @@ class TestIslandCalculations(BreakpointTest):
     self.assertCountEqual(self.c.home_corners[2], [(5, 8), (12, 8)])
 
   def settleForeignIslands(self):
+    for rsrc in catan.RESOURCES:
+      self.c.player_data[2].cards[rsrc] += 2
     # Player1 settles a foreign island.
     self.c.add_piece(catan.Piece(6, 3, "settlement", 0))
     # Player2 settles two foreign islands.
     self.c.add_piece(catan.Piece(8, 2, "settlement", 1))
     self.c.add_piece(catan.Piece(3, 7, "settlement", 1))
     # Two settlements, but only one is on a foreign island.
-    self.c.add_piece(catan.Piece(5, 6, "settlement", 2))
-    self.c.add_piece(catan.Piece(7, 7, "settlement", 2))
+    self.c.add_road(Road([5, 6, 6, 7], "ship", 2))
+    self.c.add_road(Road([6, 7, 7, 7], "ship", 2))
+    self.c.turn_idx = 2
+    self.c.handle_settle([5, 6], 2)
+    self.c.handle_settle([7, 7], 2)
+
+  def testLandingEventLog(self):
+    self.settleForeignIslands()
+    self.assertEqual(self.c.event_log[-1].event_type, "settlement")
+    self.assertEqual(self.c.event_log[-2].event_type, "landing")
+    self.assertEqual(self.c.event_log[-2].public_text, "{player2} settled on a new island")
+    self.assertEqual(self.c.event_log[-3].public_text, "{player2} built a settlement")
 
   def testForeignIslands(self):
     self.settleForeignIslands()
@@ -558,6 +571,8 @@ class TestCollectResources(BaseInputHandlerTest):
     self.c.turn_phase = "dice"
     self.c.next_die_roll = 9
     self.c.handle_roll_dice()
+    self.assertIn("rolled a 9", self.c.event_log[-2].public_text)
+    self.assertIn("{player0} received 1 {rsrc4}", self.c.event_log[-1].public_text)
     self.assertEqual(self.c.player_data[0].cards["rsrc4"], 1)
     self.assertEqual(self.c.player_data[1].cards["rsrc4"], 0)
     self.assertEqual(self.c.turn_phase, "collect")
@@ -569,6 +584,7 @@ class TestCollectResources(BaseInputHandlerTest):
       self.c.handle(0, {"type": "collect", "selection": {"rsrc3": 1}})
     # Player 2 should be able to collect even when it is not their turn.
     self.c.handle(1, {"type": "collect", "selection": {"rsrc3": 2}})
+    self.assertIn("collected 2 {rsrc3}", self.c.event_log[-1].public_text)
 
   def testCollectDepletedResource(self):
     self.c.player_data[0].cards["rsrc3"] = 10
@@ -637,6 +653,8 @@ class TestCollectResources(BaseInputHandlerTest):
     self.c.turn_phase = "dice"
     self.c.next_die_roll = 5
     self.c.handle_roll_dice()
+    self.assertIn("rolled a 5", self.c.event_log[-2].public_text)
+    self.assertIn("shortage of {rsrc3}", self.c.event_log[-1].public_text)
     # Not enough resources means a shortage; this resource cannot be collected.
     self.assertEqual(self.c.remaining_resources("rsrc3"), 1)
     self.assertEqual(self.c.turn_phase, "collect")
@@ -760,6 +778,11 @@ class TestRobberMovement(BaseInputHandlerTest):
     self.c.rob_at_two = False
     self.c.add_piece(catan.Piece(4,2, "city", 1))
     self.c.handle_robber((2,5),0)
+    self.assertEqual(self.c.event_log[-2].event_type, "robber")
+    self.assertEqual(self.c.event_log[-1].event_type, "rob")
+    self.assertIn("stole a card", self.c.event_log[-1].public_text)
+    self.assertNotIn("stole a card", self.c.event_log[-1].secret_text)
+    self.assertCountEqual(self.c.event_log[-1].visible_players, [0, 1])
 
   def testRobbingFromTwoPointsMixedPlayerRegex(self):
     self.c.rob_at_two = False
@@ -795,6 +818,8 @@ class TestHandleSettleInput(BaseInputHandlerTest):
     self.c.handle(0, {"type": "settle", "location": [3, 3]})
     for rsrc, orig_count in zip(resources, counts):
       self.assertEqual(self.c.player_data[0].cards[rsrc], orig_count - 1)
+    self.assertEqual(self.c.event_log[-1].event_type, "settlement")
+    self.assertIn("built a settlement", self.c.event_log[-1].public_text)
 
   def testMustSettleNextToRoad(self):
     with self.assertRaisesRegex(InvalidMove, "next to one of your roads"):
@@ -882,6 +907,8 @@ class TestHandleRoadInput(BaseInputHandlerTest):
     self.c.handle(0, {"type": "road", "location": [5, 4, 6, 3]})
     self.assertEqual(self.c.player_data[0].cards["rsrc2"], count2 - 2)
     self.assertEqual(self.c.player_data[0].cards["rsrc4"], count4 - 2)
+    self.assertEqual(self.c.event_log[-1].event_type, "road")
+    self.assertIn("built a road", self.c.event_log[-1].public_text)
 
   def testCannotBuildTooManyRoads(self):
     AddThirteenRoads(self.c)
@@ -1282,6 +1309,7 @@ class TestShipMovement(BaseInputHandlerTest):
 
   def testMoveShip(self):
     self.c.handle(0, {"type": "move_ship", "from": [2, 5, 3, 5], "to": [1, 4, 2, 5]})
+    self.assertEqual(self.c.event_log[-1].event_type, "move_ship")
 
   def testInvalidInput(self):
     with self.assertRaisesRegex(InvalidMove, "should be a tuple of size 4"):
@@ -1628,7 +1656,7 @@ class TestLongestRouteCalculation(BaseInputHandlerTest):
     self.assertEqual(val, 4, "cannot go through someone else's port")
 
 
-class TestLongestRouteAssignment(unittest.TestCase):
+class TestLongestRouteAssignment(BreakpointTest):
 
   def setUp(self):
     # Be sure to call add_road on the last road for each player to recalculate longest road.
@@ -1648,15 +1676,23 @@ class TestLongestRouteAssignment(unittest.TestCase):
     self.c._add_road(Road([4, 8, 5, 8], "road", 2))
     self.c._add_road(Road([5, 8, 6, 9], "road", 2))
     self.c.add_road(Road([6, 9, 7, 9], "road", 2))
+    for rsrc in catan.RESOURCES:
+      self.c.player_data[2].cards[rsrc] += 1
+    self.g = catan.CatanGame()
+    self.g.update_rulesets_and_choices({"Scenario": "Beginner's Map"})
+    self.g.game = self.c
 
   def testCreateLongestRoad(self):
     self.assertIsNone(self.c.longest_route_player)
     # Add a fifth road to playerA's network, giving them longest road.
     self.c.add_road(Road([7, 1, 8, 2], "road", 1))
     self.assertEqual(self.c.longest_route_player, 1)
+    self.assertEqual("{player1} takes longest route", self.c.event_log[-1].public_text)
     # Connect two segments of first player's roads, giving them longest road.
     self.c.add_road(Road([6, 5, 7, 5], "road", 0))
     self.assertEqual(self.c.longest_route_player, 0)
+    self.assertEqual(
+        "{player0} takes longest route from {player1}", self.c.event_log[-1].public_text)
 
   def testBreakLongestRoad(self):
     self.c.add_road(Road([7, 1, 8, 2], "road", 1))
@@ -1673,6 +1709,7 @@ class TestLongestRouteAssignment(unittest.TestCase):
     self.assertEqual(self.c.longest_route_player, 0)
     self.c.add_piece(catan.Piece(5, 4, "settlement", 2))
     self.assertIsNone(self.c.longest_route_player)
+    self.assertEqual("{player0} loses longest route", self.c.event_log[-1].public_text)
 
   def testBreakLongestRoadMultipleEligiblePlayers(self):
     self.c.add_road(Road([7, 1, 8, 2], "road", 1))
@@ -1683,6 +1720,7 @@ class TestLongestRouteAssignment(unittest.TestCase):
     # Now that first player's road is broken, nobody gets longest road because playerA
     # and playerB are tied.
     self.assertIsNone(self.c.longest_route_player)
+    self.assertIn("because of a tie", self.c.event_log[-1].public_text)
 
   def testBreakLongestRoadNextRoadTooShort(self):
     self.c.add_road(Road([6, 5, 7, 5], "road", 0))
@@ -1708,10 +1746,12 @@ class TestLongestRouteAssignment(unittest.TestCase):
     self.assertEqual(self.c.player_data[0].longest_route, 6)
     self.assertEqual(self.c.player_data[1].longest_route, 5)
     # Break first player's road one road away from the edge, cutting them down to 5.
-    self.c.add_piece(catan.Piece(5, 4, "settlement", 2))
+    self.c.add_road(Road([5, 4, 6, 3], "road", 2))  # Just here to attach the settlement to.
+    self.c.handle_settle([5, 4], 2)  # Use handle_settle to create an event log.
     self.assertEqual(self.c.player_data[0].longest_route, 5)
     # They should retain longest route.
     self.assertEqual(self.c.longest_route_player, 0)
+    self.assertNotEqual(self.c.event_log[-1].event_type, "longest_route")
 
   def testBreakRoadButStaysSameLength(self):
     # Give first player a circular road.
@@ -1735,6 +1775,7 @@ class TestLargestArmy(BaseInputHandlerTest):
     self.c._handle_knight(0)
     self.assertEqual(self.c.player_data[0].knights_played, 3)
     self.assertEqual(self.c.largest_army_player, 0)
+    self.assertIn("{player0} took largest army", self.c.event_log[-1].public_text)
 
   def testSurpassLargestArmy(self):
     self.c._handle_knight(0)
@@ -1748,6 +1789,9 @@ class TestLargestArmy(BaseInputHandlerTest):
     self.c._handle_knight(1)
     self.assertEqual(self.c.player_data[1].knights_played, 4)
     self.assertEqual(self.c.largest_army_player, 1)
+    self.assertEqual(self.c.event_log[-2].event_type, "knight")
+    self.assertEqual(self.c.event_log[-1].event_type, "largest_army")
+    self.assertIn("{player1} took largest army from {player0}", self.c.event_log[-1].public_text)
 
 
 @mock.patch("random.randint", return_value=3.5)
@@ -1766,6 +1810,8 @@ class TestDiscard(BaseInputHandlerTest):
     self.c.turn_phase = "dice"
     self.c.handle_roll_dice()
     self.assertEqual(self.c.turn_phase, "discard")
+    self.assertEqual(self.c.event_log[-1].event_type, "dice")
+    self.assertIn("rolled a 7", self.c.event_log[-1].public_text)
     # Player 0 has 16 cards, and must discard 8.
     # Player 1 does not have to discard because dev cards don't count.
     # Player 2 must discard 9/2 rounded down = 4.
@@ -1785,6 +1831,8 @@ class TestDiscard(BaseInputHandlerTest):
     self.c.handle_discard({"rsrc2": 4}, 2)
     self.assertEqual(self.c.turn_phase, "discard")
     self.c.handle_discard({"rsrc1": 4, "rsrc2": 4}, 0)
+    self.assertEqual(self.c.event_log[-1].event_type, "discard")
+    self.assertIn("discarded 4 {rsrc1}, 4 {rsrc2}", self.c.event_log[-1].public_text)
     self.assertEqual(self.c.turn_phase, "robber")
 
   def testNobodyDiscards(self, randint):
@@ -1806,6 +1854,11 @@ class TestBuyDevCard(BaseInputHandlerTest):
 
   def testBuyNotEnoughResources(self):
     self.c.handle_buy_dev(1)
+    self.assertEqual(self.c.event_log[-1].event_type, "buy_dev")
+    self.assertIn("bought a dev card", self.c.event_log[-1].public_text)
+    self.assertIn("bought a", self.c.event_log[-1].secret_text)
+    self.assertNotIn("bought a dev card", self.c.event_log[-1].secret_text)
+    self.assertEqual(self.c.event_log[-1].visible_players, [1])
     with self.assertRaisesRegex(InvalidMove, "need an extra"):
       self.c.handle_buy_dev(1)
 

@@ -3,6 +3,7 @@
   "host": null,
   "game_phase": "main",
   "turn_phase": "main",
+  "event_log": [],
   "player_sessions": {"abcd": 0},
   "player_data": [
     {

@@ -39,6 +39,7 @@
         0,
         0
     ],
+    "event_log": [],
     "game_phase": "main",
     "host": null,
     "largest_army_player": null,
