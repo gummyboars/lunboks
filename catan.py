@@ -1697,6 +1697,14 @@ class Seafarers(CatanState):
       return
     super(Seafarers, self).check_turn_okay(player_idx, move_type, data)
 
+  def _check_main_phase(self, text):
+    if self.turn_phase == "collect":
+      if not self.collect_counts.get(player_idx):
+        raise NotYourTurn("Waiting for players to collect resources.")
+      else:
+        raise InvalidMove("You must collect your resources first.")
+    super(Seafarers, self)._check_main_phase(text)
+
   def inner_handle(self, player_idx, move_type, data):
     if move_type == "ship":
       self.handle_road(data.get("location"), player_idx, "ship", [("rsrc1", 1), ("rsrc2", 1)])
