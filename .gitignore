@@ -3,11 +3,13 @@ __pycache__/
 *.py[cod]
 *$py.class
 
-# Any images that may be present in the project
+# Any images or sounds that may be present in the project
 *.jpeg
 *.jpg
+*.mp3
 *.png
 *.svg
+*.wav
 images.zip
 
 # swp files from vim
