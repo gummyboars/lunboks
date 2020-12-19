@@ -520,6 +520,12 @@ class CatanState(object):
       road = Road.parse_json(road_json)
       cstate._add_road(road)
 
+    # Location attributes need to be replaced with location objects.
+    if cstate.robber is not None:
+      cstate.robber = TileLocation(*cstate.robber)
+    if cstate.pirate is not None:
+      cstate.pirate = TileLocation(*cstate.pirate)
+
     cstate._compute_coast()  # Sets land_rotations for all space tiles.
     cstate._compute_ports()  # Sets port_corners.
     return cstate
@@ -2028,7 +2034,7 @@ class SeafarerDesert(Seafarers):
 
   @classmethod
   def get_options(cls):
-    options = super(SeafarerIslands, cls).get_options()
+    options = super(SeafarerDesert, cls).get_options()
     options["Victory Points"].default = 14
     return options
 

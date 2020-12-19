@@ -53,29 +53,51 @@ class TestLoadState(unittest.TestCase):
     self.assertIsInstance(list(c.roads.values())[0].source, catan.CornerLocation)
 
   def testDumpAndLoad(self):
-    c = catan.RandomMap()
-    c.init({})
-    g = catan.CatanGame()
-    g.game = c
-    data = g.json_str()
-    d = catan.CatanGame.parse_json(data).game
+    scenarios = ["Random Map", "The Four Islands", "Through the Desert"]
+    for scenario in scenarios:
+      with self.subTest(scenario=scenario):
+        g = catan.CatanGame()
+        g.connect_user("se0")
+        g.connect_user("se1")
+        g.connect_user("se2")
+        g.handle_join("se0", {"name": "player1"})
+        g.handle_join("se1", {"name": "player2"})
+        g.handle_join("se2", {"name": "player3"})
+        g.handle_start("se0", {"options": {"Scenario": "Through the Desert"}})
+        c = g.game
+        data = g.json_str()
+        d = catan.CatanGame.parse_json(data).game
 
-    for loc_attr in ["tiles", "ports", "port_corners", "pieces", "roads"]:
-      keys = getattr(c, loc_attr).keys()
-      self.assertCountEqual(keys, getattr(d, loc_attr).keys())
-      for key in keys:
-        old_item = getattr(c, loc_attr)[key]
-        new_item = getattr(d, loc_attr)[key]
-        # Direct comparison for primitives.
-        if not hasattr(old_item, "__dict__"):
-          self.assertEqual(old_item, new_item, "%s [%s] old == new" % (loc_attr, key))
-          continue
-        # Attribute-by-attribute comparison for objects.
-        self.assertCountEqual(old_item.__dict__.keys(), new_item.__dict__.keys())
-        for attr in old_item.__dict__:
-          self.assertEqual(
-              getattr(old_item, attr), getattr(new_item, attr),
-              "%s [%s]: %s old == new" % (loc_attr, key, attr))
+        self.recursiveAssertEqual(c, d, "")
+
+  def recursiveAssertEqual(self, obja, objb, path):
+    if not isinstance(obja, catan.CatanState):  # Dynamically generated classes are not equal.
+      self.assertEqual(type(obja), type(objb), path)
+    if hasattr(obja, "__dict__"):  # Objects
+      self.assertCountEqual(obja.__dict__.keys(), objb.__dict__.keys(), path)
+      for key in obja.__dict__:
+        self.assertIn(key, objb.__dict__, path + f".{key}")
+        self.recursiveAssertEqual(getattr(obja, key), getattr(objb, key), path + f".{key}")
+      return
+    if isinstance(obja, dict):  # Any subclass of dictionary
+      self.assertCountEqual(obja.keys(), objb.keys(), path)
+      for key in obja:
+        self.assertIn(key, objb, path + f"[{key}]")
+        self.recursiveAssertEqual(obja[key], objb[key], path + f"[{key}]")
+      return
+    if isinstance(obja, str):  # Before iterable - str is iterable and produces more strs.
+      self.assertEqual(obja, objb, path)
+      return
+    try:  # Any iterable
+      itera = iter(obja)
+      iterb = iter(objb)
+      for idx, pair in enumerate(zip(itera, iterb)):
+        self.recursiveAssertEqual(pair[0], pair[1], path + f"[{idx}]")
+      return
+    except TypeError:
+      pass
+    # Primitives
+    self.assertEqual(obja, objb, path)
 
 
 class BreakpointTest(unittest.TestCase):
