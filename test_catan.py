@@ -1406,6 +1406,9 @@ class TestCalculateRobPlayers(BaseInputHandlerTest):
     moved_piece = self.c.pieces.pop((3, 5))
     moved_piece.location = catan.CornerLocation(4, 6)
     self.c.add_piece(moved_piece)
+    # Give these players some dev cards to make sure we don't rob dev cards.
+    self.c.player_data[0].cards["knight"] = 10
+    self.c.player_data[1].cards["knight"] = 10
 
   def testRobNoAdjacentPieces(self):
     p1_old_count = sum(self.c.player_data[0].cards[x] for x in catan.RESOURCES)
@@ -1422,6 +1425,7 @@ class TestCalculateRobPlayers(BaseInputHandlerTest):
     p2_old_count = sum(self.c.player_data[1].cards[x] for x in catan.RESOURCES)
     self.c.handle(2, {"type": "robber", "location": [4, 4]})
     self.assertEqual(self.c.turn_phase, "rob")
+    self.assertCountEqual(self.c.rob_players, [0, 1])
     p1_new_count = sum(self.c.player_data[0].cards[x] for x in catan.RESOURCES)
     p2_new_count = sum(self.c.player_data[1].cards[x] for x in catan.RESOURCES)
     self.assertEqual(p1_new_count, p1_old_count)
@@ -1462,6 +1466,44 @@ class TestCalculateRobPlayers(BaseInputHandlerTest):
     p2_new_count = sum(self.c.player_data[1].cards[x] for x in catan.RESOURCES)
     p3_new_count = sum(self.c.player_data[2].cards[x] for x in catan.RESOURCES)
     self.assertEqual(p2_new_count, p2_old_count - 1)
+    self.assertEqual(p3_new_count, 1)
+
+  def testRobSelf(self):
+    self.c.add_piece(catan.Piece(4, 4, "settlement", 2))
+    self.c.player_data[2].cards["rsrc3"] = 1
+    p3_old_count = sum(self.c.player_data[2].cards[x] for x in catan.RESOURCES)
+    self.c.handle(2, {"type": "robber", "location": [2, 3]})
+    self.assertEqual(self.c.turn_phase, "main")
+    p3_new_count = sum(self.c.player_data[2].cards[x] for x in catan.RESOURCES)
+    self.assertEqual(p3_old_count, p3_new_count)
+
+  def testRobSelfAndOneMore(self):
+    self.c.add_piece(catan.Piece(4, 4, "settlement", 2))
+    self.c.player_data[2].cards["rsrc3"] = 1
+    p1_old_count = sum(self.c.player_data[0].cards[x] for x in catan.RESOURCES)
+    p2_old_count = sum(self.c.player_data[1].cards[x] for x in catan.RESOURCES)
+    self.c.handle(2, {"type": "robber", "location": [4, 2]})
+    self.assertEqual(self.c.turn_phase, "main")
+    p1_new_count = sum(self.c.player_data[0].cards[x] for x in catan.RESOURCES)
+    p2_new_count = sum(self.c.player_data[1].cards[x] for x in catan.RESOURCES)
+    p3_new_count = sum(self.c.player_data[2].cards[x] for x in catan.RESOURCES)
+    self.assertEqual(p1_new_count, p1_old_count - 1)
+    self.assertEqual(p2_new_count, p2_old_count)
+    self.assertEqual(p3_new_count, 2)
+
+  def testRobSelfAndTwoMore(self):
+    self.c.add_piece(catan.Piece(4, 4, "settlement", 2))
+    self.c.player_data[2].cards["rsrc3"] = 1
+    p1_old_count = sum(self.c.player_data[0].cards[x] for x in catan.RESOURCES)
+    p2_old_count = sum(self.c.player_data[1].cards[x] for x in catan.RESOURCES)
+    self.c.handle(2, {"type": "robber", "location": [4, 4]})
+    self.assertEqual(self.c.turn_phase, "rob")
+    self.assertCountEqual(self.c.rob_players, [0, 1])
+    p1_new_count = sum(self.c.player_data[0].cards[x] for x in catan.RESOURCES)
+    p2_new_count = sum(self.c.player_data[1].cards[x] for x in catan.RESOURCES)
+    p3_new_count = sum(self.c.player_data[2].cards[x] for x in catan.RESOURCES)
+    self.assertEqual(p1_new_count, p1_old_count)
+    self.assertEqual(p2_new_count, p2_old_count)
     self.assertEqual(p3_new_count, 1)
 
 

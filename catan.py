@@ -771,6 +771,7 @@ class CatanState(object):
         count = self.player_data[maybe_piece.player].resource_card_count()
         if count > 0:
           robbable_players.add(maybe_piece.player)
+    robbable_players -= {current_player}
     if len(robbable_players) > 1:
       self.rob_players = list(robbable_players)
       self.turn_phase = "rob"
