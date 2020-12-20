@@ -1166,6 +1166,20 @@ class TestShipOpenClosedCalculation(BaseInputHandlerTest):
     self.assertTrue(self.c.roads[road1_loc].closed)
     self.assertTrue(self.c.roads[road2_loc].closed)
 
+  def testDontConsiderOtherPlayersShips(self):
+    # Test that movable does not consider other players' ships or settlements.
+    road1_loc = (1, 6, 2, 5)
+    road2_loc = (1, 6, 2, 7)
+    self.c.add_piece(catan.Piece(2, 7, "settlement", 1))
+    self.c.add_road(Road(road1_loc, "ship", 0))
+    self.assertTrue(self.c.roads[road1_loc].movable)
+    self.assertFalse(self.c.roads[road1_loc].closed)
+    self.c.add_road(Road(road2_loc, "ship", 1))
+    self.assertTrue(self.c.roads[road1_loc].movable)
+    self.assertFalse(self.c.roads[road1_loc].closed)
+    self.assertTrue(self.c.roads[road2_loc].movable)
+    self.assertFalse(self.c.roads[road2_loc].closed)
+
   def testBranchingOpenClosedPaths(self):
     self.c.add_piece(catan.Piece(5, 6, "settlement", 0))
     road1_loc = (2, 5, 3, 5)

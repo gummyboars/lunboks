@@ -1969,9 +1969,9 @@ class Seafarers(CatanState):
       if edge.as_tuple() == prev:
         continue
       other_corner = edge.corner_left if edge.corner_right == corner else edge.corner_right
-      # If this edge does not have a ship on it, skip it.
+      # If this edge does not have this player's ship on it, skip it.
       maybe_ship = self.roads.get(edge.as_tuple())
-      if not maybe_ship or maybe_ship.road_type != "ship":
+      if not maybe_ship or maybe_ship.road_type != "ship" or maybe_ship.player != player_idx:
         continue
       # Now we know there is a ship from corner to other_corner.
       outgoing_edges.append((edge, other_corner))
