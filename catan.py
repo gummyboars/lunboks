@@ -961,8 +961,8 @@ class CatanState(object):
     # Check resources and deduct from player.
     self._remove_resources(resources, player, f"build a {road_type}")
 
-    self.add_road(Road(location, road_type, player))
     self.event_log.append(Event(road_type, "{player%s} built a %s" % (player, road_type)))
+    self.add_road(Road(location, road_type, player))
 
   def handle_settle(self, location, player):
     self._validate_location(location)
@@ -980,6 +980,7 @@ class CatanState(object):
         raise InvalidMove("You cannot place a settlement next to existing settlement.")
     # Handle special settlement phase.
     if self.game_phase.startswith("place"):
+      self.event_log.append(Event("settlement", "{player%s} built a settlement" % player))
       self.add_piece(Piece(location[0], location[1], "settlement", player))
       if self.game_phase == "place2":
         self.give_second_resources(player, CornerLocation(*location))
@@ -1803,10 +1804,7 @@ class Seafarers(CatanState):
 
   def _check_main_phase(self, text):
     if self.turn_phase == "collect":
-      if not self.collect_counts.get(player_idx):
-        raise NotYourTurn("Waiting for players to collect resources.")
-      else:
-        raise InvalidMove("You must collect your resources first.")
+      raise NotYourTurn("Waiting for players to collect resources.")
     super(Seafarers, self)._check_main_phase(text)
 
   def inner_handle(self, player_idx, move_type, data):
