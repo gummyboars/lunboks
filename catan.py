@@ -16,16 +16,16 @@ PLAYABLE_DEV_CARDS = ["yearofplenty", "monopoly", "roadbuilding", "knight"]
 VICTORY_CARDS = ["palace", "chapel", "university", "market", "library"]
 TILE_NUMBERS = [5, 2, 6, 3, 8, 10, 9, 12, 11, 4, 8, 10, 9, 4, 5, 6, 3, 11]
 TILE_SEQUENCE = [
-    (2, 3), (4, 2), (6, 1), (8, 2), (10, 3),  # around the top
-    (10, 5), (10, 7), (8, 8), (6, 9),  # down the side to the bottom
-    (4, 8), (2, 7), (2, 5),  # back up the left side
-    (4, 4), (6, 3), (8, 4), (8, 6), (6, 7), (4, 6), (6, 5)  # inner loop
+    (4, 4), (7, 3), (10, 2), (13, 3), (16, 4),  # around the top
+    (16, 6), (16, 8), (13, 9), (10, 10),  # down the side to the bottom
+    (7, 9), (4, 8), (4, 6),  # back up the left side
+    (7, 5), (10, 4), (13, 5), (13, 7), (10, 8), (7, 7), (10, 6)  # inner loop
     ]
 SPACE_TILE_SEQUENCE = [
-    (2, 1), (4, 0), (6, -1), (8, 0), (10, 1), (12, 2),  # around the top
-    (12, 4), (12, 6), (12, 8),  # down the right side
-    (10, 9), (8, 10), (6, 11), (4, 10), (2, 9), (0, 8),  # around the bottom
-    (0, 6), (0, 4), (0, 2)  # up the left side
+    (4, 2), (7, 1), (10, 0), (13, 1), (16, 2), (19, 3),  # around the top
+    (19, 5), (19, 7), (19, 9),  # down the right side
+    (16, 10), (13, 11), (10, 12), (7, 11), (4, 10), (1, 9),  # around the bottom
+    (1, 7), (1, 5), (1, 3)  # up the left side
     ]
 SPACE_TILE_ROTATIONS = [5, 0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5]
 
@@ -118,48 +118,48 @@ class Location(object):
 class TileLocation(Location):
 
   def __init__(self, x, y):
-    assert x % 2 == 0, "tiles x location must be even %s, %s" % (x, y)
-    if x % 4 == 0:
-      assert y % 2 == 0, "tiles must line up correctly %s, %s" % (x, y)
-    else:
+    assert x % 3 == 1, "tile's x location must be 1 mod 3: %s, %s" % (x, y)
+    if x % 6 == 1:
       assert y % 2 == 1, "tiles must line up correctly %s, %s" % (x, y)
+    else:
+      assert y % 2 == 0, "tiles must line up correctly %s, %s" % (x, y)
     Location.__init__(self, x, y)
 
   def get_upper_left_tile(self):
-    return TileLocation(self.x - 2, self.y - 1)
+    return TileLocation(self.x - 3, self.y - 1)
 
   def get_upper_tile(self):
     return TileLocation(self.x, self.y - 2)
 
   def get_upper_right_tile(self):
-    return TileLocation(self.x + 2, self.y - 1)
+    return TileLocation(self.x + 3, self.y - 1)
 
   def get_lower_right_tile(self):
-    return TileLocation(self.x + 2, self.y + 1)
+    return TileLocation(self.x + 3, self.y + 1)
 
   def get_lower_tile(self):
     return TileLocation(self.x, self.y + 2)
 
   def get_lower_left_tile(self):
-    return TileLocation(self.x - 2, self.y + 1)
+    return TileLocation(self.x - 3, self.y + 1)
 
   def get_upper_left_corner(self):
-    return CornerLocation(self.x, self.y)
+    return CornerLocation(self.x-1, self.y-1)
 
   def get_upper_right_corner(self):
-    return CornerLocation(self.x+1, self.y)
+    return CornerLocation(self.x+1, self.y-1)
 
   def get_right_corner(self):
-    return CornerLocation(self.x+2, self.y+1)
+    return CornerLocation(self.x+2, self.y)
 
   def get_lower_right_corner(self):
-    return CornerLocation(self.x+1, self.y+2)
+    return CornerLocation(self.x+1, self.y+1)
 
   def get_lower_left_corner(self):
-    return CornerLocation(self.x, self.y+2)
+    return CornerLocation(self.x-1, self.y+1)
 
   def get_left_corner(self):
-    return CornerLocation(self.x-1, self.y+1)
+    return CornerLocation(self.x-2, self.y)
 
   def get_adjacent_tiles(self):
     # NOTE: order matters here. Index in this array lines up with rotation semantics.
@@ -183,55 +183,49 @@ class TileLocation(Location):
       edges.append(corner.get_edge(corners[(idx+1)%6]))
     return edges
 
-  def old_get_corner_locations(self):
-    """Gets coordinates of all the corners surrounding this tile.
-
-    Tiles and corners use the same coordinate system. A tile shares coordinates
-    with the corner that is in the upper left.
-    """
-    locations = []
-    locations.extend([(self.x, self.y), (self.x + 1, self.y)])  # upper two corners
-    locations.extend([(self.x, self.y + 2), (self.x + 1, self.y + 2)])  # lower two corners
-    locations.extend([(self.x - 1, self.y + 1), (self.x + 2, self.y + 1)])  # left & right corners
-    return [CornerLocation(*loc) for loc in locations]
-
 
 class CornerLocation(Location):
 
+  def __init__(self, x, y):
+    assert x % 3 != 1, "corner location's x must not be 1 mod 3: %s, %s" % (x, y)
+    Location.__init__(self, x, y)
+
   def get_tiles(self):
-    """Returns the tile coordinates of all tiles touching this piece.
+    """Returns the tile coordinates of all tiles touching this corner.
 
     Every corner is at the top of some hex. It touches that hex, as well as
     the hex above that one.
     Every corner is either a left corner or a right corner. If it is a left
-    corner (odd x-coordinate), it also touches the tile up-right of itself.
-    Otherwise (even x-coordinate), it touches the tile up-left of itself.
+    corner (x-coordinate is 2 mod 3), it also touches the tile right of itself.
+    Otherwise (x-coordinate is 0 mod 3), it touches the tile left of itself.
     """
-    lower_hex = TileLocation(self.x - (self.x % 2), self.y)
-    upper_hex = TileLocation(lower_hex.x, lower_hex.y - 2)
-    if self.x % 2 == 1:
-      middle_hex = TileLocation(self.x + 1, self.y - 1)
-    else:
-      middle_hex = TileLocation(self.x - 2, self.y - 1)
+    if self.x % 3 == 0:
+      lower_hex = TileLocation(self.x + 1, self.y + 1)
+      upper_hex = TileLocation(self.x + 1, self.y - 1)
+      middle_hex = TileLocation(self.x - 2, self.y)
+    elif self.x % 3 == 2:
+      lower_hex = TileLocation(self.x - 1, self.y + 1)
+      upper_hex = TileLocation(self.x - 1, self.y - 1)
+      middle_hex = TileLocation(self.x + 2, self.y)
     return [lower_hex, upper_hex, middle_hex]
 
   def get_adjacent_corners(self):
     """Returns locations of adjacent corners.
 
-    If this is a right corner (even x-coordinate), we look right, up-left,
-    and down-left. If it is a left corner (odd x-coordinate), we look left,
+    If this is a right corner (x-coordinate is 0 mod 3), we look right, up-left,
+    and down-left. If it is a left corner (x-coordinate is 2 mod 3), we look left,
     up-right, and down-right. 
 
     """
-    if self.x % 2 == 0:
+    if self.x % 3 == 0:
       return [
-          CornerLocation(self.x + 1, self.y),
+          CornerLocation(self.x + 2, self.y),
           CornerLocation(self.x - 1, self.y - 1),
           CornerLocation(self.x - 1, self.y + 1),
       ]
     else:
       return [
-          CornerLocation(self.x - 1, self.y),
+          CornerLocation(self.x - 2, self.y),
           CornerLocation(self.x + 1, self.y - 1),
           CornerLocation(self.x + 1, self.y + 1),
       ]
@@ -2117,19 +2111,19 @@ class SeafarerShores(Seafarers):
     super(SeafarerShores, self).init(options)
     if len(self.player_data) == 3:
       self.load_file("shores3.json")
-      self.robber = TileLocation(12 ,2)
-      self.pirate = TileLocation(6, 11)
+      self.robber = TileLocation(19, 3)
+      self.pirate = TileLocation(10, 12)
     elif len(self.player_data) == 4:
       self.load_file("shores4.json")
-      self.robber = TileLocation(4, 4)
-      self.pirate = TileLocation(6, 13)
+      self.robber = TileLocation(7, 5)
+      self.pirate = TileLocation(10, 14)
       self._shuffle_ports()
     else:
       raise InvalidPlayer("Must have 3 or 4 players.")
     self._compute_contiguous_islands()
     self._compute_edges()
     self._init_dev_cards()
-    self.placement_islands = [self.corners_to_islands[(2, 1)]]
+    self.placement_islands = [self.corners_to_islands[(3, 1)]]
 
   @classmethod
   def get_options(cls):
@@ -2144,12 +2138,12 @@ class SeafarerIslands(Seafarers):
     super(SeafarerIslands, self).init(options)
     if len(self.player_data) == 3:
       self.load_file("islands3.json")
-      self.robber = TileLocation(0 ,2)
-      self.pirate = TileLocation(6, 5)
+      self.robber = TileLocation(1, 3)
+      self.pirate = TileLocation(10, 6)
     elif len(self.player_data) == 4:
       self.load_file("islands4.json")
-      self.robber = TileLocation(10, 7)
-      self.pirate = TileLocation(6, 11)
+      self.robber = TileLocation(16, 8)
+      self.pirate = TileLocation(10, 12)
     else:
       raise InvalidPlayer("Must have 3 or 4 players.")
     self._compute_contiguous_islands()
@@ -2169,18 +2163,18 @@ class SeafarerDesert(Seafarers):
     super(SeafarerDesert, self).init(options)
     if len(self.player_data) == 3:
       self.load_file("desert3.json")
-      self.robber = TileLocation(10 ,3)
-      self.pirate = TileLocation(6, 11)
+      self.robber = TileLocation(16, 4)
+      self.pirate = TileLocation(10, 12)
     elif len(self.player_data) == 4:
       self.load_file("desert4.json")
-      self.robber = TileLocation(10, 3)
-      self.pirate = TileLocation(6, 13)
+      self.robber = TileLocation(16, 4)
+      self.pirate = TileLocation(10, 14)
     else:
       raise InvalidPlayer("Must have 3 or 4 players.")
     self._compute_contiguous_islands()
     self._compute_edges()
     self._init_dev_cards()
-    self.placement_islands = [self.corners_to_islands[(2, 1)]]
+    self.placement_islands = [self.corners_to_islands[(3, 1)]]
 
   def _is_connecting_tile(self, tile):
     return tile.number
@@ -2199,7 +2193,7 @@ class SeafarerFog(Seafarers):
 class MapMaker(CatanState):
 
   def init(self, options):
-    self.add_tile(Tile(2, 1, "space", False, None))
+    self.add_tile(Tile(4, 2, "space", False, None))
     self.game_phase = "main"
     self.turn_phase = "main"
     self.player_data[0].name = "tiles"

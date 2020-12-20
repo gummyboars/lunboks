@@ -1,7 +1,10 @@
 {
     "built_this_turn": [],
+    "collect_counts": [
+        null,
+        null
+    ],
     "collect_idx": null,
-    "collect_counts": {},
     "counter_offers": [
         null,
         null
@@ -40,14 +43,26 @@
         0
     ],
     "event_log": [],
+    "foreign_landings": [
+        [],
+        []
+    ],
     "game_phase": "main",
-    "host": null,
+    "home_corners": [
+        [
+            [
+                3,
+                5
+            ]
+        ],
+        []
+    ],
     "largest_army_player": null,
     "longest_route_player": null,
     "pieces": [
         {
             "location": [
-                2,
+                3,
                 5
             ],
             "piece_type": "settlement",
@@ -55,20 +70,10 @@
         }
     ],
     "pirate": null,
-    "played_dev": 0,
-    "home_corners": [[[2, 5]]],
-    "foreign_landings": [[]],
     "placement_islands": null,
-    "player_sessions": {
-        "Player1": 0,
-        "Player2": 1
-    },
+    "played_dev": 0,
     "player_data": [
         {
-            "color": "red",
-            "name": "Casey",
-            "knights_played": 0,
-            "longest_route": 1,
             "cards": {
                 "rsrc1": 4,
                 "rsrc2": 2,
@@ -76,16 +81,16 @@
                 "rsrc4": 2,
                 "rsrc5": 2
             },
+            "color": "red",
+            "knights_played": 0,
+            "longest_route": 1,
+            "name": "Casey",
             "trade_ratios": {
                 "rsrc1": 2
             },
             "unusable": {}
         },
         {
-            "color": "blue",
-            "name": "Andy",
-            "knights_played": 0,
-            "longest_route": 1,
             "cards": {
                 "rsrc1": 3,
                 "rsrc2": 3,
@@ -93,187 +98,226 @@
                 "rsrc4": 1,
                 "rsrc5": 5
             },
+            "color": "blue",
+            "knights_played": 0,
+            "longest_route": 1,
+            "name": "Andy",
             "trade_ratios": {},
             "unusable": {}
         }
     ],
-    "roads": [],
-    "rob_players": [],
-    "robber": null,
-    "rules": [],
-    "scenario": "The Four Islands",
-    "shortage_resources": [],
-    "started": true,
-    "ships_moved": 0,
-    "tiles": [
-        {
-            "is_land": false,
-            "location": [
-                2,
-                3
-            ],
-            "number": null,
-            "rotation": 0,
-            "variant": "",
-            "tile_type": "space"
-        },
-        {
-            "is_land": false,
-            "location": [
-                4,
-                2
-            ],
-            "number": null,
-            "rotation": 0,
-            "variant": "",
-            "tile_type": "space"
-        },
-        {
-            "is_land": false,
-            "location": [
-                2,
-                5
-            ],
-            "number": null,
-            "rotation": 0,
-            "variant": "",
-            "tile_type": "space"
-        },
-        {
-            "is_land": false,
-            "location": [
-                4,
-                4
-            ],
-            "number": null,
-            "rotation": 0,
-            "variant": "",
-            "tile_type": "space"
-        },
-        {
-            "is_land": false,
-            "location": [
-                2,
-                1
-            ],
-            "number": null,
-            "rotation": 0,
-            "variant": "",
-            "tile_type": "space"
-        },
-        {
-            "is_land": false,
-            "location": [
-                4,
-                0
-            ],
-            "number": null,
-            "rotation": 0,
-            "variant": "",
-            "tile_type": "space"
-        },
-        {
-            "is_land": false,
-            "location": [
-                6,
-                1
-            ],
-            "number": null,
-            "rotation": 1,
-            "variant": "",
-            "tile_type": "space"
-        },
-        {
-            "is_land": false,
-            "location": [
-                6,
-                3
-            ],
-            "number": null,
-            "rotation": 1,
-            "variant": "",
-            "tile_type": "space"
-        },
-        {
-            "is_land": true,
-            "location": [
-                6,
-                5
-            ],
-            "number": 8,
-            "rotation": 0,
-            "variant": "",
-            "tile_type": "rsrc4"
-        },
-        {
-            "is_land": false,
-            "location": [
-                4,
-                6
-            ],
-            "number": null,
-            "rotation": 3,
-            "variant": "",
-            "tile_type": "space"
-        },
-        {
-            "is_land": true,
-            "location": [
-                2,
-                7
-            ],
-            "number": 6,
-            "rotation": 0,
-            "variant": "",
-            "tile_type": "rsrc3"
-        },
-        {
-            "is_land": false,
-            "location": [
-                0,
-                6
-            ],
-            "number": null,
-            "rotation": 4,
-            "variant": "",
-            "tile_type": "space"
-        },
-        {
-            "is_land": true,
-            "location": [
-                0,
-                4
-            ],
-            "number": 5,
-            "rotation": 0,
-            "variant": "",
-            "tile_type": "rsrc1"
-        },
-        {
-            "is_land": true,
-            "location": [
-                0,
-                2
-            ],
-            "number": 9,
-            "rotation": 0,
-            "variant": "",
-            "tile_type": "rsrc2"
-        }
-    ],
-    "trade_offer": {},
-    "turn_idx": 0,
-    "turn_phase": "main",
+    "player_sessions": {
+        "Player1": 0,
+        "Player2": 1
+    },
     "ports": [
         {
             "location": [
-                6,
-                3
+                10,
+                4
             ],
             "port_type": "3",
             "rotation": 0
         }
     ],
-    "victory_points": 13,
-    "rob_at_two": true
+    "roads": [],
+    "rob_at_two": true,
+    "rob_players": [],
+    "robber": null,
+    "rules": [],
+    "scenario": "The Four Islands",
+    "ships_moved": 0,
+    "shortage_resources": [],
+    "tiles": [
+        {
+            "is_land": false,
+            "land_rotations": [
+                1,
+                2
+            ],
+            "location": [
+                4,
+                4
+            ],
+            "number": null,
+            "rotation": 0,
+            "tile_type": "space",
+            "variant": ""
+        },
+        {
+            "is_land": false,
+            "land_rotations": [],
+            "location": [
+                7,
+                3
+            ],
+            "number": null,
+            "rotation": 0,
+            "tile_type": "space",
+            "variant": ""
+        },
+        {
+            "is_land": false,
+            "land_rotations": [
+                0,
+                2
+            ],
+            "location": [
+                4,
+                6
+            ],
+            "number": null,
+            "rotation": 0,
+            "tile_type": "space",
+            "variant": ""
+        },
+        {
+            "is_land": false,
+            "land_rotations": [
+                5
+            ],
+            "location": [
+                7,
+                5
+            ],
+            "number": null,
+            "rotation": 0,
+            "tile_type": "space",
+            "variant": ""
+        },
+        {
+            "is_land": false,
+            "land_rotations": [
+                1
+            ],
+            "location": [
+                4,
+                2
+            ],
+            "number": null,
+            "rotation": 0,
+            "tile_type": "space",
+            "variant": ""
+        },
+        {
+            "is_land": false,
+            "land_rotations": [],
+            "location": [
+                7,
+                1
+            ],
+            "number": null,
+            "rotation": 0,
+            "tile_type": "space",
+            "variant": ""
+        },
+        {
+            "is_land": false,
+            "land_rotations": [],
+            "location": [
+                10,
+                2
+            ],
+            "number": null,
+            "rotation": 1,
+            "tile_type": "space",
+            "variant": ""
+        },
+        {
+            "is_land": false,
+            "land_rotations": [
+                0
+            ],
+            "location": [
+                10,
+                4
+            ],
+            "number": null,
+            "rotation": 1,
+            "tile_type": "space",
+            "variant": ""
+        },
+        {
+            "is_land": true,
+            "land_rotations": [],
+            "location": [
+                10,
+                6
+            ],
+            "number": 8,
+            "rotation": 0,
+            "tile_type": "rsrc4",
+            "variant": ""
+        },
+        {
+            "is_land": false,
+            "land_rotations": [
+                1,
+                4
+            ],
+            "location": [
+                7,
+                7
+            ],
+            "number": null,
+            "rotation": 3,
+            "tile_type": "space",
+            "variant": ""
+        },
+        {
+            "is_land": true,
+            "land_rotations": [],
+            "location": [
+                4,
+                8
+            ],
+            "number": 6,
+            "rotation": 0,
+            "tile_type": "rsrc3",
+            "variant": ""
+        },
+        {
+            "is_land": false,
+            "land_rotations": [
+                3,
+                5
+            ],
+            "location": [
+                1,
+                7
+            ],
+            "number": null,
+            "rotation": 4,
+            "tile_type": "space",
+            "variant": ""
+        },
+        {
+            "is_land": true,
+            "land_rotations": [],
+            "location": [
+                1,
+                5
+            ],
+            "number": 5,
+            "rotation": 0,
+            "tile_type": "rsrc1",
+            "variant": ""
+        },
+        {
+            "is_land": true,
+            "land_rotations": [],
+            "location": [
+                1,
+                3
+            ],
+            "number": 9,
+            "rotation": 0,
+            "tile_type": "rsrc2",
+            "variant": ""
+        }
+    ],
+    "trade_offer": {},
+    "turn_idx": 0,
+    "turn_phase": "main",
+    "victory_points": 13
 }

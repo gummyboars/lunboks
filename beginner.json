@@ -1,595 +1,684 @@
 {
-  "started": true,
-  "host": null,
-  "game_phase": "main",
-  "turn_phase": "main",
-  "event_log": [],
-  "player_sessions": {"abcd": 0},
-  "player_data": [
-    {
-      "color": "red",
-      "name": "Bob",
-      "knights_played": 0,
-      "longest_route": 1,
-      "cards": {
-        "rsrc4": 1,
-        "rsrc1": 1,
-        "rsrc2": 2
-      },
-      "trade_ratios": {},
-      "unusable": {}
-    }
-  ],
-  "largest_army_player": null,
-  "longest_route_player": null,
-  "dice_roll": [
-    2,
-    2
-  ],
-  "rob_players": [],
-  "robber": [
-    2,
-    7
-  ],
-  "rules": [],
-  "scenario": "Beginner's Map",
-  "pirate": null,
-  "trade_offer": {},
-  "counter_offers": [null],
-  "discard_players": [0],
-  "ports": [
-    {
-      "location": [
-        4,
-        0
-      ],
-      "port_type": "rsrc2",
-      "rotation": 0
-    },
-    {
-      "location": [
-        8,
-        0
-      ],
-      "port_type": "rsrc4",
-      "rotation": 0
-    },
-    {
-      "location": [
-        12,
-        6
-      ],
-      "port_type": "3",
-      "rotation": 2
-    },
-    {
-      "location": [
-        10,
-        9
-      ],
-      "port_type": "rsrc1",
-      "rotation": 2
-    },
-    {
-      "location": [
-        6,
-        11
-      ],
-      "port_type": "3",
-      "rotation": 3
-    },
-    {
-      "location": [
+    "counter_offers": [
+        null
+    ],
+    "dev_cards": [
+        "knight",
+        "monopoly",
+        "knight",
+        "knight",
+        "yearofplenty",
+        "palace",
+        "roadbuilding",
+        "library",
+        "market",
+        "chapel",
+        "roadbuilding",
+        "knight",
+        "knight",
+        "knight",
+        "knight",
+        "knight",
+        "knight",
+        "knight",
+        "knight",
+        "knight",
+        "knight",
+        "monopoly",
+        "knight",
+        "yearofplenty",
+        "university"
+    ],
+    "dev_roads_placed": 0,
+    "dice_roll": [
         2,
-        9
-      ],
-      "port_type": "rsrc5",
-      "rotation": 4
-    },
-    {
-      "location": [
-        0,
-        6
-      ],
-      "port_type": "rsrc3",
-      "rotation": 4
-    },
-    {
-      "location": [
-        0,
         2
-      ],
-      "port_type": "3",
-      "rotation": 5
+    ],
+    "discard_players": [
+        0
+    ],
+    "event_log": [],
+    "game_phase": "main",
+    "largest_army_player": null,
+    "longest_route_player": null,
+    "pieces": [
+        {
+            "location": [
+                5,
+                5
+            ],
+            "piece_type": "settlement",
+            "player": 0
+        },
+        {
+            "location": [
+                14,
+                6
+            ],
+            "piece_type": "settlement",
+            "player": 0
+        }
+    ],
+    "pirate": null,
+    "played_dev": 0,
+    "player_data": [
+        {
+            "cards": {
+                "rsrc1": 1,
+                "rsrc2": 2,
+                "rsrc4": 1
+            },
+            "color": "red",
+            "knights_played": 0,
+            "longest_route": 1,
+            "name": "Bob",
+            "trade_ratios": {},
+            "unusable": {}
+        }
+    ],
+    "player_sessions": {
+        "abcd": 0
     },
-    {
-      "location": [
-        12,
-        2
-      ],
-      "port_type": "3",
-      "rotation": 1
-    }
-  ],
-  "tiles": [
-    {
-      "location": [
-        2,
-        3
-      ],
-      "tile_type": "rsrc5",
-      "is_land": true,
-      "number": 5,
-      "variant": "",
-      "rotation": 0
-    },
-    {
-      "location": [
-        4,
-        2
-      ],
-      "tile_type": "rsrc3",
-      "is_land": true,
-      "number": 2,
-      "variant": "",
-      "rotation": 0
-    },
-    {
-      "location": [
-        6,
-        1
-      ],
-      "tile_type": "rsrc2",
-      "is_land": true,
-      "number": 6,
-      "variant": "",
-      "rotation": 0
-    },
-    {
-      "location": [
-        8,
-        2
-      ],
-      "tile_type": "rsrc5",
-      "is_land": true,
-      "number": 3,
-      "variant": "",
-      "rotation": 0
-    },
-    {
-      "location": [
-        10,
-        3
-      ],
-      "tile_type": "rsrc3",
-      "is_land": true,
-      "number": 8,
-      "variant": "",
-      "rotation": 0
-    },
-    {
-      "location": [
-        10,
-        5
-      ],
-      "tile_type": "rsrc1",
-      "is_land": true,
-      "number": 10,
-      "variant": "",
-      "rotation": 0
-    },
-    {
-      "location": [
-        10,
-        7
-      ],
-      "tile_type": "rsrc3",
-      "is_land": true,
-      "number": 9,
-      "variant": "",
-      "rotation": 0
-    },
-    {
-      "location": [
-        8,
-        8
-      ],
-      "tile_type": "rsrc1",
-      "is_land": true,
-      "number": 12,
-      "variant": "",
-      "rotation": 0
-    },
-    {
-      "location": [
-        6,
-        9
-      ],
-      "tile_type": "rsrc2",
-      "is_land": true,
-      "number": 11,
-      "variant": "",
-      "rotation": 0
-    },
-    {
-      "location": [
+    "ports": [
+        {
+            "location": [
+                7,
+                1
+            ],
+            "port_type": "rsrc2",
+            "rotation": 0
+        },
+        {
+            "location": [
+                13,
+                1
+            ],
+            "port_type": "rsrc4",
+            "rotation": 0
+        },
+        {
+            "location": [
+                19,
+                7
+            ],
+            "port_type": "3",
+            "rotation": 2
+        },
+        {
+            "location": [
+                16,
+                10
+            ],
+            "port_type": "rsrc1",
+            "rotation": 2
+        },
+        {
+            "location": [
+                10,
+                12
+            ],
+            "port_type": "3",
+            "rotation": 3
+        },
+        {
+            "location": [
+                4,
+                10
+            ],
+            "port_type": "rsrc5",
+            "rotation": 4
+        },
+        {
+            "location": [
+                1,
+                7
+            ],
+            "port_type": "rsrc3",
+            "rotation": 4
+        },
+        {
+            "location": [
+                1,
+                3
+            ],
+            "port_type": "3",
+            "rotation": 5
+        },
+        {
+            "location": [
+                19,
+                3
+            ],
+            "port_type": "3",
+            "rotation": 1
+        }
+    ],
+    "roads": [
+        {
+            "location": [
+                5,
+                5,
+                6,
+                4
+            ],
+            "player": 0,
+            "road_type": "road"
+        },
+        {
+            "location": [
+                12,
+                6,
+                14,
+                6
+            ],
+            "player": 0,
+            "road_type": "road"
+        }
+    ],
+    "rob_at_two": true,
+    "rob_players": [],
+    "robber": [
         4,
         8
-      ],
-      "tile_type": "rsrc4",
-      "is_land": true,
-      "number": 4,
-      "variant": "",
-      "rotation": 0
-    },
-    {
-      "location": [
-        2,
-        7
-      ],
-      "tile_type": "norsrc",
-      "is_land": true,
-      "number": null,
-      "variant": "",
-      "rotation": 0
-    },
-    {
-      "location": [
-        2,
-        5
-      ],
-      "tile_type": "rsrc4",
-      "is_land": true,
-      "number": 8,
-      "variant": "",
-      "rotation": 0
-    },
-    {
-      "location": [
-        4,
-        4
-      ],
-      "tile_type": "rsrc1",
-      "is_land": true,
-      "number": 10,
-      "variant": "",
-      "rotation": 0
-    },
-    {
-      "location": [
-        6,
-        3
-      ],
-      "tile_type": "rsrc1",
-      "is_land": true,
-      "number": 9,
-      "variant": "",
-      "rotation": 0
-    },
-    {
-      "location": [
-        8,
-        4
-      ],
-      "tile_type": "rsrc2",
-      "is_land": true,
-      "number": 4,
-      "variant": "",
-      "rotation": 0
-    },
-    {
-      "location": [
-        8,
-        6
-      ],
-      "tile_type": "rsrc4",
-      "is_land": true,
-      "number": 5,
-      "variant": "",
-      "rotation": 0
-    },
-    {
-      "location": [
-        6,
-        7
-      ],
-      "tile_type": "rsrc5",
-      "is_land": true,
-      "number": 6,
-      "variant": "",
-      "rotation": 0
-    },
-    {
-      "location": [
-        4,
-        6
-      ],
-      "tile_type": "rsrc2",
-      "is_land": true,
-      "number": 3,
-      "variant": "",
-      "rotation": 0
-    },
-    {
-      "location": [
-        6,
-        5
-      ],
-      "tile_type": "rsrc3",
-      "is_land": true,
-      "number": 11,
-      "variant": "",
-      "rotation": 0
-    },
-    {
-      "location": [
-        2,
-        1
-      ],
-      "tile_type": "space",
-      "is_land": false,
-      "number": null,
-      "variant": "",
-      "rotation": 0
-    },
-    {
-      "location": [
-        4,
-        0
-      ],
-      "tile_type": "space",
-      "is_land": false,
-      "number": null,
-      "variant": "",
-      "rotation": 0
-    },
-    {
-      "location": [
-        6,
-        -1
-      ],
-      "tile_type": "space",
-      "is_land": false,
-      "number": null,
-      "variant": "",
-      "rotation": 0
-    },
-    {
-      "location": [
-        8,
-        0
-      ],
-      "tile_type": "space",
-      "is_land": false,
-      "number": null,
-      "variant": "",
-      "rotation": 0
-    },
-    {
-      "location": [
-        10,
-        1
-      ],
-      "tile_type": "space",
-      "is_land": false,
-      "number": null,
-      "variant": "",
-      "rotation": 1
-    },
-    {
-      "location": [
-        12,
-        2
-      ],
-      "tile_type": "space",
-      "is_land": false,
-      "number": null,
-      "variant": "",
-      "rotation": 1
-    },
-    {
-      "location": [
-        12,
-        4
-      ],
-      "tile_type": "space",
-      "is_land": false,
-      "number": null,
-      "variant": "",
-      "rotation": 2
-    },
-    {
-      "location": [
-        12,
-        6
-      ],
-      "tile_type": "space",
-      "is_land": false,
-      "number": null,
-      "variant": "",
-      "rotation": 2
-    },
-    {
-      "location": [
-        12,
-        8
-      ],
-      "tile_type": "space",
-      "is_land": false,
-      "number": null,
-      "variant": "",
-      "rotation": 2
-    },
-    {
-      "location": [
-        10,
-        9
-      ],
-      "tile_type": "space",
-      "is_land": false,
-      "number": null,
-      "variant": "",
-      "rotation": 2
-    },
-    {
-      "location": [
-        8,
-        10
-      ],
-      "tile_type": "space",
-      "is_land": false,
-      "number": null,
-      "variant": "",
-      "rotation": 3
-    },
-    {
-      "location": [
-        6,
-        11
-      ],
-      "tile_type": "space",
-      "is_land": false,
-      "number": null,
-      "variant": "",
-      "rotation": 3
-    },
-    {
-      "location": [
-        4,
-        10
-      ],
-      "tile_type": "space",
-      "is_land": false,
-      "number": null,
-      "variant": "",
-      "rotation": 4
-    },
-    {
-      "location": [
-        2,
-        9
-      ],
-      "tile_type": "space",
-      "is_land": false,
-      "number": null,
-      "variant": "",
-      "rotation": 4
-    },
-    {
-      "location": [
-        0,
-        8
-      ],
-      "tile_type": "space",
-      "is_land": false,
-      "number": null,
-      "variant": "",
-      "rotation": 4
-    },
-    {
-      "location": [
-        0,
-        6
-      ],
-      "tile_type": "space",
-      "is_land": false,
-      "number": null,
-      "variant": "",
-      "rotation": 4
-    },
-    {
-      "location": [
-        0,
-        4
-      ],
-      "tile_type": "space",
-      "is_land": false,
-      "number": null,
-      "variant": "",
-      "rotation": 5
-    },
-    {
-      "location": [
-        0,
-        2
-      ],
-      "tile_type": "space",
-      "is_land": false,
-      "number": null,
-      "variant": "",
-      "rotation": 5
-    }
-  ],
-  "pieces": [
-    {
-      "location": [
-        3,
-        5
-      ],
-      "piece_type": "settlement",
-      "player": 0
-    },
-    {
-      "location": [
-        9,
-        6
-      ],
-      "piece_type": "settlement",
-      "player": 0
-    }
-  ],
-  "roads": [
-    {
-      "location": [
-        3,
-        5,
-        4,
-        4
-      ],
-      "road_type": "road",
-      "player": 0
-    },
-    {
-      "location": [
-        8,
-        6,
-        9,
-        6
-      ],
-      "road_type": "road",
-      "player": 0
-    }
-  ],
-  "dev_cards": [
-    "knight",
-    "monopoly",
-    "knight",
-    "knight",
-    "yearofplenty",
-    "palace",
-    "roadbuilding",
-    "library",
-    "market",
-    "chapel",
-    "roadbuilding",
-    "knight",
-    "knight",
-    "knight",
-    "knight",
-    "knight",
-    "knight",
-    "knight",
-    "knight",
-    "knight",
-    "knight",
-    "monopoly",
-    "knight",
-    "yearofplenty",
-    "university"
-  ],
-  "dev_roads_placed": 0,
-  "played_dev": 0,
-  "turn_idx": 0,
-  "victory_points": 10,
-  "rob_at_two": true
+    ],
+    "rules": [],
+    "scenario": "Beginner's Map",
+    "tiles": [
+        {
+            "is_land": true,
+            "land_rotations": [],
+            "location": [
+                4,
+                4
+            ],
+            "number": 5,
+            "rotation": 0,
+            "tile_type": "rsrc5",
+            "variant": ""
+        },
+        {
+            "is_land": true,
+            "land_rotations": [],
+            "location": [
+                7,
+                3
+            ],
+            "number": 2,
+            "rotation": 0,
+            "tile_type": "rsrc3",
+            "variant": ""
+        },
+        {
+            "is_land": true,
+            "land_rotations": [],
+            "location": [
+                10,
+                2
+            ],
+            "number": 6,
+            "rotation": 0,
+            "tile_type": "rsrc2",
+            "variant": ""
+        },
+        {
+            "is_land": true,
+            "land_rotations": [],
+            "location": [
+                13,
+                3
+            ],
+            "number": 3,
+            "rotation": 0,
+            "tile_type": "rsrc5",
+            "variant": ""
+        },
+        {
+            "is_land": true,
+            "land_rotations": [],
+            "location": [
+                16,
+                4
+            ],
+            "number": 8,
+            "rotation": 0,
+            "tile_type": "rsrc3",
+            "variant": ""
+        },
+        {
+            "is_land": true,
+            "land_rotations": [],
+            "location": [
+                16,
+                6
+            ],
+            "number": 10,
+            "rotation": 0,
+            "tile_type": "rsrc1",
+            "variant": ""
+        },
+        {
+            "is_land": true,
+            "land_rotations": [],
+            "location": [
+                16,
+                8
+            ],
+            "number": 9,
+            "rotation": 0,
+            "tile_type": "rsrc3",
+            "variant": ""
+        },
+        {
+            "is_land": true,
+            "land_rotations": [],
+            "location": [
+                13,
+                9
+            ],
+            "number": 12,
+            "rotation": 0,
+            "tile_type": "rsrc1",
+            "variant": ""
+        },
+        {
+            "is_land": true,
+            "land_rotations": [],
+            "location": [
+                10,
+                10
+            ],
+            "number": 11,
+            "rotation": 0,
+            "tile_type": "rsrc2",
+            "variant": ""
+        },
+        {
+            "is_land": true,
+            "land_rotations": [],
+            "location": [
+                7,
+                9
+            ],
+            "number": 4,
+            "rotation": 0,
+            "tile_type": "rsrc4",
+            "variant": ""
+        },
+        {
+            "is_land": true,
+            "land_rotations": [],
+            "location": [
+                4,
+                8
+            ],
+            "number": null,
+            "rotation": 0,
+            "tile_type": "norsrc",
+            "variant": ""
+        },
+        {
+            "is_land": true,
+            "land_rotations": [],
+            "location": [
+                4,
+                6
+            ],
+            "number": 8,
+            "rotation": 0,
+            "tile_type": "rsrc4",
+            "variant": ""
+        },
+        {
+            "is_land": true,
+            "land_rotations": [],
+            "location": [
+                7,
+                5
+            ],
+            "number": 10,
+            "rotation": 0,
+            "tile_type": "rsrc1",
+            "variant": ""
+        },
+        {
+            "is_land": true,
+            "land_rotations": [],
+            "location": [
+                10,
+                4
+            ],
+            "number": 9,
+            "rotation": 0,
+            "tile_type": "rsrc1",
+            "variant": ""
+        },
+        {
+            "is_land": true,
+            "land_rotations": [],
+            "location": [
+                13,
+                5
+            ],
+            "number": 4,
+            "rotation": 0,
+            "tile_type": "rsrc2",
+            "variant": ""
+        },
+        {
+            "is_land": true,
+            "land_rotations": [],
+            "location": [
+                13,
+                7
+            ],
+            "number": 5,
+            "rotation": 0,
+            "tile_type": "rsrc4",
+            "variant": ""
+        },
+        {
+            "is_land": true,
+            "land_rotations": [],
+            "location": [
+                10,
+                8
+            ],
+            "number": 6,
+            "rotation": 0,
+            "tile_type": "rsrc5",
+            "variant": ""
+        },
+        {
+            "is_land": true,
+            "land_rotations": [],
+            "location": [
+                7,
+                7
+            ],
+            "number": 3,
+            "rotation": 0,
+            "tile_type": "rsrc2",
+            "variant": ""
+        },
+        {
+            "is_land": true,
+            "land_rotations": [],
+            "location": [
+                10,
+                6
+            ],
+            "number": 11,
+            "rotation": 0,
+            "tile_type": "rsrc3",
+            "variant": ""
+        },
+        {
+            "is_land": false,
+            "land_rotations": [
+                0,
+                5
+            ],
+            "location": [
+                4,
+                2
+            ],
+            "number": null,
+            "rotation": 0,
+            "tile_type": "space",
+            "variant": ""
+        },
+        {
+            "is_land": false,
+            "land_rotations": [
+                0,
+                5
+            ],
+            "location": [
+                7,
+                1
+            ],
+            "number": null,
+            "rotation": 0,
+            "tile_type": "space",
+            "variant": ""
+        },
+        {
+            "is_land": false,
+            "land_rotations": [
+                0
+            ],
+            "location": [
+                10,
+                0
+            ],
+            "number": null,
+            "rotation": 0,
+            "tile_type": "space",
+            "variant": ""
+        },
+        {
+            "is_land": false,
+            "land_rotations": [
+                0,
+                1
+            ],
+            "location": [
+                13,
+                1
+            ],
+            "number": null,
+            "rotation": 0,
+            "tile_type": "space",
+            "variant": ""
+        },
+        {
+            "is_land": false,
+            "land_rotations": [
+                0,
+                1
+            ],
+            "location": [
+                16,
+                2
+            ],
+            "number": null,
+            "rotation": 1,
+            "tile_type": "space",
+            "variant": ""
+        },
+        {
+            "is_land": false,
+            "land_rotations": [
+                1
+            ],
+            "location": [
+                19,
+                3
+            ],
+            "number": null,
+            "rotation": 1,
+            "tile_type": "space",
+            "variant": ""
+        },
+        {
+            "is_land": false,
+            "land_rotations": [
+                1,
+                2
+            ],
+            "location": [
+                19,
+                5
+            ],
+            "number": null,
+            "rotation": 2,
+            "tile_type": "space",
+            "variant": ""
+        },
+        {
+            "is_land": false,
+            "land_rotations": [
+                1,
+                2
+            ],
+            "location": [
+                19,
+                7
+            ],
+            "number": null,
+            "rotation": 2,
+            "tile_type": "space",
+            "variant": ""
+        },
+        {
+            "is_land": false,
+            "land_rotations": [
+                2
+            ],
+            "location": [
+                19,
+                9
+            ],
+            "number": null,
+            "rotation": 2,
+            "tile_type": "space",
+            "variant": ""
+        },
+        {
+            "is_land": false,
+            "land_rotations": [
+                2,
+                3
+            ],
+            "location": [
+                16,
+                10
+            ],
+            "number": null,
+            "rotation": 2,
+            "tile_type": "space",
+            "variant": ""
+        },
+        {
+            "is_land": false,
+            "land_rotations": [
+                2,
+                3
+            ],
+            "location": [
+                13,
+                11
+            ],
+            "number": null,
+            "rotation": 3,
+            "tile_type": "space",
+            "variant": ""
+        },
+        {
+            "is_land": false,
+            "land_rotations": [
+                3
+            ],
+            "location": [
+                10,
+                12
+            ],
+            "number": null,
+            "rotation": 3,
+            "tile_type": "space",
+            "variant": ""
+        },
+        {
+            "is_land": false,
+            "land_rotations": [
+                3,
+                4
+            ],
+            "location": [
+                7,
+                11
+            ],
+            "number": null,
+            "rotation": 4,
+            "tile_type": "space",
+            "variant": ""
+        },
+        {
+            "is_land": false,
+            "land_rotations": [
+                3,
+                4
+            ],
+            "location": [
+                4,
+                10
+            ],
+            "number": null,
+            "rotation": 4,
+            "tile_type": "space",
+            "variant": ""
+        },
+        {
+            "is_land": false,
+            "land_rotations": [
+                4
+            ],
+            "location": [
+                1,
+                9
+            ],
+            "number": null,
+            "rotation": 4,
+            "tile_type": "space",
+            "variant": ""
+        },
+        {
+            "is_land": false,
+            "land_rotations": [
+                4,
+                5
+            ],
+            "location": [
+                1,
+                7
+            ],
+            "number": null,
+            "rotation": 4,
+            "tile_type": "space",
+            "variant": ""
+        },
+        {
+            "is_land": false,
+            "land_rotations": [
+                4,
+                5
+            ],
+            "location": [
+                1,
+                5
+            ],
+            "number": null,
+            "rotation": 5,
+            "tile_type": "space",
+            "variant": ""
+        },
+        {
+            "is_land": false,
+            "land_rotations": [
+                5
+            ],
+            "location": [
+                1,
+                3
+            ],
+            "number": null,
+            "rotation": 5,
+            "tile_type": "space",
+            "variant": ""
+        }
+    ],
+    "trade_offer": {},
+    "turn_idx": 0,
+    "turn_phase": "main",
+    "victory_points": 10
 }

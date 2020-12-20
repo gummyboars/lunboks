@@ -46,7 +46,7 @@ class TestLoadState(unittest.TestCase):
     self.assertIsInstance(c, catan.Seafarers)
     self.assertTrue(hasattr(c, "built_this_turn"))
     self.assertTrue(hasattr(c, "ships_moved"))
-    self.assertEqual(c.built_this_turn, [(1, 4, 2, 5)])
+    self.assertEqual(c.built_this_turn, [(2, 4, 3, 5)])
     self.assertEqual(c.ships_moved, 1)
     self.assertEqual(len(c.roads), 2)
     self.assertEqual(list(c.roads.values())[0].road_type, "ship")
@@ -117,56 +117,56 @@ class CornerComputationTest(unittest.TestCase):
     self.c = catan.SeafarerIslands()
     self.c.load_file("islands3.json")
     self.c._compute_contiguous_islands()
-    self.assertIn((2, 1), self.c.corners_to_islands)
-    self.assertIn((3, 5), self.c.corners_to_islands)
-    self.assertEqual(self.c.corners_to_islands[(2, 1)], self.c.corners_to_islands[(3, 5)])
+    self.assertIn((3, 1), self.c.corners_to_islands)
+    self.assertIn((5, 5), self.c.corners_to_islands)
+    self.assertEqual(self.c.corners_to_islands[(3, 1)], self.c.corners_to_islands[(5, 5)])
 
-    self.assertIn((10, 1), self.c.corners_to_islands)
-    self.assertIn((8, 4), self.c.corners_to_islands)
-    self.assertEqual(self.c.corners_to_islands[(10, 1)], self.c.corners_to_islands[(8, 4)])
+    self.assertIn((15, 1), self.c.corners_to_islands)
+    self.assertIn((12, 4), self.c.corners_to_islands)
+    self.assertEqual(self.c.corners_to_islands[(15, 1)], self.c.corners_to_islands[(12, 4)])
 
-    self.assertNotEqual(self.c.corners_to_islands[(2, 1)], self.c.corners_to_islands[(8, 4)])
+    self.assertNotEqual(self.c.corners_to_islands[(3, 1)], self.c.corners_to_islands[(12, 4)])
 
   def testShoreCorners(self):
     self.c = catan.SeafarerShores()
     self.c.load_file("shores4.json")
     self.c._compute_contiguous_islands()
-    self.assertIn((2, 3), self.c.corners_to_islands)
-    self.assertIn((9, 8), self.c.corners_to_islands)
-    self.assertEqual(self.c.corners_to_islands[(2, 3)], self.c.corners_to_islands[(9, 8)])
+    self.assertIn((3, 3), self.c.corners_to_islands)
+    self.assertIn((14, 8), self.c.corners_to_islands)
+    self.assertEqual(self.c.corners_to_islands[(3, 3)], self.c.corners_to_islands[(14, 8)])
 
-    self.assertIn((12, 4), self.c.corners_to_islands)
-    self.assertIn((13, 6), self.c.corners_to_islands)
-    self.assertEqual(self.c.corners_to_islands[(12, 4)], self.c.corners_to_islands[(13, 6)])
+    self.assertIn((18, 4), self.c.corners_to_islands)
+    self.assertIn((20, 6), self.c.corners_to_islands)
+    self.assertEqual(self.c.corners_to_islands[(18, 4)], self.c.corners_to_islands[(20, 6)])
 
-    self.assertIn((9, 10), self.c.corners_to_islands)
-    self.assertIn((12, 12), self.c.corners_to_islands)
-    self.assertEqual(self.c.corners_to_islands[(9, 10)], self.c.corners_to_islands[(12, 12)])
+    self.assertIn((14, 10), self.c.corners_to_islands)
+    self.assertIn((18, 12), self.c.corners_to_islands)
+    self.assertEqual(self.c.corners_to_islands[(14, 10)], self.c.corners_to_islands[(18, 12)])
 
     # Assert that the island number for each of these corners is unique.
-    islands = [self.c.corners_to_islands[loc] for loc in [(2, 3), (13, 6), (9, 10)]]
+    islands = [self.c.corners_to_islands[loc] for loc in [(3, 3), (20, 6), (14, 10)]]
     self.assertEqual(len(islands), len(set(islands)))
 
   def testDesertCorners(self):
     self.c = catan.SeafarerDesert()
     self.c.load_file("desert3.json")
     self.c._compute_contiguous_islands()
-    self.assertIn((2, 1), self.c.corners_to_islands)
-    self.assertIn((9, 6), self.c.corners_to_islands)
-    self.assertEqual(self.c.corners_to_islands[(2, 1)], self.c.corners_to_islands[(9, 6)])
+    self.assertIn((3, 1), self.c.corners_to_islands)
+    self.assertIn((14, 6), self.c.corners_to_islands)
+    self.assertEqual(self.c.corners_to_islands[(3, 1)], self.c.corners_to_islands[(14, 6)])
 
-    self.assertIn((10, 1), self.c.corners_to_islands)
-    self.assertIn((13, 4), self.c.corners_to_islands)
-    self.assertEqual(self.c.corners_to_islands[(10, 1)], self.c.corners_to_islands[(13, 4)])
+    self.assertIn((15, 1), self.c.corners_to_islands)
+    self.assertIn((20, 4), self.c.corners_to_islands)
+    self.assertEqual(self.c.corners_to_islands[(15, 1)], self.c.corners_to_islands[(20, 4)])
 
-    self.assertIn((2, 9), self.c.corners_to_islands)
+    self.assertIn((3, 9), self.c.corners_to_islands)
 
     # Assert that the island number for each of these corners is unique.
-    islands = [self.c.corners_to_islands[loc] for loc in [(2, 1), (13, 4), (2, 9)]]
+    islands = [self.c.corners_to_islands[loc] for loc in [(3, 1), (20, 4), (3, 9)]]
     self.assertEqual(len(islands), len(set(islands)))
 
     # Desert corner that doesn't touch any other land should not have an island number.
-    self.assertNotIn((14, 5), self.c.corners_to_islands)
+    self.assertNotIn((21, 5), self.c.corners_to_islands)
 
 
 class PlacementRestrictionsTest(unittest.TestCase):
@@ -198,8 +198,8 @@ class PlacementRestrictionsTest(unittest.TestCase):
     with self.assertRaisesRegex(InvalidMove, "first settlements"):
       self.c.handle(0, {"type": "settle", "location": [0, 8]})
     with self.assertRaisesRegex(InvalidMove, "first settlements"):
-      self.c.handle(0, {"type": "settle", "location": [8, 0]})
-    self.c.handle(0, {"type": "settle", "location": [2, 3]})
+      self.c.handle(0, {"type": "settle", "location": [12, 0]})
+    self.c.handle(0, {"type": "settle", "location": [3, 3]})
 
     # We're going to skip a bunch of placements.
     self.c.game_phase = "place2"
@@ -207,8 +207,8 @@ class PlacementRestrictionsTest(unittest.TestCase):
     self.c.turn_idx = 1
 
     with self.assertRaisesRegex(InvalidMove, "first settlements"):
-      self.c.handle(1, {"type": "settle", "location": [6, 9]})
-    self.c.handle(1, {"type": "settle", "location": [2, 5]})
+      self.c.handle(1, {"type": "settle", "location": [9, 9]})
+    self.c.handle(1, {"type": "settle", "location": [3, 5]})
 
   def testDesert4Placement(self):
     self.c = catan.SeafarerDesert()
@@ -222,8 +222,8 @@ class PlacementRestrictionsTest(unittest.TestCase):
     with self.assertRaisesRegex(InvalidMove, "first settlements"):
       self.c.handle(0, {"type": "settle", "location": [0, 8]})
     with self.assertRaisesRegex(InvalidMove, "first settlements"):
-      self.c.handle(0, {"type": "settle", "location": [8, 0]})
-    self.c.handle(0, {"type": "settle", "location": [2, 3]})
+      self.c.handle(0, {"type": "settle", "location": [12, 0]})
+    self.c.handle(0, {"type": "settle", "location": [3, 3]})
 
     # We're going to skip a bunch of placements.
     self.c.game_phase = "place2"
@@ -232,8 +232,8 @@ class PlacementRestrictionsTest(unittest.TestCase):
 
     # It should still validate islands in the second placement round.
     with self.assertRaisesRegex(InvalidMove, "first settlements"):
-      self.c.handle(1, {"type": "settle", "location": [8, 12]})
-    self.c.handle(1, {"type": "settle", "location": [8, 8]})
+      self.c.handle(1, {"type": "settle", "location": [12, 12]})
+    self.c.handle(1, {"type": "settle", "location": [12, 8]})
 
   def testShores3Placement(self):
     self.c = catan.SeafarerShores()
@@ -244,12 +244,12 @@ class PlacementRestrictionsTest(unittest.TestCase):
     self.assertCountEqual(self.c.placement_islands, [(-1, 3)])
 
     with self.assertRaisesRegex(InvalidMove, "first settlements"):
-      self.c.handle(0, {"type": "settle", "location": [2, 9]})
+      self.c.handle(0, {"type": "settle", "location": [3, 9]})
     with self.assertRaisesRegex(InvalidMove, "first settlements"):
-      self.c.handle(0, {"type": "settle", "location": [12, 4]})
+      self.c.handle(0, {"type": "settle", "location": [18, 4]})
     with self.assertRaisesRegex(InvalidMove, "first settlements"):
-      self.c.handle(0, {"type": "settle", "location": [10, 9]})
-    self.c.handle(0, {"type": "settle", "location": [2, 3]})
+      self.c.handle(0, {"type": "settle", "location": [15, 9]})
+    self.c.handle(0, {"type": "settle", "location": [3, 3]})
 
   def testShores4Placement(self):
     self.c = catan.SeafarerShores()
@@ -261,12 +261,12 @@ class PlacementRestrictionsTest(unittest.TestCase):
     self.assertCountEqual(self.c.placement_islands, [(-1, 3)])
 
     with self.assertRaisesRegex(InvalidMove, "first settlements"):
-      self.c.handle(0, {"type": "settle", "location": [2, 11]})
+      self.c.handle(0, {"type": "settle", "location": [3, 11]})
     with self.assertRaisesRegex(InvalidMove, "first settlements"):
-      self.c.handle(0, {"type": "settle", "location": [12, 4]})
+      self.c.handle(0, {"type": "settle", "location": [18, 4]})
     with self.assertRaisesRegex(InvalidMove, "first settlements"):
-      self.c.handle(0, {"type": "settle", "location": [11, 11]})
-    self.c.handle(0, {"type": "settle", "location": [2, 3]})
+      self.c.handle(0, {"type": "settle", "location": [17, 11]})
+    self.c.handle(0, {"type": "settle", "location": [3, 3]})
 
 
 class TestIslandCalculations(BreakpointTest):
@@ -277,16 +277,16 @@ class TestIslandCalculations(BreakpointTest):
     self.c.add_player("blue", "player2")
     self.c.add_player("green", "player3")
     self.c.init({})
-    self.c.handle(0, {"type": "settle", "location": [8, 4]})
-    self.c.handle(0, {"type": "ship", "location": [7, 3, 8, 4]})
-    self.c.handle(1, {"type": "settle", "location": [3, 5]})
-    self.c.handle(1, {"type": "ship", "location": [3, 5, 4, 6]})
-    self.c.handle(2, {"type": "settle", "location": [5, 8]})
-    self.c.handle(2, {"type": "ship", "location": [5, 8, 6, 7]})
-    self.c.handle(2, {"type": "settle", "location": [12, 8]})
-    self.c.handle(2, {"type": "road", "location": [12, 8, 13, 8]})
-    self.c.handle(1, {"type": "settle", "location": [6, 1]})
-    self.c.handle(1, {"type": "ship", "location": [6, 1, 7, 1]})
+    self.c.handle(0, {"type": "settle", "location": [12, 4]})
+    self.c.handle(0, {"type": "ship", "location": [11, 3, 12, 4]})
+    self.c.handle(1, {"type": "settle", "location": [5, 5]})
+    self.c.handle(1, {"type": "ship", "location": [5, 5, 6, 6]})
+    self.c.handle(2, {"type": "settle", "location": [8, 8]})
+    self.c.handle(2, {"type": "ship", "location": [8, 8, 9, 7]})
+    self.c.handle(2, {"type": "settle", "location": [18, 8]})
+    self.c.handle(2, {"type": "road", "location": [18, 8, 20, 8]})
+    self.c.handle(1, {"type": "settle", "location": [9, 1]})
+    self.c.handle(1, {"type": "ship", "location": [9, 1, 11, 1]})
     self.c.game_phase = "main"
     self.c.turn_phase = "main"
     self.c.pirate = None
@@ -295,24 +295,24 @@ class TestIslandCalculations(BreakpointTest):
     self.g.game = self.c
 
   def testHomeIslands(self):
-    self.assertCountEqual(self.c.home_corners[0], [(8, 4)])
-    self.assertCountEqual(self.c.home_corners[1], [(3, 5), (6, 1)])
-    self.assertCountEqual(self.c.home_corners[2], [(5, 8), (12, 8)])
+    self.assertCountEqual(self.c.home_corners[0], [(12, 4)])
+    self.assertCountEqual(self.c.home_corners[1], [(5, 5), (9, 1)])
+    self.assertCountEqual(self.c.home_corners[2], [(8, 8), (18, 8)])
 
   def settleForeignIslands(self):
     for rsrc in catan.RESOURCES:
       self.c.player_data[2].cards[rsrc] += 2
     # Player1 settles a foreign island.
-    self.c.add_piece(catan.Piece(6, 3, "settlement", 0))
+    self.c.add_piece(catan.Piece(9, 3, "settlement", 0))
     # Player2 settles two foreign islands.
-    self.c.add_piece(catan.Piece(8, 2, "settlement", 1))
-    self.c.add_piece(catan.Piece(3, 7, "settlement", 1))
+    self.c.add_piece(catan.Piece(12, 2, "settlement", 1))
+    self.c.add_piece(catan.Piece(5, 7, "settlement", 1))
     # Two settlements, but only one is on a foreign island.
-    self.c.add_road(Road([5, 6, 6, 7], "ship", 2))
-    self.c.add_road(Road([6, 7, 7, 7], "ship", 2))
+    self.c.add_road(Road([8, 6, 9, 7], "ship", 2))
+    self.c.add_road(Road([9, 7, 11, 7], "ship", 2))
     self.c.turn_idx = 2
-    self.c.handle_settle([5, 6], 2)
-    self.c.handle_settle([7, 7], 2)
+    self.c.handle_settle([8, 6], 2)
+    self.c.handle_settle([11, 7], 2)
 
   def testLandingEventLog(self):
     self.settleForeignIslands()
@@ -323,12 +323,12 @@ class TestIslandCalculations(BreakpointTest):
 
   def testForeignIslands(self):
     self.settleForeignIslands()
-    self.assertCountEqual(self.c.foreign_landings[0], [(6, 3)])
-    self.assertCountEqual(self.c.foreign_landings[1], [(8, 2), (3, 7)])
+    self.assertCountEqual(self.c.foreign_landings[0], [(9, 3)])
+    self.assertCountEqual(self.c.foreign_landings[1], [(12, 2), (5, 7)])
     # An extra settlement on a foreign island changes nothing.
-    self.c.add_piece(catan.Piece(1, 8, "settlement", 1))
-    self.assertCountEqual(self.c.foreign_landings[1], [(8, 2), (3, 7)])
-    self.assertCountEqual(self.c.foreign_landings[2], [(5, 6)])
+    self.c.add_piece(catan.Piece(2, 8, "settlement", 1))
+    self.assertCountEqual(self.c.foreign_landings[1], [(12, 2), (5, 7)])
+    self.assertCountEqual(self.c.foreign_landings[2], [(8, 6)])
 
   def testPlayerPoints(self):
     self.settleForeignIslands()
@@ -342,10 +342,10 @@ class TestIslandCalculations(BreakpointTest):
     self.assertIn("landings", data)
     self.assertCountEqual(
         data["landings"], [
-          {"player": 0, "location": (6, 3)},
-          {"player": 1, "location": (8, 2)},
-          {"player": 1, "location": (3, 7)},
-          {"player": 2, "location": (5, 6)},
+          {"player": 0, "location": (9, 3)},
+          {"player": 1, "location": (12, 2)},
+          {"player": 1, "location": (5, 7)},
+          {"player": 2, "location": (8, 6)},
     ])
 
   def testSaveAndLoad(self):
@@ -355,12 +355,12 @@ class TestIslandCalculations(BreakpointTest):
     game = loaded.game
     self.assertIsInstance(game.home_corners, collections.defaultdict)
     self.assertIsInstance(game.foreign_landings, collections.defaultdict)
-    self.assertCountEqual(game.home_corners[0], [(8, 4)])
-    self.assertCountEqual(game.home_corners[1], [(3, 5), (6, 1)])
-    self.assertCountEqual(game.home_corners[2], [(5, 8), (12, 8)])
-    self.assertCountEqual(self.c.foreign_landings[0], [(6, 3)])
-    self.assertCountEqual(self.c.foreign_landings[1], [(8, 2), (3, 7)])
-    self.assertCountEqual(self.c.foreign_landings[2], [(5, 6)])
+    self.assertCountEqual(game.home_corners[0], [(12, 4)])
+    self.assertCountEqual(game.home_corners[1], [(5, 5), (9, 1)])
+    self.assertCountEqual(game.home_corners[2], [(8, 8), (18, 8)])
+    self.assertCountEqual(self.c.foreign_landings[0], [(9, 3)])
+    self.assertCountEqual(self.c.foreign_landings[1], [(12, 2), (5, 7)])
+    self.assertCountEqual(self.c.foreign_landings[2], [(8, 6)])
 
 
 class BaseInputHandlerTest(BreakpointTest):
@@ -435,30 +435,30 @@ class TestGetEdgeType(BaseInputHandlerTest):
 
   def setUp(self):
     BaseInputHandlerTest.setUp(self)
-    self.c._add_road(Road([1, 4, 2, 5], "road", 0))
-    self.c._add_road(Road([1, 6, 2, 5], "ship", 0))
-    self.c._add_road(Road([2, 5, 3, 5], "ship", 0))
-    self.c.add_tile(catan.Tile(-2, 3, "rsrc5", True, 4))
+    self.c._add_road(Road([2, 4, 3, 5], "road", 0))
+    self.c._add_road(Road([2, 6, 3, 5], "ship", 0))
+    self.c._add_road(Road([3, 5, 5, 5], "ship", 0))
+    self.c.add_tile(catan.Tile(-2, 4, "rsrc5", True, 4))
 
   def testEdgeTypeUnoccupied(self):
-    self.assertEqual(self.c._get_edge_type(catan.EdgeLocation(0, 4, 1, 4)), "road")
-    self.assertEqual(self.c._get_edge_type(catan.EdgeLocation(5, 6, 6, 5)), "coastup")
-    self.assertEqual(self.c._get_edge_type(catan.EdgeLocation(1, 4, 2, 3)), "coastdown")
-    self.assertEqual(self.c._get_edge_type(catan.EdgeLocation(3, 5, 4, 4)), "ship")
-    self.assertIsNone(self.c._get_edge_type(catan.EdgeLocation(0, 8, 1, 8)))
+    self.assertEqual(self.c._get_edge_type(catan.EdgeLocation(0, 4, 2, 4)), "road")
+    self.assertEqual(self.c._get_edge_type(catan.EdgeLocation(8, 6, 9, 5)), "coastup")
+    self.assertEqual(self.c._get_edge_type(catan.EdgeLocation(2, 4, 3, 3)), "coastdown")
+    self.assertEqual(self.c._get_edge_type(catan.EdgeLocation(5, 5, 6, 4)), "ship")
+    self.assertIsNone(self.c._get_edge_type(catan.EdgeLocation(0, 8, 2, 8)))
 
   def testEdgeTypeOccupied(self):
-    self.assertEqual(self.c._get_edge_type(catan.EdgeLocation(1, 4, 2, 5)), "road")
-    self.assertEqual(self.c._get_edge_type(catan.EdgeLocation(2, 5, 3, 5)), "ship")
-    self.assertEqual(self.c._get_edge_type(catan.EdgeLocation(1, 6, 2, 5)), "ship")
+    self.assertEqual(self.c._get_edge_type(catan.EdgeLocation(2, 4, 3, 5)), "road")
+    self.assertEqual(self.c._get_edge_type(catan.EdgeLocation(3, 5, 5, 5)), "ship")
+    self.assertEqual(self.c._get_edge_type(catan.EdgeLocation(2, 6, 3, 5)), "ship")
 
 
 class TestDistributeResources(BaseInputHandlerTest):
 
   def setUp(self):
     BaseInputHandlerTest.setUp(self)
-    self.c.add_piece(catan.Piece(3, 3, "city", 0))
-    self.c.pieces[(3, 5)].piece_type = "city"
+    self.c.add_piece(catan.Piece(5, 3, "city", 0))
+    self.c.pieces[(5, 5)].piece_type = "city"
     for rsrc in ["rsrc3", "rsrc4", "rsrc5"]:
       self.c.player_data[0].cards[rsrc] = 8
       self.c.player_data[1].cards[rsrc] = 9
@@ -557,13 +557,13 @@ class TestCollectResources(BaseInputHandlerTest):
     self.c.add_player("green", "Bob")
     self.c.add_piece(catan.Piece(0, 4, "city", 1))
     self.c.add_piece(catan.Piece(0, 6, "city", 2))
-    self.c.tiles[(0, 2)].tile_type = "anyrsrc"
-    self.c.tiles[(0, 4)].tile_type = "anyrsrc"
-    self.c.add_piece(catan.Piece(2, 7, "city", 1))
-    self.c.add_piece(catan.Piece(4, 8, "city", 2))
-    self.c.tiles[(2, 7)].number = 5
-    self.c.add_piece(catan.Piece(6, 5, "settlement", 0))
-    self.c.tiles[(6, 5)].number = 9
+    self.c.tiles[(1, 3)].tile_type = "anyrsrc"
+    self.c.tiles[(1, 5)].tile_type = "anyrsrc"
+    self.c.add_piece(catan.Piece(3, 7, "city", 1))
+    self.c.add_piece(catan.Piece(6, 8, "city", 2))
+    self.c.tiles[(4, 8)].number = 5
+    self.c.add_piece(catan.Piece(9, 5, "settlement", 0))
+    self.c.tiles[(10, 6)].number = 9
     for p in self.c.player_data:
       p.cards.clear()
       p.cards["rsrc3"] = 4
@@ -743,42 +743,42 @@ class TestRobberMovement(BaseInputHandlerTest):
   def setUp(self):
     BaseInputHandlerTest.setUp(self)
     self.c.turn_phase = "robber"
-    self.c.handle_robber((2, 3), 1)
+    self.c.handle_robber((4, 4), 1)
     self.c.turn_phase = "robber"
 
   def testRobberInvalidMove(self):
     with self.assertRaises(InvalidMove):
-      self.c.handle_robber((-1,-1),1)
+      self.c.handle_robber((0, 0), 1)
 
   def testRobberInvalidMoveRegex(self):
     with self.assertRaisesRegex(InvalidMove, "valid land tile"):
-      self.c.handle_robber((-1,-1),1)
+      self.c.handle_robber((0, 0), 1)
 
   def testRobberStationaryMove(self):
     with self.assertRaises(InvalidMove):
-      self.c.handle_robber(self.c.robber.as_tuple(),1)
+      self.c.handle_robber(self.c.robber.as_tuple(), 1)
 
   def testRobberStationaryMoveRegex(self):
     with self.assertRaisesRegex(InvalidMove, "You must move the robber."):
-      self.c.handle_robber(self.c.robber.as_tuple(),1)
+      self.c.handle_robber(self.c.robber.as_tuple(), 1)
 
   def testRobberLandMove(self):
     with self.assertRaises(InvalidMove):
-      self.c.handle_robber((2,1),1)
+      self.c.handle_robber((4, 2), 1)
 
   def testRobberLandMoveRegex(self):
     with self.assertRaisesRegex(InvalidMove, "valid land tile"):
-      self.c.handle_robber((2,1),1)
+      self.c.handle_robber((4, 2), 1)
 
   def testNoRobbingFromTwoPointsRegex(self):
     self.c.rob_at_two = False
     with self.assertRaisesRegex(InvalidMove, "Robbers refuse to rob such poor people."):
-      self.c.handle_robber((2,5),0)
+      self.c.handle_robber((4, 6), 0)
 
   def testRobbingFromMoreThanTwoPoints(self):
     self.c.rob_at_two = False
-    self.c.add_piece(catan.Piece(4,2, "city", 1))
-    self.c.handle_robber((2,5),0)
+    self.c.add_piece(catan.Piece(6, 2, "city", 1))
+    self.c.handle_robber((4, 6), 0)
     self.assertEqual(self.c.event_log[-2].event_type, "robber")
     self.assertEqual(self.c.event_log[-1].event_type, "rob")
     self.assertIn("stole a card", self.c.event_log[-1].public_text)
@@ -787,22 +787,22 @@ class TestRobberMovement(BaseInputHandlerTest):
 
   def testRobbingFromTwoPointsMixedPlayerRegex(self):
     self.c.rob_at_two = False
-    self.c.add_piece(catan.Piece(4,2, "city", 1))
+    self.c.add_piece(catan.Piece(6, 2, "city", 1))
     self.c.add_player("green", "Player3")
-    self.c.add_piece(catan.Piece(1,6, "city", 2))
+    self.c.add_piece(catan.Piece(2, 6, "city", 2))
     with self.assertRaisesRegex(InvalidMove, "Robbers refuse to rob such poor people."):
-      self.c.handle_robber((2,5),0)
+      self.c.handle_robber((4, 6), 0)
 
   def testNoRobbingFromTwoPointsWithHiddenRegex(self):
     self.c.rob_at_two = False
     self.c.player_data[1].cards.update({"library": 1})
     with self.assertRaisesRegex(InvalidMove, "Robbers refuse to rob such poor people."):
-      self.c.handle_robber((2,5),0)
+      self.c.handle_robber((4, 6), 0)
 
   def testRobbingFromSelfAtTwoPoints(self):
     self.c.rob_at_two = False
-    self.c.add_piece(catan.Piece(4,2, "city", 1))
-    self.c.handle_robber((4,4),0)
+    self.c.add_piece(catan.Piece(6, 2, "city", 1))
+    self.c.handle_robber((7, 5), 0)
 
 
 class TestPiratePlacement(BaseInputHandlerTest):
@@ -811,10 +811,10 @@ class TestPiratePlacement(BaseInputHandlerTest):
 
   def setUp(self):
     BaseInputHandlerTest.setUp(self)
-    self.c.add_piece(catan.Piece(3, 7, "settlement", 1))
-    self.c.add_piece(catan.Piece(5, 6, "settlement", 1))
-    self.c.add_road(Road([4, 6, 5, 6], "ship", 1))
-    self.c.pirate = catan.TileLocation(2, 3)
+    self.c.add_piece(catan.Piece(5, 7, "settlement", 1))
+    self.c.add_piece(catan.Piece(8, 6, "settlement", 1))
+    self.c.add_road(Road([6, 6, 8, 6], "ship", 1))
+    self.c.pirate = catan.TileLocation(4, 4)
     self.c.ships_moved = 0
     self.c.built_this_turn.clear()
     self.c.player_data[0].cards["rsrc1"] += 5
@@ -823,29 +823,29 @@ class TestPiratePlacement(BaseInputHandlerTest):
   def testBuildNearPirate(self):
     old_count = sum([self.c.player_data[0].cards[x] for x in catan.RESOURCES])
     with self.assertRaisesRegex(InvalidMove, "next to the pirate"):
-      self.c.handle_road([2, 5, 3, 5], 0, "ship", [("rsrc1", 1), ("rsrc2", 1)])
+      self.c.handle_road([3, 5, 5, 5], 0, "ship", [("rsrc1", 1), ("rsrc2", 1)])
     new_count = sum([self.c.player_data[0].cards[x] for x in catan.RESOURCES])
     self.assertEqual(old_count, new_count)
-    self.c.handle_road([3, 5, 4, 6], 1, "ship", [])
+    self.c.handle_road([5, 5, 6, 6], 1, "ship", [])
 
   def testBuildRoadNearPirate(self):
-    self.c.roads[(1, 4, 2, 5)].road_type = "road"
-    self.c.handle_road([1, 4, 2, 3], 0, "road", [])
+    self.c.roads[(2, 4, 3, 5)].road_type = "road"
+    self.c.handle_road([2, 4, 3, 3], 0, "road", [])
 
   def testMoveToPirate(self):
     with self.assertRaisesRegex(InvalidMove, "next to the pirate"):
-      self.c.handle_move_ship([1, 6, 2, 5], [2, 5, 3, 5], 0)
+      self.c.handle_move_ship([2, 6, 3, 5], [3, 5, 5, 5], 0)
 
   def testMoveAwayFromPirate(self):
     with self.assertRaisesRegex(InvalidMove, "next to the pirate"):
-      self.c.handle_move_ship([1, 4, 2, 5], [2, 5, 3, 5], 0)
+      self.c.handle_move_ship([2, 4, 3, 5], [3, 5, 5, 5], 0)
 
   def testMovePirate(self):
     self.c.add_player("green", "Bob")
     self.c.turn_idx = 2
     self.c.turn_phase = "robber"
     old_count = sum([self.c.player_data[0].cards[x] for x in catan.RESOURCES])
-    self.c.handle_pirate(2, [2, 5])
+    self.c.handle_pirate(2, [4, 6])
     new_count = sum([self.c.player_data[0].cards[x] for x in catan.RESOURCES])
     self.assertEqual(new_count, old_count - 1)
     self.assertEqual(self.c.turn_phase, "main")
@@ -854,8 +854,8 @@ class TestPiratePlacement(BaseInputHandlerTest):
     self.c.add_player("green", "Bob")
     self.c.turn_idx = 2
     self.c.turn_phase = "robber"
-    self.c._add_road(Road([2, 7, 3, 7], "ship", 1))
-    self.c.handle_pirate(2, [2, 5])
+    self.c._add_road(Road([3, 7, 5, 7], "ship", 1))
+    self.c.handle_pirate(2, [4, 6])
     self.assertEqual(self.c.event_log[-1].public_text, "{player2} moved the pirate")
     self.assertEqual(self.c.turn_phase, "rob")
     self.assertCountEqual(self.c.rob_players, [0, 1])
@@ -864,8 +864,8 @@ class TestPiratePlacement(BaseInputHandlerTest):
     self.c.add_player("green", "Bob")
     self.c.turn_idx = 2
     self.c.turn_phase = "robber"
-    self.c._add_road(Road([2, 7, 3, 7], "road", 1))
-    self.c.handle_pirate(2, [2, 5])
+    self.c._add_road(Road([3, 7, 5, 7], "road", 1))
+    self.c.handle_pirate(2, [4, 6])
     self.assertEqual(self.c.turn_phase, "main")
     self.assertEqual(self.c.event_log[-1].public_text, "{player2} stole a card from {player0}")
 
@@ -874,14 +874,14 @@ class TestHandleSettleInput(BaseInputHandlerTest):
 
   def setUp(self):
     BaseInputHandlerTest.setUp(self)
-    self.c._add_road(Road([3, 3, 4, 4], "road", 0))
-    self.c._add_road(Road([5, 4, 6, 5], "road", 0))
-    self.c._add_road(Road([5, 4, 6, 3], "road", 0))
+    self.c._add_road(Road([5, 3, 6, 4], "road", 0))
+    self.c._add_road(Road([8, 4, 9, 5], "road", 0))
+    self.c._add_road(Road([8, 4, 9, 3], "road", 0))
 
   def testSettle(self):
     resources = ["rsrc1", "rsrc2", "rsrc3", "rsrc4"]
     counts = [self.c.player_data[0].cards[x] for x in resources]
-    self.c.handle(0, {"type": "settle", "location": [3, 3]})
+    self.c.handle(0, {"type": "settle", "location": [5, 3]})
     for rsrc, orig_count in zip(resources, counts):
       self.assertEqual(self.c.player_data[0].cards[rsrc], orig_count - 1)
     self.assertEqual(self.c.event_log[-1].event_type, "settlement")
@@ -889,88 +889,88 @@ class TestHandleSettleInput(BaseInputHandlerTest):
 
   def testMustSettleNextToRoad(self):
     with self.assertRaisesRegex(InvalidMove, "next to one of your roads"):
-      self.c.handle(0, {"type": "settle", "location": [2, 3]})
+      self.c.handle(0, {"type": "settle", "location": [3, 3]})
 
   def testMustSettleNextToOwnRoad(self):
-    self.c._add_road(Road([4, 6, 5, 6], "road", 1))
+    self.c._add_road(Road([6, 6, 8, 6], "road", 1))
     with self.assertRaisesRegex(InvalidMove, "next to one of your roads"):
-      self.c.handle(0, {"type": "settle", "location": [5, 6]})
+      self.c.handle(0, {"type": "settle", "location": [8, 6]})
 
   def testCannotSettleTooClose(self):
-    self.c._add_road(Road([4, 6, 5, 6], "road", 0))
+    self.c._add_road(Road([6, 6, 8, 6], "road", 0))
     with self.assertRaisesRegex(InvalidMove, "cannot.*next to existing"):
-      self.c.handle(0, {"type": "settle", "location": [6, 3]})
+      self.c.handle(0, {"type": "settle", "location": [9, 3]})
     # Validate both distance from own settlements and from opponents'.
     with self.assertRaisesRegex(InvalidMove, "cannot.*next to existing"):
-      self.c.handle(0, {"type": "settle", "location": [4, 6]})
+      self.c.handle(0, {"type": "settle", "location": [6, 6]})
 
   def testCannotSettleSettledLocation(self):
-    self.c._add_road(Road([3, 5, 4, 4], "road", 0))
+    self.c._add_road(Road([5, 5, 6, 4], "road", 0))
     with self.assertRaisesRegex(InvalidMove, "cannot.*settle on top of"):
-      self.c.handle(0, {"type": "settle", "location": [5, 4]})
+      self.c.handle(0, {"type": "settle", "location": [8, 4]})
     with self.assertRaisesRegex(InvalidMove, "cannot.*settle on top of"):
-      self.c.handle(0, {"type": "settle", "location": [3, 5]})
+      self.c.handle(0, {"type": "settle", "location": [5, 5]})
     # Also validate you cannot build on top of a city.
-    self.c.handle_city([3, 5], 1)
+    self.c.handle_city([5, 5], 1)
     with self.assertRaisesRegex(InvalidMove, "cannot.*settle on top of"):
-      self.c.handle(0, {"type": "settle", "location": [3, 5]})
+      self.c.handle(0, {"type": "settle", "location": [5, 5]})
 
   def testMustSettleValidLocation(self):
     with self.assertRaisesRegex(InvalidMove, "should be a tuple of size 2"):
       self.c.handle(0, {"type": "settle", "location": [2]})
 
   def testCannotBuildTooManySettlements(self):
-    self.c.add_piece(catan.Piece(1, 4, "settlement", 0))
-    self.c.add_piece(catan.Piece(1, 6, "settlement", 0))
-    self.c.add_piece(catan.Piece(5, 6, "settlement", 0))
-    self.c.add_piece(catan.Piece(5, 2, "settlement", 0))
+    self.c.add_piece(catan.Piece(2, 4, "settlement", 0))
+    self.c.add_piece(catan.Piece(2, 6, "settlement", 0))
+    self.c.add_piece(catan.Piece(8, 6, "settlement", 0))
+    self.c.add_piece(catan.Piece(8, 2, "settlement", 0))
     with self.assertRaisesRegex(InvalidMove, "settlements remaining"):
-      self.c.handle(0, {"type": "settle", "location": [3, 3]})
+      self.c.handle(0, {"type": "settle", "location": [5, 3]})
 
-    self.c.pieces[(1, 4)].piece_type = "city"
-    self.c.pieces[(1, 6)].piece_type = "city"
-    self.c.pieces[(5, 6)].piece_type = "city"
-    self.c.pieces[(5, 2)].piece_type = "city"
+    self.c.pieces[(2, 4)].piece_type = "city"
+    self.c.pieces[(2, 6)].piece_type = "city"
+    self.c.pieces[(8, 6)].piece_type = "city"
+    self.c.pieces[(8, 2)].piece_type = "city"
     with self.assertRaisesRegex(InvalidMove, "cities remaining"):
-      self.c.handle(0, {"type": "city", "location": [5, 4]})
+      self.c.handle(0, {"type": "city", "location": [8, 4]})
 
 
 def AddThirteenRoads(c):
-  c._add_road(Road([5, 4, 6, 3], "road", 0))
-  c._add_road(Road([5, 2, 6, 3], "road", 0))
-  c._add_road(Road([4, 2, 5, 2], "road", 0))
-  c._add_road(Road([3, 3, 4, 2], "road", 0))
-  c._add_road(Road([2, 3, 3, 3], "road", 0))
-  c._add_road(Road([1, 4, 2, 3], "road", 0))
-  c._add_road(Road([1, 4, 2, 5], "road", 0))
-  c._add_road(Road([1, 6, 2, 5], "road", 0))
-  c._add_road(Road([1, 6, 2, 7], "road", 0))
-  c._add_road(Road([2, 7, 3, 7], "road", 0))
-  c._add_road(Road([3, 7, 4, 6], "road", 0))
-  c._add_road(Road([4, 6, 5, 6], "road", 0))
-  c._add_road(Road([5, 6, 6, 5], "road", 0))
+  c._add_road(Road([8, 4, 9, 3], "road", 0))
+  c._add_road(Road([8, 2, 9, 3], "road", 0))
+  c._add_road(Road([6, 2, 8, 2], "road", 0))
+  c._add_road(Road([5, 3, 6, 2], "road", 0))
+  c._add_road(Road([3, 3, 5, 3], "road", 0))
+  c._add_road(Road([2, 4, 3, 3], "road", 0))
+  c._add_road(Road([2, 4, 3, 5], "road", 0))
+  c._add_road(Road([2, 6, 3, 5], "road", 0))
+  c._add_road(Road([2, 6, 3, 7], "road", 0))
+  c._add_road(Road([3, 7, 5, 7], "road", 0))
+  c._add_road(Road([5, 7, 6, 6], "road", 0))
+  c._add_road(Road([6, 6, 8, 6], "road", 0))
+  c._add_road(Road([8, 6, 9, 5], "road", 0))
 
 
 class TestHandleRoadInput(BaseInputHandlerTest):
 
   def testRoadsMustConnect(self):
     with self.assertRaisesRegex(InvalidMove, "must be connected"):
-      self.c.handle(0, {"type": "road", "location": [2, 3, 3, 3]})
+      self.c.handle(0, {"type": "road", "location": [3, 3, 5, 3]})
 
   def testRoadsMustConnectToSelf(self):
     # Validate that roads must connect to your own roads, not opponents'.
     with self.assertRaisesRegex(InvalidMove, "must be connected"):
-      self.c.handle(0, {"type": "road", "location": [4, 6, 5, 6]})
+      self.c.handle(0, {"type": "road", "location": [6, 6, 8, 6]})
 
   def testBuildRoad(self):
     count2 = self.c.player_data[0].cards["rsrc2"]
     count4 = self.c.player_data[0].cards["rsrc4"]
-    self.c.handle(0, {"type": "road", "location": [3, 3, 4, 4]})
+    self.c.handle(0, {"type": "road", "location": [5, 3, 6, 4]})
     # Validate that resources were taken away.
     self.assertEqual(self.c.player_data[0].cards["rsrc2"], count2 - 1)
     self.assertEqual(self.c.player_data[0].cards["rsrc4"], count4 - 1)
     # Test both connection to a road and connection to a settlement.
-    self.c.handle(0, {"type": "road", "location": [5, 4, 6, 3]})
+    self.c.handle(0, {"type": "road", "location": [8, 4, 9, 3]})
     self.assertEqual(self.c.player_data[0].cards["rsrc2"], count2 - 2)
     self.assertEqual(self.c.player_data[0].cards["rsrc4"], count4 - 2)
     self.assertEqual(self.c.event_log[-1].event_type, "road")
@@ -978,20 +978,20 @@ class TestHandleRoadInput(BaseInputHandlerTest):
 
   def testCannotBuildTooManyRoads(self):
     AddThirteenRoads(self.c)
-    self.c.handle(0, {"type": "road", "location": [5, 4, 6, 5]})
+    self.c.handle(0, {"type": "road", "location": [8, 4, 9, 5]})
     with self.assertRaisesRegex(InvalidMove, "no roads remaining"):
-      self.c.handle(0, {"type": "road", "location": [3, 3, 4, 4]})
+      self.c.handle(0, {"type": "road", "location": [5, 3, 6, 4]})
 
   def testCanPlayRoadBuildingWithOneRoadLeft(self):
     AddThirteenRoads(self.c)
     self.c.player_data[0].cards["roadbuilding"] += 1
     self.c.handle(0, {"type": "play_dev", "card_type": "roadbuilding"})
-    self.c.handle(0, {"type": "road", "location": [5, 4, 6, 5]})
+    self.c.handle(0, {"type": "road", "location": [8, 4, 9, 5]})
     self.assertEqual(self.c.turn_phase, "main")
 
   def testCannotPlayRoadBuildingAtMaxRoads(self):
     AddThirteenRoads(self.c)
-    self.c.handle(0, {"type": "road", "location": [5, 4, 6, 5]})
+    self.c.handle(0, {"type": "road", "location": [8, 4, 9, 5]})
     self.c.player_data[0].cards["roadbuilding"] += 1
     with self.assertRaisesRegex(InvalidMove, "no roads remaining"):
       self.c.handle(0, {"type": "play_dev", "card_type": "roadbuilding"})
@@ -999,27 +999,27 @@ class TestHandleRoadInput(BaseInputHandlerTest):
   def testCannotBuildWithoutResources(self):
     self.c.player_data[0].cards["rsrc2"] = 0
     with self.assertRaisesRegex(InvalidMove, "need an extra 1 {rsrc2}"):
-      self.c.handle(0, {"type": "road", "location": [3, 3, 4, 4]})
+      self.c.handle(0, {"type": "road", "location": [5, 3, 6, 4]})
 
   def testRoadLocationMustBeAnEdge(self):
     with self.assertRaisesRegex(InvalidMove, "not a valid edge"):
-      self.c.handle(0, {"type": "road", "location": [2, 3, 4, 4]})
+      self.c.handle(0, {"type": "road", "location": [3, 3, 6, 4]})
 
   def testRoadLocationMustBeValid(self):
     with self.assertRaisesRegex(InvalidMove, "should be a tuple"):
-      self.c.handle(0, {"type": "road", "location": [1, 3, 4]})
+      self.c.handle(0, {"type": "road", "location": [2, 3, 4]})
     with self.assertRaisesRegex(AssertionError, "must be left"):
-      self.c.handle(0, {"type": "road", "location": [4, 4, 3, 3]})
+      self.c.handle(0, {"type": "road", "location": [6, 4, 5, 3]})
 
   def testCannotBuildOnWater(self):
-    self.c._add_road(Road([5, 4, 6, 3], "road", 0))
+    self.c._add_road(Road([8, 4, 9, 3], "road", 0))
     with self.assertRaisesRegex(InvalidMove, "must be land"):
-      self.c.handle(0, {"type": "road", "location": [6, 3, 7, 3]})
+      self.c.handle(0, {"type": "road", "location": [9, 3, 11, 3]})
 
   def testCannotBuildAcrossOpponentSettlement(self):
-    self.c._add_road(Road([3, 5, 4, 4], "road", 0))
+    self.c._add_road(Road([5, 5, 6, 4], "road", 0))
     with self.assertRaisesRegex(InvalidMove, "must be connected"):
-      self.c.handle(0, {"type": "road", "location": [2, 5, 3, 5]})
+      self.c.handle(0, {"type": "road", "location": [3, 5, 5, 5]})
 
 
 class TestHandleShipInput(BaseInputHandlerTest):
@@ -1028,23 +1028,23 @@ class TestHandleShipInput(BaseInputHandlerTest):
 
   def setUp(self):
     BaseInputHandlerTest.setUp(self)
-    self.c.add_tile(catan.Tile(-2, 5, "space", False, None))
-    self.c.add_tile(catan.Tile(-2, 3, "rsrc5", True, 4))
+    self.c.add_tile(catan.Tile(-2, 6, "space", False, None))
+    self.c.add_tile(catan.Tile(-2, 4, "rsrc5", True, 4))
 
   def testShipsMustConnectToNetwork(self):
     with self.assertRaisesRegex(InvalidMove, "Ships.*must be connected.*ship network"):
-      self.c.handle(0, {"type": "ship", "location": [4, 4, 5, 4]})
+      self.c.handle(0, {"type": "ship", "location": [6, 4, 8, 4]})
 
   def testShipsCannotConnectToRoads(self):
-    self.c._add_road(Road([1, 4, 2, 5], "road", 0))
+    self.c._add_road(Road([2, 4, 3, 5], "road", 0))
     with self.assertRaisesRegex(InvalidMove, "must be connected.*ship network"):
-      self.c.handle(0, {"type": "ship", "location": [1, 4, 2, 3]})
+      self.c.handle(0, {"type": "ship", "location": [2, 4, 3, 3]})
     # Verify that you can build a road in that same spot that you can't build a ship.
-    self.c.handle(0, {"type": "road", "location": [1, 4, 2, 3]})
+    self.c.handle(0, {"type": "road", "location": [2, 4, 3, 3]})
 
   def testBuildShip(self):
     old_counts = {x: self.c.player_data[0].cards[x] for x in catan.RESOURCES}
-    self.c.handle(0, {"type": "ship", "location": [2, 5, 3, 5]})
+    self.c.handle(0, {"type": "ship", "location": [3, 5, 5, 5]})
     new_counts = {x: self.c.player_data[0].cards[x] for x in catan.RESOURCES}
     self.assertEqual(new_counts.pop("rsrc1"), old_counts.pop("rsrc1") - 1)
     self.assertEqual(new_counts.pop("rsrc2"), old_counts.pop("rsrc2") - 1)
@@ -1054,69 +1054,69 @@ class TestHandleShipInput(BaseInputHandlerTest):
   def testNotEnoughResources(self):
     self.c.player_data[0].cards.update({"rsrc1": 0, "rsrc2": 1, "rsrc4": 1})
     with self.assertRaisesRegex(InvalidMove, "1 {rsrc1}"):
-      self.c.handle(0, {"type": "ship", "location": [2, 5, 3, 5]})
+      self.c.handle(0, {"type": "ship", "location": [3, 5, 5, 5]})
 
   def testCannotBuildOnLand(self):
-    self.c._add_road(Road([1, 6, 2, 5], "ship", 0))
-    self.c._add_road(Road([0, 6, 1, 6], "ship", 0))
+    self.c._add_road(Road([2, 6, 3, 5], "ship", 0))
+    self.c._add_road(Road([0, 6, 2, 6], "ship", 0))
     self.c._add_road(Road([-1, 5, 0, 6], "ship", 0))
     with self.assertRaisesRegex(InvalidMove, "must be water"):
       self.c.handle(0, {"type": "ship", "location": [-1, 5, 0, 4]})
 
   def testCannotBuildOnRoad(self):
-    self.c._add_road(Road([1, 6, 2, 5], "road", 0))
+    self.c._add_road(Road([2, 6, 3, 5], "road", 0))
     with self.assertRaisesRegex(InvalidMove, "already a road"):
-      self.c.handle(0, {"type": "ship", "location": [1, 6, 2, 5]})
+      self.c.handle(0, {"type": "ship", "location": [2, 6, 3, 5]})
 
   def testCanStillBuildWithTooManyRoads(self):
     roads = [
-        [-3, 4, -2, 3], [-2, 3, -1, 3], [-1, 3, 0, 2], [0, 2, 1, 2], [1, 2, 2, 3],
-        [-3, 4, -2, 5], [-2, 5, -1, 5], [-1, 5, 0, 4], [-1, 3, 0, 4], [0, 4, 1, 4], [1, 4, 2, 3],
-        [-1, 5, 0, 6], [0, 6, 1, 6], [1, 4, 2, 5], [1, 6, 2, 5],
+        [-4, 4, -3, 3], [-3, 3, -1, 3], [-1, 3, 0, 2], [0, 2, 2, 2], [2, 2, 3, 3],
+        [-4, 4, -3, 5], [-3, 5, -1, 5], [-1, 5, 0, 4], [-1, 3, 0, 4], [0, 4, 2, 4], [2, 4, 3, 3],
+        [-1, 5, 0, 6], [0, 6, 2, 6], [2, 4, 3, 5], [2, 6, 3, 5],
     ]
     for road in roads:
       self.c._add_road(Road(road, "road", 0))
     self.assertEqual(
         len([x for x in self.c.roads.values() if x.player == 0 and x.road_type == "road"]), 15)
-    self.c.handle(0, {"type": "ship", "location": [2, 5, 3, 5]})
+    self.c.handle(0, {"type": "ship", "location": [3, 5, 5, 5]})
 
   def testRoadBuildingCanBuildShips(self):
     self.c.player_data[0].cards.clear()
     self.c.turn_phase = "dev_road"
-    self.c.handle(0, {"type": "ship", "location": [2, 5, 3, 5]})
+    self.c.handle(0, {"type": "ship", "location": [3, 5, 5, 5]})
     self.assertEqual(self.c.turn_phase, "dev_road")
     self.assertEqual(self.c.dev_roads_placed, 1)
-    self.c.handle(0, {"type": "ship", "location": [3, 5, 4, 4]})
+    self.c.handle(0, {"type": "ship", "location": [5, 5, 6, 4]})
     self.assertEqual(self.c.turn_phase, "main")
 
   def testRoadBuildingCanBuildMixed(self):
     self.c.player_data[0].cards.clear()
     self.c.turn_phase = "dev_road"
-    self.c.handle(0, {"type": "road", "location": [1, 4, 2, 5]})
+    self.c.handle(0, {"type": "road", "location": [2, 4, 3, 5]})
     self.assertEqual(self.c.turn_phase, "dev_road")
     self.assertEqual(self.c.dev_roads_placed, 1)
-    self.c.handle(0, {"type": "ship", "location": [2, 5, 3, 5]})
+    self.c.handle(0, {"type": "ship", "location": [3, 5, 5, 5]})
     self.assertEqual(self.c.turn_phase, "main")
 
   def testCanBuildShipInPlacePhase(self):
     self.c.game_phase = "place2"
     self.c.turn_phase = "road"
-    self.c.add_piece(catan.Piece(3, 7, "settlement", 0))
-    self.c.handle(0, {"type": "ship", "location": [3, 7, 4, 6]})
+    self.c.add_piece(catan.Piece(5, 7, "settlement", 0))
+    self.c.handle(0, {"type": "ship", "location": [5, 7, 6, 6]})
     self.assertEqual(self.c.game_phase, "main")
 
   def testCannotBuildTooManyShips(self):
     roads = [
-        [1, 4, 2, 5], [1, 6, 2, 5], [1, 6, 2, 7], [2, 7, 3, 7], [3, 7, 4, 6], [3, 5, 4, 6],
-        [3, 5, 4, 4], [4, 4, 5, 4], [5, 4, 6, 5], [4, 6, 5, 6], [5, 6, 6, 5],
-        [3, 3, 4, 4], [3, 3, 4, 2], [5, 4, 6, 3], [5, 2, 6, 3],
+        [2, 4, 3, 5], [2, 6, 3, 5], [2, 6, 3, 7], [3, 7, 5, 7], [5, 7, 6, 6], [5, 5, 6, 6],
+        [5, 5, 6, 4], [6, 4, 8, 4], [8, 4, 9, 5], [6, 6, 8, 6], [8, 6, 9, 5],
+        [5, 3, 6, 4], [5, 3, 6, 2], [8, 4, 9, 3], [8, 2, 9, 3],
     ]
     for road in roads:
       self.c._add_road(Road(road, "ship", 0))
     self.assertEqual(
         len([x for x in self.c.roads.values() if x.player == 0 and x.road_type == "ship"]), 15)
     with self.assertRaisesRegex(InvalidMove, "no ships remaining"):
-      self.c.handle(0, {"type": "ship", "location": [4, 2, 5, 2]})
+      self.c.handle(0, {"type": "ship", "location": [6, 2, 8, 2]})
 
 
 class TestShipOpenClosedCalculation(BaseInputHandlerTest):
@@ -1124,31 +1124,31 @@ class TestShipOpenClosedCalculation(BaseInputHandlerTest):
   TEST_FILE = "sea_test.json"
 
   def testBasicMovable(self):
-    road1_loc = (2, 5, 3, 5)
+    road1_loc = (3, 5, 5, 5)
     self.c.add_road(Road(road1_loc, "ship", 0))
     self.assertTrue(self.c.roads[road1_loc].movable)
     self.assertFalse(self.c.roads[road1_loc].closed)
-    self.assertEqual(self.c.roads[road1_loc].source.as_tuple(), (2, 5))
+    self.assertEqual(self.c.roads[road1_loc].source.as_tuple(), (3, 5))
 
-    road2_loc = (3, 5, 4, 6)
+    road2_loc = (5, 5, 6, 6)
     self.c.add_road(Road(road2_loc, "ship", 0))
     self.assertFalse(self.c.roads[road1_loc].movable)  # Original no longer movable
     self.assertFalse(self.c.roads[road1_loc].closed)  # Should still be open
-    self.assertEqual(self.c.roads[road1_loc].source.as_tuple(), (2, 5))
+    self.assertEqual(self.c.roads[road1_loc].source.as_tuple(), (3, 5))
     self.assertTrue(self.c.roads[road2_loc].movable)
     self.assertFalse(self.c.roads[road2_loc].closed)
-    self.assertEqual(self.c.roads[road2_loc].source.as_tuple(), (2, 5))
+    self.assertEqual(self.c.roads[road2_loc].source.as_tuple(), (3, 5))
 
   def testBasicOpenClosed(self):
-    road1_loc = (1, 6, 2, 5)
-    road2_loc = (1, 6, 2, 7)
+    road1_loc = (2, 6, 3, 5)
+    road2_loc = (2, 6, 3, 7)
     self.c.add_road(Road(road1_loc, "ship", 0))
     self.c.add_road(Road(road2_loc, "ship", 0))
     self.assertFalse(self.c.roads[road1_loc].movable)
     self.assertTrue(self.c.roads[road2_loc].movable)
     self.assertFalse(self.c.roads[road1_loc].closed)
     self.assertFalse(self.c.roads[road2_loc].closed)
-    self.c.add_piece(catan.Piece(2, 7, "settlement", 0))
+    self.c.add_piece(catan.Piece(3, 7, "settlement", 0))
     self.assertTrue(self.c.roads[road1_loc].closed)
     self.assertTrue(self.c.roads[road2_loc].closed)
     # We don't assert on movable here - once the shipping path is closed, movable is irrelevant.
@@ -1156,10 +1156,10 @@ class TestShipOpenClosedCalculation(BaseInputHandlerTest):
   def testCanClosePathFromOtherSide(self):
     # Same test as basic open closed, but put the settlement in first. The ship's source
     # will be the far settlement, but this shouldn't stop the DFS from doing its thing.
-    road1_loc = (1, 6, 2, 5)
-    road2_loc = (1, 6, 2, 7)
+    road1_loc = (2, 6, 3, 5)
+    road2_loc = (2, 6, 3, 7)
     self.c.add_road(Road(road1_loc, "ship", 0))
-    self.c.add_piece(catan.Piece(2, 7, "settlement", 0))
+    self.c.add_piece(catan.Piece(3, 7, "settlement", 0))
     self.assertTrue(self.c.roads[road1_loc].movable)
     self.assertFalse(self.c.roads[road1_loc].closed)
     self.c.add_road(Road(road2_loc, "ship", 0))
@@ -1168,9 +1168,9 @@ class TestShipOpenClosedCalculation(BaseInputHandlerTest):
 
   def testDontConsiderOtherPlayersShips(self):
     # Test that movable does not consider other players' ships or settlements.
-    road1_loc = (1, 6, 2, 5)
-    road2_loc = (1, 6, 2, 7)
-    self.c.add_piece(catan.Piece(2, 7, "settlement", 1))
+    road1_loc = (2, 6, 3, 5)
+    road2_loc = (2, 6, 3, 7)
+    self.c.add_piece(catan.Piece(3, 7, "settlement", 1))
     self.c.add_road(Road(road1_loc, "ship", 0))
     self.assertTrue(self.c.roads[road1_loc].movable)
     self.assertFalse(self.c.roads[road1_loc].closed)
@@ -1181,11 +1181,11 @@ class TestShipOpenClosedCalculation(BaseInputHandlerTest):
     self.assertFalse(self.c.roads[road2_loc].closed)
 
   def testBranchingOpenClosedPaths(self):
-    self.c.add_piece(catan.Piece(5, 6, "settlement", 0))
-    road1_loc = (2, 5, 3, 5)
-    road3_loc = (4, 6, 5, 6)
-    road2_loc = (3, 5, 4, 6)
-    road4_loc = (3, 7, 4, 6)
+    self.c.add_piece(catan.Piece(8, 6, "settlement", 0))
+    road1_loc = (3, 5, 5, 5)
+    road3_loc = (6, 6, 8, 6)
+    road2_loc = (5, 5, 6, 6)
+    road4_loc = (5, 7, 6, 6)
 
     # The setup: two settlements build towards eachother (roads 1 and 3), with a branch going
     # towards a third island.
@@ -1206,27 +1206,27 @@ class TestShipOpenClosedCalculation(BaseInputHandlerTest):
     self.assertTrue(self.c.roads[road3_loc].closed)
     self.assertFalse(self.c.roads[road4_loc].closed)
     self.assertTrue(self.c.roads[road4_loc].movable)
-    self.assertEqual(self.c.roads[road4_loc].source.as_tuple(), (5, 6))
+    self.assertEqual(self.c.roads[road4_loc].source.as_tuple(), (8, 6))
 
     # The settlement: after settling the third island, all roads should be closed.
-    self.c.add_piece(catan.Piece(3, 7, "settlement", 0))
+    self.c.add_piece(catan.Piece(5, 7, "settlement", 0))
     self.assertTrue(self.c.roads[road4_loc].closed)
 
   def testCloseMiddleOfPath(self):
     # We build a shipping route past an island, then settle the island, and validate that the
     # ships on the other side of the route are still open and get updated correctly.
-    locs = [(1, 4, 2, 5), (1, 4, 2, 3), (2, 3, 3, 3), (3, 3, 4, 4)]
+    locs = [(2, 4, 3, 5), (2, 4, 3, 3), (3, 3, 5, 3), (5, 3, 6, 4)]
     for loc in locs[:-1]:
       self.c.add_road(Road(loc, "ship", 0))
 
     for loc in locs[:-1]:
       with self.subTest(loc=loc):
-        self.assertEqual(self.c.roads[loc].source.as_tuple(), (2, 5))
+        self.assertEqual(self.c.roads[loc].source.as_tuple(), (3, 5))
 
-    self.c.add_piece(catan.Piece(2, 3, "settlement", 0))
+    self.c.add_piece(catan.Piece(3, 3, "settlement", 0))
     for loc in locs[:-1]:
       with self.subTest(loc=loc):
-        self.assertEqual(self.c.roads[loc].source.as_tuple(), (2, 5))
+        self.assertEqual(self.c.roads[loc].source.as_tuple(), (3, 5))
     self.assertTrue(self.c.roads[locs[-2]].movable)
 
     self.c.add_road(Road(locs[-1], "ship", 0))
@@ -1237,7 +1237,7 @@ class TestShipOpenClosedCalculation(BaseInputHandlerTest):
 
   def testReturnToOrigin(self):
     road_locs = [
-        (2, 5, 3, 5), (3, 5, 4, 6), (3, 7, 4, 6), (2, 7, 3, 7), (1, 6, 2, 7), (1, 6, 2, 5),
+        (3, 5, 5, 5), (5, 5, 6, 6), (5, 7, 6, 6), (3, 7, 5, 7), (2, 6, 3, 7), (2, 6, 3, 5),
     ]
     for loc in road_locs:
       self.c.add_road(Road(loc, "ship", 0))
@@ -1252,17 +1252,17 @@ class TestShipOpenClosedCalculation(BaseInputHandlerTest):
       with self.subTest(loc=loc):
         self.assertFalse(self.c.roads[loc].movable)
 
-    # Just for fun, add a settlement at 3, 7 and make sure all roads are now marked as closed.
-    self.c.add_piece(catan.Piece(3, 7, "settlement", 0))
+    # Just for fun, add a settlement at 5, 7 and make sure all roads are now marked as closed.
+    self.c.add_piece(catan.Piece(5, 7, "settlement", 0))
     for loc in road_locs:
       with self.subTest(loc=loc):
         self.assertTrue(self.c.roads[loc].closed)
 
   def testMakeALoop(self):
-    first_loc = (2, 5, 3, 5)
+    first_loc = (3, 5, 5, 5)
     self.c.add_road(Road(first_loc, "ship", 0))
     road_locs = [
-        (3, 5, 4, 4), (4, 4, 5, 4), (5, 4, 6, 5), (3, 5, 4, 6), (4, 6, 5, 6), (5, 6, 6, 5),
+        (5, 5, 6, 4), (6, 4, 8, 4), (8, 4, 9, 5), (5, 5, 6, 6), (6, 6, 8, 6), (8, 6, 9, 5),
     ]
     for loc in road_locs:
       self.c.add_road(Road(loc, "ship", 0))
@@ -1282,9 +1282,9 @@ class TestShipOpenClosedCalculation(BaseInputHandlerTest):
     # be movable, as well as all the ships in the loop, including the ship that connects the
     # far loop to the near loop.
     road_locs = [
-        (2, 5, 3, 5),
-        (3, 5, 4, 4), (4, 4, 5, 4), (5, 4, 6, 5), (3, 5, 4, 6), (4, 6, 5, 6), (5, 6, 6, 5),
-        (3, 7, 4, 6), (2, 7, 3, 7), (1, 6, 2, 7), (1, 6, 2, 5),
+        (3, 5, 5, 5),
+        (5, 5, 6, 4), (6, 4, 8, 4), (8, 4, 9, 5), (5, 5, 6, 6), (6, 6, 8, 6), (8, 6, 9, 5),
+        (5, 7, 6, 6), (3, 7, 5, 7), (2, 6, 3, 7), (2, 6, 3, 5),
     ]
 
     for loc in road_locs[:-1]:
@@ -1318,7 +1318,7 @@ class TestShipOpenClosedCalculation(BaseInputHandlerTest):
     self.assertTrue(self.c.roads[road_locs[-1]].movable)
 
     # As a bonus, use the last four ships to make an extra loop.
-    bonus_locs = [(3, 3, 4, 4), (2, 3, 3, 3), (1, 4, 2, 3), (1, 4, 2, 5)]
+    bonus_locs = [(5, 3, 6, 4), (3, 3, 5, 3), (2, 4, 3, 3), (2, 4, 3, 5)]
     for loc in bonus_locs:
       self.c.add_road(Road(loc, "ship", 0))
 
@@ -1333,33 +1333,33 @@ class TestShipOpenClosedCalculation(BaseInputHandlerTest):
 
     # Lastly, add a settlement on the far island. Since every ship in this triple loop is
     # on some path from one settlement to the other, all ships should be marked as closed.
-    self.c.add_piece(catan.Piece(6, 5, "settlement", 0))
+    self.c.add_piece(catan.Piece(9, 5, "settlement", 0))
     for loc in road_locs + bonus_locs:
       with self.subTest(loc=loc):
         self.assertTrue(self.c.roads[loc].closed)
 
   def testRecomputeMovableAfterShipMoveToDifferentNetwork(self):
-    self.c.add_piece(catan.Piece(6, 5, "settlement", 0))
-    self.c.add_piece(catan.Piece(2, 7, "settlement", 0))
-    roads = [(1, 6, 2, 5), (5, 4, 6, 5), (4, 4, 5, 4)]
+    self.c.add_piece(catan.Piece(9, 5, "settlement", 0))
+    self.c.add_piece(catan.Piece(3, 7, "settlement", 0))
+    roads = [(2, 6, 3, 5), (8, 4, 9, 5), (6, 4, 8, 4)]
     for road in roads:
       self.c.add_road(Road(road, "ship", 0))
-    # Start with one ship attached to 2, 5, and two ships connected to 6, 5.
+    # Start with one ship attached to 3, 5, and two ships connected to 9, 5.
     for road in roads:
       self.assertFalse(self.c.roads[road].closed)
     self.assertTrue(self.c.roads[roads[0]].movable)
     self.assertTrue(self.c.roads[roads[2]].movable)
     self.assertFalse(self.c.roads[roads[1]].movable)
-    self.assertEqual(self.c.roads[roads[0]].source.as_tuple(), (2, 5))
-    self.assertEqual(self.c.roads[roads[1]].source.as_tuple(), (6, 5))
-    self.assertEqual(self.c.roads[roads[2]].source.as_tuple(), (6, 5))
+    self.assertEqual(self.c.roads[roads[0]].source.as_tuple(), (3, 5))
+    self.assertEqual(self.c.roads[roads[1]].source.as_tuple(), (9, 5))
+    self.assertEqual(self.c.roads[roads[2]].source.as_tuple(), (9, 5))
 
-    # Move the outermost ship to attach to 2, 5. Its source should change. Also,
-    # the ship that remains attached to 6, 5 should become movable again.
-    new_loc = (0, 6, 1, 6)
+    # Move the outermost ship to attach to 3, 5. Its source should change. Also,
+    # the ship that remains attached to 9, 5 should become movable again.
+    new_loc = (0, 6, 2, 6)
     self.c.built_this_turn.clear()
     self.c.handle(0, {"type": "move_ship", "from": roads[2], "to": new_loc})
-    self.assertEqual(self.c.roads[new_loc].source.as_tuple(), (2, 5))
+    self.assertEqual(self.c.roads[new_loc].source.as_tuple(), (3, 5))
     self.assertTrue(self.c.roads[new_loc].movable)
     self.assertFalse(self.c.roads[new_loc].closed)
     self.assertFalse(self.c.roads[roads[0]].movable)
@@ -1367,12 +1367,12 @@ class TestShipOpenClosedCalculation(BaseInputHandlerTest):
     self.assertTrue(self.c.roads[roads[1]].movable)
     self.assertFalse(self.c.roads[roads[1]].closed)
 
-    # Move the other ship attached to 6, 5 to close the connection between 2, 5 and 2, 7.
+    # Move the other ship attached to 9, 5 to close the connection between 3, 5 and 3, 7.
     # These two ships should become closed, the previously moved ship should remain movable.
-    last_loc = (1, 6, 2, 7)
+    last_loc = (2, 6, 3, 7)
     self.c.ships_moved = 0
     self.c.handle(0, {"type": "move_ship", "from": roads[1], "to": last_loc})
-    self.assertIn(self.c.roads[last_loc].source.as_tuple(), [(2, 5), (2, 7)])
+    self.assertIn(self.c.roads[last_loc].source.as_tuple(), [(3, 5), (3, 7)])
     self.assertTrue(self.c.roads[last_loc].closed)
     self.assertTrue(self.c.roads[roads[0]].closed)
     self.assertFalse(self.c.roads[new_loc].closed)
@@ -1385,73 +1385,73 @@ class TestShipMovement(BaseInputHandlerTest):
 
   def setUp(self):
     super(TestShipMovement, self).setUp()
-    self.c.add_road(Road([2, 5, 3, 5], "ship", 0))
+    self.c.add_road(Road([3, 5, 5, 5], "ship", 0))
 
   def testMoveShip(self):
-    self.c.handle(0, {"type": "move_ship", "from": [2, 5, 3, 5], "to": [1, 4, 2, 5]})
+    self.c.handle(0, {"type": "move_ship", "from": [3, 5, 5, 5], "to": [2, 4, 3, 5]})
     self.assertEqual(self.c.event_log[-1].event_type, "move_ship")
 
   def testInvalidInput(self):
     with self.assertRaisesRegex(InvalidMove, "should be a tuple of size 4"):
-      self.c.handle(0, {"type": "move_ship", "from": [1, 4, 2, 5], "to": [3, 5, 4]})
+      self.c.handle(0, {"type": "move_ship", "from": [2, 4, 3, 5], "to": [5, 5, 4]})
     with self.assertRaisesRegex(InvalidMove, "should be a tuple of size 4"):
-      self.c.handle(0, {"type": "move_ship", "from": [1, 4, 2, 5, 5], "to": [3, 5, 4, 4]})
+      self.c.handle(0, {"type": "move_ship", "from": [2, 4, 3, 5, 5], "to": [5, 5, 6, 4]})
 
   def testMustMoveExistingShip(self):
     with self.assertRaisesRegex(InvalidMove, "do not have a ship"):
-      self.c.handle(0, {"type": "move_ship", "from": [1, 4, 2, 5], "to": [3, 5, 4, 4]})
+      self.c.handle(0, {"type": "move_ship", "from": [2, 4, 3, 5], "to": [5, 5, 6, 4]})
 
   def testNewLocationMustConnectToNetwork(self):
-    self.c.add_road(Road([3, 5, 4, 4], "ship", 0))
+    self.c.add_road(Road([5, 5, 6, 4], "ship", 0))
     # Extra check: the new location is a location that would be connected to the network
     # if the ship were not moving.
     with self.assertRaisesRegex(InvalidMove, "must be connected"):
-      self.c.handle(0, {"type": "move_ship", "from": [3, 5, 4, 4], "to": [4, 4, 5, 4]})
+      self.c.handle(0, {"type": "move_ship", "from": [5, 5, 6, 4], "to": [6, 4, 8, 4]})
     # Check that the old ship is still there.
-    self.assertIn((3, 5, 4, 4), self.c.roads)
+    self.assertIn((5, 5, 6, 4), self.c.roads)
 
   def testCannotMoveOnTopOfExistingShip(self):
-    self.c.add_road(Road([1, 4, 2, 5], "ship", 0))
+    self.c.add_road(Road([2, 4, 3, 5], "ship", 0))
     with self.assertRaisesRegex(InvalidMove, "already a ship"):
-      self.c.handle(0, {"type": "move_ship", "from": [2, 5, 3, 5], "to": [1, 4, 2, 5]})
+      self.c.handle(0, {"type": "move_ship", "from": [3, 5, 5, 5], "to": [2, 4, 3, 5]})
 
   def testCannotMoveRoads(self):
-    self.c.add_road(Road([1, 4, 2, 5], "road", 0))
+    self.c.add_road(Road([2, 4, 3, 5], "road", 0))
     with self.assertRaisesRegex(InvalidMove, "only move ships"):
-      self.c.handle(0, {"type": "move_ship", "from": [1, 4, 2, 5], "to": [1, 6, 2, 5]})
+      self.c.handle(0, {"type": "move_ship", "from": [2, 4, 3, 5], "to": [2, 6, 3, 5]})
 
   def testCannotMoveOtherPlayersShips(self):
-    self.c.add_piece(catan.Piece(6, 5, "settlement", 1))
-    self.c.add_road(Road([5, 4, 6, 5], "ship", 1))
+    self.c.add_piece(catan.Piece(9, 5, "settlement", 1))
+    self.c.add_road(Road([8, 4, 9, 5], "ship", 1))
     with self.assertRaisesRegex(InvalidMove, "only move your"):
-      self.c.handle(0, {"type": "move_ship", "from": [5, 4, 6, 5], "to": [1, 4, 2, 5]})
+      self.c.handle(0, {"type": "move_ship", "from": [8, 4, 9, 5], "to": [2, 4, 3, 5]})
 
   def testCannotMoveShipOnClosedRoute(self):
-    self.c.add_piece(catan.Piece(2, 7, "settlement", 0))
-    self.c.add_road(Road([1, 6, 2, 5], "ship", 0))
-    self.c.add_road(Road([1, 6, 2, 7], "ship", 0))
+    self.c.add_piece(catan.Piece(3, 7, "settlement", 0))
+    self.c.add_road(Road([2, 6, 3, 5], "ship", 0))
+    self.c.add_road(Road([2, 6, 3, 7], "ship", 0))
     with self.assertRaisesRegex(InvalidMove, "that connects two"):
-      self.c.handle(0, {"type": "move_ship", "from": [1, 6, 2, 7], "to": [1, 4, 2, 5]})
+      self.c.handle(0, {"type": "move_ship", "from": [2, 6, 3, 7], "to": [2, 4, 3, 5]})
     # Validate that moving a different ship here will work.
-    self.c.handle(0, {"type": "move_ship", "from": [2, 5, 3, 5], "to": [1, 4, 2, 5]})
+    self.c.handle(0, {"type": "move_ship", "from": [3, 5, 5, 5], "to": [2, 4, 3, 5]})
 
   def testMustMoveShipAtEndOfRoute(self):
-    self.c.add_road(Road([3, 5, 4, 4], "ship", 0))
+    self.c.add_road(Road([5, 5, 6, 4], "ship", 0))
     with self.assertRaisesRegex(InvalidMove, "at the end"):
-      self.c.handle(0, {"type": "move_ship", "from": [2, 5, 3, 5], "to": [1, 4, 2, 5]})
+      self.c.handle(0, {"type": "move_ship", "from": [3, 5, 5, 5], "to": [2, 4, 3, 5]})
     # Validate that moving a ship at the end of the network will work.
-    self.c.handle(0, {"type": "move_ship", "from": [3, 5, 4, 4], "to": [1, 4, 2, 5]})
+    self.c.handle(0, {"type": "move_ship", "from": [5, 5, 6, 4], "to": [2, 4, 3, 5]})
 
   def testCannotMoveTwoShipsInOneTurn(self):
-    self.c.add_road(Road([3, 5, 4, 4], "ship", 0))
-    self.c.handle(0, {"type": "move_ship", "from": [3, 5, 4, 4], "to": [1, 4, 2, 5]})
+    self.c.add_road(Road([5, 5, 6, 4], "ship", 0))
+    self.c.handle(0, {"type": "move_ship", "from": [5, 5, 6, 4], "to": [2, 4, 3, 5]})
     with self.assertRaisesRegex(InvalidMove, "already moved a ship"):
-      self.c.handle(0, {"type": "move_ship", "from": [2, 5, 3, 5], "to": [1, 6, 2, 5]})
+      self.c.handle(0, {"type": "move_ship", "from": [3, 5, 5, 5], "to": [2, 6, 3, 5]})
 
   def testCannotMoveShipBuiltThisTurn(self):
-    self.c.handle(0, {"type": "ship", "location": [3, 5, 4, 4]})
+    self.c.handle(0, {"type": "ship", "location": [5, 5, 6, 4]})
     with self.assertRaisesRegex(InvalidMove, "built this turn"):
-      self.c.handle(0, {"type": "move_ship", "from": [3, 5, 4, 4], "to": [1, 6, 2, 5]})
+      self.c.handle(0, {"type": "move_ship", "from": [5, 5, 6, 4], "to": [2, 6, 3, 5]})
 
 
 class TestShipMovement(BaseInputHandlerTest):
@@ -1460,12 +1460,12 @@ class TestShipMovement(BaseInputHandlerTest):
 
   def setUp(self):
     BaseInputHandlerTest.setUp(self)
-    self.c.add_piece(catan.Piece(6, 5, "settlement", 1))
+    self.c.add_piece(catan.Piece(9, 5, "settlement", 1))
     p0_roads = [
-        (1, 4, 2, 3), (2, 3, 3, 3),
+        (2, 4, 3, 3), (3, 3, 5, 3),
     ]
     p1_roads = [
-        (5, 6, 6, 5), (5, 4, 6, 5), (5, 4, 6, 3), (5, 2, 6, 3), (6, 5, 7, 5),
+        (8, 6, 9, 5), (8, 4, 9, 5), (8, 4, 9, 3), (8, 2, 9, 3), (9, 5, 11, 5),
     ]
     for road in p0_roads:
       self.c.add_road(Road(road, "ship", 0))
@@ -1475,30 +1475,30 @@ class TestShipMovement(BaseInputHandlerTest):
     self.assertEqual(self.c.player_data[0].longest_route, 4)
     self.assertEqual(self.c.player_data[1].longest_route, 4)
     self.assertIsNone(self.c.longest_route_player)
-    self.c.add_road(Road((3, 3, 4, 2), "ship", 0))
+    self.c.add_road(Road((5, 3, 6, 2), "ship", 0))
     self.assertEqual(self.c.player_data[0].longest_route, 5)
     self.assertEqual(self.c.longest_route_player, 0)
     self.c.ships_moved = 0
 
   def testCanMoveShipToMakeLongerRoute(self):
-    self.c.add_road(Road((4, 2, 5, 2), "ship", 1))
+    self.c.add_road(Road((6, 2, 8, 2), "ship", 1))
     self.assertEqual(self.c.player_data[1].longest_route, 5)
     self.assertEqual(self.c.longest_route_player, 0)
-    self.c.handle_move_ship([6, 5, 7, 5], [4, 6, 5, 6], 1)
+    self.c.handle_move_ship([9, 5, 11, 5], [6, 6, 8, 6], 1)
     self.assertEqual(self.c.player_data[1].longest_route, 6)
     self.assertEqual(self.c.longest_route_player, 1)
 
   def testCanLoseLongestRouteByMovingShip(self):
-    self.c.handle_move_ship([1, 6, 2, 5], [3, 3, 4, 4], 0)
+    self.c.handle_move_ship([2, 6, 3, 5], [5, 3, 6, 4], 0)
     self.assertEqual(self.c.player_data[0].longest_route, 4)
     self.assertIsNone(self.c.longest_route_player)
 
   def testCanLoseLongestRouteToOtherPlayerByMovingShip(self):
-    self.c.add_road(Road((4, 2, 5, 2), "ship", 1))
+    self.c.add_road(Road((6, 2, 8, 2), "ship", 1))
     self.assertEqual(self.c.player_data[1].longest_route, 5)
     self.assertEqual(self.c.longest_route_player, 0)
 
-    self.c.handle_move_ship([1, 6, 2, 5], [3, 3, 4, 4], 0)
+    self.c.handle_move_ship([2, 6, 3, 5], [5, 3, 6, 4], 0)
     self.assertEqual(self.c.player_data[0].longest_route, 4)
     self.assertEqual(self.c.longest_route_player, 1)
 
@@ -1511,8 +1511,8 @@ class TestCalculateRobPlayers(BaseInputHandlerTest):
     self.c.turn_idx = 2
     self.c.dice_roll = (6, 1)
     self.c.turn_phase = "robber"
-    moved_piece = self.c.pieces.pop((3, 5))
-    moved_piece.location = catan.CornerLocation(4, 6)
+    moved_piece = self.c.pieces.pop((5, 5))
+    moved_piece.location = catan.CornerLocation(6, 6)
     self.c.add_piece(moved_piece)
     # Give these players some dev cards to make sure we don't rob dev cards.
     self.c.player_data[0].cards["knight"] = 10
@@ -1521,7 +1521,7 @@ class TestCalculateRobPlayers(BaseInputHandlerTest):
   def testRobNoAdjacentPieces(self):
     p1_old_count = sum(self.c.player_data[0].cards[x] for x in catan.RESOURCES)
     p2_old_count = sum(self.c.player_data[1].cards[x] for x in catan.RESOURCES)
-    self.c.handle(2, {"type": "robber", "location": [2, 3]})
+    self.c.handle(2, {"type": "robber", "location": [4, 4]})
     self.assertEqual(self.c.turn_phase, "main")
     p1_new_count = sum(self.c.player_data[0].cards[x] for x in catan.RESOURCES)
     p2_new_count = sum(self.c.player_data[1].cards[x] for x in catan.RESOURCES)
@@ -1531,7 +1531,7 @@ class TestCalculateRobPlayers(BaseInputHandlerTest):
   def testRobTwoAdjacentPlayers(self):
     p1_old_count = sum(self.c.player_data[0].cards[x] for x in catan.RESOURCES)
     p2_old_count = sum(self.c.player_data[1].cards[x] for x in catan.RESOURCES)
-    self.c.handle(2, {"type": "robber", "location": [4, 4]})
+    self.c.handle(2, {"type": "robber", "location": [7, 5]})
     self.assertEqual(self.c.turn_phase, "rob")
     self.assertCountEqual(self.c.rob_players, [0, 1])
     p1_new_count = sum(self.c.player_data[0].cards[x] for x in catan.RESOURCES)
@@ -1550,7 +1550,7 @@ class TestCalculateRobPlayers(BaseInputHandlerTest):
   def testRobSingleAdjacentPlayer(self):
     p1_old_count = sum(self.c.player_data[0].cards[x] for x in catan.RESOURCES)
     p2_old_count = sum(self.c.player_data[1].cards[x] for x in catan.RESOURCES)
-    self.c.handle(2, {"type": "robber", "location": [4, 2]})
+    self.c.handle(2, {"type": "robber", "location": [7, 3]})
     self.assertEqual(self.c.turn_phase, "main")
     p1_new_count = sum(self.c.player_data[0].cards[x] for x in catan.RESOURCES)
     p2_new_count = sum(self.c.player_data[1].cards[x] for x in catan.RESOURCES)
@@ -1561,7 +1561,7 @@ class TestCalculateRobPlayers(BaseInputHandlerTest):
 
   def testRobSingleAdjacentPlayerWithoutCards(self):
     self.c.player_data[0].cards.clear()
-    self.c.handle(2, {"type": "robber", "location": [4, 2]})
+    self.c.handle(2, {"type": "robber", "location": [7, 3]})
     self.assertEqual(self.c.turn_phase, "main")
     p3_new_count = sum(self.c.player_data[2].cards[x] for x in catan.RESOURCES)
     self.assertEqual(p3_new_count, 0)
@@ -1569,7 +1569,7 @@ class TestCalculateRobPlayers(BaseInputHandlerTest):
   def testRobTwoAdjacentPlayersOneWithoutCards(self):
     p2_old_count = sum(self.c.player_data[1].cards[x] for x in catan.RESOURCES)
     self.c.player_data[0].cards.clear()
-    self.c.handle(2, {"type": "robber", "location": [4, 4]})
+    self.c.handle(2, {"type": "robber", "location": [7, 5]})
     self.assertEqual(self.c.turn_phase, "main")
     p2_new_count = sum(self.c.player_data[1].cards[x] for x in catan.RESOURCES)
     p3_new_count = sum(self.c.player_data[2].cards[x] for x in catan.RESOURCES)
@@ -1577,20 +1577,20 @@ class TestCalculateRobPlayers(BaseInputHandlerTest):
     self.assertEqual(p3_new_count, 1)
 
   def testRobSelf(self):
-    self.c.add_piece(catan.Piece(4, 4, "settlement", 2))
+    self.c.add_piece(catan.Piece(6, 4, "settlement", 2))
     self.c.player_data[2].cards["rsrc3"] = 1
     p3_old_count = sum(self.c.player_data[2].cards[x] for x in catan.RESOURCES)
-    self.c.handle(2, {"type": "robber", "location": [2, 3]})
+    self.c.handle(2, {"type": "robber", "location": [4, 4]})
     self.assertEqual(self.c.turn_phase, "main")
     p3_new_count = sum(self.c.player_data[2].cards[x] for x in catan.RESOURCES)
     self.assertEqual(p3_old_count, p3_new_count)
 
   def testRobSelfAndOneMore(self):
-    self.c.add_piece(catan.Piece(4, 4, "settlement", 2))
+    self.c.add_piece(catan.Piece(6, 4, "settlement", 2))
     self.c.player_data[2].cards["rsrc3"] = 1
     p1_old_count = sum(self.c.player_data[0].cards[x] for x in catan.RESOURCES)
     p2_old_count = sum(self.c.player_data[1].cards[x] for x in catan.RESOURCES)
-    self.c.handle(2, {"type": "robber", "location": [4, 2]})
+    self.c.handle(2, {"type": "robber", "location": [7, 3]})
     self.assertEqual(self.c.turn_phase, "main")
     p1_new_count = sum(self.c.player_data[0].cards[x] for x in catan.RESOURCES)
     p2_new_count = sum(self.c.player_data[1].cards[x] for x in catan.RESOURCES)
@@ -1600,11 +1600,11 @@ class TestCalculateRobPlayers(BaseInputHandlerTest):
     self.assertEqual(p3_new_count, 2)
 
   def testRobSelfAndTwoMore(self):
-    self.c.add_piece(catan.Piece(4, 4, "settlement", 2))
+    self.c.add_piece(catan.Piece(6, 4, "settlement", 2))
     self.c.player_data[2].cards["rsrc3"] = 1
     p1_old_count = sum(self.c.player_data[0].cards[x] for x in catan.RESOURCES)
     p2_old_count = sum(self.c.player_data[1].cards[x] for x in catan.RESOURCES)
-    self.c.handle(2, {"type": "robber", "location": [4, 4]})
+    self.c.handle(2, {"type": "robber", "location": [7, 5]})
     self.assertEqual(self.c.turn_phase, "rob")
     self.assertCountEqual(self.c.rob_players, [0, 1])
     p1_new_count = sum(self.c.player_data[0].cards[x] for x in catan.RESOURCES)
@@ -1621,118 +1621,118 @@ class TestLongestRouteCalculation(BaseInputHandlerTest):
     BaseInputHandlerTest.setUp(self)
 
   def testSingleRoad(self):
-    val = self.c._dfs_depth(0, catan.CornerLocation(4, 4), set([]), None)
+    val = self.c._dfs_depth(0, catan.CornerLocation(6, 4), set([]), None)
     self.assertEqual(val, 1)
 
   def testTwoRoads(self):
-    self.c._add_road(Road([5, 4, 6, 5], "road", 0))
-    val = self.c._dfs_depth(0, catan.CornerLocation(4, 4), set([]), None)
+    self.c._add_road(Road([8, 4, 9, 5], "road", 0))
+    val = self.c._dfs_depth(0, catan.CornerLocation(6, 4), set([]), None)
     self.assertEqual(val, 2)
-    val = self.c._dfs_depth(0, catan.CornerLocation(6, 5), set([]), None)
+    val = self.c._dfs_depth(0, catan.CornerLocation(9, 5), set([]), None)
     self.assertEqual(val, 2)
     # Starting from the middle should give a length of 1.
-    val = self.c._dfs_depth(0, catan.CornerLocation(5, 4), set([]), None)
+    val = self.c._dfs_depth(0, catan.CornerLocation(8, 4), set([]), None)
     self.assertEqual(val, 1)
 
   def testThreeRoads(self):
-    self.c._add_road(Road([5, 4, 6, 5], "road", 0))
-    self.c._add_road(Road([5, 4, 6, 3], "road", 0))
+    self.c._add_road(Road([8, 4, 9, 5], "road", 0))
+    self.c._add_road(Road([8, 4, 9, 3], "road", 0))
     # Starting on any end of the network should still get you 2.
-    val = self.c._dfs_depth(0, catan.CornerLocation(4, 4), set([]), None)
+    val = self.c._dfs_depth(0, catan.CornerLocation(6, 4), set([]), None)
     self.assertEqual(val, 2)
-    val = self.c._dfs_depth(0, catan.CornerLocation(6, 5), set([]), None)
+    val = self.c._dfs_depth(0, catan.CornerLocation(9, 5), set([]), None)
     self.assertEqual(val, 2)
-    val = self.c._dfs_depth(0, catan.CornerLocation(6, 3), set([]), None)
+    val = self.c._dfs_depth(0, catan.CornerLocation(9, 3), set([]), None)
     self.assertEqual(val, 2)
     # Starting from the middle should give a length of 1.
-    val = self.c._dfs_depth(0, catan.CornerLocation(5, 4), set([]), None)
+    val = self.c._dfs_depth(0, catan.CornerLocation(8, 4), set([]), None)
     self.assertEqual(val, 1)
 
   def testRoadInterruption(self):
-    self.c._add_road(Road([5, 4, 6, 5], "road", 0))
-    self.c._add_road(Road([5, 6, 6, 5], "road", 0))
-    val = self.c._dfs_depth(0, catan.CornerLocation(4, 4), set([]), None)
+    self.c._add_road(Road([8, 4, 9, 5], "road", 0))
+    self.c._add_road(Road([8, 6, 9, 5], "road", 0))
+    val = self.c._dfs_depth(0, catan.CornerLocation(6, 4), set([]), None)
     self.assertEqual(val, 3)
-    val = self.c._dfs_depth(0, catan.CornerLocation(5, 6), set([]), None)
+    val = self.c._dfs_depth(0, catan.CornerLocation(8, 6), set([]), None)
     self.assertEqual(val, 3)
     # Add a piece for the other player to interrupt the road.
-    self.c.add_piece(catan.Piece(6, 5, "settlement", 1))
-    val = self.c._dfs_depth(0, catan.CornerLocation(4, 4), set([]), None)
+    self.c.add_piece(catan.Piece(9, 5, "settlement", 1))
+    val = self.c._dfs_depth(0, catan.CornerLocation(6, 4), set([]), None)
     self.assertEqual(val, 2)
-    val = self.c._dfs_depth(0, catan.CornerLocation(5, 6), set([]), None)
+    val = self.c._dfs_depth(0, catan.CornerLocation(8, 6), set([]), None)
     self.assertEqual(val, 1)
 
   def testSandwichedRoad(self):
     # Test that you can still start a road at someone else's settlement.
-    self.c.add_piece(catan.Piece(5, 6, "settlement", 1))
-    self.c._add_road(Road([3, 5, 4, 4], "road", 0))
-    self.c._add_road(Road([5, 4, 6, 5], "road", 0))
-    self.c._add_road(Road([5, 6, 6, 5], "road", 0))
-    val = self.c._dfs_depth(0, catan.CornerLocation(4, 4), set([]), None)
+    self.c.add_piece(catan.Piece(8, 6, "settlement", 1))
+    self.c._add_road(Road([5, 5, 6, 4], "road", 0))
+    self.c._add_road(Road([8, 4, 9, 5], "road", 0))
+    self.c._add_road(Road([8, 6, 9, 5], "road", 0))
+    val = self.c._dfs_depth(0, catan.CornerLocation(6, 4), set([]), None)
     self.assertEqual(val, 3)
-    val = self.c._dfs_depth(0, catan.CornerLocation(3, 5), set([]), None)
+    val = self.c._dfs_depth(0, catan.CornerLocation(5, 5), set([]), None)
     self.assertEqual(val, 4)
-    val = self.c._dfs_depth(0, catan.CornerLocation(5, 6), set([]), None)
+    val = self.c._dfs_depth(0, catan.CornerLocation(8, 6), set([]), None)
     self.assertEqual(val, 4)
 
   def testCircularRoad(self):
-    self.c._add_road(Road([3, 3, 4, 4], "road", 0))
-    self.c._add_road(Road([3, 3, 4, 2], "road", 0))
-    self.c._add_road(Road([4, 2, 5, 2], "road", 0))
-    self.c._add_road(Road([5, 2, 6, 3], "road", 0))
-    self.c._add_road(Road([5, 4, 6, 3], "road", 0))
+    self.c._add_road(Road([5, 3, 6, 4], "road", 0))
+    self.c._add_road(Road([5, 3, 6, 2], "road", 0))
+    self.c._add_road(Road([6, 2, 8, 2], "road", 0))
+    self.c._add_road(Road([8, 2, 9, 3], "road", 0))
+    self.c._add_road(Road([8, 4, 9, 3], "road", 0))
 
     # Start by testing a simple loop.
-    for corner in [(3, 3), (4, 4), (5, 4), (6, 3), (5, 2), (4, 2)]:
+    for corner in [(5, 3), (6, 4), (8, 4), (9, 3), (8, 2), (6, 2)]:
       val = self.c._dfs_depth(0, catan.CornerLocation(*corner), set([]), None)
       self.assertEqual(val, 6, "loop length for corner %s" % (corner,))
 
     # Add two tips onto the end of the loop. Length from either end should be 7.
-    self.c._add_road(Road([2, 3, 3, 3], "road", 0))
-    self.c._add_road(Road([5, 4, 6, 5], "road", 0))
-    val = self.c._dfs_depth(0, catan.CornerLocation(2, 3), set([]), None)
+    self.c._add_road(Road([3, 3, 5, 3], "road", 0))
+    self.c._add_road(Road([8, 4, 9, 5], "road", 0))
+    val = self.c._dfs_depth(0, catan.CornerLocation(3, 3), set([]), None)
     self.assertEqual(val, 7, "enter and loop around")
-    val = self.c._dfs_depth(0, catan.CornerLocation(6, 5), set([]), None)
+    val = self.c._dfs_depth(0, catan.CornerLocation(9, 5), set([]), None)
     self.assertEqual(val, 7, "enter and loop around")
 
     # Make the road longer without using the loop than with the loop.
-    self.c._add_road(Road([1, 4, 2, 3], "road", 0))
-    self.c._add_road(Road([1, 4, 2, 5], "road", 0))
-    self.c._add_road(Road([5, 6, 6, 5], "road", 0))
-    self.c._add_road(Road([4, 6, 5, 6], "road", 0))
-    val = self.c._dfs_depth(0, catan.CornerLocation(4, 6), set([]), None)
+    self.c._add_road(Road([2, 4, 3, 3], "road", 0))
+    self.c._add_road(Road([2, 4, 3, 5], "road", 0))
+    self.c._add_road(Road([8, 6, 9, 5], "road", 0))
+    self.c._add_road(Road([6, 6, 8, 6], "road", 0))
+    val = self.c._dfs_depth(0, catan.CornerLocation(6, 6), set([]), None)
     self.assertEqual(val, 10, "take long route around loop")
-    val = self.c._dfs_depth(0, catan.CornerLocation(2, 5), set([]), None)
+    val = self.c._dfs_depth(0, catan.CornerLocation(3, 5), set([]), None)
     self.assertEqual(val, 10, "take long route around loop")
 
   def testPortConnection(self):
     # Start with 2 ships and 4 roads, but no connection between them.
-    self.c._add_road(Road([3, 3, 4, 4], "road", 0))
-    self.c._add_road(Road([3, 3, 4, 2], "ship", 0))
-    self.c._add_road(Road([4, 2, 5, 2], "ship", 0))
-    self.c._add_road(Road([5, 2, 6, 3], "road", 0))
-    self.c._add_road(Road([5, 4, 6, 3], "road", 0))
-    val = self.c._dfs_depth(0, catan.CornerLocation(3, 3), set([]), None)
+    self.c._add_road(Road([5, 3, 6, 4], "road", 0))
+    self.c._add_road(Road([5, 3, 6, 2], "ship", 0))
+    self.c._add_road(Road([6, 2, 8, 2], "ship", 0))
+    self.c._add_road(Road([8, 2, 9, 3], "road", 0))
+    self.c._add_road(Road([8, 4, 9, 3], "road", 0))
+    val = self.c._dfs_depth(0, catan.CornerLocation(5, 3), set([]), None)
     self.assertEqual(val, 4, "no road -> ship connection")
-    val = self.c._dfs_depth(0, catan.CornerLocation(5, 2), set([]), None)
+    val = self.c._dfs_depth(0, catan.CornerLocation(8, 2), set([]), None)
     self.assertEqual(val, 4, "no road -> ship connection")
-    val = self.c._dfs_depth(0, catan.CornerLocation(4, 2), set([]), None)
+    val = self.c._dfs_depth(0, catan.CornerLocation(6, 2), set([]), None)
     self.assertEqual(val, 1, "single ship length in either direction")
-    val = self.c._dfs_depth(0, catan.CornerLocation(5, 4), set([]), None)
+    val = self.c._dfs_depth(0, catan.CornerLocation(8, 4), set([]), None)
     self.assertEqual(val, 2, "two roads in either direction")
 
     # Add a connector piece.
-    self.c.add_piece(catan.Piece(3, 3, "settlement", 0))
-    val = self.c._dfs_depth(0, catan.CornerLocation(3, 3), set([]), None)
+    self.c.add_piece(catan.Piece(5, 3, "settlement", 0))
+    val = self.c._dfs_depth(0, catan.CornerLocation(5, 3), set([]), None)
     self.assertEqual(val, 4, "still cannot go road->ship in the middle")
-    val = self.c._dfs_depth(0, catan.CornerLocation(5, 2), set([]), None)
+    val = self.c._dfs_depth(0, catan.CornerLocation(8, 2), set([]), None)
     self.assertEqual(val, 6, "but can go road->ship through a port")
 
     # Make sure somebody else's settlement doesn't count.
-    self.c.pieces[(3, 3)].player = 1
-    val = self.c._dfs_depth(0, catan.CornerLocation(3, 3), set([]), None)
+    self.c.pieces[(5, 3)].player = 1
+    val = self.c._dfs_depth(0, catan.CornerLocation(5, 3), set([]), None)
     self.assertEqual(val, 4, "cannot go through someone else's port")
-    val = self.c._dfs_depth(0, catan.CornerLocation(5, 2), set([]), None)
+    val = self.c._dfs_depth(0, catan.CornerLocation(8, 2), set([]), None)
     self.assertEqual(val, 4, "cannot go through someone else's port")
 
 
@@ -1745,17 +1745,17 @@ class TestLongestRouteAssignment(BreakpointTest):
     self.c = catan.CatanState.parse_json(json.loads(json_data))
     self.c.add_player("blue", "PlayerA")
     self.c.add_player("green", "PlayerB")
-    self.c._add_road(Road([4, 4, 5, 4], "road", 0))
-    self.c._add_road(Road([5, 4, 6, 5], "road", 0))
-    self.c.add_road(Road([7, 5, 8, 6], "road", 0))
-    self.c._add_road(Road([3, 3, 4, 2], "road", 1))
-    self.c._add_road(Road([4, 2, 5, 2], "road", 1))
-    self.c._add_road(Road([5, 2, 6, 1], "road", 1))
-    self.c.add_road(Road([6, 1, 7, 1], "road", 1))
-    self.c._add_road(Road([3, 7, 4, 8], "road", 2))
-    self.c._add_road(Road([4, 8, 5, 8], "road", 2))
-    self.c._add_road(Road([5, 8, 6, 9], "road", 2))
-    self.c.add_road(Road([6, 9, 7, 9], "road", 2))
+    self.c._add_road(Road([6, 4, 8, 4], "road", 0))
+    self.c._add_road(Road([8, 4, 9, 5], "road", 0))
+    self.c.add_road(Road([11, 5, 12, 6], "road", 0))
+    self.c._add_road(Road([5, 3, 6, 2], "road", 1))
+    self.c._add_road(Road([6, 2, 8, 2], "road", 1))
+    self.c._add_road(Road([8, 2, 9, 1], "road", 1))
+    self.c.add_road(Road([9, 1, 11, 1], "road", 1))
+    self.c._add_road(Road([5, 7, 6, 8], "road", 2))
+    self.c._add_road(Road([6, 8, 8, 8], "road", 2))
+    self.c._add_road(Road([8, 8, 9, 9], "road", 2))
+    self.c.add_road(Road([9, 9, 11, 9], "road", 2))
     for rsrc in catan.RESOURCES:
       self.c.player_data[2].cards[rsrc] += 1
     self.g = catan.CatanGame()
@@ -1765,69 +1765,69 @@ class TestLongestRouteAssignment(BreakpointTest):
   def testCreateLongestRoad(self):
     self.assertIsNone(self.c.longest_route_player)
     # Add a fifth road to playerA's network, giving them longest road.
-    self.c.add_road(Road([7, 1, 8, 2], "road", 1))
+    self.c.add_road(Road([11, 1, 12, 2], "road", 1))
     self.assertEqual(self.c.longest_route_player, 1)
     self.assertEqual("{player1} takes longest route", self.c.event_log[-1].public_text)
     # Connect two segments of first player's roads, giving them longest road.
-    self.c.add_road(Road([6, 5, 7, 5], "road", 0))
+    self.c.add_road(Road([9, 5, 11, 5], "road", 0))
     self.assertEqual(self.c.longest_route_player, 0)
     self.assertEqual(
         "{player0} takes longest route from {player1}", self.c.event_log[-1].public_text)
 
   def testBreakLongestRoad(self):
-    self.c.add_road(Road([7, 1, 8, 2], "road", 1))
-    self.c.add_road(Road([6, 5, 7, 5], "road", 0))
+    self.c.add_road(Road([11, 1, 12, 2], "road", 1))
+    self.c.add_road(Road([9, 5, 11, 5], "road", 0))
     self.assertEqual(self.c.longest_route_player, 0)
     # Break first player's longest road with a piece from playerB.
-    self.c.add_piece(catan.Piece(5, 4, "settlement", 2))
+    self.c.add_piece(catan.Piece(8, 4, "settlement", 2))
     # PlayerA should get longest road since first player's is broken.
     self.assertEqual(self.c.longest_route_player, 1)
     self.assertEqual(self.c.player_data[0].longest_route, 4)
 
   def testBreakLongestRoadNoEligiblePlayers(self):
-    self.c.add_road(Road([6, 5, 7, 5], "road", 0))
+    self.c.add_road(Road([9, 5, 11, 5], "road", 0))
     self.assertEqual(self.c.longest_route_player, 0)
-    self.c.add_piece(catan.Piece(5, 4, "settlement", 2))
+    self.c.add_piece(catan.Piece(8, 4, "settlement", 2))
     self.assertIsNone(self.c.longest_route_player)
     self.assertEqual("{player0} loses longest route", self.c.event_log[-1].public_text)
 
   def testBreakLongestRoadMultipleEligiblePlayers(self):
-    self.c.add_road(Road([7, 1, 8, 2], "road", 1))
-    self.c.add_road(Road([7, 9, 8, 8], "road", 2))
-    self.c.add_road(Road([6, 5, 7, 5], "road", 0))
+    self.c.add_road(Road([11, 1, 12, 2], "road", 1))
+    self.c.add_road(Road([11, 9, 12, 8], "road", 2))
+    self.c.add_road(Road([9, 5, 11, 5], "road", 0))
     self.assertEqual(self.c.longest_route_player, 0)
-    self.c.add_piece(catan.Piece(5, 4, "settlement", 2))
+    self.c.add_piece(catan.Piece(8, 4, "settlement", 2))
     # Now that first player's road is broken, nobody gets longest road because playerA
     # and playerB are tied.
     self.assertIsNone(self.c.longest_route_player)
     self.assertIn("because of a tie", self.c.event_log[-1].public_text)
 
   def testBreakLongestRoadNextRoadTooShort(self):
-    self.c.add_road(Road([6, 5, 7, 5], "road", 0))
+    self.c.add_road(Road([9, 5, 11, 5], "road", 0))
     # Break playerB's road of 4 so that this scenario is distinguishable from the one
     # where multiple players are tied for next longest road.
-    self.c.add_piece(catan.Piece(5, 8, "settlement", 0))
+    self.c.add_piece(catan.Piece(8, 8, "settlement", 0))
     self.assertEqual(self.c.player_data[2].longest_route, 2)
     self.assertEqual(self.c.longest_route_player, 0)
     # Break first player's longest road. Their longest road should now be 3.
-    self.c.add_piece(catan.Piece(6, 5, "settlement", 2))
+    self.c.add_piece(catan.Piece(9, 5, "settlement", 2))
     self.assertEqual(self.c.player_data[0].longest_route, 3)
     self.assertEqual(self.c.player_data[1].longest_route, 4)
     self.assertIsNone(self.c.longest_route_player)
 
   def testBreakLongestRoadStayingTied(self):
     # Give first player a longest road of 6.
-    self.c.add_road(Road([2, 5, 3, 5], "road", 0))
-    self.c.add_road(Road([1, 4, 2, 5], "road", 0))
-    self.c.add_road(Road([1, 4, 2, 3], "road", 0))
+    self.c.add_road(Road([3, 5, 5, 5], "road", 0))
+    self.c.add_road(Road([2, 4, 3, 5], "road", 0))
+    self.c.add_road(Road([2, 4, 3, 3], "road", 0))
     # Give playerA a longest road of 5.
-    self.c.add_road(Road([7, 1, 8, 2], "road", 1))
+    self.c.add_road(Road([11, 1, 12, 2], "road", 1))
     self.assertEqual(self.c.longest_route_player, 0)
     self.assertEqual(self.c.player_data[0].longest_route, 6)
     self.assertEqual(self.c.player_data[1].longest_route, 5)
     # Break first player's road one road away from the edge, cutting them down to 5.
-    self.c.add_road(Road([5, 4, 6, 3], "road", 2))  # Just here to attach the settlement to.
-    self.c.handle_settle([5, 4], 2)  # Use handle_settle to create an event log.
+    self.c.add_road(Road([8, 4, 9, 3], "road", 2))  # Just here to attach the settlement to.
+    self.c.handle_settle([8, 4], 2)  # Use handle_settle to create an event log.
     self.assertEqual(self.c.player_data[0].longest_route, 5)
     # They should retain longest route.
     self.assertEqual(self.c.longest_route_player, 0)
@@ -1835,13 +1835,13 @@ class TestLongestRouteAssignment(BreakpointTest):
 
   def testBreakRoadButStaysSameLength(self):
     # Give first player a circular road.
-    self.c.add_road(Road([3, 5, 4, 6], "road", 0))
-    self.c.add_road(Road([4, 6, 5, 6], "road", 0))
-    self.c.add_road(Road([5, 6, 6, 5], "road", 0))
+    self.c.add_road(Road([5, 5, 6, 6], "road", 0))
+    self.c.add_road(Road([6, 6, 8, 6], "road", 0))
+    self.c.add_road(Road([8, 6, 9, 5], "road", 0))
     self.assertEqual(self.c.longest_route_player, 0)
     self.assertEqual(self.c.player_data[0].longest_route, 6)
     # Break the circular road in the middle. The road length should stay the same.
-    self.c.add_piece(catan.Piece(6, 5, "settlement", 2))
+    self.c.add_piece(catan.Piece(9, 5, "settlement", 2))
     self.assertEqual(self.c.player_data[0].longest_route, 6)
     self.assertEqual(self.c.longest_route_player, 0)
 

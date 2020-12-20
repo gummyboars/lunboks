@@ -2,8 +2,8 @@
   "tiles": [
     {
       "location": [
-        2,
-        1
+        4,
+        2
       ],
       "tile_type": "rsrc3",
       "is_land": true,
@@ -14,8 +14,8 @@
     },
     {
       "location": [
-        2,
-        3
+        4,
+        4
       ],
       "tile_type": "rsrc5",
       "is_land": true,
@@ -26,8 +26,8 @@
     },
     {
       "location": [
-        0,
-        2
+        1,
+        3
       ],
       "tile_type": "rsrc3",
       "is_land": true,
@@ -38,8 +38,8 @@
     },
     {
       "location": [
-        0,
-        0
+        1,
+        1
       ],
       "tile_type": "space",
       "is_land": false,
@@ -53,8 +53,8 @@
     },
     {
       "location": [
-        2,
-        -1
+        4,
+        0
       ],
       "tile_type": "space",
       "is_land": false,
@@ -68,8 +68,8 @@
     },
     {
       "location": [
-        4,
-        0
+        7,
+        1
       ],
       "tile_type": "rsrc4",
       "is_land": true,
@@ -80,8 +80,8 @@
     },
     {
       "location": [
-        4,
-        2
+        7,
+        3
       ],
       "tile_type": "rsrc1",
       "is_land": true,
@@ -92,8 +92,8 @@
     },
     {
       "location": [
-        0,
-        4
+        1,
+        5
       ],
       "tile_type": "rsrc2",
       "is_land": true,
@@ -105,7 +105,7 @@
     {
       "location": [
         -2,
-        3
+        4
       ],
       "tile_type": "space",
       "is_land": false,
@@ -120,7 +120,7 @@
     {
       "location": [
         -2,
-        1
+        2
       ],
       "tile_type": "space",
       "is_land": false,
@@ -133,8 +133,8 @@
     },
     {
       "location": [
-        4,
-        -2
+        7,
+        -1
       ],
       "tile_type": "space",
       "is_land": false,
@@ -147,8 +147,8 @@
     },
     {
       "location": [
-        6,
-        -1
+        10,
+        0
       ],
       "tile_type": "space",
       "is_land": false,
@@ -162,8 +162,8 @@
     },
     {
       "location": [
-        6,
-        1
+        10,
+        2
       ],
       "tile_type": "rsrc1",
       "is_land": true,
@@ -174,8 +174,8 @@
     },
     {
       "location": [
-        0,
-        6
+        1,
+        7
       ],
       "tile_type": "space",
       "is_land": false,
@@ -191,7 +191,7 @@
     {
       "location": [
         -2,
-        5
+        6
       ],
       "tile_type": "space",
       "is_land": false,
@@ -204,8 +204,8 @@
     },
     {
       "location": [
-        2,
-        5
+        4,
+        6
       ],
       "tile_type": "rsrc4",
       "is_land": true,
@@ -216,8 +216,8 @@
     },
     {
       "location": [
-        4,
-        4
+        7,
+        5
       ],
       "tile_type": "rsrc1",
       "is_land": true,
@@ -228,8 +228,8 @@
     },
     {
       "location": [
-        6,
-        3
+        10,
+        4
       ],
       "tile_type": "rsrc5",
       "is_land": true,
@@ -240,8 +240,8 @@
     },
     {
       "location": [
-        8,
-        0
+        13,
+        1
       ],
       "tile_type": "space",
       "is_land": false,
@@ -255,8 +255,8 @@
     },
     {
       "location": [
-        8,
-        2
+        13,
+        3
       ],
       "tile_type": "rsrc3",
       "is_land": true,
@@ -267,8 +267,8 @@
     },
     {
       "location": [
-        2,
-        7
+        4,
+        8
       ],
       "tile_type": "space",
       "is_land": false,
@@ -284,8 +284,8 @@
     },
     {
       "location": [
-        4,
-        6
+        7,
+        7
       ],
       "tile_type": "rsrc2",
       "is_land": true,
@@ -296,8 +296,8 @@
     },
     {
       "location": [
-        6,
-        5
+        10,
+        6
       ],
       "tile_type": "rsrc2",
       "is_land": true,
@@ -308,8 +308,8 @@
     },
     {
       "location": [
-        8,
-        4
+        13,
+        5
       ],
       "tile_type": "rsrc1",
       "is_land": true,
@@ -320,8 +320,8 @@
     },
     {
       "location": [
-        10,
-        1
+        16,
+        2
       ],
       "tile_type": "space",
       "is_land": false,
@@ -335,8 +335,8 @@
     },
     {
       "location": [
-        10,
-        3
+        16,
+        4
       ],
       "tile_type": "space",
       "is_land": false,
@@ -352,8 +352,8 @@
     },
     {
       "location": [
-        4,
-        8
+        7,
+        9
       ],
       "tile_type": "space",
       "is_land": false,
@@ -368,8 +368,8 @@
     },
     {
       "location": [
-        6,
-        7
+        10,
+        8
       ],
       "tile_type": "space",
       "is_land": false,
@@ -385,8 +385,8 @@
     },
     {
       "location": [
-        8,
-        6
+        13,
+        7
       ],
       "tile_type": "space",
       "is_land": false,
@@ -402,8 +402,8 @@
     },
     {
       "location": [
-        10,
-        5
+        16,
+        6
       ],
       "tile_type": "space",
       "is_land": false,
@@ -418,8 +418,8 @@
     },
     {
       "location": [
-        12,
-        2
+        19,
+        3
       ],
       "tile_type": "rsrc4",
       "is_land": true,
@@ -430,8 +430,8 @@
     },
     {
       "location": [
-        12,
-        4
+        19,
+        5
       ],
       "tile_type": "anyrsrc",
       "is_land": true,
@@ -442,8 +442,8 @@
     },
     {
       "location": [
-        12,
-        0
+        19,
+        1
       ],
       "tile_type": "space",
       "is_land": false,
@@ -456,8 +456,8 @@
     },
     {
       "location": [
-        14,
-        1
+        22,
+        2
       ],
       "tile_type": "space",
       "is_land": false,
@@ -470,8 +470,8 @@
     },
     {
       "location": [
-        14,
-        3
+        22,
+        4
       ],
       "tile_type": "space",
       "is_land": false,
@@ -485,7 +485,22 @@
     },
     {
       "location": [
-        12,
+        19,
+        7
+      ],
+      "tile_type": "space",
+      "is_land": false,
+      "number": null,
+      "rotation": 2,
+      "variant": "",
+      "land_rotations": [
+        1,
+        3
+      ]
+    },
+    {
+      "location": [
+        22,
         6
       ],
       "tile_type": "space",
@@ -494,28 +509,13 @@
       "rotation": 2,
       "variant": "",
       "land_rotations": [
-        1,
-        3
-      ]
-    },
-    {
-      "location": [
-        14,
-        5
-      ],
-      "tile_type": "space",
-      "is_land": false,
-      "number": null,
-      "rotation": 2,
-      "variant": "",
-      "land_rotations": [
         2
       ]
     },
     {
       "location": [
-        2,
-        9
+        4,
+        10
       ],
       "tile_type": "rsrc5",
       "is_land": true,
@@ -526,8 +526,8 @@
     },
     {
       "location": [
-        0,
-        8
+        1,
+        9
       ],
       "tile_type": "rsrc4",
       "is_land": true,
@@ -538,8 +538,8 @@
     },
     {
       "location": [
-        0,
-        10
+        1,
+        11
       ],
       "tile_type": "space",
       "is_land": false,
@@ -554,7 +554,7 @@
     {
       "location": [
         -2,
-        9
+        10
       ],
       "tile_type": "space",
       "is_land": false,
@@ -568,7 +568,7 @@
     {
       "location": [
         -2,
-        7
+        8
       ],
       "tile_type": "space",
       "is_land": false,
@@ -581,8 +581,8 @@
     },
     {
       "location": [
-        2,
-        11
+        4,
+        12
       ],
       "tile_type": "space",
       "is_land": false,
@@ -595,8 +595,8 @@
     },
     {
       "location": [
-        4,
-        10
+        7,
+        11
       ],
       "tile_type": "space",
       "is_land": false,
@@ -610,8 +610,8 @@
     },
     {
       "location": [
-        6,
-        9
+        10,
+        10
       ],
       "tile_type": "anyrsrc",
       "is_land": true,
@@ -622,8 +622,8 @@
     },
     {
       "location": [
-        8,
-        8
+        13,
+        9
       ],
       "tile_type": "rsrc3",
       "is_land": true,
@@ -634,8 +634,8 @@
     },
     {
       "location": [
-        6,
-        11
+        10,
+        12
       ],
       "tile_type": "space",
       "is_land": false,
@@ -648,8 +648,8 @@
     },
     {
       "location": [
-        8,
-        10
+        13,
+        11
       ],
       "tile_type": "space",
       "is_land": false,
@@ -664,8 +664,8 @@
     },
     {
       "location": [
-        10,
-        7
+        16,
+        8
       ],
       "tile_type": "rsrc1",
       "is_land": true,
@@ -676,8 +676,8 @@
     },
     {
       "location": [
-        10,
-        9
+        16,
+        10
       ],
       "tile_type": "rsrc5",
       "is_land": true,
@@ -688,8 +688,8 @@
     },
     {
       "location": [
-        12,
-        8
+        19,
+        9
       ],
       "tile_type": "space",
       "is_land": false,
@@ -703,8 +703,8 @@
     },
     {
       "location": [
-        10,
-        11
+        16,
+        12
       ],
       "tile_type": "space",
       "is_land": false,
@@ -717,8 +717,8 @@
     },
     {
       "location": [
-        12,
-        10
+        19,
+        11
       ],
       "tile_type": "space",
       "is_land": false,
@@ -731,7 +731,19 @@
     },
     {
       "location": [
-        6,
+        10,
+        14
+      ],
+      "tile_type": "space",
+      "is_land": false,
+      "number": null,
+      "rotation": 3,
+      "variant": "",
+      "land_rotations": []
+    },
+    {
+      "location": [
+        7,
         13
       ],
       "tile_type": "space",
@@ -743,8 +755,8 @@
     },
     {
       "location": [
-        4,
-        12
+        13,
+        13
       ],
       "tile_type": "space",
       "is_land": false,
@@ -755,20 +767,8 @@
     },
     {
       "location": [
-        8,
-        12
-      ],
-      "tile_type": "space",
-      "is_land": false,
-      "number": null,
-      "rotation": 3,
-      "variant": "",
-      "land_rotations": []
-    },
-    {
-      "location": [
-        14,
-        7
+        22,
+        8
       ],
       "tile_type": "space",
       "is_land": false,
@@ -779,8 +779,8 @@
     },
     {
       "location": [
-        14,
-        9
+        22,
+        10
       ],
       "tile_type": "space",
       "is_land": false,
@@ -791,19 +791,7 @@
     },
     {
       "location": [
-        6,
-        -3
-      ],
-      "tile_type": "space",
-      "is_land": false,
-      "number": null,
-      "rotation": 0,
-      "variant": "",
-      "land_rotations": []
-    },
-    {
-      "location": [
-        8,
+        10,
         -2
       ],
       "tile_type": "space",
@@ -815,8 +803,20 @@
     },
     {
       "location": [
-        10,
+        13,
         -1
+      ],
+      "tile_type": "space",
+      "is_land": false,
+      "number": null,
+      "rotation": 0,
+      "variant": "",
+      "land_rotations": []
+    },
+    {
+      "location": [
+        16,
+        0
       ],
       "tile_type": "space",
       "is_land": false,
@@ -830,63 +830,63 @@
     {
       "location": [
         -2,
-        3
+        4
       ],
       "port_type": "rsrc2",
       "rotation": 5
     },
     {
       "location": [
-        0,
-        0
+        1,
+        1
       ],
       "port_type": "rsrc4",
       "rotation": 0
     },
     {
       "location": [
-        2,
-        -1
+        4,
+        0
       ],
       "port_type": "3",
       "rotation": 5
     },
     {
       "location": [
-        6,
-        -1
+        10,
+        0
       ],
       "port_type": "rsrc5",
       "rotation": 1
     },
     {
       "location": [
-        8,
-        0
+        13,
+        1
       ],
       "port_type": "rsrc3",
       "rotation": 0
     },
     {
       "location": [
-        0,
-        6
-      ],
-      "port_type": "3",
-      "rotation": 3
-    },
-    {
-      "location": [
-        8,
-        6
-      ],
-      "port_type": "3",
-      "rotation": 3
-    },
-    {
-      "location": [
-        6,
+        1,
         7
+      ],
+      "port_type": "3",
+      "rotation": 3
+    },
+    {
+      "location": [
+        13,
+        7
+      ],
+      "port_type": "3",
+      "rotation": 3
+    },
+    {
+      "location": [
+        10,
+        8
       ],
       "port_type": "rsrc1",
       "rotation": 2

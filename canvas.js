@@ -112,45 +112,27 @@ function draw() {
 }
 
 function coordsToEdgeCenter(loc) {
-  let leftCorn = coordToCornerCenter([loc[0], loc[1]]);
-  let rightCorn = coordToCornerCenter([loc[2], loc[3]]);
+  let leftCorn = coordToCanvasLoc([loc[0], loc[1]]);
+  let rightCorn = coordToCanvasLoc([loc[2], loc[3]]);
   return {
     x: (leftCorn.x + rightCorn.x) / 2,
     y: (leftCorn.y + rightCorn.y) / 2,
   };
 }
-function coordToCornerCenter(loc) {
-  let x = (2 * Math.floor(loc[0]/2)) * tileWidth * 3 / 8;
-  let y = loc[1] * tileHeight / 2;
-  if (Math.abs(loc[0]) % 2 == 1) {
-    x += tileWidth / 2;
-  }
-  if (turned) {
-    return {x: y, y: -x};
-  }
-  return {x: x, y: y};
-}
-function coordToTileUpperLeft(loc) {
-  let x = loc[0] * tileWidth * 3 / 8 - tileWidth / 4;
+function coordToCanvasLoc(loc) {
+  let x = loc[0] * tileWidth / 4;
   let y = loc[1] * tileHeight / 2;
   if (turned) {
     return {x: y, y: -x};
   }
   return {x: x, y: y};
-}
-function coordToTileCenter(loc) {
-  let ul = coordToTileUpperLeft(loc);
-  if (turned) {
-    return {x: ul.x + tileHeight/2, y: ul.y - tileWidth/2};
-  }
-  return {x: ul.x + tileWidth/2, y: ul.y + tileHeight/2};
 }
 function drawRoad(roadLoc, style, road_type, closed, movable, ctx) {
   if (road_type == null) {
     return;
   }
-  let leftCorner = coordToCornerCenter([roadLoc[0], roadLoc[1]]);
-  let rightCorner = coordToCornerCenter([roadLoc[2], roadLoc[3]]);
+  let leftCorner = coordToCanvasLoc([roadLoc[0], roadLoc[1]]);
+  let rightCorner = coordToCanvasLoc([roadLoc[2], roadLoc[3]]);
   ctx.save();
   let centerX = (leftCorner.x + rightCorner.x) / 2;
   let centerY = (leftCorner.y + rightCorner.y) / 2;
@@ -203,17 +185,17 @@ function drawDebug(ctx) {
   let min, max;
   [min, max] = getMinMax();
   let minX = min.x - 2;
-  let minY = min.y;
-  let maxX = max.x + 3;
-  let maxY = max.y + 2;
+  let minY = min.y - 1;
+  let maxX = max.x + 2;
+  let maxY = max.y + 1;
   if (debug) {
     ctx.strokeStyle = "white";
     ctx.fillStyle = "white";
     ctx.lineWidth = 1;
     let i, start, end;
     for (i = minX; i <= maxX; i++) {
-      start = coordToCornerCenter([i, minY]);
-      end = coordToCornerCenter([i, maxY]);
+      start = coordToCanvasLoc([i, minY]);
+      end = coordToCanvasLoc([i, maxY]);
       ctx.beginPath();
       ctx.moveTo(start.x, start.y);
       ctx.lineTo(end.x, end.y);
@@ -221,8 +203,8 @@ function drawDebug(ctx) {
       ctx.fillText("" + i, start.x, start.y);
     }
     for (i = minY; i <= maxY; i++) {
-      start = coordToCornerCenter([minX, i]);
-      end = coordToCornerCenter([maxX, i]);
+      start = coordToCanvasLoc([minX, i]);
+      end = coordToCanvasLoc([maxX, i]);
       ctx.beginPath();
       ctx.moveTo(start.x, start.y);
       ctx.lineTo(end.x, end.y);
@@ -241,7 +223,7 @@ function drawDebug(ctx) {
   }
 }
 function drawLanding(landing, ctx) {
-  let canvasLoc = coordToCornerCenter(landing.location);
+  let canvasLoc = coordToCanvasLoc(landing.location);
   ctx.strokeStyle = "black";
   ctx.beginPath;
   ctx.moveTo(canvasLoc.x, canvasLoc.y - 3 * pieceRadius / 4);
@@ -252,7 +234,7 @@ function drawLanding(landing, ctx) {
   ctx.strokeRect(canvasLoc.x - pieceRadius, canvasLoc.y - 2*pieceRadius, pieceRadius, pieceRadius/2);
 }
 function drawPiece(pieceLoc, style, pieceType, ctx) {
-  let canvasLoc = coordToCornerCenter(pieceLoc);
+  let canvasLoc = coordToCanvasLoc(pieceLoc);
   ctx.fillStyle = style;
   if (pieceType == "settlement") {
     ctx.beginPath();
@@ -286,7 +268,7 @@ function drawPiece(pieceLoc, style, pieceType, ctx) {
 }
 function drawTile(tileData, ctx) {
   let img = getAsset(tileData.tile_type + "tile", tileData.variant);
-  let canvasLoc = coordToTileCenter(tileData.location);
+  let canvasLoc = coordToCanvasLoc(tileData.location);
   ctx.save();
   ctx.translate(canvasLoc.x, canvasLoc.y);
   let rotation = 0;
@@ -305,7 +287,7 @@ function drawTile(tileData, ctx) {
 function drawPort(portData, ctx) {
   let portImg = getAsset("port", portData.variant);
   let img = getAsset(portData.port_type + "port", portData.variant);
-  let canvasLoc = coordToTileCenter(portData.location);
+  let canvasLoc = coordToCanvasLoc(portData.location);
   ctx.save();
   ctx.translate(canvasLoc.x, canvasLoc.y);
   let rotation = 0;
@@ -334,7 +316,7 @@ function drawCoast(tileData, portMap, ctx) {
   if (portData != null) {
     portRotation = (portData.rotation + 6) % 6;
   }
-  let canvasLoc = coordToTileCenter(tileData.location);
+  let canvasLoc = coordToCanvasLoc(tileData.location);
   ctx.save();
   ctx.translate(canvasLoc.x, canvasLoc.y);
   for (let rotation of tileData.land_rotations) {
@@ -355,7 +337,7 @@ function drawCoast(tileData, portMap, ctx) {
 }
 function drawNumber(tileData, ctx) {
   let textHeightOffset = 12; // Adjust as necessary. TODO: textBaseline = middle?
-  let canvasLoc = coordToTileCenter(tileData.location);
+  let canvasLoc = coordToCanvasLoc(tileData.location);
   if (tileData.number) {
     // Draw the white circle.
     ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
@@ -417,7 +399,7 @@ function drawRobber(ctx, loc, alpha) {
       break;
     }
   }
-  let canvasLoc = coordToTileCenter(loc);
+  let canvasLoc = coordToCanvasLoc(loc);
   let robimg, robWidth, robHeight;
   if (isLand) {
     robimg = getAsset("robber");
@@ -449,7 +431,7 @@ function getEdge(eventX, eventY) {
 }
 function getCorner(eventX, eventY, cList) {
   for (let i = 0; i < cList.length; i++) {
-    let canvasLoc = coordToCornerCenter(cList[i].location);
+    let canvasLoc = coordToCanvasLoc(cList[i].location);
     let centerX = canvasLoc.x * scale + offsetX + dX;
     let centerY = canvasLoc.y * scale + offsetY + dY;
     let distanceX = eventX - centerX;
@@ -463,7 +445,7 @@ function getCorner(eventX, eventY, cList) {
 }
 function getTile(eventX, eventY) {
   for (let i = 0; i < tiles.length; i++) {
-    let canvasLoc = coordToTileCenter(tiles[i].location);
+    let canvasLoc = coordToCanvasLoc(tiles[i].location);
     let centerX = canvasLoc.x * scale + offsetX + dX;
     let centerY = canvasLoc.y * scale + offsetY + dY;
     let distanceX = eventX - centerX;
@@ -640,8 +622,8 @@ function getMinMax() {
 function getCenterCoord() {
   let min, max;
   [min, max] = getMinMax();
-  let minLoc = coordToTileCenter([min.x, min.y]);
-  let maxLoc = coordToTileCenter([max.x, max.y]);
+  let minLoc = coordToCanvasLoc([min.x, min.y]);
+  let maxLoc = coordToCanvasLoc([max.x, max.y]);
   return {x: (minLoc.x + maxLoc.x) / 2, y: (minLoc.y + maxLoc.y) / 2};
 }
 function centerCanvas() {
