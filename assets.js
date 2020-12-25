@@ -98,14 +98,34 @@ function renderSource(assetName, cnv, img, filter) {
   let yoff = imageInfo[assetName].yoff || 0;
   let rotation = imageInfo[assetName].rotation || 0;
   let scale = imageInfo[assetName].scale || 1;
+  let colorDiff = imageInfo[assetName].difference;
   context.clearRect(0, 0, filter.width, filter.height);
+  // Draw a color correction rectangle if necessary.
   context.save();
+  if (colorDiff != null) {
+    context.fillStyle = colorDiff;
+    context.fillRect(0, 0, filter.width, filter.height);
+    context.globalCompositeOperation = "difference";
+  }
+  // Translate, rotate, scale, draw the base image.
   context.translate(filter.width/2, filter.height/2);
-  context.drawImage(filter, -filter.width/2, -filter.height/2);
   context.rotate(Math.PI * rotation / 180);
   context.scale(scale, scale);
-  context.globalCompositeOperation = "source-in";
+  let cssFilter = "";
+  for (let filterName of ["contrast", "saturate", "brightness"]) {
+    if (imageInfo[assetName][filterName] != null) {
+      cssFilter += " " + filterName + "(" + imageInfo[assetName][filterName] + "%)";
+    }
+  }
+  if (cssFilter != "") {
+    context.filter = cssFilter;
+  }
   context.drawImage(img, -xoff, -yoff);
+  context.restore();
+  // Now, clip the image using the mask. TODO: rename filter to mask.
+  context.save();
+  context.globalCompositeOperation = "destination-in";
+  context.drawImage(filter, 0, 0);
   context.restore();
   renderLoops[assetName] = 2;
 }
