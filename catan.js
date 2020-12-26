@@ -81,6 +81,7 @@ devCardCount = 0;
 turn = null;
 collectTurn = null;
 collectCounts = [];
+extraBuildTurn = null;
 diceRoll = null;
 robberLoc = null;
 pirateLoc = null;
@@ -737,7 +738,7 @@ function rollDice() {
 }
 function endTurn() {
   let msg = {
-    type: "end_turn",
+    type: (turnPhase == "extra_build") ? "end_extra_build" : "end_turn",
   };
   ws.send(JSON.stringify(msg));
 }
@@ -975,6 +976,7 @@ function onmsg(event) {
   turn = data.turn;
   collectTurn = data.collect_idx;
   collectCounts = data.collect_counts;
+  extraBuildTurn = data.extra_build_idx;
   discardPlayers = data.discard_players;
   let oldActiveOffer = tradeActiveOffer;
   tradeActiveOffer = data.trade_offer;
@@ -1006,8 +1008,7 @@ function onmsg(event) {
   updateCards();
   updateBuyDev();
   updateDice();
-  updateUI("buydev");
-  updateUI("endturn");
+  updateEndTurn();
   updateTradeButtons();
   updatePlayerData();
   updateEventLog();
@@ -1025,15 +1026,24 @@ function onmsg(event) {
   maybeShowDiscardWindow();
   maybeShowRobWindow();
 }
-function updateUI(elemName) {
-  if (gamePhase != "main" || turn != myIdx || turnPhase != "main") {
-    document.getElementById(elemName).classList.remove("selectable");
-    document.getElementById(elemName).classList.add("disabled");
-    document.getElementById(elemName).disabled = true;
+function updateEndTurn() {
+  let canUseButton = false;
+  let button = document.getElementById("endturn");
+  if (turnPhase == "extra_build" && turn != myIdx) {
+    button.innerText = "End Build";
+    canUseButton = (extraBuildTurn == myIdx);
   } else {
-    document.getElementById(elemName).classList.add("selectable");
-    document.getElementById(elemName).classList.remove("disabled");
-    document.getElementById(elemName).disabled = false;
+    button.innerText = "End Turn";
+    canUseButton = (turn == myIdx && turnPhase == "main");
+  }
+  if (!canUseButton) {
+    button.classList.remove("selectable");
+    button.classList.add("disabled");
+    button.disabled = true;
+  } else {
+    button.classList.add("selectable");
+    button.classList.remove("disabled");
+    button.disabled = false;
   }
 }
 function updateDice() {
@@ -1372,6 +1382,10 @@ function updatePlayerData() {
       phaseMarker.style.display = "block";
       phaseMarker.innerText = "💰";
     }
+    if (turnPhase == "extra_build" && extraBuildTurn == i) {
+      phaseMarker.style.display = "block";
+      phaseMarker.innerText = "⚒️ ";
+    }
     let cardDiv = playerDiv.getElementsByClassName("cardinfo")[0];
     updatePlayerCardInfo(i, cardDiv, false);
     let dataDiv = playerDiv.getElementsByClassName("otherinfo")[0];
@@ -1578,6 +1592,17 @@ function updateBuyDev() {
       buydev.style.transform = "translate(" + offset + "px," + offset + "px)";
     }
     block.appendChild(buydev);
+  }
+  let canUse = (gamePhase == "main" && turnPhase == "main" && turn == myIdx);
+  canUse = canUse || (turnPhase == "extra_build" && extraBuildTurn == myIdx);
+  if (!canUse) {
+    block.classList.remove("selectable");
+    block.classList.add("disabled");
+    block.disabled = true;
+  } else {
+    block.classList.add("selectable");
+    block.classList.remove("disabled");
+    block.disabled = false;
   }
 }
 function flip() {

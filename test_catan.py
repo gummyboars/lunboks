@@ -18,11 +18,68 @@ class TestInitBoard(unittest.TestCase):
 
   def testBeginner(self):
     state = catan.BeginnerMap()
+    state.add_player("red", "player1")
+    state.add_player("blue", "player2")
     state.init({})
 
     self.assertEqual(len(state.tiles), 4 + 5 + 6 + 7 + 6 + 5 + 4, "number of tiles")
     for loc, tile in state.tiles.items():
       self.assertEqual(loc, tile.location.json_repr(), "tiles mapped to location")
+
+  def testRandomized(self):
+    state = catan.RandomMap()
+    state.add_player("red", "player1")
+    state.add_player("blue", "player2")
+    state.init({})
+    counts = collections.defaultdict(int)
+    for card in state.dev_cards:
+      counts[card] += 1
+    expected = {
+        "knight": 14, "monopoly": 2, "yearofplenty": 2, "roadbuilding": 2,
+        "chapel": 1, "university": 1, "palace": 1, "library": 1, "market": 1,
+    }
+    self.assertDictEqual(counts, expected)
+
+  def testInitNumbers(self):
+    state = catan.RandomMap()
+    state.add_player("red", "player1")
+    state.add_player("blue", "player2")
+    state.init({})
+    # Put the desert in a few different spots to test that it gets skipped properly.
+    for desert_spot in [(7, 1), (4, 2), (1, 7), (10, 2), (7, 3), (10, 4), (7, 5)]:
+      # Reset the tile numbers to None
+      for tile in state.tiles.values():
+        tile.number = None
+      desert = [(loc, tile) for loc, tile in state.tiles.items() if tile.tile_type == "norsrc"]
+      self.assertEqual(len(desert), 1)
+      state.tiles[desert[0][0]].tile_type = state.tiles[desert_spot].tile_type
+      state.tiles[desert_spot].tile_type = "norsrc"
+      state._init_numbers((7, 1), catan.TILE_NUMBERS)
+      nums = [tile.number for tile in state.tiles.values() if tile.is_land]
+      self.assertCountEqual(nums, catan.TILE_NUMBERS + [None])  # None for the desert.
+      self.assertIsNone(state.tiles[desert_spot].number)
+
+  def testInitLarge(self):
+
+    class LargeMap(catan.ExtraPlayers, catan.RandomMap):
+      pass
+
+    state = LargeMap()
+    state.add_player("red", "player1")
+    state.add_player("blue", "player2")
+    state.add_player("green", "player3")
+    state.add_player("yellow", "player4")
+    state.add_player("brown", "player5")
+    state.add_player("cyan", "player6")
+    state.init({})
+    counts = collections.defaultdict(int)
+    for card in state.dev_cards:
+      counts[card] += 1
+    expected = {
+        "knight": 20, "monopoly": 3, "yearofplenty": 3, "roadbuilding": 3,
+        "chapel": 1, "university": 1, "palace": 1, "library": 1, "market": 1,
+    }
+    self.assertDictEqual(counts, expected)
 
 
 class TestLoadState(unittest.TestCase):
@@ -53,6 +110,7 @@ class TestLoadState(unittest.TestCase):
     self.assertIsInstance(list(c.roads.values())[0].source, catan.CornerLocation)
 
   def testDumpAndLoad(self):
+    # TODO: test with different numbers of users
     scenarios = ["Random Map", "The Four Islands", "Through the Desert"]
     for scenario in scenarios:
       with self.subTest(scenario=scenario):
@@ -63,7 +121,7 @@ class TestLoadState(unittest.TestCase):
         g.handle_join("se0", {"name": "player1"})
         g.handle_join("se1", {"name": "player2"})
         g.handle_join("se2", {"name": "player3"})
-        g.handle_start("se0", {"options": {"Scenario": "Through the Desert"}})
+        g.handle_start("se0", {"options": {"Scenario": "Through the Desert", "5-6 Players": False}})
         c = g.game
         data = g.json_str()
         d = catan.CatanGame.parse_json(data).game
@@ -179,7 +237,7 @@ class PlacementRestrictionsTest(unittest.TestCase):
     self.c.init({})
     self.assertCountEqual(self.c.placement_islands, [(-1, 3)])
     self.g = catan.CatanGame()
-    self.g.update_rulesets_and_choices({"Scenario": "The Four Islands"})
+    self.g.update_rulesets_and_choices({"Scenario": "The Four Islands", "5-6 Players": False})
     self.g.game = self.c
 
     dump = self.g.json_str()
@@ -291,7 +349,7 @@ class TestIslandCalculations(BreakpointTest):
     self.c.turn_phase = "main"
     self.c.pirate = None
     self.g = catan.CatanGame()
-    self.g.update_rulesets_and_choices({"Scenario": "The Four Islands"})
+    self.g.update_rulesets_and_choices({"Scenario": "The Four Islands", "5-6 Players": False})
     self.g.game = self.c
 
   def testHomeIslands(self):
@@ -1759,7 +1817,7 @@ class TestLongestRouteAssignment(BreakpointTest):
     for rsrc in catan.RESOURCES:
       self.c.player_data[2].cards[rsrc] += 1
     self.g = catan.CatanGame()
-    self.g.update_rulesets_and_choices({"Scenario": "Beginner's Map"})
+    self.g.update_rulesets_and_choices({"Scenario": "Beginner's Map", "5-6 Players": False})
     self.g.game = self.c
 
   def testCreateLongestRoad(self):
@@ -1874,7 +1932,7 @@ class TestLargestArmy(BaseInputHandlerTest):
     self.assertIn("{player1} took largest army from {player0}", self.c.event_log[-1].public_text)
 
 
-@mock.patch("random.randint", return_value=3.5)
+@mock.patch.object(catan.random, "randint", return_value=3.5)
 class TestDiscard(BaseInputHandlerTest):
 
   def setUp(self):
@@ -1952,6 +2010,81 @@ class TestBuyDevCard(BaseInputHandlerTest):
     self.assertEqual(self.c.player_data[0].cards["yearofplenty"], 1)
 
 
+class TestExtraBuildPhase(BreakpointTest):
+
+  def setUp(self):
+    self.g = catan.CatanGame()
+    self.g.connected = {"player1", "player2", "player3", "player4", "player5"}
+    self.g.host = "player1"
+    for u in self.g.connected:
+      self.g.handle_join(u, {"name": u})
+    self.g.handle_start("player1", {"options": {"Scenario": "Random Map"}})
+    self.c = self.g.game
+
+  def testNoExtraBuildDuringPlacePhase(self):
+    self.c.handle(0, {"type": "settle", "location": [3, 3]})
+    self.c.handle(0, {"type": "road", "location": [3, 3, 5, 3]})
+    self.assertEqual(self.c.game_phase, "place1")
+    self.assertEqual(self.c.turn_phase, "settle")
+    self.assertEqual(self.c.turn_idx, 1)
+
+    # Also validate that there is no special build phase after the last settlement/road.
+    self.c.game_phase = "place2"
+    self.c.turn_phase = "settle"
+    self.c.turn_idx = 0
+    self.c.handle(0, {"type": "settle", "location": [9, 3]})
+    self.c.handle(0, {"type": "road", "location": [9, 3, 11, 3]})
+    self.assertEqual(self.c.game_phase, "main")
+    self.assertEqual(self.c.turn_phase, "dice")
+    self.assertEqual(self.c.turn_idx, 0)
+
+  def testExtraBuildActions(self):
+    self.c.game_phase = "main"
+    self.c.turn_phase = "main"
+    self.c.turn_idx = 4
+    self.c.add_piece(catan.Piece(3, 3, "settlement", 0))
+    self.c._add_road(Road([3, 3, 5, 3], "road", 0))
+    self.c._add_road(Road([5, 3, 6, 4], "road", 0))
+    self.c.player_data[0].cards.update({"rsrc1": 3, "rsrc2": 3, "rsrc3": 5, "rsrc4": 3, "rsrc5": 5})
+    self.c.player_data[4].cards.update({"rsrc1": 3, "rsrc2": 3, "rsrc3": 5, "rsrc4": 3, "rsrc5": 5})
+
+    with self.assertRaises(catan.NotYourTurn):
+      self.c.handle(0, {"type": "settle", "location": [6, 4]})
+
+    self.c.handle(4, {"type": "end_turn"})
+    self.assertEqual(self.c.game_phase, "main")
+    self.assertEqual(self.c.turn_phase, "extra_build")
+    self.assertEqual(self.c.extra_build_idx, 0)
+    self.c.handle(0, {"type": "settle", "location": [6, 4]})
+    self.c.handle(0, {"type": "road", "location": [6, 4, 8, 4]})
+    self.c.handle(0, {"type": "city", "location": [3, 3]})
+    self.c.handle(0, {"type": "buy_dev"})
+
+    with self.assertRaises(catan.NotYourTurn):
+      self.c.handle(0, {"type": "end_turn"})
+    with self.assertRaises(catan.NotYourTurn):
+      self.c.handle(0, {"type": "play_dev", "card_type": "knight"})
+    self.c.handle(0, {"type": "end_extra_build"})
+    self.assertEqual(self.c.game_phase, "main")
+    self.assertEqual(self.c.turn_phase, "extra_build")
+    self.assertEqual(self.c.extra_build_idx, 1)
+
+    with self.assertRaises(catan.NotYourTurn):
+      self.c.handle(4, {"type": "buy_dev"})
+
+  def testLastExtraBuild(self):
+    self.c.game_phase = "main"
+    self.c.turn_phase = "extra_build"
+    self.c.turn_idx = 4
+    self.c.extra_build_idx = 3
+
+    self.c.handle(3, {"type": "end_extra_build"})
+    self.assertEqual(self.c.game_phase, "main")
+    self.assertEqual(self.c.turn_phase, "dice")
+    self.assertIsNone(self.c.extra_build_idx)
+    self.assertEqual(self.c.turn_idx, 0)
+
+
 class TestUnstartedGame(unittest.TestCase):
 
   def setUp(self):
@@ -2016,7 +2149,7 @@ class TestUnstartedGame(unittest.TestCase):
       self.c.handle_start("one", {"options": {}})
     self.assertIsNone(self.c.game)
 
-    self.c.handle_start("one", {"options": {"Scenario": "Random Map"}})
+    self.c.handle_start("one", {"options": {"Scenario": "Random Map", "5-6 Players": False}})
     self.assertIsNotNone(self.c.game)
     self.assertIsNone(self.c.host)
     self.assertGreater(len(self.c.game.tiles.keys()), 0)
@@ -2038,7 +2171,7 @@ class TestUnstartedGame(unittest.TestCase):
     self.c.handle_join("four", {"name": "player4"})
     self.c.disconnect_user("one")
     self.c.disconnect_user("three")
-    self.c.handle_start(self.c.host, {"options": {"Scenario": "Random Map"}})
+    self.c.handle_start(self.c.host, {"options": {"Scenario": "Random Map", "5-6 Players": False}})
 
     self.assertIsNotNone(self.c.game)
     self.assertEqual(len(self.c.game.player_data), 2)
@@ -2070,6 +2203,8 @@ class TestGameOptions(unittest.TestCase):
     self.assertIn("Debug", option_data)
     self.assertFalse(option_data["Debug"]["value"])
     self.assertIsNone(option_data["Debug"]["choices"])
+    self.assertIn("5-6 Players", option_data)
+    self.assertFalse(option_data["5-6 Players"]["value"])
 
   def testModifyOptions(self):
     self.c.host = "a"
@@ -2127,6 +2262,47 @@ class TestGameOptions(unittest.TestCase):
     self.assertIsInstance(self.c.game, catan.SeafarerIslands)
     self.assertNotIsInstance(self.c.game, catan.DebugRules)
     self.assertFalse(self.c.game.rob_at_two)
+
+  def testStartWithFourPlayers(self):
+    self.c.connect_user("one")
+    self.c.connect_user("two")
+    self.c.connect_user("three")
+    self.c.connect_user("four")
+    self.c.connect_user("five")
+    self.c.handle_join("one", {"name": "player1"})
+    self.c.handle_join("two", {"name": "player2"})
+    self.c.handle_join("three", {"name": "player3"})
+    self.c.handle_join("four", {"name": "player4"})
+    self.c.handle_join("five", {"name": "player5"})
+
+    self.c.handle_select_option("one", {"options": {"Scenario": "Random Map"}})
+    self.assertIn("5-6 Players", self.c.rules)
+
+    self.c.disconnect_user("two")
+    self.assertNotIn("5-6 Players", self.c.rules)
+
+    self.c.handle_start("one", {"options": {"Scenario": "Random Map"}})
+    self.assertNotIsInstance(self.c.game, catan.ExtraPlayers)
+
+  def testStartWithFivePlayers(self):
+    self.c.connect_user("one")
+    self.c.connect_user("two")
+    self.c.connect_user("three")
+    self.c.connect_user("four")
+    self.c.connect_user("five")
+    self.c.handle_join("one", {"name": "player1"})
+    self.c.handle_join("two", {"name": "player2"})
+    self.c.handle_join("three", {"name": "player3"})
+    self.c.handle_join("four", {"name": "player4"})
+
+    self.c.handle_select_option("one", {"options": {"Scenario": "Random Map"}})
+    self.assertNotIn("5-6 Players", self.c.rules)
+
+    self.c.handle_join("five", {"name": "player5"})
+    self.assertIn("5-6 Players", self.c.rules)
+
+    self.c.handle_start("one", {"options": {"Scenario": "Random Map"}})
+    self.assertIsInstance(self.c.game, catan.ExtraPlayers)
 
 
 if __name__ == '__main__':

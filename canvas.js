@@ -356,7 +356,10 @@ function drawNumber(tileData, ctx) {
   }
 }
 function drawHover(ctx) {
-  if (turn != myIdx) {
+  if (extraBuildTurn != null && extraBuildTurn != myIdx) {
+    return;
+  }
+  if (extraBuildTurn == null && turn != myIdx) {
     return;
   }
   let canvas = document.getElementById("myCanvas");
