@@ -4,6 +4,7 @@ __pycache__/
 *$py.class
 
 # Any images or sounds that may be present in the project
+*.gif
 *.jpeg
 *.jpg
 *.mp3
