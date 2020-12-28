@@ -225,7 +225,7 @@ function drawDebug(ctx) {
 function drawLanding(landing, ctx) {
   let canvasLoc = coordToCanvasLoc(landing.location);
   ctx.strokeStyle = "black";
-  ctx.beginPath;
+  ctx.beginPath();
   ctx.moveTo(canvasLoc.x, canvasLoc.y - 3 * pieceRadius / 4);
   ctx.lineTo(canvasLoc.x, canvasLoc.y - 2 * pieceRadius);
   ctx.stroke();
