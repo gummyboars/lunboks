@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import argparse
 import asyncio
 from http import HTTPStatus
 from http.server import HTTPServer,BaseHTTPRequestHandler
@@ -209,19 +210,18 @@ async def SendGameUpdates():
 
 
 def ws_main(loop):
+  port = 8081  # TODO: this is hard-coded into various .js files.
   global GLOBAL_WS_SERVER
   asyncio.set_event_loop(loop)
   asyncio.ensure_future(SendGameUpdates())
-  ws_port = 8081
-  start_server = websockets.serve(HandleWebsocket, '', ws_port)
+  start_server = websockets.serve(HandleWebsocket, '', port)
   GLOBAL_WS_SERVER = loop.run_until_complete(start_server)
-  print("Websocket server started on port %d" % ws_port)
+  print("Websocket server started on port %d" % port)
   loop.run_forever()
 
 
-def main():
+def main(port):
   try:
-    port = 8080
     server = ThreadingHTTPServer(('', port), MyHandler)
     print('Started server on port %d' % port)
     server.serve_forever()
@@ -238,7 +238,11 @@ def main():
 
 
 if __name__ == '__main__':
+  parser = argparse.ArgumentParser()
+  parser.add_argument(
+      "--http-port", type=int, help="HTTP port", metavar="PORT", default=8001)
+  args = parser.parse_args()
   t2 = threading.Thread(target=ws_main, args=(GLOBAL_LOOP,))
   t2.start()
-  main()
+  main(args.http_port)
   t2.join()
