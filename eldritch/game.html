@@ -1,0 +1,49 @@
+<!DOCTYPE HTML>
+<html>
+  <meta content="text/html;charset=utf-8" http-equiv="Content-Type">
+  <meta content="utf-8" http-equiv="encoding">
+  <head>
+    <link rel="icon" href="data:;base64,iVBORw0KGgo=">
+    <link rel="stylesheet" href="style.css">
+  </head>
+  <script type="text/javascript" src="names.js"></script>
+  <script type="text/javascript" src="/assets.js"></script>
+  <script type="text/javascript" src="game.js"></script>
+  <script type="text/javascript" src="defaults.js"></script>
+  <body onload="init()">
+    <div id="ui">
+      <p id="errorText" class="noclick"></p>
+      <div id="uiload">
+        <div>Loading...</div>
+        <div id="loadbar">
+          <div id="loadingbar"></div>
+          <div id="errorbar"></div>
+          <span id="loadcount">&nbsp;</span>
+        </div>
+      </div>
+      <div id="uimain">
+        <div id="board">
+          <canvas id="boardcanvas"></canvas>
+        </div>
+        <div id="uibottom">
+          Modifier&nbsp;<input id="modifier" type="text" value="0" /><br />
+          <button onclick="makeCheck(event)" value="speed">Speed</button>
+          <button onclick="makeCheck(event)" value="sneak">Sneak</button>
+          <button onclick="makeCheck(event)" value="fight">Fight</button>
+          <button onclick="makeCheck(event)" value="will">Will</button>
+          <button onclick="makeCheck(event)" value="lore">Lore</button>
+          <button onclick="makeCheck(event)" value="luck">Luck</button>
+          <button onclick="makeCheck(event)" value="evade">Evade</button>
+          <button onclick="makeCheck(event)" value="combat">Combat</button>
+          <button onclick="makeCheck(event)" value="horror">Horror</button>
+          <button onclick="makeCheck(event)" value="spell">Spell</button>
+          <div id="result"></div>
+          <div id="dice"></div>
+        </div>
+      </div>
+      <div id="uiright">hello</div>
+    </div>
+    <div id="assets" style="display: none"></div>
+    <div id="defaultassets" style="display: none"></div>
+  </body>
+</html>

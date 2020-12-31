@@ -15,6 +15,7 @@ import uuid
 import websockets
 
 import catan
+import eldritch.eldritch as eldritch
 import game as game_handler
 
 
@@ -23,7 +24,7 @@ GLOBAL_LOOP = asyncio.get_event_loop()
 GLOBAL_WS_SERVER = None
 INDEX_WEBSOCKETS = set()
 GAMES = {}
-GAME_TYPES = {"catan": catan.CatanGame}
+GAME_TYPES = {"catan": catan.CatanGame, "eldritch": eldritch.EldritchGame}
 # Check to make sure abstract base classes are satisfied.
 [game_class() for game_class in GAME_TYPES.values()]
 
@@ -53,8 +54,9 @@ class MyHandler(BaseHTTPRequestHandler):
     else:
       filepath = "/".join([ROOT_DIR, path])
     filepath = os.path.abspath(filepath)
-    if os.path.dirname(filepath) != ROOT_DIR:
-      print("dirname is %s but root is %s" % (os.path.dirname(filepath), ROOT_DIR))
+    allowable_dirs = [ROOT_DIR + "/eldritch", ROOT_DIR]
+    if os.path.dirname(filepath) not in allowable_dirs:
+      print("dirname is %s but root is %s" % (os.path.dirname(filepath), allowable_dirs))
       self.send_error(HTTPStatus.FORBIDDEN.value, "Access to %s forbidden" % path)
       return
     if not os.path.exists(filepath):
