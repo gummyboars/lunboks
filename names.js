@@ -9,6 +9,7 @@ serverNames = {
   space: "water",
 };
 
+assetPrefix = "";
 assetNames = [
   // Tiles
   "rsrc1tile",

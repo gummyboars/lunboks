@@ -12,7 +12,7 @@
           <option value="catan">Catan</option>
         </select>
         <input id="gametype" type="hidden" name="type" value="catan"></input>
-        <input type="submit" style="display:inline-block" value="Create Game"></input>
+        <input type="submit" style="display:inline-block" value="Create Game" onclick="document.getElementById('gametype').value = document.getElementById('gamechoice').value;"></input>
       </form>
     </div>
     <div id="main">

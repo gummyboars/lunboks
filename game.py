@@ -48,6 +48,14 @@ def ValidatePlayer(playerdata):
     raise InvalidPlayer("Player name must be printable.")
 
 
+class CustomEncoder(json.JSONEncoder):
+
+  def default(self, o):
+    if hasattr(o, "json_repr"):
+      return o.json_repr()
+    return json.JSONEncoder.default(self, o)
+
+
 class BaseGame(metaclass=abc.ABCMeta):
 
   def get_urls(self):

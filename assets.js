@@ -130,9 +130,26 @@ function renderSource(assetName, cnv, img, filter) {
   renderLoops[assetName] = 2;
 }
 
+function createShape(specs) {
+  let cnv = document.createElement("CANVAS");
+  if (source.shape == "rect") {
+    cnv.width = source.width;
+    cnv.height = source.height;
+  }
+  let ctx = cnv.getContext("2d");
+  if (source.style) {
+    ctx.fillStyle = source.style;
+  }
+  if (source.shape == "rect") {
+    ctx.fillRect(0, 0, source.width, source.height);
+  }
+  return cnv;
+}
+
 function renderImages() {
   // Reset to make sure we wait for all assets to load again.
   renderLoops = {};
+  let prefix = assetPrefix || "";
   let assets = document.getElementById("assets");
   while (assets.firstChild) {
     assets.removeChild(assets.firstChild);
@@ -141,22 +158,32 @@ function renderImages() {
     document.getElementById("uiload").style.display = "block";
   }
   try {
-    let sources = JSON.parse(localStorage.getItem("sources") || "[]");
+    let sources = JSON.parse(localStorage.getItem(prefix + "sources") || "[]");
     totalImages = sources.length;
     loadedImages = 0;
     errorImages = 0;
     updateLoad();
     for (let [idx, source] of sources.entries()) {
-      let img = document.createElement("IMG");
-      img.src = source;
+      let img;
+      if (typeof(source) == "object") {
+        try {
+          img = createShape(source);
+          incrementLoad();
+        } catch(err) {
+          incrementError();
+        }
+      } else {
+        img = document.createElement("IMG");
+        img.src = source;
+        img.addEventListener("load", incrementLoad);
+        img.addEventListener("error", incrementError);
+        img.addEventListener("abort", incrementError);
+      }
       img.id = "img" + idx;
-      img.addEventListener("load", incrementLoad);
-      img.addEventListener("error", incrementError);
-      img.addEventListener("abort", incrementError);
       assets.appendChild(img);
     }
-    variants = JSON.parse(localStorage.getItem("variants") || "{}");
-    imageInfo = JSON.parse(localStorage.getItem("imageinfo") || "{}");
+    variants = JSON.parse(localStorage.getItem(prefix + "variants") || "{}");
+    imageInfo = JSON.parse(localStorage.getItem(prefix + "imageinfo") || "{}");
     for (let assetName of assetNames) {
       let variantConfig = variants[assetName];
       let assetVariants;

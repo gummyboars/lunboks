@@ -1,15 +1,13 @@
 import collections
 from http import HTTPStatus
 import json
-import operator
-import os
 from random import SystemRandom
 random = SystemRandom()
 from unittest import mock
 
 from game import (
-    BaseGame, ValidatePlayer, InvalidInput, UnknownMove, InvalidMove,
-    InvalidPlayer, TooManyPlayers, NotYourTurn
+    BaseGame, ValidatePlayer, CustomEncoder, InvalidInput, UnknownMove, InvalidMove,
+    InvalidPlayer, TooManyPlayers, NotYourTurn,
 )
 
 RESOURCES = ["rsrc1", "rsrc2", "rsrc3", "rsrc4", "rsrc5"]
@@ -53,14 +51,6 @@ def _validate_name(current_name, used_names, data):
   '''
   if len(new_name) > 16:
     raise InvalidPlayer("Max name length is 16.")
-
-
-class CustomEncoder(json.JSONEncoder):
-
-  def default(self, o):
-    if hasattr(o, "json_repr"):
-      return o.json_repr()
-    return json.JSONEncoder.default(self, o)
 
 
 _event = collections.namedtuple(
