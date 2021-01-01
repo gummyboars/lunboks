@@ -214,9 +214,28 @@ function updateYou(character) {
   cnv.width = markerWidth;
   cnv.height = markerHeight;
   renderAssetToCanvas(cnv, character.name, "");
-  document.getElementById("playername").innerText = character.name + " " + character.focus_points + " / " + character.focus;
+  document.getElementById("playername").innerText = character.name;
+  let stats = document.getElementById("playerstats");
+  while (stats.firstChild) {
+    stats.removeChild(stats.firstChild);
+  }
+  let cfgs = [  // TODO: speed is not the correct cap for movement points
+    ["stamina", "stamina", "max_stamina"], ["sanity", "sanity", "max_sanity"],
+    ["movement", "movement_points", "speed"], ["focus", "focus_points", "focus"],
+    ["clues", "clues"], ["money", "money"],
+  ];
+  for (let cfg of cfgs) {
+    let text = cfg[0] + ": " + character[cfg[1]];
+    if (cfg.length > 2) {
+      text += " / " + character[cfg[2]];
+    }
+    let statDiv = document.createElement("DIV");
+    statDiv.classList.add("stat");
+    statDiv.innerText = text;
+    stats.appendChild(statDiv);
+  }
   updateSliders(character);
-  // updatePossessions(character);
+  updatePossessions(character);
 }
 
 function updateSliders(character) {
@@ -281,4 +300,84 @@ function createSlider(sliderName, sliderInfo) {
     sliderDiv.appendChild(pairDiv);
   }
   return sliderDiv;
+}
+
+function updatePossessions(character) {
+  let pDiv = document.getElementById("possessions");
+  while (pDiv.firstChild) {
+    pDiv.removeChild(pDiv.firstChild);
+  }
+  let active = {};
+  for (let pos of character.active_possessions) {
+    active[pos.name] = true;
+  }
+  for (let pos of character.possessions) {
+    pDiv.appendChild(createPossession(pos, active[pos.name]));
+  }
+}
+
+function createPossession(info, isActive) {
+  let width = document.getElementById("boardcanvas").width;
+  let posWidth = 3 * width * markerWidthRatio / 2;
+  let posHeight = 3 * width * markerHeightRatio / 2;
+  let div = document.createElement("DIV");
+  div.classList.add("possession");
+  if (isActive) {
+    div.classList.add("active");
+  }
+  let cnv = document.createElement("CANVAS");
+  div.style.width = posWidth + "px";
+  div.style.height = posHeight + "px";
+  cnv.width = posWidth;
+  cnv.height = posHeight;
+  cnv.classList.add("markercnv");  // TODO: maybe these should be a different size/class.
+  renderAssetToCanvas(cnv, info.name, "");
+  div.appendChild(cnv);
+  let cascade = {"sneak": "evade", "fight": "combat", "will": "horror", "lore": "spell"};
+  for (let attr in info.passive_bonuses) {
+    if (!info.passive_bonuses[attr]) {
+      continue;
+    }
+    let highlightDiv = document.createElement("DIV");
+    highlightDiv.classList.add("bonus");
+    highlightDiv.classList.add("bonus" + attr);
+    highlightDiv.innerText = (info.passive_bonuses[attr] >= 0 ? "+" : "") + info.passive_bonuses[attr];
+    if (cascade[attr]) {
+      highlightDiv.classList.add("bonus" + cascade[attr]);
+    }
+    div.appendChild(highlightDiv);
+  }
+  // TODO: dedup
+  for (let attr in info.hand_bonuses) {
+    if (!info.hand_bonuses[attr]) {
+      continue;
+    }
+    let highlightDiv = document.createElement("DIV");
+    highlightDiv.classList.add("bonus");
+    highlightDiv.classList.add("bonus" + attr);
+    if (isActive) {
+      highlightDiv.innerText = (info.hand_bonuses[attr] >= 0 ? "+" : "") + info.hand_bonuses[attr];
+    } else {
+      highlightDiv.innerText = "need hands";  // TODO: make this better
+    }
+    if (cascade[attr]) {
+      highlightDiv.classList.add("bonus" + cascade[attr]);
+    }
+    div.appendChild(highlightDiv);
+  }
+  return div;
+}
+
+function highlightCheck(e) {
+  let check_type = e.currentTarget.value;
+  for (let hDiv of document.getElementsByClassName("bonus" + check_type)) {
+    hDiv.classList.add("shown");
+  }
+}
+
+// TODO: figure out why this gets called when a button is clicked
+function endHighlight(e) {
+  for (let hDiv of document.getElementsByClassName("bonus")) {
+    hDiv.classList.remove("shown");
+  }
 }

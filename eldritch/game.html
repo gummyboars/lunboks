@@ -27,16 +27,6 @@
         </div>
         <div id="uibottom">
           Modifier&nbsp;<input id="modifier" type="text" value="0" /><br />
-          <button onclick="makeCheck(event)" value="speed">Speed</button>
-          <button onclick="makeCheck(event)" value="sneak">Sneak</button>
-          <button onclick="makeCheck(event)" value="fight">Fight</button>
-          <button onclick="makeCheck(event)" value="will">Will</button>
-          <button onclick="makeCheck(event)" value="lore">Lore</button>
-          <button onclick="makeCheck(event)" value="luck">Luck</button>
-          <button onclick="makeCheck(event)" value="evade">Evade</button>
-          <button onclick="makeCheck(event)" value="combat">Combat</button>
-          <button onclick="makeCheck(event)" value="horror">Horror</button>
-          <button onclick="makeCheck(event)" value="spell">Spell</button>
           <div id="turn"><button onclick="endTurn(event)">End Turn</button></div>
           <div id="result"></div>
           <div id="dice"></div>
@@ -46,12 +36,30 @@
         <div id="doomtrack"></div>
         <div id="terrortrack"></div>
         <div id="player">
-          <div id="playerinfo">
-            <div id="playerpic"><canvas id="playerpiccanvas"></canvas></div>
-            <div id="playername"></div>
+          <div id="playertop">
+            <div id="playerpicouter">
+              <div id="playerpic"><canvas id="playerpiccanvas"></canvas></div>
+            </div>
+            <div id="playerinfo">
+              <div id="playername"></div>
+              <div id="playerstats"></div>
+            </div>
           </div>
           <div id="sliders"><div class="sliderspacer"></div></div>
           <div id="possessions"></div>
+          <div class="sliderspacer"></div>
+          <div id="checks">
+            <button onclick="makeCheck(event)" onmouseenter="highlightCheck(event)" onmouseleave="endHighlight(event)" value="speed">Speed</button>
+            <button onclick="makeCheck(event)" onmouseenter="highlightCheck(event)" onmouseleave="endHighlight(event)" value="sneak">Sneak</button>
+            <button onclick="makeCheck(event)" onmouseenter="highlightCheck(event)" onmouseleave="endHighlight(event)" value="fight">Fight</button>
+            <button onclick="makeCheck(event)" onmouseenter="highlightCheck(event)" onmouseleave="endHighlight(event)" value="will">Will</button>
+            <button onclick="makeCheck(event)" onmouseenter="highlightCheck(event)" onmouseleave="endHighlight(event)" value="lore">Lore</button>
+            <button onclick="makeCheck(event)" onmouseenter="highlightCheck(event)" onmouseleave="endHighlight(event)" value="luck">Luck</button>
+            <button onclick="makeCheck(event)" onmouseenter="highlightCheck(event)" onmouseleave="endHighlight(event)" value="evade">Evade</button>
+            <button onclick="makeCheck(event)" onmouseenter="highlightCheck(event)" onmouseleave="endHighlight(event)" value="combat">Combat</button>
+            <button onclick="makeCheck(event)" onmouseenter="highlightCheck(event)" onmouseleave="endHighlight(event)" value="horror">Horror</button>
+            <button onclick="makeCheck(event)" onmouseenter="highlightCheck(event)" onmouseleave="endHighlight(event)" value="spell">Spell</button>
+          </div>
         </div>
       </div>
     </div>

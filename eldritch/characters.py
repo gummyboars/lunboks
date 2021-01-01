@@ -12,8 +12,8 @@ class Character(object):
       max_fight, max_will, max_lore, max_luck, focus, home,
     ):
     self.name = name
-    self._max_stamina = None
-    self._max_sanity = None
+    self._max_stamina = max_stamina
+    self._max_sanity = max_sanity
     self._speed_sneak = [(max_speed - 3 + i, max_sneak - i) for i in range(4)]
     self._fight_will = [(max_fight - 3 + i, max_will - i) for i in range(4)]
     self._lore_luck = [(max_lore - 3 + i, max_luck - i) for i in range(4)]

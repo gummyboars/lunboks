@@ -46,8 +46,8 @@ class Possession(object):
 
 
 # TODO: update all of these items
-Revolver38 = Possession(".38 Revolver", "common", {}, {"combat": 3}, {}, "physical", 1, 4)
+Revolver38 = Possession("Revolver38", "common", {}, {"combat": 3}, {}, "physical", 1, 4)
 Bullwhip = Possession("Bullwhip", "common", {}, {"combat": 1}, {}, "physical", 1, 2)  # TODO: special ability
 Cross = Possession("Cross", "unique", {}, {"horror": 1}, {}, "magical", 1, 3)
 Dynamite = Possession("Dynamite", "common", {}, {"combat": 8}, {}, "physical", 2, 4)
-TommyGun = Possession("Tommy Gun", "common", {}, {"combat": 6}, {}, "physical", 2, 7)
+TommyGun = Possession("TommyGun", "common", {}, {"combat": 6}, {}, "physical", 2, 7)

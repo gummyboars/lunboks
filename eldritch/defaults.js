@@ -30,9 +30,9 @@ locations = {
   House: {name: "Ma's Boarding House", color: "saddlebrown", x: 0.8457, y: 0.0513},
   Church: {name: "South Church", color: "saddlebrown", x: 0.9479, y: 0.0900},
   Society: {name: "Historical Society", color: "saddlebrown", x: 0.9479, y: 0.2068},
-  Woods: {name: "Woods", color: "red", x: 0.9472, y: 0.3259},
-  Shoppe: {name: "Þe Old Magick Shoppe", color: "red", x: 0.9323, y: 0.4606},
-  Hospital: {name: "St. Mary's Hospital", color: "red", x: 0.8162, y: 0.5387},
+  Woods: {name: "Woods", color: "firebrick", x: 0.9472, y: 0.3259},
+  Shoppe: {name: "Þe Old Magick Shoppe", color: "firebrick", x: 0.9323, y: 0.4606},
+  Hospital: {name: "St. Mary's Hospital", color: "firebrick", x: 0.8162, y: 0.5387},
   Library: {name: "Library", color: "yellow", x: 0.7149, y: 0.4523},
   Administration: {name: "Administration", color: "yellow", x: 0.6714, y: 0.5387},
   Science: {name: "Science Building", color: "yellow", x: 0.5729, y: 0.5387},
@@ -48,7 +48,7 @@ streets = {
   Rivertown: {name: "Rivertown", color: "purple", x: 0.3966, y: 0.2473},
   FrenchHill: {name: "French Hill", color: "steelblue", x: 0.6069, y: 0.2473},
   Southside: {name: "Southside", color: "saddlebrown", x: 0.8122, y: 0.2473},
-  Uptown: {name: "Uptown", color: "red", x: 0.8122, y: 0.3575},
+  Uptown: {name: "Uptown", color: "firebrick", x: 0.8122, y: 0.3575},
   University: {name: "Miskatonic University", color: "yellow", x: 0.6069, y: 0.3575},
   Merchant: {name: "Merchant District", color: "green", x: 0.3966, y: 0.3575},
 };
@@ -93,10 +93,20 @@ function initializeDefaults() {
   }
   board.id = "defaultboard";
   assets.appendChild(board);
-  for (let name of characterNames) {
-    let chr = createCharacter(name, board.width);
-    chr.id = "default" + name;
-    assets.appendChild(chr);
+  let cfgs = [
+    {names: characterNames, color: "silver"},
+    {names: commonNames, color: "darkkhaki"},
+    {names: uniqueNames, color: "indianred"},
+    {names: spellNames, color: "mediumpurple"},
+    {names: skillNames, color: "gold"},
+    {names: allyNames, color: "darkorange"},
+  ];
+  for (let cfg of cfgs) {
+    for (let name of cfg.names) {
+      let asset = createTextRectangle(name, cfg.color, board.width);
+      asset.id = "default" + name;
+      assets.appendChild(asset);
+    }
   }
 }
 
@@ -152,13 +162,13 @@ function drawStreet(ctx, data, boardWidth) {
   ctx.restore();
 }
 
-function createCharacter(name, boardWidth) {
+function createTextRectangle(name, bgColor, boardWidth) {
   let cnv = document.createElement("CANVAS");
-  cnv.width = boardWidth * markerWidthRatio;
-  cnv.height = boardWidth * markerHeightRatio;
+  cnv.width = 3 * boardWidth * markerWidthRatio;
+  cnv.height = 3 * boardWidth * markerHeightRatio;
   let ctx = cnv.getContext("2d");
   ctx.save();
-  ctx.fillStyle = "silver";
+  ctx.fillStyle = bgColor;
   ctx.fillRect(0, 0, cnv.width, cnv.height);
   let fontSize = getTextSize(ctx, name, cnv.width, cnv.height);
   ctx.font = fontSize + "px sans-serif";
