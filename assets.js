@@ -91,8 +91,8 @@ function renderSource(assetName, cnv, img, filter) {
     renderLoops[assetName] = 1;
     return;
   }
-  cnv.width = filter.naturalWidth;
-  cnv.height = filter.naturalHeight;
+  cnv.width = filter.naturalWidth || filter.width;
+  cnv.height = filter.naturalHeight || filter.height;
   let context = cnv.getContext('2d');
   let xoff = imageInfo[assetName].xoff || 0;
   let yoff = imageInfo[assetName].yoff || 0;
@@ -132,16 +132,16 @@ function renderSource(assetName, cnv, img, filter) {
 
 function createShape(specs) {
   let cnv = document.createElement("CANVAS");
-  if (source.shape == "rect") {
-    cnv.width = source.width;
-    cnv.height = source.height;
+  if (specs.shape == "rect") {
+    cnv.width = specs.width;
+    cnv.height = specs.height;
   }
   let ctx = cnv.getContext("2d");
-  if (source.style) {
-    ctx.fillStyle = source.style;
+  if (specs.style) {
+    ctx.fillStyle = specs.style;
   }
-  if (source.shape == "rect") {
-    ctx.fillRect(0, 0, source.width, source.height);
+  if (specs.shape == "rect") {
+    ctx.fillRect(0, 0, specs.width, specs.height);
   }
   return cnv;
 }
@@ -230,11 +230,15 @@ function renderImages() {
           });
           source.addEventListener("error", function(e) { failRender(assetName + variant, cnv) });
           source.addEventListener("abort", function(e) { failRender(assetName + variant, cnv) });
-          filter.addEventListener("load", function(e) {
+          if (filter.tagName != "CANVAS") {
+            filter.addEventListener("load", function(e) {
+              renderSource(assetName + variant, cnv, source, filter);
+            });
+            filter.addEventListener("error", function(e) { failRender(assetName + variant, cnv) });
+            filter.addEventListener("abort", function(e) { failRender(assetName + variant, cnv) });
+          } else {
             renderSource(assetName + variant, cnv, source, filter);
-          });
-          filter.addEventListener("error", function(e) { failRender(assetName + variant, cnv) });
-          filter.addEventListener("abort", function(e) { failRender(assetName + variant, cnv) });
+          }
         }
       }
     }
