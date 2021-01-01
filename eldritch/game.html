@@ -37,11 +37,23 @@
           <button onclick="makeCheck(event)" value="combat">Combat</button>
           <button onclick="makeCheck(event)" value="horror">Horror</button>
           <button onclick="makeCheck(event)" value="spell">Spell</button>
+          <div id="turn"><button onclick="endTurn(event)">End Turn</button></div>
           <div id="result"></div>
           <div id="dice"></div>
         </div>
       </div>
-      <div id="uiright">hello</div>
+      <div id="uiright">
+        <div id="doomtrack"></div>
+        <div id="terrortrack"></div>
+        <div id="player">
+          <div id="playerinfo">
+            <div id="playerpic"><canvas id="playerpiccanvas"></canvas></div>
+            <div id="playername"></div>
+          </div>
+          <div id="sliders"><div class="sliderspacer"></div></div>
+          <div id="possessions"></div>
+        </div>
+      </div>
     </div>
     <div id="assets" style="display: none"></div>
     <div id="defaultassets" style="display: none"></div>

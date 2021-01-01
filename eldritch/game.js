@@ -85,6 +85,12 @@ function onmsg(e) {
     setTimeout(clearError, 100);
     return;
   }
+  if (data.player_idx != null) {
+    updateYou(data.characters[data.player_idx]);
+  } else {
+    updateYou(null);
+  }
+  updateTurn(data.characters[data.turn_idx], data.turn_phase);
   updateCharacters(data.characters);
   updateDistances(data.distances);
   updateDice(data.check_result, data.dice_result);
@@ -94,11 +100,19 @@ function moveTo(place) {
   ws.send(JSON.stringify({"type": "move", "place": place}));
 }
 
+function setSlider(sliderName, sliderValue) {
+  ws.send(JSON.stringify({"type": "set_slider", "name": sliderName, "value": sliderValue}));
+}
+
 function makeCheck(e) {
   let t = e.currentTarget;
   let check_type = t.value;
   let modifier = document.getElementById("modifier").value;
   ws.send(JSON.stringify({"type": "check", "modifier": modifier, "check_type": check_type}));
+}
+
+function endTurn(e) {
+  ws.send(JSON.stringify({"type": "end_turn"}));
 }
 
 function updateDice(checkResult, diceResult) {
@@ -112,9 +126,6 @@ function updateDice(checkResult, diceResult) {
 }
 
 function updateCharacters(newCharacters) {
-  let width = document.getElementById("boardcanvas").width;
-  let markerWidth = width * markerWidthRatio;
-  let markerHeight = width * markerHeightRatio;
   for (let character of newCharacters) {
     let place = document.getElementById("place" + character.place);
     if (place == null) {
@@ -122,37 +133,48 @@ function updateCharacters(newCharacters) {
       continue;
     }
     if (characters[character.name] == null) {
-      let div = document.createElement("DIV");
-      div.style.width = + markerWidth + "px";
-      div.style.height = markerHeight + "px";
-      div.classList.add("marker");
-      let cnv = document.createElement("CANVAS");
-      cnv.classList.add("markercnv");
-      cnv.width = markerWidth;
-      cnv.height = markerHeight;
-      renderAssetToCanvas(cnv, character.name, "");
-      div.appendChild(cnv);
-      place.appendChild(div);
-      characters[character.name] = div;
+      characters[character.name] = createCharacterDiv(character.name);
+      place.appendChild(characters[character.name]);
     } else {
-      let div = characters[character.name];
-      if (div.parentNode == place) {
-        continue;
-      }
-      let oldRect = div.getBoundingClientRect();
-      div.parentNode.removeChild(div);
-      place.appendChild(div);
-      let newRect = div.getBoundingClientRect();
-      let diffX = Math.floor((oldRect.left - newRect.left) / scale);
-      let diffY = Math.floor((oldRect.top - newRect.top) / scale);
-      // TODO: multiple clicks in a row, also transition the destination characters.
-      div.classList.remove("moving");  // In case a previous movement was interrupted.
-      div.style.transform = "translateX(" + diffX + "px) translateY(" + diffY + "px)";
-      setTimeout(function() { div.classList.add("moving"); div.style.transform = ""; }, 5);
-      div.addEventListener(
-        "transitionend", function() { div.classList.remove("moving") }, {once: true});
+      moveCharacter(character.name, place);
     }
   }
+}
+
+function createCharacterDiv(name) {
+  let width = document.getElementById("boardcanvas").width;
+  let markerWidth = width * markerWidthRatio;
+  let markerHeight = width * markerHeightRatio;
+  let div = document.createElement("DIV");
+  div.style.width = + markerWidth + "px";
+  div.style.height = markerHeight + "px";
+  div.classList.add("marker");
+  let cnv = document.createElement("CANVAS");
+  cnv.classList.add("markercnv");
+  cnv.width = markerWidth;
+  cnv.height = markerHeight;
+  renderAssetToCanvas(cnv, name, "");
+  div.appendChild(cnv);
+  return div;
+}
+
+function moveCharacter(name, destDiv) {
+  let div = characters[name];
+  if (div.parentNode == destDiv) {
+    return;
+  }
+  let oldRect = div.getBoundingClientRect();
+  div.parentNode.removeChild(div);
+  destDiv.appendChild(div);
+  let newRect = div.getBoundingClientRect();
+  let diffX = Math.floor((oldRect.left - newRect.left) / scale);
+  let diffY = Math.floor((oldRect.top - newRect.top) / scale);
+  // TODO: multiple clicks in a row, also transition the destination characters.
+  div.classList.remove("moving");  // In case a previous movement was interrupted.
+  div.style.transform = "translateX(" + diffX + "px) translateY(" + diffY + "px)";
+  setTimeout(function() { div.classList.add("moving"); div.style.transform = ""; }, 5);
+  div.addEventListener(
+    "transitionend", function() { div.classList.remove("moving") }, {once: true});
 }
 
 function updateDistances(distances) {
@@ -172,4 +194,91 @@ function updateDistances(distances) {
     let textDiv = document.getElementById("place" + placeName + "desc");
     textDiv.innerText = distances[placeName];
   }
+}
+
+function updateTurn(character, phase) {
+  let btn = document.getElementById("turn").firstChild;
+  btn.innerText = character.name + "'s " + phase + " phase";
+}
+
+function updateYou(character) {
+  // TODO handle null, since this may be an observer.
+  let width = document.getElementById("boardcanvas").width;
+  let pdata = document.getElementById("player");
+  let markerWidth = width * markerWidthRatio;
+  let markerHeight = width * markerHeightRatio;
+  let picDiv = document.getElementById("playerpic");
+  let cnv = document.getElementById("playerpiccanvas");
+  picDiv.style.width = markerWidth + "px";
+  picDiv.style.height = markerHeight + "px";
+  cnv.width = markerWidth;
+  cnv.height = markerHeight;
+  renderAssetToCanvas(cnv, character.name, "");
+  document.getElementById("playername").innerText = character.name + " " + character.focus_points + " / " + character.focus;
+  updateSliders(character);
+  // updatePossessions(character);
+}
+
+function updateSliders(character) {
+  for (let sliderName in character.sliders) {
+    let sliderDiv = document.getElementById("slider_" + sliderName);
+    if (sliderDiv == null) {
+      sliderDiv = createSlider(sliderName, character.sliders[sliderName]);
+      document.getElementById("sliders").appendChild(sliderDiv);
+      let spacerDiv = document.createElement("DIV");
+      spacerDiv.classList.add("sliderspacer");
+      document.getElementById("sliders").appendChild(spacerDiv);
+    }
+    let selection = character.sliders[sliderName].selection;
+    let pairs = sliderDiv.getElementsByClassName("slidervaluepair");
+    for (let idx = 0; idx < pairs.length; idx++) {
+      let sliderPair = pairs[idx];
+      if (idx == selection) {
+        sliderPair.classList.add("sliderselected");
+        sliderPair.classList.remove("sliderdeselected");
+      } else {
+        sliderPair.classList.remove("sliderselected");
+        sliderPair.classList.add("sliderdeselected");
+      }
+    }
+  }
+}
+
+function createSlider(sliderName, sliderInfo) {
+  let firstName = sliderName.split("_")[0];
+  let secondName = sliderName.split("_")[1];
+  let sliderDiv = document.createElement("DIV");
+  sliderDiv.classList.add("slider");
+  sliderDiv.id = "slider_" + sliderName;
+  let nameDiv = document.createElement("DIV");
+  nameDiv.classList.add("sliderpair");
+  nameDiv.classList.add("slidernames");
+  let firstNameDiv = document.createElement("DIV");
+  firstNameDiv.classList.add("slidername");
+  firstNameDiv.innerText = firstName;
+  let secondNameDiv = document.createElement("DIV");
+  secondNameDiv.classList.add("slidername");
+  secondNameDiv.innerText = secondName;
+  nameDiv.appendChild(firstNameDiv);
+  nameDiv.appendChild(secondNameDiv);
+  sliderDiv.appendChild(nameDiv);
+  for (let idx = 0; idx < sliderInfo.pairs.length; idx++) {
+    let pair = sliderInfo.pairs[idx];
+    let pairDiv = document.createElement("DIV");
+    pairDiv.classList.add("sliderpair");
+    pairDiv.classList.add("slidervaluepair");
+    let firstDiv = document.createElement("DIV");
+    firstDiv.classList.add("slidervalue");
+    firstDiv.classList.add("slidertop");
+    firstDiv.innerText = pair[0];
+    let secondDiv = document.createElement("DIV");
+    secondDiv.classList.add("slidervalue");
+    secondDiv.classList.add("sliderbottom");
+    secondDiv.innerText = pair[1];
+    pairDiv.appendChild(firstDiv);
+    pairDiv.appendChild(secondDiv);
+    pairDiv.onclick = function(e) { setSlider(sliderName, idx); };
+    sliderDiv.appendChild(pairDiv);
+  }
+  return sliderDiv;
 }

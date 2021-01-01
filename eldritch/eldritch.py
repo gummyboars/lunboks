@@ -8,20 +8,21 @@ from game import (
     InvalidPlayer, TooManyPlayers, NotYourTurn,
 )
 
-from eldritch.characters import CHARACTERS
-from eldritch.places import LOCATIONS, STREETS
+import eldritch.characters as characters
+import eldritch.places as places
 from eldritch.items import CHECK_TYPES
 
 
 class GameState(object):
 
   DEQUE_ATTRIBUTES = {"common", "unique", "spells", "skills"}
+  TURN_PHASES = ["upkeep", "movement", "encounter", "otherworld", "mythos"]
 
   def __init__(self):
     self.places = {}
-    self.places.update(LOCATIONS)
-    self.places.update(STREETS)
-    self.characters = CHARACTERS
+    self.places.update(places.LOCATIONS)
+    self.places.update(places.STREETS)
+    self.characters = characters.CHARACTERS
     self.common = collections.deque()
     self.unique = collections.deque()
     self.spells = collections.deque()
@@ -29,9 +30,9 @@ class GameState(object):
     self.allies = []
     self.mythos = []
     self.gates = []
-    self.game_stage = "setup"  # valid values are setup, slumber, awakened, victory, defeat
+    self.game_stage = "slumber"  # valid values are setup, slumber, awakened, victory, defeat
     # valid values are setup, upkeep, movement, encounter, otherworld, mythos, awakened
-    self.turn_phase = "setup"
+    self.turn_phase = "upkeep"
     self.action = None
     self.turn_idx = 0
     self.first_player = 0
@@ -47,7 +48,7 @@ class GameState(object):
     output.update({key: getattr(self, key) for key in self.__dict__.keys() - self.DEQUE_ATTRIBUTES})
     for attr in self.DEQUE_ATTRIBUTES:
       output[attr] = list(getattr(self, attr))
-    output["distances"] = self.get_distances(0)
+    output["distances"] = self.get_distances(self.turn_idx)
     return output
 
   @classmethod
@@ -57,6 +58,12 @@ class GameState(object):
   def handle(self, char_idx, data):
     if char_idx not in range(len(self.characters)):
       raise InvalidPlayer("no such player %s" % char_idx)
+    if char_idx != self.turn_idx:
+      raise NotYourTurn("It is not your turn.")
+    if data.get("type") == "end_turn":
+      return self.handle_end_turn()
+    if data.get("type") == "set_slider":
+      return self.handle_slider(char_idx, data.get("name"), data.get("value"))
     if data.get("type") == "move":
       return self.handle_move(char_idx, data.get("place"))
     if data.get("type") == "check":
@@ -75,12 +82,77 @@ class GameState(object):
     successes, self.dice_result = self.characters[char_idx].make_check(check_type, modifier)
     self.check_result = successes > 0
 
+  def handle_slider(self, char_idx, name, value):
+    if self.turn_phase != "upkeep":
+      raise InvalidMove("You may only move sliders during the upkeep phase.")
+    if name is None:
+      raise InvalidInput("missing slider name")
+    char = self.characters[char_idx]
+    if not hasattr(char, name + "_slider"):
+      raise InvalidInput("invalid slider name %s" % name)
+    try:
+      value = int(value)
+    except (ValueError, TypeError):
+      raise InvalidInput("invalid value %s" % value)
+    if 0 > value or value >= len(getattr(char, "_" + name)):
+      raise InvalidInput("invalid slider value %s" % value)
+    slots_moved = abs(getattr(char, name + "_slider") - value)
+    if slots_moved > char.focus_points:
+      raise InvalidMove(
+          "You only have %s focus left; you would need %s." % (char.focus_points, slots_moved))
+    char.focus_points -= slots_moved
+    setattr(char, name + "_slider", value)
+
   def handle_move(self, char_idx, place):
+    if self.turn_phase != "movement":
+      raise InvalidMove("You may only move during the movement phase.")
     if place is None:
       raise InvalidInput("no place")
     if place not in self.places:
       raise InvalidInput("unknown place")
+    distances = self.get_distances(char_idx)
+    if place not in distances or distances[place] > self.characters[char_idx].movement_points:
+      raise InvalidMove(
+          "You cannot reach that location with %s movement." %
+          self.characters[char_idx].movement_points
+      )
     self.characters[char_idx].place = self.places[place]
+    self.characters[char_idx].movement_points -= distances[place]
+    if self.characters[char_idx].movement_points <= 0:
+      self.next_turn()
+
+  def handle_end_turn(self):
+    self.next_turn()
+
+  def next_turn(self):
+    # TODO: game stages other than slumber
+    if self.turn_phase == "mythos":
+      self.first_player += 1
+      self.first_player %= len(self.characters)
+      self.turn_idx = self.first_player
+      self.turn_phase = "upkeep"
+      for char in self.characters:
+        char.focus_points = char.focus
+      return
+    self.turn_idx += 1
+    self.turn_idx %= len(self.characters)
+    if self.turn_idx == self.first_player:
+      # Guaranteed to not go off the end of the list because we check for mythos above.
+      phase_idx = self.TURN_PHASES.index(self.turn_phase)
+      self.turn_phase = self.TURN_PHASES[phase_idx + 1]
+      if self.turn_phase == "movement":
+        for char in self.characters:
+          char.movement_points = char.speed
+    if self.turn_phase == "encounter":
+      place = self.characters[self.turn_idx].place
+      if not isinstance(place, places.Location):
+        self.next_turn()
+        return
+    if self.turn_phase == "otherworld":
+      place = self.characters[self.turn_idx].place
+      if not isinstance(place, places.OtherWorld):
+        self.next_turn()
+        return
 
   def get_distances(self, char_idx):
     distances = {self.characters[char_idx].place.name: 0}

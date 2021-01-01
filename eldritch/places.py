@@ -81,6 +81,10 @@ class Location(Place):
     pass
 
 
+class OtherWorld(Place):
+  pass
+
+
 Newspaper = Location("Newspaper", "Newspaper")
 Train = Location("Train", "Train Station")
 Shop = Location("Shop", "Curiositie Shoppe", None)

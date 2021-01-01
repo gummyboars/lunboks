@@ -33,16 +33,23 @@ class Character(object):
     self.delayed = False
     self.arrested = False  # TODO: necessary?
     self.movement_points = self.speed
+    self.focus_points = self.focus
     self.place = home
 
   def json_repr(self):
     attrs = [
         "name", "max_stamina", "max_sanity", "stamina", "sanity", "focus",
-        "speed", "sneak", "fight", "will", "lore", "luck", "movement_points",
+        "speed", "sneak", "fight", "will", "lore", "luck", "movement_points", "focus_points",
         "money", "clues", "possessions", "active_possessions", # TODO: special cards
         "delayed", "arrested",
     ]
     data = {attr: getattr(self, attr) for attr in attrs}
+    data["sliders"] = {}
+    for slider in ["speed_sneak", "fight_will", "lore_luck"]:
+      data["sliders"][slider] = {
+          "pairs": getattr(self, "_" + slider),
+          "selection": getattr(self, slider + "_slider"),
+      }
     data["place"] = self.place.name
     return data
 
