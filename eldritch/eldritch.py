@@ -10,12 +10,20 @@ from game import (
 
 import eldritch.characters as characters
 import eldritch.places as places
-from eldritch.items import CHECK_TYPES
+import eldritch.items as items
+
+
+class MoveEvent(object):
+
+  def __init__(self, character, route):
+    self.character = character
+    self.route = route
 
 
 class GameState(object):
 
-  DEQUE_ATTRIBUTES = {"common", "unique", "spells", "skills"}
+  DEQUE_ATTRIBUTES = {"common", "unique", "spells", "skills", "mythos", "gates"}
+  HIDDEN_ATTRIBUTES = {"event_stack"}
   TURN_PHASES = ["upkeep", "movement", "encounter", "otherworld", "mythos"]
 
   def __init__(self):
@@ -28,12 +36,14 @@ class GameState(object):
     self.spells = collections.deque()
     self.skills = collections.deque()
     self.allies = []
-    self.mythos = []
-    self.gates = []
+    self.mythos = collections.deque()
+    self.gates = collections.deque()
     self.game_stage = "slumber"  # valid values are setup, slumber, awakened, victory, defeat
     # valid values are setup, upkeep, movement, encounter, otherworld, mythos, awakened
     self.turn_phase = "upkeep"
-    self.action = None
+    self.event_stack = collections.deque()
+    self.event_log = []
+    self.choices = []
     self.turn_idx = 0
     self.first_player = 0
     self.ancient_one = None
@@ -45,7 +55,10 @@ class GameState(object):
 
   def json_repr(self):
     output = {}
-    output.update({key: getattr(self, key) for key in self.__dict__.keys() - self.DEQUE_ATTRIBUTES})
+    output.update({
+      key: getattr(self, key) for key in
+      self.__dict__.keys() - self.DEQUE_ATTRIBUTES - self.HIDDEN_ATTRIBUTES
+    })
     for attr in self.DEQUE_ATTRIBUTES:
       output[attr] = list(getattr(self, attr))
     output["distances"] = self.get_distances(self.turn_idx)
@@ -61,19 +74,33 @@ class GameState(object):
     if char_idx != self.turn_idx:
       raise NotYourTurn("It is not your turn.")
     if data.get("type") == "end_turn":
-      return self.handle_end_turn()
-    if data.get("type") == "set_slider":
-      return self.handle_slider(char_idx, data.get("name"), data.get("value"))
-    if data.get("type") == "move":
-      return self.handle_move(char_idx, data.get("place"))
-    if data.get("type") == "check":
-      return self.handle_check(char_idx, data.get("check_type"), data.get("modifier"))
-    raise UnknownMove(data.get("type"))
+      self.handle_end_turn()
+    elif data.get("type") == "set_slider":
+      self.handle_slider(char_idx, data.get("name"), data.get("value"))
+    elif data.get("type") == "move":
+      self.handle_move(char_idx, data.get("place"))
+    elif data.get("type") == "check":
+      self.handle_check(char_idx, data.get("check_type"), data.get("modifier"))
+    else:
+      raise UnknownMove(data.get("type"))
+
+    if self.choices:
+      yield None
+      return
+
+    # TODO: if the functions above do not change the state, then we will produce one message
+    # that is identical to the previous state. If we assume that handlers that do change state
+    # will not put anything on the event stack, we can optimize this away. But it's better to
+    # leave it here now for correctness.
+    yield None
+    while self.event_stack:
+      self.resolve(self.event_stack.pop())
+      yield None
 
   def handle_check(self, char_idx, check_type, modifier):
     if check_type is None:
       raise InvalidInput("no check type")
-    if check_type not in CHECK_TYPES:
+    if check_type not in items.CHECK_TYPES:
       raise InvalidInput("unknown check type")
     try:
       modifier = int(modifier)
@@ -110,16 +137,13 @@ class GameState(object):
       raise InvalidInput("no place")
     if place not in self.places:
       raise InvalidInput("unknown place")
-    distances = self.get_distances(char_idx)
-    if place not in distances or distances[place] > self.characters[char_idx].movement_points:
+    routes = self.get_routes(char_idx)
+    if place not in routes or len(routes[place]) > self.characters[char_idx].movement_points:
       raise InvalidMove(
           "You cannot reach that location with %s movement." %
           self.characters[char_idx].movement_points
       )
-    self.characters[char_idx].place = self.places[place]
-    self.characters[char_idx].movement_points -= distances[place]
-    if self.characters[char_idx].movement_points <= 0:
-      self.next_turn()
+    self.event_stack.append(MoveEvent(self.characters[char_idx], routes[place]))
 
   def handle_end_turn(self):
     self.next_turn()
@@ -154,23 +178,42 @@ class GameState(object):
         self.next_turn()
         return
 
+  def resolve(self, event):
+    if isinstance(event, MoveEvent):
+      if len(event.route) == 0:
+        return
+      event.character.place = self.places[event.route[0]]
+      event.character.movement_points -= 1
+      # TODO: automatically advance to the next turn if no movement points left?
+      if event.route[1:]:
+        self.event_stack.append(MoveEvent(event.character, event.route[1:]))
+      return
+    raise InvalidMove("Unknown event type")
+
   def get_distances(self, char_idx):
-    distances = {self.characters[char_idx].place.name: 0}
+    routes = self.get_routes(char_idx)
+    return {loc: len(route) for loc, route in routes.items()}
+
+  def get_routes(self, char_idx):
+    routes = {self.characters[char_idx].place.name: []}
+    if self.characters[char_idx].place.closed:
+      return routes
     queue = collections.deque()
     for place in self.characters[char_idx].place.connections:
-      queue.append((place, 1))
+      if not place.closed:
+        queue.append((place, []))
     while queue:
-      place, distance = queue.popleft()
-      if place.name in distances:
+      place, route = queue.popleft()
+      if place.name in routes:
         continue
       if place.closed:  # TODO: more possibilities. monsters?
         continue
-      distances[place.name] = distance
-      if distance == self.characters[char_idx].movement_points:
+      routes[place.name] = route + [place.name]
+      if len(routes[place.name]) == self.characters[char_idx].movement_points:
         continue
       for next_place in place.connections:
-        queue.append((next_place, distance+1))
-    return distances
+        queue.append((next_place, route + [place.name]))
+    return routes
 
 
 class EldritchGame(BaseGame):

@@ -1,6 +1,8 @@
 ws = null;
 characters = {};
 scale = 1;
+runningAnim = [];
+messageQueue = [];
 
 function init() {
   let params = new URLSearchParams(window.location.search);
@@ -85,15 +87,33 @@ function onmsg(e) {
     setTimeout(clearError, 100);
     return;
   }
+  if (runningAnim.length || messageQueue.length) {
+    messageQueue.push(data);
+  } else {
+    handleData(data);
+  }
+}
+function finishAnim(div) {
+  div.ontransitionend = null;
+  div.ontransitioncancel = null;
+  runningAnim.shift();
+  if (messageQueue.length && !runningAnim.length) {
+    handleData(messageQueue.shift());
+  }
+}
+function handleData(data) {
   if (data.player_idx != null) {
     updateYou(data.characters[data.player_idx]);
   } else {
     updateYou(null);
   }
   updateTurn(data.characters[data.turn_idx], data.turn_phase);
-  updateCharacters(data.characters);
   updateDistances(data.distances);
   updateDice(data.check_result, data.dice_result);
+  updateCharacters(data.characters);
+  if (messageQueue.length && !runningAnim.length) {
+    handleData(messageQueue.shift());
+  }
 }
 
 function moveTo(place) {
@@ -169,12 +189,13 @@ function moveCharacter(name, destDiv) {
   let newRect = div.getBoundingClientRect();
   let diffX = Math.floor((oldRect.left - newRect.left) / scale);
   let diffY = Math.floor((oldRect.top - newRect.top) / scale);
-  // TODO: multiple clicks in a row, also transition the destination characters.
-  div.classList.remove("moving");  // In case a previous movement was interrupted.
+  // TODO: also transition the destination characters.
   div.style.transform = "translateX(" + diffX + "px) translateY(" + diffY + "px)";
-  setTimeout(function() { div.classList.add("moving"); div.style.transform = ""; }, 5);
-  div.addEventListener(
-    "transitionend", function() { div.classList.remove("moving") }, {once: true});
+  
+  runningAnim.push(true);  // Doesn't really matter what we push.
+  div.ontransitionend = function() { div.classList.remove("moving"); finishAnim(div); };
+  div.ontransitioncancel = function() { div.classList.remove("moving"); finishAnim(div); };
+  setTimeout(function() { div.classList.add("moving"); div.style.transform = "none"; }, 10);
 }
 
 function updateDistances(distances) {

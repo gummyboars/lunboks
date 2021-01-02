@@ -100,7 +100,7 @@ button {
   left: 0;
 }
 .moving {
-  transition: transform 1s;
+  transition: transform 0.5s;
 }
 .place {
   position: absolute;
