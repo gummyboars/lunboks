@@ -187,6 +187,14 @@ async def GameLoop(websocket, session, game):
 
 
 async def SendGames(websocket):
+  game_data = []
+  for game_id, game in GAMES.items():
+    game_data.append({
+      "game_id": game_id,
+      "status": game.game_status(),
+      "url": game.game_url(),
+    })
+  await websocket.send(json.dumps({"games": game_data}))
   INDEX_WEBSOCKETS.add(websocket)
   try:
     async for raw in websocket:

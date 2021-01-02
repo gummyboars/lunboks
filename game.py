@@ -178,8 +178,16 @@ class GameHandler(object):
     except Exception as e:
       await self.push_error(ws, str(e))
       return
+    pushed = False
     try:
-      self.game.handle(session, data)
+      result = self.game.handle(session, data)
+      if isinstance(result, collections.abc.Iterable):
+        # TODO: investigate what happens when one of these websockets disconnects or throws an
+        # error in the middle of handling this input.
+        for _ in result:
+          await self.push()
+        # Avoid pushing the last state twice.
+        pushed = True
     except (GameException, AssertionError) as e:
       await self.push_error(ws, str(e))
       # Intentionally fall through so that we can push the new state.
@@ -188,7 +196,8 @@ class GameHandler(object):
       print(sys.exc_info()[1])
       traceback.print_tb(sys.exc_info()[2])
       await self.push_error(ws, "unexpected error of type %s: %s" % (sys.exc_info()[0], sys.exc_info()[1]))
-    await self.push()
+    if not pushed:
+      await self.push()
 
   async def push(self):
     callbacks = []
