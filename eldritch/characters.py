@@ -123,17 +123,21 @@ class Character(object):
     assert item in self.possessions
     self.active_possessions.remove(item)
 
-  def make_check(self, check_type, modifier):
-    value = getattr(self, check_type) + modifier
-    dice_result = [random.randint(1, 6) for _ in range(value)]
-    successes = len([result for result in dice_result if result >= 5])
-    return successes, dice_result
+  def count_successes(self, roll, check_type):
+    threshold = 5 - self.bless_curse
+    return len([result for result in roll if result >= threshold])
 
 
 Nun = Character("Nun", 3, 7, 4, 4, 3, 4, 4, 6, 1, places.Church)
+Nun.bless_curse = 1
 Doctor = Character("Doctor", 5, 5, 3, 5, 3, 4, 5, 4, 2, places.Hospital)
+Doctor.money = 9
+Doctor.clues = 1
 Archaeologist = Character("Archaeologist", 7, 3, 4, 3, 5, 3, 4, 5, 2, places.Shop)
+Archaeologist.money = 7
+Archaeologist.clues = 1
 Gangster = Character("Gangster", 7, 3, 5, 4, 6, 4, 3, 3, 1, places.House)
+Gangster.money = 8
 
 Nun.possessions.extend([items.Cross])
 Archaeologist.possessions.extend([items.Revolver38, items.Bullwhip])

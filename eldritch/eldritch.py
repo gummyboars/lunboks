@@ -9,15 +9,9 @@ from game import (
 )
 
 import eldritch.characters as characters
-import eldritch.places as places
+import eldritch.events as events
 import eldritch.items as items
-
-
-class MoveEvent(object):
-
-  def __init__(self, character, route):
-    self.character = character
-    self.route = route
+import eldritch.places as places
 
 
 class GameState(object):
@@ -84,6 +78,9 @@ class GameState(object):
     else:
       raise UnknownMove(data.get("type"))
 
+    return self.resolve_loop()  # Returns a generator object.
+
+  def resolve_loop(self):
     if self.choices:
       yield None
       return
@@ -94,8 +91,21 @@ class GameState(object):
     # leave it here now for correctness.
     yield None
     while self.event_stack:
-      self.resolve(self.event_stack.pop())
+      event = self.event_stack[-1]
+      resolved = self.resolve(event)
+      if resolved is None:
+        raise RuntimeError("event without a resolution: %s" % event)
+      if resolved:
+        self.event_stack.pop()
+        if event.string():
+          self.event_log.append(event.string())
       yield None
+      if self.choices:
+        return
+
+  def resolve(self, event):
+    # TODO: pre-hooks and post-hooks.
+    return event.resolve(self)
 
   def handle_check(self, char_idx, check_type, modifier):
     if check_type is None:
@@ -143,7 +153,7 @@ class GameState(object):
           "You cannot reach that location with %s movement." %
           self.characters[char_idx].movement_points
       )
-    self.event_stack.append(MoveEvent(self.characters[char_idx], routes[place]))
+    self.event_stack.append(events.Movement(self.characters[char_idx], routes[place]))
 
   def handle_end_turn(self):
     self.next_turn()
@@ -172,23 +182,15 @@ class GameState(object):
       if not isinstance(place, places.Location):
         self.next_turn()
         return
+      elif place.encounters:
+        enc = random.choice(place.encounters)
+        event = enc(self.characters[self.turn_idx])
+        self.event_stack.append(event)
     if self.turn_phase == "otherworld":
       place = self.characters[self.turn_idx].place
       if not isinstance(place, places.OtherWorld):
         self.next_turn()
         return
-
-  def resolve(self, event):
-    if isinstance(event, MoveEvent):
-      if len(event.route) == 0:
-        return
-      event.character.place = self.places[event.route[0]]
-      event.character.movement_points -= 1
-      # TODO: automatically advance to the next turn if no movement points left?
-      if event.route[1:]:
-        self.event_stack.append(MoveEvent(event.character, event.route[1:]))
-      return
-    raise InvalidMove("Unknown event type")
 
   def get_distances(self, char_idx):
     routes = self.get_routes(char_idx)

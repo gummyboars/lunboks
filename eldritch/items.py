@@ -51,3 +51,4 @@ Bullwhip = Possession("Bullwhip", "common", {}, {"combat": 1}, {}, "physical", 1
 Cross = Possession("Cross", "unique", {}, {"horror": 1}, {}, "magical", 1, 3)
 Dynamite = Possession("Dynamite", "common", {}, {"combat": 8}, {}, "physical", 2, 4)
 TommyGun = Possession("TommyGun", "common", {}, {"combat": 6}, {}, "physical", 2, 7)
+Food = Possession("Food", "common", {}, {}, {}, None, None, 1)

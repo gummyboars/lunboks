@@ -1,4 +1,4 @@
-import eldritch.encounters as encounters
+import eldritch.events as events
 
 
 class Place(object):
@@ -66,7 +66,7 @@ class Location(Place):
 
   def __init__(self, name, long_name, fixed_encounter=None):
     super(Location, self).__init__(name, long_name)
-    self.encounters = set()
+    self.encounters = []
     self.fixed_encounter = fixed_encounter
 
   def _add_connections(self, *other_places):
@@ -147,6 +147,22 @@ FrenchHill._add_monster_movement("white", Southside)
 Southside._add_monster_movement("white", Uptown)
 # TODO: assert that each color makes a full circle.
 # TODO: assert that each location and street has both black and white monster movement
+
+# TODO: move these to a separate file with all the cards
+def Diner2(char):
+  return events.DrawSpecific(char, "common", "Food")
+def Diner3(char):
+  adj = events.GainOrLoss(char, {"money": -1, "stamina": 2})
+  prereq = events.AttributePrerequisite(char, "money", 1, "at least")
+  return events.Conditional(char, prereq, success_result=adj, fail_result=events.Nothing())
+def Diner4(char):
+  gain = events.Gain(char, {"money": 5})
+  check = events.Check(char, "will", -2)
+  return events.Conditional(char, check, success_result=gain, fail_result=events.Nothing())
+Diner.encounters.append(Diner2)
+Diner.encounters.append(Diner3)
+Diner.encounters.append(Diner4)
+
 
 LOCATIONS = {
     loc.name: loc for loc in [
