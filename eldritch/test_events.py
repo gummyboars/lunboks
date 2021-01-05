@@ -113,18 +113,18 @@ class MovementTest(EventTest):
 class GainLossTest(EventTest):
 
   def testGain(self):
-    gain = Gain(self.char, {"money": 2, "clues": 1})
+    gain = Gain(self.char, {"dollars": 2, "clues": 1})
     self.assertFalse(gain.is_resolved())
-    self.assertEqual(self.char.money, 0)
+    self.assertEqual(self.char.dollars, 0)
     self.assertEqual(self.char.clues, 0)
 
     self.state.event_stack.append(gain)
     self.resolve_loop()
 
     self.assertTrue(gain.is_resolved())
-    self.assertEqual(self.char.money, 2)
+    self.assertEqual(self.char.dollars, 2)
     self.assertEqual(self.char.clues, 1)
-    self.assertDictEqual(gain.final_adjustments, {"money": 2, "clues": 1})
+    self.assertDictEqual(gain.final_adjustments, {"dollars": 2, "clues": 1})
 
   def testLoss(self):
     loss = Loss(self.char, {"sanity": 2, "stamina": 1})
@@ -155,18 +155,18 @@ class GainLossTest(EventTest):
     self.assertDictEqual(gain.final_adjustments, {"sanity": 1, "stamina": 0})
 
   def testOverloss(self):
-    loss = Loss(self.char, {"clues": 2, "money": 1})
+    loss = Loss(self.char, {"clues": 2, "dollars": 1})
     self.assertFalse(loss.is_resolved())
-    self.char.money = 2
+    self.char.dollars = 2
     self.char.clues = 1
 
     self.state.event_stack.append(loss)
     self.resolve_loop()
 
     self.assertTrue(loss.is_resolved())
-    self.assertEqual(self.char.money, 1)
+    self.assertEqual(self.char.dollars, 1)
     self.assertEqual(self.char.clues, 0)
-    self.assertDictEqual(loss.final_adjustments, {"clues": -1, "money": -1})
+    self.assertDictEqual(loss.final_adjustments, {"clues": -1, "dollars": -1})
 
   @mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=[4, 1]))
   def testDieRollLoss(self):
@@ -295,8 +295,8 @@ class DrawTest(EventTest):
 class AttributePrerequisiteTest(EventTest):
 
   def testPrereq(self):
-    prereq = AttributePrerequisite(self.char, "money", 2, "at least")
-    self.assertEqual(self.char.money, 0)
+    prereq = AttributePrerequisite(self.char, "dollars", 2, "at least")
+    self.assertEqual(self.char.dollars, 0)
     self.assertFalse(prereq.is_resolved())
 
     self.state.event_stack.append(prereq)
@@ -306,8 +306,8 @@ class AttributePrerequisiteTest(EventTest):
     self.assertEqual(prereq.successes, 0)
 
   def testPrereq(self):
-    prereq = AttributePrerequisite(self.char, "money", 2, "at least")
-    self.char.money = 2
+    prereq = AttributePrerequisite(self.char, "dollars", 2, "at least")
+    self.char.dollars = 2
     self.assertFalse(prereq.is_resolved())
 
     self.state.event_stack.append(prereq)

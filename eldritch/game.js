@@ -243,7 +243,7 @@ function updateYou(character) {
   let cfgs = [  // TODO: speed is not the correct cap for movement points
     ["stamina", "stamina", "max_stamina"], ["sanity", "sanity", "max_sanity"],
     ["movement", "movement_points", "speed"], ["focus", "focus_points", "focus"],
-    ["clues", "clues"], ["money", "money"],
+    ["clues", "clues"], ["dollars", "dollars"],
   ];
   for (let cfg of cfgs) {
     let text = cfg[0] + ": " + character[cfg[1]];

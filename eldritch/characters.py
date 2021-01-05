@@ -23,7 +23,7 @@ class Character(object):
     self._focus = focus
     self.stamina = self.max_stamina
     self.sanity = self.max_sanity
-    self.money = 0
+    self.dollars = 0
     self.clues = 0
     self.possessions = []  # includes skills and allies
     self.active_possessions = []  # being used by hands
@@ -40,7 +40,7 @@ class Character(object):
     attrs = [
         "name", "max_stamina", "max_sanity", "stamina", "sanity", "focus",
         "speed", "sneak", "fight", "will", "lore", "luck", "movement_points", "focus_points",
-        "money", "clues", "possessions", "active_possessions", # TODO: special cards
+        "dollars", "clues", "possessions", "active_possessions", # TODO: special cards
         "delayed", "arrested",
     ]
     data = {attr: getattr(self, attr) for attr in attrs}
@@ -131,13 +131,13 @@ class Character(object):
 Nun = Character("Nun", 3, 7, 4, 4, 3, 4, 4, 6, 1, places.Church)
 Nun.bless_curse = 1
 Doctor = Character("Doctor", 5, 5, 3, 5, 3, 4, 5, 4, 2, places.Hospital)
-Doctor.money = 9
+Doctor.dollars = 9
 Doctor.clues = 1
 Archaeologist = Character("Archaeologist", 7, 3, 4, 3, 5, 3, 4, 5, 2, places.Shop)
-Archaeologist.money = 7
+Archaeologist.dollars = 7
 Archaeologist.clues = 1
 Gangster = Character("Gangster", 7, 3, 5, 4, 6, 4, 3, 3, 1, places.House)
-Gangster.money = 8
+Gangster.dollars = 8
 
 Nun.possessions.extend([items.Cross])
 Archaeologist.possessions.extend([items.Revolver38, items.Bullwhip])

@@ -9,8 +9,8 @@ class Event(metaclass=abc.ABCMeta):
 
   DiceRoll: One or more dice are rolled. The results are saved in the roll attribute.
   Movement: The character will be moved along a route, using movement points as they do so.
-  GainOrLoss: The character's sanity, stamina, money, or clues will be changed. The resulting change
-    will be stored in the final_adjustments attribute.
+  GainOrLoss: The character's sanity, stamina, dollars, or clues will be changed. The resulting
+    change will be stored in the final_adjustments attribute.
   StatusChange: The character will be blessed, cursed, a lodge member, gain a retainer, be delayed,
     be arrested, be lost in time and space, or be devoured. The final change will be stored in the
     status_change attribute (for example, status_change will be 0 if the character was supposed to
@@ -113,7 +113,7 @@ class Movement(Event):
 class GainOrLoss(Event):
 
   def __init__(self, character, adjustments, negative=False):
-    assert not adjustments.keys() - {"stamina", "sanity", "money", "clues"}
+    assert not adjustments.keys() - {"stamina", "sanity", "dollars", "clues"}
     self.character = character
     self.adjustments = adjustments
     self.negative = negative
