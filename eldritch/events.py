@@ -26,6 +26,7 @@ class Event(metaclass=abc.ABCMeta):
     number of successes (either a check or a prerequisite). After the first event is resolved, the
     success map is used to determine which event should be applied.
   Sequence: A sequence of events will be resolved sequentially.
+  BinaryChoice: The character must choose one of two options.
   """
 
   @abc.abstractmethod
@@ -315,7 +316,7 @@ class AttributePrerequisite(Event):
 
   def string(self):
     if not self.successes:
-      return self.character.name + " does not have " + self.oper_desc + str(self.threshold) + " " + self.attribute
+      return self.character.name + " does not have " + self.oper_desc + " " + str(self.threshold) + " " + self.attribute
     return ""
 
 
@@ -343,7 +344,7 @@ class Check(Event):
     return self.successes is not None
 
   def string(self):
-    check_str = self.check_type + " " + ("-" if self.modifier < 0 else "+") + str(self.modifier) + " check"
+    check_str = self.check_type + " " + "{:+d}".format(self.modifier) + " check"
     if not self.successes:
       return self.character.name + " failed a " + check_str
     return self.character.name + " had " + str(self.successes) + " successes on a " + check_str
@@ -412,3 +413,55 @@ class Sequence(Event):
 
   def string(self):
     return ""
+
+
+class ChoiceEvent(Event):
+
+  @abc.abstractmethod
+  def resolve(self, state, choice=None):
+    raise NotImplementedError
+
+  @abc.abstractmethod
+  def prompt(self):
+    raise NotImplementedError
+
+  @abc.abstractmethod
+  def choices(self):
+    raise NotImplementedError
+
+
+class BinaryChoice(ChoiceEvent):
+
+  def __init__(self, character, prompt, first_choice, second_choice, first_event, second_event):
+    self.character = character
+    self._prompt = prompt
+    self.first_choice = first_choice
+    self.second_choice = second_choice
+    self.first_event = first_event
+    self.second_event = second_event
+    self.choice = None
+    self.event = None
+
+  def resolve(self, state, choice=None):
+    if self.is_resolved():
+      return True
+    assert choice in self.choices()
+    self.choice = choice
+    if self.choice == self.first_choice:
+      self.event = self.first_event
+    else:
+      self.event = self.second_event
+    state.event_stack.append(self.event)
+    return False
+
+  def is_resolved(self):
+    return self.event is not None and self.event.is_resolved()
+
+  def string(self):
+    return self.character.name + " chose " + self.choice
+
+  def prompt(self):
+    return self._prompt
+
+  def choices(self):
+    return [self.first_choice, self.second_choice]

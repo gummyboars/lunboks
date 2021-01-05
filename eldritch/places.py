@@ -153,15 +153,23 @@ def Diner2(char):
   return events.DrawSpecific(char, "common", "Food")
 def Diner3(char):
   adj = events.GainOrLoss(char, {"dollars": -1, "stamina": 2})
+  choice = events.BinaryChoice(char, "Pay $1 for pie?", "Pay $1", "Go Hungry", adj, events.Nothing());
   prereq = events.AttributePrerequisite(char, "dollars", 1, "at least")
-  return events.Conditional(char, prereq, success_result=adj, fail_result=events.Nothing())
+  return events.Conditional(char, prereq, success_result=choice, fail_result=events.Nothing())
 def Diner4(char):
   gain = events.Gain(char, {"dollars": 5})
   check = events.Check(char, "will", -2)
   return events.Conditional(char, check, success_result=gain, fail_result=events.Nothing())
+def Diner7(char):
+  move = events.ForceMovement(char, "Easttown")
+  die = events.DiceRoll(char, 1)
+  gain = events.Gain(char, {"dollars": die})
+  check = events.Check(char, "sneak", -1)
+  return events.Conditional(char, check, success_result=gain, fail_result=move)
 Diner.encounters.append(Diner2)
 Diner.encounters.append(Diner3)
 Diner.encounters.append(Diner4)
+Diner.encounters.append(Diner7)
 
 
 LOCATIONS = {

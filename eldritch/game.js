@@ -114,6 +114,8 @@ function handleData(data) {
   if (messageQueue.length && !runningAnim.length) {
     handleData(messageQueue.shift());
   }
+  updateChoices(data.choice, data.turn_idx == data.player_idx);
+  updateEventLog(data.event_log);
 }
 
 function moveTo(place) {
@@ -122,6 +124,10 @@ function moveTo(place) {
 
 function setSlider(sliderName, sliderValue) {
   ws.send(JSON.stringify({"type": "set_slider", "name": sliderName, "value": sliderValue}));
+}
+
+function makeChoice(val) {
+  ws.send(JSON.stringify({"type": "choice", "choice": val}));
 }
 
 function makeCheck(e) {
@@ -158,6 +164,26 @@ function updateCharacters(newCharacters) {
     } else {
       moveCharacter(character.name, place);
     }
+  }
+}
+
+function updateChoices(choice, isYours) {
+  let uichoice = document.getElementById("uichoice");
+  if (choice == null || !isYours) {
+    uichoice.style.display = "none";
+    return;
+  }
+  uichoice.style.display = "flex";
+  while (uichoice.getElementsByClassName("choice").length) {
+    uichoice.removeChild(uichoice.getElementsByClassName("choice")[0]);
+  }
+  document.getElementById("uiprompt").innerText = choice.prompt;
+  for (let c of choice.choices) {
+    let div = document.createElement("DIV");
+    div.classList.add("choice");
+    div.innerText = c;
+    div.onclick = function(e) { makeChoice(c); };
+    uichoice.appendChild(div);
   }
 }
 
@@ -220,6 +246,20 @@ function updateDistances(distances) {
 function updateTurn(character, phase) {
   let btn = document.getElementById("turn").firstChild;
   btn.innerText = character.name + "'s " + phase + " phase";
+}
+
+function updateEventLog(eventLog) {
+  let logDiv = document.getElementById("eventlog");
+  while (logDiv.firstChild) {
+    logDiv.removeChild(logDiv.firstChild);
+  }
+  for (let e of eventLog) {
+    let textDiv = document.createElement("DIV");
+    textDiv.classList.add("logevent");
+    textDiv.innerText = e;
+    logDiv.appendChild(textDiv);
+  }
+  logDiv.scrollTop = logDiv.scrollHeight;
 }
 
 function updateYou(character) {

@@ -37,7 +37,6 @@ class GameState(object):
     self.turn_phase = "upkeep"
     self.event_stack = collections.deque()
     self.event_log = []
-    self.choices = []
     self.turn_idx = 0
     self.first_player = 0
     self.ancient_one = None
@@ -55,6 +54,11 @@ class GameState(object):
     })
     for attr in self.DEQUE_ATTRIBUTES:
       output[attr] = list(getattr(self, attr))
+    top_event = self.event_stack[-1] if self.event_stack else None
+    if top_event and isinstance(top_event, events.ChoiceEvent) and not top_event.is_resolved():
+      output["choice"] = {"prompt": top_event.prompt(), "choices": top_event.choices()}
+    else:
+      output["choice"] = None
     output["distances"] = self.get_distances(self.turn_idx)
     return output
 
@@ -75,23 +79,21 @@ class GameState(object):
       self.handle_move(char_idx, data.get("place"))
     elif data.get("type") == "check":
       self.handle_check(char_idx, data.get("check_type"), data.get("modifier"))
+    elif data.get("type") == "choice":
+      self.handle_choice(data.get("choice"))
     else:
       raise UnknownMove(data.get("type"))
 
     return self.resolve_loop()  # Returns a generator object.
 
   def resolve_loop(self):
-    if self.choices:
-      yield None
-      return
-
-    # TODO: if the functions above do not change the state, then we will produce one message
-    # that is identical to the previous state. If we assume that handlers that do change state
-    # will not put anything on the event stack, we can optimize this away. But it's better to
-    # leave it here now for correctness.
+    # NOTE: we may produce one message that is identical to the previous state.
     yield None
     while self.event_stack:
       event = self.event_stack[-1]
+      if isinstance(event, events.ChoiceEvent) and not event.is_resolved():
+        yield None
+        return
       resolved = self.resolve(event)
       if resolved is None:
         raise RuntimeError("event without a resolution: %s" % event)
@@ -100,12 +102,15 @@ class GameState(object):
         if event.string():
           self.event_log.append(event.string())
       yield None
-      if self.choices:
-        return
 
   def resolve(self, event):
     # TODO: pre-hooks and post-hooks.
     return event.resolve(self)
+
+  def handle_choice(self, choice):
+    event = self.event_stack[-1]
+    assert isinstance(event, events.ChoiceEvent)
+    event.resolve(self, choice)
 
   def handle_check(self, char_idx, check_type, modifier):
     if check_type is None:
@@ -197,6 +202,8 @@ class GameState(object):
     return {loc: len(route) for loc, route in routes.items()}
 
   def get_routes(self, char_idx):
+    if self.characters[char_idx].movement_points == 0:
+      return {}
     routes = {self.characters[char_idx].place.name: []}
     if self.characters[char_idx].place.closed:
       return routes

@@ -404,5 +404,31 @@ class ConditionalTest(EventTest):
     self.assertFalse(cond.success_map[1].is_resolved())
 
 
+class BinaryChoiceTest(EventTest):
+
+  def createChoice(self):
+    yes_result = Gain(self.char, {"dollars": 1})
+    no_result = Loss(self.char, {"dollars": 1})
+    return BinaryChoice(self.char, "Get Money?", "Yes", "No", yes_result, no_result)
+
+  def testChoices(self):
+    for chosen, expected_dollars in [("Yes", 4), ("No", 2)]:
+      with self.subTest(choice=chosen):
+        choice = self.createChoice()
+        self.assertEqual(choice.prompt(), "Get Money?")
+        self.assertFalse(choice.is_resolved())
+        self.char.dollars = 3
+
+        self.state.event_stack.append(choice)
+        with self.assertRaises(AssertionError):
+          self.resolve_loop()  # Cannot resolve a choice normally.
+
+        choice.resolve(self.state, chosen)
+        self.assertEqual(len(self.state.event_stack), 2)
+        self.resolve_loop()
+
+        self.assertEqual(self.char.dollars, expected_dollars)
+
+
 if __name__ == '__main__':
   unittest.main()
