@@ -100,6 +100,7 @@ function initializeDefaults() {
     {names: spellNames, color: "mediumpurple"},
     {names: skillNames, color: "gold"},
     {names: allyNames, color: "darkorange"},
+    {names: abilityNames, color: "sienna"},
   ];
   for (let cfg of cfgs) {
     for (let name of cfg.names) {

@@ -53,8 +53,8 @@ def Marksman():
   return RerollSkill("Marksman", "combat")
 def Bravery():
   return RerollSkill("Bravery", "horror")
-def ExportOccultist():
-  return RerollSkill("Export Occultist", "spell")
+def ExpertOccultist():
+  return RerollSkill("Expert Occultist", "spell")
 
 
 class Medicine(assets.Asset):

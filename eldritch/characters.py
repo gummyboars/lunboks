@@ -140,7 +140,7 @@ class Character(object):
         if p.get_usable_trigger(event, self, state)
     }
     # TODO: revisit index
-    if self.clues > 0 and isinstance(event, events.Check):
+    if self.clues > 0 and isinstance(event, events.Check) and event.character == self:
       triggers[-1] = events.SpendClue(self, event)
     return triggers
 

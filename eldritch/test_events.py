@@ -10,6 +10,7 @@ from unittest import mock
 if os.path.abspath(sys.path[0]) == os.path.dirname(os.path.abspath(__file__)):
   sys.path[0] = os.path.dirname(sys.path[0])
 
+import eldritch.abilities as abilities
 import eldritch.characters as characters
 import eldritch.eldritch as eldritch
 import eldritch.events as events
@@ -351,7 +352,7 @@ class CheckTest(EventTest):
     self.assertEqual(check.successes, 0)
 
   @mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=[4]))
-  def testCheck(self):
+  def testCheckBlessed(self):
     check = Check(self.char, "sneak", 0)
     self.assertEqual(self.char.sneak, 1)
     self.char.bless_curse = 1
@@ -364,6 +365,20 @@ class CheckTest(EventTest):
     self.assertIsNotNone(check.dice)
     self.assertListEqual(check.dice.roll, [4])
     self.assertEqual(check.successes, 1)
+
+  @mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=[2, 4]))
+  def testSubCheck(self):
+    check = Check(self.char, "horror", 0)
+    self.char.possessions.append(abilities.Will())
+    self.assertEqual(self.char.will, 2)
+    self.assertFalse(check.is_resolved())
+
+    self.state.event_stack.append(check)
+    self.resolve_loop()
+
+    self.assertTrue(check.is_resolved())
+    self.assertIsNotNone(check.dice)
+    self.assertListEqual(check.roll, [2, 4])
 
 
 class ConditionalTest(EventTest):

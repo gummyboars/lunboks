@@ -2,14 +2,31 @@
 assetPrefix = "eldritch";
 characterNames = ["Nun", "Doctor", "Archaeologist", "Gangster"];
 commonNames = [
+  ".38 Revolver",
   "Bullwhip",
   "Cross",
   "Dynamite",
-  "Revolver38",
-  "TommyGun",
+  "Food",
+  "Tommy Gun",
 ];
-uniqueNames = [];
+uniqueNames = [
+  "Holy Water",
+];
 spellNames = [];
-skillNames = [];
+skillNames = [
+  "Speed",
+  "Sneak",
+  "Fight",
+  "Will",
+  "Lore",
+  "Luck",
+  "Stealth",
+  "Marksman",
+  "Bravery",
+  "Expert Occultist",
+];
 allyNames = [];
-assetNames = ["board"].concat(characterNames).concat(commonNames).concat(uniqueNames).concat(spellNames).concat(skillNames).concat(allyNames);
+abilityNames = [
+  "Medicine",
+];
+assetNames = ["board"].concat(characterNames).concat(commonNames).concat(uniqueNames).concat(spellNames).concat(skillNames).concat(allyNames).concat(abilityNames);

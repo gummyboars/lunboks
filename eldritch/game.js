@@ -115,6 +115,7 @@ function handleData(data) {
     handleData(messageQueue.shift());
   }
   updateChoices(data.choice, data.turn_idx == data.player_idx);
+  updateUsables(data.usables);
   updateEventLog(data.event_log);
 }
 
@@ -128,6 +129,14 @@ function setSlider(sliderName, sliderValue) {
 
 function makeChoice(val) {
   ws.send(JSON.stringify({"type": "choice", "choice": val}));
+}
+
+function doneUsing(e) {
+  ws.send(JSON.stringify({"type": "done_using"}));
+}
+
+function useAsset(idx) {
+  ws.send(JSON.stringify({"type": "use", "idx": idx}));
 }
 
 function makeCheck(e) {
@@ -167,9 +176,9 @@ function updateCharacters(newCharacters) {
   }
 }
 
-function updateChoices(choice, isYours) {
+function updateChoices(choice) {
   let uichoice = document.getElementById("uichoice");
-  if (choice == null || !isYours) {
+  if (choice == null) {
     uichoice.style.display = "none";
     return;
   }
@@ -185,6 +194,29 @@ function updateChoices(choice, isYours) {
     div.onclick = function(e) { makeChoice(c); };
     uichoice.appendChild(div);
   }
+}
+
+function updateUsables(usables) {
+  let uiuse = document.getElementById("uiuse");
+  let pDiv = document.getElementById("possessions");
+  if (usables == null) {
+    uiuse.style.display = "none";
+    pDiv.classList.remove("use");
+    return;
+  }
+  uiuse.style.display = "flex";
+  pDiv.classList.add("use");
+  let posList = pDiv.getElementsByClassName("possession");
+  for (let i = 0; i < posList.length; i++) {
+    if (usables.includes(i)) {
+      posList[i].classList.add("usable");
+      posList[i].classList.remove("unusable");
+    } else {
+      posList[i].classList.remove("usable");
+      posList[i].classList.add("unusable");
+    }
+  }
+  // TODO: clues
 }
 
 function createCharacterDiv(name) {
@@ -293,6 +325,11 @@ function updateYou(character) {
     let statDiv = document.createElement("DIV");
     statDiv.classList.add("stat");
     statDiv.innerText = text;
+    if (cfg[0] == "clues") {
+      statDiv.classList.add("clue");
+      // TODO: make this nicer
+      statDiv.onclick = function(e) { useAsset(-1) };
+    }
     stats.appendChild(statDiv);
   }
   updateSliders(character);
@@ -368,22 +405,18 @@ function updatePossessions(character) {
   while (pDiv.firstChild) {
     pDiv.removeChild(pDiv.firstChild);
   }
-  let active = {};
-  for (let pos of character.active_possessions) {
-    active[pos.name] = true;
-  }
-  for (let pos of character.possessions) {
-    pDiv.appendChild(createPossession(pos, active[pos.name]));
+  for (let i = 0; i < character.possessions.length; i++) {
+    pDiv.appendChild(createPossession(character.possessions[i], i));
   }
 }
 
-function createPossession(info, isActive) {
+function createPossession(info, idx) {
   let width = document.getElementById("boardcanvas").width;
   let posWidth = 3 * width * markerWidthRatio / 2;
   let posHeight = 3 * width * markerHeightRatio / 2;
   let div = document.createElement("DIV");
   div.classList.add("possession");
-  if (isActive) {
+  if (info.active) {
     div.classList.add("active");
   }
   let cnv = document.createElement("CANVAS");
@@ -395,37 +428,21 @@ function createPossession(info, isActive) {
   renderAssetToCanvas(cnv, info.name, "");
   div.appendChild(cnv);
   let cascade = {"sneak": "evade", "fight": "combat", "will": "horror", "lore": "spell"};
-  for (let attr in info.passive_bonuses) {
-    if (!info.passive_bonuses[attr]) {
+  for (let attr in info.bonuses) {
+    if (!info.bonuses[attr]) {
       continue;
     }
     let highlightDiv = document.createElement("DIV");
     highlightDiv.classList.add("bonus");
     highlightDiv.classList.add("bonus" + attr);
-    highlightDiv.innerText = (info.passive_bonuses[attr] >= 0 ? "+" : "") + info.passive_bonuses[attr];
+    highlightDiv.innerText = (info.bonuses[attr] >= 0 ? "+" : "") + info.bonuses[attr];
     if (cascade[attr]) {
       highlightDiv.classList.add("bonus" + cascade[attr]);
     }
     div.appendChild(highlightDiv);
   }
-  // TODO: dedup
-  for (let attr in info.hand_bonuses) {
-    if (!info.hand_bonuses[attr]) {
-      continue;
-    }
-    let highlightDiv = document.createElement("DIV");
-    highlightDiv.classList.add("bonus");
-    highlightDiv.classList.add("bonus" + attr);
-    if (isActive) {
-      highlightDiv.innerText = (info.hand_bonuses[attr] >= 0 ? "+" : "") + info.hand_bonuses[attr];
-    } else {
-      highlightDiv.innerText = "need hands";  // TODO: make this better
-    }
-    if (cascade[attr]) {
-      highlightDiv.classList.add("bonus" + cascade[attr]);
-    }
-    div.appendChild(highlightDiv);
-  }
+  div.onclick = function(e) { useAsset(idx); };
+  // TODO: show some information about bonuses that aren't active right now
   return div;
 }
 

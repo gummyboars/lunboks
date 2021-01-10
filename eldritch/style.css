@@ -52,6 +52,23 @@ button {
 .choice:hover {
   background: saddlebrown;
 }
+#uiuse {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 10;
+  display: none;
+  flex-direction: row;
+  justify-content: space-around;
+  align-items: center;
+  width: 30%;
+  max-width: 30%;
+  background: sienna;
+  color: black;
+  font-size: 2.5em;
+  border: 1px solid black;
+}
 #uiload {
   position: absolute;
   top: 50%;
@@ -212,6 +229,9 @@ button {
   width: 50%;
   text-transform: capitalize;
 }
+.stat.clue {
+  cursor: pointer;
+}
 #sliders {
   width: 100%;
   align-self: flex-end;
@@ -302,6 +322,12 @@ button {
 }
 .possession.active {
   border-color: green;
+}
+#possessions.use .usable {
+  cursor: pointer;
+}
+#possessions.use .unusable {
+  filter: grayscale(70%) brightness(70%);
 }
 .bonus {
   position: absolute;

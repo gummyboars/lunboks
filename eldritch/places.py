@@ -152,7 +152,7 @@ Southside._add_monster_movement("white", Uptown)
 def Diner2(char):
   return events.DrawSpecific(char, "common", "Food")
 def Diner3(char):
-  adj = events.GainOrLoss(char, {"dollars": -1, "stamina": 2})
+  adj = events.GainOrLoss(char, {"stamina": 2}, {"dollars": 1})
   choice = events.BinaryChoice(char, "Pay $1 for pie?", "Pay $1", "Go Hungry", adj, events.Nothing());
   prereq = events.AttributePrerequisite(char, "dollars", 1, "at least")
   return events.Conditional(char, prereq, success_result=choice, fail_result=events.Nothing())

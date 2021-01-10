@@ -59,12 +59,22 @@ class GameState(object):
     })
     for attr in self.DEQUE_ATTRIBUTES:
       output[attr] = list(getattr(self, attr))
+    return output
+
+  def for_player(self, char_idx):
+    output = self.json_repr()
+    if self.turn_idx == char_idx and self.turn_phase == "movement":
+      output["distances"] = self.get_distances(self.turn_idx)
+
+    output["choice"] = None
     top_event = self.event_stack[-1] if self.event_stack else None
     if top_event and isinstance(top_event, events.ChoiceEvent) and not top_event.is_resolved():
-      output["choice"] = {"prompt": top_event.prompt(), "choices": top_event.choices()}
+      if top_event.character == self.characters[char_idx]:
+        output["choice"] = {"prompt": top_event.prompt(), "choices": top_event.choices()}
+    if self.usables.get(char_idx):
+      output["usables"] = list(self.usables[char_idx].keys())
     else:
-      output["choice"] = None
-    output["distances"] = self.get_distances(self.turn_idx)
+      output["usables"] = None
     return output
 
   @classmethod
@@ -74,10 +84,8 @@ class GameState(object):
   def handle(self, char_idx, data):
     if char_idx not in range(len(self.characters)):
       raise InvalidPlayer("no such player %s" % char_idx)
-    if char_idx != self.turn_idx:
-      raise NotYourTurn("It is not your turn.")
     if data.get("type") == "end_turn":
-      self.handle_end_turn()
+      self.handle_end_turn(char_idx)
     elif data.get("type") == "set_slider":
       self.handle_slider(char_idx, data.get("name"), data.get("value"))
     elif data.get("type") == "move":
@@ -85,7 +93,11 @@ class GameState(object):
     elif data.get("type") == "check":  # TODO: remove
       self.handle_check(char_idx, data.get("check_type"), data.get("modifier"))
     elif data.get("type") == "choice":
-      self.handle_choice(data.get("choice"))
+      self.handle_choice(char_idx, data.get("choice"))
+    elif data.get("type") == "use":
+      self.handle_use(char_idx, data.get("idx"))
+    elif data.get("type") == "done_using":
+      self.handle_done_using(char_idx)
     else:
       raise UnknownMove(data.get("type"))
 
@@ -123,6 +135,7 @@ class GameState(object):
         yield None
         return
       self.pop_event(event)
+      yield None
 
   def start_event(self, event):
     # TODO: what about multiple events added to the stack at the same time? disallow?
@@ -141,6 +154,7 @@ class GameState(object):
     if self.trigger_stack[-1] is None:
       self.trigger_stack[-1] = self.get_triggers(event)
       return True
+    # TODO: we should append to the event log here, then override when we pop it?
     return False
 
   def pop_event(self, event):
@@ -173,12 +187,24 @@ class GameState(object):
     t = {idx: char.get_usable_triggers(event, self) for idx, char in enumerate(self.characters)}
     return {char_idx: trigger_list for char_idx, trigger_list in t.items() if trigger_list}
 
-  def handle_choice(self, choice):
+  def handle_use(self, char_idx, possession_idx):
+    assert char_idx in self.usables
+    assert possession_idx in self.usables[char_idx]
+    self.event_stack.append(self.usables[char_idx].pop(possession_idx))
+
+  def handle_done_using(self, char_idx):
+    assert char_idx in self.usables
+    self.done_using[char_idx] = True
+
+  def handle_choice(self, char_idx, choice):
     event = self.event_stack[-1]
     assert isinstance(event, events.ChoiceEvent)
+    assert event.character == self.characters[char_idx]
     event.resolve(self, choice)
 
   def handle_check(self, char_idx, check_type, modifier):
+    if char_idx != self.turn_idx:
+      raise NotYourTurn("It is not your turn.")
     if check_type is None:
       raise InvalidInput("no check type")
     if check_type not in assets.CHECK_TYPES:
@@ -192,6 +218,8 @@ class GameState(object):
     self.event_stack.append(events.Check(self.characters[char_idx], check_type, modifier))
 
   def handle_slider(self, char_idx, name, value):
+    if char_idx != self.turn_idx:
+      raise NotYourTurn("It is not your turn.")
     if self.turn_phase != "upkeep":
       raise InvalidMove("You may only move sliders during the upkeep phase.")
     if name is None:
@@ -213,6 +241,8 @@ class GameState(object):
     setattr(char, name + "_slider", value)
 
   def handle_move(self, char_idx, place):
+    if char_idx != self.turn_idx:
+      raise NotYourTurn("It is not your turn.")
     if self.turn_phase != "movement":
       raise InvalidMove("You may only move during the movement phase.")
     if place is None:
@@ -227,7 +257,11 @@ class GameState(object):
       )
     self.event_stack.append(events.Movement(self.characters[char_idx], routes[place]))
 
-  def handle_end_turn(self):
+  def handle_end_turn(self, char_idx):
+    if char_idx != self.turn_idx:
+      raise NotYourTurn("It is not your turn.")
+    if self.event_stack:
+      raise InvalidMove("There are unresolved events.")
     self.next_turn()
 
   def next_turn(self):
@@ -326,7 +360,7 @@ class EldritchGame(BaseGame):
           "players": [],  # TODO
       }
       return json.dumps(data, cls=CustomEncoder)
-    output = self.game.json_repr()
+    output = self.game.for_player(self.player_sessions.get(session))
     is_connected = {idx: sess in self.connected for sess, idx in self.player_sessions.items()}
     '''
     TODO: send connection information somehow

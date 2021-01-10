@@ -10,6 +10,8 @@ SUB_CHECKS = {"evade": "sneak", "combat": "fight", "horror": "will", "spell": "l
 
 class Asset(metaclass=abc.ABCMeta):
 
+  JSON_ATTRS = {"name", "active", "exhausted", "hands", "bonuses"}
+
   def __init__(self, name):
     self._name = name
     self._exhausted = False
@@ -25,6 +27,10 @@ class Asset(metaclass=abc.ABCMeta):
   def get_bonus(self, check_type):
     return 0
 
+  @property
+  def bonuses(self):
+    return {check: self.get_bonus(check) for check in CHECK_TYPES | SUB_CHECKS.keys()}
+
   def get_interrupt(self, event, owner, state):
     return None
 
@@ -36,6 +42,13 @@ class Asset(metaclass=abc.ABCMeta):
 
   def get_usable_trigger(self, event, owner, state):
     return None
+
+  def json_repr(self):
+    return {attr: getattr(self, attr, None) for attr in self.JSON_ATTRS}
+
+  @classmethod
+  def parse_json(cls, data):
+    pass  # TODO
 
 
 class Card(Asset):
@@ -53,20 +66,12 @@ class Card(Asset):
     self.passive_bonuses.update(passive_bonuses)
     self._active = False
 
-  def json_repr(self):
-    output = {}
-    output.update(self.__dict__)
-    return output
-
-  @classmethod
-  def parse_json(cls, data):
-    pass  # TODO
-
   @property
   def active(self):
     return self._active
 
   def get_bonus(self, check_type):
+    bonus = self.passive_bonuses[check_type]
     if self.active:
-      return self.active_bonuses[check_type] + self.passive_bonuses[check_type]
-    return self.passive_bonuses[check_type]
+      bonus += self.active_bonuses[check_type]
+    return bonus
