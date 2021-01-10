@@ -1,4 +1,5 @@
 import abc
+import collections
 import operator
 from random import SystemRandom
 random = SystemRandom()
@@ -42,7 +43,11 @@ class Event(metaclass=abc.ABCMeta):
     raise NotImplementedError
 
   @abc.abstractmethod
-  def string(self):
+  def start_str(self):
+    raise NotImplementedError
+
+  @abc.abstractmethod
+  def finish_str(self):
     raise NotImplementedError
 
 
@@ -58,7 +63,10 @@ class Nothing(Event):
   def is_resolved(self):
     return self.done
 
-  def string(self):
+  def start_str(self):
+    return ""
+
+  def finish_str(self):
     return "Nothing happens"
 
 
@@ -76,7 +84,10 @@ class DiceRoll(Event):
   def is_resolved(self):
     return self.roll is not None
 
-  def string(self):
+  def start_str(self):
+    return ""
+
+  def finish_str(self):
     if not self.roll:
       return "%s rolled no dice" % self.character.name
     return "%s rolled %s" % (self.character.name, " ".join([str(x) for x in self.roll]))
@@ -107,35 +118,31 @@ class Movement(Event):
   def is_resolved(self):
     return self.done
 
-  def string(self):
+  def start_str(self):
+    return ""
+
+  def finish_str(self):
     return "%s moved to %s" % (self.character.name, self.route[0])
 
 
 class GainOrLoss(Event):
 
-  def __init__(self, character, adjustments, negative=False):
-    assert not adjustments.keys() - {"stamina", "sanity", "dollars", "clues"}
+  def __init__(self, character, gains, losses):
+    assert not gains.keys() - {"stamina", "sanity", "dollars", "clues"}
+    assert not losses.keys() - {"stamina", "sanity", "dollars", "clues"}
+    assert not gains.keys() & losses.keys()
     self.character = character
-    self.adjustments = adjustments
-    self.negative = negative
+    self.gains = collections.defaultdict(int)
+    self.gains.update(gains)
+    self.losses = collections.defaultdict(int)
+    self.losses.update(losses)
     self.final_adjustments = None
 
   def resolve(self, state):
-    for adjustment in self.adjustments.values():
-      if isinstance(adjustment, DiceRoll) and not adjustment.is_resolved():
-        state.event_stack.append(adjustment)
-        return False
-
     self.final_adjustments = {}
     for attr, adjustment in self.adjustments.items():
-      if isinstance(adjustment, DiceRoll):
-        adj = sum(adjustment.roll)
-      else:
-        adj = adjustment
-      if self.negative:
-        adj = -adj
       old_val = getattr(self.character, attr)
-      new_val = old_val + adj
+      new_val = old_val + adjustment
       if new_val < 0:
         new_val = 0
       if attr == "stamina" and new_val > getattr(self.character, "max_stamina"):
@@ -143,15 +150,35 @@ class GainOrLoss(Event):
       if attr == "sanity" and new_val > getattr(self.character, "max_sanity"):
         new_val = getattr(self.character, "max_sanity")
       self.final_adjustments[attr] = new_val - old_val
-      # TODO: this should be a call to the character, both to allow them to override the value
-      # change via special abilities, and to allow them to go insane.
       setattr(self.character, attr, new_val)
     return True
+
+  @property
+  def adjustments(self):
+    computed = collections.defaultdict(int)
+    for attr, gain in self.gains.items():
+      if isinstance(gain, DiceRoll):
+        assert gain.is_resolved()
+        adj = sum(gain.roll)
+      else:
+        adj = gain
+      computed[attr] += adj
+    for attr, loss in self.losses.items():
+      if isinstance(loss, DiceRoll):
+        assert loss.is_resolved()
+        adj = sum(loss.roll)
+      else:
+        adj = loss
+      computed[attr] -= adj
+    return computed
 
   def is_resolved(self):
     return self.final_adjustments is not None
 
-  def string(self):
+  def start_str(self):
+    return ""
+
+  def finish_str(self):
     gains = ", ".join([
       "%s %s" % (count, attr) for attr, count in self.final_adjustments.items() if count > 0])
     losses = ", ".join([
@@ -162,12 +189,45 @@ class GainOrLoss(Event):
     return self.character.name + " " + result
 
 
-def Gain(character, adjustments):
-  return GainOrLoss(character, adjustments, negative=False)
+def Gain(character, gains):
+  return GainOrLoss(character, gains, {})
 
 
-def Loss(character, adjustments):
-  return GainOrLoss(character, adjustments, negative=True)
+def Loss(character, losses):
+  return GainOrLoss(character, {}, losses)
+
+
+class LossPrevention(Event):
+
+  def __init__(self, prevention_source, source_event, attribute, amount):
+    assert isinstance(source_event, GainOrLoss)
+    assert attribute in source_event.adjustments
+    assert source_event.adjustments[attribute] < 0
+    self.prevention_source = prevention_source
+    self.source_event = source_event
+    self.attribute = attribute
+    self.amount = amount
+    self.amount_prevented = None
+    self.done = False
+
+  def resolve(self, state):
+    if self.source_event.adjustments[self.attribute] >= 0:
+      self.amount_prevented = 0
+      return True
+    self.amount_prevented = min(self.amount, -self.source_event.adjustments[self.attribute])
+    self.source_event.gains[self.attribute] += self.amount_prevented
+    return True
+
+  def is_resolved(self):
+    return self.amount_prevented is not None
+
+  def start_str(self):
+    return ""
+
+  def finish_str(self):
+    if not self.amount_prevented:
+      return ""
+    return f"{self.prevention_source.name} prevented {self.amount_prevented} {self.attribute} loss"
 
 
 class StatusChange(Event):
@@ -198,7 +258,10 @@ class StatusChange(Event):
   def is_resolved(self):
     return self.status_change is not None
 
-  def string(self):
+  def start_str(self):
+    return ""
+
+  def finish_str(self):
     status_map = {
         "retainer": (" lost their retainer", " received a retainer"),
         "lodge_membership": (
@@ -232,7 +295,10 @@ class ForceMovement(Event):
   def is_resolved(self):
     return self.done
 
-  def string(self):
+  def start_str(self):
+    return ""
+
+  def finish_str(self):
     return self.character.name + " moved to " + self.character.place.name
 
 
@@ -257,7 +323,7 @@ class Draw(Event):
   def is_resolved(self):
     return self.done
 
-  def string(self):
+  def finish_str(self):
     raise NotImplementedError
 
 
@@ -285,10 +351,72 @@ class DrawSpecific(Event):
   def is_resolved(self):
     return self.received is not None
 
-  def string(self):
+  def start_str(self):
+    return self.character.name + " searches the " + self.deck + " deck for a " + self.item_name
+
+  def finish_str(self):
     if self.received:
       return self.character.name + " drew a " + self.item_name + " from the " + self.deck + " deck"
     return "There were no " + self.item_name + "s left in the " + self.deck + " deck"
+
+
+class ExhaustAsset(Event):
+
+  def __init__(self, character, item):
+    assert item in character.possessions
+    self.character = character
+    self.item = item
+    self.exhausted = None
+
+  def resolve(self, state):
+    if self.item not in self.character.possessions:
+      self.exhausted = False
+      return True
+    self.item._exhausted = True
+    self.exhausted = True
+    return True
+
+  def is_resolved(self):
+    return self.exhausted is not None
+
+  def start_str(self):
+    return ""
+
+  def finish_str(self):
+    if not self.exhausted:
+      return ""
+    return f"{self.character.name} exhausted their {self.item.name}"
+
+
+# TODO: also add a discard by name
+class DiscardSpecific(Event):
+
+  def __init__(self, character, item):
+    assert item in character.possessions
+    self.character = character
+    self.item = item
+    self.discarded = None
+
+  def resolve(self, state):
+    if self.item not in self.character.possessions:
+      self.discarded = False
+      return True
+    self.character.possessions.remove(self.item)
+    deck = getattr(state, self.item.deck)
+    deck.append(self.item)
+    self.discarded = True
+    return True
+
+  def is_resolved(self):
+    return self.discarded is not None
+
+  def start_str(self):
+    return f"{self.character.name} will discard a {self.item.name}"
+
+  def finish_str(self):
+    if not self.discarded:
+      return f"{self.character.name} did not have a {self.item.name} to discard"
+    return f"{self.character.name} discarded their {self.item.name}"
 
 
 class AttributePrerequisite(Event):
@@ -314,7 +442,10 @@ class AttributePrerequisite(Event):
   def is_resolved(self):
     return self.successes is not None
 
-  def string(self):
+  def start_str(self):
+    return ""
+
+  def finish_str(self):
     if not self.successes:
       return self.character.name + " does not have " + self.oper_desc + " " + str(self.threshold) + " " + self.attribute
     return ""
@@ -327,27 +458,122 @@ class Check(Event):
     self.character = character
     self.check_type = check_type
     self.modifier = modifier
-    self.dice_result = None
+    self.dice = None
+    self.roll = None
     self.successes = None
 
   def resolve(self, state):
     # TODO: the check may have an opponent? like undead monsters?
-    if self.dice_result is None:
+    if self.dice is None:
       num_dice = getattr(self.character, self.check_type) + self.modifier
-      self.dice_result = DiceRoll(self.character, num_dice)
-      state.event_stack.append(self.dice_result)
+      self.dice = DiceRoll(self.character, num_dice)
+      state.event_stack.append(self.dice)
       return False
-    self.successes = self.character.count_successes(self.dice_result.roll, self.check_type)
+    self.roll = self.dice.roll[:]
+    self.count_successes()
     return True
+
+  def count_successes(self):
+    self.successes = self.character.count_successes(self.roll, self.check_type)
 
   def is_resolved(self):
     return self.successes is not None
 
-  def string(self):
-    check_str = self.check_type + " " + "{:+d}".format(self.modifier) + " check"
+  def check_str(self):
+    return self.check_type + " " + "{:+d}".format(self.modifier) + " check"
+
+  def start_str(self):
+    return self.character.name + " makes a " + self.check_str()
+
+  def finish_str(self):
+    check_str = self.check_str()
     if not self.successes:
       return self.character.name + " failed a " + check_str
     return self.character.name + " had " + str(self.successes) + " successes on a " + check_str
+
+
+class SpendClue(Event):
+
+  def __init__(self, character, check):
+    self.character = character
+    self.check = check
+    self.dice = DiceRoll(character, 1)
+    self.extra_successes = None
+
+  def resolve(self, state):
+    assert self.check.is_resolved()
+    if not self.dice.is_resolved():
+      assert self.character.clues > 0
+      self.character.clues -= 1
+      state.event_stack.append(self.dice)
+      return False
+    old_successes = self.check.successes
+    self.check.roll.extend(self.dice.roll)
+    self.check.count_successes()
+    self.extra_successes = self.check.successes - old_successes
+    return True
+
+  def is_resolved(self):
+    return self.extra_successes is not None
+
+  def start_str(self):
+    return f"{self.character.name} spent a clue token"
+
+  def finish_str(self):
+    return f"{self.character.name} got {self.extra_successes} extra successes"
+
+
+class AddExtraDie(Event):
+
+  def __init__(self, character, event):
+    assert isinstance(event, DiceRoll)
+    self.character = character
+    self.dice = event
+    self.done = False
+
+  def resolve(self, state):
+    assert not self.dice.is_resolved()
+    self.dice.count += 1
+    self.done = True
+    return True
+
+  def is_resolved(self):
+    return self.done
+
+  def start_str(self):
+    return f"{self.character.name} gets an extra die just because" # TODO
+
+  def finish_str(self):
+    return ""
+
+
+class RerollCheck(Event):
+
+  def __init__(self, character, check):
+    assert isinstance(check, Check)
+    self.character = character
+    self.check = check
+    self.dice = None
+    self.done = False
+
+  def resolve(self, state):
+    assert self.check.is_resolved()
+    if self.dice is None:
+      self.dice = DiceRoll(self.character, len(self.check.roll))
+      state.event_stack.append(self.dice)
+      return False
+    self.check.roll = self.dice.roll
+    self.check.count_successes()
+    self.done = True
+
+  def is_resolved(self):
+    return self.done
+
+  def start_str(self):
+    return f"{self.character.name} rerolls a {self.check.check_type} check"
+
+  def finish_str(self):
+    return ""
 
 
 class Conditional(Event):
@@ -392,7 +618,10 @@ class Conditional(Event):
   def is_resolved(self):
     return self.result is not None and self.result.is_resolved()
 
-  def string(self):
+  def start_str(self):
+    return ""
+
+  def finish_str(self):
     return ""
 
 
@@ -411,7 +640,10 @@ class Sequence(Event):
   def is_resolved(self):
     return all([event.is_resolved() for event in self.events])
 
-  def string(self):
+  def start_str(self):
+    return ""
+
+  def finish_str(self):
     return ""
 
 
@@ -425,43 +657,40 @@ class ChoiceEvent(Event):
   def prompt(self):
     raise NotImplementedError
 
-  @abc.abstractmethod
-  def choices(self):
-    raise NotImplementedError
 
+class MultipleChoice(ChoiceEvent):
 
-class BinaryChoice(ChoiceEvent):
-
-  def __init__(self, character, prompt, first_choice, second_choice, first_event, second_event):
+  def __init__(self, character, prompt, choices, events):
+    assert len(choices) == len(events)
     self.character = character
     self._prompt = prompt
-    self.first_choice = first_choice
-    self.second_choice = second_choice
-    self.first_event = first_event
-    self.second_event = second_event
+    self.choices = choices
+    self.events = events
     self.choice = None
     self.event = None
 
   def resolve(self, state, choice=None):
     if self.is_resolved():
       return True
-    assert choice in self.choices()
+    assert choice in self.choices
+    idx = self.choices.index(choice)
     self.choice = choice
-    if self.choice == self.first_choice:
-      self.event = self.first_event
-    else:
-      self.event = self.second_event
+    self.event = self.events[idx]
     state.event_stack.append(self.event)
     return False
 
   def is_resolved(self):
     return self.event is not None and self.event.is_resolved()
 
-  def string(self):
-    return self.character.name + " chose " + self.choice
+  def start_str(self):
+    return f"{self.character.name} must choose one of " + ", ".join([str(c) for c in self.choices])
+
+  def finish_str(self):
+    return f"{self.character.name} chose {str(self.choice)}"
 
   def prompt(self):
     return self._prompt
 
-  def choices(self):
-    return [self.first_choice, self.second_choice]
+
+def BinaryChoice(character, prompt, first_choice, second_choice, first_event, second_event):
+  return MultipleChoice(character, prompt, [first_choice, second_choice], [first_event, second_event])

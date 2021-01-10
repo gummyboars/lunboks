@@ -8,16 +8,16 @@ from game import (
     InvalidPlayer, TooManyPlayers, NotYourTurn,
 )
 
+import eldritch.assets as assets
 import eldritch.characters as characters
 import eldritch.events as events
-import eldritch.items as items
 import eldritch.places as places
 
 
 class GameState(object):
 
   DEQUE_ATTRIBUTES = {"common", "unique", "spells", "skills", "mythos", "gates"}
-  HIDDEN_ATTRIBUTES = {"event_stack"}
+  HIDDEN_ATTRIBUTES = {"event_stack", "interrupt_stack", "trigger_stack", "usables"}
   TURN_PHASES = ["upkeep", "movement", "encounter", "otherworld", "mythos"]
 
   def __init__(self):
@@ -36,9 +36,14 @@ class GameState(object):
     # valid values are setup, upkeep, movement, encounter, otherworld, mythos, awakened
     self.turn_phase = "upkeep"
     self.event_stack = collections.deque()
+    self.interrupt_stack = collections.deque()
+    self.trigger_stack = collections.deque()
+    self.usables = {}
+    self.done_using = {}
     self.event_log = []
     self.turn_idx = 0
     self.first_player = 0
+    self.environment = None
     self.ancient_one = None
     self.check_result = None
     self.dice_result = []
@@ -77,7 +82,7 @@ class GameState(object):
       self.handle_slider(char_idx, data.get("name"), data.get("value"))
     elif data.get("type") == "move":
       self.handle_move(char_idx, data.get("place"))
-    elif data.get("type") == "check":
+    elif data.get("type") == "check":  # TODO: remove
       self.handle_check(char_idx, data.get("check_type"), data.get("modifier"))
     elif data.get("type") == "choice":
       self.handle_choice(data.get("choice"))
@@ -91,21 +96,82 @@ class GameState(object):
     yield None
     while self.event_stack:
       event = self.event_stack[-1]
+      if self.start_event(event):
+        yield None
+      if self.interrupt_stack[-1]:
+        self.event_stack.append(self.interrupt_stack[-1].pop())
+        continue
+      # If the event requires the character to make a choice, stop here.
       if isinstance(event, events.ChoiceEvent) and not event.is_resolved():
         yield None
         return
-      resolved = self.resolve(event)
-      if resolved is None:
-        raise RuntimeError("event without a resolution: %s" % event)
-      if resolved:
-        self.event_stack.pop()
-        if event.string():
-          self.event_log.append(event.string())
-      yield None
+      self.usables = self.get_usable_interrupts(event)
+      if not all([self.done_using.get(char_idx) for char_idx in self.usables]):
+        yield None
+        return
+      if not event.is_resolved():
+        event.resolve(self)
+      if not event.is_resolved():
+        continue
+      if self.finish_event(event):
+        yield None
+      if self.trigger_stack[-1]:
+        self.event_stack.append(self.trigger_stack[-1].pop())
+        continue
+      self.usables = self.get_usable_triggers(event)
+      if not all([self.done_using.get(char_idx) for char_idx in self.usables]):
+        yield None
+        return
+      self.pop_event(event)
 
-  def resolve(self, event):
-    # TODO: pre-hooks and post-hooks.
-    return event.resolve(self)
+  def start_event(self, event):
+    # TODO: what about multiple events added to the stack at the same time? disallow?
+    if len(self.interrupt_stack) >= len(self.event_stack):
+      return False
+    if event.start_str():
+      self.event_log.append("  " * len(self.interrupt_stack) + event.start_str())
+    self.interrupt_stack.append(self.get_interrupts(event))
+    self.trigger_stack.append(None)
+    assert len(self.interrupt_stack) == len(self.event_stack)
+    self.clear_usables()
+    return True
+
+  def finish_event(self, event):
+    assert len(self.trigger_stack) == len(self.event_stack)
+    if self.trigger_stack[-1] is None:
+      self.trigger_stack[-1] = self.get_triggers(event)
+      return True
+    return False
+
+  def pop_event(self, event):
+    assert event == self.event_stack[-1]
+    assert len(self.event_stack) == len(self.trigger_stack)
+    assert len(self.event_stack) == len(self.interrupt_stack)
+    self.event_stack.pop()
+    self.trigger_stack.pop()
+    self.interrupt_stack.pop()
+    if event.finish_str():
+      self.event_log.append("  " * len(self.event_stack) + event.finish_str())
+    self.clear_usables()
+
+  def clear_usables(self):
+    self.usables.clear()
+    self.done_using.clear()
+
+  # TODO: global interrupts/triggers from ancient one, environment, other mythos/encounter cards
+  def get_interrupts(self, event):
+    return sum([char.get_interrupts(event, self) for char in self.characters], [])
+
+  def get_usable_interrupts(self, event):
+    i = {idx: char.get_usable_interrupts(event, self) for idx, char in enumerate(self.characters)}
+    return {char_idx: interrupt_list for char_idx, interrupt_list in i.items() if interrupt_list}
+
+  def get_triggers(self, event):
+    return sum([char.get_triggers(event, self) for char in self.characters], [])
+
+  def get_usable_triggers(self, event):
+    t = {idx: char.get_usable_triggers(event, self) for idx, char in enumerate(self.characters)}
+    return {char_idx: trigger_list for char_idx, trigger_list in t.items() if trigger_list}
 
   def handle_choice(self, choice):
     event = self.event_stack[-1]
@@ -115,14 +181,15 @@ class GameState(object):
   def handle_check(self, char_idx, check_type, modifier):
     if check_type is None:
       raise InvalidInput("no check type")
-    if check_type not in items.CHECK_TYPES:
+    if check_type not in assets.CHECK_TYPES:
       raise InvalidInput("unknown check type")
     try:
       modifier = int(modifier)
     except (ValueError, TypeError):
       raise InvalidInput("invalid difficulty")
-    successes, self.dice_result = self.characters[char_idx].make_check(check_type, modifier)
-    self.check_result = successes > 0
+    if self.event_stack:
+      raise InvalidInput("there are events on the stack")
+    self.event_stack.append(events.Check(self.characters[char_idx], check_type, modifier))
 
   def handle_slider(self, char_idx, name, value):
     if self.turn_phase != "upkeep":

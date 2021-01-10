@@ -23,6 +23,7 @@ class EventTest(unittest.TestCase):
   def setUp(self):
     self.char = characters.Character("Dummy", 5, 5, 4, 4, 4, 4, 4, 4, 4, places.Diner)
     self.state = eldritch.GameState()
+    self.state.characters = [self.char]
 
   def resolve_loop(self):
     count = 0
@@ -171,13 +172,15 @@ class GainLossTest(EventTest):
   @mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=[4, 1]))
   def testDieRollLoss(self):
     # Use an ordered dict to make sure we lose 4 sanity and 1 stamina.
-    loss = Loss(self.char, collections.OrderedDict([
-      ("sanity", DiceRoll(self.char, 1)), ("stamina", DiceRoll(self.char, 1))]))
+    sanity_die = DiceRoll(self.char, 1)
+    stamina_die = DiceRoll(self.char, 1)
+    loss = Loss(self.char, {"sanity": sanity_die, "stamina": stamina_die})
     self.assertFalse(loss.is_resolved())
     self.assertEqual(self.char.sanity, 5)
     self.assertEqual(self.char.stamina, 5)
+    event = Sequence([sanity_die, stamina_die, loss])
 
-    self.state.event_stack.append(loss)
+    self.state.event_stack.append(event)
     self.resolve_loop()
 
     self.assertTrue(loss.is_resolved())
@@ -255,7 +258,7 @@ class DrawTest(EventTest):
     draw = DrawSpecific(self.char, "common", "Food")
     self.assertFalse(draw.is_resolved())
     self.assertFalse(self.char.possessions)
-    self.state.common.append(items.Food)
+    self.state.common.append(items.Food())
 
     self.state.event_stack.append(draw)
     self.resolve_loop()
@@ -280,8 +283,8 @@ class DrawTest(EventTest):
     draw = DrawSpecific(self.char, "common", "Food")
     self.assertFalse(draw.is_resolved())
     self.assertFalse(self.char.possessions)
-    self.state.common.append(items.Food)
-    self.state.common.append(items.Food)
+    self.state.common.append(items.Food())
+    self.state.common.append(items.Food())
 
     self.state.event_stack.append(draw)
     self.resolve_loop()
@@ -329,8 +332,8 @@ class CheckTest(EventTest):
     self.resolve_loop()
 
     self.assertTrue(check.is_resolved())
-    self.assertIsNotNone(check.dice_result)
-    self.assertListEqual(check.dice_result.roll, [4, 5, 1, 3])
+    self.assertIsNotNone(check.dice)
+    self.assertListEqual(check.dice.roll, [4, 5, 1, 3])
     self.assertEqual(check.successes, 1)
 
   @mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=[4, 4]))
@@ -343,8 +346,8 @@ class CheckTest(EventTest):
     self.resolve_loop()
 
     self.assertTrue(check.is_resolved())
-    self.assertIsNotNone(check.dice_result)
-    self.assertListEqual(check.dice_result.roll, [4, 4])
+    self.assertIsNotNone(check.dice)
+    self.assertListEqual(check.dice.roll, [4, 4])
     self.assertEqual(check.successes, 0)
 
   @mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=[4]))
@@ -358,8 +361,8 @@ class CheckTest(EventTest):
     self.resolve_loop()
 
     self.assertTrue(check.is_resolved())
-    self.assertIsNotNone(check.dice_result)
-    self.assertListEqual(check.dice_result.roll, [4])
+    self.assertIsNotNone(check.dice)
+    self.assertListEqual(check.dice.roll, [4])
     self.assertEqual(check.successes, 1)
 
 

@@ -1,6 +1,5 @@
-from random import SystemRandom
-random = SystemRandom()
-
+import eldritch.abilities as abilities
+import eldritch.events as events
 import eldritch.items as items
 import eldritch.places as places
 
@@ -25,8 +24,7 @@ class Character(object):
     self.sanity = self.max_sanity
     self.dollars = 0
     self.clues = 0
-    self.possessions = []  # includes skills and allies
-    self.active_possessions = []  # being used by hands
+    self.possessions = []  # includes special abilities, skills, and allies
     self.bless_curse = 0  # -1 for curse, +1 for blessed
     self.retainer = False
     self.lodge_membership = False
@@ -40,7 +38,7 @@ class Character(object):
     attrs = [
         "name", "max_stamina", "max_sanity", "stamina", "sanity", "focus",
         "speed", "sneak", "fight", "will", "lore", "luck", "movement_points", "focus_points",
-        "dollars", "clues", "possessions", "active_possessions", # TODO: special cards
+        "dollars", "clues", "possessions", # TODO: special cards
         "delayed", "arrested",
     ]
     data = {attr: getattr(self, attr) for attr in attrs}
@@ -106,22 +104,48 @@ class Character(object):
   def focus(self):
     return self._focus
 
-  def bonus(self, check_name):
-    modifier = 0
-    modifier += sum([p.get_passive_bonus(check_name) for p in self.possessions])
-    modifier += sum([p.get_hand_bonus(check_name) for p in self.active_possessions])
-    return modifier
-
   def start_using(self, item):
     assert item in self.possessions
-    hands_used = sum([p.hands for p in self.active_possessions])
+    assert not item.active
+    hands_used = sum([p.hands for p in self.possessions if isinstance(p, items.Item) and p.active])
     assert item.hands + hands_used <= 2
-    self.active_possessions.append(item)
+    item._active = True
 
   def stop_using(self, item):
-    assert item in self.active_possessions
     assert item in self.possessions
-    self.active_possessions.remove(item)
+    assert item.active
+    item._active = False
+
+  def get_interrupts(self, event, state):
+    return [
+        p.get_interrupt(event, self, state) for p in self.possessions
+        if p.get_interrupt(event, self, state)
+    ]
+
+  def get_usable_interrupts(self, event, state):
+    return {
+        idx: p.get_usable_interrupt(event, self, state) for idx, p in enumerate(self.possessions)
+        if p.get_usable_interrupt(event, self, state)
+    }
+
+  def get_triggers(self, event, state):
+    return [
+        p.get_trigger(event, self, state) for p in self.possessions
+        if p.get_trigger(event, self, state)
+    ]
+
+  def get_usable_triggers(self, event, state):
+    triggers = {
+        idx: p.get_usable_trigger(event, self, state) for idx, p in enumerate(self.possessions)
+        if p.get_usable_trigger(event, self, state)
+    }
+    # TODO: revisit index
+    if self.clues > 0 and isinstance(event, events.Check):
+      triggers[-1] = events.SpendClue(self, event)
+    return triggers
+
+  def bonus(self, check_name):
+    return sum([p.get_bonus(check_name) for p in self.possessions])
 
   def count_successes(self, roll, check_type):
     threshold = 5 - self.bless_curse
@@ -139,13 +163,11 @@ Archaeologist.clues = 1
 Gangster = Character("Gangster", 7, 3, 5, 4, 6, 4, 3, 3, 1, places.House)
 Gangster.dollars = 8
 
-Nun.possessions.extend([items.Cross])
-Archaeologist.possessions.extend([items.Revolver38, items.Bullwhip])
-Gangster.possessions.extend([items.Dynamite, items.TommyGun])
-Archaeologist.start_using(items.Revolver38)
-Archaeologist.start_using(items.Bullwhip)
-Gangster.start_using(items.TommyGun)
-Nun.start_using(items.Cross)
+
+Nun.possessions.extend([items.Cross(), items.HolyWater()])
+Doctor.possessions.extend([abilities.Medicine()])
+Archaeologist.possessions.extend([items.Revolver38(), items.Bullwhip()])
+Gangster.possessions.extend([items.Dynamite(), items.TommyGun()])
 
 
 CHARACTERS = [Nun, Doctor, Archaeologist, Gangster]

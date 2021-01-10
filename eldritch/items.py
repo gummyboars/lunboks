@@ -1,54 +1,75 @@
-import collections
-
-CHECK_TYPES = {
-    "speed", "sneak", "fight", "will", "lore", "luck", "evade", "combat", "horror", "spell"}
+from eldritch.assets import Asset, Card
+import eldritch.events as events
 
 
-class Possession(object):
+class Item(Card):
 
-  POSSESSION_TYPES = {"common", "unique", "spell", "skill", "ally"}
+  ITEM_TYPES = {"weapon", "tome", None}
 
-  # TODO: do we need use bonuses? or just add a hook that says the item is discarded after use?
-  def __init__(self, name, possession_type, use_bonuses, hand_bonuses, passive_bonuses, bonus_type, hands, price):
-    assert possession_type in self.POSSESSION_TYPES
-    self.possession_type = possession_type
-    self.name = name
-    assert not ((use_bonuses.keys() | hand_bonuses.keys() | passive_bonuses.keys()) - CHECK_TYPES)
-    self.use_bonuses = collections.defaultdict(int)
-    self.use_bonuses.update(use_bonuses)
-    self.hand_bonuses = collections.defaultdict(int)
-    self.hand_bonuses.update(hand_bonuses)
-    self.passive_bonuses = collections.defaultdict(int)
-    self.passive_bonuses.update(passive_bonuses)
-    assert bonus_type in {"physical", "magical", None}
-    self.bonus_type = bonus_type
+  def __init__(self, name, deck, active_bonuses, passive_bonuses, hands, price, item_type=None):
+    assert item_type in self.ITEM_TYPES
+    super(Item, self).__init__(name, deck, active_bonuses, passive_bonuses)
     self.hands = hands
     self.price = price
-    self.exhausted = False
-
-  def json_repr(self):
-    output = {}
-    output.update(self.__dict__)
-    return output
-
-  @classmethod
-  def parse_json(cls, data):
-    pass  # TODO
-
-  def get_use_bonus(self, check_type):
-    return self.use_bonuses[check_type]
-
-  def get_hand_bonus(self, check_type):
-    return self.hand_bonuses[check_type]
-
-  def get_passive_bonus(self, check_type):
-    return self.passive_bonuses[check_type]
+    self.item_type = item_type
 
 
-# TODO: update all of these items
-Revolver38 = Possession("Revolver38", "common", {}, {"combat": 3}, {}, "physical", 1, 4)
-Bullwhip = Possession("Bullwhip", "common", {}, {"combat": 1}, {}, "physical", 1, 2)  # TODO: special ability
-Cross = Possession("Cross", "unique", {}, {"horror": 1}, {}, "magical", 1, 3)
-Dynamite = Possession("Dynamite", "common", {}, {"combat": 8}, {}, "physical", 2, 4)
-TommyGun = Possession("TommyGun", "common", {}, {"combat": 6}, {}, "physical", 2, 7)
-Food = Possession("Food", "common", {}, {}, {}, None, None, 1)
+class Weapon(Item):
+
+  BONUS_TYPES = {"physical", "magical", None}
+
+  def __init__(self, name, deck, active_bonuses, passive_bonuses, hands, price, bonus_type):
+    assert bonus_type in self.BONUS_TYPES
+    super(Weapon, self).__init__(name, deck, active_bonuses, passive_bonuses, hands, price, "weapon")
+    self.bonus_type = bonus_type
+
+
+class OneshotWeapon(Weapon):
+  
+  def get_trigger(self, event, owner, state):
+    if not isinstance(event, events.Check) or event.check_type != "combat":
+      return None
+    if event.character != owner or not self.active:
+      return None
+    return events.DiscardSpecific(event.character, self)
+
+
+class Food(Item):
+
+  def __init__(self):
+    super(Food, self).__init__("Food", "common", {}, {}, None, 1)
+
+  def get_usable_interrupt(self, event, owner, state):
+    if not isinstance(event, events.GainOrLoss) or owner != event.character:
+      return None
+    if "stamina" not in event.adjustments or event.adjustments["stamina"] >= 0:
+      return None
+
+    discard = events.DiscardSpecific(event.character, self)
+    prevent = events.LossPrevention(self, event, "stamina", 1)
+    return events.Sequence([discard, prevent])
+
+
+class Bullwhip(Weapon):
+
+  def __init__(self):
+    super(Bullwhip, self).__init__("Bullwhip", "common", {"combat": 1}, {}, 1, 2, "physical")
+
+  def get_usable_trigger(self, event, owner, state):
+    if not isinstance(event, events.Check) or owner != event.character:
+      return None
+    if event.check_type != "combat":
+      return None
+    return None  # FIXME: create an event here
+
+
+def Revolver38():
+  return Weapon(".38 Revolver", "common", {"combat": 3}, {}, 1, 4, "physical")
+def Cross():  # TODO: bonus against undead.
+  return Weapon("Cross", "unique", {}, {"horror": 1}, 1, 3, "magical")
+def Dynamite():
+  return OneshotWeapon("Dynamite", "common", {"combat": 8}, {}, 2, 4, "physical")
+def HolyWater():
+  return OneshotWeapon("Holy Water", "unique", {"combat": 6}, {}, 2, 4, "magical")
+def TommyGun():
+  return Weapon("Tommy Gun", "common", {"combat": 6}, {}, 2, 7, "physical")
