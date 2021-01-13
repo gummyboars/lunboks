@@ -16,6 +16,7 @@ import eldritch.eldritch as eldritch
 import eldritch.events as events
 from eldritch.events import *
 import eldritch.items as items
+import eldritch.monsters as monsters
 import eldritch.places as places
 
 
@@ -33,6 +34,16 @@ class EventTest(unittest.TestCase):
       if count > 100:
         self.fail("Exceeded maximum number of events")
     self.assertFalse(self.state.event_stack)
+
+  def resolve_until(self, event_class):
+    count = 0
+    for thing in self.state.resolve_loop():
+      count += 1
+      if count > 100:
+        self.fail("Exceeded maximum number of events")
+    self.assertTrue(self.state.event_stack)
+    self.assertIsInstance(self.state.event_stack[-1], event_class)
+    return self.state.event_stack[-1]
 
 
 class DiceRollTest(EventTest):
@@ -76,7 +87,7 @@ class DiceRollTest(EventTest):
 class MovementTest(EventTest):
 
   def testMoveOneSpace(self):
-    movement = Movement(self.char, ["Easttown"])
+    movement = Movement(self.char, [self.state.places["Easttown"]])
     self.assertFalse(movement.is_resolved())
     self.assertEqual(self.char.movement_points, 4)
 
@@ -88,7 +99,8 @@ class MovementTest(EventTest):
     self.assertEqual(self.char.movement_points, 3)
 
   def testMoveMultipleSpaces(self):
-    movement = Movement(self.char, ["Easttown", "Rivertown", "Graveyard"])
+    movement = Movement(
+        self.char, [self.state.places[name] for name in ["Easttown", "Rivertown", "Graveyard"]])
     self.assertFalse(movement.is_resolved())
     self.assertEqual(self.char.movement_points, 4)
 
@@ -387,39 +399,42 @@ class ConditionalTest(EventTest):
     check = Check(self.char, "luck", 0)
     success_result = Gain(self.char, {"clues": 1})
     fail_result = Loss(self.char, {"sanity": 1})
-    return Conditional(self.char, check, success_result=success_result, fail_result=fail_result)
+    cond = Conditional(self.char, check, "successes", {1: success_result, 0: fail_result})
+    return Sequence([check, cond])
 
-  @mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=[5]))
+  @mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5))
   def testPassCondition(self):
-    cond = self.createConditional()
-    self.assertFalse(cond.is_resolved())
+    seq = self.createConditional()
+    cond = seq.events[1]
+    self.assertFalse(seq.is_resolved())
     self.assertEqual(self.char.clues, 0)
     self.assertEqual(self.char.sanity, 5)
 
-    self.state.event_stack.append(cond)
+    self.state.event_stack.append(seq)
     self.resolve_loop()
 
-    self.assertTrue(cond.is_resolved())
+    self.assertTrue(seq.is_resolved())
     self.assertEqual(self.char.sanity, 5)
     self.assertEqual(self.char.clues, 1)
-    self.assertTrue(cond.success_map[1].is_resolved())
-    self.assertFalse(cond.success_map[0].is_resolved())
+    self.assertTrue(cond.result_map[1].is_resolved())
+    self.assertFalse(cond.result_map[0].is_resolved())
 
-  @mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=[3]))
+  @mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3))
   def testFailCondition(self):
-    cond = self.createConditional()
-    self.assertFalse(cond.is_resolved())
+    seq = self.createConditional()
+    cond = seq.events[1]
+    self.assertFalse(seq.is_resolved())
     self.assertEqual(self.char.clues, 0)
     self.assertEqual(self.char.sanity, 5)
 
-    self.state.event_stack.append(cond)
+    self.state.event_stack.append(seq)
     self.resolve_loop()
 
-    self.assertTrue(cond.is_resolved())
+    self.assertTrue(seq.is_resolved())
     self.assertEqual(self.char.sanity, 4)
     self.assertEqual(self.char.clues, 0)
-    self.assertTrue(cond.success_map[0].is_resolved())
-    self.assertFalse(cond.success_map[1].is_resolved())
+    self.assertTrue(cond.result_map[0].is_resolved())
+    self.assertFalse(cond.result_map[1].is_resolved())
 
 
 class BinaryChoiceTest(EventTest):
@@ -432,15 +447,16 @@ class BinaryChoiceTest(EventTest):
   def testChoices(self):
     for chosen, expected_dollars in [("Yes", 4), ("No", 2)]:
       with self.subTest(choice=chosen):
-        choice = self.createChoice()
+        seq = self.createChoice()
+        choice = seq.events[0]
         self.assertEqual(choice.prompt(), "Get Money?")
-        self.assertFalse(choice.is_resolved())
+        self.assertFalse(seq.is_resolved())
         self.char.dollars = 3
 
-        self.state.event_stack.append(choice)
-        with self.assertRaises(AssertionError):
-          self.resolve_loop()  # Cannot resolve a choice normally.
+        self.state.event_stack.append(seq)
+        the_choice = self.resolve_until(MultipleChoice)
 
+        self.assertIs(the_choice, choice)
         choice.resolve(self.state, chosen)
         self.assertEqual(len(self.state.event_stack), 2)
         self.resolve_loop()
@@ -491,6 +507,152 @@ class ItemChoiceTest(EventTest):
     self.assertFalse(self.char.possessions[0].active)
     self.assertFalse(self.char.possessions[1].active)
     self.assertTrue(self.char.possessions[2].active)
+
+
+class CombatTest(EventTest):
+
+  def testCombatFight(self):
+    self.char.fight_will_slider = 0
+    self.assertEqual(self.char.fight, 1)
+    cultist = monsters.Cultist()
+    combat = Combat(self.char, cultist)
+    self.state.event_stack.append(combat)
+
+    fight_or_flee = self.resolve_until(MultipleChoice)
+    self.assertIn("or flee", fight_or_flee.prompt())
+    fight_or_flee.resolve(self.state, "Fight")
+
+    choose_weapons = self.resolve_until(CombatChoice)
+    choose_weapons.resolve(self.state, [])
+
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=[5, 1])):
+      self.resolve_loop()
+
+    self.assertTrue(combat.combat.is_resolved())
+    self.assertTrue(combat.combat.defeated)
+    self.assertFalse(combat.combat.damage.is_resolved())
+    self.assertTrue(combat.is_resolved())
+
+  def testCombatFightThenFlee(self):
+    self.char.fight_will_slider = 0
+    self.char.speed_sneak_slider = 0
+    self.assertEqual(self.char.stamina, 5)
+    self.assertEqual(self.char.sneak, 4)
+    cultist = monsters.Cultist()
+    combat = Combat(self.char, cultist)
+    self.state.event_stack.append(combat)
+
+    fight_or_flee = self.resolve_until(MultipleChoice)
+    fight_or_flee.resolve(self.state, "Fight")
+    combat_round = combat.combat
+    evade_round = combat.evade
+    choose_weapons = self.resolve_until(CombatChoice)
+    choose_weapons.resolve(self.state, [])
+
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
+      next_fight_or_flee = self.resolve_until(MultipleChoice)
+
+    self.assertTrue(combat_round.is_resolved())
+    self.assertFalse(evade_round.is_resolved())
+    self.assertFalse(combat_round.defeated)
+    self.assertTrue(combat_round.damage.is_resolved())
+    self.assertFalse(combat.is_resolved())
+    self.assertEqual(self.char.stamina, 4)
+
+    next_fight_or_flee.resolve(self.state, "Flee")
+    next_combat_round = combat.combat
+    next_evade_round = combat.evade
+
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_loop()
+
+    self.assertFalse(next_combat_round.is_resolved())
+    self.assertTrue(next_evade_round.is_resolved())
+    self.assertTrue(next_evade_round.evaded)
+    self.assertFalse(next_evade_round.damage.is_resolved())
+    self.assertTrue(combat.is_resolved())
+
+  def testCombatWithHorror(self):
+    self.char.fight_will_slider = 3
+    self.assertEqual(self.char.fight, 4)
+    self.assertEqual(self.char.will, 1)
+    self.assertEqual(self.char.stamina, 5)
+    self.assertEqual(self.char.sanity, 5)
+    zombie = monsters.Zombie()
+    combat = Combat(self.char, zombie)
+    self.state.event_stack.append(combat)
+
+    # The horror check happens here - they are guaranteed to fail becuse they have only 1 will.
+    fight_or_flee = self.resolve_until(MultipleChoice)
+    self.assertIsNotNone(combat.horror)
+    self.assertTrue(combat.horror.is_resolved())
+    self.assertEqual(self.char.sanity, 4)
+
+    combat_round = combat.combat
+    fight_or_flee.resolve(self.state, "Fight")
+    choose_weapons = self.resolve_until(CombatChoice)
+    choose_weapons.resolve(self.state, [])
+
+    # Fail the combat check. After this, we check that there is not a second horror check.
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
+      next_fight_or_flee = self.resolve_until(MultipleChoice)
+
+    self.assertTrue(combat_round.is_resolved())
+    self.assertFalse(combat_round.defeated)
+    self.assertTrue(combat_round.damage.is_resolved())
+    self.assertFalse(combat.is_resolved())
+    self.assertEqual(self.char.stamina, 3)
+    self.assertEqual(self.char.sanity, 4)  # Assert there wasn't a second horror check/loss.
+
+    combat_round = combat.combat
+    next_fight_or_flee.resolve(self.state, "Fight")
+    choose_weapons = self.resolve_until(CombatChoice)
+    choose_weapons.resolve(self.state, [])
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_loop()
+
+    self.assertTrue(combat_round.is_resolved())
+    self.assertTrue(combat_round.defeated)
+    self.assertFalse(combat_round.damage.is_resolved())
+    self.assertTrue(combat.is_resolved())
+
+  def testEvadeMeansNoHorror(self):
+    self.char.fight_will_slider = 3
+    self.assertEqual(self.char.will, 1)
+    self.assertEqual(self.char.sanity, 5)
+    zombie = monsters.Zombie()
+    choice = EvadeOrCombat(self.char, zombie)
+    self.state.event_stack.append(choice)
+
+    fight_or_evade = self.resolve_until(MultipleChoice)
+    fight_or_evade.resolve(self.state, "Evade")
+
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_loop()
+
+    self.assertFalse(choice.combat.is_resolved())
+    self.assertTrue(choice.evade.is_resolved())
+    self.assertEqual(self.char.sanity, 5)
+    self.assertTrue(choice.is_resolved())
+
+  def testFailEvadeMeansCombat(self):
+    self.char.fight_will_slider = 3
+    self.assertEqual(self.char.will, 1)
+    self.assertEqual(self.char.sanity, 5)
+    self.assertEqual(self.char.stamina, 5)
+    zombie = monsters.Zombie()
+    choice = EvadeOrCombat(self.char, zombie)
+    self.state.event_stack.append(choice)
+
+    fight_or_evade = self.resolve_until(MultipleChoice)
+    fight_or_evade.resolve(self.state, "Evade")
+
+    # While here, they will fail the horror check.
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
+      self.resolve_until(MultipleChoice)
+
+    self.assertEqual(self.char.sanity, 4)
+    self.assertEqual(self.char.stamina, 3)
 
 
 if __name__ == '__main__':

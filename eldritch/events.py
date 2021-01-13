@@ -93,24 +93,19 @@ class DiceRoll(Event):
     return "%s rolled %s" % (self.character.name, " ".join([str(x) for x in self.roll]))
 
 
-class Movement(Event):
+class MoveOne(Event):
 
-  def __init__(self, character, route):
+  def __init__(self, character, dest):
     self.character = character
-    self.route = route
-    self.previous_move = None
+    self.dest = dest
     self.done = False
 
-  def resolve(self, state):  # TODO: does every step need to be a separate event?
-    if len(self.route) == 0:  # This should never happen.
+  def resolve(self, state):
+    if self.character.movement_points <= 0:
       self.done = True
       return True
-    if len(self.route) > 1:
-      self.previous_move = Movement(self.character, self.route[:-1])
-      self.route = self.route[-1:]
-      state.event_stack.append(self.previous_move)
-      return False
-    self.character.place = state.places[self.route[0]]
+    assert self.dest in self.character.place.connections
+    self.character.place = self.dest
     self.character.movement_points -= 1
     self.done = True
     return True
@@ -122,7 +117,11 @@ class Movement(Event):
     return ""
 
   def finish_str(self):
-    return "%s moved to %s" % (self.character.name, self.route[0])
+    return f"{self.character.name} moved to {self.dest.name}"
+
+
+def Movement(character, route):
+  return Sequence([MoveOne(character, dest) for dest in route])
 
 
 class GainOrLoss(Event):
@@ -578,42 +577,33 @@ class RerollCheck(Event):
 
 class Conditional(Event):
 
-  def __init__(self, character, condition, success_result=None, fail_result=None, success_map=None):
-    # Must specify either the success map or both results.
-    assert success_map or (success_result and fail_result)
-    # Cannot specify both at the same time.
-    assert not success_map and (success_result or fail_result)
-    assert hasattr(condition, "successes")
-    self.success_map = {}
-    if success_map:
-      assert min(success_map.keys()) == 0
-      self.success_map = success_map
-    else:
-      self.success_map[0] = fail_result
-      self.success_map[1] = success_result
+  def __init__(self, character, condition, attribute, result_map):
+    assert hasattr(condition, attribute)
+    assert all([isinstance(key, int) for key in result_map])
+    assert min(result_map.keys()) == 0
     self.character = character
     self.condition = condition
+    self.attribute = attribute
+    self.result_map = result_map
     self.result = None
 
   def resolve(self, state):
-    if not self.condition.is_resolved():
-      state.event_stack.append(self.condition)
-      return False
-
+    assert self.condition.is_resolved()
     if self.result is not None:
       if not self.result.is_resolved():  # NOTE: this should never happen
         state.event_stack.append(self.result)
         return False
       return True
 
-    for min_successes in reversed(sorted(self.success_map)):
-      if self.condition.successes >= min_successes:
-        self.result = self.success_map[min_successes]
+    for min_result in reversed(sorted(self.result_map)):
+      if getattr(self.condition, self.attribute) >= min_result:
+        self.result = self.result_map[min_result]
         state.event_stack.append(self.result)
-        break
-    else:
-      raise RuntimeError("success map without result for %s: %s" % (successes, self.success_map))
-    return False
+        return False
+    raise RuntimeError(
+        "result map without result for %s: %s" %
+        (getattr(self.condition, self.attribute), self.result_map)
+    )
 
   def is_resolved(self):
     return self.result is not None and self.result.is_resolved()
@@ -623,6 +613,11 @@ class Conditional(Event):
 
   def finish_str(self):
     return ""
+
+
+def PassFail(character, condition, pass_result, fail_result):
+  outcome = Conditional(character, condition, "successes", {0: fail_result, 1: pass_result})
+  return Sequence([condition, outcome])
 
 
 class Sequence(Event):
@@ -660,27 +655,20 @@ class ChoiceEvent(Event):
 
 class MultipleChoice(ChoiceEvent):
 
-  def __init__(self, character, prompt, choices, events):
-    assert len(choices) == len(events)
+  def __init__(self, character, prompt, choices):
     self.character = character
     self._prompt = prompt
     self.choices = choices
-    self.events = events
     self.choice = None
-    self.event = None
 
   def resolve(self, state, choice=None):
-    if self.is_resolved():
-      return True
+    assert not self.is_resolved()
     assert choice in self.choices
-    idx = self.choices.index(choice)
     self.choice = choice
-    self.event = self.events[idx]
-    state.event_stack.append(self.event)
-    return False
+    return True
 
   def is_resolved(self):
-    return self.event is not None and self.event.is_resolved()
+    return self.choice is not None
 
   def start_str(self):
     return f"{self.character.name} must choose one of " + ", ".join([str(c) for c in self.choices])
@@ -691,9 +679,17 @@ class MultipleChoice(ChoiceEvent):
   def prompt(self):
     return self._prompt
 
+  @property
+  def choice_index(self):
+    if self.choice is None:
+      return None
+    return self.choices.index(self.choice)
+
 
 def BinaryChoice(character, prompt, first_choice, second_choice, first_event, second_event):
-  return MultipleChoice(character, prompt, [first_choice, second_choice], [first_event, second_event])
+  choice = MultipleChoice(character, prompt, [first_choice, second_choice])
+  outcome = Conditional(character, choice, "choice_index", {0: first_event, 1: second_event})
+  return Sequence([choice, outcome])
 
 
 class ItemChoice(ChoiceEvent):
@@ -747,3 +743,199 @@ class ItemCountChoice(ItemChoice):
   def resolve_internal(self, choices):
     assert self.count == len(choices)
     super(ItemCountChoice, self).resolve_internal(choices)
+
+
+def EvadeOrFightAll(character, monsters):
+  return Sequence([EvadeOrCombat(character, monster) for monster in monsters])
+
+
+"""
+# TODO: let the player choose the order in which they fight/evade the monsters
+class EvadeOrFightAll(Event):
+
+  def __init__(self, character, monsters):
+    assert monsters
+    self.character = character
+    self.monsters = monsters
+    self.result = []
+
+  def resolve(self, state):
+    if not self.result:
+      self.add_choice(state, self.monsters[0])
+      return False
+    if self.result[-1].is_resolved():
+      if len(self.result) == len(self.monsters):
+        return True
+      self.add_choice(state, self.monsters[len(self.result)])
+      return False
+    return True
+
+  def add_choice(self, state, monster):
+    choice = EvadeOrCombat(self.character, monster)
+    self.result.append(choice)
+    state.event_stack.append(choice)
+
+  def is_resolved(self):
+    return len(self.result) == len(self.monsters) and self.result[-1].is_resolved()
+
+  def start_str(self):
+    return ""
+
+  def finish_str(self):
+    return ""
+    """
+
+
+class EvadeOrCombat(Event):
+
+  def __init__(self, character, monster):
+    self.character = character
+    self.monster = monster
+    self.combat = Combat(character, monster)
+    self.evade = EvadeRound(character, monster)
+    prompt = f"Fight the {monster.name} or evade it?"
+    self.choice = BinaryChoice(character, prompt, "Fight", "Evade", self.combat, self.evade)
+
+  def resolve(self, state):
+    if not self.choice.is_resolved():
+      state.event_stack.append(self.choice)
+      return False
+    if self.evade.is_resolved() and self.evade.evaded:
+      return True
+    if not self.combat.is_resolved():
+      state.event_stack.append(self.combat)
+      return False
+    return True
+
+  def is_resolved(self):
+    return self.combat.is_resolved() or (self.evade.is_resolved() and self.evade.evaded)
+
+  def start_str(self):
+    return ""
+
+  def finish_str(self):
+    return ""
+
+
+class Combat(Event):
+
+  def __init__(self, character, monster):
+    self.character = character
+    self.monster = monster
+    if monster.difficulty("horror") is not None:
+      self.horror = Check(character, "horror", monster.difficulty("horror"))
+      self.sanity_loss = Loss(character, {"sanity": monster.damage("horror")})
+    else:
+      self.horror = None
+      self.sanity_loss = None
+    self.choice = None
+    self.evade = None
+    self.combat = None
+    self.done = False
+
+  def resolve(self, state):
+    if self.horror is not None:
+      if not self.horror.is_resolved():
+        state.event_stack.append(self.horror)
+        return False
+      if self.horror.successes < 1 and not self.sanity_loss.is_resolved():
+        state.event_stack.append(self.sanity_loss)
+        return False
+    if self.choice is None:
+      # TODO: deal with ambush
+      self.combat = CombatRound(self.character, self.monster)
+      self.evade = EvadeRound(self.character, self.monster)
+      prompt = f"Fight the {self.monster.name} or flee from it?"
+      self.choice = BinaryChoice(self.character, prompt, "Fight", "Flee", self.combat, self.evade)
+      state.event_stack.append(self.choice)
+      return False
+    assert self.choice.is_resolved()
+    if self.evade.evaded:
+      return True
+    if self.combat.defeated:
+      return True
+    self.choice = None
+    return False
+
+  def is_resolved(self):
+    if self.evade is None or self.combat is None:
+      return False
+    return self.evade.evaded or self.combat.defeated
+
+  def start_str(self):
+    return f"{self.character.name} entered combat with a {self.monster.name}"
+
+  def finish_str(self):
+    return ""
+
+
+class EvadeRound(Event):
+
+  def __init__(self, character, monster):
+    self.character = character
+    self.monster = monster
+    self.check = Check(character, "evade", monster.difficulty("evade"))
+    self.damage = Loss(character, {"stamina": monster.damage("combat")})
+    self.evaded = None
+
+  def resolve(self, state):
+    if self.evaded is not None:
+      return True
+    if not self.check.is_resolved():
+      state.event_stack.append(self.check)
+      return False
+    if self.check.successes >= 1:
+      self.evaded = True
+      return True
+    state.event_stack.append(self.damage)
+    return False
+
+  def is_resolved(self):
+    return self.evaded or self.damage.is_resolved()
+
+  def start_str(self):
+    return f"{self.character.name} attempted to flee from {self.monster.name}"
+
+  def finish_str(self):
+    if self.evaded:
+      return f"{self.character.name} evaded a {self.monster.name}"
+    return f"{self.character.name} did not evade the {self.monster.name}"
+
+
+class CombatRound(Event):
+
+  def __init__(self, character, monster):
+    self.character = character
+    self.monster = monster
+    self.choice = CombatChoice(character, f"Choose weapons to fight the {monster.name}")
+    self.check = Check(character, "combat", monster.difficulty("combat"))
+    self.damage = Loss(character, {"stamina": monster.damage("combat")})
+    self.defeated = None
+
+  def resolve(self, state):
+    if self.defeated is not None:
+      return True
+    if not self.choice.is_resolved():
+      state.event_stack.append(self.choice)
+      return False
+    if not self.check.is_resolved():
+      state.event_stack.append(self.check)
+      return False
+    if self.check.successes >= self.monster.toughness:
+      # TODO: take the monster as a trophy
+      self.defeated = True
+      return True
+    self.defeated = False
+    state.event_stack.append(self.damage)
+    return False
+
+  def is_resolved(self):
+    return self.defeated or self.damage.is_resolved()
+
+  def start_str(self):
+    return f"{self.character.name} started a combat round against a {self.monster.name}"
+
+  def finish_str(self):
+    if self.defeated:
+      return f"{self.character.name} defeated a {self.monster.name}"
+    return f"{self.character.name} did not defeat the {self.monster.name}"

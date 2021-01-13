@@ -12,6 +12,7 @@ class Place(object):
     self.long_name = long_name
     self.connections = set()
     self.movement = {"white": None, "black": None}
+    self.monsters = []
     self.neighborhood = None
     self.closed = False
 
@@ -155,17 +156,17 @@ def Diner3(char):
   adj = events.GainOrLoss(char, {"stamina": 2}, {"dollars": 1})
   choice = events.BinaryChoice(char, "Pay $1 for pie?", "Pay $1", "Go Hungry", adj, events.Nothing());
   prereq = events.AttributePrerequisite(char, "dollars", 1, "at least")
-  return events.Conditional(char, prereq, success_result=choice, fail_result=events.Nothing())
+  return events.PassFail(char, prereq, choice, events.Nothing())
 def Diner4(char):
   gain = events.Gain(char, {"dollars": 5})
   check = events.Check(char, "will", -2)
-  return events.Conditional(char, check, success_result=gain, fail_result=events.Nothing())
+  return events.PassFail(char, check, gain, events.Nothing())
 def Diner7(char):
   move = events.ForceMovement(char, "Easttown")
   die = events.DiceRoll(char, 1)
   gain = events.Gain(char, {"dollars": die})
   check = events.Check(char, "sneak", -1)
-  return events.Conditional(char, check, success_result=gain, fail_result=move)
+  return events.PassFail(char, check, events.Sequence([die, gain]), move)
 Diner.encounters.append(Diner2)
 Diner.encounters.append(Diner3)
 Diner.encounters.append(Diner4)

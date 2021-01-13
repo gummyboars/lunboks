@@ -11,6 +11,7 @@ from game import (
 import eldritch.assets as assets
 import eldritch.characters as characters
 import eldritch.events as events
+import eldritch.monsters as monsters
 import eldritch.places as places
 
 
@@ -70,7 +71,11 @@ class GameState(object):
     top_event = self.event_stack[-1] if self.event_stack else None
     if top_event and isinstance(top_event, events.ChoiceEvent) and not top_event.is_resolved():
       if top_event.character == self.characters[char_idx]:
-        output["choice"] = {"prompt": top_event.prompt(), "choices": top_event.choices()}
+        output["choice"] = {"prompt": top_event.prompt()}
+        if isinstance(top_event, events.MultipleChoice):
+          output["choice"]["choices"] = top_event.choices
+        elif isinstance(top_event, events.CombatChoice):
+          output["choice"]["items"] = 0
     if self.usables.get(char_idx):
       output["usables"] = list(self.usables[char_idx].keys())
     else:
@@ -92,6 +97,8 @@ class GameState(object):
       self.handle_move(char_idx, data.get("place"))
     elif data.get("type") == "check":  # TODO: remove
       self.handle_check(char_idx, data.get("check_type"), data.get("modifier"))
+    elif data.get("type") == "monster":  # TODO: remove
+      self.handle_spawn_monster(data.get("monster"), data.get("place"))
     elif data.get("type") == "choice":
       self.handle_choice(char_idx, data.get("choice"))
     elif data.get("type") == "use":
@@ -174,7 +181,11 @@ class GameState(object):
 
   # TODO: global interrupts/triggers from ancient one, environment, other mythos/encounter cards
   def get_interrupts(self, event):
-    return sum([char.get_interrupts(event, self) for char in self.characters], [])
+    interrupts = []
+    if isinstance(event, events.MoveOne) and event.character.place.monsters:
+      interrupts.append(events.EvadeOrFightAll(event.character, event.character.place.monsters))
+    interrupts += sum([char.get_interrupts(event, self) for char in self.characters], [])
+    return interrupts
 
   def get_usable_interrupts(self, event):
     i = {idx: char.get_usable_interrupts(event, self) for idx, char in enumerate(self.characters)}
@@ -217,6 +228,11 @@ class GameState(object):
       raise InvalidInput("there are events on the stack")
     self.event_stack.append(events.Check(self.characters[char_idx], check_type, modifier))
 
+  def handle_spawn_monster(self, monster, place):
+    assert place in self.places
+    assert monster in monsters.MONSTERS
+    self.places[place].monsters.append(monsters.MONSTERS[monster]())
+
   def handle_slider(self, char_idx, name, value):
     if char_idx != self.turn_idx:
       raise NotYourTurn("It is not your turn.")
@@ -255,7 +271,8 @@ class GameState(object):
           "You cannot reach that location with %s movement." %
           self.characters[char_idx].movement_points
       )
-    self.event_stack.append(events.Movement(self.characters[char_idx], routes[place]))
+    self.event_stack.append(events.Movement(
+      self.characters[char_idx], [self.places[name] for name in routes[place]]))
 
   def handle_end_turn(self, char_idx):
     if char_idx != self.turn_idx:
