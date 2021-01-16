@@ -1,6 +1,8 @@
 ws = null;
 characters = {};
 scale = 1;
+itemsToChoose = null;
+itemChoice = [];
 runningAnim = [];
 messageQueue = [];
 
@@ -114,7 +116,7 @@ function handleData(data) {
   if (messageQueue.length && !runningAnim.length) {
     handleData(messageQueue.shift());
   }
-  updateChoices(data.choice, data.turn_idx == data.player_idx);
+  updateChoices(data.choice);
   updateUsables(data.usables);
   updateEventLog(data.event_log);
 }
@@ -128,11 +130,37 @@ function setSlider(sliderName, sliderValue) {
 }
 
 function makeChoice(val) {
-  ws.send(JSON.stringify({"type": "choice", "choice": val}));
+  if (itemsToChoose == null) {
+    ws.send(JSON.stringify({"type": "choice", "choice": val}));
+    return;
+  }
+  if (itemChoice.length != itemsToChoose) {
+    document.getElementById("errorText").holdSeconds = 3;
+    document.getElementById("errorText").style.opacity = 1.0;
+    document.getElementById("errorText").innerText = "Expected " + itemsToChoose + " items.";
+    setTimeout(clearError, 100);
+    return;
+  }
+  ws.send(JSON.stringify({"type": "choice", "choice": itemChoice}));
 }
 
 function doneUsing(e) {
   ws.send(JSON.stringify({"type": "done_using"}));
+}
+
+function clickAsset(assetDiv, assetIdx) {
+  if (itemsToChoose == null) {
+    useAsset(assetIdx);
+    return;
+  }
+  let choiceIdx = itemChoice.indexOf(assetIdx);
+  if (choiceIdx >= 0) {
+    itemChoice.splice(choiceIdx, 1);
+    assetDiv.classList.remove("chosen");
+  } else {
+    itemChoice.push(assetIdx);
+    assetDiv.classList.add("chosen");
+  }
 }
 
 function useAsset(idx) {
@@ -178,8 +206,12 @@ function updateCharacters(newCharacters) {
 
 function updateChoices(choice) {
   let uichoice = document.getElementById("uichoice");
+  let pDiv = document.getElementById("possessions");
   if (choice == null) {
     uichoice.style.display = "none";
+    itemsToChoose = null;
+    itemChoice = [];
+    pDiv.classList.remove("choose");
     return;
   }
   uichoice.style.display = "flex";
@@ -187,7 +219,20 @@ function updateChoices(choice) {
     uichoice.removeChild(uichoice.getElementsByClassName("choice")[0]);
   }
   document.getElementById("uiprompt").innerText = choice.prompt;
-  for (let c of choice.choices) {
+  if (choice.items != null) {
+    itemsToChoose = choice.items;
+    pDiv.classList.add("choose");
+    addChoices(uichoice, ["Done Choosing Items"]);
+  } else {
+    itemsToChoose = null;
+    itemChoice = [];
+    pDiv.classList.remove("choose");
+    addChoices(uichoice, choice.choices);
+  }
+}
+
+function addChoices(uichoice, choices) {
+  for (let c of choices) {
     let div = document.createElement("DIV");
     div.classList.add("choice");
     div.innerText = c;
@@ -441,7 +486,10 @@ function createPossession(info, idx) {
     }
     div.appendChild(highlightDiv);
   }
-  div.onclick = function(e) { useAsset(idx); };
+  if (itemChoice.includes(idx)) {
+    div.classList.add("chosen");
+  }
+  div.onclick = function(e) { clickAsset(div, idx); };
   // TODO: show some information about bonuses that aren't active right now
   return div;
 }

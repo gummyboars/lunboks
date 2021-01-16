@@ -329,6 +329,14 @@ button {
 #possessions.use .unusable {
   filter: grayscale(70%) brightness(70%);
 }
+#possessions.choose .possession {
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+#possessions.choose .possession.chosen {
+  transform-origin: center;
+  transform: scale(1.2, 1.2);
+}
 .bonus {
   position: absolute;
   width: 100%;

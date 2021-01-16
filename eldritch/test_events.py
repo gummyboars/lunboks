@@ -448,5 +448,50 @@ class BinaryChoiceTest(EventTest):
         self.assertEqual(self.char.dollars, expected_dollars)
 
 
+class ItemChoiceTest(EventTest):
+
+  def setUp(self):
+    super(ItemChoiceTest, self).setUp()
+    self.char.possessions.append(items.Revolver38())
+    self.char.possessions.append(items.Food())
+    self.char.possessions.append(items.HolyWater())
+
+  def testCountChoice(self):
+    choice = ItemCountChoice(self.char, "choose 2", 2)
+    self.state.event_stack.append(choice)
+
+    with self.assertRaises(AssertionError):
+      self.resolve_loop()  # Cannot resolve a choice normally.
+
+    with self.assertRaises(AssertionError):
+      choice.resolve(self.state, [2])
+    with self.assertRaises(AssertionError):
+      choice.resolve(self.state, [0, 1, 2])
+    choice.resolve(self.state, [0, 1])
+    self.assertListEqual(choice.choices, self.char.possessions[:2])
+
+    self.resolve_loop()
+    self.assertFalse(self.state.event_stack)
+
+  def testCombatChoice(self):
+    choice = CombatChoice(self.char, "choose combat items")
+    self.state.event_stack.append(choice)
+
+    # Cannot use Food in combat.
+    with self.assertRaises(AssertionError):
+      choice.resolve(self.state, [0, 1])
+
+    # Cannot use three hands in combat.
+    with self.assertRaises(AssertionError):
+      choice.resolve(self.state, [0, 2])
+
+    choice.resolve(self.state, [2])
+    self.resolve_loop()
+
+    self.assertFalse(self.char.possessions[0].active)
+    self.assertFalse(self.char.possessions[1].active)
+    self.assertTrue(self.char.possessions[2].active)
+
+
 if __name__ == '__main__':
   unittest.main()

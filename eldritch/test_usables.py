@@ -151,7 +151,7 @@ class OneshotItemTest(UsableTest):
     self.assertEqual(len(self.check.roll), 4)
 
   def testUsedItems(self):
-    self.char.start_using(self.char.possessions[0])
+    self.char.possessions[0]._active = True
     self.resolve_loop()
     self.assertTrue(self.check.is_resolved())
     self.assertEqual(len(self.state.event_stack), 0)

@@ -694,3 +694,56 @@ class MultipleChoice(ChoiceEvent):
 
 def BinaryChoice(character, prompt, first_choice, second_choice, first_event, second_event):
   return MultipleChoice(character, prompt, [first_choice, second_choice], [first_event, second_event])
+
+
+class ItemChoice(ChoiceEvent):
+
+  def __init__(self, character, prompt):
+    self.character = character
+    self._prompt = prompt
+    self.choices = None
+
+  def resolve(self, state, choice=None):
+    if self.is_resolved():
+      return True
+    assert all([0 <= idx < len(self.character.possessions) for idx in choice])
+    self.resolve_internal(choice)
+
+  def resolve_internal(self, choices):
+    self.choices = [self.character.possessions[idx] for idx in choices]
+
+  def is_resolved(self):
+    return self.choices is not None
+
+  def start_str(self):
+    return f"{self.character.name} must " + self.prompt()
+
+  def finish_str(self):
+    return f"{self.character.name} chose some stuff"
+
+  def prompt(self):
+    return self._prompt
+
+
+class CombatChoice(ItemChoice):
+
+  def resolve_internal(self, choices):
+    for idx in choices:
+      assert getattr(self.character.possessions[idx], "hands", None) is not None
+    assert sum([self.character.possessions[idx].hands for idx in choices]) <= 2
+    super(CombatChoice, self).resolve_internal(choices)
+    for pos in self.character.possessions:
+      pos._active = False
+    for pos in self.choices:
+      pos._active = True
+
+
+class ItemCountChoice(ItemChoice):
+
+  def __init__(self, character, prompt, count):
+    super(ItemCountChoice, self).__init__(character, prompt)
+    self.count = count
+
+  def resolve_internal(self, choices):
+    assert self.count == len(choices)
+    super(ItemCountChoice, self).resolve_internal(choices)

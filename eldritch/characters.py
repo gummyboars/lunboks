@@ -104,18 +104,6 @@ class Character(object):
   def focus(self):
     return self._focus
 
-  def start_using(self, item):
-    assert item in self.possessions
-    assert not item.active
-    hands_used = sum([p.hands for p in self.possessions if isinstance(p, items.Item) and p.active])
-    assert item.hands + hands_used <= 2
-    item._active = True
-
-  def stop_using(self, item):
-    assert item in self.possessions
-    assert item.active
-    item._active = False
-
   def get_interrupts(self, event, state):
     return [
         p.get_interrupt(event, self, state) for p in self.possessions
