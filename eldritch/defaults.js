@@ -101,10 +101,11 @@ function initializeDefaults() {
     {names: skillNames, color: "gold"},
     {names: allyNames, color: "darkorange"},
     {names: abilityNames, color: "sienna"},
+    {names: monsterNames, color: "black", fgColor: "white"},
   ];
   for (let cfg of cfgs) {
     for (let name of cfg.names) {
-      let asset = createTextRectangle(name, cfg.color, board.width);
+      let asset = createTextRectangle(name, cfg.color, board.width, cfg.fgColor);
       asset.id = "default" + name;
       assets.appendChild(asset);
     }
@@ -163,7 +164,7 @@ function drawStreet(ctx, data, boardWidth) {
   ctx.restore();
 }
 
-function createTextRectangle(name, bgColor, boardWidth) {
+function createTextRectangle(name, bgColor, boardWidth, fgColor) {
   let cnv = document.createElement("CANVAS");
   cnv.width = 3 * boardWidth * markerWidthRatio;
   cnv.height = 3 * boardWidth * markerHeightRatio;
@@ -175,7 +176,11 @@ function createTextRectangle(name, bgColor, boardWidth) {
   ctx.font = fontSize + "px sans-serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.fillStyle = "black";
+  if (fgColor != null) {
+    ctx.fillStyle = fgColor;
+  } else {
+    ctx.fillStyle = "black";
+  }
   ctx.fillText(name, cnv.width/2, cnv.height/2);
   ctx.restore();
   return cnv;

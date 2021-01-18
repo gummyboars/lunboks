@@ -30,6 +30,7 @@ class Place(object):
         "movement": {"white": self.movement["white"].name, "black": self.movement["black"].name},
         "neighborhood": self.neighborhood.name,
         "closed": self.closed,
+        "monsters": self.monsters,
     }
 
   def _add_connections(self, *other_places):

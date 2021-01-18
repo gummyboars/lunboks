@@ -27,6 +27,9 @@ class Monster(object):
     self._toughness = toughness
     self.attributes = attributes
 
+  def json_repr(self):
+    return {"name": self.name}
+
   @property
   def undead(self):
     return "undead" in self.attributes

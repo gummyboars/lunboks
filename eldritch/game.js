@@ -39,6 +39,10 @@ function continueInit(gameId) {
     div.appendChild(desc);
     div.onclick = function(e) { moveTo(name); };
     cont.appendChild(div);
+    let opt = document.createElement("OPTION");
+    opt.value = name;
+    opt.text = name;
+    document.getElementById("placechoice").appendChild(opt);
   }
   for (let name in streets) {
     let div = document.createElement("DIV");
@@ -53,6 +57,16 @@ function continueInit(gameId) {
     div.appendChild(desc);
     div.onclick = function(e) { moveTo(name); };
     cont.appendChild(div);
+    let opt = document.createElement("OPTION");
+    opt.value = name;
+    opt.text = name;
+    document.getElementById("placechoice").appendChild(opt);
+  }
+  for (let name of monsterNames) {
+    let opt = document.createElement("OPTION");
+    opt.value = name;
+    opt.text = name;
+    document.getElementById("monsterchoice").appendChild(opt);
   }
 }
 
@@ -113,6 +127,7 @@ function handleData(data) {
   updateDistances(data.distances);
   updateDice(data.check_result, data.dice_result);
   updateCharacters(data.characters);
+  updateMonsters(data.places);
   if (messageQueue.length && !runningAnim.length) {
     handleData(messageQueue.shift());
   }
@@ -129,12 +144,18 @@ function setSlider(sliderName, sliderValue) {
   ws.send(JSON.stringify({"type": "set_slider", "name": sliderName, "value": sliderValue}));
 }
 
+function spawnMonster(e) {
+  let monster = document.getElementById("monsterchoice").value;
+  let place = document.getElementById("placechoice").value;
+  ws.send(JSON.stringify({"type": "monster", "place": place, "monster": monster}));
+}
+
 function makeChoice(val) {
   if (itemsToChoose == null) {
     ws.send(JSON.stringify({"type": "choice", "choice": val}));
     return;
   }
-  if (itemChoice.length != itemsToChoose) {
+  if (itemsToChoose > 0 && itemChoice.length != itemsToChoose) {
     document.getElementById("errorText").holdSeconds = 3;
     document.getElementById("errorText").style.opacity = 1.0;
     document.getElementById("errorText").innerText = "Expected " + itemsToChoose + " items.";
@@ -204,6 +225,18 @@ function updateCharacters(newCharacters) {
   }
 }
 
+function updateMonsters(places) {
+  for (let name in places) {
+    let pDiv = document.getElementById("place" + name);
+    while (pDiv.getElementsByClassName("monster").length) {
+      pDiv.removeChild(pDiv.getElementsByClassName("monster")[0]);
+    }
+    for (let monster of places[name].monsters) {
+      pDiv.appendChild(createMonsterDiv(monster.name));
+    }
+  }
+}
+
 function updateChoices(choice) {
   let uichoice = document.getElementById("uichoice");
   let pDiv = document.getElementById("possessions");
@@ -262,6 +295,23 @@ function updateUsables(usables) {
     }
   }
   // TODO: clues
+}
+
+function createMonsterDiv(name) {
+  let width = document.getElementById("boardcanvas").width;
+  let markerWidth = width * markerWidthRatio;
+  let markerHeight = width * markerHeightRatio;
+  let div = document.createElement("DIV");
+  div.style.width = + markerWidth + "px";
+  div.style.height = markerHeight + "px";
+  div.classList.add("monster");
+  let cnv = document.createElement("CANVAS");
+  cnv.classList.add("monstercnv");
+  cnv.width = markerWidth;
+  cnv.height = markerHeight;
+  renderAssetToCanvas(cnv, name, "");
+  div.appendChild(cnv);
+  return div;
 }
 
 function createCharacterDiv(name) {

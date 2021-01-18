@@ -157,6 +157,15 @@ button {
 #uibottom{
   height: 100%;
 }
+.monster {
+  z-index: 10; /* TODO */
+  position: relative;
+}
+.mostercnv {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
 .marker {
   z-index: 10; /* TODO */
   position: relative;

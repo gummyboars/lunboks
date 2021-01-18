@@ -29,4 +29,5 @@ allyNames = [];
 abilityNames = [
   "Medicine",
 ];
-assetNames = ["board"].concat(characterNames).concat(commonNames).concat(uniqueNames).concat(spellNames).concat(skillNames).concat(allyNames).concat(abilityNames);
+monsterNames = ["Cultist", "Elder Thing", "Formless Spawn", "Ghoul", "Maniac", "Zombie"];
+assetNames = ["board"].concat(characterNames).concat(commonNames).concat(uniqueNames).concat(spellNames).concat(skillNames).concat(allyNames).concat(abilityNames).concat(monsterNames);
