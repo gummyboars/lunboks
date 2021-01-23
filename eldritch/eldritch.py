@@ -76,6 +76,10 @@ class GameState(object):
           output["choice"]["choices"] = top_event.choices
         elif isinstance(top_event, events.CombatChoice):
           output["choice"]["items"] = 0
+        elif isinstance(top_event, events.ItemCountChoice):
+          output["choice"]["items"] = top_event.count
+        else:
+          raise RuntimeError("Unknown choice type %s" % top_event.__class__.__name__)
     if self.usables.get(char_idx):
       output["usables"] = list(self.usables[char_idx].keys())
     else:
@@ -171,7 +175,7 @@ class GameState(object):
     self.event_stack.pop()
     self.trigger_stack.pop()
     self.interrupt_stack.pop()
-    if event.finish_str():
+    if event.is_resolved() and event.finish_str():
       self.event_log.append("  " * len(self.event_stack) + event.finish_str())
     self.clear_usables()
 
@@ -182,7 +186,7 @@ class GameState(object):
   # TODO: global interrupts/triggers from ancient one, environment, other mythos/encounter cards
   def get_interrupts(self, event):
     interrupts = []
-    if isinstance(event, events.MoveOne) and event.character.place.monsters:
+    if isinstance(event, (events.MoveOne, events.EndMovement)) and event.character.place.monsters:
       interrupts.append(events.EvadeOrFightAll(event.character, event.character.place.monsters))
     interrupts += sum([char.get_interrupts(event, self) for char in self.characters], [])
     return interrupts
@@ -192,7 +196,15 @@ class GameState(object):
     return {char_idx: interrupt_list for char_idx, interrupt_list in i.items() if interrupt_list}
 
   def get_triggers(self, event):
-    return sum([char.get_triggers(event, self) for char in self.characters], [])
+    triggers = []
+    if isinstance(event, events.GainOrLoss):
+      # TODO: both going to zero at the same time means you are devoured.
+      if event.character.sanity <= 0:
+        triggers.append(events.Insane(event.character, self.places["Asylum"]))
+      if event.character.stamina <= 0:
+        triggers.append(events.Unconscious(event.character, self.places["Hospital"]))
+    triggers.extend(sum([char.get_triggers(event, self) for char in self.characters], []))
+    return triggers
 
   def get_usable_triggers(self, event):
     t = {idx: char.get_usable_triggers(event, self) for idx, char in enumerate(self.characters)}
@@ -279,7 +291,12 @@ class GameState(object):
       raise NotYourTurn("It is not your turn.")
     if self.event_stack:
       raise InvalidMove("There are unresolved events.")
-    self.next_turn()
+    if self.turn_phase == "movement":
+      self.event_stack.append(events.EndMovement(self.characters[char_idx]))
+    elif self.turn_phase == "upkeep":
+      self.event_stack.append(events.EndUpkeep(self.characters[char_idx]))
+    else:
+      self.next_turn()  # TODO - this is not valid
 
   def next_turn(self):
     # TODO: game stages other than slumber

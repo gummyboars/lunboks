@@ -70,6 +70,40 @@ class Nothing(Event):
     return "Nothing happens"
 
 
+class EndTurn(Event):
+
+  def __init__(self, character, phase):
+    self.character = character
+    self.phase = phase
+    self.done = False
+
+  def resolve(self, state):
+    self.done = True
+    if state.turn_phase == self.phase and state.characters.index(self.character) == state.turn_idx:
+      state.next_turn()
+
+  def is_resolved(self):
+    return self.done
+
+  def start_str(self):
+    return ""
+
+  def finish_str(self):
+    return ""
+
+
+class EndUpkeep(EndTurn):
+
+  def __init__(self, character):
+    super(EndMovement, self).__init__(character, "upkeep")
+
+
+class EndMovement(EndTurn):
+
+  def __init__(self, character):
+    super(EndMovement, self).__init__(character, "movement")
+
+
 class DiceRoll(Event):
 
   def __init__(self, character, count):
@@ -121,7 +155,7 @@ class MoveOne(Event):
 
 
 def Movement(character, route):
-  return Sequence([MoveOne(character, dest) for dest in route])
+  return Sequence([MoveOne(character, dest) for dest in route], character)
 
 
 class GainOrLoss(Event):
@@ -227,6 +261,62 @@ class LossPrevention(Event):
     if not self.amount_prevented:
       return ""
     return f"{self.prevention_source.name} prevented {self.amount_prevented} {self.attribute} loss"
+
+
+class InsaneOrUnconscious(Event):
+
+  def __init__(self, character, attribute, desc, place):
+    self.character = character
+    self.attribute = attribute
+    self.desc = desc
+    self.place = place
+    self.stack_cleared = False
+    self.force_move = ForceMovement(character, place)
+
+  def resolve(self, state):
+    if self.force_move.is_resolved():
+      return True
+
+    assert getattr(self.character, self.attribute) <= 0
+    setattr(self.character, self.attribute, 1)
+
+    saved_interrupts = state.interrupt_stack[-1]
+    saved_triggers = state.trigger_stack[-1]
+    while (state.event_stack):
+      event = state.event_stack[-1]
+      if hasattr(event, "character") and event.character == self.character:
+        state.pop_event(event)
+      else:
+        break
+    # Note that when we cleared the stack, we also cleared this event. But this event should still
+    # be on the stack and get finished, so we have to put it (and its corresponding interrupts
+    # and triggers) back on the stack.
+    state.interrupt_stack.append(saved_interrupts)
+    state.trigger_stack.append(saved_triggers)
+    state.event_stack.append(self)
+    self.stack_cleared = True
+
+    # TODO: lose half the items and clues.
+    self.character.lost_turn = True
+    state.event_stack.append(self.force_move)
+    return False
+
+  def is_resolved(self):
+    return self.force_move.is_resolved()
+
+  def start_str(self):
+    return f"{self.character} {self.desc}"
+
+  def finish_str(self):
+    return f"{self.character} woke up in the {self.place}"
+
+
+def Insane(character, asylum):
+  return InsaneOrUnconscious(character, "sanity", "went insane", "Asylum")
+
+
+def Unconscious(character, hospital):
+  return InsaneOrUnconscious(character, "stamina", "got knocked unconscious", "Hospital")
 
 
 class StatusChange(Event):
@@ -617,13 +707,14 @@ class Conditional(Event):
 
 def PassFail(character, condition, pass_result, fail_result):
   outcome = Conditional(character, condition, "successes", {0: fail_result, 1: pass_result})
-  return Sequence([condition, outcome])
+  return Sequence([condition, outcome], character)
 
 
 class Sequence(Event):
 
-  def __init__(self, events):
+  def __init__(self, events, character=None):
     self.events = events
+    self.character = character
 
   def resolve(self, state):
     for event in self.events:
@@ -689,7 +780,7 @@ class MultipleChoice(ChoiceEvent):
 def BinaryChoice(character, prompt, first_choice, second_choice, first_event, second_event):
   choice = MultipleChoice(character, prompt, [first_choice, second_choice])
   outcome = Conditional(character, choice, "choice_index", {0: first_event, 1: second_event})
-  return Sequence([choice, outcome])
+  return Sequence([choice, outcome], character)
 
 
 class ItemChoice(ChoiceEvent):
@@ -745,8 +836,11 @@ class ItemCountChoice(ItemChoice):
     super(ItemCountChoice, self).resolve_internal(choices)
 
 
-def EvadeOrFightAll(character, monsters):
-  return Sequence([EvadeOrCombat(character, monster) for monster in monsters])
+class EvadeOrFightAll(Sequence):
+  
+  def __init__(self, character, monsters):
+   super(EvadeOrFightAll, self).__init__([
+     EvadeOrCombat(character, monster) for monster in monsters], character)
 
 
 """

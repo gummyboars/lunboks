@@ -30,6 +30,7 @@ class Character(object):
     self.lodge_membership = False
     self.delayed = False
     self.arrested = False  # TODO: necessary?
+    self.lost_turn = False
     self.movement_points = self.speed
     self.focus_points = self.focus
     self.place = home

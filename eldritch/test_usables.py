@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-import collections
 import os
 import sys
 import unittest
@@ -11,30 +10,13 @@ if os.path.abspath(sys.path[0]) == os.path.dirname(os.path.abspath(__file__)):
   sys.path[0] = os.path.dirname(sys.path[0])
 
 import eldritch.abilities as abilities
-import eldritch.characters as characters
-import eldritch.eldritch as eldritch
 import eldritch.events as events
 from eldritch.events import *
 import eldritch.items as items
-import eldritch.places as places
+from eldritch.test_events import EventTest
 
 
-class UsableTest(unittest.TestCase):
-
-  def setUp(self):
-    self.state = eldritch.GameState()
-    self.char = characters.Character("Dummy", 5, 5, 4, 4, 4, 4, 4, 4, 4, places.Diner)
-    self.state.characters = [self.char]
-
-  def resolve_loop(self):
-    count = 0
-    for thing in self.state.resolve_loop():  # It's a generator, so you have to loop through it.
-      count += 1
-      if count > 100:
-        self.fail("Exceeded maximum number of events")
-
-
-class ClueTokenTest(UsableTest):
+class ClueTokenTest(EventTest):
 
   def setUp(self):
     super(ClueTokenTest, self).setUp()
@@ -43,18 +25,17 @@ class ClueTokenTest(UsableTest):
 
   def testSpendClues(self):
     self.char.clues = 3
-    self.resolve_loop()
+    self.resolve_to_usable(0, -1, SpendClue)
     self.assertTrue(self.check.is_resolved())
     self.assertEqual(len(self.state.event_stack), 1)
     self.assertEqual(self.state.event_stack[-1], self.check)
     self.assertEqual(len(self.state.usables), 1)
-    self.assertIsInstance(self.state.usables[0][-1], SpendClue)
     old_successes = self.check.successes
     old_roll = self.check.roll[:]
 
-    with mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=[5])):
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       self.state.event_stack.append(self.state.usables[0][-1])
-      self.resolve_loop()
+      self.resolve_to_usable(0, -1, SpendClue)
 
     new_successes = self.check.successes
     new_roll = self.check.roll
@@ -65,36 +46,32 @@ class ClueTokenTest(UsableTest):
     
     self.state.done_using[0] = True
     self.resolve_loop()
-    self.assertEqual(len(self.state.event_stack), 0)
 
   def testNoCluesLeft(self):
     self.char.clues = 1
-    self.resolve_loop()
+    self.resolve_to_usable(0, -1, SpendClue)
     self.assertTrue(self.check.is_resolved())
     self.assertEqual(len(self.state.event_stack), 1)
     self.assertEqual(self.state.event_stack[-1], self.check)
     self.assertEqual(len(self.state.usables), 1)
-    self.assertIsInstance(self.state.usables[0][-1], SpendClue)
 
     self.state.event_stack.append(self.state.usables[0][-1])
     self.resolve_loop()
 
-    self.assertEqual(len(self.state.event_stack), 0)
     self.assertFalse(self.state.usables)
 
   def testBonusDieFromSkill(self):
     self.char.clues = 2
     self.char.possessions.append(abilities.Fight())
-    self.resolve_loop()
+    self.resolve_to_usable(0, -1, SpendClue)
     self.assertTrue(self.check.is_resolved())
     self.assertEqual(len(self.state.event_stack), 1)
     self.assertEqual(self.state.event_stack[-1], self.check)
     self.assertEqual(len(self.state.usables), 1)
-    self.assertIsInstance(self.state.usables[0][-1], SpendClue)
     old_roll = self.check.roll[:]
 
     self.state.event_stack.append(self.state.usables[0][-1])
-    self.resolve_loop()
+    self.resolve_to_usable(0, -1, SpendClue)
 
     new_roll = self.check.roll[:]
     self.assertEqual(len(new_roll), 2+len(old_roll))
@@ -108,7 +85,7 @@ class ClueTokenTest(UsableTest):
     self.assertFalse(self.state.event_stack)
 
 
-class RerollTest(UsableTest):
+class RerollTest(EventTest):
 
   def setUp(self):
     super(RerollTest, self).setUp()
@@ -117,26 +94,24 @@ class RerollTest(UsableTest):
     self.state.event_stack.append(self.check)
 
   def testReroll(self):
-    self.resolve_loop()
+    self.resolve_to_usable(0, 0, Sequence)
     self.assertTrue(self.check.is_resolved())
     self.assertEqual(len(self.state.event_stack), 1)
     self.assertEqual(self.state.event_stack[-1], self.check)
     self.assertEqual(len(self.state.usables), 1)
-    self.assertIsInstance(self.state.usables[0][0], Sequence)
     old_roll = self.check.roll[:]
 
     self.state.event_stack.append(self.state.usables[0][0])
     self.resolve_loop()
 
-    self.assertEqual(len(self.state.event_stack), 0)
     self.assertTrue(self.check.is_resolved())
     self.assertFalse(self.state.usables)
 
     new_roll = self.check.roll
-    self.assertNotEqual(old_roll, new_roll) # 1 / 1296 chance of failing.
+    self.assertNotEqual(old_roll, new_roll) # TODO: 1 / 1296 chance of failing.
 
 
-class OneshotItemTest(UsableTest):
+class OneshotItemTest(EventTest):
 
   def setUp(self):
     super(OneshotItemTest, self).setUp()
@@ -159,7 +134,7 @@ class OneshotItemTest(UsableTest):
     self.assertEqual(len(self.char.possessions), 0)
 
 
-class LossPreventionTest(UsableTest):
+class LossPreventionTest(EventTest):
 
   def setUp(self):
     super(LossPreventionTest, self).setUp()
@@ -171,10 +146,9 @@ class LossPreventionTest(UsableTest):
   def testIsUsable(self):
     self.assertEqual(self.char.stamina, 5)
 
-    self.resolve_loop()
+    self.resolve_to_usable(0, 0, Sequence)
     self.assertFalse(self.loss.is_resolved())
     self.assertCountEqual([0], self.state.usables.keys())
-    self.assertIsInstance(self.state.usables[0][0], Sequence)
 
     self.state.done_using[0] = True
     self.resolve_loop()
@@ -185,7 +159,7 @@ class LossPreventionTest(UsableTest):
     self.assertEqual(self.char.stamina, 5)
     self.assertEqual(len(self.state.common), 0)
 
-    self.resolve_loop()
+    self.resolve_to_usable(0, 0, Sequence)
     self.assertFalse(self.loss.is_resolved())
 
     self.state.event_stack.append(self.state.usables[0][0])
@@ -198,7 +172,7 @@ class LossPreventionTest(UsableTest):
     self.assertEqual(self.char.stamina, 5)
     self.loss.losses["stamina"] = 2
 
-    self.resolve_loop()
+    self.resolve_to_usable(0, 0, Sequence)
     self.assertFalse(self.loss.is_resolved())
 
     self.state.event_stack.append(self.state.usables[0][0])
