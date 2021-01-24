@@ -79,8 +79,7 @@ class EndTurn(Event):
 
   def resolve(self, state):
     self.done = True
-    if state.turn_phase == self.phase and state.characters.index(self.character) == state.turn_idx:
-      state.next_turn()
+    return True
 
   def is_resolved(self):
     return self.done
@@ -95,7 +94,7 @@ class EndTurn(Event):
 class EndUpkeep(EndTurn):
 
   def __init__(self, character):
-    super(EndMovement, self).__init__(character, "upkeep")
+    super(EndUpkeep, self).__init__(character, "upkeep")
 
 
 class EndMovement(EndTurn):
@@ -305,10 +304,10 @@ class InsaneOrUnconscious(Event):
     return self.force_move.is_resolved()
 
   def start_str(self):
-    return f"{self.character} {self.desc}"
+    return f"{self.character.name} {self.desc}"
 
   def finish_str(self):
-    return f"{self.character} woke up in the {self.place}"
+    return f"{self.character.name} woke up in the {self.place}"
 
 
 def Insane(character, asylum):
@@ -414,6 +413,71 @@ class Draw(Event):
 
   def finish_str(self):
     raise NotImplementedError
+
+
+class Encounter(Event):
+
+  def __init__(self, character, location):
+    self.character = character
+    self.location = location
+    self.draw = DrawEncounter(character, location, 1)
+    self.encounter = None
+
+  def resolve(self, state):
+    if not self.draw.is_resolved():
+      state.event_stack.append(self.draw)
+      return False
+
+    if self.encounter and self.encounter.is_resolved():
+      return True
+
+    if len(self.draw.cards) == 1:
+      self.encounter = self.draw.cards[0].encounter_event(self.character, self.location.name)
+      state.event_stack.append(self.encounter)
+      return False
+
+    encounters = [
+        card.encounter_event(self.character, self.location.name) for card in self.draw.cards]
+    choice = CardChoice(self.character, "Choose an Encounter", [card.name for card in draw.cards])
+    cond = Conditional(
+        self.character, choice, "choice_index", {idx: enc for idx, enc in enumerate(encounters)})
+    self.encounter = Sequence([choice, cond], character)
+    state.stack.append(self.encounter)
+    return False
+
+  def is_resolved(self):
+    return self.encounter and self.encounter.is_resolved()
+
+  def start_str(self):
+    return ""
+
+  def finish_str(self):
+    return ""
+
+
+class DrawEncounter(Event):
+
+  def __init__(self, character, location, count):
+    assert count > 0
+    self.character = character
+    self.location = location
+    self.count = count
+    self.cards = []
+
+  def resolve(self, state):
+    encounters = self.location.neighborhood.encounters
+    assert len(encounters) >= self.count
+    self.cards.extend(random.sample(encounters, self.count))
+    return True
+
+  def is_resolved(self):
+    return len(self.cards) == self.count
+
+  def start_str(self):
+    return f"{self.character.name} draws {self.count} encounter cards"
+
+  def finish_str(self):
+    return f"{self.character.name} drew " + ", ".join([card.name for card in self.cards])
 
 
 class DrawSpecific(Event):
@@ -834,6 +898,10 @@ class ItemCountChoice(ItemChoice):
   def resolve_internal(self, choices):
     assert self.count == len(choices)
     super(ItemCountChoice, self).resolve_internal(choices)
+
+
+class CardChoice(MultipleChoice):
+  pass
 
 
 class EvadeOrFightAll(Sequence):

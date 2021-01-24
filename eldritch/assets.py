@@ -75,3 +75,7 @@ class Card(Asset):
     if self.active:
       bonus += self.active_bonuses[check_type]
     return bonus
+
+
+def RoadhouseAlly():  # TODO: draw one common item when this ally joins you
+  return Card("RoadhouseAlly", "allies", {}, {"sneak": 1, "will": 1})

@@ -33,7 +33,8 @@ class Character(object):
     self.lost_turn = False
     self.movement_points = self.speed
     self.focus_points = self.focus
-    self.place = home
+    self.home = home
+    self.place = None
 
   def json_repr(self):
     attrs = [
@@ -141,22 +142,22 @@ class Character(object):
     return len([result for result in roll if result >= threshold])
 
 
-Nun = Character("Nun", 3, 7, 4, 4, 3, 4, 4, 6, 1, places.Church)
-Nun.bless_curse = 1
-Doctor = Character("Doctor", 5, 5, 3, 5, 3, 4, 5, 4, 2, places.Hospital)
-Doctor.dollars = 9
-Doctor.clues = 1
-Archaeologist = Character("Archaeologist", 7, 3, 4, 3, 5, 3, 4, 5, 2, places.Shop)
-Archaeologist.dollars = 7
-Archaeologist.clues = 1
-Gangster = Character("Gangster", 7, 3, 5, 4, 6, 4, 3, 3, 1, places.House)
-Gangster.dollars = 8
+def CreateCharacters():
+  # TODO: there's a lot of cleanup needed here, especially around starting equipment.
+  Nun = Character("Nun", 3, 7, 4, 4, 3, 4, 4, 6, 1, "Church")
+  Nun.bless_curse = 1
+  Doctor = Character("Doctor", 5, 5, 3, 5, 3, 4, 5, 4, 2, "Hospital")
+  Doctor.dollars = 9
+  Doctor.clues = 1
+  Archaeologist = Character("Archaeologist", 7, 3, 4, 3, 5, 3, 4, 5, 2, "Shop")
+  Archaeologist.dollars = 7
+  Archaeologist.clues = 1
+  Gangster = Character("Gangster", 7, 3, 5, 4, 6, 4, 3, 3, 1, "House")
+  Gangster.dollars = 8
 
+  Nun.possessions.extend([items.Cross(), items.HolyWater()])
+  Doctor.possessions.extend([abilities.Medicine()])
+  Archaeologist.possessions.extend([items.Revolver38(), items.Bullwhip()])
+  Gangster.possessions.extend([items.Dynamite(), items.TommyGun()])
 
-Nun.possessions.extend([items.Cross(), items.HolyWater()])
-Doctor.possessions.extend([abilities.Medicine()])
-Archaeologist.possessions.extend([items.Revolver38(), items.Bullwhip()])
-Gangster.possessions.extend([items.Dynamite(), items.TommyGun()])
-
-
-CHARACTERS = [Nun, Doctor, Archaeologist, Gangster]
+  return [Nun, Doctor, Archaeologist, Gangster]

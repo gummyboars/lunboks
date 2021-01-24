@@ -10,6 +10,7 @@ from game import (
 
 import eldritch.assets as assets
 import eldritch.characters as characters
+import eldritch.encounters as encounters
 import eldritch.events as events
 import eldritch.monsters as monsters
 import eldritch.places as places
@@ -22,10 +23,13 @@ class GameState(object):
   TURN_PHASES = ["upkeep", "movement", "encounter", "otherworld", "mythos"]
 
   def __init__(self):
-    self.places = {}
-    self.places.update(places.LOCATIONS)
-    self.places.update(places.STREETS)
-    self.characters = characters.CHARACTERS
+    self.places = places.CreatePlaces()
+    encounter_cards = encounters.CreateEncounterCards()
+    for neighborhood_name, cards in encounter_cards.items():
+      self.places[neighborhood_name].encounters.extend(cards)
+    self.characters = characters.CreateCharacters()
+    for char in self.characters:
+      char.place = self.places[char.home]
     self.common = collections.deque()
     self.unique = collections.deque()
     self.spells = collections.deque()
@@ -178,6 +182,9 @@ class GameState(object):
     if event.is_resolved() and event.finish_str():
       self.event_log.append("  " * len(self.event_stack) + event.finish_str())
     self.clear_usables()
+    # TODO: maybe find a better way to detect when the turn is over. Test with going insane.
+    if event.is_resolved() and isinstance(event, events.EndTurn):
+      self.next_turn()
 
   def clear_usables(self):
     self.usables.clear()
@@ -322,10 +329,8 @@ class GameState(object):
       if not isinstance(place, places.Location):
         self.next_turn()
         return
-      elif place.encounters:
-        enc = random.choice(place.encounters)
-        event = enc(self.characters[self.turn_idx])
-        self.event_stack.append(event)
+      elif place.neighborhood.encounters:
+        self.event_stack.append(events.Encounter(self.characters[self.turn_idx], place))
     if self.turn_phase == "otherworld":
       place = self.characters[self.turn_idx].place
       if not isinstance(place, places.OtherWorld):

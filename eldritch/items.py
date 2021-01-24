@@ -50,6 +50,15 @@ class Food(Item):
     return events.Sequence([discard, prevent])
 
 
+class ResearchMaterials(Item):
+
+  def __init__(self):
+    super(ResearchMaterials, self).__init__("Research Materials", "common", {}, {}, None, 1)
+
+  def get_usable_trigger(self, event, owner, state):
+    return None  # TODO
+
+
 class Bullwhip(Weapon):
 
   def __init__(self):

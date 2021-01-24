@@ -67,13 +67,13 @@ class Medicine(assets.Asset):
       return None
     if state.turn_phase != "upkeep" or state.characters[state.turn_idx] != owner:
       return None
-    neighbors = [char for char in state.characters if char.location == owner.location]
-    eligible = [char for char in neigbors if char.stamina < char.max_stamina]
+    neighbors = [char for char in state.characters if char.place == owner.place]
+    eligible = [char for char in neighbors if char.stamina < char.max_stamina]
     if not eligible:
       return None
     gains = {idx: events.Gain(char, {"stamina": 1}) for idx, char in enumerate(eligible)}
     gains[len(eligible)] = events.Nothing()
     choice = events.MultipleChoice(
         owner, "Choose a character to heal", [char.name for char in eligible] + ["nobody"])
-    cond = events.Conditional(char, choice, "choice_idx", gains)
-    return events.Sequence([events.ExhaustAsset(owner, self), choice, cond])
+    cond = events.Conditional(owner, choice, "choice_idx", gains)
+    return events.Sequence([events.ExhaustAsset(owner, self), choice, cond], owner)
