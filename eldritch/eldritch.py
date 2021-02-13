@@ -12,13 +12,14 @@ import eldritch.assets as assets
 import eldritch.characters as characters
 import eldritch.encounters as encounters
 import eldritch.events as events
+import eldritch.items as items
 import eldritch.monsters as monsters
 import eldritch.places as places
 
 
 class GameState(object):
 
-  DEQUE_ATTRIBUTES = {"common", "unique", "spells", "skills", "mythos", "gates"}
+  DEQUE_ATTRIBUTES = {"common", "unique", "spells", "skills", "allies", "mythos", "gates"}
   HIDDEN_ATTRIBUTES = {"event_stack", "interrupt_stack", "trigger_stack", "usables"}
   TURN_PHASES = ["upkeep", "movement", "encounter", "otherworld", "mythos"]
 
@@ -34,7 +35,7 @@ class GameState(object):
     self.unique = collections.deque()
     self.spells = collections.deque()
     self.skills = collections.deque()
-    self.allies = []
+    self.allies = collections.deque()
     self.mythos = collections.deque()
     self.gates = collections.deque()
     self.game_stage = "slumber"  # valid values are setup, slumber, awakened, victory, defeat
@@ -76,7 +77,9 @@ class GameState(object):
     if top_event and isinstance(top_event, events.ChoiceEvent) and not top_event.is_resolved():
       if top_event.character == self.characters[char_idx]:
         output["choice"] = {"prompt": top_event.prompt()}
-        if isinstance(top_event, events.MultipleChoice):
+        if isinstance(top_event, events.CardChoice):
+          output["choice"]["cards"] = top_event.choices
+        elif isinstance(top_event, events.MultipleChoice):
           output["choice"]["choices"] = top_event.choices
         elif isinstance(top_event, events.CombatChoice):
           output["choice"]["items"] = 0

@@ -314,6 +314,62 @@ class DrawTest(EventTest):
     self.assertEqual(len(self.state.common), 1)
 
 
+class DrawRandomTest(EventTest):
+
+  def testDrawOneCard(self):
+    draw = Draw(self.char, "common", 1)
+    self.assertFalse(draw.is_resolved())
+    self.assertFalse(self.char.possessions)
+    food = items.Food()
+    self.state.common.append(food)
+
+    # When you only draw one card, you do not get a choice.
+    self.state.event_stack.append(draw)
+    self.resolve_until_done()
+
+    self.assertTrue(draw.is_resolved())
+    self.assertEqual(self.char.possessions, [food])
+    self.assertFalse(self.state.common)
+
+  def testDrawTwoKeepOne(self):
+    draw = Draw(self.char, "common", 2)
+    self.assertFalse(draw.is_resolved())
+    self.assertFalse(self.char.possessions)
+    dynamite = items.Dynamite()
+    self.state.common.extend([
+      items.Food(), dynamite, items.Revolver38(), items.TommyGun(), items.Bullwhip()])
+
+    self.state.event_stack.append(draw)
+    choice = self.resolve_to_choice(CardChoice)
+    self.assertEqual(choice.choices, ["Food", "Dynamite"])
+
+    choice.resolve(self.state, "Dynamite")
+    self.resolve_until_done()
+
+    self.assertTrue(draw.is_resolved())
+    self.assertEqual(self.char.possessions, [dynamite])
+    # Since two items were drawn and one was discarded, the discarded item should go on bottom.
+    self.assertEqual(
+        [item.name for item in self.state.common],
+        [".38 Revolver", "Tommy Gun", "Bullwhip", "Food"]
+    )
+
+  def testDrawTwoOnlyOneLeft(self):
+    draw = Draw(self.char, "common", 2)
+    self.assertFalse(draw.is_resolved())
+    self.assertFalse(self.char.possessions)
+    food = items.Food()
+    self.state.common.append(food)
+
+    # Should be handled gracefully if you are instructed to draw more cards than are in the deck.
+    self.state.event_stack.append(draw)
+    self.resolve_until_done()
+
+    self.assertTrue(draw.is_resolved())
+    self.assertEqual(self.char.possessions, [food])
+    self.assertFalse(self.state.common)
+
+
 class AttributePrerequisiteTest(EventTest):
 
   def testPrereq(self):

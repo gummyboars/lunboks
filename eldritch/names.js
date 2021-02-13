@@ -8,6 +8,7 @@ commonNames = [
   "Dynamite",
   "Food",
   "Tommy Gun",
+  "Research Materials",
 ];
 uniqueNames = [
   "Holy Water",

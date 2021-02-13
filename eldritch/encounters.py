@@ -107,10 +107,24 @@ def Police4(char):
 def Police5(char):
   return events.Nothing()  # TODO discarding all weapons
 def Police6(char):
-  return events.Nothing()  # TODO drawing a random item
+  check = events.Check(char, "luck", -2)
+  draw = events.Draw(char, "unique", 1)
+  return events.PassFail(char, check, draw, events.Nothing())
 def Police7(char):
   check = events.Check(char, "sneak", 0)
   draw = events.DrawSpecific(char, "common", "Research Materials")
+  return events.PassFail(char, check, draw, events.Nothing())
+def Lodge1(char):
+  check = events.Check(char, "lore", -1)
+  draw = events.Draw(char, "spells", 2)
+  return events.PassFail(char, check, draw, events.Nothing())
+def Witch2(char):
+  check = events.Check(char, "luck", -1)
+  draw = events.Draw(char, "unique", 1)
+  return events.PassFail(char, check, draw, events.Nothing())
+def Store5(char):
+  check = events.Check(char, "will", -2)
+  draw = events.Draw(char, "common", 3)
   return events.PassFail(char, check, draw, events.Nothing())
 
 
@@ -124,5 +138,12 @@ def CreateEncounterCards():
         EncounterCard("Easttown5", {"Diner": Diner5, "Roadhouse": Roadhouse5, "Police": Police5}),
         EncounterCard("Easttown6", {"Diner": Diner6, "Roadhouse": Roadhouse6, "Police": Police6}),
         EncounterCard("Easttown7", {"Diner": Diner7, "Roadhouse": Roadhouse7, "Police": Police7}),
+      ],
+      "FrenchHill": [
+        EncounterCard("FrenchHill1", {"Lodge": Lodge1}),
+        EncounterCard("FrenchHill2", {"Witch": Witch2}),
+      ],
+      "Rivertown": [
+        EncounterCard("Rivertown5", {"Store": Store5}),
       ],
   }

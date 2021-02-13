@@ -39,9 +39,22 @@ button {
   font-size: 3em;
   border: 1px solid black;
 }
+#uicardchoice {
+  width: 100%;
+  flex 1 1 auto;
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+}
 #uiprompt {
   width: 100%;
   flex: 1 1 auto;
+}
+.cardchoice {
+  position: relative;
+  flex: 1 1 auto;
+  cursor: pointer;
 }
 .choice {
   width: 100%;

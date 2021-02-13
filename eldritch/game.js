@@ -239,6 +239,7 @@ function updateMonsters(places) {
 
 function updateChoices(choice) {
   let uichoice = document.getElementById("uichoice");
+  let uicardchoice = document.getElementById("uicardchoice");
   let pDiv = document.getElementById("possessions");
   if (choice == null) {
     uichoice.style.display = "none";
@@ -247,10 +248,21 @@ function updateChoices(choice) {
     pDiv.classList.remove("choose");
     return;
   }
+  // Set display style for uichoice div.
   uichoice.style.display = "flex";
+  if (choice.cards != null) {
+    uichoice.style.maxWidth = "100%";
+  } else {
+    uichoice.style.maxWidth = "40%";
+  }
+  // Clean out any old choices it may have.
   while (uichoice.getElementsByClassName("choice").length) {
     uichoice.removeChild(uichoice.getElementsByClassName("choice")[0]);
   }
+  while (uicardchoice.getElementsByClassName("cardchoice").length) {
+    uicardchoice.removeChild(uicardchoice.getElementsByClassName("cardchoice")[0]);
+  }
+  // Set prompt.
   document.getElementById("uiprompt").innerText = choice.prompt;
   if (choice.items != null) {
     itemsToChoose = choice.items;
@@ -260,8 +272,40 @@ function updateChoices(choice) {
     itemsToChoose = null;
     itemChoice = [];
     pDiv.classList.remove("choose");
-    addChoices(uichoice, choice.choices);
+    if (choice.cards != null) {
+      addCardChoices(uicardchoice, choice.cards);
+    } else {
+      addChoices(uichoice, choice.choices);
+    }
   }
+}
+
+function addCardChoices(cardChoice, cards) {
+  if (!cards) {
+    return;
+  }
+  for (let c of cards) {
+    let div = document.createElement("DIV");
+    div.classList.add("cardchoice");
+    div.onclick = function(e) { console.log("hello"); makeChoice(c); };
+    let asset = getAsset(c, "");
+    let elemWidth = asset.naturalWidth || asset.width;
+    let elemHeight = asset.naturalHeight || asset.height;
+    div.style.width = elemWidth + "px";
+    div.style.height = elemHeight + "px";
+    let cnv = document.createElement("CANVAS");
+    cnv.width = elemWidth;
+    cnv.height = elemHeight;
+    cnv.classList.add("markercnv");  // TODO: use a better class name for this
+    renderAssetToCanvas(cnv, c, "");
+    div.appendChild(cnv);
+    cardChoice.appendChild(div);
+    let spacer = document.createElement("DIV");
+    spacer.style.height = "100%";
+    spacer.style.width = 0.1 * elemWidth + "px";
+    cardChoice.appendChild(spacer);
+  }
+  cardChoice.removeChild(cardChoice.lastChild);
 }
 
 function addChoices(uichoice, choices) {

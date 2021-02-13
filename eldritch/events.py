@@ -392,27 +392,60 @@ class ForceMovement(Event):
 
 class Draw(Event):
 
-  def __init__(self, character, deck, count):  # TODO: draw_count, keep_count?
-    assert deck in {"common", "unique", "spells", "skills"}
+  def __init__(self, character, deck, draw_count, prompt="Choose a card"):
+    assert deck in {"common", "unique", "spells", "skills", "allies"}
     self.character = character
     self.deck = deck
-    self.count = count
-    self.done = False
+    self.prompt = prompt
+    self.draw_count = draw_count
+    self.keep_count = 1  # TODO: allow the player to keep more than one?
+    self.drawn = None
+    self.choice = None
+    self.kept = None
 
   def resolve(self, state):
-    deck = getattr(state, self.deck)
-    for _ in range(self.count):
-      if not deck:
-        break
-      self.character.possessions.append(deck.popleft())
-    self.done = True
+    if self.kept is not None:
+      return True
+
+    if self.choice is not None:
+      if not self.choice.is_resolved():  # This should never happen
+        return False
+      kept_cards = [self.drawn[self.choice.choice_index]]
+      discarded_cards = [
+          card for idx, card in enumerate(self.drawn) if idx != self.choice.choice_index]
+      self.kept = [card.name for card in kept_cards]
+      self.character.possessions.extend(kept_cards)
+      for card in discarded_cards:
+        getattr(state, self.deck).append(card)
+      return True
+
+    if self.drawn is None:
+      self.drawn = []
+      deck = getattr(state, self.deck)
+      for _ in range(self.draw_count):
+        if not deck:
+          break
+        self.drawn.append(deck.popleft())
+      # TODO: is there a scenario when the player can go insane/unconscious before they
+      # successfully pick a card?
+
+    if self.keep_count < len(self.drawn):
+      self.choice = CardChoice(self.character, self.prompt, [card.name for card in self.drawn])
+      state.event_stack.append(self.choice)
+      return False
+
+    self.character.possessions.extend(self.drawn)
+    self.kept = [card.name for card in self.drawn]
     return True
 
   def is_resolved(self):
-    return self.done
+    return self.kept is not None
+
+  def start_str(self):
+    return f"{self.character.name} draws {self.draw_count} cards from the {self.deck} deck"
 
   def finish_str(self):
-    raise NotImplementedError
+    return f"{self.character.name} keeps " + ", ".join(self.kept)
 
 
 class Encounter(Event):
