@@ -141,7 +141,7 @@ class RoadhouseTest(EncounterTest):
 
   def testRoadhouse1No(self):
     self.char.clues = 3
-    self.state.allies.append(assets.RoadhouseAlly())
+    self.state.allies.append(assets.TravelingSalesman())
     self.state.event_stack.append(encounters.Roadhouse1(self.char))
     choice = self.resolve_to_choice(MultipleChoice)
     choice.resolve(self.state, "No")
@@ -152,7 +152,7 @@ class RoadhouseTest(EncounterTest):
 
   def testRoadhouse1Yes(self):
     self.char.clues = 3
-    self.state.allies.append(assets.RoadhouseAlly())
+    self.state.allies.append(assets.TravelingSalesman())
     self.state.event_stack.append(encounters.Roadhouse1(self.char))
     choice = self.resolve_to_choice(MultipleChoice)
     choice.resolve(self.state, "Yes")
@@ -160,7 +160,7 @@ class RoadhouseTest(EncounterTest):
     self.assertEqual(self.char.clues, 0)
     self.assertEqual(len(self.state.allies), 0)
     self.assertEqual(len(self.char.possessions), 1)
-    self.assertEqual(self.char.possessions[0].name, "RoadhouseAlly")
+    self.assertEqual(self.char.possessions[0].name, "Traveling Salesman")
 
   def testRoadhouse2Pass(self):
     self.state.event_stack.append(encounters.Roadhouse2(self.char))

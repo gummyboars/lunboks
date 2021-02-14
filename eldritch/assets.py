@@ -77,5 +77,26 @@ class Card(Asset):
     return bonus
 
 
-def RoadhouseAlly():  # TODO: draw one common item when this ally joins you
-  return Card("RoadhouseAlly", "allies", {}, {"sneak": 1, "will": 1})
+# TODO: drawing things when these allies join you
+def FortuneTeller():
+  return Card("Fortune Teller", "allies", {}, {"luck": 2})
+def TravelingSalesman():
+  return Card("Traveling Salesman", "allies", {}, {"sneak": 1, "will": 1})
+def PoliceDetective():
+  return Card("Police Detective", "allies", {}, {"fight": 1, "lore": 1})
+def Thief():
+  return Card("Thief", "allies", {}, {"sneak": 2})
+def BraveGuy():
+  return Card("Brave Guy", "allies", {}, {"speed": 2})
+def Mortician():
+  return Card("Mortician", "allies", {}, {"will": 2})
+def ArmWrestler():
+  return Card("Arm Wrestler", "allies", {}, {})  # TODO: maximum stamina
+def VisitingPainter():
+  return Card("Visiting Painter", "allies", {}, {"speed": 1, "luck": 1})
+def ToughGuy():
+  return Card("Tough Guy", "allies", {}, {"fight": 2})
+def OldProfessor():
+  return Card("Old Professor", "allies", {}, {"lore": 2})
+def Dog():
+  return Card("Dog", "allies", {}, {})  # TODO: maximum sanity

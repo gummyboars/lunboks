@@ -26,7 +26,19 @@ skillNames = [
   "Bravery",
   "Expert Occultist",
 ];
-allyNames = [];
+allyNames = [
+  "Fortune Teller",
+  "Traveling Salesman",
+  "Police Detective",
+  "Thief",
+  "Brave Guy",
+  "Mortician",
+  "Arm Wrestler",
+  "Visiting Painter",
+  "Tough Guy",
+  "Old Professor",
+  "Dog",
+];
 abilityNames = [
   "Medicine",
 ];

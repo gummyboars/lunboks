@@ -54,7 +54,7 @@ def Roadhouse1(char):
   prereq = events.AttributePrerequisite(char, "clues", 3, "at least")
   spend = events.Loss(char, {"clues": 3})
   # TODO: prerequisite of the ally being in the deck.
-  draw = events.DrawSpecific(char, "allies", "RoadhouseAlly")
+  draw = events.DrawSpecific(char, "allies", "Traveling Salesman")
   take = events.Sequence([spend, draw], char)
   nothing = events.Nothing()
   choice = events.BinaryChoice(char, "Spend 3 clues for an ally?", "Yes", "No", take, nothing)
