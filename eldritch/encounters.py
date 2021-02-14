@@ -21,7 +21,13 @@ class EncounterCard(object):
 
 
 def Diner1(char):
-  return events.Nothing() # TODO numeric choice
+  prereq = events.AttributePrerequisite(char, "dollars", 1, "at least")
+  dollar_choice = events.MultipleChoice(
+      char, "How many dollars do you want to pay?", [x for x in range(0, min(char.dollars+1, 7))])
+  spend = events.Loss(char, {"dollars": dollar_choice})
+  gain = events.SplitGain(char, "stamina", "sanity", dollar_choice)
+  spend_and_gain = events.Sequence([dollar_choice, spend, gain], char)
+  return events.PassFail(char, prereq, spend_and_gain, events.Nothing())
 def Diner2(char):
   return events.DrawSpecific(char, "common", "Food")
 def Diner3(char):
@@ -143,6 +149,8 @@ def Administration7(char):
   gain = events.Gain(char, {"dollars": 8})
   arrest = events.Arrested(char)
   return events.PassFail(char, check, gain, arrest)
+def Train3(char):
+  return events.SplitGain(char, "stamina", "sanity", 2)
 
 def Asylum1(char):
   check = events.Check(char, "lore", 0)
@@ -184,5 +192,8 @@ def CreateEncounterCards():
       ],
       "Southside": [
         EncounterCard("Southside4", {"Society": Society4}),
-      ]
+      ],
+      "Northside": [
+        EncounterCard("Northside3", {"Train": Train3}),
+      ],
   }

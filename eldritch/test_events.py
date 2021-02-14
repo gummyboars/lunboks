@@ -208,6 +208,61 @@ class GainLossTest(EventTest):
     self.assertDictEqual(loss.final_adjustments, {"sanity": -4, "stamina": -1})
 
 
+class SplitGainTest(EventTest):
+
+  def testSplitNumber(self):
+    self.char.stamina = 1
+    self.char.sanity = 1
+    split_gain = SplitGain(self.char, "stamina", "sanity", 3)
+
+    self.state.event_stack.append(split_gain)
+    choice = self.resolve_to_choice(MultipleChoice)
+    self.assertEqual(choice.choices, [0, 1, 2, 3])
+    self.assertIn("go to stamina", choice.prompt())
+    choice.resolve(self.state, 2)
+    self.resolve_until_done()
+
+    self.assertEqual(self.char.stamina, 3)
+    self.assertEqual(self.char.sanity, 2)
+
+  @mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5))
+  def testSplitDieRoll(self):
+    self.char.stamina = 1
+    self.char.sanity = 1
+    die_roll = DiceRoll(self.char, 1)
+    split_gain = SplitGain(self.char, "stamina", "sanity", die_roll)
+
+    self.state.event_stack.append(Sequence([die_roll, split_gain], self.char))
+    choice = self.resolve_to_choice(MultipleChoice)
+    self.assertEqual(choice.choices, [0, 1, 2, 3, 4, 5])
+    self.assertIn("go to stamina", choice.prompt())
+    choice.resolve(self.state, 2)
+    self.resolve_until_done()
+
+    self.assertEqual(self.char.stamina, 3)
+    self.assertEqual(self.char.sanity, 4)
+
+  def testSplitChoice(self):
+    self.char.stamina = 1
+    self.char.sanity = 1
+    first_choice = MultipleChoice(self.char, "prompt", [0, 1, 2, 3, 4, 5])
+    split_gain = SplitGain(self.char, "stamina", "sanity", first_choice)
+
+    self.state.event_stack.append(Sequence([first_choice, split_gain], self.char))
+    choice = self.resolve_to_choice(MultipleChoice)
+    self.assertEqual(choice, first_choice)
+    first_choice.resolve(self.state, 4)
+
+    choice = self.resolve_to_choice(MultipleChoice)
+    self.assertEqual(choice.choices, [0, 1, 2, 3, 4])
+    self.assertIn("go to stamina", choice.prompt())
+    choice.resolve(self.state, 3)
+    self.resolve_until_done()
+
+    self.assertEqual(self.char.stamina, 4)
+    self.assertEqual(self.char.sanity, 2)
+
+
 class StatusChangeTest(EventTest):
 
   def testDelayed(self):

@@ -40,9 +40,61 @@ class DinerTest(EncounterTest):
     super(DinerTest, self).setUp()
     self.char.place = self.state.places["Diner"]
 
-  def testDiner1(self):
+  def testDiner1DontPay(self):
+    self.state.event_stack.append(encounters.Diner1(self.char))
+    spend_choice = self.resolve_to_choice(MultipleChoice)
+    self.assertEqual(spend_choice.choices, [0, 1, 2, 3])
+    spend_choice.resolve(self.state, 0)
+
+    stamina_choice = self.resolve_to_choice(MultipleChoice)
+    # TODO: this is not ideal, but it will work.
+    self.assertEqual(stamina_choice.choices, [0])
+    stamina_choice.resolve(self.state, 0)
+    self.resolve_until_done()
+
+    self.assertEqual(self.char.stamina, 3)
+    self.assertEqual(self.char.sanity, 3)
+    self.assertEqual(self.char.dollars, 3)
+
+  def testDiner13Dollars(self):
+    self.state.event_stack.append(encounters.Diner1(self.char))
+    spend_choice = self.resolve_to_choice(MultipleChoice)
+    self.assertEqual(spend_choice.choices, [0, 1, 2, 3])
+    spend_choice.resolve(self.state, 3)
+
+    stamina_choice = self.resolve_to_choice(MultipleChoice)
+    self.assertEqual(stamina_choice.choices, [0, 1, 2, 3])
+    stamina_choice.resolve(self.state, 3)
+    self.resolve_until_done()
+
+    self.assertEqual(self.char.stamina, 5)
+    self.assertEqual(self.char.sanity, 3)
+    self.assertEqual(self.char.dollars, 0)
+
+  def testDiner1Rich(self):
+    self.char.dollars = 15
+    self.state.event_stack.append(encounters.Diner1(self.char))
+    spend_choice = self.resolve_to_choice(MultipleChoice)
+    self.assertEqual(spend_choice.choices, [0, 1, 2, 3, 4, 5, 6])
+    spend_choice.resolve(self.state, 4)
+
+    stamina_choice = self.resolve_to_choice(MultipleChoice)
+    self.assertEqual(stamina_choice.choices, [0, 1, 2, 3, 4])
+    stamina_choice.resolve(self.state, 2)
+    self.resolve_until_done()
+
+    self.assertEqual(self.char.stamina, 5)
+    self.assertEqual(self.char.sanity, 5)
+    self.assertEqual(self.char.dollars, 11)
+
+  def testDiner1Poor(self):
+    self.char.dollars = 0
     self.state.event_stack.append(encounters.Diner1(self.char))
     self.resolve_until_done()
+
+    self.assertEqual(self.char.stamina, 3)
+    self.assertEqual(self.char.sanity, 3)
+    self.assertEqual(self.char.dollars, 0)
 
   def testDiner2Draw(self):
     self.state.common.append(items.Food())
@@ -476,6 +528,31 @@ class SquareTest(EncounterTest):
     self.state.event_stack.append(encounters.Square1(self.char))
     self.resolve_until_done()
     self.assertEqual(self.char.stamina, 4)
+
+
+class TrainTest(EncounterTest):
+
+  def setUp(self):
+    super(TrainTest, self).setUp()
+    self.char.place = self.state.places["Train"]
+
+  def testTrain3Stamina(self):
+    self.state.event_stack.append(encounters.Train3(self.char))
+    choice = self.resolve_to_choice(MultipleChoice)
+    choice.resolve(self.state, 2)
+    self.resolve_until_done()
+
+    self.assertEqual(self.char.stamina, 5)
+    self.assertEqual(self.char.sanity, 3)
+
+  def testTrain3Split(self):
+    self.state.event_stack.append(encounters.Train3(self.char))
+    choice = self.resolve_to_choice(MultipleChoice)
+    choice.resolve(self.state, 1)
+    self.resolve_until_done()
+
+    self.assertEqual(self.char.stamina, 4)
+    self.assertEqual(self.char.sanity, 4)
 
 
 if __name__ == '__main__':

@@ -192,6 +192,9 @@ class GainOrLoss(Event):
       if isinstance(gain, DiceRoll):
         assert gain.is_resolved()
         adj = sum(gain.roll)
+      elif isinstance(gain, MultipleChoice):
+        assert gain.is_resolved() and isinstance(gain.choice, int)
+        adj = gain.choice
       else:
         adj = gain
       computed[attr] += adj
@@ -199,6 +202,9 @@ class GainOrLoss(Event):
       if isinstance(loss, DiceRoll):
         assert loss.is_resolved()
         adj = sum(loss.roll)
+      elif isinstance(loss, MultipleChoice):
+        assert loss.is_resolved() and isinstance(loss.choice, int)
+        adj = loss.choice
       else:
         adj = loss
       computed[attr] -= adj
@@ -227,6 +233,57 @@ def Gain(character, gains):
 
 def Loss(character, losses):
   return GainOrLoss(character, {}, losses)
+
+
+class SplitGain(Event):
+
+  def __init__(self, character, attr1, attr2, amount):
+    assert isinstance(amount, (int, MultipleChoice, DiceRoll))
+    if isinstance(amount, MultipleChoice):
+      assert all([isinstance(choice, int) for choice in amount.choices])
+    self.character = character
+    self.attr1 = attr1
+    self.attr2 = attr2
+    self.amount = amount
+    self.choice = None
+    self.gain = None
+
+  def resolve(self, state):
+    if isinstance(self.amount, (MultipleChoice, DiceRoll)):
+      assert self.amount.is_resolved()
+
+    if self.gain is not None:
+      assert self.gain.is_resolved()
+      return True
+
+    if isinstance(self.amount, MultipleChoice):
+      amount = self.amount.choice
+    elif isinstance(self.amount, DiceRoll):
+      amount = sum(self.amount.roll)
+    else:
+      amount = self.amount
+
+    if self.choice is not None:
+      assert self.choice.is_resolved()
+      attr1_amount = self.choice.choice
+      self.gain = GainOrLoss(
+          self.character, {self.attr1: attr1_amount, self.attr2: amount - attr1_amount}, {})
+      state.event_stack.append(self.gain)
+      return False
+
+    prompt = f"How much of the {amount} do you want to go to {self.attr1}?"
+    self.choice = MultipleChoice(self.character, prompt, [x for x in range(0, amount+1)])
+    state.event_stack.append(self.choice)
+    return False
+
+  def is_resolved(self):
+    return self.gain is not None and self.gain.is_resolved()
+
+  def start_str(self):
+    return ""
+
+  def finish_str(self):
+    return ""
 
 
 class LossPrevention(Event):
