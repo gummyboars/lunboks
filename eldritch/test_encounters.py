@@ -9,6 +9,7 @@ from unittest import mock
 if os.path.abspath(sys.path[0]) == os.path.dirname(os.path.abspath(__file__)):
   sys.path[0] = os.path.dirname(sys.path[0])
 
+import eldritch.abilities as abilities
 import eldritch.assets as assets
 import eldritch.encounters as encounters
 import eldritch.events as events
@@ -305,3 +306,132 @@ class PoliceTest(EncounterTest):
       self.resolve_until_done()
     self.assertEqual(len(self.state.common), 1)
     self.assertEqual(len(self.char.possessions), 0)
+
+
+class LodgeTest(EncounterTest):
+
+  def setUp(self):
+    super(LodgeTest, self).setUp()
+    self.char.place = self.state.places["Lodge"]
+
+  '''
+  def testLodge1Pass(self):
+    self.state.event_stack.append(encounters.Lodge1(self.char))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      choice = self.resolve_to_choice(CardChoice)
+    choice.resolve(self.state, "Whatever")
+    self.assertEqual(len(self.char.possessions), 1)
+    '''
+
+  def testLodge1Fail(self):
+    self.state.event_stack.append(encounters.Lodge1(self.char))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
+      self.resolve_until_done()
+    self.assertEqual(len(self.char.possessions), 0)
+
+
+class WitchTest(EncounterTest):
+
+  def setUp(self):
+    super(WitchTest, self).setUp()
+    self.char.place = self.state.places["Witch"]
+
+  def testWitch2Pass(self):
+    self.state.event_stack.append(encounters.Witch2(self.char))
+    self.state.unique.extend([items.Cross(), items.HolyWater()])
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+    self.assertEqual(len(self.char.possessions), 1)
+    self.assertEqual(self.char.possessions[0].name, "Cross")
+
+  def testWitch2None(self):
+    self.state.event_stack.append(encounters.Witch2(self.char))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+    self.assertEqual(len(self.char.possessions), 0)
+
+  def testWitch2Fail(self):
+    self.state.event_stack.append(encounters.Witch2(self.char))
+    self.state.unique.extend([items.Cross(), items.HolyWater()])
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
+      self.resolve_until_done()
+    self.assertEqual(len(self.char.possessions), 0)
+
+
+class StoreTest(EncounterTest):
+
+  def setUp(self):
+    super(StoreTest, self).setUp()
+    self.char.place = self.state.places["Store"]
+
+  def testStore5Pass(self):
+    self.state.event_stack.append(encounters.Store5(self.char))
+    self.state.common.extend([items.Dynamite(), items.TommyGun(), items.Food()])
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      choice = self.resolve_to_choice(CardChoice)
+    choice.resolve(self.state, "Food")
+    self.resolve_until_done()
+    self.assertEqual(len(self.char.possessions), 1)
+    self.assertEqual(self.char.possessions[0].name, "Food")
+    self.assertEqual(len(self.state.common), 2)
+
+  def testStore5Fail(self):
+    self.state.event_stack.append(encounters.Store5(self.char))
+    self.state.common.extend([items.Dynamite(), items.TommyGun(), items.Food()])
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
+      self.resolve_until_done()
+    self.assertEqual(len(self.char.possessions), 0)
+    self.assertEqual(len(self.state.common), 3)
+
+
+class SocietyTest(EncounterTest):
+
+  def setUp(self):
+    super(SocietyTest, self).setUp()
+    self.char.place = self.state.places["Society"]
+
+  def testSociety4Pass(self):
+    self.state.event_stack.append(encounters.Society4(self.char))
+    self.state.skills.extend([abilities.Marksman(), abilities.Fight()])
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+    self.assertEqual(len(self.char.possessions), 1)
+    self.assertEqual(self.char.possessions[0].name, "Marksman")
+    self.assertEqual(self.char.delayed_until, self.state.turn_number + 2)
+    self.assertEqual(len(self.state.skills), 1)
+
+  def testSociety4Fail(self):
+    self.state.event_stack.append(encounters.Society4(self.char))
+    self.state.skills.extend([abilities.Marksman(), abilities.Fight()])
+    self.char.lore_luck_slider = 2
+    self.assertEqual(self.char.luck, 2)
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+    self.assertEqual(len(self.char.possessions), 0)
+    self.assertIsNone(self.char.delayed_until)
+    self.assertEqual(len(self.state.skills), 2)
+
+
+class AdministrationTest(EncounterTest):
+
+  def setUp(self):
+    super(AdministrationTest, self).setUp()
+    self.char.place = self.state.places["Administration"]
+
+  def testAdministration7Pass(self):
+    self.char.dollars = 7
+    self.state.event_stack.append(encounters.Administration7(self.char))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.dollars, 15)
+    self.assertIsNone(self.char.lose_turn_until)
+    self.assertEqual(self.char.place.name, "Administration")
+
+  def testAdministration7Fail(self):
+    self.char.dollars = 7
+    self.state.event_stack.append(encounters.Administration7(self.char))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.dollars, 4)
+    self.assertEqual(self.char.lose_turn_until, self.state.turn_number + 2)
+    self.assertEqual(self.char.place.name, "Police")

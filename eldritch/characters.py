@@ -25,12 +25,14 @@ class Character(object):
     self.dollars = 0
     self.clues = 0
     self.possessions = []  # includes special abilities, skills, and allies
+    # TODO: maybe the blessings, retainers, bank loans, and lodge memberships should be possessions.
     self.bless_curse = 0  # -1 for curse, +1 for blessed
-    self.retainer = False
+    self.bless_curse_start = None
+    self.retainer_start = None
+    self.bank_loan_start = None
     self.lodge_membership = False
-    self.delayed = False
-    self.arrested = False  # TODO: necessary?
-    self.lost_turn = False
+    self.delayed_until = None
+    self.lose_turn_until = None
     self.movement_points = self.speed
     self.focus_points = self.focus
     self.home = home
@@ -41,7 +43,7 @@ class Character(object):
         "name", "max_stamina", "max_sanity", "stamina", "sanity", "focus",
         "speed", "sneak", "fight", "will", "lore", "luck", "movement_points", "focus_points",
         "dollars", "clues", "possessions", # TODO: special cards
-        "delayed", "arrested",
+        "delayed_until", "lose_turn_until",
     ]
     data = {attr: getattr(self, attr) for attr in attrs}
     data["sliders"] = {}

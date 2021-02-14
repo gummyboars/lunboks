@@ -47,6 +47,7 @@ class GameState(object):
     self.usables = {}
     self.done_using = {}
     self.event_log = []
+    self.turn_number = 0
     self.turn_idx = 0
     self.first_player = 0
     self.environment = None
@@ -310,35 +311,52 @@ class GameState(object):
 
   def next_turn(self):
     # TODO: game stages other than slumber
+    # Handle the end of the mythos phase separately.
     if self.turn_phase == "mythos":
+      self.turn_number += 1
       self.first_player += 1
       self.first_player %= len(self.characters)
       self.turn_idx = self.first_player
       self.turn_phase = "upkeep"
+      # TODO: separate upkeep into three phases - refresh, upkeep actions, adjust skills.
       for char in self.characters:
-        char.focus_points = char.focus
-      return
-    self.turn_idx += 1
-    self.turn_idx %= len(self.characters)
-    if self.turn_idx == self.first_player:
-      # Guaranteed to not go off the end of the list because we check for mythos above.
-      phase_idx = self.TURN_PHASES.index(self.turn_phase)
-      self.turn_phase = self.TURN_PHASES[phase_idx + 1]
-      if self.turn_phase == "movement":
-        for char in self.characters:
-          char.movement_points = char.speed
+        if char.lose_turn_until == self.turn_number:
+          char.lose_turn_until = None
+    else:
+      self.turn_idx += 1
+      self.turn_idx %= len(self.characters)
+
+      # Handle a switch to the next turn phase.
+      if self.turn_idx == self.first_player:
+        # Guaranteed to not go off the end of the list because this is not the mythos phase.
+        phase_idx = self.TURN_PHASES.index(self.turn_phase)
+        self.turn_phase = self.TURN_PHASES[phase_idx + 1]
+        # No start-of-turn effects or skipping for the mythos phase.
+        if self.turn_phase == "mythos":
+          return
+
+    # Handle start-of-turn effects or turn skipping.
+    char = self.characters[self.turn_idx]
+    if char.lose_turn_until is not None:
+      return self.next_turn()
+    if self.turn_phase == "upkeep":
+      char.focus_points = char.focus
+    if self.turn_phase == "movement":
+      if char.delayed_until == self.turn_number:
+        char.delayed_until = None
+      elif char.delayed_until is not None:
+        return self.next_turn()
+      char.movement_points = char.speed
     if self.turn_phase == "encounter":
-      place = self.characters[self.turn_idx].place
-      if not isinstance(place, places.Location):
-        self.next_turn()
-        return
-      elif place.neighborhood.encounters:
-        self.event_stack.append(events.Encounter(self.characters[self.turn_idx], place))
+      if not isinstance(char.place, places.Location):
+        return self.next_turn()
+      elif char.place.neighborhood.encounters:
+        self.event_stack.append(events.Encounter(char, char.place))
     if self.turn_phase == "otherworld":
-      place = self.characters[self.turn_idx].place
-      if not isinstance(place, places.OtherWorld):
-        self.next_turn()
-        return
+      if not isinstance(char.place, places.OtherWorld):
+        return self.next_turn()
+      elif True:
+        pass  # TODO
 
   def get_distances(self, char_idx):
     routes = self.get_routes(char_idx)

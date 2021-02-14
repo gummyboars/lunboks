@@ -211,64 +211,106 @@ class GainLossTest(EventTest):
 class StatusChangeTest(EventTest):
 
   def testDelayed(self):
-    status = StatusChange(self.char, "delayed", positive=True)
-    self.assertFalse(status.is_resolved())
-    self.assertFalse(self.char.delayed)
+    delay = Delayed(self.char)
+    self.assertFalse(delay.is_resolved())
+    self.assertIsNone(self.char.delayed_until)
 
-    self.state.event_stack.append(status)
+    self.state.event_stack.append(delay)
     self.resolve_until_done()
 
-    self.assertTrue(status.is_resolved())
-    self.assertTrue(self.char.delayed)
-    self.assertEqual(status.status_change, 1)
+    self.assertTrue(delay.is_resolved())
+    self.assertEqual(self.char.delayed_until, self.state.turn_number + 2)
+    self.assertEqual(delay.until, self.char.delayed_until)
+    self.assertIsNone(self.char.lose_turn_until)
 
   def testDoubleDelayed(self):
-    status = StatusChange(self.char, "delayed", positive=True)
-    self.assertFalse(status.is_resolved())
-    self.char.delayed = True
+    self.char.delayed_until = self.state.turn_number + 1
+    delay = Delayed(self.char)
+    self.assertFalse(delay.is_resolved())
 
-    self.state.event_stack.append(status)
+    self.state.event_stack.append(delay)
     self.resolve_until_done()
 
-    self.assertTrue(status.is_resolved())
-    self.assertTrue(self.char.delayed)
-    self.assertEqual(status.status_change, 0)
+    self.assertTrue(delay.is_resolved())
+    self.assertEqual(self.char.delayed_until, self.state.turn_number + 2)
+    self.assertEqual(delay.until, self.char.delayed_until)
+    self.assertIsNone(self.char.lose_turn_until)
+
+  def testLoseTurn(self):
+    lose_turn = LoseTurn(self.char)
+    self.assertFalse(lose_turn.is_resolved())
+    self.assertIsNone(self.char.lose_turn_until)
+
+    self.state.event_stack.append(lose_turn)
+    self.resolve_until_done()
+
+    self.assertTrue(lose_turn.is_resolved())
+    self.assertEqual(self.char.lose_turn_until, self.state.turn_number + 2)
+    self.assertEqual(lose_turn.until, self.char.lose_turn_until)
+    self.assertIsNone(self.char.delayed_until)
 
   def testLoseRetainer(self):
     status = StatusChange(self.char, "retainer", positive=False)
     self.assertFalse(status.is_resolved())
-    self.char.retainer = True
+    self.char.retainer_start = 2
 
     self.state.event_stack.append(status)
     self.resolve_until_done()
 
     self.assertTrue(status.is_resolved())
-    self.assertFalse(self.char.retainer)
-    self.assertEqual(status.status_change, -1)
+    self.assertIsNone(self.char.retainer_start)
+    self.assertEqual(status.change, -1)
+
+  def testBecomeMember(self):
+    member = MembershipChange(self.char, True)
+    self.assertFalse(self.char.lodge_membership)
+
+    self.state.event_stack.append(member)
+    self.resolve_until_done()
+
+    self.assertTrue(self.char.lodge_membership)
+    self.assertEqual(member.change, 1)
 
   def testDoubleBlessed(self):
-    status = StatusChange(self.char, "bless_curse", positive=True)
-    self.assertFalse(status.is_resolved())
+    bless = Bless(self.char)
+    self.assertFalse(bless.is_resolved())
     self.char.bless_curse = 1
+    self.char.bless_curse_start = 1
 
-    self.state.event_stack.append(status)
+    self.state.event_stack.append(bless)
     self.resolve_until_done()
 
-    self.assertTrue(status.is_resolved())
+    self.assertTrue(bless.is_resolved())
     self.assertEqual(self.char.bless_curse, 1)
-    self.assertEqual(status.status_change, 0)
+    self.assertEqual(self.char.bless_curse_start, self.state.turn_number + 2)
+    self.assertEqual(bless.change, 0)
 
   def testCursedWhileBlessed(self):
-    status = StatusChange(self.char, "bless_curse", positive=False)
-    self.assertFalse(status.is_resolved())
+    curse = Curse(self.char)
+    self.assertFalse(curse.is_resolved())
     self.char.bless_curse = 1
+    self.char.bless_curse_start = 1
 
-    self.state.event_stack.append(status)
+    self.state.event_stack.append(curse)
     self.resolve_until_done()
 
-    self.assertTrue(status.is_resolved())
+    self.assertTrue(curse.is_resolved())
     self.assertEqual(self.char.bless_curse, 0)
-    self.assertEqual(status.status_change, -1)
+    self.assertIsNone(self.char.bless_curse_start)
+    self.assertEqual(curse.change, -1)
+
+  def testArrested(self):
+    self.char.dollars = 5
+    self.assertEqual(self.char.place.name, "Diner")
+    self.assertIsNone(self.char.lose_turn_until)
+    arrest = Arrested(self.char)
+
+    self.state.event_stack.append(arrest)
+    self.resolve_until_done()
+
+    self.assertEqual(self.char.lose_turn_until, self.state.turn_number + 2)
+    self.assertEqual(self.char.dollars, 3)
+    self.assertEqual(self.char.place.name, "Police")
 
 
 class DrawTest(EventTest):

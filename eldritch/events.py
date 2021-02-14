@@ -318,54 +318,138 @@ def Unconscious(character, hospital):
   return InsaneOrUnconscious(character, "stamina", "got knocked unconscious", "Hospital")
 
 
-class StatusChange(Event):
+class DelayOrLoseTurn(Event):
 
-  def __init__(self, character, status, positive=True):
-    assert status in {"retainer", "lodge_membership", "delayed", "arrested", "bless_curse"}
+  def __init__(self, character, status):
+    assert status in {"delayed", "lose_turn"}
     self.character = character
-    self.status = status
-    self.positive = positive
-    self.status_change = None
+    self.attr = status + "_until"
+    self.until = None
 
   def resolve(self, state):
-    if self.status in {"retainer", "lodge_membership", "delayed", "arrested"}:
-      old_status = getattr(self.character, self.status)
-      setattr(self.character, self.status, self.positive)
-      self.status_change = int(getattr(self.character, self.status)) - int(old_status)
-      return True
-    if self.status == "bless_curse":
-      old_val = self.character.bless_curse
-      new_val = old_val + (1 if self.positive else -1)
-      if abs(new_val) > 1:
-        new_val = new_val / abs(new_val)
-      self.character.bless_curse = new_val
-      self.status_change = new_val - old_val
-      return True
-    raise RuntimeError("unhandled status type %s" % self.status)
+    current = getattr(self.character, self.attr) or 0
+    self.until = max(current, state.turn_number + 2)
+    setattr(self.character, self.attr, self.until)
+    return True
 
   def is_resolved(self):
-    return self.status_change is not None
+    return self.until is not None
 
   def start_str(self):
     return ""
 
   def finish_str(self):
+    if self.attr == "delayed_until":
+      return f"{self.character.name} is delayed"
+    else:
+      return f"{self.character.name} loses their next turn"
+
+
+def Delayed(character):
+  return DelayOrLoseTurn(character, "delayed")
+
+
+def LoseTurn(character):
+  return DelayOrLoseTurn(character, "lose_turn")
+
+
+class BlessCurse(Event):
+
+  def __init__(self, character, positive):
+    self.character = character
+    self.adjustment = 1 if positive else -1
+    self.change = None
+
+  def resolve(self, state):
+    old_val = self.character.bless_curse
+    new_val = min(max(old_val + self.adjustment, -1), 1)
+    self.character.bless_curse = new_val
+    self.change = new_val - old_val
+    if new_val != 0:
+      self.character.bless_curse_start = state.turn_number + 2
+    else:
+      self.character.bless_curse_start = None
+    return True
+
+  def is_resolved(self):
+    return self.change is not None
+
+  def start_str(self):
+    return ""
+
+  def finish_str(self):
+    if not self.change:
+      return ""
+    if self.character.bless_curse:
+      return f"{self.character.name} became " + ("blessed" if self.change > 0 else "cursed")
+    return f"{self.character.name} lost their " + ("blessing" if self.change < 0 else "curse")
+
+
+def Bless(character):
+  return BlessCurse(character, True)
+
+
+def Curse(character):
+  return BlessCurse(character, False)
+
+
+class MembershipChange(Event):
+
+  def __init__(self, character, positive):
+    self.character = character
+    self.positive = positive
+    self.change = None
+
+  def resolve(self, state):
+    old_status = self.character.lodge_membership
+    self.character.lodge_membership = self.positive
+    self.change = int(self.character.lodge_membership) - int(old_status)
+    return True
+
+  def is_resolved(self):
+    return self.change is not None
+
+  def start_str(self):
+    return ""
+
+  def finish_str(self):
+    if not self.change:
+      return ""
+    if self.change < 0:
+      return f"{self.character.name} lost their Lodge membership"
+    return f"{self.character.name} became a member of the Silver Twilight Lodge"
+
+
+class StatusChange(Event):
+
+  def __init__(self, character, status, positive=True):
+    assert status in {"retainer", "bank_loan"}
+    self.character = character
+    self.attr = status + "_start"
+    self.positive = positive
+    self.change = None
+
+  def resolve(self, state):
+    old_status = getattr(self.character, self.attr)
+    new_status = (state.turn_number + 2) if self.positive else None
+    setattr(self.character, self.attr, new_status)
+    self.change = int(new_status is not None) - int(old_status is not None)
+    return True
+
+  def is_resolved(self):
+    return self.change is not None
+
+  def start_str(self):
+    return ""
+
+  def finish_str(self):
+    if not self.change:
+      return ""
     status_map = {
-        "retainer": (" lost their retainer", " received a retainer"),
-        "lodge_membership": (
-          " lost their Lodge membership", " became a member of the Silver Twilight Lodge"),
-        "delayed": (" is no longer delayed", " was delayed"),
-        "arrested": (" is no longer arrested", " was arrested"),
+        "retainer_start": {-1: " lost their retainer", 1: " received a retainer"},
+        "bank_loan_start": {-1: " lost their bank loan??", 1: " received a bank loan"},
     }
-    if self.status_change:
-      if self.status in status_map:
-        return self.character.name + status_map[self.status][self.status_change]
-      if self.character.bless_curse:
-        return self.character.name + " became " + (
-            "blessed" if self.character.bless_curse > 0 else "cursed")
-      return self.character.name + " lost their " + (
-          "blessing" if self.status_change == -1 else "curse")
-    return "Nothing happens"
+    return self.character.name + status_map[self.attr][self.change]
 
 
 class ForceMovement(Event):
@@ -828,6 +912,15 @@ class Sequence(Event):
 
   def finish_str(self):
     return ""
+
+
+class Arrested(Sequence):
+
+  def __init__(self, character):
+    super(Arrested, self).__init__([
+      ForceMovement(character, "Police"), LoseTurn(character),
+      Loss(character, {"dollars": character.dollars // 2}),
+    ], character)
 
 
 class ChoiceEvent(Event):

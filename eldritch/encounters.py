@@ -34,8 +34,8 @@ def Diner4(char):
   check = events.Check(char, "will", -2)
   return events.PassFail(char, check, gain, events.Nothing())
 def Diner5(char):
-  bless = events.StatusChange(char, "bless_curse", positive=True)
-  curse = events.StatusChange(char, "bless_curse", positive=False)
+  bless = events.Bless(char)
+  curse = events.Curse(char)
   check = events.Check(char, "luck", -1)
   return events.PassFail(char, check, bless, curse)
 def Diner6(char):
@@ -126,6 +126,16 @@ def Store5(char):
   check = events.Check(char, "will", -2)
   draw = events.Draw(char, "common", 3)
   return events.PassFail(char, check, draw, events.Nothing())
+def Society4(char):
+  check = events.Check(char, "luck", -1)
+  skill = events.Sequence([events.Draw(char, "skills", 1), events.Delayed(char)], char)
+  cond = events.Conditional(char, check, "successes", {0: events.Nothing(), 2: skill})
+  return events.Sequence([check, cond], char)
+def Administration7(char):
+  check = events.Check(char, "will", -2)
+  gain = events.Gain(char, {"dollars": 8})
+  arrest = events.Arrested(char)
+  return events.PassFail(char, check, gain, arrest)
 
 
 def CreateEncounterCards():
@@ -146,4 +156,10 @@ def CreateEncounterCards():
       "Rivertown": [
         EncounterCard("Rivertown5", {"Store": Store5}),
       ],
+      "University": [
+        EncounterCard("University7", {"Administration": Administration7}),
+      ],
+      "Southside": [
+        EncounterCard("Southside4", {"Society": Society4}),
+      ]
   }
