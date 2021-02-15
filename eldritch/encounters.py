@@ -48,6 +48,7 @@ def Diner7(char):
   gain = events.Gain(char, {"dollars": die})
   check = events.Check(char, "sneak", -1)
   return events.PassFail(char, check, events.Sequence([die, gain]), move)
+
 def Roadhouse1(char):
   # TODO: this prerequisite should account for characters that can spend clues in other ways, such
   # as by discarding a research materials, or by using the violinist's clues, etc.
@@ -86,6 +87,7 @@ def Roadhouse7(char):
   loss = events.Loss(char, {"dollars": float("inf")})
   check = events.Check(char, "luck", -1)
   return events.PassFail(char, check, events.Nothing(), loss)
+
 def Police1(char):
   check = events.Check(char, "will", -1)
   gain = events.Gain(char, {"clues": 1})
@@ -114,32 +116,53 @@ def Police7(char):
   check = events.Check(char, "sneak", 0)
   draw = events.DrawSpecific(char, "common", "Research Materials")
   return events.PassFail(char, check, draw, events.Nothing())
+
 def Lodge1(char):
   check = events.Check(char, "lore", -1)
   draw = events.Draw(char, "spells", 2)
   return events.PassFail(char, check, draw, events.Nothing())
+
 def Witch2(char):
   check = events.Check(char, "luck", -1)
   draw = events.Draw(char, "unique", 1)
   return events.PassFail(char, check, draw, events.Nothing())
+
 def Store5(char):
   check = events.Check(char, "will", -2)
   draw = events.Draw(char, "common", 3)
   return events.PassFail(char, check, draw, events.Nothing())
+
 def Society4(char):
   check = events.Check(char, "luck", -1)
   skill = events.Sequence([events.Draw(char, "skills", 1), events.Delayed(char)], char)
   cond = events.Conditional(char, check, "successes", {0: events.Nothing(), 2: skill})
   return events.Sequence([check, cond], char)
+
 def Administration7(char):
   check = events.Check(char, "will", -2)
   gain = events.Gain(char, {"dollars": 8})
   arrest = events.Arrested(char)
   return events.PassFail(char, check, gain, arrest)
 
+def Asylum1(char):
+  check = events.Check(char, "lore", 0)
+  roll0 = events.GainOrLoss(char, {"clues": 1}, {"sanity": 1})
+  roll1 = events.Gain(char, {"clues": 2})
+  roll3 = events.Gain(char, {"clues": 3})
+  cond = events.Conditional(char, check, "successes", {0: roll0, 1: roll1, 3: roll3})
+  return events.Sequence([check, cond], char)
+
+def Bank1(char):
+    return events.Nothing() # TODO: implement location choice
+
+def Square1(char):
+  return events.Gain(char, {"stamina": 1})
 
 def CreateEncounterCards():
   return {
+      "Downtown": [
+        EncounterCard("Downtown1", {"Asylum": Asylum1, "Bank": Bank1, "Square": Square1}),
+      ],
       "Easttown": [
         EncounterCard("Easttown1", {"Diner": Diner1, "Roadhouse": Roadhouse1, "Police": Police1}),
         EncounterCard("Easttown2", {"Diner": Diner2, "Roadhouse": Roadhouse2, "Police": Police2}),
