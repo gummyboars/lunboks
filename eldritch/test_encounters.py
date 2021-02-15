@@ -435,3 +435,48 @@ class AdministrationTest(EncounterTest):
     self.assertEqual(self.char.dollars, 4)
     self.assertEqual(self.char.lose_turn_until, self.state.turn_number + 2)
     self.assertEqual(self.char.place.name, "Police")
+
+
+class AsylumTest(EncounterTest):
+
+  def setUp(self):
+    super(AsylumTest, self).setUp()
+    self.char.place = self.state.places["Asylum"]
+
+  def testAsylum1Zero(self):
+    self.state.event_stack.append(encounters.Asylum1(self.char))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.sanity, 2)
+    self.assertEqual(self.char.clues, 1)
+
+  def testAsylum1One(self):
+    self.state.event_stack.append(encounters.Asylum1(self.char))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.sanity, 3)
+    self.assertEqual(self.char.clues, 2)    
+
+  def testAsylum1Three(self):
+    self.char.lore_luck_slider = 2
+    self.state.event_stack.append(encounters.Asylum1(self.char))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.sanity, 3)
+    self.assertEqual(self.char.clues, 3)
+
+
+class SquareTest(EncounterTest):
+
+  def setUp(self):
+    super(SquareTest, self).setUp()
+    self.char.place = self.state.places["Square"]
+
+  def testSquare1(self):
+    self.state.event_stack.append(encounters.Square1(self.char))
+    self.resolve_until_done()
+    self.assertEqual(self.char.stamina, 4)
+
+
+if __name__ == '__main__':
+  unittest.main()
