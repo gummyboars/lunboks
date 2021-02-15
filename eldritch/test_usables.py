@@ -10,6 +10,7 @@ if os.path.abspath(sys.path[0]) == os.path.dirname(os.path.abspath(__file__)):
   sys.path[0] = os.path.dirname(sys.path[0])
 
 import eldritch.abilities as abilities
+import eldritch.characters as characters
 import eldritch.events as events
 from eldritch.events import *
 import eldritch.items as items
@@ -179,6 +180,50 @@ class LossPreventionTest(EventTest):
     self.resolve_loop()
     self.assertTrue(self.loss.is_resolved())
     self.assertEqual(self.char.stamina, 4)
+
+
+class MedicineTest(EventTest):
+
+  def setUp(self):
+    super(MedicineTest, self).setUp()
+    self.char.place = self.state.places["Uptown"]
+    self.char.possessions.append(abilities.Medicine())
+    self.char.stamina = 3
+    self.state.turn_phase = "upkeep"
+
+  def testMedicine(self):
+    end_turn = events.EndUpkeep(self.char)  # TODO: this should be some other type of event.
+    self.state.event_stack.append(end_turn)
+    self.resolve_to_usable(0, 0, Sequence)
+
+    self.state.event_stack.append(self.state.usables[0][0])
+    choice = self.resolve_to_choice(MultipleChoice)
+    self.assertEqual(choice.choices, ["Dummy", "nobody"])
+    choice.resolve(self.state, "Dummy")
+    self.resolve_until_done()
+
+    self.assertEqual(self.char.stamina, 4)
+    self.assertTrue(self.char.possessions[0].exhausted)
+
+  def testMultipleOptions(self):
+    nun = characters.CreateCharacters()[0]  # TODO: it should return a map?
+    nun.stamina = 1
+    nun.place = self.char.place
+    self.state.characters.append(nun)
+
+    end_turn = events.EndUpkeep(self.char)
+    self.state.event_stack.append(end_turn)
+    self.resolve_to_usable(0, 0, Sequence)
+
+    self.state.event_stack.append(self.state.usables[0][0])
+    choice = self.resolve_to_choice(MultipleChoice)
+    self.assertEqual(choice.choices, ["Dummy", "Nun", "nobody"])
+    choice.resolve(self.state, "Nun")
+    self.resolve_until_done()
+
+    self.assertEqual(nun.stamina, 2)
+    self.assertEqual(self.char.stamina, 3)
+    self.assertTrue(self.char.possessions[0].exhausted)
 
 
 if __name__ == '__main__':

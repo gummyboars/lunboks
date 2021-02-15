@@ -75,5 +75,5 @@ class Medicine(assets.Asset):
     gains[len(eligible)] = events.Nothing()
     choice = events.MultipleChoice(
         owner, "Choose a character to heal", [char.name for char in eligible] + ["nobody"])
-    cond = events.Conditional(owner, choice, "choice_idx", gains)
+    cond = events.Conditional(owner, choice, "choice_index", gains)
     return events.Sequence([events.ExhaustAsset(owner, self), choice, cond], owner)
