@@ -159,17 +159,119 @@ def Asylum1(char):
   roll3 = events.Gain(char, {"clues": 3})
   cond = events.Conditional(char, check, "successes", {0: roll0, 1: roll1, 3: roll3})
   return events.Sequence([check, cond], char)
+def Asylum2(char):
+  check = events.Check(char, "speed", -1)
+  item = events.Draw(char, "unique", 1)
+  move = events.ForceMovement(char, "Downtown")
+  return events.PassFail(char, check, item, move)
+def Asylum3(char):
+  check = events.Check(char, "sneak", -1)
+  escape = events.ForceMovement(char, "Downtown")
+  arrested = events.Arrested(char)
+  return events.PassFail(char, check, escape, arrested)
+def Asylum4(char):
+  check = events.Check(char, "lore", -1)
+  spell = events.Draw(char, "spells", 1)
+  return events.PassFail(char, check, spell, events.Nothing())
+def Asylum5(char):
+  check = events.Check(char, "will", -1)
+  lose = events.Nothing() #TODO: Oh dear...so many choices
+  skill = events.Draw(char, "skills", 1)
+  cond = events.Conditional(char, check, "successes", {0: lose, 2: skill})
+  return events.Sequence([check, cond], char)
+def Asylum6(char):
+  check = events.Check(char, "lore", -2)
+  gain = events.Gain(char, {"clues": 2})
+  loss = events.Loss(char, {"stamina": 1})
+  return events.PassFail(char, check, gain, loss)
+def Asylum7(char):
+  check = events.Check(char, "fight", -2)
+  stamina = events.Gain(char, {"stamina": 2})
+  rest = events.Sequence([stamina, events.LoseTurn(char)], char)
+  fight = events.PassFail(char, check, events.Nothing(), rest)
+  return events.BinaryChoice(char, "Do you resist?", "Yes", "No", fight, rest)
 
 def Bank1(char):
-    return events.Nothing() # TODO: implement location choice
+  return events.Nothing() # TODO: implement location choice
+def Bank2(char):
+  check = events.Check(char, "luck", -1)
+  spend = events.Loss(char, {"dollars": 2})
+  common = events.Draw(char, "common", 1)
+  unique = events.Draw(char, "unique", 1)
+  cond = events.Conditional(char, check, "successes", {0: common, 1: unique})
+  prereq = events.AttributePrerequisite(char, "dollars", 2, "at least")
+  nothing = events.Nothing()
+  choice = events.BinaryChoice(
+                              char, "Pay $2 for man's last possession?",
+                              "Pay $2",
+                              "Let man and his family go hungry", 
+                              events.Sequence([spend, check, cond], char), nothing)
+  return events.PassFail(char, prereq, choice, nothing)
+def Bank3(char):
+  prep = events.CombatChoice(char, "Choose weapons to fight the bank robbers")
+  check = events.Check(char, "combat", -1)
+  robbed = events.Loss(char, {"dollars": char.dollars})
+  nothing = events.Nothing()
+  cond = events.Conditional(char, check, "successes", {0: robbed, 1: nothing})
+  return events.Sequence([prep, check, cond], char)
+def Bank4(char):
+  check = events.Check(char, "luck", -2)
+  bless = events.Bless(char)
+  curse = events.Curse(char)
+  return events.PassFail(char, check, bless, curse)
+def Bank5(char):
+  check = events.Check(char, "speed", -1)
+  gain = events.Gain(char, {"dollars": 2})
+  return events.PassFail(char, check, gain, events.Nothing())
+def Bank6(char):
+  return events.Loss(char, {"sanity": 1})
+def Bank7(char):
+  return events.GainOrLoss(char, {"dollars": 5}, {"sanity": 1})
 
 def Square1(char):
   return events.Gain(char, {"stamina": 1})
+def Square2(char):
+  check = events.Check(char, "will", -1)
+  # TODO: prerequisite ally being in the deck, otherwise two clue tokens
+  ally = events.DrawSpecific(char, "allies", "Fortune Teller")
+  return events.PassFail(char, check, ally, events.Nothing())
+def Square3(char):
+  check = events.Check(char, "will", -1)
+  loss = events.Loss(char, {"sanity": 1, "stamina": 1})
+  return events.PassFail(char, check, events.Nothing(), loss)
+def Square4(char):
+  check = events.Check(char, "luck", -2)
+  loss = event.Nothing()  #TODO: Choose an item to lose
+  return events.PassFail(char, check, events.Nothing(), loss)
+def Square5(char):
+  check = events.Check(char, "fight", -1)
+  move = events.ForceMovement(char, "Downtown")
+  return events.PassFail(char, check, events.Nothing(), move)
+def Square6(char):
+  check = events.Check(char, "luck", -1)
+  stamina = events.Loss(char, {"stamina": 1})
+  lose = events.Sequence([stamina, events.Curse(char)], char)
+  buy = events.Nothing() #TODO: Buying stuff
+  interact = events.PassFail(char, check, buy, lose)
+  return events.BinaryChoice(char, "Interact with the gypsies?", "Yes", "No", interact, events.Nothing())
+def Square7(char):
+  check = events.Check(char, "luck", -1)
+  draw = events.Draw(char, "spells", 1)
+  gain = events.GainOrLoss(char, {"clues": 2}, {"stamina": 1})
+  success = events.Sequence([draw, gain], char)
+  fail = events.Nothing() # TODO: RUN!!! It's a GATE!
+  return events.PassFail(char, check, success, fail)
 
 def CreateEncounterCards():
   return {
       "Downtown": [
         EncounterCard("Downtown1", {"Asylum": Asylum1, "Bank": Bank1, "Square": Square1}),
+        EncounterCard("Downtown2", {"Asylum": Asylum2, "Bank": Bank2, "Square": Square2}),
+        EncounterCard("Downtown3", {"Asylum": Asylum3, "Bank": Bank3, "Square": Square3}),
+        EncounterCard("Downtown4", {"Asylum": Asylum4, "Bank": Bank4, "Square": Square4}),
+        EncounterCard("Downtown5", {"Asylum": Asylum5, "Bank": Bank5, "Square": Square5}),
+        EncounterCard("Donwtown6", {"Asylum": Asylum6, "Bank": Bank6, "Square": Square6}),
+        EncounterCard("Donwtown7", {"Asylum": Asylum7, "Bank": Bank7, "Square": Square7})
       ],
       "Easttown": [
         EncounterCard("Easttown1", {"Diner": Diner1, "Roadhouse": Roadhouse1, "Police": Police1}),
