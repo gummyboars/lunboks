@@ -201,6 +201,15 @@ button {
   justify-content: center;
   cursor: pointer;
 }
+.placehover {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 12;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
 .reachable:hover {
   background-color: rgba(0, 255, 0, 0.7);
   color: rgba(0, 0, 0, 1);
@@ -211,6 +220,13 @@ button {
 }
 .location {
   border-radius: 50%;
+}
+.gate {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  z-index: 5;
 }
 #player {
   width: 100%;

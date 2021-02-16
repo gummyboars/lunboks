@@ -34,9 +34,22 @@ function continueInit(gameId) {
     div.classList.add("place", "location");
     div.style.top = Math.round(locations[name].y*width) + "px";
     div.style.left = Math.round(locations[name].x*width) + "px";
+    let gate = document.createElement("CANVAS");
+    gate.id = "place" + name + "gate";
+    gate.classList.add("gate");
+    gate.width = Math.floor(2*radiusRatio*width);
+    gate.height = Math.floor(2*radiusRatio*width);
+    div.appendChild(gate);
+    let hover = document.createElement("DIV");
+    hover.id = "place" + name + "hover";
+    hover.classList.add("placehover", "location");
+    hover.style.width = "100%";
+    hover.style.height = "100%";
+    div.appendChild(hover);
     let desc = document.createElement("DIV");
     desc.id = "place" + name + "desc";
-    div.appendChild(desc);
+    desc.classList.add("desc");
+    hover.appendChild(desc);
     div.onclick = function(e) { moveTo(name); };
     cont.appendChild(div);
     let opt = document.createElement("OPTION");
@@ -52,9 +65,16 @@ function continueInit(gameId) {
     div.classList.add("place");
     div.style.top = Math.round(streets[name].y*width) + "px";
     div.style.left = Math.round(streets[name].x*width) + "px";
+    let hover = document.createElement("DIV");
+    hover.id = "place" + name + "hover";
+    hover.classList.add("placehover");
+    hover.style.width = "100%";
+    hover.style.height = "100%";
+    div.appendChild(hover);
     let desc = document.createElement("DIV");
     desc.id = "place" + name + "desc";
-    div.appendChild(desc);
+    desc.classList.add("desc");
+    hover.appendChild(desc);
     div.onclick = function(e) { moveTo(name); };
     cont.appendChild(div);
     let opt = document.createElement("OPTION");
@@ -124,6 +144,7 @@ function handleData(data) {
     updateYou(null);
   }
   updateTurn(data.characters[data.turn_idx], data.turn_phase);
+  updatePlaces(data.places);
   updateDistances(data.distances);
   updateDice(data.check_result, data.dice_result);
   updateCharacters(data.characters);
@@ -408,20 +429,38 @@ function moveCharacter(name, destDiv) {
   setTimeout(function() { div.classList.add("moving"); div.style.transform = "none"; }, 10);
 }
 
+function updatePlaces(places) {
+  for (let placeName in places) {
+    let place = places[placeName];
+    let pDiv = document.getElementById("place" + placeName);
+    let gateCnv = document.getElementById("place" + placeName + "gate");
+    if (gateCnv == null) {  // Only locations have gates.
+      continue;
+    }
+    if (place.gate) {
+      renderAssetToCanvas(gateCnv, place.gate.name, "");
+    } else {
+      let ctx = gateCnv.getContext("2d");
+      ctx.clearRect(0, 0, gateCnv.width, gateCnv.height);
+    }
+  }
+}
+
 function updateDistances(distances) {
   for (let place of document.getElementsByClassName("place")) {
-    place.classList.remove("reachable");
-    place.classList.add("unreachable");
     let divId = place.id;
+    let hover = document.getElementById(divId + "hover");
+    hover.classList.remove("reachable");
+    hover.classList.add("unreachable");
     let desc = document.getElementById(divId + "desc");
     if (desc != null) {
       desc.innerText = "X";
     }
   }
   for (let placeName in distances) {
-    let placeDiv = document.getElementById("place" + placeName);
-    placeDiv.classList.remove("unreachable");
-    placeDiv.classList.add("reachable");
+    let hover = document.getElementById("place" + placeName + "hover");
+    hover.classList.remove("unreachable");
+    hover.classList.add("reachable");
     let textDiv = document.getElementById("place" + placeName + "desc");
     textDiv.innerText = distances[placeName];
   }

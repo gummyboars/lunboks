@@ -43,4 +43,14 @@ abilityNames = [
   "Medicine",
 ];
 monsterNames = ["Cultist", "Elder Thing", "Formless Spawn", "Ghoul", "Maniac", "Zombie"];
-assetNames = ["board"].concat(characterNames).concat(commonNames).concat(uniqueNames).concat(spellNames).concat(skillNames).concat(allyNames).concat(abilityNames).concat(monsterNames);
+gateNames = [
+  "Abyss",
+  "Another Dimension",
+  "City",
+  "Great Hall",
+  "Plateau",
+  "Sunken City",
+  "Dreamlands",
+  "Pluto",
+];
+assetNames = ["board"].concat(characterNames).concat(commonNames).concat(uniqueNames).concat(spellNames).concat(skillNames).concat(allyNames).concat(abilityNames).concat(monsterNames).concat(gateNames);

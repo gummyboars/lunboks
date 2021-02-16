@@ -88,6 +88,11 @@ class Location(CityPlace):
         self.movement["black"] = other
         self.movement["white"] = other
 
+  def json_repr(self):
+    data = super(Location, self).json_repr()
+    data.update({attr: getattr(self, attr) for attr in ["unstable", "clues", "gate", "sealed"]})
+    return data
+
 
 def CreatePlaces():
   Newspaper = Location("Newspaper", "Newspaper", False)

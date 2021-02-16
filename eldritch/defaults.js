@@ -110,6 +110,11 @@ function initializeDefaults() {
       assets.appendChild(asset);
     }
   }
+  for (let gateName of gateNames) {
+    let asset = createTextCircle(gateName, "palegoldenrod", board.width, "black");
+    asset.id = "default" + gateName;
+    assets.appendChild(asset);
+  }
 }
 
 function getTextSize(ctx, text, maxWidth, maxHeight) {
@@ -182,6 +187,27 @@ function createTextRectangle(name, bgColor, boardWidth, fgColor) {
     ctx.fillStyle = "black";
   }
   ctx.fillText(name, cnv.width/2, cnv.height/2);
+  ctx.restore();
+  return cnv;
+}
+
+function createTextCircle(name, bgColor, boardWidth, fgColor) {
+  let cnv = document.createElement("CANVAS");
+  let radius = boardWidth * radiusRatio;
+  cnv.width = 2 * radius;
+  cnv.height = 2 * radius;
+  let ctx = cnv.getContext("2d");
+  ctx.save();
+  ctx.fillStyle = bgColor;
+  ctx.beginPath();
+  ctx.arc(radius, radius, radius, 0, 2 * Math.PI);
+  ctx.fill();
+  let fontSize = getTextSize(ctx, name, cnv.width, 0.3 * cnv.height);
+  ctx.font = fontSize + "px sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillStyle = fgColor;
+  ctx.fillText(name, radius, radius);
   ctx.restore();
   return cnv;
 }
