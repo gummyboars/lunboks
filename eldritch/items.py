@@ -75,10 +75,27 @@ class Bullwhip(Weapon):
 def Revolver38():
   return Weapon(".38 Revolver", "common", {"combat": 3}, {}, 1, 4, "physical")
 def Cross():  # TODO: bonus against undead.
-  return Weapon("Cross", "unique", {}, {"horror": 1}, 1, 3, "magical")
+  return Weapon("Cross", "common", {}, {"horror": 1}, 1, 3, "magical")
 def Dynamite():
   return OneshotWeapon("Dynamite", "common", {"combat": 8}, {}, 2, 4, "physical")
 def HolyWater():
   return OneshotWeapon("Holy Water", "unique", {"combat": 6}, {}, 2, 4, "magical")
 def TommyGun():
   return Weapon("Tommy Gun", "common", {"combat": 6}, {}, 2, 7, "physical")
+
+
+def CreateCommon():
+  common = []
+  for item in [Revolver38, Dynamite, TommyGun, Food, ResearchMaterials, Bullwhip, Cross]:
+    common.extend([item(), item()])
+  return common
+
+
+def CreateUnique():
+  counts = {
+      HolyWater: 4,
+  }
+  uniques = []
+  for item, count in counts.items():
+    uniques.extend([item() for _ in range(count)])
+  return uniques

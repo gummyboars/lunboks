@@ -57,6 +57,14 @@ def ExpertOccultist():
   return RerollSkill("Expert Occultist", "spell")
 
 
+def CreateSkills():
+  skills = []
+  skill_list = [Speed, Sneak, Fight, Will, Lore, Luck, Stealth, Marksman, Bravery, ExpertOccultist]
+  for skill in skill_list:
+    skills.extend([skill(), skill()])
+  return skills
+
+
 class Medicine(assets.Asset):
 
   def __init__(self):

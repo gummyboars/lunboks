@@ -100,3 +100,12 @@ def OldProfessor():
   return Card("Old Professor", "allies", {}, {"lore": 2})
 def Dog():
   return Card("Dog", "allies", {}, {})  # TODO: maximum sanity
+
+
+def CreateAllies():
+  return [
+      ally() for ally in [
+        FortuneTeller, TravelingSalesman, PoliceDetective, Thief, BraveGuy,
+        Mortician, ArmWrestler, VisitingPainter, ToughGuy, OldProfessor, Dog
+      ]
+  ]

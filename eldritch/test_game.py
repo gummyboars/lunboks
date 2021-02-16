@@ -17,10 +17,8 @@ class NextTurnTest(unittest.TestCase):
 
   def setUp(self):
     self.state = eldritch.GameState()
-    chars = characters.CreateCharacters()
-    self.state.characters = chars[:3]
-    for char in chars:
-      char.place = self.state.places[char.home]
+    self.state.initialize()
+    self.state.characters = self.state.characters[:3]
 
   def testTurnProgression(self):
     self.assertEqual(self.state.first_player, 0)

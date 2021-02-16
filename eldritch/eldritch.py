@@ -8,6 +8,7 @@ from game import (
     InvalidPlayer, TooManyPlayers, NotYourTurn,
 )
 
+import eldritch.abilities as abilities
 import eldritch.assets as assets
 import eldritch.characters as characters
 import eldritch.encounters as encounters
@@ -24,13 +25,8 @@ class GameState(object):
   TURN_PHASES = ["upkeep", "movement", "encounter", "otherworld", "mythos"]
 
   def __init__(self):
-    self.places = places.CreatePlaces()
-    encounter_cards = encounters.CreateEncounterCards()
-    for neighborhood_name, cards in encounter_cards.items():
-      self.places[neighborhood_name].encounters.extend(cards)
-    self.characters = characters.CreateCharacters()
-    for char in self.characters:
-      char.place = self.places[char.home]
+    self.places = {}
+    self.characters = []
     self.common = collections.deque()
     self.unique = collections.deque()
     self.spells = collections.deque()
@@ -38,6 +34,7 @@ class GameState(object):
     self.allies = collections.deque()
     self.mythos = collections.deque()
     self.gates = collections.deque()
+    self.monster_cup = []
     self.game_stage = "slumber"  # valid values are setup, slumber, awakened, victory, defeat
     # valid values are setup, upkeep, movement, encounter, otherworld, mythos, awakened
     self.turn_phase = "upkeep"
@@ -50,10 +47,28 @@ class GameState(object):
     self.turn_number = 0
     self.turn_idx = 0
     self.first_player = 0
+    self.rumor = None
     self.environment = None
     self.ancient_one = None
     self.check_result = None
     self.dice_result = []
+
+  def initialize(self):
+    self.places = places.CreatePlaces()
+    encounter_cards = encounters.CreateEncounterCards()
+    for neighborhood_name, cards in encounter_cards.items():
+      self.places[neighborhood_name].encounters.extend(cards)
+
+    self.monster_cup.extend(monsters.CreateMonsters())
+
+    self.common.extend(items.CreateCommon())
+    self.unique.extend(items.CreateUnique())
+    self.skills.extend(abilities.CreateSkills())
+    self.allies.extend(assets.CreateAllies())
+
+    self.characters = characters.CreateCharacters()
+    for char in self.characters:
+      char.place = self.places[char.home]
 
   def game_status(self):
     return "eldritch game"  # TODO
@@ -390,6 +405,7 @@ class EldritchGame(BaseGame):
 
   def __init__(self):
     self.game = GameState()
+    self.game.initialize()
     self.connected = set()
     self.host = None
     self.player_sessions = collections.OrderedDict()

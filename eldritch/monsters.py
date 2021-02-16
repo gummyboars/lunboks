@@ -70,4 +70,20 @@ def Zombie():
       {"horror": 1, "combat": 2}, 1, {"undead"},
   )
 
+
 MONSTERS = {x().name: x for x in [Cultist, ElderThing, FormlessSpawn, Ghoul, Maniac, Zombie]}
+
+
+def CreateMonsters():
+  counts = {
+      "Cultist": 6,
+      "Elder Thing": 2,
+      "Formless Spawn": 2,
+      "Ghoul": 3,
+      "Maniac": 3,
+      "Zombie": 3,
+  }
+  monsters = []
+  for name, count in counts.items():
+    monsters.extend([MONSTERS[name]() for _ in range(count)])
+  return monsters
