@@ -1284,3 +1284,134 @@ class CombatRound(Event):
     if self.defeated:
       return f"{self.character.name} defeated a {self.monster.name}"
     return f"{self.character.name} did not defeat the {self.monster.name}"
+
+
+class OpenGate(Event):
+
+  def __init__(self, location_name):
+    self.location_name = location_name
+    self.opened = None
+    self.spawn = None
+
+  def resolve(self, state):
+    if self.spawn is not None:
+      assert self.spawn.is_resolved()
+      return True
+
+    if state.places[self.location_name].sealed:
+      self.opened = False
+      return True
+    if state.places[self.location_name].gate is not None:
+      self.opened = False
+      return True  # TODO: monster surge
+
+    # TODO: inevstigators getting sucked in.
+    # TODO: if there are no gates tokens left, the ancient one awakens
+    self.opened = state.gates.popleft()
+    state.places[self.location_name].gate = self.opened
+    state.places[self.location_name].clues = 0  # TODO: this should be its own event
+    self.spawn = SpawnGateMonster(self.location_name)
+    state.event_stack.append(self.spawn)
+    return False
+
+  def is_resolved(self):
+    if self.spawn is not None:
+      return self.spawn.is_resolved()
+    return self.opened is not None
+
+  def start_str(self):
+    return f"Gate will open at {self.location_name}"
+
+  def finish_str(self):
+    if self.opened:
+      return f"A gate to {self.opened.name} appeared at {self.location_name}."
+    return f"A gate did not appear at {self.location_name}."
+
+
+class SpawnGateMonster(Event):
+
+  def __init__(self, location_name):
+    self.location_name = location_name
+    self.spawned = None
+
+  def resolve(self, state):
+    if self.spawned is not None:
+      return True
+
+    self.spawned = []
+    num_to_spawn = 2 if len(state.characters) > 4 else 1
+    for _ in range(num_to_spawn):
+      # TODO: if there are no monsters left, the ancient one awakens
+      monster = random.choice(state.monster_cup)
+      state.monster_cup.remove(monster)
+      state.places[self.location_name].monsters.append(monster)
+      self.spawned.append(monster)
+    return True
+
+  def is_resolved(self):
+    return self.spawned is not None
+
+  def start_str(self):
+    return ""
+
+  def finish_str(self):
+    return f"{len(self.spawned)} monsters appeared at {self.location_name}."
+
+
+class SpawnClue(Event):
+
+  def __init__(self, location_name):
+    self.location_name = location_name
+    self.spawned = None
+    self.eligible = None
+    self.choice = None
+
+  def resolve(self, state):
+    if self.spawned is not None:
+      return True
+
+    if self.choice is not None:
+      assert self.choice.is_resolved()
+      self.eligible[self.choice.choice_index].clues += 1
+      self.spawned = True
+      return True
+
+    if state.places[self.location_name].gate is not None:
+      self.spawned = False
+      return True
+
+    self.eligible = [
+        char for char in state.characters if char.place == state.places[self.location_name]]
+
+    if len(self.eligible) == 0:
+      state.places[self.location_name].clues += 1
+      self.spawned = True
+      return True
+    if len(self.eligible) == 1:
+      self.eligible[0].clues += 1
+      self.spawned = True
+      return True
+    self.choice = MultipleChoice(
+        state.characters[state.first_player],
+        f"Choose an investigator to receive the clue token at {self.location_name}",
+        [char.name for char in self.eligible],
+    )
+    state.event_stack.append(self.choice)
+    return False
+
+  def is_resolved(self):
+    return self.spawned is not None
+
+  def start_str(self):
+    return ""
+
+  def finish_str(self):
+    if not self.spawned:
+      return "Clue does not appear."
+    if not self.eligible:
+      return f"A clue appeared at {self.location_name}."
+    if len(self.eligible) == 1:
+      receiving_player = self.eligible[0]
+    else:
+      receiving_player = self.eligible[self.choice.choice_index]
+    return f"{receiving_player.name} received a clue."

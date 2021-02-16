@@ -13,6 +13,7 @@ import eldritch.assets as assets
 import eldritch.characters as characters
 import eldritch.encounters as encounters
 import eldritch.events as events
+import eldritch.gates as gates
 import eldritch.items as items
 import eldritch.monsters as monsters
 import eldritch.places as places
@@ -55,9 +56,15 @@ class GameState(object):
 
   def initialize(self):
     self.places = places.CreatePlaces()
+    infos, other_worlds = places.CreateOtherWorlds()
+    self.places.update(other_worlds)
     encounter_cards = encounters.CreateEncounterCards()
     for neighborhood_name, cards in encounter_cards.items():
       self.places[neighborhood_name].encounters.extend(cards)
+
+    gate_markers = gates.CreateGates(infos)
+    random.shuffle(gate_markers)
+    self.gates.extend(gate_markers)
 
     self.monster_cup.extend(monsters.CreateMonsters())
 
@@ -126,6 +133,10 @@ class GameState(object):
       self.handle_check(char_idx, data.get("check_type"), data.get("modifier"))
     elif data.get("type") == "monster":  # TODO: remove
       self.handle_spawn_monster(data.get("monster"), data.get("place"))
+    elif data.get("type") == "gate":  # TODO: remove
+      self.handle_spawn_gate(data.get("place"))
+    elif data.get("type") == "clue":  # TODO: remove
+      self.handle_spawn_clue(data.get("place"))
     elif data.get("type") == "choice":
       self.handle_choice(char_idx, data.get("choice"))
     elif data.get("type") == "use":
@@ -270,6 +281,16 @@ class GameState(object):
     assert place in self.places
     assert monster in monsters.MONSTERS
     self.places[place].monsters.append(monsters.MONSTERS[monster]())
+
+  def handle_spawn_gate(self, place):
+    assert place in self.places
+    assert getattr(self.places[place], "unstable", False) == True
+    self.event_stack.append(events.OpenGate(place))
+
+  def handle_spawn_clue(self, place):
+    assert place in self.places
+    assert getattr(self.places[place], "unstable", False) == True
+    self.event_stack.append(events.SpawnClue(place))
 
   def handle_slider(self, char_idx, name, value):
     if char_idx != self.turn_idx:

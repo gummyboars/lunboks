@@ -150,6 +150,16 @@ function spawnMonster(e) {
   ws.send(JSON.stringify({"type": "monster", "place": place, "monster": monster}));
 }
 
+function spawnGate(e) {
+  let place = document.getElementById("placechoice").value;
+  ws.send(JSON.stringify({"type": "gate", "place": place}));
+}
+
+function spawnClue(e) {
+  let place = document.getElementById("placechoice").value;
+  ws.send(JSON.stringify({"type": "clue", "place": place}));
+}
+
 function makeChoice(val) {
   if (itemsToChoose == null) {
     ws.send(JSON.stringify({"type": "choice", "choice": val}));
@@ -228,6 +238,9 @@ function updateCharacters(newCharacters) {
 function updateMonsters(places) {
   for (let name in places) {
     let pDiv = document.getElementById("place" + name);
+    if (pDiv == null) {
+      continue;
+    }
     while (pDiv.getElementsByClassName("monster").length) {
       pDiv.removeChild(pDiv.getElementsByClassName("monster")[0]);
     }
@@ -287,7 +300,7 @@ function addCardChoices(cardChoice, cards) {
   for (let c of cards) {
     let div = document.createElement("DIV");
     div.classList.add("cardchoice");
-    div.onclick = function(e) { console.log("hello"); makeChoice(c); };
+    div.onclick = function(e) { makeChoice(c); };
     let asset = getAsset(c, "");
     let elemWidth = asset.naturalWidth || asset.width;
     let elemHeight = asset.naturalHeight || asset.height;

@@ -189,7 +189,13 @@ class GameHandler(object):
         # Avoid pushing the last state twice.
         pushed = True
     except (GameException, AssertionError) as e:
-      await self.push_error(ws, str(e))
+      if not str(e):
+        await self.push_error(ws, "Unknown error")
+        print(sys.exc_info()[0])
+        print(sys.exc_info()[1])
+        traceback.print_tb(sys.exc_info()[2])
+      else:
+        await self.push_error(ws, str(e))
       # Intentionally fall through so that we can push the new state.
     except Exception as e:
       print(sys.exc_info()[0])
