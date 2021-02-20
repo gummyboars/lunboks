@@ -32,7 +32,7 @@ def Diner2(char):
   return events.DrawSpecific(char, "common", "Food")
 def Diner3(char):
   adj = events.GainOrLoss(char, {"stamina": 2}, {"dollars": 1})
-  choice = events.BinaryChoice(char, "Pay $1 for pie?", "Pay $1", "Go Hungry", adj, events.Nothing());
+  choice = events.BinaryChoice(char, "Pay $1 for pie?", "Pay $1", "Go Hungry", adj, events.Nothing())
   prereq = events.AttributePrerequisite(char, "dollars", 1, "at least")
   return events.PassFail(char, prereq, choice, events.Nothing())
 def Diner4(char):
@@ -241,7 +241,7 @@ def Square3(char):
   return events.PassFail(char, check, events.Nothing(), loss)
 def Square4(char):
   check = events.Check(char, "luck", -2)
-  loss = event.Nothing()  #TODO: Choose an item to lose
+  loss = events.Nothing()  #TODO: Choose an item to lose
   return events.PassFail(char, check, events.Nothing(), loss)
 def Square5(char):
   check = events.Check(char, "fight", -1)
@@ -261,6 +261,111 @@ def Square7(char):
   success = events.Sequence([draw, gain], char)
   fail = events.Nothing() # TODO: RUN!!! It's a GATE!
   return events.PassFail(char, check, success, fail)
+
+def Docks1(char):
+  check = events.Check(char, "luck", -1)
+  spell = events.Draw(char, "spells", 1)
+  return events.PassFail(char, check, spell, events.Nothing())
+def Docks2(char):
+  # TODO: you should just be able to draw two items
+  item1 = events.Draw(char, "common", 1)
+  item2 = events.Draw(char, "common", 1)
+  items = events.Sequence([item1, item2], char)
+  check = events.Check(char, "luck", -1)
+  success = events.Nothing()
+  fail = events.Arrested(char)
+  passfail = events.PassFail(char, check, success, fail)
+  return events.Sequence([items, passfail], char)
+def Docks3(char):
+  check = events.Check(char, "fight", 0)
+  dollars = events.Gain(char, {"dollars": 3}) # TODO: This is really dollars * number of successes
+  move = events.ForceMovement(char, "Merchant")
+  stamina = events.Loss(char, {"stamina": 1})
+  cond= events.Conditional(char, check, "successes", {0: events.Sequence([stamina, move], char), 1: dollars})
+  return events.Sequence([check, cond], char)
+def Docks4(char):
+  check = events.Check(char, "will", -1)
+  item = events.Draw(char, "unique", 1)
+  success = events.Sequence([events.Loss(char, {"sanity": 1}), item], char)
+  fail = events.Sequence([events.Loss(char, {"sanity": 2}), item], char)
+  return events.PassFail(char, check, success, fail)
+def Docks5(char):
+  check = events.Check(char, "speed", -1)
+  loss = events.Loss(char, {"sanity": 1})
+  return events.PassFail(char, check, events.Nothing(), loss)
+def Docks6(char):
+  check = events.Check(char, "will", 1)
+  lost = events.Nothing() # TODO: Oh No, what time is it?  Where am I?  I'm lost in Time AND Space!
+  return events.PassFail(char, check, events.Nothing(), lost)
+def Docks7(char):
+  check = events.Check(char, "luck", -1)
+  draw = events.Draw(char, "common", 1)
+  struggle = events.Loss(char, {"stamina": 3, "sanity": 1})
+  return events.PassFail(char, check, draw, struggle)
+
+def Unnamable1(char):
+  loss = events.Loss(char, {"sanity": 2})
+  # TODO: add prerequisite of ally being in deck
+  ally = events.DrawSpecific(char, "allies", "Brave Guy")
+  listen = events.Sequence([loss, ally], char)
+  return events.BinaryChoice(char, "Listen to the tale?", "Yes", "No", listen, events.Nothing())
+def Unnamable2(char):
+  check = events.Check(char, "lore", -1)
+  spell = events.Draw(char, "spells", 1)
+  clues = events.Gain(char, {"clues": 2})
+  delayed = events.Delayed(char)
+  read = events.PassFail(char, check, spell, events.Sequence([clues, delayed], char))
+  return events.BinaryChoice(char, "Read the manuscript?", "Yes", "No", read, events.Nothing())
+def Unnamable3(char):
+  # TODO: WHAT IS THAT THING??? IT LOOKS LIKE A GATE!
+  return events.Nothing()
+def Unnamable4(char):
+  check = events.Check(char, "speed", -1)
+  move = events.ForceMovement(char, "Merchant")
+  loss = events.Loss(char, {"stamina": 2})
+  return events.PassFail(char, check, move, loss)
+def Unnamable5(char):
+  check = events.Check(char, "luck", -1)
+  unique = events.Draw(char, "unique", 1)
+  loss = events.Loss(char, {"sanity": 1, "stamina": 2})
+  return events.PassFail(char, check, unique, loss)
+def Unnamable6(char):
+  check = events.Check(char, "speed", -1)
+  lost = events.Nothing() #TODO: I'm stuck inside a clock and I'm somewhere around Mars?
+  return events.PassFail(char, check, events.Nothing(), lost)
+def Unnamable7(char):
+  check = events.Check(char, "luck", -1)
+  unique = events.Draw(char, "unique", 1)
+  return events.PassFail(char, check, unique, events.Nothing())
+
+def Isle1(char):
+  spell = events.Draw(char, "spells", 1)
+  loss = events.Loss(char, {"sanity": 1})
+  return events.Sequence([spell, loss], char)
+def Isle2(char):
+  check = events.Check(char, "sneak", -1)
+  # TODO add prerequisite for Ally in deck
+  ally = events.DrawSpecific(char, "allies", "Mortician")
+  return events.PassFail(char, check, ally, events.Nothing())
+def Isle3(char):
+  stamina = events.Loss(char, {"stamina": 1})
+  check = events.Check(char, "will", -1)
+  sanity = events.Loss(char, {"sanity": 1})
+  will = events.PassFail(char, check, events.Nothing(), sanity)
+  return events.Sequence([stamina, will], char)
+def Isle4(char):
+  check = events.Check(char, "will", -1)
+  return events.PassFail(char, check, events.Nothing(), events.Curse(char))
+def Isle5(char):
+  check = events.Check(char, "will", -2)
+  sanity = events.Loss(char, {"sanity": 3})
+  return events.PassFail(char, check, events.Nothing(), sanity)
+def Isle6(char):
+  return events.GainOrLoss(char, {"clues": 1}, {"sanity": 1})
+def Isle7(char):
+  check = events.Check(char, "sneak", -1)
+  clues = events.Gain(char, {"clues": 2})
+  return events.PassFail(char, check, clues, events.Nothing())
 
 def CreateEncounterCards():
   return {
@@ -286,16 +391,25 @@ def CreateEncounterCards():
         EncounterCard("FrenchHill1", {"Lodge": Lodge1}),
         EncounterCard("FrenchHill2", {"Witch": Witch2}),
       ],
+      "Merchant": [
+        EncounterCard("Merchant1", {"Docks": Docks1, "Unnamable": Unnamable1, "Isle": Isle1}),
+        EncounterCard("Merchant2", {"Docks": Docks2, "Unnamable": Unnamable2, "Isle": Isle2}),
+        EncounterCard("Merchant3", {"Docks": Docks3, "Unnamable": Unnamable3, "Isle": Isle3}),
+        EncounterCard("Merchant4", {"Docks": Docks4, "Unnamable": Unnamable4, "Isle": Isle4}),
+        EncounterCard("Merchant5", {"Docks": Docks5, "Unnamable": Unnamable5, "Isle": Isle5}),
+        EncounterCard("Merchant6", {"Docks": Docks6, "Unnamable": Unnamable6, "Isle": Isle6}),
+        EncounterCard("Merchant7", {"Docks": Docks7, "Unnamable": Unnamable7, "Isle": Isle7}),
+      ],      
+      "Northside": [
+        EncounterCard("Northside3", {"Train": Train3}),
+      ],
       "Rivertown": [
         EncounterCard("Rivertown5", {"Store": Store5}),
-      ],
-      "University": [
-        EncounterCard("University7", {"Administration": Administration7}),
       ],
       "Southside": [
         EncounterCard("Southside4", {"Society": Society4}),
       ],
-      "Northside": [
-        EncounterCard("Northside3", {"Train": Train3}),
+      "University": [
+        EncounterCard("University7", {"Administration": Administration7}),
       ],
   }
