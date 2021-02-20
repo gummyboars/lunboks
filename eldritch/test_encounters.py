@@ -615,6 +615,7 @@ class AsylumTest(EncounterTest):
     self.assertEqual(self.char.stamina, 5)
     self.assertEqual(self.char.lose_turn_until, self.state.turn_number+2)
 
+
 class BankTest(EncounterTest):
   
   def setUp(self):
@@ -741,6 +742,7 @@ class BankTest(EncounterTest):
     self.assertEqual(self.char.dollars, 8)
     self.assertEqual(self.char.sanity, 2)
 
+
 class SquareTest(EncounterTest):
 
   def setUp(self):
@@ -786,9 +788,9 @@ class SquareTest(EncounterTest):
     self.state.event_stack.append(encounters.Square5(self.char))
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       self.resolve_until_done()
-    self.assertEqual(self.char.place, "Square")
+    self.assertEqual(self.char.place.name, "Square")
 
-  def testSquare5pass(self):
+  def testSquare5Fail(self):
     self.state.event_stack.append(encounters.Square5(self.char))
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=2)):
       self.resolve_until_done()
@@ -848,6 +850,375 @@ class TrainTest(EncounterTest):
     self.assertEqual(self.char.stamina, 4)
     self.assertEqual(self.char.sanity, 4)
 
+
+class DocksTest(EncounterTest):
+
+  def setUp(self):
+    super(DocksTest, self).setUp()
+    self.char.place = self.state.places["Docks"]
+
+  def testDocks1Pass(self):
+    self.state.event_stack.append(encounters.Docks1(self.char))
+    # we know these aren't actually spells
+    self.state.spells.extend([items.Cross(), items.HolyWater()])
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+    self.assertEqual(len(self.char.possessions), 1)
+    self.assertEqual(self.char.possessions[0].name, "Cross")
+    self.assertEqual(len(self.state.spells), 1)
+
+  def testDocks1Fail(self):
+    self.state.event_stack.append(encounters.Docks1(self.char))
+    # we know these aren't actually spells
+    self.state.spells.extend([items.Cross(), items.HolyWater()])
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=2)):
+      self.resolve_until_done()
+    self.assertEqual(len(self.char.possessions), 0)
+    self.assertEqual(len(self.state.spells), 2)
+
+  def testDocks2Pass(self):
+    self.state.event_stack.append(encounters.Docks2(self.char))
+    self.state.common.extend([items.Revolver38(), items.TommyGun(), items.Dynamite()])
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+    self.assertEqual(len(self.char.possessions), 2)
+    self.assertEqual(self.char.possessions[0].name, ".38 Revolver")
+    self.assertEqual(self.char.possessions[1].name, "Tommy Gun")
+    self.assertEqual(len(self.state.common), 1)
+    self.assertEqual(self.char.place.name, "Docks")
+    self.assertEqual(self.char.dollars, 3)  
+    self.assertIsNone(self.char.lose_turn_until)
+
+  def testDocks2Fail(self):
+    self.state.event_stack.append(encounters.Docks2(self.char))
+    self.state.common.extend([items.Revolver38(), items.TommyGun(), items.Dynamite()])
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=2)):
+      self.resolve_until_done()
+    self.assertEqual(len(self.char.possessions), 2)
+    self.assertEqual(self.char.possessions[0].name, ".38 Revolver")
+    self.assertEqual(self.char.possessions[1].name, "Tommy Gun")
+    self.assertEqual(len(self.state.common), 1)
+    self.assertEqual(self.char.place.name, "Police")
+    self.assertEqual(self.char.dollars, 2)
+    self.assertEqual(self.char.lose_turn_until, self.state.turn_number + 2)
+
+  def testDocks3Pass(self):
+    # TODO: needs to implement scaling money
+    self.state.event_stack.append(encounters.Docks3(self.char))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.dollars, 6)
+    self.assertEqual(self.char.stamina, 3)
+    self.assertEqual(self.char.place.name, "Docks")
+
+  def testDocks3Fail(self):
+    self.state.event_stack.append(encounters.Docks3(self.char))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=2)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.dollars, 3)
+    self.assertEqual(self.char.stamina, 2)
+    self.assertEqual(self.char.place.name, "Merchant")
+
+  def testDocks4PassSane(self):
+    self.state.event_stack.append(encounters.Docks4(self.char))
+    self.state.unique.extend([items.Cross(), items.HolyWater()])
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+    self.assertEqual(len(self.state.unique), 1)
+    self.assertEqual(len(self.char.possessions), 1)
+    self.assertEqual(self.char.possessions[0].name, "Cross")
+    self.assertEqual(self.char.sanity, 2)
+    self.assertEqual(self.char.place.name, "Docks")
+
+  def testDocks4FailSane(self):
+    self.state.event_stack.append(encounters.Docks4(self.char))
+    self.state.unique.extend([items.Cross(), items.HolyWater()])
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=2)):
+      self.resolve_until_done()
+    self.assertEqual(len(self.state.unique), 1)
+    self.assertEqual(len(self.char.possessions), 1)
+    self.assertEqual(self.char.possessions[0].name, "Cross")
+    self.assertEqual(self.char.sanity, 1)
+    self.assertEqual(self.char.place.name, "Docks")
+
+  def testDocks4PassInsane(self):
+    self.state.event_stack.append(encounters.Docks4(self.char))
+    self.char.sanity = 1
+    self.state.unique.extend([items.Cross(), items.HolyWater()])
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+    self.assertEqual(len(self.state.unique), 2)
+    self.assertEqual(len(self.char.possessions), 0)
+    self.assertEqual(self.char.sanity, 1)
+    self.assertEqual(self.char.place.name, "Asylum")
+
+  def testDocks4FailInsane(self):
+    self.state.event_stack.append(encounters.Docks4(self.char))
+    self.char.sanity = 2
+    self.state.unique.extend([items.Cross(), items.HolyWater()])
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=2)):
+      self.resolve_until_done()
+    self.assertEqual(len(self.state.unique), 2)
+    self.assertEqual(len(self.char.possessions), 0)
+    self.assertEqual(self.char.sanity, 1)
+    self.assertEqual(self.char.place.name, "Asylum")
+
+  def testDocks5Pass(self):
+    self.state.event_stack.append(encounters.Docks5(self.char))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.sanity, 3)
+
+  def testDocks5Fail(self):
+    self.state.event_stack.append(encounters.Docks5(self.char))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=2)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.sanity, 2)
+
+  def testDock7Pass(self):
+    self.state.event_stack.append(encounters.Docks7(self.char))
+    self.state.common.extend([items.Revolver38(), items.TommyGun()])
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+    self.assertEqual(len(self.state.common), 1)
+    self.assertEqual(len(self.char.possessions), 1)
+    self.assertEqual(self.char.possessions[0].name, ".38 Revolver")
+    self.assertEqual(self.char.stamina, 3)
+    self.assertEqual(self.char.sanity, 3)
+
+  def testDock7Fail(self):
+    self.state.event_stack.append(encounters.Docks7(self.char))
+    self.char.stamina = 4
+    self.state.common.extend([items.Revolver38(), items.TommyGun()])
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=2)):
+      self.resolve_until_done()
+    self.assertEqual(len(self.state.common), 2)
+    self.assertEqual(len(self.char.possessions), 0)
+    self.assertEqual(self.char.stamina, 1)
+    self.assertEqual(self.char.sanity, 2)
+
+
+class UnnamableTest(EncounterTest):
+
+  def setUp(self):
+    super(UnnamableTest, self).setUp()
+    self.char.place = self.state.places["Unnamable"]
+
+  def testUnnamable1No(self):
+    self.state.event_stack.append(encounters.Unnamable1(self.char))
+    self.state.allies.extend([assets.BraveGuy()])
+    choice = self.resolve_to_choice(MultipleChoice)
+    choice.resolve(self.state, "No")
+    self.resolve_until_done()
+    self.assertEqual(self.char.sanity, 3)
+    self.assertEqual(len(self.char.possessions), 0)
+    self.assertEqual(len(self.state.allies), 1)
+
+  def testUnnamable1Sane(self):
+    self.state.event_stack.append(encounters.Unnamable1(self.char))
+    self.state.allies.extend([assets.BraveGuy()])
+    choice = self.resolve_to_choice(MultipleChoice)
+    choice.resolve(self.state, "Yes")
+    self.resolve_until_done()
+    self.assertEqual(self.char.sanity, 1)
+    self.assertEqual(len(self.char.possessions), 1)
+    self.assertEqual(self.char.possessions[0].name, "Brave Guy")
+    self.assertEqual(len(self.state.allies), 0)
+
+  def testUnnamable1InSane(self):
+    # TODO: can't test clue token loss from going insane
+    self.state.event_stack.append(encounters.Unnamable1(self.char))
+    self.state.allies.extend([assets.BraveGuy()])
+    self.char.sanity = 2
+    choice = self.resolve_to_choice(MultipleChoice)
+    choice.resolve(self.state, "Yes")
+    self.resolve_until_done()
+    self.assertEqual(self.char.sanity, 1)
+    self.assertEqual(len(self.char.possessions), 0)
+    self.assertEqual(len(self.state.allies), 1)
+    self.assertEqual(self.char.place.name, "Asylum")
+
+  def testUnnamable2YesPass(self):
+    self.state.event_stack.append(encounters.Unnamable2(self.char))
+    # we know these aren't actually spells
+    self.state.spells.extend([items.Cross(), items.HolyWater()])
+    choice = self.resolve_to_choice(MultipleChoice)
+    choice.resolve(self.state, "Yes")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+    self.assertEqual(len(self.char.possessions), 1)
+    self.assertEqual(self.char.possessions[0].name, "Cross")
+    self.assertEqual(len(self.state.spells), 1)
+    self.assertEqual(self.char.clues, 0)
+    self.assertIsNone(self.char.delayed_until)
+
+  def testUnnamable2YesFail(self):
+    self.state.event_stack.append(encounters.Unnamable2(self.char))
+    # we know these aren't actually spells
+    self.state.spells.extend([items.Cross(), items.HolyWater()])
+    choice = self.resolve_to_choice(MultipleChoice)
+    choice.resolve(self.state, "Yes")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=2)):
+      self.resolve_until_done()
+    self.assertEqual(len(self.char.possessions), 0)
+    self.assertEqual(len(self.state.spells), 2)
+    self.assertEqual(self.char.clues, 2)
+    self.assertEqual(self.char.delayed_until, self.state.turn_number + 2)
+
+  def testUnnamable2No(self):
+    self.state.event_stack.append(encounters.Unnamable2(self.char))
+    # we know these aren't actually spells
+    self.state.spells.extend([items.Cross(), items.HolyWater()])
+    choice = self.resolve_to_choice(MultipleChoice)
+    choice.resolve(self.state, "No")
+    self.resolve_until_done()
+    self.assertEqual(len(self.char.possessions), 0)
+    self.assertEqual(len(self.state.spells), 2)
+    self.assertEqual(self.char.clues, 0)
+    self.assertIsNone(self.char.delayed_until)
+
+  def testUnnamable4Pass(self):
+    self.state.event_stack.append(encounters.Unnamable4(self.char))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.stamina, 3)
+    self.assertEqual(self.char.place.name, "Merchant")
+
+  def testUnnamable4Fail(self):
+    self.state.event_stack.append(encounters.Unnamable4(self.char))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=2)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.stamina, 1)
+    self.assertEqual(self.char.place.name, "Unnamable")
+
+  def testUnnamable5Pass(self):
+    self.state.event_stack.append(encounters.Unnamable5(self.char))
+    self.state.unique.extend([items.Cross(), items.HolyWater()])
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.stamina, 3)
+    self.assertEqual(self.char.sanity, 3)
+    self.assertEqual(len(self.char.possessions), 1)
+    self.assertEqual(len(self.state.unique), 1)
+    self.assertEqual(self.char.possessions[0].name, "Cross")
+
+  def testUnnamable5Fail(self):
+    self.state.event_stack.append(encounters.Unnamable5(self.char))
+    self.state.unique.extend([items.Cross(), items.HolyWater()])
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=2)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.stamina, 1)
+    self.assertEqual(self.char.sanity, 2)
+    self.assertEqual(len(self.char.possessions), 0)
+    self.assertEqual(len(self.state.unique), 2)
+
+  def testUnnamable7Pass(self):
+    self.state.event_stack.append(encounters.Unnamable7(self.char))
+    self.state.unique.extend([items.Cross(), items.HolyWater()])
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+    self.assertEqual(len(self.char.possessions), 1)
+    self.assertEqual(self.char.possessions[0].name, "Cross")
+    self.assertEqual(len(self.state.unique), 1)
+
+  def testUnnamable7Fail(self):
+    self.state.event_stack.append(encounters.Unnamable7(self.char))
+    self.state.unique.extend([items.Cross(), items.HolyWater()])
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=2)):
+      self.resolve_until_done()
+    self.assertEqual(len(self.char.possessions), 0)
+    self.assertEqual(len(self.state.unique), 2)
+
+
+class IsleTest(EncounterTest):
+
+  def setUp(self):
+    super(IsleTest, self).setUp()
+    self.char.place = self.state.places["Isle"]
+
+  def testIsle1(self):
+    self.state.event_stack.append(encounters.Isle1(self.char))
+        # we know these aren't actually spells
+    self.state.spells.extend([items.Cross(), items.HolyWater()])
+    self.resolve_until_done()
+    self.assertEqual(self.char.sanity, 2)
+    self.assertEqual(len(self.char.possessions), 1)
+    self.assertEqual(self.char.possessions[0].name, "Cross")
+    self.assertEqual(len(self.state.spells), 1)
+
+  def testIsle2Pass(self):
+    self.state.event_stack.append(encounters.Isle2(self.char))
+    self.state.allies.append(assets.Mortician())
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+    self.assertEqual(len(self.char.possessions), 1)
+    self.assertEqual(len(self.state.allies), 0)
+    self.assertEqual(self.char.possessions[0].name, "Mortician")
+    
+  def testIsle2Fail(self):
+    self.state.event_stack.append(encounters.Isle2(self.char))
+    self.state.allies.append(assets.Mortician())
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=2)):
+      self.resolve_until_done()
+    self.assertEqual(len(self.char.possessions), 0)
+    self.assertEqual(len(self.state.allies), 1)
+
+  def testIsle3Pass(self):
+    self.state.event_stack.append(encounters.Isle3(self.char))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.stamina, 2)
+    self.assertEqual(self.char.sanity, 3)
+
+  def testIsle3Fail(self):
+    self.state.event_stack.append(encounters.Isle3(self.char))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=2)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.stamina, 2)
+    self.assertEqual(self.char.sanity, 2)
+
+  def testIsle4Pass(self):
+    self.state.event_stack.append(encounters.Isle4(self.char))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.bless_curse, 0)
+
+  def testIsle4Fail(self):
+    self.state.event_stack.append(encounters.Isle4(self.char))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=2)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.bless_curse, -1)
+
+  def testIsle5Pass(self):
+    self.state.event_stack.append(encounters.Isle5(self.char))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.sanity, 3)
+
+  def testIsle5Fail(self):
+    self.state.event_stack.append(encounters.Isle5(self.char))
+    self.char.sanity = 4
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=2)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.sanity, 1)
+
+  def testIsle6Fail(self):
+    self.state.event_stack.append(encounters.Isle6(self.char))
+    self.resolve_until_done()
+    self.assertEqual(self.char.sanity, 2)
+    self.assertEqual(self.char.clues, 1)
+
+  def testIsle7Pass(self):
+    self.state.event_stack.append(encounters.Isle7(self.char))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.clues, 2)
+
+  def testIsle7Fail(self):
+    self.state.event_stack.append(encounters.Isle7(self.char))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=2)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.clues, 0)
 
 if __name__ == '__main__':
   unittest.main()
