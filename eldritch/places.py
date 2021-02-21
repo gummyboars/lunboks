@@ -16,7 +16,6 @@ class CityPlace(object):
     self.long_name = long_name
     self.connections = set()
     self.movement = {"white": None, "black": None}
-    self.monsters = []
     self.neighborhood = None
     self.encounters = None
     self.closed = False
@@ -35,7 +34,6 @@ class CityPlace(object):
         "movement": {"white": self.movement["white"].name, "black": self.movement["black"].name},
         "neighborhood": self.neighborhood.name,
         "closed": self.closed,
-        "monsters": self.monsters,
     }
 
   def _add_connections(self, *other_places):

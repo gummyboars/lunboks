@@ -16,13 +16,14 @@ import eldritch.events as events
 import eldritch.gates as gates
 import eldritch.items as items
 import eldritch.monsters as monsters
+import eldritch.mythos as mythos
 import eldritch.places as places
 
 
 class GameState(object):
 
-  DEQUE_ATTRIBUTES = {"common", "unique", "spells", "skills", "allies", "mythos", "gates"}
-  HIDDEN_ATTRIBUTES = {"event_stack", "interrupt_stack", "trigger_stack", "usables"}
+  DEQUE_ATTRIBUTES = {"common", "unique", "spells", "skills", "allies", "gates"}
+  HIDDEN_ATTRIBUTES = {"event_stack", "interrupt_stack", "trigger_stack", "usables", "mythos"}
   TURN_PHASES = ["upkeep", "movement", "encounter", "otherworld", "mythos"]
 
   def __init__(self):
@@ -35,7 +36,8 @@ class GameState(object):
     self.allies = collections.deque()
     self.mythos = collections.deque()
     self.gates = collections.deque()
-    self.monster_cup = []
+    self.monsters = []
+    self.monster_cup = monsters.MonsterCup()
     self.game_stage = "slumber"  # valid values are setup, slumber, awakened, victory, defeat
     # valid values are setup, upkeep, movement, encounter, otherworld, mythos, awakened
     self.turn_phase = "upkeep"
@@ -66,12 +68,16 @@ class GameState(object):
     random.shuffle(gate_markers)
     self.gates.extend(gate_markers)
 
-    self.monster_cup.extend(monsters.CreateMonsters())
+    self.monsters = monsters.CreateMonsters()
+    for monster in self.monsters:
+      monster.place = self.monster_cup
 
     self.common.extend(items.CreateCommon())
     self.unique.extend(items.CreateUnique())
     self.skills.extend(abilities.CreateSkills())
     self.allies.extend(assets.CreateAllies())
+
+    self.mythos.extend(mythos.CreateMythos())
 
     self.characters = characters.CreateCharacters()
     for char in self.characters:
@@ -94,6 +100,10 @@ class GameState(object):
     output = self.json_repr()
     if self.turn_idx == char_idx and self.turn_phase == "movement":
       output["distances"] = self.get_distances(self.turn_idx)
+
+    # We only return the counts of these items, not the actual items.
+    output["monster_cup"] = len([mon for mon in self.monsters if mon.place == self.monster_cup])
+    output["gates"] = len(self.gates)
 
     output["choice"] = None
     top_event = self.event_stack[-1] if self.event_stack else None
@@ -133,6 +143,8 @@ class GameState(object):
       self.handle_check(char_idx, data.get("check_type"), data.get("modifier"))
     elif data.get("type") == "monster":  # TODO: remove
       self.handle_spawn_monster(data.get("monster"), data.get("place"))
+    elif data.get("type") == "mythos":
+      self.handle_mythos()
     elif data.get("type") == "gate":  # TODO: remove
       self.handle_spawn_gate(data.get("place"))
     elif data.get("type") == "clue":  # TODO: remove
@@ -223,8 +235,10 @@ class GameState(object):
   # TODO: global interrupts/triggers from ancient one, environment, other mythos/encounter cards
   def get_interrupts(self, event):
     interrupts = []
-    if isinstance(event, (events.MoveOne, events.EndMovement)) and event.character.place.monsters:
-      interrupts.append(events.EvadeOrFightAll(event.character, event.character.place.monsters))
+    if isinstance(event, (events.MoveOne, events.EndMovement)):
+      nearby_monsters = [mon for mon in self.monsters if mon.place == event.character.place]
+      if nearby_monsters:
+        interrupts.append(events.EvadeOrFightAll(event.character, nearby_monsters))
     interrupts += sum([char.get_interrupts(event, self) for char in self.characters], [])
     return interrupts
 
@@ -277,10 +291,20 @@ class GameState(object):
       raise InvalidInput("there are events on the stack")
     self.event_stack.append(events.Check(self.characters[char_idx], check_type, modifier))
 
-  def handle_spawn_monster(self, monster, place):
+  def handle_mythos(self):
+    chosen = self.mythos.popleft()
+    self.mythos.append(chosen)
+    self.event_stack.append(chosen.create_event(self))
+
+  def handle_spawn_monster(self, monster_name, place):
     assert place in self.places
-    assert monster in monsters.MONSTERS
-    self.places[place].monsters.append(monsters.MONSTERS[monster]())
+    assert monster_name in monsters.MONSTERS
+    for monster in self.monsters:
+      if monster.name == monster_name and monster.place == self.monster_cup:
+        monster.place = self.places[place]
+        break
+    else:
+      raise InvalidMove("No monsters of that type left in the cup.")
 
   def handle_spawn_gate(self, place):
     assert place in self.places
@@ -404,6 +428,11 @@ class GameState(object):
     routes = {self.characters[char_idx].place.name: []}
     if self.characters[char_idx].place.closed:
       return routes
+
+    monster_counts = collections.defaultdict(int)
+    for monster in self.monsters:
+      monster_counts[monster.place.name] += 1
+
     queue = collections.deque()
     for place in self.characters[char_idx].place.connections:
       if not place.closed:
@@ -412,10 +441,12 @@ class GameState(object):
       place, route = queue.popleft()
       if place.name in routes:
         continue
-      if place.closed:  # TODO: more possibilities. monsters?
+      if place.closed:  # TODO: more possibilities?
         continue
       routes[place.name] = route + [place.name]
       if len(routes[place.name]) == self.characters[char_idx].movement_points:
+        continue
+      if monster_counts[place.name] > 0:
         continue
       for next_place in place.connections:
         queue.append((next_place, route + [place.name]))

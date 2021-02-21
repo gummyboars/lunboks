@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import collections
 import os
 import sys
 import unittest
@@ -12,6 +13,7 @@ if os.path.abspath(sys.path[0]) == os.path.dirname(os.path.abspath(__file__)):
 import eldritch.characters as characters
 from eldritch.events import *
 import eldritch.gates as gates
+import eldritch.monsters as monsters
 from eldritch.mythos import *
 import eldritch.places as places
 from eldritch.test_events import EventTest
@@ -28,11 +30,20 @@ class OpenGateTest(EventTest):
     self.square = self.state.places["Square"]
     self.woods = self.state.places["Woods"]
 
+  def monstersByPlace(self):
+    counts = collections.defaultdict(int)
+    for monster in self.state.monsters:
+      counts[monster.place.name if monster.place is not None else "nowhere"] += 1
+    return counts
+
   def testOpenGate(self):
     self.assertEqual(len(self.state.gates), 1)
     self.assertIsNone(self.square.gate)
     self.assertIsNone(self.woods.gate)
-    self.assertEqual(len(self.square.monsters), 0)
+    monster_counts = self.monstersByPlace()
+    self.assertEqual(monster_counts["Square"], 0)
+    self.assertEqual(monster_counts["Woods"], 0)
+    cup_count = monster_counts["cup"]
 
     self.state.event_stack.append(OpenGate("Square"))
     self.resolve_until_done()
@@ -40,13 +51,17 @@ class OpenGateTest(EventTest):
     self.assertEqual(len(self.state.gates), 0)
     self.assertEqual(self.square.gate, self.gate)
     self.assertIsNone(self.woods.gate)
-    self.assertEqual(len(self.square.monsters), 1)
-    self.assertEqual(len(self.woods.monsters), 0)
+    monster_counts = self.monstersByPlace()
+    self.assertEqual(monster_counts["Square"], 1)
+    self.assertEqual(monster_counts["Woods"], 0)
+    self.assertEqual(monster_counts["cup"], cup_count-1)
 
   def testOpenGateSealed(self):
     self.assertEqual(len(self.state.gates), 1)
     self.assertIsNone(self.square.gate)
-    self.assertEqual(len(self.square.monsters), 0)
+    monster_counts = self.monstersByPlace()
+    self.assertEqual(monster_counts["Square"], 0)
+    cup_count = monster_counts["cup"]
     self.square.sealed = True
 
     self.state.event_stack.append(OpenGate("Square"))
@@ -54,8 +69,10 @@ class OpenGateTest(EventTest):
 
     self.assertEqual(len(self.state.gates), 1)
     self.assertIsNone(self.square.gate)
-    self.assertEqual(len(self.square.monsters), 0)
     self.assertTrue(self.square.sealed)
+    monster_counts = self.monstersByPlace()
+    self.assertEqual(monster_counts["Square"], 0)
+    self.assertEqual(monster_counts["cup"], cup_count)
 
 
 class SpawnClueTest(EventTest):
@@ -100,3 +117,72 @@ class SpawnClueTest(EventTest):
     self.assertEqual(self.char.clues, 0)
     self.assertEqual(buddy.clues, 3)
     self.assertEqual(self.square.clues, 0)
+
+
+class MoveMonsterTest(EventTest):
+
+  def setUp(self):
+    super(MoveMonsterTest, self).setUp()
+
+  def testMoveMonsterWhite(self):
+    monster = self.state.monsters[0]
+    monster.place = self.state.places["Rivertown"]
+
+    self.state.event_stack.append(MoveMonster(monster, "white"))
+    self.resolve_until_done()
+
+    self.assertEqual(monster.place.name, "FrenchHill")
+
+  def testMoveMonsterBlack(self):
+    monster = self.state.monsters[0]
+    monster.place = self.state.places["Rivertown"]
+
+    self.state.event_stack.append(MoveMonster(monster, "black"))
+    self.resolve_until_done()
+
+    self.assertEqual(monster.place.name, "Easttown")
+
+  def testMoveMonsterLocation(self):
+    monster = self.state.monsters[0]
+    monster.place = self.state.places["Cave"]
+
+    self.state.event_stack.append(MoveMonster(monster, "white"))
+    self.resolve_until_done()
+
+    self.assertEqual(monster.place.name, "Rivertown")
+
+  def testMovementTypes(self):
+    self.state.monsters.clear()
+    self.state.monsters.extend([
+      monsters.Cultist(),  # moon, moves on black
+      monsters.Ghost(),  # moon, stationary
+      monsters.DimensionalShambler(),  # square, moves on white
+      monsters.Ghoul(),  # hex, no movement
+    ])
+
+    for monster in self.state.monsters:
+      monster.place = self.state.places["Rivertown"]
+
+    self.state.event_stack.append(MoveMonsters({"square"}, {"circle", "moon"}))
+    self.resolve_until_done()
+
+    self.assertEqual(self.state.monsters[0].place.name, "Easttown")
+    self.assertEqual(self.state.monsters[1].place.name, "Rivertown")
+    self.assertEqual(self.state.monsters[2].place.name, "Southside")
+    self.assertEqual(self.state.monsters[3].place.name, "Rivertown")
+
+  def testMovementAfterSpawn(self):
+    self.state.monsters.clear()
+    shambler = monsters.DimensionalShambler()
+    shambler.place = self.state.monster_cup
+    self.state.monsters.append(shambler)
+
+    self.state.event_stack.append(Mythos3.create_event(self.state))
+    self.resolve_until_done()
+
+    # The monster will appear at the Square, but should immediately move after appearing.
+    self.assertEqual(shambler.place.name, "Easttown")
+
+
+if __name__ == '__main__':
+  unittest.main()

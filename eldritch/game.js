@@ -1,5 +1,6 @@
 ws = null;
 characters = {};
+monsters = {};
 scale = 1;
 itemsToChoose = null;
 itemChoice = [];
@@ -148,7 +149,7 @@ function handleData(data) {
   updateDistances(data.distances);
   updateDice(data.check_result, data.dice_result);
   updateCharacters(data.characters);
-  updateMonsters(data.places);
+  updateMonsters(data.monsters);
   if (messageQueue.length && !runningAnim.length) {
     handleData(messageQueue.shift());
   }
@@ -179,6 +180,10 @@ function spawnGate(e) {
 function spawnClue(e) {
   let place = document.getElementById("placechoice").value;
   ws.send(JSON.stringify({"type": "clue", "place": place}));
+}
+
+function mythos(e) {
+  ws.send(JSON.stringify({"type": "mythos"}));
 }
 
 function makeChoice(val) {
@@ -244,6 +249,7 @@ function updateCharacters(newCharacters) {
   for (let character of newCharacters) {
     let place = document.getElementById("place" + character.place);
     if (place == null) {
+      // TODO: may need to remove the character instead of letting them stay on the board.
       console.log("Unknown place " + character.place);
       continue;
     }
@@ -251,22 +257,31 @@ function updateCharacters(newCharacters) {
       characters[character.name] = createCharacterDiv(character.name);
       place.appendChild(characters[character.name]);
     } else {
-      moveCharacter(character.name, place);
+      animateMovingDiv(characters[character.name], place);
     }
   }
 }
 
-function updateMonsters(places) {
-  for (let name in places) {
-    let pDiv = document.getElementById("place" + name);
-    if (pDiv == null) {
+function updateMonsters(monster_list) {
+  for (let i = 0; i < monster_list.length; i++) {
+    let monster = monster_list[i];
+    if (monster == null || !monster.place || monster.place == "cup") {
+      if (monsters[i] != null) {
+        monsters[i].parentNode.removeChild(monsters[i]);  // TODO: animate
+        monsters[i] = null;
+      }
       continue;
     }
-    while (pDiv.getElementsByClassName("monster").length) {
-      pDiv.removeChild(pDiv.getElementsByClassName("monster")[0]);
+    let place = document.getElementById("place" + monster.place);
+    if (place == null) {
+      console.log("Unknown place " + character.place);
+      continue;
     }
-    for (let monster of places[name].monsters) {
-      pDiv.appendChild(createMonsterDiv(monster.name));
+    if (monsters[i] == null) {
+      monsters[i] = createMonsterDiv(monster.name);
+      place.appendChild(monsters[i]);
+    } else {
+      animateMovingDiv(monsters[i], place);
     }
   }
 }
@@ -409,14 +424,13 @@ function createCharacterDiv(name) {
   return div;
 }
 
-function moveCharacter(name, destDiv) {
-  let div = characters[name];
-  if (div.parentNode == destDiv) {
+function animateMovingDiv(div, destParent) {
+  if (div.parentNode == destParent) {
     return;
   }
   let oldRect = div.getBoundingClientRect();
   div.parentNode.removeChild(div);
-  destDiv.appendChild(div);
+  destParent.appendChild(div);
   let newRect = div.getBoundingClientRect();
   let diffX = Math.floor((oldRect.left - newRect.left) / scale);
   let diffY = Math.floor((oldRect.top - newRect.top) / scale);

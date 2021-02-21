@@ -4,6 +4,8 @@ import operator
 from random import SystemRandom
 random = SystemRandom()
 
+import eldritch.places as places
+
 
 class Event(metaclass=abc.ABCMeta):
   """The event types are as follows:
@@ -1340,12 +1342,12 @@ class SpawnGateMonster(Event):
 
     self.spawned = []
     num_to_spawn = 2 if len(state.characters) > 4 else 1
-    for _ in range(num_to_spawn):
-      # TODO: if there are no monsters left, the ancient one awakens
-      monster = random.choice(state.monster_cup)
-      state.monster_cup.remove(monster)
-      state.places[self.location_name].monsters.append(monster)
-      self.spawned.append(monster)
+    monster_cup = [monster for monster in state.monsters if monster.place == state.monster_cup]
+    # TODO: if there are no monsters left, the ancient one awakens.
+    self.spawned = random.sample(monster_cup, num_to_spawn)
+    # TODO: check against the monster limit, send some to the outskirts.
+    for monster in self.spawned:
+      monster.place = state.places[self.location_name]
     return True
 
   def is_resolved(self):
@@ -1415,3 +1417,82 @@ class SpawnClue(Event):
     else:
       receiving_player = self.eligible[self.choice.choice_index]
     return f"{receiving_player.name} received a clue."
+
+
+class MoveMonsters(Event):
+
+  def __init__(self, white_dimensions, black_dimensions):
+    self.white_dimensions = white_dimensions
+    self.black_dimensions = black_dimensions
+    self.moves = None
+
+  def resolve(self, state):
+    if self.moves is None:
+      self.moves = []
+      for monster in state.monsters:
+        if not isinstance(monster.place, places.CityPlace):
+          continue
+        if monster.dimension not in self.white_dimensions | self.black_dimensions:
+          continue
+
+        move_color = "white" if monster.dimension in self.white_dimensions else "black"
+        num_moves = 1
+        if monster.movement == "stationary":
+          num_moves = 0
+        elif monster.movement == "fast":
+          num_moves = 2
+        for _ in range(num_moves):
+          self.moves.append(MoveMonster(monster, move_color))
+
+    # self.moves has been set.
+    for move in self.moves:
+      if not move.is_resolved():
+        state.event_stack.append(move)
+        return False
+    return True
+
+  def is_resolved(self):
+    return self.moves is not None and all([move.is_resolved() for move in self.moves])
+
+  def start_str(self):
+    movement = ", ".join(self.white_dimensions) + " move on white, "
+    return movement + ", ".join(self.black_dimensions) + " move on black"
+
+  def finish_str(self):
+    return ""
+
+
+class MoveMonster(Event):
+
+  def __init__(self, monster, color):
+    self.monster = monster
+    self.color = color
+    self.source = None
+    self.destination = None
+
+  def resolve(self, state):
+    self.source = self.monster.place
+
+    if self.monster.place is None or not hasattr(self.monster.place, "movement"):
+      self.destination = False
+      return True
+
+    if self.color not in self.monster.place.movement:
+      self.destination = False
+      return True
+
+    self.destination = self.monster.place.movement[self.color]
+    self.monster.place = self.destination
+    # TODO: other movement types (flying, unique, stalker, aquatic)
+    return True
+
+  def is_resolved(self):
+    return self.destination is not None
+
+  def start_str(self):
+    return ""
+
+  def finish_str(self):
+    if not self.destination:
+      return ""
+    return f"{self.monster.name} moved from {self.source.name} to {self.destination.name}"

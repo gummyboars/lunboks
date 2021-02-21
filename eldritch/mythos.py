@@ -5,7 +5,7 @@ class MythosCard(object):
 
   def __init__(
       self, name, mythos_type, gate_location, clue_location, white_dimensions, black_dimensions,
-      event, environment_type=None,
+      environment_type=None,
     ):
     assert mythos_type in {"headline", "environment", "rumor"}
     if mythos_type == "environment":
@@ -24,5 +24,23 @@ class MythosCard(object):
     return events.Sequence([
       events.OpenGate(self.gate_location),
       events.SpawnClue(self.clue_location),
-      # TODO: monster movement
+      events.MoveMonsters(self.white_dimensions, self.black_dimensions),
     ])
+
+
+Mythos1 = MythosCard(
+    "All Quiet", "headline", "Woods", "Society", {"hex"}, {"slash", "triangle", "star"})
+Mythos2 = MythosCard(
+    "Alien Technology", "environment", "Isle", "Science", {"square", "diamond"}, {"circle"},
+    environment_type="urban",
+)
+Mythos3 = MythosCard(
+    "A Strange Plague", "environment", "Square", "Unnamable", {"square", "diamond"}, {"circle"},
+    environment_type="mystic",
+)
+Mythos4 = MythosCard(
+    "Bizarre Dreams", "headline", "Science", "Witch", {"hex"}, {"slash", "triangle", "star"})
+
+
+def CreateMythos():
+  return [Mythos1, Mythos2, Mythos3, Mythos4]

@@ -42,7 +42,17 @@ allyNames = [
 abilityNames = [
   "Medicine",
 ];
-monsterNames = ["Cultist", "Elder Thing", "Formless Spawn", "Ghoul", "Maniac", "Zombie"];
+monsterNames = [
+  "Cultist",
+  "Dimensional Shambler",
+  "Elder Thing",
+  "Formless Spawn",
+  "Ghost",
+  "Ghoul",
+  "Maniac",
+  "Warlock",
+  "Zombie",
+];
 gateNames = [
   "Abyss",
   "Another Dimension",

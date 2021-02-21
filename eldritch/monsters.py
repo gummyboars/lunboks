@@ -1,6 +1,12 @@
+class MonsterCup(object):
+
+  def __init__(self):
+    self.name = "cup"
+
+
 class Monster(object):
 
-  MOVEMENTS = {"normal", "fast", "stationary", "flying", "stalker", "unique"}
+  MOVEMENTS = {"normal", "fast", "stationary", "flying", "stalker", "aquatic", "unique"}
   DIMENSIONS = {"circle", "triangle", "moon", "hex", "square", "diamond", "star", "slash", "plus"}
   DIFFICULTIES = {"horror", "combat", "evade"}
   DAMAGES = {"horror", "combat"}
@@ -26,9 +32,16 @@ class Monster(object):
     self.damages = damages
     self._toughness = toughness
     self.attributes = attributes
+    self.place = None
 
   def json_repr(self):
-    return {"name": self.name}
+    return {
+        "name": self.name,
+        "movement": self.movement,
+        "dimension": self.dimension,
+        "attributes": sorted(list(self.attributes)),
+        "place": getattr(self.place, "name", None),
+    }
 
   @property
   def undead(self):
@@ -47,6 +60,11 @@ class Monster(object):
 
 def Cultist():
   return Monster("Cultist", "normal", "moon", {"evade": -3, "combat": 1}, {"combat": 1}, 1)
+def DimensionalShambler():
+  return Monster(
+      "Dimensional Shambler", "fast", "square", {"evade": -3, "horror": -2, "combat": -2},
+      {"horror": 2, "combat": 0}, 1,
+  )
 def ElderThing():  # TODO: custom class after adding item discarding
   return Monster(
       "Elder Thing", "normal", "diamond", {"evade": -2, "horror": -3, "combat": 0},
@@ -57,6 +75,11 @@ def FormlessSpawn():
       "Formless Spawn", "normal", "hex", {"evade": 0, "horror": -1, "combat": -2},
       {"horror": 2, "combat": 2}, 2, {"physical immunity"},
   )
+def Ghost():
+  return Monster(
+      "Ghost", "stationary", "moon", {"evade": -3, "horror": -2, "combat": -3},
+      {"horror": 2, "combat": 2}, 1, {"physical immunity", "undead"},
+  )
 def Ghoul():
   return Monster(
       "Ghoul", "normal", "hex", {"evade": -3, "horror": 0, "combat": -1},
@@ -64,6 +87,11 @@ def Ghoul():
   )
 def Maniac():  # TODO: custom class when we add globals
   return Monster("Maniac", "normal", "moon", {"evade": -1, "combat": 1}, {"combat": 1}, 1)
+def Warlock():  # TODO: succeeding at a combat check returns it to the box
+  return Monster(
+      "Warlock", "stationary", "circle", {"evade": -2, "horror": -1, "combat": -3},
+      {"horror": 1, "combat": 1}, 2, {"magical immunity"},
+  )
 def Zombie():
   return Monster(
       "Zombie", "normal", "moon", {"evade": 1, "horror": -1, "combat": -1},
@@ -71,16 +99,24 @@ def Zombie():
   )
 
 
-MONSTERS = {x().name: x for x in [Cultist, ElderThing, FormlessSpawn, Ghoul, Maniac, Zombie]}
+MONSTERS = {
+    x().name: x for x in [
+      Cultist, DimensionalShambler, ElderThing, FormlessSpawn, Ghost, Ghoul, Maniac, Warlock,
+      Zombie,
+    ]
+}
 
 
 def CreateMonsters():
   counts = {
       "Cultist": 6,
+      "Dimensional Shambler": 2,
       "Elder Thing": 2,
       "Formless Spawn": 2,
+      "Ghost": 3,
       "Ghoul": 3,
       "Maniac": 3,
+      "Warlock": 2,
       "Zombie": 3,
   }
   monsters = []
