@@ -3,10 +3,13 @@
   <meta content="text/html;charset=utf-8" http-equiv="Content-Type">
   <meta content="utf-8" http-equiv="encoding">
   <head>
-    <script type="text/javascript" src="/names.js"></script>
     <script type="text/javascript" src="/customization.js"></script>
   </head>
-  <body style="background: #4cb7d9" onload="initializeNameStrings(); initializeAssetNames();">
+  <body style="background: #4cb7d9">
+    <select id="assetgroup" onchange="changegroup(event)">
+      <option value="/names.js">Catan</option>
+      <option value="/eldritch/names.js">Eldritch</option>
+    </select>
     <canvas id="orig" width="800" height="600" onmousemove="onmove(event)" onmousedown="ondown(event)" onmouseup="onup(event)" onwheel="wheelie(event)"></canvas>
     <canvas id="myCanvas" width="418" height="362"></canvas>
     <div style="display: flex; flex-direction: row;">
@@ -27,6 +30,15 @@
     <input type="button" value="Save Image" onclick="saveimg()"></input>
     <div id="names" style="margin-top: 20px;"></div>
     <input type="button" value="Save Names" onclick="savenames()"></input>
+    <br />
+    <textarea id="sources" readonly="true"></textarea>
+    <br />
+    <textarea id="variants" readonly="true"></textarea>
+    <br />
+    <textarea id="imageinfo" readonly="true"></textarea>
+    <br />
+    <textarea id="shownames" readonly="true"></textarea>
+    <br />
     <p>Background color (for testing)<input id="bgcolor" type="text" value="#00bfff" onchange="changebg(null)" /></p>
     <img src="/hex.png" id="sourceimg" style="display: none" />
     <img src="/hex.png" id="filter" style="display: none" />

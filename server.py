@@ -54,7 +54,7 @@ class MyHandler(BaseHTTPRequestHandler):
     else:
       filepath = "/".join([ROOT_DIR, path])
     filepath = os.path.abspath(filepath)
-    allowable_dirs = [ROOT_DIR + "/eldritch", ROOT_DIR]
+    allowable_dirs = [ROOT_DIR + "/eldritch/images", ROOT_DIR + "/eldritch", ROOT_DIR]
     if os.path.dirname(filepath) not in allowable_dirs:
       print("dirname is %s but root is %s" % (os.path.dirname(filepath), allowable_dirs))
       self.send_error(HTTPStatus.FORBIDDEN.value, "Access to %s forbidden" % path)

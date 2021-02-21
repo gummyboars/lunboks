@@ -123,10 +123,10 @@ function changebg(e) {
 }
 function choosenew(e) {
   let chosen = document.getElementById("imgname").value;
-  let variants = JSON.parse(localStorage.getItem("customvariants") || "{}")[chosen];
+  let variants = JSON.parse(localStorage.getItem(assetPrefix + "customvariants") || "{}")[chosen];
   updatevariants(variants);
-  let imageData = JSON.parse(localStorage.getItem("customimageinfo") || "{}")[chosen];
-  let sources = JSON.parse(localStorage.getItem("customsources") || "[]");
+  let imageData = JSON.parse(localStorage.getItem(assetPrefix + "customimageinfo") || "{}")[chosen];
+  let sources = JSON.parse(localStorage.getItem(assetPrefix + "customsources") || "[]");
   if (!imageData) {
     imageData = {};
   }
@@ -176,7 +176,7 @@ function saveimg() {
   if (document.getElementById("filterSrc").value) {
     filterSrc = document.getElementById("filterSrc").value;
   }
-  let currentSources = JSON.parse(localStorage.getItem("customsources") || "[]");
+  let currentSources = JSON.parse(localStorage.getItem(assetPrefix + "customsources") || "[]");
   let imgIdx = currentSources.indexOf(imgSrc);
   if (imgIdx < 0) {
     imgIdx = currentSources.length;
@@ -190,7 +190,7 @@ function saveimg() {
       currentSources.push(filterSrc);
     }
   }
-  let variantInfo = JSON.parse(localStorage.getItem("customvariants") || "{}");
+  let variantInfo = JSON.parse(localStorage.getItem(assetPrefix + "customvariants") || "{}");
   if (imgVariant != "") {
     // TODO: cleanup unused image variants. And allow images without a default variant.
     if (!variantInfo[imgName]) {
@@ -200,7 +200,7 @@ function saveimg() {
       variantInfo[imgName]["variants"].push(imgVariant);
     }
   }
-  let imageInfo = JSON.parse(localStorage.getItem("customimageinfo") || "{}");
+  let imageInfo = JSON.parse(localStorage.getItem(assetPrefix + "customimageinfo") || "{}");
   let data = {
     xoff: parseFloat(document.getElementById("xoff").value),
     yoff: parseFloat(document.getElementById("yoff").value),
@@ -213,12 +213,15 @@ function saveimg() {
   }
   imageInfo[imgName + imgVariant] = data;
   compactSources(currentSources, imageInfo);
-  localStorage.setItem("customsources", JSON.stringify(currentSources));
-  localStorage.setItem("customvariants", JSON.stringify(variantInfo));
-  localStorage.setItem("customimageinfo", JSON.stringify(imageInfo));
-  localStorage.setItem("sources", JSON.stringify(currentSources));
-  localStorage.setItem("variants", JSON.stringify(variantInfo));
-  localStorage.setItem("imageinfo", JSON.stringify(imageInfo));
+  localStorage.setItem(assetPrefix + "customsources", JSON.stringify(currentSources));
+  localStorage.setItem(assetPrefix + "customvariants", JSON.stringify(variantInfo));
+  localStorage.setItem(assetPrefix + "customimageinfo", JSON.stringify(imageInfo));
+  localStorage.setItem(assetPrefix + "sources", JSON.stringify(currentSources));
+  localStorage.setItem(assetPrefix + "variants", JSON.stringify(variantInfo));
+  localStorage.setItem(assetPrefix + "imageinfo", JSON.stringify(imageInfo));
+  document.getElementById("sources").value = localStorage.getItem(assetPrefix + "sources");
+  document.getElementById("variants").value = localStorage.getItem(assetPrefix + "variants");
+  document.getElementById("imageinfo").value = localStorage.getItem(assetPrefix + "imageinfo");
 }
 function compactSources(sources, imageInfo) {
   let usedIdxs = {};
@@ -268,6 +271,9 @@ function compactSources(sources, imageInfo) {
   }
 }
 function initializeAssetNames() {
+  while (document.getElementById("imgname").children.length) {
+    document.getElementById("imgname").removeChild(document.getElementById("imgname").firstChild);
+  }
   for (imgName of assetNames) {
     let opt = document.createElement("OPTION");
     opt.value = imgName;
@@ -278,7 +284,10 @@ function initializeAssetNames() {
 }
 function initializeNameStrings() {
   let nameDiv = document.getElementById("names");
-  let names = JSON.parse(localStorage.getItem("customnames") || "{}");
+  while (nameDiv.children.length) {
+    nameDiv.removeChild(nameDiv.firstChild);
+  }
+  let names = JSON.parse(localStorage.getItem(assetPrefix + "customnames") || "{}");
   for (let name in serverNames) {
     let newDiv = document.createElement("DIV");
     let namespan = document.createElement("SPAN");
@@ -292,11 +301,28 @@ function initializeNameStrings() {
     nameDiv.appendChild(newDiv);
   }
 }
+function changesource(e) {
+  initializeNameStrings();
+  initializeAssetNames();
+}
+function changegroup(e) {
+  let old = document.getElementById("assetsource");
+  if (old != null) {
+    old.parentNode.removeChild(old);
+  }
+  let chosen = document.getElementById("assetgroup").value;
+  newScript = document.createElement("SCRIPT");
+  newScript.onload = changesource;
+  newScript.src = chosen;
+  newScript.id = "assetsource";
+  document.getElementsByTagName("HEAD")[0].appendChild(newScript);
+}
 function savenames(e) {
-  let currentNames = JSON.parse(localStorage.getItem("customnames") || "{}");
+  let currentNames = JSON.parse(localStorage.getItem(assetPrefix + "customnames") || "{}");
   for (let name in serverNames) {
     currentNames[name] = document.getElementById(name).value;
   }
-  localStorage.setItem("customnames", JSON.stringify(currentNames));
-  localStorage.setItem("names", JSON.stringify(currentNames));
+  localStorage.setItem(assetPrefix + "customnames", JSON.stringify(currentNames));
+  localStorage.setItem(assetPrefix + "names", JSON.stringify(currentNames));
+  document.getElementById("shownames").value = localStorage.getItem(assetPrefix + "names");
 }
