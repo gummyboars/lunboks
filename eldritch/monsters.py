@@ -85,8 +85,18 @@ def Ghoul():
       "Ghoul", "normal", "hex", {"evade": -3, "horror": 0, "combat": -1},
       {"horror": 1, "combat": 1}, 1, {"ambush"},
   )
+def FurryBeast():
+  return Monster(
+      "Furry Beast", "normal", "slash", {"evade": -2, "horror": -1, "combat": -2},
+      {"horror": 2, "combat": 4}, 3,  # TODO: overwhelming
+  )
 def Maniac():  # TODO: custom class when we add globals
   return Monster("Maniac", "normal", "moon", {"evade": -1, "combat": 1}, {"combat": 1}, 1)
+def DreamFlier():  # TODO: failing a combat check sends you through a gate
+  return Monster(
+      "Dream Flier", "flying", "slash", {"evade": -2, "horror": -1, "combat": -2},
+      {"horror": 1, "combat": 0}, 2,
+  )
 def Warlock():  # TODO: succeeding at a combat check returns it to the box
   return Monster(
       "Warlock", "stationary", "circle", {"evade": -2, "horror": -1, "combat": -3},
@@ -101,8 +111,8 @@ def Zombie():
 
 MONSTERS = {
     x().name: x for x in [
-      Cultist, DimensionalShambler, ElderThing, FormlessSpawn, Ghost, Ghoul, Maniac, Warlock,
-      Zombie,
+      Cultist, DimensionalShambler, ElderThing, FormlessSpawn, Ghost, Ghoul, FurryBeast, Maniac,
+      DreamFlier, Warlock, Zombie,
     ]
 }
 
@@ -115,7 +125,9 @@ def CreateMonsters():
       "Formless Spawn": 2,
       "Ghost": 3,
       "Ghoul": 3,
+      "Furry Beast": 2,
       "Maniac": 3,
+      "Dream Flier": 2,
       "Warlock": 2,
       "Zombie": 3,
   }

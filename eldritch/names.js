@@ -49,7 +49,9 @@ monsterNames = [
   "Formless Spawn",
   "Ghost",
   "Ghoul",
+  "Furry Beast",
   "Maniac",
+  "Dream Flier",
   "Warlock",
   "Zombie",
 ];

@@ -27,12 +27,16 @@ class CityPlace(object):
     return hash(self.name)
 
   def json_repr(self):
+    movement = {
+        "white": self.movement["white"].name if self.movement["white"] else None,
+        "black": self.movement["black"].name if self.movement["black"] else None,
+    }
     return {
         "name": self.name,
         "long_name": self.long_name,
         "connections": [x.name for x in self.connections],
-        "movement": {"white": self.movement["white"].name, "black": self.movement["black"].name},
-        "neighborhood": self.neighborhood.name,
+        "movement": movement,
+        "neighborhood": self.neighborhood.name if self.neighborhood else None,
         "closed": self.closed,
     }
 
@@ -45,6 +49,18 @@ class CityPlace(object):
     assert destination in self.connections
     assert color in self.MOVEMENT_OPPOSITES
     self.movement[color] = destination
+
+
+class Sky(CityPlace):
+
+  def __init__(self):
+    super(Sky, self).__init__("Sky", "Sky")
+
+
+class Outskirts(CityPlace):
+
+  def __init__(self):
+    super(Outskirts, self).__init__("Outskirts", "Outskirts")
 
 
 class Street(CityPlace):
@@ -166,6 +182,8 @@ def CreatePlaces():
         # Streets
         Northside, Downtown, Easttown, Rivertown,
         FrenchHill, Southside, Uptown, University, Merchant,
+        # Other
+        Sky(), Outskirts(),
       ]
   }
 

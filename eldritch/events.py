@@ -1496,3 +1496,55 @@ class MoveMonster(Event):
     if not self.destination:
       return ""
     return f"{self.monster.name} moved from {self.source.name} to {self.destination.name}"
+
+
+class ReturnToCup(Event):
+
+  def __init__(self, names=None, places=None):
+    assert names or places
+    assert not (names and places)
+    self.names = set(names) if names else None
+    self.places = set(places) if places else None
+    self.returned = None
+
+  def resolve(self, state):
+    if self.returned is not None:
+      return True
+
+    count = 0
+    if self.places:
+      place_classes = []
+      if "locations" in self.places:
+        self.places.remove("locations")
+        place_classes.append(places.Location)
+      if "streets" in self.places:
+        self.places.remove("streets")
+        place_classes.append(places.Street)
+      if place_classes:
+        for name, place in state.places.items():
+          if not isinstance(place, tuple(place_classes)):
+            continue
+          self.places.add(name)
+
+      for monster in state.monsters:
+        if getattr(monster.place, "name", None) in self.places:
+          monster.place = state.monster_cup
+          count += 1
+    if self.names:
+      for monster in state.monsters:
+        if monster.name in self.names and isinstance(monster.place, places.CityPlace):
+          monster.place = state.monster_cup
+          count += 1
+    self.returned = count
+    return True
+
+  def is_resolved(self):
+    return self.returned is not None
+
+  def start_str(self):
+    if self.names is not None:
+      return "All " + ", ".join(self.names) + " will be returned to the cup."
+    return "All monsters in " + ", ".join(self.places) + " will be returned to the cup."
+
+  def finish_str(self):
+    return f"{self.returned} monsters returned to the cup"
