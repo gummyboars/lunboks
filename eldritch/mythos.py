@@ -133,5 +133,21 @@ class Mythos11(MythosCard):
     return seq
 
 
+class Mythos45(MythosCard):
+
+  def __init__(self):
+    super(Mythos45, self).__init__(
+        "Mythos45", "environment", "Woods", "Society", {"slash", "triangle", "star"}, {"hex"},
+        environment_type="mystic",
+    )
+
+  def get_modifier(self, thing, attribute):
+    if thing.name in ("Maniac", "Octopoid") and attribute == "toughness":
+      return 1
+    if thing.name == "Sunken City" and attribute == "difficulty":
+      return -1
+    return 0
+
+
 def CreateMythos():
-  return [Mythos1(), Mythos2(), Mythos3(), Mythos4(), Mythos5(), Mythos11()]
+  return [Mythos1(), Mythos2(), Mythos3(), Mythos4(), Mythos5(), Mythos11(), Mythos45()]

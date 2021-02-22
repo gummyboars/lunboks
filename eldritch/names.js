@@ -52,6 +52,7 @@ monsterNames = [
   "Furry Beast",
   "Maniac",
   "Dream Flier",
+  "Octopoid",
   "Warlock",
   "Zombie",
 ];

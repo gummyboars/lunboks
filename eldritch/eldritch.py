@@ -53,6 +53,7 @@ class GameState(object):
     self.rumor = None
     self.environment = None
     self.ancient_one = None
+    self.other_globals = []
     self.check_result = None
     self.dice_result = []
 
@@ -82,6 +83,17 @@ class GameState(object):
     self.characters = characters.CreateCharacters()
     for char in self.characters:
       char.place = self.places[char.home]
+
+  def get_modifier(self, thing, attribute):
+    modifier = 0
+    for glob in self.globals():
+      if not glob:
+        continue
+      modifier += glob.get_modifier(thing, attribute)
+    return modifier
+
+  def globals(self):
+    return [self.rumor, self.environment, self.ancient_one] + self.other_globals
 
   def game_status(self):
     return "eldritch game"  # TODO

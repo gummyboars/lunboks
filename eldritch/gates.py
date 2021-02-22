@@ -2,7 +2,7 @@ class Gate(object):
 
   def __init__(self, info, difficulty):
     self.info = info
-    self.difficulty = difficulty
+    self._difficulty = difficulty
 
   @property
   def name(self):
@@ -11,6 +11,9 @@ class Gate(object):
   @property
   def colors(self):
     return self.info.colors
+
+  def difficulty(self, state):
+    return self._difficulty + state.get_modifier(self, "difficulty")
 
   def json_repr(self):
     return {"name": self.name, "colors": sorted(list(self.colors))}

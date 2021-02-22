@@ -1169,18 +1169,17 @@ class Combat(Event):
   def __init__(self, character, monster):
     self.character = character
     self.monster = monster
-    if monster.difficulty("horror") is not None:
-      self.horror = Check(character, "horror", monster.difficulty("horror"))
-      self.sanity_loss = Loss(character, {"sanity": monster.damage("horror")})
-    else:
-      self.horror = None
-      self.sanity_loss = None
+    self.horror = None
+    self.sanity_loss = None
     self.choice = None
     self.evade = None
     self.combat = None
     self.done = False
 
   def resolve(self, state):
+    if self.monster.difficulty("horror", state) is not None and self.horror is None:
+      self.horror = Check(self.character, "horror", self.monster.difficulty("horror", state))
+      self.sanity_loss = Loss(self.character, {"sanity": self.monster.damage("horror", state)})
     if self.horror is not None:
       if not self.horror.is_resolved():
         state.event_stack.append(self.horror)
@@ -1221,24 +1220,27 @@ class EvadeRound(Event):
   def __init__(self, character, monster):
     self.character = character
     self.monster = monster
-    self.check = Check(character, "evade", monster.difficulty("evade"))
-    self.damage = Loss(character, {"stamina": monster.damage("combat")})
+    self.check = None
+    self.damage = None
     self.evaded = None
 
   def resolve(self, state):
     if self.evaded is not None:
       return True
+    if self.check is None:
+      self.check = Check(self.character, "evade", self.monster.difficulty("evade", state))
     if not self.check.is_resolved():
       state.event_stack.append(self.check)
       return False
     if self.check.successes >= 1:
       self.evaded = True
       return True
+    self.damage = Loss(self.character, {"stamina": self.monster.damage("combat", state)})
     state.event_stack.append(self.damage)
     return False
 
   def is_resolved(self):
-    return self.evaded or self.damage.is_resolved()
+    return self.evaded or (self.damage is not None and self.damage.is_resolved())
 
   def start_str(self):
     return f"{self.character.name} attempted to flee from {self.monster.name}"
@@ -1254,9 +1256,9 @@ class CombatRound(Event):
   def __init__(self, character, monster):
     self.character = character
     self.monster = monster
+    self.check = None
+    self.damage = None
     self.choice = CombatChoice(character, f"Choose weapons to fight the {monster.name}")
-    self.check = Check(character, "combat", monster.difficulty("combat"))
-    self.damage = Loss(character, {"stamina": monster.damage("combat")})
     self.defeated = None
 
   def resolve(self, state):
@@ -1265,19 +1267,22 @@ class CombatRound(Event):
     if not self.choice.is_resolved():
       state.event_stack.append(self.choice)
       return False
+    if self.check is None:
+      self.check = Check(self.character, "combat", self.monster.difficulty("combat", state))
     if not self.check.is_resolved():
       state.event_stack.append(self.check)
       return False
-    if self.check.successes >= self.monster.toughness:
+    if self.check.successes >= self.monster.toughness(state):
       # TODO: take the monster as a trophy
       self.defeated = True
       return True
     self.defeated = False
+    self.damage = Loss(self.character, {"stamina": self.monster.damage("combat", state)})
     state.event_stack.append(self.damage)
     return False
 
   def is_resolved(self):
-    return self.defeated or self.damage.is_resolved()
+    return self.defeated or (self.damage is not None and self.damage.is_resolved())
 
   def start_str(self):
     return f"{self.character.name} started a combat round against a {self.monster.name}"

@@ -47,15 +47,20 @@ class Monster(object):
   def undead(self):
     return "undead" in self.attributes
 
-  def difficulty(self, check_type):
+  def difficulty(self, check_type, state):
+    modifier = state.get_modifier(self, check_type + "difficulty")
+    if modifier:
+      return (self.difficulties.get(check_type) or 0) + modifier
     return self.difficulties.get(check_type)
 
-  def damage(self, check_type):
+  def damage(self, check_type, state):
+    modifier = state.get_modifier(self, check_type + "damage")
+    if modifier:
+      return (self.damages.get(check_type) or 0) + modifier
     return self.damages.get(check_type)
 
-  @property
-  def toughness(self):
-    return self._toughness
+  def toughness(self, state):
+    return self._toughness + state.get_modifier(self, "toughness")
 
 
 def Cultist():
@@ -97,6 +102,11 @@ def DreamFlier():  # TODO: failing a combat check sends you through a gate
       "Dream Flier", "flying", "slash", {"evade": -2, "horror": -1, "combat": -2},
       {"horror": 1, "combat": 0}, 2,
   )
+def Octopoid():
+  return Monster(
+      "Octopoid", "normal", "plus", {"evade": -1, "horror": -3, "combat": -3},
+      {"horror": 2, "combat": 3}, 3,
+  )
 def Warlock():  # TODO: succeeding at a combat check returns it to the box
   return Monster(
       "Warlock", "stationary", "circle", {"evade": -2, "horror": -1, "combat": -3},
@@ -112,7 +122,7 @@ def Zombie():
 MONSTERS = {
     x().name: x for x in [
       Cultist, DimensionalShambler, ElderThing, FormlessSpawn, Ghost, Ghoul, FurryBeast, Maniac,
-      DreamFlier, Warlock, Zombie,
+      DreamFlier, Octopoid, Warlock, Zombie,
     ]
 }
 
@@ -128,6 +138,7 @@ def CreateMonsters():
       "Furry Beast": 2,
       "Maniac": 3,
       "Dream Flier": 2,
+      "Octopoid": 2,
       "Warlock": 2,
       "Zombie": 3,
   }
