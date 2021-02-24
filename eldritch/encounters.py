@@ -367,6 +367,136 @@ def Isle7(char):
   clues = events.Gain(char, {"clues": 2})
   return events.PassFail(char, check, clues, events.Nothing())
 
+def Hospital1(char):
+  return events.Loss(char, {"clues": 1})
+def Hospital2(char):
+  prep = events.CombatChoice(char, "Choose weapons to fight the corpse")
+  check = events.Check(char, "combat", -1)
+  won = events.Gain(char, {"clues", 1})
+  lost = events.ForceMovement(char, "Uptown")
+  cond = events.Conditional(char, check, "successes", {0: lost, 1: won})
+  return events.Sequence([prep, check, cond], char)
+def Hospital3(char):
+  die = events.DiceRoll(char, 1)
+  # TODO: On a 1-3 gain that many stamina, on a 4-6 nothing happens.
+  return events.Nothing(char)
+def Hospital4(char):
+  check = events.Check(char, "luck", -1)
+  gain = events.Gain(char, {"sanity": 2, "dollars": 3})
+  fail1 = events.Lose(char, {"sanity": 2})
+  fail2 = events.ForceMove(char, "Uptown")
+  fail = events.Sequence([fail1, fail2], char)
+  return events.PassFail(char, check, gain, fail)
+def Hospital5(char):
+  check = events.Check(char, "sneak", -1)
+  gain = events.Draw(char, "spells", 1)
+  return events.PassFail(char, check, gain, events.Nothing(char))
+def Hospital6(char):
+  check = events.Check(char, "will", -1)
+  item = events.Draw(char, "unique", 1)
+  fail1 = events.Lose(char, {"sanity":1})
+  fail2 = events.ForceMovement(char, "Uptown")
+  fail = events.Sequence([fail1, fail2], char)
+  return events.PassFail(char, check, item, fail)
+def Hospital7(char):
+  check = events.Check(char, "lore", 0)
+  clue = events.Gain(char, {"clues": 1})
+  return events.PassFail(char, check, clue, events.Nothing(char))
+
+def Woods1(char):
+  box = events.Check(char, "luck", 0)
+  foot = events.Lose(char, {"sanity": 1})
+  common = events.Draw(char, "common", 1)
+  unique = events.Draw(char, "unique", 1)
+  jewelry = events.Gain(char, {"dollars": 1})
+  cond = events.Conditional(char, box, "successes", {0: foot, 1: common, 2: unique, 3: jewelry})
+  open_box = events.Sequence([box, cond], char)
+  return events.BinaryChoice(char, "Open the locked box?", "Yes", "No", open_box, events.Nothing(char))
+def Woods2(char):
+  check = events.Check(char, "sneak", -1)
+  make_check = events.PassFail(char, check, events.Nothing, events.Loss(char, {"stamina":2}))
+  leave = events.ForceMovement(char, "Uptown")
+  return events.Sequence([make_check, leave], char)
+def Woods3(char):
+  check = events.Check(char, "sneak", -2)
+  shotgun = events.DrawSpecific(char, "common", "Shotgun")
+  fail = events.Sequence([events.Loss(char, {'stamina': 2}), events.ForceMovement(char, "Uptown")], char)
+  return events.PassFail(char, check, shotgun, fail)
+def Woods4(char):
+  check = events.Check(char, "luck", -1)
+  bushwhack1a = events.ItemChoice(char, "Choose first item to lose")
+  bushwhack1b = events.DiscardSpecific(char, bushwhack1a)
+  bushwhack1c = events.ItemChoice(char, "Choose second item to lose")
+  bushwhack1d = events.DiscardSpecific(char, bushwhack1d)
+  bushwhack2 = events.Loss(char, {"stamina": 2})
+  bushwhack = events.Sequence([
+    bushwhack1a,
+    bushwhack1b,
+    bushwhack1c,
+    bushwhack1d,
+    bushwhack2,
+  ], char)
+  return events.PassFail(char, check, events.Nothing(char), bushwhack)
+def Woods5(char):
+  #TODO: Check whether you have food to give to the doggy
+  #prereq = events.ItemPrerequisite(char, "Food")
+  prereq = events.Nothing(char)
+  check = events.Check(char, "speed", -2)
+  #TODO: Check whether the ally is available in the deck
+  #dog = events.GainAllyIfAvailable(char, "Doggy", otherwise={"dollars": 3})
+  dog = events.Nothing(char)
+  give_food = events.DiscardSpecific(char, "Food")
+  catch = events.PassFail(char, check, dog, events.Nothing(char))
+  seq = events.Sequence([give_food, dog], char)
+  choose_give_food = events.BinaryChoice(char, "Give food to the dog?", "Yes", "No", seq, catch)
+  return events.PassFail(char, prereq, choose_give_food, catch)
+def Woods6(char):
+  #TODO: A Gate and a Monster appear
+  return events.Nothing(char)
+def Woods7(char):
+  choice = events.MultipleChoice(char, "Which would you like to gain?", ["A skill", "2 spells", "4 clues"])
+  skill = events.Draw(char, "skills", 1)
+  spells = events.Draw(char, "spells", 2)
+  clues = events.Gain(char, {"clues": 4})
+  gain = events.Conditional(char, choice, "choice_index", {"A skill": skill, "2 spells": spells, "4 clues": clues})
+  gains = events.Sequence([choice, gain], char)
+  check = events.Check(char, "lore", -2)
+  cond = events.PassFail(char, check, gains, events.Nothing)
+  turn = events.LoseTurn(char)
+  seq = events.Sequence([turn, cond], char)
+  return events.BinaryChoice(char, "Share in the old wise-guy's wisdom?", "Yes", "No", seq, events.Nothing(char))
+
+def MagickShoppe1(char):
+  return events.Loss(char, {"sanity": 1})
+def MagickShoppe2(char):
+  #TODO: Implement "Turn the top card of one location deck face up, next player to have an enounter there draws that encounter"
+  return events.Nothing(char)
+def MagickShoppe3(char):
+  prereq = events.AttributePrerequisite(char, "dollars", 5, "at_least")
+  luck = events.Check(char, "luck", 0)
+  dice = events.DiceRoll(char, 2)
+  coins = events.Gain(char, {"dollars": dice})
+  jackpot = events.Draw(char, "unique", 2)
+  cond = events.Conditional(char, luck, "successes", {0: events.Nothing(char), 1: coins, 2: jackpot})
+  box = events.BinaryChoice(char, "Buy the locked trunk?", "Yes", "No", cond, events.Nothing(char))
+  return events.PassFail(prereq, box, events.Nothing(char))
+def MagickShoppe4(char):
+  check = events.Check(char, "lore", -1)
+  curse = events.Curse(char)
+  return events.PassFail(char, check, events.Nothing(char), curse)
+def MagickShoppe5(char):
+  return events.Gain(char, {"clues": 1})
+def MagickShoppe6(char):
+  check = events.Check(char, "lore", -1)
+  # TODO: Implement buying at a discount
+  underpriced = events.Nothing(char)
+  return events.PassFail(char, check, underpriced, events.Nothing(char))
+def MagickShoppe7(char):
+  move = events.ForceMovement(char, "Uptown")
+  san = events.Loss(char, {"sanity": 1})
+  return events.Sequence([move, san], char)
+
+
 def CreateEncounterCards():
   return {
       "Downtown": [
@@ -412,4 +542,13 @@ def CreateEncounterCards():
       "University": [
         EncounterCard("University7", {"Administration": Administration7}),
       ],
+      "Uptown": [
+        EncounterCard("Uptown1", {"Hospital": Hospital1, "Woods": Woods1, "MagickShoppe": MagickShoppe1}),
+        EncounterCard("Uptown2", {"Hospital": Hospital2, "Woods": Woods2, "MagickShoppe": MagickShoppe2}),
+        EncounterCard("Uptown3", {"Hospital": Hospital3, "Woods": Woods3, "MagickShoppe": MagickShoppe3}),
+        EncounterCard("Uptown4", {"Hospital": Hospital4, "Woods": Woods4, "MagickShoppe": MagickShoppe4}),
+        EncounterCard("Uptown5", {"Hospital": Hospital5, "Woods": Woods5, "MagickShoppe": MagickShoppe5}),
+        EncounterCard("Uptown6", {"Hospital": Hospital6, "Woods": Woods6, "MagickShoppe": MagickShoppe6}),
+        EncounterCard("Uptown7", {"Hospital": Hospital7, "Woods": Woods7, "MagickShoppe": MagickShoppe7}),
+      ]
   }
