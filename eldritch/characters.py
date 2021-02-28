@@ -33,15 +33,15 @@ class Character(object):
     self.lodge_membership = False
     self.delayed_until = None
     self.lose_turn_until = None
-    self.movement_points = self.speed
+    self.movement_points = self._speed_sneak[self.speed_sneak_slider][0]
     self.focus_points = self.focus
     self.home = home
     self.place = None
 
-  def json_repr(self):
+  def get_json(self, state):
     attrs = [
         "name", "max_stamina", "max_sanity", "stamina", "sanity", "focus",
-        "speed", "sneak", "fight", "will", "lore", "luck", "movement_points", "focus_points",
+        "movement_points", "focus_points",
         "dollars", "clues", "possessions", # TODO: special cards
         "delayed_until", "lose_turn_until",
     ]
@@ -52,6 +52,8 @@ class Character(object):
           "pairs": getattr(self, "_" + slider),
           "selection": getattr(self, slider + "_slider"),
       }
+    computed = ["speed", "sneak", "fight", "will", "lore", "luck"]
+    data.update({attr: getattr(self, attr)(state) for attr in computed})
     data["place"] = self.place.name
     return data
 
@@ -64,45 +66,35 @@ class Character(object):
   def max_sanity(self):
     return self._max_sanity
 
-  @property
-  def speed(self):
-    return self._speed_sneak[self.speed_sneak_slider][0] + self.bonus("speed")
+  def speed(self, state):
+    return self._speed_sneak[self.speed_sneak_slider][0] + self.bonus("speed", state)
 
-  @property
-  def sneak(self):
-    return self._speed_sneak[self.speed_sneak_slider][1] + self.bonus("sneak")
+  def sneak(self, state):
+    return self._speed_sneak[self.speed_sneak_slider][1] + self.bonus("sneak", state)
 
-  @property
-  def fight(self):
-    return self._fight_will[self.fight_will_slider][0] + self.bonus("fight")
+  def fight(self, state):
+    return self._fight_will[self.fight_will_slider][0] + self.bonus("fight", state)
 
-  @property
-  def will(self):
-    return self._fight_will[self.fight_will_slider][1] + self.bonus("will")
+  def will(self, state):
+    return self._fight_will[self.fight_will_slider][1] + self.bonus("will", state)
 
-  @property
-  def lore(self):
-    return self._lore_luck[self.lore_luck_slider][0] + self.bonus("lore")
+  def lore(self, state):
+    return self._lore_luck[self.lore_luck_slider][0] + self.bonus("lore", state)
 
-  @property
-  def luck(self):
-    return self._lore_luck[self.lore_luck_slider][1] + self.bonus("luck")
+  def luck(self, state):
+    return self._lore_luck[self.lore_luck_slider][1] + self.bonus("luck", state)
 
-  @property
-  def evade(self):
-    return self.sneak + self.bonus("evade")
+  def evade(self, state):
+    return self.sneak(state) + self.bonus("evade", state)
 
-  @property
-  def combat(self):
-    return self.fight + self.bonus("combat")
+  def combat(self, state):
+    return self.fight(state) + self.bonus("combat", state)
 
-  @property
-  def horror(self):
-    return self.will + self.bonus("horror")
+  def horror(self, state):
+    return self.will(state) + self.bonus("horror", state)
 
-  @property
-  def spell(self):
-    return self.lore + self.bonus("spell")
+  def spell(self, state):
+    return self.lore(state) + self.bonus("spell", state)
 
   @property
   def focus(self):
@@ -136,8 +128,9 @@ class Character(object):
       triggers[-1] = events.SpendClue(self, event)
     return triggers
 
-  def bonus(self, check_name):
-    return sum([p.get_bonus(check_name) for p in self.possessions])
+  def bonus(self, check_name, state):
+    modifier = state.get_modifier(self, check_name)
+    return sum([p.get_bonus(check_name) for p in self.possessions]) + modifier
 
   def count_successes(self, roll, check_type):
     threshold = 5 - self.bless_curse

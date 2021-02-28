@@ -21,7 +21,7 @@ class CombatTest(EventTest):
 
   def testCombatFight(self):
     self.char.fight_will_slider = 0
-    self.assertEqual(self.char.fight, 1)
+    self.assertEqual(self.char.fight(self.state), 1)
     cultist = monsters.Cultist()
     combat = Combat(self.char, cultist)
     self.state.event_stack.append(combat)
@@ -45,7 +45,7 @@ class CombatTest(EventTest):
     self.char.fight_will_slider = 0
     self.char.speed_sneak_slider = 0
     self.assertEqual(self.char.stamina, 5)
-    self.assertEqual(self.char.sneak, 4)
+    self.assertEqual(self.char.sneak(self.state), 4)
     cultist = monsters.Cultist()
     combat = Combat(self.char, cultist)
     self.state.event_stack.append(combat)
@@ -83,8 +83,8 @@ class CombatTest(EventTest):
 
   def testCombatWithHorror(self):
     self.char.fight_will_slider = 3
-    self.assertEqual(self.char.fight, 4)
-    self.assertEqual(self.char.will, 1)
+    self.assertEqual(self.char.fight(self.state), 4)
+    self.assertEqual(self.char.will(self.state), 1)
     self.assertEqual(self.char.stamina, 5)
     self.assertEqual(self.char.sanity, 5)
     zombie = monsters.Zombie()
@@ -128,7 +128,7 @@ class CombatTest(EventTest):
 
   def testCombatRoundWithGlobal(self):
     self.char.fight_will_slider = 0
-    self.assertEqual(self.char.fight, 1)
+    self.assertEqual(self.char.fight(self.state), 1)
     maniac = monsters.Maniac()
     self.assertEqual(maniac.toughness(self.state), 1)
 
@@ -156,7 +156,7 @@ class CombatOrEvadeTest(EventTest):
 
   def testEvadeMeansNoHorror(self):
     self.char.fight_will_slider = 3
-    self.assertEqual(self.char.will, 1)
+    self.assertEqual(self.char.will(self.state), 1)
     self.assertEqual(self.char.sanity, 5)
     zombie = monsters.Zombie()
     choice = EvadeOrCombat(self.char, zombie)
@@ -175,7 +175,7 @@ class CombatOrEvadeTest(EventTest):
 
   def testFailEvadeMeansCombat(self):
     self.char.fight_will_slider = 3
-    self.assertEqual(self.char.will, 1)
+    self.assertEqual(self.char.will(self.state), 1)
     self.assertEqual(self.char.sanity, 5)
     self.assertEqual(self.char.stamina, 5)
     zombie = monsters.Zombie()
@@ -197,7 +197,7 @@ class LoseCombatTest(EventTest):
 
   def testHorrorInsane(self):
     self.char.fight_will_slider = 3
-    self.assertEqual(self.char.will, 1)
+    self.assertEqual(self.char.will(self.state), 1)
     self.char.sanity = 1
     zombie = monsters.Zombie()
     cultist = monsters.Cultist()
@@ -227,7 +227,7 @@ class LoseCombatTest(EventTest):
 
   def helpTestCombatUnconscious(self, starting_stamina):
     self.char.fight_will_slider = 0
-    self.assertEqual(self.char.fight, 1)
+    self.assertEqual(self.char.fight(self.state), 1)
     self.char.stamina = starting_stamina
     zombie = monsters.Zombie()
     combat = Combat(self.char, zombie)
@@ -250,7 +250,7 @@ class LoseCombatTest(EventTest):
 
   def testMultiRoundUnconscious(self):
     self.char.stamina = 2
-    self.assertEqual(self.char.sneak, 1)
+    self.assertEqual(self.char.sneak(self.state), 1)
     cultist = monsters.Cultist()
     combat = Combat(self.char, cultist)
     self.state.event_stack.append(combat)

@@ -102,10 +102,13 @@ class GameState(object):
     output = {}
     output.update({
       key: getattr(self, key) for key in
-      self.__dict__.keys() - self.DEQUE_ATTRIBUTES - self.HIDDEN_ATTRIBUTES
+      self.__dict__.keys() - self.DEQUE_ATTRIBUTES - self.HIDDEN_ATTRIBUTES - {"characters"}
     })
     for attr in self.DEQUE_ATTRIBUTES:
       output[attr] = list(getattr(self, attr))
+    output["characters"] = []
+    for char in self.characters:
+      output["characters"].append(char.get_json(self))
     return output
 
   def for_player(self, char_idx):

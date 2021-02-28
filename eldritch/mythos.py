@@ -121,6 +121,27 @@ class Mythos5(MythosCard):
     return seq
 
 
+class Mythos6(MythosCard):
+
+  def __init__(self):
+    super(Mythos6, self).__init__(
+        "Mythos6", "environment", "Graveyard", "Isle", {"plus"}, {"moon"},
+        environment_type="weather",
+    )
+
+  def get_modifier(self, thing, attribute):
+    if attribute == "will":
+      return -1
+    if attribute == "sneak":
+      return 1
+    return 0
+
+  def get_interrupt(self, event, owner, state):
+    if isinstance(event, events.MoveMonster) and event.monster.movement == "flying":
+      return None  # TODO: prevent movement
+    return None
+
+
 class Mythos11(MythosCard):
 
   def __init__(self):
@@ -150,4 +171,4 @@ class Mythos45(MythosCard):
 
 
 def CreateMythos():
-  return [Mythos1(), Mythos2(), Mythos3(), Mythos4(), Mythos5(), Mythos11(), Mythos45()]
+  return [Mythos1(), Mythos2(), Mythos3(), Mythos4(), Mythos5(), Mythos6(), Mythos11(), Mythos45()]

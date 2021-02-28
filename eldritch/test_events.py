@@ -500,7 +500,7 @@ class CheckTest(EventTest):
   @mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=[4, 5, 1, 3]))
   def testCheck(self):
     check = Check(self.char, "speed", 0)
-    self.assertEqual(self.char.speed, 4)
+    self.assertEqual(self.char.speed(self.state), 4)
     self.assertFalse(check.is_resolved())
 
     self.state.event_stack.append(check)
@@ -514,7 +514,7 @@ class CheckTest(EventTest):
   @mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=[4, 4]))
   def testCheckWithModifier(self):
     check = Check(self.char, "will", 1)
-    self.assertEqual(self.char.will, 1)
+    self.assertEqual(self.char.will(self.state), 1)
     self.assertFalse(check.is_resolved())
 
     self.state.event_stack.append(check)
@@ -528,7 +528,7 @@ class CheckTest(EventTest):
   @mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=[4]))
   def testCheckBlessed(self):
     check = Check(self.char, "sneak", 0)
-    self.assertEqual(self.char.sneak, 1)
+    self.assertEqual(self.char.sneak(self.state), 1)
     self.char.bless_curse = 1
     self.assertFalse(check.is_resolved())
 
@@ -544,7 +544,7 @@ class CheckTest(EventTest):
   def testSubCheck(self):
     check = Check(self.char, "horror", 0)
     self.char.possessions.append(abilities.Will())
-    self.assertEqual(self.char.will, 2)
+    self.assertEqual(self.char.will(self.state), 2)
     self.assertFalse(check.is_resolved())
 
     self.state.event_stack.append(check)

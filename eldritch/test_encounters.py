@@ -456,7 +456,7 @@ class SocietyTest(EncounterTest):
     self.state.event_stack.append(encounters.Society4(self.char))
     self.state.skills.extend([abilities.Marksman(), abilities.Fight()])
     self.char.lore_luck_slider = 2
-    self.assertEqual(self.char.luck, 2)
+    self.assertEqual(self.char.luck(self.state), 2)
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       self.resolve_until_done()
     self.assertEqual(len(self.char.possessions), 0)

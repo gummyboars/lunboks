@@ -250,5 +250,14 @@ class ReturnToCupTest(EventTest):
     self.assertEqual(self.dream_flier.place.name, "Sky")
 
 
+class GlobalModifierTest(EventTest):
+
+  def testEnvironmentModifier(self):
+    self.assertEqual(self.char.will(self.state), 1)
+    mythos = Mythos6()
+    self.state.environment = mythos
+    self.assertEqual(self.char.will(self.state), 0)
+
+
 if __name__ == '__main__':
   unittest.main()

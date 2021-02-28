@@ -757,6 +757,7 @@ class AttributePrerequisite(Event):
         "exactly": operator.eq,
     }
     assert operand in oper_map
+    assert attribute in {"dollars", "clues", "stamina", "sanity", "movement_points"}
     self.character = character
     self.attribute = attribute
     self.threshold = threshold
@@ -794,7 +795,7 @@ class Check(Event):
   def resolve(self, state):
     # TODO: the check may have an opponent? like undead monsters?
     if self.dice is None:
-      num_dice = getattr(self.character, self.check_type) + self.modifier
+      num_dice = getattr(self.character, self.check_type)(state) + self.modifier
       self.dice = DiceRoll(self.character, num_dice)
       state.event_stack.append(self.dice)
       return False
