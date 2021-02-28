@@ -1554,3 +1554,24 @@ class ReturnToCup(Event):
 
   def finish_str(self):
     return f"{self.returned} monsters returned to the cup"
+
+
+class ActivateEnvironment(Event):
+
+  def __init__(self, environment):
+    self.env = environment
+    self.done = False
+
+  def resolve(self, state):
+    state.environment = self.env
+    self.done = True
+    return True
+
+  def is_resolved(self):
+    return self.done
+
+  def start_str(self):
+    return ""
+
+  def finish_str(self):
+    return f"{self.env.name} is the new environment"

@@ -21,22 +21,12 @@ class GlobalEffect(object):
 
 class MythosCard(GlobalEffect):
 
-  def __init__(
-      self, name, mythos_type, gate_location, clue_location, white_dimensions, black_dimensions,
-      environment_type=None,
-    ):
-    assert mythos_type in {"headline", "environment", "rumor"}
-    if mythos_type == "environment":
-      assert environment_type in {"urban", "mystic", "weather"}
-    else:
-      assert environment_type is None
+  def __init__(self, name, gate_location, clue_location, white_dimensions, black_dimensions):
     self.name = name
-    self.mythos_type = mythos_type
     self.gate_location = gate_location
     self.clue_location = clue_location
     self.white_dimensions = white_dimensions
     self.black_dimensions = black_dimensions
-    self.environment_type = environment_type
 
   def create_event(self, state):
     return events.Sequence([
@@ -45,12 +35,34 @@ class MythosCard(GlobalEffect):
       events.MoveMonsters(self.white_dimensions, self.black_dimensions),
     ])
 
+  def json_repr(self):
+    return self.name
 
-class Mythos1(MythosCard):
+
+class Headline(MythosCard):
+  pass
+
+
+class Environment(MythosCard):
+
+  def __init__(
+      self, name, gate_location, clue_location, white_dimensions, black_dimensions, env_type):
+    super(Environment, self).__init__(
+        name, gate_location, clue_location, white_dimensions, black_dimensions)
+    assert env_type in {"weather", "urban", "mystic"}
+    self.environment_type = env_type
+
+  def create_event(self, state):
+    seq = super(Environment, self).create_event(state)
+    seq.events.append(events.ActivateEnvironment(self))
+    return seq
+
+
+class Mythos1(Headline):
 
   def __init__(self):
     super(Mythos1, self).__init__(
-        "Mythos1", "headline", "Woods", "Society", {"hex"}, {"slash", "triangle", "star"})
+        "Mythos1", "Woods", "Society", {"hex"}, {"slash", "triangle", "star"})
 
   def create_event(self, state):
     seq = super(Mythos1, self).create_event(state)
@@ -61,13 +73,11 @@ class Mythos1(MythosCard):
     return seq
 
 
-class Mythos2(MythosCard):
+class Mythos2(Environment):
 
   def __init__(self):
     super(Mythos2, self).__init__(
-        "Mythos2", "environment", "Isle", "Science", {"square", "diamond"}, {"circle"},
-        environment_type="urban",
-    )
+        "Mythos2", "Isle", "Science", {"square", "diamond"}, {"circle"}, "urban")
 
   def get_modifier(self, thing, attribute):
     if thing.name == "Pinata" and attribute == "toughness":
@@ -85,23 +95,21 @@ class Mythos2(MythosCard):
     return None  # TODO: draw and keep an extra card
 
 
-class Mythos3(MythosCard):
+class Mythos3(Environment):
 
   def __init__(self):
     super(Mythos3, self).__init__(
-        "Mythos3", "environment", "Square", "Unnamable", {"square", "diamond"}, {"circle"},
-        environment_type="mystic",
-    )
+        "Mythos3", "Square", "Unnamable", {"square", "diamond"}, {"circle"}, "mystic")
 
   def get_interrupt(self, event, owner, state):
     return None  # TODO: prevent stamina gain
 
 
-class Mythos4(MythosCard):
+class Mythos4(Headline):
 
   def __init__(self):
     super(Mythos4, self).__init__(
-        "Mythos4", "headline", "Science", "Witch", {"hex"}, {"slash", "triangle", "star"})
+        "Mythos4", "Science", "Witch", {"hex"}, {"slash", "triangle", "star"})
 
   def create_event(self, state):
     seq = super(Mythos4, self).create_event(state)
@@ -110,10 +118,10 @@ class Mythos4(MythosCard):
     return seq
 
 
-class Mythos5(MythosCard):
+class Mythos5(Headline):
 
   def __init__(self):
-    super(Mythos5, self).__init__("Mythos5", "headline", "Square", "Unnamable", {"moon"}, {"plus"})
+    super(Mythos5, self).__init__("Mythos5", "Square", "Unnamable", {"moon"}, {"plus"})
 
   def create_event(self, state):
     seq = super(Mythos5, self).create_event(state)
@@ -121,13 +129,10 @@ class Mythos5(MythosCard):
     return seq
 
 
-class Mythos6(MythosCard):
+class Mythos6(Environment):
 
   def __init__(self):
-    super(Mythos6, self).__init__(
-        "Mythos6", "environment", "Graveyard", "Isle", {"plus"}, {"moon"},
-        environment_type="weather",
-    )
+    super(Mythos6, self).__init__("Mythos6", "Graveyard", "Isle", {"plus"}, {"moon"}, "weather")
 
   def get_modifier(self, thing, attribute):
     if attribute == "will":
@@ -142,11 +147,11 @@ class Mythos6(MythosCard):
     return None
 
 
-class Mythos11(MythosCard):
+class Mythos11(Headline):
 
   def __init__(self):
     super(Mythos11, self).__init__(
-        "Mythos11", "headline", "Cave", "Roadhouse", {"hex"}, {"slash", "triangle", "star"})
+        "Mythos11", "Cave", "Roadhouse", {"hex"}, {"slash", "triangle", "star"})
 
   def create_event(self, state):
     seq = super(Mythos11, self).create_event(state)
@@ -154,13 +159,11 @@ class Mythos11(MythosCard):
     return seq
 
 
-class Mythos45(MythosCard):
+class Mythos45(Environment):
 
   def __init__(self):
     super(Mythos45, self).__init__(
-        "Mythos45", "environment", "Woods", "Society", {"slash", "triangle", "star"}, {"hex"},
-        environment_type="mystic",
-    )
+        "Mythos45", "Woods", "Society", {"slash", "triangle", "star"}, {"hex"}, "mystic")
 
   def get_modifier(self, thing, attribute):
     if thing.name in ("Maniac", "Octopoid") and attribute == "toughness":

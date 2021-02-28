@@ -254,9 +254,26 @@ class GlobalModifierTest(EventTest):
 
   def testEnvironmentModifier(self):
     self.assertEqual(self.char.will(self.state), 1)
-    mythos = Mythos6()
-    self.state.environment = mythos
+    self.state.event_stack.append(ActivateEnvironment(Mythos6()))
+    self.resolve_until_done()
     self.assertEqual(self.char.will(self.state), 0)
+
+  def testReplaceEnvironment(self):
+    self.assertIsNone(self.state.environment)
+    mythos = Mythos6()
+    self.state.event_stack.append(mythos.create_event(self.state))
+    self.resolve_until_done()
+    self.assertEqual(self.state.environment, mythos)
+
+    headline = Mythos11()
+    self.state.event_stack.append(headline.create_event(self.state))
+    self.resolve_until_done()
+    self.assertEqual(self.state.environment, mythos)
+
+    env = Mythos45()
+    self.state.event_stack.append(env.create_event(self.state))
+    self.resolve_until_done()
+    self.assertEqual(self.state.environment, env)
 
 
 if __name__ == '__main__':
