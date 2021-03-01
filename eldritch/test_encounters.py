@@ -34,6 +34,19 @@ class EncounterTest(EventTest):
     self.char.clues = 0
 
 
+class DrawEncounterTest(EncounterTest):
+
+  def testDrawEncounter(self):
+    self.char.place = self.state.places["Administration"]
+    self.state.places["University"].encounters = [
+        encounters.EncounterCard("University2", {"Administration": encounters.Administration2})]
+    self.state.turn_idx = 0
+    self.state.turn_phase = "movement"
+    self.state.next_turn()
+    self.resolve_until_done()
+    self.assertEqual(self.char.clues, 1)
+
+
 class DinerTest(EncounterTest):
 
   def setUp(self):

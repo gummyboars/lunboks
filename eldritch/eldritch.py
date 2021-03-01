@@ -421,12 +421,12 @@ class GameState(object):
         char.delayed_until = None
       elif char.delayed_until is not None:
         return self.next_turn()
-      char.movement_points = char.speed
+      char.movement_points = char.speed(self)
     if self.turn_phase == "encounter":
       if not isinstance(char.place, places.Location):
         return self.next_turn()
       elif char.place.neighborhood.encounters:
-        self.event_stack.append(events.Encounter(char, char.place))
+        self.event_stack.append(events.Encounter(char, char.place.name))
     if self.turn_phase == "otherworld":
       if not isinstance(char.place, places.OtherWorld):
         return self.next_turn()

@@ -593,10 +593,10 @@ class Draw(Event):
 
 class Encounter(Event):
 
-  def __init__(self, character, location):
+  def __init__(self, character, location_name):
     self.character = character
-    self.location = location
-    self.draw = DrawEncounter(character, location, 1)
+    self.location_name = location_name
+    self.draw = DrawEncounter(character, location_name, 1)
     self.encounter = None
 
   def resolve(self, state):
@@ -608,12 +608,12 @@ class Encounter(Event):
       return True
 
     if len(self.draw.cards) == 1:
-      self.encounter = self.draw.cards[0].encounter_event(self.character, self.location.name)
+      self.encounter = self.draw.cards[0].encounter_event(self.character, self.location_name)
       state.event_stack.append(self.encounter)
       return False
 
     encounters = [
-        card.encounter_event(self.character, self.location.name) for card in self.draw.cards]
+        card.encounter_event(self.character, self.location_name) for card in self.draw.cards]
     choice = CardChoice(self.character, "Choose an Encounter", [card.name for card in draw.cards])
     cond = Conditional(
         self.character, choice, "choice_index", {idx: enc for idx, enc in enumerate(encounters)})
@@ -633,15 +633,15 @@ class Encounter(Event):
 
 class DrawEncounter(Event):
 
-  def __init__(self, character, location, count):
+  def __init__(self, character, location_name, count):
     assert count > 0
     self.character = character
-    self.location = location
+    self.location_name = location_name
     self.count = count
     self.cards = []
 
   def resolve(self, state):
-    encounters = self.location.neighborhood.encounters
+    encounters = state.places[self.location_name].neighborhood.encounters
     assert len(encounters) >= self.count
     self.cards.extend(random.sample(encounters, self.count))
     return True

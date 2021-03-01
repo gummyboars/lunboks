@@ -3,6 +3,9 @@ class MonsterCup(object):
   def __init__(self):
     self.name = "cup"
 
+  def json_repr(self):
+    return self.name
+
 
 class Monster(object):
 
