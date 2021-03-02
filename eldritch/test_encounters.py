@@ -46,6 +46,37 @@ class DrawEncounterTest(EncounterTest):
     self.resolve_until_done()
     self.assertEqual(self.char.clues, 1)
 
+  def testDrawLodgeEncounter(self):
+    self.char.place = self.state.places["Lodge"]
+    self.state.places["FrenchHill"].encounters = [
+        encounters.EncounterCard(
+          "FrenchHill5", {"Lodge": encounters.Lodge5, "Sanctum": encounters.Sanctum5},
+        )
+    ]
+    self.state.turn_idx = 0
+    self.state.turn_phase = "movement"
+    self.state.next_turn()
+    self.assertEqual(self.char.clues, 0)
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.clues, 3)
+
+  def testDrawLodgeEncounterWithMembership(self):
+    self.char.place = self.state.places["Lodge"]
+    self.char.lodge_membership = True
+    self.state.places["FrenchHill"].encounters = [
+        encounters.EncounterCard(
+          "FrenchHill5", {"Lodge": encounters.Lodge5, "Sanctum": encounters.Sanctum5},
+        )
+    ]
+    self.state.turn_idx = 0
+    self.state.turn_phase = "movement"
+    self.state.next_turn()
+    self.assertEqual(self.char.clues, 0)
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.bless_curse, -1)
+
 
 class DinerTest(EncounterTest):
 
@@ -393,6 +424,41 @@ class LodgeTest(EncounterTest):
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
       self.resolve_until_done()
     self.assertEqual(len(self.char.possessions), 0)
+
+  def testLodge5Pass(self):
+    self.state.event_stack.append(encounters.Lodge5(self.char))
+    self.assertEqual(self.char.clues, 0)
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.clues, 3)
+    self.assertEqual(self.char.place.name, "Lodge")
+
+  def testLodge5Fail(self):
+    self.state.event_stack.append(encounters.Lodge5(self.char))
+    self.char.clues = 8
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
+      # They get the opportunity to spend clue tokens on this failed check, but don't.
+      use_clues = self.resolve_to_usable(0, -1, SpendClue)
+    self.state.done_using[0] = True
+    self.resolve_until_done()
+    self.assertEqual(self.char.clues, 0)
+    self.assertEqual(self.char.place.name, "FrenchHill")
+
+  def testSanctum5Pass(self):
+    self.state.event_stack.append(encounters.Sanctum5(self.char))
+    self.assertEqual(self.char.bless_curse, 0)
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.bless_curse, -1)
+
+  def testSanctum5Fail(self):
+    self.state.event_stack.append(encounters.Sanctum5(self.char))
+    self.assertEqual(self.char.bless_curse, 0)
+    self.assertEqual(self.char.luck(self.state), 3)
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.bless_curse, 0)
+    self.assertEqual(self.char.place.name, "Lodge")
 
 
 class WitchTest(EncounterTest):

@@ -127,6 +127,17 @@ def Lodge1(char):
   check = events.Check(char, "lore", -1)
   draw = events.Draw(char, "spells", 2)
   return events.PassFail(char, check, draw, events.Nothing())
+def Lodge5(char):
+  check = events.Check(char, "lore", -1)
+  gain = events.Gain(char, {"clues": 3})
+  loss = events.Loss(char, {"clues": float("inf")})
+  move = events.ForceMovement(char, "FrenchHill")
+  return events.PassFail(char, check, gain, events.Sequence([loss, move], char))
+
+def Sanctum5(char):
+  check = events.Check(char, "luck", -2)
+  curse = events.BlessCurse(char, False)
+  return events.PassFail(char, check, events.Nothing(), curse)
 
 def Witch2(char):
   check = events.Check(char, "luck", -1)
@@ -574,6 +585,7 @@ def CreateEncounterCards():
       "FrenchHill": [
         EncounterCard("FrenchHill1", {"Lodge": Lodge1}),
         EncounterCard("FrenchHill2", {"Witch": Witch2}),
+        EncounterCard("FrenchHill5", {"Lodge": Lodge5, "Sanctum": Sanctum5}),
       ],
       "Merchant": [
         EncounterCard("Merchant1", {"Docks": Docks1, "Unnamable": Unnamable1, "Isle": Isle1}),
