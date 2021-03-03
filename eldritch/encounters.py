@@ -244,8 +244,97 @@ def Science7(char):
   helping = events.PassFail(char, check, close_gates, fail)
   return events.BinaryChoice(char, "Offer to help?", "Yes", "No", helping, events.Nothing())
 
+def Shop1(char):
+  check = events.Check(char, "luck", -2)
+  curse = events.Curse(char)
+  return events.PassFail(char, check, events.Nothing(), curse)
+def Shop2(char):
+  check = events.Check(char, "fight", -1)
+  abyss = events.Nothing() # TODO: abyss, encounter, and come back
+  return events.PassFail(char, check, events.Nothing(), abyss)
+def Shop3(char):
+  common = events.Nothing() # TODO: search through the common deck and purchase any item
+  unique = events.Nothing() # TODO: searh through the unique deck and purchase any item
+  choice = events.BinaryChoice(char, "Purchase a Common or Unique item?",
+                              "Common", "Unique", common, unique)
+  return choice
+def Shop4(char):
+  check = events.Check(char, "luck",-1)
+  prereq = events.AttributePrerequisite(char, "dollars", 1, "at least") # TODO: This is actually a check that you an item
+  loss = events.Nothing() # TODO: Lose one item of your choice
+  newEvent = events.Nothing() # TODO: draw a new encounter
+  fail = events.PassFail(char, prereq, loss, newEvent)
+  return events.PassFail(char, check, events.Nothing(), fail)
+def Shop5(char):
+  # TODO: Oh Dear:  3 common items for sale, any player may purchase 1 or more
+  # conflicts are decided by the player that drew the card
+  return events.Nothing()
+def Shop6(char):
+  check = events.Check(char, "luck", -1)
+  commonUnique = events.Nothing() # TODO: you may purchase the top item of the common and/or unique deck
+  common = events.Nothing() # TODO: you may purchase the top item of the coommon deck
+  return events.PassFail(char, check, commonUnique, common)
+def Shop7(char):
+  return events.Nothing() # TODO: draw a mythos card, move to the gate location shown, have an encounter there
+
+def Newspaper1(char):
+  money = events.Gain(char, {"dollars": 2})
+  move = events.Nothing() # TODO: move to any location or street, if a location, have an event
+  return events.Sequence([money, move], char)
+def Newspaper2(char):
+  return events.Gain(char, {"dollars": 5})
+def Newspaper3(char):
+  return events.StatusChange(char, "retainer")
+def Newspaper4(char):
+  # Newspaper 4 is the same as Newspaper 3
+  return Newspaper3(char)
+def Newspaper5(char):
+  check = events.Check(char, "lore", -1)
+  clues = events.Gain(char, {"clues": 3})
+  return events.PassFail(char, check, clues, events.Nothing())
+def Newspaper6(char):
+  check = events.Check(char, "luck", -1)
+  clues = events.Gain(char, {"clues": 1})
+  return events.PassFail(char, check, clues, events.Nothing())
+def Newspaper7(char):
+  return events.Loss(char, {"sanity": 1})
+
+def Train1(char):
+  check = events.Check(char, "sneak", -1)
+  unique = events.Draw(char, "unique", 1)
+  arrested = events.Arrested(char)
+  return events.PassFail(char, check, unique, arrested)
+def Train2(char):
+  check = events.Check(char, "speed", -2)
+  spell = events.Draw(char, "spells", 1)
+  die = events.DiceRoll(char, 1)
+  sanity = events.Loss(char, {"sanity": die})
+  return events.PassFail(char, check, spell, events.Sequence([die, sanity], char))
 def Train3(char):
   return events.SplitGain(char, "stamina", "sanity", 2)
+def Train4(char):
+  return events.Nothing() # TODO: draw the top common item and purchase it for +1 if you wish
+def Train5(char):
+  move = events.Nothing() # TODO: Move to a street or location of your choice and have an encounter there
+  choice = events.BinaryChoice(char, "Accept a ride?", "Yes", "No",
+                              move, events.Nothing())
+  return choice
+def Train6(char):
+  prereq = events.AttributePrerequisite(char, "dollars", 3, "at least")
+  pay = events.Loss(char, {"dollars": 3})
+  check = events.Check(char, "luck", -2)
+  common = events.Draw(char, "common", 1)
+  unique = events.Draw(char, "unique", 1)
+  item = events.PassFail(char, check, unique, common)
+  choice = events.BinaryChoice(char, "Claim item left at lost and found for $3?", "Yes", "No",
+                               events.Sequence([pay, item], char), events.Nothing())
+  return events.PassFail(char, prereq, choice, events.Nothing())
+def Train7(char):
+  check = events.Check(char, "luck", -1)
+  unique = events.Draw(char, "unique", 1)
+  die = events.DiceRoll(char, 1)
+  stab = events.Loss(char, {"stamina": die})
+  return events.PassFail(char, check, unique, events.Sequence([die, stab], char))
 
 def Asylum1(char):
   check = events.Check(char, "lore", 0)
@@ -496,7 +585,13 @@ def CreateEncounterCards():
         EncounterCard("Merchant7", {"Docks": Docks7, "Unnamable": Unnamable7, "Isle": Isle7}),
       ],      
       "Northside": [
-        EncounterCard("Northside3", {"Train": Train3}),
+        EncounterCard("Northside1", {"Shop": Shop1, "Newspaper": Newspaper1, "Train": Train1}),
+        EncounterCard("Northside2", {"Shop": Shop2, "Newspaper": Newspaper2, "Train": Train2}),
+        EncounterCard("Northside3", {"Shop": Shop3, "Newspaper": Newspaper3, "Train": Train3}),
+        EncounterCard("Northside4", {"Shop": Shop4, "Newspaper": Newspaper4, "Train": Train4}),
+        EncounterCard("Northside5", {"Shop": Shop5, "Newspaper": Newspaper5, "Train": Train5}),
+        EncounterCard("Northside6", {"Shop": Shop6, "Newspaper": Newspaper6, "Train": Train6}),
+        EncounterCard("Northside7", {"Shop": Shop7, "Newspaper": Newspaper7, "Train": Train7}),
       ],
       "Rivertown": [
         EncounterCard("Rivertown5", {"Store": Store5}),
