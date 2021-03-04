@@ -111,9 +111,11 @@ class DiceRoll(Event):
     self.character = character
     self.count = count
     self.roll = None
+    self.sum = None
 
   def resolve(self, state):
     self.roll = [random.randint(1, 6) for _ in range(self.count)]
+    self.sum = sum(self.roll)
     return True
 
   def is_resolved(self):
@@ -721,6 +723,11 @@ class ExhaustAsset(Event):
 class DiscardSpecific(Event):
 
   def __init__(self, character, item):
+    if isinstance(item, str):
+      try:
+        item = next(i for i in character.possessions if i.name == item)
+      except StopIteration:
+        raise AssertionError("Character does not have any {}".format(item))
     assert item in character.possessions
     self.character = character
     self.item = item
