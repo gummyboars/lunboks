@@ -13,6 +13,7 @@ import eldritch.events as events
 from eldritch.events import *
 import eldritch.items as items
 import eldritch.monsters as monsters
+import eldritch.mythos as mythos
 from eldritch.test_events import EventTest
 
 
@@ -20,7 +21,7 @@ class CombatTest(EventTest):
 
   def testCombatFight(self):
     self.char.fight_will_slider = 0
-    self.assertEqual(self.char.fight, 1)
+    self.assertEqual(self.char.fight(self.state), 1)
     cultist = monsters.Cultist()
     combat = Combat(self.char, cultist)
     self.state.event_stack.append(combat)
@@ -37,14 +38,14 @@ class CombatTest(EventTest):
 
     self.assertTrue(combat.combat.is_resolved())
     self.assertTrue(combat.combat.defeated)
-    self.assertFalse(combat.combat.damage.is_resolved())
+    self.assertIsNone(combat.combat.damage)
     self.assertTrue(combat.is_resolved())
 
   def testCombatFightThenFlee(self):
     self.char.fight_will_slider = 0
     self.char.speed_sneak_slider = 0
     self.assertEqual(self.char.stamina, 5)
-    self.assertEqual(self.char.sneak, 4)
+    self.assertEqual(self.char.sneak(self.state), 4)
     cultist = monsters.Cultist()
     combat = Combat(self.char, cultist)
     self.state.event_stack.append(combat)
@@ -62,6 +63,7 @@ class CombatTest(EventTest):
     self.assertTrue(combat_round.is_resolved())
     self.assertFalse(evade_round.is_resolved())
     self.assertFalse(combat_round.defeated)
+    self.assertIsNotNone(combat_round.damage)
     self.assertTrue(combat_round.damage.is_resolved())
     self.assertFalse(combat.is_resolved())
     self.assertEqual(self.char.stamina, 4)
@@ -76,13 +78,13 @@ class CombatTest(EventTest):
     self.assertFalse(next_combat_round.is_resolved())
     self.assertTrue(next_evade_round.is_resolved())
     self.assertTrue(next_evade_round.evaded)
-    self.assertFalse(next_evade_round.damage.is_resolved())
+    self.assertIsNone(next_evade_round.damage)
     self.assertTrue(combat.is_resolved())
 
   def testCombatWithHorror(self):
     self.char.fight_will_slider = 3
-    self.assertEqual(self.char.fight, 4)
-    self.assertEqual(self.char.will, 1)
+    self.assertEqual(self.char.fight(self.state), 4)
+    self.assertEqual(self.char.will(self.state), 1)
     self.assertEqual(self.char.stamina, 5)
     self.assertEqual(self.char.sanity, 5)
     zombie = monsters.Zombie()
@@ -106,6 +108,7 @@ class CombatTest(EventTest):
 
     self.assertTrue(combat_round.is_resolved())
     self.assertFalse(combat_round.defeated)
+    self.assertIsNotNone(combat_round.damage)
     self.assertTrue(combat_round.damage.is_resolved())
     self.assertFalse(combat.is_resolved())
     self.assertEqual(self.char.stamina, 3)
@@ -120,15 +123,40 @@ class CombatTest(EventTest):
 
     self.assertTrue(combat_round.is_resolved())
     self.assertTrue(combat_round.defeated)
-    self.assertFalse(combat_round.damage.is_resolved())
+    self.assertIsNone(combat_round.damage)
     self.assertTrue(combat.is_resolved())
+
+  def testCombatRoundWithGlobal(self):
+    self.char.fight_will_slider = 0
+    self.assertEqual(self.char.fight(self.state), 1)
+    maniac = monsters.Maniac()
+    self.assertEqual(maniac.toughness(self.state), 1)
+
+    combat_round = CombatRound(self.char, maniac)
+    self.state.event_stack.append(combat_round)
+    # Intentionally initialize environment after creating the event to make sure the event does
+    # not cache old values of toughness/difficulty/damage.
+    self.state.environment = mythos.Mythos45()
+    self.assertEqual(maniac.toughness(self.state), 2)
+    self.assertIsNone(maniac.difficulty("horror", self.state))
+
+    choose_weapons = self.resolve_to_choice(CombatChoice)
+    choose_weapons.resolve(self.state, [])
+
+    # Roll one success, but the maniac's toughness should be 2 because of the environment.
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=[5, 1])):
+      self.resolve_until_done()
+
+    self.assertTrue(combat_round.is_resolved())
+    self.assertFalse(combat_round.defeated)
+    self.assertIsNotNone(combat_round.damage)
 
 
 class CombatOrEvadeTest(EventTest):
 
   def testEvadeMeansNoHorror(self):
     self.char.fight_will_slider = 3
-    self.assertEqual(self.char.will, 1)
+    self.assertEqual(self.char.will(self.state), 1)
     self.assertEqual(self.char.sanity, 5)
     zombie = monsters.Zombie()
     choice = EvadeOrCombat(self.char, zombie)
@@ -147,7 +175,7 @@ class CombatOrEvadeTest(EventTest):
 
   def testFailEvadeMeansCombat(self):
     self.char.fight_will_slider = 3
-    self.assertEqual(self.char.will, 1)
+    self.assertEqual(self.char.will(self.state), 1)
     self.assertEqual(self.char.sanity, 5)
     self.assertEqual(self.char.stamina, 5)
     zombie = monsters.Zombie()
@@ -169,7 +197,7 @@ class LoseCombatTest(EventTest):
 
   def testHorrorInsane(self):
     self.char.fight_will_slider = 3
-    self.assertEqual(self.char.will, 1)
+    self.assertEqual(self.char.will(self.state), 1)
     self.char.sanity = 1
     zombie = monsters.Zombie()
     cultist = monsters.Cultist()
@@ -199,7 +227,7 @@ class LoseCombatTest(EventTest):
 
   def helpTestCombatUnconscious(self, starting_stamina):
     self.char.fight_will_slider = 0
-    self.assertEqual(self.char.fight, 1)
+    self.assertEqual(self.char.fight(self.state), 1)
     self.char.stamina = starting_stamina
     zombie = monsters.Zombie()
     combat = Combat(self.char, zombie)
@@ -222,7 +250,7 @@ class LoseCombatTest(EventTest):
 
   def testMultiRoundUnconscious(self):
     self.char.stamina = 2
-    self.assertEqual(self.char.sneak, 1)
+    self.assertEqual(self.char.sneak(self.state), 1)
     cultist = monsters.Cultist()
     combat = Combat(self.char, cultist)
     self.state.event_stack.append(combat)

@@ -177,11 +177,103 @@ class MoveMonsterTest(EventTest):
     shambler.place = self.state.monster_cup
     self.state.monsters.append(shambler)
 
-    self.state.event_stack.append(Mythos3.create_event(self.state))
+    self.state.event_stack.append(Mythos3().create_event(self.state))
     self.resolve_until_done()
 
     # The monster will appear at the Square, but should immediately move after appearing.
     self.assertEqual(shambler.place.name, "Easttown")
+
+
+class ReturnToCupTest(EventTest):
+
+  def setUp(self):
+    super(ReturnToCupTest, self).setUp()
+    self.cultist = [mon for mon in self.state.monsters if mon.name == "Cultist"][0]
+    self.maniac = [mon for mon in self.state.monsters if mon.name == "Maniac"][0]
+    self.dream_flier = [mon for mon in self.state.monsters if mon.name == "Dream Flier"][0]
+    self.zombie = [mon for mon in self.state.monsters if mon.name == "Zombie"][0]
+    self.furry_beast = [mon for mon in self.state.monsters if mon.name == "Furry Beast"][0]
+    self.cultist.place = self.state.places["Southside"]
+    self.maniac.place = self.state.places["Outskirts"]
+    self.dream_flier.place = self.state.places["Sky"]
+    self.furry_beast.place = self.state.places["Woods"]
+    self.zombie.place = None
+    # TODO: also test for monster trophies
+
+  def testReturnByName(self):
+    r = ReturnToCup(names={"Dream Flier", "Maniac", "Zombie"})
+    self.state.event_stack.append(r)
+    self.resolve_until_done()
+
+    self.assertEqual(r.returned, 2)
+
+    self.assertEqual(self.dream_flier.place, self.state.monster_cup)
+    self.assertEqual(self.maniac.place, self.state.monster_cup)
+    self.assertIsNone(self.zombie.place)
+    self.assertEqual(self.cultist.place.name, "Southside")
+
+  def testReturnByLocation(self):
+    r = ReturnToCup(places={"Southside", "Woods"})
+    self.state.event_stack.append(r)
+    self.resolve_until_done()
+
+    self.assertEqual(r.returned, 2)
+
+    self.assertEqual(self.cultist.place, self.state.monster_cup)
+    self.assertEqual(self.furry_beast.place, self.state.monster_cup)
+    self.assertEqual(self.maniac.place.name, "Outskirts")
+    self.assertEqual(self.dream_flier.place.name, "Sky")
+    self.assertIsNone(self.zombie.place)
+
+  def testReturnInStreets(self):
+    r = ReturnToCup(places={"streets"})
+    self.state.event_stack.append(r)
+    self.resolve_until_done()
+
+    self.assertEqual(r.returned, 1)
+
+    self.assertEqual(self.cultist.place, self.state.monster_cup)
+    self.assertEqual(self.furry_beast.place.name, "Woods")
+    self.assertEqual(self.maniac.place.name, "Outskirts")
+    self.assertEqual(self.dream_flier.place.name, "Sky")
+
+  def testReturnInLocations(self):
+    r = ReturnToCup(places={"locations"})
+    self.state.event_stack.append(r)
+    self.resolve_until_done()
+
+    self.assertEqual(r.returned, 1)
+
+    self.assertEqual(self.cultist.place.name, "Southside")
+    self.assertEqual(self.furry_beast.place, self.state.monster_cup)
+    self.assertEqual(self.maniac.place.name, "Outskirts")
+    self.assertEqual(self.dream_flier.place.name, "Sky")
+
+
+class GlobalModifierTest(EventTest):
+
+  def testEnvironmentModifier(self):
+    self.assertEqual(self.char.will(self.state), 1)
+    self.state.event_stack.append(ActivateEnvironment(Mythos6()))
+    self.resolve_until_done()
+    self.assertEqual(self.char.will(self.state), 0)
+
+  def testReplaceEnvironment(self):
+    self.assertIsNone(self.state.environment)
+    mythos = Mythos6()
+    self.state.event_stack.append(mythos.create_event(self.state))
+    self.resolve_until_done()
+    self.assertEqual(self.state.environment, mythos)
+
+    headline = Mythos11()
+    self.state.event_stack.append(headline.create_event(self.state))
+    self.resolve_until_done()
+    self.assertEqual(self.state.environment, mythos)
+
+    env = Mythos45()
+    self.state.event_stack.append(env.create_event(self.state))
+    self.resolve_until_done()
+    self.assertEqual(self.state.environment, env)
 
 
 if __name__ == '__main__':

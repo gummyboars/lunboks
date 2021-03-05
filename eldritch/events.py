@@ -595,10 +595,10 @@ class Draw(Event):
 
 class Encounter(Event):
 
-  def __init__(self, character, location):
+  def __init__(self, character, location_name):
     self.character = character
-    self.location = location
-    self.draw = DrawEncounter(character, location, 1)
+    self.location_name = location_name
+    self.draw = DrawEncounter(character, location_name, 1)
     self.encounter = None
 
   def resolve(self, state):
@@ -610,12 +610,12 @@ class Encounter(Event):
       return True
 
     if len(self.draw.cards) == 1:
-      self.encounter = self.draw.cards[0].encounter_event(self.character, self.location.name)
+      self.encounter = self.draw.cards[0].encounter_event(self.character, self.location_name)
       state.event_stack.append(self.encounter)
       return False
 
     encounters = [
-        card.encounter_event(self.character, self.location.name) for card in self.draw.cards]
+        card.encounter_event(self.character, self.location_name) for card in self.draw.cards]
     choice = CardChoice(self.character, "Choose an Encounter", [card.name for card in draw.cards])
     cond = Conditional(
         self.character, choice, "choice_index", {idx: enc for idx, enc in enumerate(encounters)})
@@ -635,15 +635,15 @@ class Encounter(Event):
 
 class DrawEncounter(Event):
 
-  def __init__(self, character, location, count):
+  def __init__(self, character, location_name, count):
     assert count > 0
     self.character = character
-    self.location = location
+    self.location_name = location_name
     self.count = count
     self.cards = []
 
   def resolve(self, state):
-    encounters = self.location.neighborhood.encounters
+    encounters = state.places[self.location_name].neighborhood.encounters
     assert len(encounters) >= self.count
     self.cards.extend(random.sample(encounters, self.count))
     return True
@@ -791,6 +791,7 @@ class AttributePrerequisite(Event):
         "exactly": operator.eq,
     }
     assert operand in oper_map
+    assert attribute in {"dollars", "clues", "stamina", "sanity", "movement_points"}
     self.character = character
     self.attribute = attribute
     self.threshold = threshold
@@ -861,7 +862,7 @@ class Check(Event):
   def resolve(self, state):
     # TODO: the check may have an opponent? like undead monsters?
     if self.dice is None:
-      num_dice = getattr(self.character, self.check_type) + self.modifier
+      num_dice = getattr(self.character, self.check_type)(state) + self.modifier
       self.dice = DiceRoll(self.character, num_dice)
       state.event_stack.append(self.dice)
       return False
@@ -1236,18 +1237,17 @@ class Combat(Event):
   def __init__(self, character, monster):
     self.character = character
     self.monster = monster
-    if monster.difficulty("horror") is not None:
-      self.horror = Check(character, "horror", monster.difficulty("horror"))
-      self.sanity_loss = Loss(character, {"sanity": monster.damage("horror")})
-    else:
-      self.horror = None
-      self.sanity_loss = None
+    self.horror = None
+    self.sanity_loss = None
     self.choice = None
     self.evade = None
     self.combat = None
     self.done = False
 
   def resolve(self, state):
+    if self.monster.difficulty("horror", state) is not None and self.horror is None:
+      self.horror = Check(self.character, "horror", self.monster.difficulty("horror", state))
+      self.sanity_loss = Loss(self.character, {"sanity": self.monster.damage("horror", state)})
     if self.horror is not None:
       if not self.horror.is_resolved():
         state.event_stack.append(self.horror)
@@ -1288,24 +1288,27 @@ class EvadeRound(Event):
   def __init__(self, character, monster):
     self.character = character
     self.monster = monster
-    self.check = Check(character, "evade", monster.difficulty("evade"))
-    self.damage = Loss(character, {"stamina": monster.damage("combat")})
+    self.check = None
+    self.damage = None
     self.evaded = None
 
   def resolve(self, state):
     if self.evaded is not None:
       return True
+    if self.check is None:
+      self.check = Check(self.character, "evade", self.monster.difficulty("evade", state))
     if not self.check.is_resolved():
       state.event_stack.append(self.check)
       return False
     if self.check.successes >= 1:
       self.evaded = True
       return True
+    self.damage = Loss(self.character, {"stamina": self.monster.damage("combat", state)})
     state.event_stack.append(self.damage)
     return False
 
   def is_resolved(self):
-    return self.evaded or self.damage.is_resolved()
+    return self.evaded or (self.damage is not None and self.damage.is_resolved())
 
   def start_str(self):
     return f"{self.character.name} attempted to flee from {self.monster.name}"
@@ -1321,9 +1324,9 @@ class CombatRound(Event):
   def __init__(self, character, monster):
     self.character = character
     self.monster = monster
+    self.check = None
+    self.damage = None
     self.choice = CombatChoice(character, f"Choose weapons to fight the {monster.name}")
-    self.check = Check(character, "combat", monster.difficulty("combat"))
-    self.damage = Loss(character, {"stamina": monster.damage("combat")})
     self.defeated = None
 
   def resolve(self, state):
@@ -1332,19 +1335,22 @@ class CombatRound(Event):
     if not self.choice.is_resolved():
       state.event_stack.append(self.choice)
       return False
+    if self.check is None:
+      self.check = Check(self.character, "combat", self.monster.difficulty("combat", state))
     if not self.check.is_resolved():
       state.event_stack.append(self.check)
       return False
-    if self.check.successes >= self.monster.toughness:
+    if self.check.successes >= self.monster.toughness(state):
       # TODO: take the monster as a trophy
       self.defeated = True
       return True
     self.defeated = False
+    self.damage = Loss(self.character, {"stamina": self.monster.damage("combat", state)})
     state.event_stack.append(self.damage)
     return False
 
   def is_resolved(self):
-    return self.defeated or self.damage.is_resolved()
+    return self.defeated or (self.damage is not None and self.damage.is_resolved())
 
   def start_str(self):
     return f"{self.character.name} started a combat round against a {self.monster.name}"
@@ -1563,3 +1569,76 @@ class MoveMonster(Event):
     if not self.destination:
       return ""
     return f"{self.monster.name} moved from {self.source.name} to {self.destination.name}"
+
+
+class ReturnToCup(Event):
+
+  def __init__(self, names=None, places=None):
+    assert names or places
+    assert not (names and places)
+    self.names = set(names) if names else None
+    self.places = set(places) if places else None
+    self.returned = None
+
+  def resolve(self, state):
+    if self.returned is not None:
+      return True
+
+    count = 0
+    if self.places:
+      place_classes = []
+      if "locations" in self.places:
+        self.places.remove("locations")
+        place_classes.append(places.Location)
+      if "streets" in self.places:
+        self.places.remove("streets")
+        place_classes.append(places.Street)
+      if place_classes:
+        for name, place in state.places.items():
+          if not isinstance(place, tuple(place_classes)):
+            continue
+          self.places.add(name)
+
+      for monster in state.monsters:
+        if getattr(monster.place, "name", None) in self.places:
+          monster.place = state.monster_cup
+          count += 1
+    if self.names:
+      for monster in state.monsters:
+        if monster.name in self.names and isinstance(monster.place, places.CityPlace):
+          monster.place = state.monster_cup
+          count += 1
+    self.returned = count
+    return True
+
+  def is_resolved(self):
+    return self.returned is not None
+
+  def start_str(self):
+    if self.names is not None:
+      return "All " + ", ".join(self.names) + " will be returned to the cup."
+    return "All monsters in " + ", ".join(self.places) + " will be returned to the cup."
+
+  def finish_str(self):
+    return f"{self.returned} monsters returned to the cup"
+
+
+class ActivateEnvironment(Event):
+
+  def __init__(self, environment):
+    self.env = environment
+    self.done = False
+
+  def resolve(self, state):
+    state.environment = self.env
+    self.done = True
+    return True
+
+  def is_resolved(self):
+    return self.done
+
+  def start_str(self):
+    return ""
+
+  def finish_str(self):
+    return f"{self.env.name} is the new environment"

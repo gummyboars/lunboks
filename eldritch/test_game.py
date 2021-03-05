@@ -101,5 +101,13 @@ class NextTurnTest(unittest.TestCase):
     self.assertEqual(self.state.first_player, 1)
 
 
+class OutputTest(unittest.TestCase):
+
+  def testCanProduceJSON(self):
+    game = eldritch.EldritchGame()
+    game.connect_user("session")
+    game.for_player("session")
+
+
 if __name__ == '__main__':
   unittest.main()

@@ -146,11 +146,106 @@ def Society4(char):
   cond = events.Conditional(char, check, "successes", {0: events.Nothing(), 2: skill})
   return events.Sequence([check, cond], char)
 
+def Administration1(char):
+  check = events.Check(char, "lore", -1)
+  dollars = events.Gain(char, {"dollars": 5})
+  return events.PassFail(char, check, dollars, events.Nothing())
+def Administration2(char):
+  return events.Gain(char, {"clues": 1})
+def Administration3(char):
+  check =  events.Check(char, "will", -1)
+  retainer = events.StatusChange(char, "retainer")
+  return events.PassFail(char, check, retainer, events.Nothing())
+def Administration4(char):
+  check = events.Check(char, "lore", -2)
+  spell = events.Draw(char, "spells", 1)
+  curse = events.Curse(char)
+  assist =  events.PassFail(char, check, spell, curse)
+  return events.BinaryChoice(
+    char,"Help the professor and his students?", "Yes", "No", assist, events.Nothing())
+def Administration5(char):
+  move = events.ForceMovement(char, "Asylum")
+  encounter = events.Nothing()
+  return events.Sequence([move, encounter], char)
+def Administration6(char):
+  # Administration 6 is identical to Administration 1
+  return Administration1(char)
 def Administration7(char):
   check = events.Check(char, "will", -2)
   gain = events.Gain(char, {"dollars": 8})
   arrest = events.Arrested(char)
-  return events.PassFail(char, check, gain, arrest)
+  deceive = events.PassFail(char, check, gain, arrest)
+  return events.BinaryChoice(char, "Carry on Deception?", "Yes", "No", deceive, events.Nothing())
+
+def Library1(char):
+  check = events.Check(char, "will", -1)
+  tome = events.Draw(char, "unique", 1) # TODO: this is actually draw the first tome
+  move = events.ForceMovement(char, "University")
+  return events.PassFail(char, check, tome, move)
+def Library2(char):
+  check = events.Check(char, "will", 0)
+  move = events.ForceMovement(char, "University")
+  spell = events.Draw(char, "spells", 2)
+  unique = events.Draw(char, "unique", 1)
+  cond = events.Conditional(char, check, "successes", {0: move, 1: spell, 2: unique})
+  return events.Sequence([check, cond], char)
+def Library3(char):
+  check = events.Check(char, "lore", -2)
+  die = events.DiceRoll(char, 1)
+  gain = events.Gain(char, {"clues": die})
+  loss = events.Loss(char, {"stamina": 2, "sanity": 2})
+  return events.PassFail(char, check, events.Sequence([die, gain], char), loss)
+def Library4(char):
+  return events.Nothing() # TODO: GO TO DREAMLANDS!! DO NOT PASS GO! but do return here
+def Library5(char):
+  return events.Loss(char, {"sanity": 1})
+def Library6(char):
+  prereq = events.AttributePrerequisite(char, "dollars", 4, "at least")
+  pay = events.Loss(char, {"dollars": 4})
+  move = events.ForceMovement(char, "University")
+  return events.PassFail(char, prereq, pay, move)
+def Library7(char):
+  check = events.Check(char, "luck", -2)
+  money = events.Gain(char, {"dollars": 5})
+  return events.PassFail(char, check, money, events.Nothing())
+
+def Science1(char):
+  return events.Bless(char)
+def Science2(char):
+  spell = events.Draw(char, "spells", 1)
+  check = events.Check(char, "fight", -1)
+  lose = events.Nothing() # TODO: lose an item of your choice
+  fight = events.PassFail(char, check, events.Nothing(), lose)
+  return events.Sequence([spell, fight], char) 
+def Science3(char):
+  prereq = events.AttributePrerequisite(char, "dollars", 2, "less than") # TODO: the money is a lie, it's actually number of spells
+  unique = events.Draw(char, "unique", 1)
+  move = events.ForceMovement(char, "University")
+  return events.PassFail(char, prereq, events.Sequence([unique, move], char), events.Nothing())
+def Science4(char):
+  stamina = events.Loss(char, {"stamina": 2})
+  ally = events.DrawSpecific(char, "allies", "Arm Wrestler") # TODO: prereq on the ally being in the deck
+  return events.BinaryChoice(char, "Arm Wrestle?", "Yes", "No", events.Sequence([stamina, ally], char), events.Nothing())
+def Science5(char):
+  check = events.Check(char, "luck", 0)
+  die = events.DiceRoll(char, 1)
+  win = events.SplitGain(char, "stamina", "sanity", die)
+  coffee = events.Gain(char, {"stamina": 1})
+  return events.PassFail(char, check, events.Sequence([die, win], char), coffee)
+def Science6(char):
+  check = events.Check(char, "luck", -1)
+  success = events.Nothing() # TODO: OH NO!!  Pick a new investigator...
+  return events.PassFail(char, check, success, events.Nothing())
+def Science7(char):
+  check = events.Check(char, "lore", -2)
+  die = events.DiceRoll(char, 1)
+  stamina = events.Loss(char, {"stamina": die})
+  close_gates = events.Nothing() # TODO: close all of the gates!
+  move = events.ForceMovement(char, "Hospital")
+  fail = events.Sequence([die, stamina, move], char)
+  helping = events.PassFail(char, check, close_gates, fail)
+  return events.BinaryChoice(char, "Offer to help?", "Yes", "No", helping, events.Nothing())
+
 def Train3(char):
   return events.SplitGain(char, "stamina", "sanity", 2)
 
@@ -561,7 +656,13 @@ def CreateEncounterCards():
         EncounterCard("Southside4", {"Society": Society4}),
       ],
       "University": [
-        EncounterCard("University7", {"Administration": Administration7}),
+        EncounterCard("University1", {"Administration": Administration1, "Library": Library1, "Science": Science1}),
+        EncounterCard("University2", {"Administration": Administration2, "Library": Library2, "Science": Science2}),
+        EncounterCard("University3", {"Administration": Administration3, "Library": Library3, "Science": Science3}),
+        EncounterCard("University4", {"Administration": Administration4, "Library": Library4, "Science": Science4}),
+        EncounterCard("University5", {"Administration": Administration5, "Library": Library5, "Science": Science5}),
+        EncounterCard("University6", {"Administration": Administration6, "Library": Library6, "Science": Science6}),
+        EncounterCard("University7", {"Administration": Administration7, "Library": Library7, "Science": Science7}),
       ],
       "Uptown": [
         EncounterCard("Uptown1", {"Hospital": Hospital1, "Woods": Woods1, "MagickShoppe": MagickShoppe1}),

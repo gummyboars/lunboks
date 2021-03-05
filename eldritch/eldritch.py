@@ -53,6 +53,7 @@ class GameState(object):
     self.rumor = None
     self.environment = None
     self.ancient_one = None
+    self.other_globals = []
     self.check_result = None
     self.dice_result = []
 
@@ -83,6 +84,17 @@ class GameState(object):
     for char in self.characters:
       char.place = self.places[char.home]
 
+  def get_modifier(self, thing, attribute):
+    modifier = 0
+    for glob in self.globals():
+      if not glob:
+        continue
+      modifier += glob.get_modifier(thing, attribute)
+    return modifier
+
+  def globals(self):
+    return [self.rumor, self.environment, self.ancient_one] + self.other_globals
+
   def game_status(self):
     return "eldritch game"  # TODO
 
@@ -90,10 +102,13 @@ class GameState(object):
     output = {}
     output.update({
       key: getattr(self, key) for key in
-      self.__dict__.keys() - self.DEQUE_ATTRIBUTES - self.HIDDEN_ATTRIBUTES
+      self.__dict__.keys() - self.DEQUE_ATTRIBUTES - self.HIDDEN_ATTRIBUTES - {"characters"}
     })
     for attr in self.DEQUE_ATTRIBUTES:
       output[attr] = list(getattr(self, attr))
+    output["characters"] = []
+    for char in self.characters:
+      output["characters"].append(char.get_json(self))
     return output
 
   def for_player(self, char_idx):
@@ -406,12 +421,12 @@ class GameState(object):
         char.delayed_until = None
       elif char.delayed_until is not None:
         return self.next_turn()
-      char.movement_points = char.speed
+      char.movement_points = char.speed(self)
     if self.turn_phase == "encounter":
       if not isinstance(char.place, places.Location):
         return self.next_turn()
       elif char.place.neighborhood.encounters:
-        self.event_stack.append(events.Encounter(char, char.place))
+        self.event_stack.append(events.Encounter(char, char.place.name))
     if self.turn_phase == "otherworld":
       if not isinstance(char.place, places.OtherWorld):
         return self.next_turn()
