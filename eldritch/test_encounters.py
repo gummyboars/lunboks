@@ -1881,6 +1881,7 @@ class WoodsTest(EncounterTest):
     self.state.event_stack.append(encounters.Woods5(self.char))
     choice = self.resolve_to_choice(MultipleChoice)
     choice.resolve(self.state, "Yes")
+    self.resolve_until_done()
     self.assertEqual(len(self.char.possessions), 1)
     self.assertEqual(self.char.possessions[0].name, "Dog")
 
@@ -1891,6 +1892,7 @@ class WoodsTest(EncounterTest):
     self.state.event_stack.append(encounters.Woods5(self.char))
     choice = self.resolve_to_choice(MultipleChoice)
     choice.resolve(self.state, "Yes")
+    self.resolve_until_done()
     self.assertEqual(len(self.char.possessions), 0)
     self.assertEqual(self.char.dollars, 6)
 
@@ -1995,16 +1997,11 @@ class WoodsTest(EncounterTest):
     self.state.skills.extend([abilities.Marksman(), abilities.Fight()])
     # We know these aren't spells
     self.state.spells.extend([items.Cross(), items.HolyWater()])
-    #print('\n' * 3)
-    #print(self.state.event_stack)
     choice = self.resolve_to_choice(MultipleChoice)
     self.assertEqual(choice.choices, ["Yes", "No"])
     choice.resolve(self.state, "Yes")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
-      #print('\n'*3)
-      #print(self.state.event_stack)
       pass_choice = self.resolve_to_choice(MultipleChoice)
-      #print(self.state.event_stack)
     self.assertEqual(pass_choice.choices, ["A skill", "2 spells", "4 clues"])
     pass_choice.resolve(self.state, "A skill")
     self.resolve_until_done()
@@ -2065,6 +2062,7 @@ class MagickShoppeTest(EncounterTest):
     self.assertEqual(self.char.place.name, "Asylum")
 
   def testMagickShoppe2(self):
+    raise NotImplementedError("Don't know how to test that a location deck is face up")
     self.state.event_stack.append(encounters.MagickShoppe2(self.char))
     choice = self.resolve_to_choice(MultipleChoice)
     self.assertEqual(
@@ -2076,7 +2074,6 @@ class MagickShoppeTest(EncounterTest):
       ])
     )
     choice.resolve(self.state, "Uptown")
-    raise NotImplementedError("Don't know how to test that a location deck is face up")
 
   def testMagickShoppe3Poor(self):
     self.state.event_stack.append(encounters.MagickShoppe3(self.char))

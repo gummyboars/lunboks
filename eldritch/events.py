@@ -759,14 +759,11 @@ class DiscardNamed(Event):
   def resolve(self, state):
     for item in self.character.possessions:
       if item.name == self.item_name:
-        print("Found ", item.name, " to discard from", self.character.possessions)
-        self.character.possessions.remove(self.item)
-        print("Removed ", item.name, ", leaving ", self.character.possessions)
-        deck = getattr(state, self.item.deck)
-        deck.append(self.item)
+        self.character.possessions.remove(item)
+        deck = getattr(state, item.deck)
+        deck.append(item)
         self.discarded = True
         return True
-    print("Failed to discard ", self.item_name)
     self.discarded = False
     return True
 
@@ -833,7 +830,6 @@ class ItemPrerequisite(Event):
   def resolve(self, state):
     item_names = list(item.name for item in self.character.possessions)
     self.successes = int(self.operand(sum([item.name == self.item_name for item in self.character.possessions]), self.threshold))
-    print("Test: ", self.oper_desc, self.threshold, self.item_name, bool(self.successes))
     return True
 
   def is_resolved(self):
