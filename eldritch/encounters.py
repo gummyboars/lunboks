@@ -446,13 +446,12 @@ def Woods4(char):
   return events.PassFail(char, check, events.Nothing(), bushwhack)
 def Woods5(char):
   #TODO: Check whether you have food to give to the doggy
-  #prereq = events.ItemPrerequisite(char, "Food")
-  prereq = events.AttributePrerequisite(char, "dollars", 0, "at least")
+  prereq = events.ItemPrerequisite(char, "Food")
   check = events.Check(char, "speed", -2)
   #TODO: Check whether the ally is available in the deck
   #dog = events.GainAllyIfAvailable(char, "Dog", otherwise={"dollars": 3})
   dog = events.DrawSpecific(char, "allies", "Dog")
-  give_food = events.DiscardSpecific(char, "Food")
+  give_food = events.DiscardNamed(char, "Food")
   catch = events.PassFail(char, check, dog, events.Nothing())
   seq = events.Sequence([give_food, dog], char)
   choose_give_food = events.BinaryChoice(char, "Give food to the dog?", "Yes", "No", seq, catch)

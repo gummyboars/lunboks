@@ -1529,6 +1529,7 @@ class WoodsTest(EncounterTest):
     self.assertEqual(self.char.place.name, "Hospital")
 
   def testWoods5FoodAlly(self):
+    self.char.speed_sneak_slider = 2
     self.char.possessions.append(items.Food())
     self.state.allies.append(assets.Dog())
     self.state.event_stack.append(encounters.Woods5(self.char))
@@ -1539,6 +1540,7 @@ class WoodsTest(EncounterTest):
 
 
   def testWoods5FoodReward(self):
+    self.char.speed_sneak_slider = 2
     self.char.possessions.append(items.Food())
     self.state.event_stack.append(encounters.Woods5(self.char))
     choice = self.resolve_to_choice(MultipleChoice)
@@ -1546,7 +1548,8 @@ class WoodsTest(EncounterTest):
     self.assertEqual(len(self.char.possessions), 0)
     self.assertEqual(self.char.dollars, 6)
 
-  def testWoods5LuckAlly(self):
+  def testWoods5ChooseLuckAlly(self):
+    self.char.speed_sneak_slider = 2
     self.char.possessions.append(items.Food())
     self.state.allies.append(assets.Dog())
     self.state.event_stack.append(encounters.Woods5(self.char))
@@ -1555,8 +1558,57 @@ class WoodsTest(EncounterTest):
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       self.resolve_until_done()
     self.assertEqual(len(self.char.possessions), 2)
-    self.assertEqual(self.char.possessions[0], "Food")
-    self.assertEqual(self.char.possessions[1], "Dog")
+    self.assertEqual(self.char.possessions[0].name, "Food")
+    self.assertEqual(self.char.possessions[1].name, "Dog")
+
+  def testWoods5ChooseLuckReward(self):
+    self.char.speed_sneak_slider = 2
+    self.char.possessions.append(items.Food())
+    self.state.event_stack.append(encounters.Woods5(self.char))
+    choice = self.resolve_to_choice(MultipleChoice)
+    choice.resolve(self.state, "No")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+    self.assertEqual(len(self.char.possessions), 1)
+    self.assertEqual(self.char.possessions[0].name, "Food")
+    self.assertEqual(self.char.dollars, 6)
+
+  def testWoods5ChooseLuckFail(self):
+    self.char.speed_sneak_slider = 2
+    self.char.possessions.append(items.Food())
+    self.state.event_stack.append(encounters.Woods5(self.char))
+    choice = self.resolve_to_choice(MultipleChoice)
+    choice.resolve(self.state, "No")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=4)):
+      self.resolve_until_done()
+    self.assertEqual(len(self.char.possessions), 1)
+    self.assertEqual(self.char.possessions[0].name, "Food")
+    self.assertEqual(self.char.dollars, 3)
+
+  def testWoods5ForceLuckAlly(self):
+    self.char.speed_sneak_slider = 2
+    self.state.allies.append(assets.Dog())
+    self.state.event_stack.append(encounters.Woods5(self.char))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+    self.assertEqual(len(self.char.possessions), 1)
+    self.assertEqual(self.char.possessions[0].name, "Dog")
+
+  def testWoods5ForceLuckReward(self):
+    self.char.speed_sneak_slider = 2
+    self.state.event_stack.append(encounters.Woods5(self.char))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+    self.assertEqual(len(self.char.possessions), 0)
+    self.assertEqual(self.char.dollars, 6)
+
+  def testWoods5ForceLuckFail(self):
+    self.char.speed_sneak_slider = 2
+    self.state.event_stack.append(encounters.Woods5(self.char))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=4)):
+      self.resolve_until_done()
+    self.assertEqual(len(self.char.possessions), 0)
+    self.assertEqual(self.char.dollars, 3)
 
   def testWoods6(self):
     raise NotImplementedError("Don't know how to implement gate and monster test")
@@ -1592,6 +1644,7 @@ class WoodsTest(EncounterTest):
     self.assertEqual(self.char.lose_turn_until, self.state.turn_number + 2)
 
   def testWoods7AcceptPassSkill(self):
+    self.char.lore_luck_slider = 2
     self.state.event_stack.append(encounters.Woods7(self.char))
     self.state.skills.extend([abilities.Marksman(), abilities.Fight()])
     # We know these aren't spells
@@ -1611,8 +1664,8 @@ class WoodsTest(EncounterTest):
     self.resolve_until_done()
     self.assertEqual(len(self.char.possessions), 1)
     self.assertEqual(self.char.possessions[0].name, "Marksman")
-    self.assertEqual(len(self.char.clues), 0)
-    self.assertEqual(self.char.delayed_until, self.state.turn_number + 2)
+    self.assertEqual(self.char.clues, 0)
+    self.assertEqual(self.char.lose_turn_until, self.state.turn_number + 2)
 
   def testWoods7AcceptPassSpells(self):
     self.char.lore_luck_slider = 2
@@ -1631,10 +1684,11 @@ class WoodsTest(EncounterTest):
     self.assertEqual(len(self.char.possessions), 2)
     self.assertEqual(self.char.possessions[0].name, "Cross")
     self.assertEqual(self.char.possessions[1].name, "HolyWater")
-    self.assertEqual(len(self.char.clues), 3)
+    self.assertEqual(self.char.clues, 3)
     self.assertEqual(self.char.lose_turn_until, self.state.turn_number + 2)
 
   def testWoods7AcceptPassClues(self):
+    self.char.lore_luck_slider = 2
     self.state.event_stack.append(encounters.Woods7(self.char))
     self.state.skills.extend([abilities.Marksman(), abilities.Fight()])
     # We know these aren't spells
@@ -1648,7 +1702,7 @@ class WoodsTest(EncounterTest):
     pass_choice.resolve(self.state, "4 clues")
     self.resolve_until_done()
     self.assertEqual(len(self.char.possessions), 0)
-    self.assertEqual(len(self.char.clues), 4)
+    self.assertEqual(self.char.clues, 4)
     self.assertEqual(self.char.lose_turn_until, self.state.turn_number + 2)
 
 class MagickShoppeTest(EncounterTest):

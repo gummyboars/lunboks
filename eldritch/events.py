@@ -723,11 +723,6 @@ class ExhaustAsset(Event):
 class DiscardSpecific(Event):
 
   def __init__(self, character, item):
-    if isinstance(item, str):
-      try:
-        item = next(i for i in character.possessions if i.name == item)
-      except StopIteration:
-        raise AssertionError("Character does not have any {}".format(item))
     assert item in character.possessions
     self.character = character
     self.item = item
@@ -753,6 +748,38 @@ class DiscardSpecific(Event):
     if not self.discarded:
       return f"{self.character.name} did not have a {self.item.name} to discard"
     return f"{self.character.name} discarded their {self.item.name}"
+
+class DiscardNamed(Event):
+
+  def __init__(self, character, item_name):
+    self.character = character
+    self.item_name = item_name
+    self.discarded = None
+
+  def resolve(self, state):
+    for item in self.character.possessions:
+      if item.name == self.item_name:
+        print("Found ", item.name, " to discard from", self.character.possessions)
+        self.character.possessions.remove(self.item)
+        print("Removed ", item.name, ", leaving ", self.character.possessions)
+        deck = getattr(state, self.item.deck)
+        deck.append(self.item)
+        self.discarded = True
+        return True
+    print("Failed to discard ", self.item_name)
+    self.discarded = False
+    return True
+
+  def is_resolved(self):
+    return self.discarded is not None
+
+  def start_str(self):
+    return f"{self.character.name} will discard a {self.item_name}"
+
+  def finish_str(self):
+    if not self.discarded:
+      return f"{self.character.name} did not have a {self.item_name} to discard"
+    return f"{self.character.name} discarded their {self.item_name}"
 
 
 class AttributePrerequisite(Event):
@@ -784,6 +811,39 @@ class AttributePrerequisite(Event):
   def finish_str(self):
     if not self.successes:
       return self.character.name + " does not have " + self.oper_desc + " " + str(self.threshold) + " " + self.attribute
+    return ""
+
+class ItemPrerequisite(Event):
+
+  def __init__(self, character, item_name, threshold=1, operand='at least'):
+    oper_map = {
+        "at least": operator.ge,
+        "less than": operator.lt,
+        "exactly": operator.eq,
+    }
+    assert operand in oper_map
+    self.character = character
+    self.item_name = item_name
+    self.threshold = threshold
+    self.oper_desc = operand
+    self.operand = oper_map[operand]
+    self.successes = None
+
+  def resolve(self, state):
+    item_names = list(item.name for item in self.character.possessions)
+    self.successes = int(self.operand(sum([item.name == self.item_name for item in self.character.possessions]), self.threshold))
+    print("Test: ", self.oper_desc, self.threshold, self.item_name, bool(self.successes))
+    return True
+
+  def is_resolved(self):
+    return self.successes is not None
+
+  def start_str(self):
+    return ""
+
+  def finish_str(self):
+    if not self.successes:
+      return self.character.name + " does not have " + self.oper_desc + " " + str(self.threshold) + " " + self.item_name
     return ""
 
 
