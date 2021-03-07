@@ -14,6 +14,7 @@ import eldritch.characters as characters
 import eldritch.encounters as encounters
 import eldritch.events as events
 import eldritch.gates as gates
+import eldritch.gate_encounters as gate_encounters
 import eldritch.items as items
 import eldritch.monsters as monsters
 import eldritch.mythos as mythos
@@ -23,7 +24,8 @@ import eldritch.places as places
 class GameState(object):
 
   DEQUE_ATTRIBUTES = {"common", "unique", "spells", "skills", "allies", "gates"}
-  HIDDEN_ATTRIBUTES = {"event_stack", "interrupt_stack", "trigger_stack", "usables", "mythos"}
+  HIDDEN_ATTRIBUTES = {
+      "event_stack", "interrupt_stack", "trigger_stack", "usables", "mythos", "gate_cards"}
   TURN_PHASES = ["upkeep", "movement", "encounter", "otherworld", "mythos"]
 
   def __init__(self):
@@ -36,6 +38,7 @@ class GameState(object):
     self.allies = collections.deque()
     self.mythos = collections.deque()
     self.gates = collections.deque()
+    self.gate_cards = collections.deque()
     self.monsters = []
     self.monster_cup = monsters.MonsterCup()
     self.game_stage = "slumber"  # valid values are setup, slumber, awakened, victory, defeat
@@ -62,6 +65,7 @@ class GameState(object):
     infos, other_worlds = places.CreateOtherWorlds()
     self.places.update(other_worlds)
     encounter_cards = encounters.CreateEncounterCards()
+    self.gate_cards.extend(gate_encounters.CreateGateCards())
     for neighborhood_name, cards in encounter_cards.items():
       self.places[neighborhood_name].encounters.extend(cards)
 
@@ -430,8 +434,8 @@ class GameState(object):
     if self.turn_phase == "otherworld":
       if not isinstance(char.place, places.OtherWorld):
         return self.next_turn()
-      elif True:
-        pass  # TODO
+      else:
+        self.event_stack.append(events.GateEncounter(char, char.place.info))
 
   def get_distances(self, char_idx):
     routes = self.get_routes(char_idx)

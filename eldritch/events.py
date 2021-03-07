@@ -604,6 +604,7 @@ class Draw(Event):
     return f"{self.character.name} keeps " + ", ".join(self.kept)
 
 
+
 class Encounter(Event):
 
   def __init__(self, character, location_name):
@@ -640,7 +641,7 @@ class Encounter(Event):
     choice = CardChoice(self.character, "Choose an Encounter", [card.name for card in draw.cards])
     cond = Conditional(
         self.character, choice, "choice_index", {idx: enc for idx, enc in enumerate(encounters)})
-    self.encounter = Sequence([choice, cond], character)
+    self.encounter = Sequence([choice, cond], self.character)
     state.stack.append(self.encounter)
     return False
 
@@ -677,6 +678,88 @@ class DrawEncounter(Event):
 
   def finish_str(self):
     return f"{self.character.name} drew " + ", ".join([card.name for card in self.cards])
+
+
+class GateEncounter(Event):
+
+  def __init__(self, character, info):
+    self.character = character
+    self.world_name = info.name
+    self.colors = info.colors
+    self.draw_count = 1
+    self.draw = None
+    self.cards = []
+    self.encounter = None
+
+  def resolve(self, state):
+    if self.encounter is not None:
+      assert self.encounter.is_resolved()
+      state.gate_cards.extend(self.cards)
+      self.cards = []
+      return True
+
+    if self.draw is not None:
+      assert self.draw.is_resolved()
+      self.cards.append(self.draw.card)
+      self.draw = None
+
+    if len(self.cards) < self.draw_count:
+      self.draw = DrawGateCard(self.character, self.colors)
+      state.event_stack.append(self.draw)
+      return False
+
+    if len(self.cards) == 1:
+      self.encounter = self.cards[0].encounter_event(self.character, self.world_name)
+      state.event_stack.append(self.encounter)
+      return False
+
+    encounters = [card.encounter_event(self.character, self.world_name) for card in self.cards]
+    choice = CardChoice(self.character, "Choose an Encounter", [card.name for card in self.cards])
+    cond = Conditional(
+        self.character, choice, "choice_index", {idx: enc for idx, enc in enumerate(encounters)})
+    self.encounter = Sequence([choice, cond], self.character)
+    state.stack.append(self.encounter)
+    return False
+
+  def is_resolved(self):
+    return self.encounter is not None and self.encounter.is_resolved() and not self.cards
+
+  def start_str(self):
+    return ""
+
+  def finish_str(self):
+    return ""
+
+
+class DrawGateCard(Event):
+
+  def __init__(self, character, colors):
+    self.character = character
+    self.colors = colors
+    self.shuffled = False
+    self.card = None
+
+  def resolve(self, state):
+    while True:
+      card = state.gate_cards.popleft()
+      if card.colors & self.colors:
+        break
+      state.gate_cards.append(card)
+      if card.name == "Shuffle":
+        random.shuffle(state.gate_cards)
+        self.shuffled = True
+    self.card = card
+
+  def is_resolved(self):
+    return self.card is not None
+
+  def start_str(self):
+    return f"{self.character.name} must draw a " + " or ".join(self.colors) + " gate card"
+
+  def finish_str(self):
+    if self.shuffled:
+      return f"{self.character.name} shuffled the deck and then drew {self.card.name}"
+    return f"{self.character.name} drew {self.card.name}"
 
 
 class DrawSpecific(Event):
