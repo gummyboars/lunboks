@@ -593,7 +593,7 @@ def MagickShoppe3(char):
   coins = events.Gain(char, {"dollars": dice})
   jackpot = events.Draw(char, "unique", 2)
   cond = events.Conditional(char, luck, "successes", {0: events.Nothing(), 1: coins, 2: jackpot})
-  buy = events.Sequence([events.Loss(char, {"dollars": 5}), cond], char)
+  buy = events.Sequence([events.Loss(char, {"dollars": 5}), luck, cond], char)
   box = events.BinaryChoice(char, "Buy the locked trunk?", "Yes", "No", buy, events.Nothing())
   return events.PassFail(char, prereq, box, events.Nothing())
 def MagickShoppe4(char):

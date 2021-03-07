@@ -749,6 +749,7 @@ class DiscardSpecific(Event):
       return f"{self.character.name} did not have a {self.item.name} to discard"
     return f"{self.character.name} discarded their {self.item.name}"
 
+
 class DiscardNamed(Event):
 
   def __init__(self, character, item_name):
@@ -828,8 +829,10 @@ class ItemPrerequisite(Event):
     self.successes = None
 
   def resolve(self, state):
-    item_names = list(item.name for item in self.character.possessions)
-    self.successes = int(self.operand(sum([item.name == self.item_name for item in self.character.possessions]), self.threshold))
+    self.successes = int(self.operand(
+      sum([item.name == self.item_name for item in self.character.possessions]),
+      self.threshold
+    ))
     return True
 
   def is_resolved(self):
