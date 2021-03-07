@@ -133,10 +133,49 @@ def Witch2(char):
   draw = events.Draw(char, "unique", 1)
   return events.PassFail(char, check, draw, events.Nothing())
 
+def Cave1(char):
+  return events.Nothing()
+
+def Cave2(char):
+  return events.Nothing()
+
+def Cave3(char):
+  return events.Nothing()
+
+def Cave4(char):
+  return events.Nothing()
+
+def Cave5(char):
+  return events.Nothing()
+
+def Cave6(char):
+    return events.Nothing()
+
+def Cave7(char):
+  return events.Nothing()
+
+def Store1(char):
+  return events.Nothing()
+
+def Store2(char):
+  return events.Nothing()
+
+def Store3(char):
+  return events.Nothing()
+
+def Store4(char):
+  return events.Nothing()
+
 def Store5(char):
   check = events.Check(char, "will", -2)
   draw = events.Draw(char, "common", 3)
   return events.PassFail(char, check, draw, events.Nothing())
+
+def Store6(char):
+  return events.Nothing()
+
+def Store7(char):
+  return events.Nothing()
 
 def Society4(char):
   check = events.Check(char, "luck", -1)
@@ -499,6 +538,13 @@ def CreateEncounterCards():
         EncounterCard("Northside3", {"Train": Train3}),
       ],
       "Rivertown": [
+        #EncounterCard("Rivertown1", {"Cave": Cave1, "Store": Store1, "Graveyard": Graveyard1}),
+        #EncounterCard("Rivertown2", {"Cave": Cave2, "Store": Store2, "Graveyard": Graveyard2}),
+        #EncounterCard("Rivertown3", {"Cave": Cave3, "Store": Store3, "Graveyard": Graveyard3}),
+        #EncounterCard("Rivertown4", {"Cave": Cave4, "Store": Store4, "Graveyard": Graveyard4}),
+        #EncounterCard("Rivertown5", {"Cave": Cave5, "Store": Store5, "Graveyard": Graveyard5}),
+        #EncounterCard("Rivertown6", {"Cave": Cave6, "Store": Store6, "Graveyard": Graveyard6}),
+        #EncounterCard("Rivertown7", {"Cave": Cave7, "Store": Store7, "Graveyard": Graveyard7}),
         EncounterCard("Rivertown5", {"Store": Store5}),
       ],
       "Southside": [
