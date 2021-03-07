@@ -590,7 +590,7 @@ def MagickShoppe3(char):
   prereq = events.AttributePrerequisite(char, "dollars", 5, "at least")
   luck = events.Check(char, "luck", 0)
   dice = events.DiceRoll(char, 2)
-  coins = events.Gain(char, {"dollars": dice})
+  coins = events.Sequence([dice, events.Gain(char, {"dollars": dice})], char)
   jackpot = events.Draw(char, "unique", 2)
   cond = events.Conditional(char, luck, "successes", {0: events.Nothing(), 1: coins, 2: jackpot})
   buy = events.Sequence([events.Loss(char, {"dollars": 5}), luck, cond], char)
