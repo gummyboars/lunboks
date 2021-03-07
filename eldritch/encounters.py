@@ -526,16 +526,20 @@ def Woods3(char):
   return events.PassFail(char, check, shotgun, fail)
 def Woods4(char):
   check = events.Check(char, "luck", -1)
-  bushwhack1a = events.ItemChoice(char, "Choose first item to lose")
-  bushwhack1b = events.DiscardSpecific(char, bushwhack1a)
-  bushwhack1c = events.ItemChoice(char, "Choose second item to lose")
-  bushwhack1d = events.DiscardSpecific(char, bushwhack1c)
+#  bushwhack1a = events.ItemChoice(char, "Choose first item to lose")
+#  bushwhack1b = events.DiscardSpecific(char, bushwhack1a)
+#  bushwhack1c = events.ItemChoice(char, "Choose second item to lose")
+#  bushwhack1d = events.DiscardSpecific(char, bushwhack1c)
+  n_items = min(len(char.possessions), 2)
+  items = events.ItemCountChoice(char, f"Choose {n_items} to discard", n_items)
   bushwhack2 = events.Loss(char, {"stamina": 2})
   bushwhack = events.Sequence([
-    bushwhack1a,
-    bushwhack1b,
-    bushwhack1c,
-    bushwhack1d,
+#    bushwhack1a,
+#    bushwhack1b,
+#    bushwhack1c,
+#    bushwhack1d,
+    items,
+    events.DiscardSpecific(char, items),
     bushwhack2,
   ], char)
   return events.PassFail(char, check, events.Nothing(), bushwhack)
@@ -569,9 +573,9 @@ def Woods7(char):
   seq = events.Sequence([turn, cond], char)
   return events.BinaryChoice(char, "Share in the old wise-guy's wisdom?", "Yes", "No", seq, events.Nothing())
 
-def MagickShoppe1(char):
+def Shoppe1(char):
   return events.Loss(char, {"sanity": 1})
-def MagickShoppe2(char):
+def Shoppe2(char):
   #TODO: Implement "Turn the top card of one location deck face up, next player to have an enounter there draws that encounter"
   return events.Nothing()
   # What follows is the start of an implementation
@@ -586,7 +590,7 @@ def MagickShoppe2(char):
     list(keys(streets))
   )
   return choice
-def MagickShoppe3(char):
+def Shoppe3(char):
   prereq = events.AttributePrerequisite(char, "dollars", 5, "at least")
   luck = events.Check(char, "luck", 0)
   dice = events.DiceRoll(char, 2)
@@ -596,18 +600,18 @@ def MagickShoppe3(char):
   buy = events.Sequence([events.Loss(char, {"dollars": 5}), luck, cond], char)
   box = events.BinaryChoice(char, "Buy the locked trunk?", "Yes", "No", buy, events.Nothing())
   return events.PassFail(char, prereq, box, events.Nothing())
-def MagickShoppe4(char):
+def Shoppe4(char):
   check = events.Check(char, "lore", -1)
   curse = events.Curse(char)
   return events.PassFail(char, check, events.Nothing(), curse)
-def MagickShoppe5(char):
+def Shoppe5(char):
   return events.Gain(char, {"clues": 1})
-def MagickShoppe6(char):
+def Shoppe6(char):
   check = events.Check(char, "lore", -1)
   #TODO: Implement buying at a discount
   underpriced = events.Nothing()
   return events.PassFail(char, check, underpriced, events.Nothing())
-def MagickShoppe7(char):
+def Shoppe7(char):
   move = events.ForceMovement(char, "Uptown")
   san = events.Loss(char, {"sanity": 1})
   return events.Sequence([move, san], char)
@@ -665,12 +669,12 @@ def CreateEncounterCards():
         EncounterCard("University7", {"Administration": Administration7, "Library": Library7, "Science": Science7}),
       ],
       "Uptown": [
-        EncounterCard("Uptown1", {"Hospital": Hospital1, "Woods": Woods1, "MagickShoppe": MagickShoppe1}),
-        EncounterCard("Uptown2", {"Hospital": Hospital2, "Woods": Woods2, "MagickShoppe": MagickShoppe2}),
-        EncounterCard("Uptown3", {"Hospital": Hospital3, "Woods": Woods3, "MagickShoppe": MagickShoppe3}),
-        EncounterCard("Uptown4", {"Hospital": Hospital4, "Woods": Woods4, "MagickShoppe": MagickShoppe4}),
-        EncounterCard("Uptown5", {"Hospital": Hospital5, "Woods": Woods5, "MagickShoppe": MagickShoppe5}),
-        EncounterCard("Uptown6", {"Hospital": Hospital6, "Woods": Woods6, "MagickShoppe": MagickShoppe6}),
-        EncounterCard("Uptown7", {"Hospital": Hospital7, "Woods": Woods7, "MagickShoppe": MagickShoppe7}),
+        EncounterCard("Uptown1", {"Hospital": Hospital1, "Woods": Woods1, "Shoppe": Shoppe1}),
+        EncounterCard("Uptown2", {"Hospital": Hospital2, "Woods": Woods2, "Shoppe": Shoppe2}),
+        EncounterCard("Uptown3", {"Hospital": Hospital3, "Woods": Woods3, "Shoppe": Shoppe3}),
+        EncounterCard("Uptown4", {"Hospital": Hospital4, "Woods": Woods4, "Shoppe": Shoppe4}),
+        EncounterCard("Uptown5", {"Hospital": Hospital5, "Woods": Woods5, "Shoppe": Shoppe5}),
+        EncounterCard("Uptown6", {"Hospital": Hospital6, "Woods": Woods6, "Shoppe": Shoppe6}),
+        EncounterCard("Uptown7", {"Hospital": Hospital7, "Woods": Woods7, "Shoppe": Shoppe7}),
       ]
   }

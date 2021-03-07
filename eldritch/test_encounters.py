@@ -2069,22 +2069,22 @@ class WoodsTest(EncounterTest):
     self.assertEqual(self.char.lose_turn_until, self.state.turn_number + 2)
 
 
-class MagickShoppeTest(EncounterTest):
-  def testMagickShoppe1(self):
-    self.state.event_stack.append(encounters.MagickShoppe1(self.char))
+class ShoppeTest(EncounterTest):
+  def testShoppe1(self):
+    self.state.event_stack.append(encounters.Shoppe1(self.char))
     self.resolve_until_done()
     self.assertEqual(self.char.sanity, 2)
 
-  def testMagickShoppe1Insane(self):
+  def testShoppe1Insane(self):
     self.char.sanity = 1
-    self.state.event_stack.append(encounters.MagickShoppe1(self.char))
+    self.state.event_stack.append(encounters.Shoppe1(self.char))
     self.resolve_until_done()
     self.assertEqual(self.char.sanity, 1)
     self.assertEqual(self.char.place.name, "Asylum")
 
-#  def testMagickShoppe2(self):
+#  def testShoppe2(self):
 #    raise NotImplementedError("Don't know how to test that a location deck is face up")
-#    self.state.event_stack.append(encounters.MagickShoppe2(self.char))
+#    self.state.event_stack.append(encounters.Shoppe2(self.char))
 #    choice = self.resolve_to_choice(MultipleChoice)
 #    self.assertEqual(
 #      sorted(choice.choices),
@@ -2096,22 +2096,22 @@ class MagickShoppeTest(EncounterTest):
 #    )
 #    choice.resolve(self.state, "Uptown")
 
-  def testMagickShoppe3Poor(self):
-    self.state.event_stack.append(encounters.MagickShoppe3(self.char))
+  def testShoppe3Poor(self):
+    self.state.event_stack.append(encounters.Shoppe3(self.char))
     self.resolve_until_done()
 
-  def testMagickShoppe3Decline(self):
+  def testShoppe3Decline(self):
     self.char.dollars = 5
-    self.state.event_stack.append(encounters.MagickShoppe3(self.char))
+    self.state.event_stack.append(encounters.Shoppe3(self.char))
     buy = self.resolve_to_choice(MultipleChoice)
     self.assertEqual(buy.choices, ["Yes", "No"])
     buy.resolve(self.state, "No")
     self.resolve_until_done()
 
-  def testMagickShoppe3Empty(self):
+  def testShoppe3Empty(self):
     self.char.dollars = 5
     self.state.unique.extend([items.Cross(), items.HolyWater()])
-    self.state.event_stack.append(encounters.MagickShoppe3(self.char))
+    self.state.event_stack.append(encounters.Shoppe3(self.char))
     buy = self.resolve_to_choice(MultipleChoice)
     self.assertEqual(buy.choices, ["Yes", "No"])
     buy.resolve(self.state, "Yes")
@@ -2120,11 +2120,11 @@ class MagickShoppeTest(EncounterTest):
     self.assertEqual(self.char.dollars, 0)
     self.assertEqual(len(self.char.possessions), 0)
 
-  def testMagickShoppe3Gold(self):
+  def testShoppe3Gold(self):
     self.char.dollars = 5
     self.char.lore_luck_slider = 3
     self.state.unique.extend([items.Cross(), items.HolyWater()])
-    self.state.event_stack.append(encounters.MagickShoppe3(self.char))
+    self.state.event_stack.append(encounters.Shoppe3(self.char))
     buy = self.resolve_to_choice(MultipleChoice)
     self.assertEqual(buy.choices, ["Yes", "No"])
     buy.resolve(self.state, "Yes")
@@ -2134,11 +2134,11 @@ class MagickShoppeTest(EncounterTest):
     self.assertEqual(len(self.char.possessions), 0)
 
 # Not Implemented: Drawing multiple items
-#  def testMagickShoppe3Jackpot(self):
+#  def testShoppe3Jackpot(self):
 #    self.char.dollars = 5
 #    self.char.lore_luck_slider = 1
 #    self.state.unique.extend([items.Cross(), items.HolyWater()])
-#    self.state.event_stack.append(encounters.MagickShoppe3(self.char))
+#    self.state.event_stack.append(encounters.Shoppe3(self.char))
 #    buy = self.resolve_to_choice(MultipleChoice)
 #    self.assertEqual(buy.choices, ["Yes", "No"])
 #    buy.resolve(self.state, "Yes")
@@ -2147,40 +2147,40 @@ class MagickShoppeTest(EncounterTest):
 #    self.assertEqual(self.char.dollars, 0)
 #    self.assertEqual(len(self.char.possessions), 2)
 
-  def testMagickShoppe4Pass(self):
-    self.state.event_stack.append(encounters.MagickShoppe4(self.char))
+  def testShoppe4Pass(self):
+    self.state.event_stack.append(encounters.Shoppe4(self.char))
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       self.resolve_until_done()
     self.assertEqual(self.char.bless_curse, 0)
 
-  def testMagickShoppe4Fail(self):
-    self.state.event_stack.append(encounters.MagickShoppe4(self.char))
+  def testShoppe4Fail(self):
+    self.state.event_stack.append(encounters.Shoppe4(self.char))
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=4)):
       self.resolve_until_done()
     self.assertEqual(self.char.bless_curse, -1)
 
-  def testMagickShoppe5(self):
-    self.state.event_stack.append(encounters.MagickShoppe5(self.char))
+  def testShoppe5(self):
+    self.state.event_stack.append(encounters.Shoppe5(self.char))
     self.resolve_until_done()
     self.assertEqual(self.char.clues, 1)
 
-  def testMagickShoppe6Fail(self):
-    self.state.event_stack.append(encounters.MagickShoppe6(self.char))
+  def testShoppe6Fail(self):
+    self.state.event_stack.append(encounters.Shoppe6(self.char))
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=4)):
       self.resolve_until_done()
 
-#  def testMagickShoppe6PassDecline(self):
+#  def testShoppe6PassDecline(self):
 #    self.state.unique.append(items.Cross()) # Costs 3
-#    self.state.event_stack.append(encounters.MagickShoppe6(self.char))
+#    self.state.event_stack.append(encounters.Shoppe6(self.char))
 #    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
 #      buy = self.resolve_to_choice(MultipleChoice)
 #    self.assertEqual(buy.choices, ["Yes", "No"])
 #    buy.resolve(self.state, "No")
 #    self.resolve_until_done()
 #
-#  def testMagickShoppe6PassAccept(self):
+#  def testShoppe6PassAccept(self):
 #    self.state.unique.append(items.Cross()) # Costs 3
-#    self.state.event_stack.append(encounters.MagickShoppe6(self.char))
+#    self.state.event_stack.append(encounters.Shoppe6(self.char))
 #    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
 #        buy = self.resolve_to_choice(MultipleChoice)
 #    self.assertEqual(buy.choices, ["Yes", "No"])
@@ -2190,23 +2190,23 @@ class MagickShoppeTest(EncounterTest):
 #    self.assertEqual(len(self.char.possessions), 1)
 #    self.assertEqual(self.char.possessions[0].name, "Cross")
 #
-  def testMagickShoppe6PassPoor(self):
+  def testShoppe6PassPoor(self):
     self.char.dollars = 2
-    self.state.event_stack.append(encounters.MagickShoppe6(self.char))
+    self.state.event_stack.append(encounters.Shoppe6(self.char))
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       self.resolve_until_done()
     self.assertEqual(self.char.dollars, 2)
 
-  def testMagickShoppe7(self):
+  def testShoppe7(self):
     self.assertEqual(self.char.sanity, 3)
-    self.state.event_stack.append(encounters.MagickShoppe7(self.char))
+    self.state.event_stack.append(encounters.Shoppe7(self.char))
     self.resolve_until_done()
     self.assertEqual(self.char.sanity, 2)
     self.assertEqual(self.char.place.name, "Uptown")
 
-  def testMagickShoppe7Insane(self):
+  def testShoppe7Insane(self):
     self.char.sanity = 1
-    self.state.event_stack.append(encounters.MagickShoppe7(self.char))
+    self.state.event_stack.append(encounters.Shoppe7(self.char))
     self.resolve_until_done()
     self.assertEqual(self.char.sanity, 1)
     self.assertEqual(self.char.place.name, "Asylum")
