@@ -1567,124 +1567,128 @@ class IsleTest(EncounterTest):
       self.resolve_until_done()
     self.assertEqual(self.char.clues, 0)
 
-class RivertownTest(EncounterTest):
-  def testCave1Zero(self):
-    self.character.lore_luck_slider = 3
-    self.state.common.append(items.Food())
-    self.state.event_stack.append(encounters.Cave1(self.char))
-    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=2)):
-      raise NotImplementedError("A monster appears")
-      self.resolve_until_monster()
-    self.assertEqual(len(self.state.common), 1)
-    self.assertEqual(self.character.sanity, 2)
+class CaveTest(EncounterTest):
+
+#  def testCave1Zero(self):
+#    self.char.lore_luck_slider = 3
+#    self.state.common.append(items.Food())
+#    self.state.event_stack.append(encounters.Cave1(self.char))
+#    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=2)):
+#      raise NotImplementedError("A monster appears")
+#      self.resolve_until_monster()
+#    self.assertEqual(len(self.state.common), 1)
+#    self.assertEqual(self.char.sanity, 2)
 
   def testCave1ZeroInsane(self):
-    self.character.lore_luck_slider = 3
-    self.character.sanity = 1
+    self.char.lore_luck_slider = 3
+    self.char.sanity = 1
     self.state.common.append(items.Food())
     self.state.event_stack.append(encounters.Cave1(self.char))
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=2)):
       self.resolve_until_done()
     self.assertEqual(len(self.state.common), 1)
-    self.assertEqual(self.character.sanity, 1)
-    self.assertEqual(self.character.place.name, "Asylum")
+    self.assertEqual(self.char.sanity, 1)
+    self.assertEqual(self.char.place.name, "Asylum")
 
   def testCave1One(self):
-    self.character.lore_luck_slider = 3
+    self.char.lore_luck_slider = 3
     self.state.common.append(items.Food())
     self.state.event_stack.append(encounters.Cave1(self.char))
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       self.resolve_until_done()
     self.assertEqual(len(self.state.common), 1)
-    self.assertEqual(self.character.sanity, 2)
+    self.assertEqual(self.char.sanity, 2)
 
   def testCave1OneInsane(self):
-    self.character.lore_luck_slider = 3
+    self.char.lore_luck_slider = 3
+    self.char.sanity = 1
     self.state.common.append(items.Food())
     self.state.event_stack.append(encounters.Cave1(self.char))
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       self.resolve_until_done()
     self.assertEqual(len(self.state.common), 1)
-    self.assertEqual(self.character.sanity, 1)
-    self.assertEqual(self.character.place.name, "Asylum")
+    self.assertEqual(self.char.sanity, 1)
+    self.assertEqual(self.char.place.name, "Asylum")
 
   def testCave1Two(self):
-    self.character.lore_luck_slider = 2
+    self.char.lore_luck_slider = 2
     self.state.common.append(items.Food())
     self.state.event_stack.append(encounters.Cave1(self.char))
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       self.resolve_until_done()
-    self.assertEqual(self.character.sanity, 3)
+    self.assertEqual(self.char.sanity, 3)
     self.assertEqual(len(self.state.common), 0)
-    self.assertEqual(len(self.character.possessions), 1)
-    self.assertEqual(self.character.possessions[0].name, "Food")
+    self.assertEqual(len(self.char.possessions), 1)
+    self.assertEqual(self.char.possessions[0].name, "Food")
 
   def testCave2(self):
-    self.character.sanity = 3
+    self.char.sanity = 3
     self.state.event_stack.append(encounters.Cave2(self.char))
-    self.assertEqual(self.character.sanity, 2)
+    self.resolve_until_done()
+    self.assertEqual(self.char.sanity, 2)
 
   def testCave2Insane(self):
-    self.character.sanity = 3
+    self.char.sanity = 1
     self.state.event_stack.append(encounters.Cave2(self.char))
-    self.assertEqual(self.character.sanity, 1)
-    self.assertEqual(self.character.place.name, "Asylum")
+    self.resolve_until_done()
+    self.assertEqual(self.char.sanity, 1)
+    self.assertEqual(self.char.place.name, "Asylum")
 
   def testCave3Pass(self):
     self.state.event_stack.append(encounters.Cave3(self.char))
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       self.resolve_until_done()
-    self.assertEqual(self.character.stamina, 3)
+    self.assertEqual(self.char.stamina, 3)
 
   def testCave3Fail(self):
     self.state.event_stack.append(encounters.Cave3(self.char))
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=2)):
       self.resolve_until_done()
-    self.assertEqual(self.character.stamina, 2)
+    self.assertEqual(self.char.stamina, 2)
 
   def testCave3FailKO(self):
-    self.character.stamina = 1
+    self.char.stamina = 1
     self.state.event_stack.append(encounters.Cave3(self.char))
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=2)):
       self.resolve_until_done()
-    self.assertEqual(self.character.stamina, 1)
-    self.assertEqual(self.character.place.name, "Hospital")
+    self.assertEqual(self.char.stamina, 1)
+    self.assertEqual(self.char.place.name, "Hospital")
 
-  def testCave4(self):
-    self.state.event_stack.append(encounters.Cave4(self.char))
-    raise NotImplementedError("A monster appears!")
-    self.resolve_until_monster()
+#  def testCave4(self):
+#    self.state.event_stack.append(encounters.Cave4(self.char))
+#    raise NotImplementedError("A monster appears!")
+#    self.resolve_until_monster()
 
   def testCave5Pass(self):
-    self.character.stamina = 3
-    self.character.lore_luck_slider = 2
+    self.char.stamina = 3
+    self.char.lore_luck_slider = 2
     self.state.event_stack.append(encounters.Cave5(self.char))
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       self.resolve_until_done()
-    self.assertIsNone(self.character.delayed_until)
-    self.assertEqual(self.character.stamina, 3)
+    self.assertIsNone(self.char.delayed_until)
+    self.assertEqual(self.char.stamina, 3)
 
   def testCave5Fail(self):
-    self.character.stamina = 3
-    self.character.lore_luck_slider = 2
+    self.char.stamina = 3
+    self.char.lore_luck_slider = 2
     self.state.event_stack.append(encounters.Cave5(self.char))
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=2)):
       self.resolve_until_done()
-    self.assertEqual(self.character.delayed_until, self.state.turn_number + 2)
-    self.assertEqual(self.character.stamina, 2)
+    self.assertEqual(self.char.delayed_until, self.state.turn_number + 2)
+    self.assertEqual(self.char.stamina, 2)
 
   def testCave5FailKO(self):
-    self.character.stamina = 1
-    self.character.lore_luck_slider = 2
+    self.char.stamina = 1
+    self.char.lore_luck_slider = 2
     self.state.event_stack.append(encounters.Cave5(self.char))
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=2)):
       self.resolve_until_done()
-    self.assertIsNone(self.character.delayed_until)
-    self.assertEqual(self.character.stamina, 1)
-    self.assertEqual(self.character.place.name, "Hospital")
+    self.assertIsNone(self.char.delayed_until)
+    self.assertEqual(self.char.stamina, 1)
+    self.assertEqual(self.char.place.name, "Hospital")
 
   def testCave6WhiskeyAlly(self):
-    self.character.possessions.append(items.Whiskey())
+    self.char.possessions.append(items.Whiskey())
     self.state.allies.append(assets.ToughGuy())
     self.state.common.extend([items.Food(), items.Revolver38()])
     self.state.event_stack.append(encounters.Cave6(self.char))
@@ -1692,22 +1696,22 @@ class RivertownTest(EncounterTest):
     self.assertEqual(choice.choices, ["Yes", "No"])
     choice.resolve(self.state, "Yes")
     self.resolve_until_done()
-    self.assertEqual(len(self.character.possessions), 1)
-    self.assertEqual(self.character.possessions[0].name, "Tough Guy")
+    self.assertEqual(len(self.char.possessions), 1)
+    self.assertEqual(self.char.possessions[0].name, "Tough Guy")
 
   def testCave6WhiskeyReward(self):
-    self.character.possessions.append(items.Whiskey())
+    self.char.possessions.append(items.Whiskey())
     self.state.common.extend([items.Food(), items.Revolver38()])
     self.state.event_stack.append(encounters.Cave6(self.char))
     choice = self.resolve_to_choice(MultipleChoice)
     self.assertEqual(choice.choices, ["Yes", "No"])
     choice.resolve(self.state, "Yes")
     self.resolve_until_done()
-    self.assertEqual(len(self.character.possessions), 1)
-    self.assertEqual(self.character.possessions[0].name, ".38 Revolver")
+    self.assertEqual(len(self.char.possessions), 1)
+    self.assertEqual(self.char.possessions[0].name, ".38 Revolver")
 
   def testCave6DeclineAlly(self):
-    self.character.possessions.append(items.Whiskey())
+    self.char.possessions.append(items.Whiskey())
     self.state.allies.append(assets.ToughGuy())
     self.state.common.extend([items.Food(), items.Revolver38()])
     self.state.event_stack.append(encounters.Cave6(self.char))
@@ -1716,12 +1720,12 @@ class RivertownTest(EncounterTest):
     choice.resolve(self.state, "No")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       self.resolve_until_done()
-    self.assertEqual(len(self.character.possessions), 2)
-    self.assertEqual(self.character.possessions[0].name, "Whiskey")
-    self.assertEqual(self.character.possessions[1].name, "Tough Guy")
+    self.assertEqual(len(self.char.possessions), 2)
+    self.assertEqual(self.char.possessions[0].name, "Whiskey")
+    self.assertEqual(self.char.possessions[1].name, "Tough Guy")
 
   def testCave6DeclineReward(self):
-    self.character.possessions.append(items.Whiskey())
+    self.char.possessions.append(items.Whiskey())
     self.state.common.extend([items.Food(), items.Revolver38()])
     self.state.event_stack.append(encounters.Cave6(self.char))
     choice = self.resolve_to_choice(MultipleChoice)
@@ -1729,12 +1733,12 @@ class RivertownTest(EncounterTest):
     choice.resolve(self.state, "No")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       self.resolve_until_done()
-    self.assertEqual(len(self.character.possessions), 2)
-    self.assertEqual(self.character.possessions[0].name, "Whiskey")
-    self.assertEqual(self.character.possessions[1].name, ".38 Revolver")
+    self.assertEqual(len(self.char.possessions), 2)
+    self.assertEqual(self.char.possessions[0].name, "Whiskey")
+    self.assertEqual(self.char.possessions[1].name, ".38 Revolver")
 
   def testCave6DeclineFail(self):
-    self.character.possessions.append(items.Whiskey())
+    self.char.possessions.append(items.Whiskey())
     self.state.common.extend([items.Food(), items.Revolver38()])
     self.state.event_stack.append(encounters.Cave6(self.char))
     choice = self.resolve_to_choice(MultipleChoice)
@@ -1742,8 +1746,8 @@ class RivertownTest(EncounterTest):
     choice.resolve(self.state, "No")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=2)):
       self.resolve_until_done()
-    self.assertEqual(len(self.character.possessions), 1)
-    self.assertEqual(self.character.possessions[0].name, "Whiskey")
+    self.assertEqual(len(self.char.possessions), 1)
+    self.assertEqual(self.char.possessions[0].name, "Whiskey")
 
   def testCave6NoWhiskeyAlly(self):
     self.state.allies.append(assets.ToughGuy())
@@ -1754,8 +1758,8 @@ class RivertownTest(EncounterTest):
     choice.resolve(self.state, "No")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       self.resolve_until_done()
-    self.assertEqual(len(self.character.possessions), 1)
-    self.assertEqual(self.character.possessions[0].name, "Tough Guy")
+    self.assertEqual(len(self.char.possessions), 1)
+    self.assertEqual(self.char.possessions[0].name, "Tough Guy")
 
   def testCave6NoWhiskeyReward(self):
     self.state.common.extend([items.Food(), items.Revolver38()])
@@ -1765,8 +1769,8 @@ class RivertownTest(EncounterTest):
     choice.resolve(self.state, "No")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       self.resolve_until_done()
-    self.assertEqual(len(self.character.possessions), 1)
-    self.assertEqual(self.character.possessions[0].name, ".38 Revolver")
+    self.assertEqual(len(self.char.possessions), 1)
+    self.assertEqual(self.char.possessions[0].name, ".38 Revolver")
 
   def testCave6NoWhiskeyFail(self):
     self.state.common.extend([items.Food(), items.Revolver38()])
@@ -1776,61 +1780,102 @@ class RivertownTest(EncounterTest):
     choice.resolve(self.state, "No")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=2)):
       self.resolve_until_done()
-    self.assertEqual(len(self.character.possessions), 0)
+    self.assertEqual(len(self.char.possessions), 0)
+
+  def testCave7Decline(self):
+    self.state.event_stack.append(encounters.Cave7(self.char))
+    choice = self.resolve_to_choice(MultipleChoice)
+    self.assertEqual(choice.choices, ["Yes", "No"])
+    choice.resolve(self.state, "No")
+    self.resolve_until_done()
+    self.assertEqual(self.char.sanity, 3)
+    self.assertEqual(self.char.stamina, 3)
 
   def testCave7Zero(self):
     self.state.event_stack.append(encounters.Cave7(self.char))
+    choice = self.resolve_to_choice(MultipleChoice)
+    self.assertEqual(choice.choices, ["Yes", "No"])
+    choice.resolve(self.state, "Yes")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=2)):
       self.resolve_until_done()
-    self.assertEqual(self.character.sanity, 2)
-    self.assertEqual(self.character.stamina, 2)
+    self.assertEqual(self.char.sanity, 2)
+    self.assertEqual(self.char.stamina, 2)
 
   def testCave7ZeroInsane(self):
-    self.character.sanity = 1
+    self.char.sanity = 1
     self.state.event_stack.append(encounters.Cave7(self.char))
+    choice = self.resolve_to_choice(MultipleChoice)
+    self.assertEqual(choice.choices, ["Yes", "No"])
+    choice.resolve(self.state, "Yes")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=2)):
       self.resolve_until_done()
-    self.assertEqual(self.character.sanity, 1)
-    self.assertEqual(self.character.stamina, 2)
-    self.assertEqual(self.character.place.name, "Asylum")
+    self.assertEqual(self.char.sanity, 1)
+    self.assertEqual(self.char.stamina, 2)
+    self.assertEqual(self.char.place.name, "Asylum")
 
   def testCave7ZeroKO(self):
-    self.character.stamina = 1
+    self.char.stamina = 1
     self.state.event_stack.append(encounters.Cave7(self.char))
+    choice = self.resolve_to_choice(MultipleChoice)
+    self.assertEqual(choice.choices, ["Yes", "No"])
+    choice.resolve(self.state, "Yes")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=2)):
       self.resolve_until_done()
-    self.assertEqual(self.character.sanity, 2)
-    self.assertEqual(self.character.stamina, 1)
-    self.assertEqual(self.character.place.name, "Hospital")
+    self.assertEqual(self.char.sanity, 2)
+    self.assertEqual(self.char.stamina, 1)
+    self.assertEqual(self.char.place.name, "Hospital")
+
+#  def testCave7Devoured(self):
+#    self.char.stamina = 1
+#    self.char.sanity = 1
+#    self.state.event_stack.append(encounters.Cave7(self.char))
+#    choice = self.resolve_to_choice(MultipleChoice)
+#    self.assertEqual(choice.choices, ["Yes", "No"])
+#    choice.resolve(self.state, "Yes")
+#    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=2)):
+#      self.resolve_until_done()
+#    self.assertEqual(self.char.is_devoured, True)
 
   def testCave7One(self):
-    self.character.lore_luck_slider = 3
+    self.char.lore_luck_slider = 3
     self.state.event_stack.append(encounters.Cave7(self.char))
+    choice = self.resolve_to_choice(MultipleChoice)
+    self.assertEqual(choice.choices, ["Yes", "No"])
+    choice.resolve(self.state, "Yes")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       self.resolve_until_done()
-    self.assertEqual(self.character.sanity, 2)
-    self.assertEqual(self.character.clues, 1)
+    self.assertEqual(self.char.sanity, 2)
+    self.assertEqual(self.char.clues, 1)
 
   def testCave7OneInsane(self):
-    self.character.lore_luck_slider = 3
-    self.character.sanity = 1
+    self.char.lore_luck_slider = 3
+    self.char.sanity = 1
     self.state.event_stack.append(encounters.Cave7(self.char))
+    choice = self.resolve_to_choice(MultipleChoice)
+    self.assertEqual(choice.choices, ["Yes", "No"])
+    choice.resolve(self.state, "Yes")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       self.resolve_until_done()
-    self.assertEqual(self.character.sanity, 1)
-    self.assertEqual(self.character.clues, 1)
+    self.assertEqual(self.char.sanity, 1)
+    self.assertEqual(self.char.clues, 1)
 
-  def testCave7Two(self):
-    self.character.lore_luck_slider = 2
-    self.state.event_stack.append(encounters.Cave7(self.char))
-    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
-      self.resolve_until_done()
-    raise NotImplementedError("No Tomes implemented")
+#  def testCave7Two(self):
+#    self.char.lore_luck_slider = 2
+#    self.state.event_stack.append(encounters.Cave7(self.char))
+#    choice = self.resolve_to_choice(MultipleChoice)
+#    self.assertEqual(choice.choices, ["Yes", "No"])
+#    choice.resolve(self.state, "Yes")
+#    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+#      self.resolve_until_done()
+#    raise NotImplementedError("No Tomes implemented")
+
+
+class StoreTest(EncounterTest):
 
   def testStore1(self):
     self.state.event_stack.append(encounters.Store1(self.char))
     self.resolve_until_done()
-    self.assertEqual(self.character.dollars, 4)
+    self.assertEqual(self.char.dollars, 4)
 
   def testStore2(self):
     self.state.event_stack.append(encounters.Store2(self.char))
@@ -1843,77 +1888,205 @@ class RivertownTest(EncounterTest):
 
   def testStore4(self):
     self.state.event_stack.append(encounters.Store4(self.char))
-    self.assertEqual(self.character.sanity, 2)
+    self.resolve_until_done()
+    self.assertEqual(self.char.sanity, 2)
 
   def testStore4Insane(self):
-    self.character.sanity = 1
+    self.char.sanity = 1
     self.state.event_stack.append(encounters.Store4(self.char))
-    self.assertEqual(self.character.sanity, 1)
-    self.assertEqual(self.character.place.name, "Asylum")
+    self.resolve_until_done()
+    self.assertEqual(self.char.sanity, 1)
+    self.assertEqual(self.char.place.name, "Asylum")
 
   def testStore5Fail(self):
-    self.character.lore_luck_slider = 2
+    self.char.lore_luck_slider = 2
     self.state.common.extend([items.Revolver38(), items.Cross(), items.TommyGun(), items.Dynamite()])
     self.state.event_stack.append(encounters.Store5(self.char))
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=2)):
       self.resolve_until_done()
 
   def testStore5Pass(self):
-    self.character.lore_luck_slider = 2
+    self.char.lore_luck_slider = 2
     self.state.common.extend([items.Revolver38(), items.Cross(), items.TommyGun(), items.Dynamite()])
     self.state.event_stack.append(encounters.Store5(self.char))
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=2)):
       self.resolve_until_done()
 
-  def testStore5PassSalesman(self):
-    raise NotImplementedError("Salesman should get to draw an extra common card")
-    self.character = characters.Salesman()
-    self.character.lore_luck_slider = 2
-    self.state.common.extend([items.Revolver38(), items.Cross(), items.TommyGun(), items.Dynamite()])
-    self.state.event_stack.append(encounters.Store5(self.char))
-    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=2)):
-      self.resolve_until_done()
+#  def testStore5PassSalesman(self):
+#    raise NotImplementedError("Salesman should get to draw an extra common card")
+#    self.character = characters.Salesman()
+#    self.char.lore_luck_slider = 2
+#    self.state.common.extend([items.Revolver38(), items.Cross(), items.TommyGun(), items.Dynamite()])
+#    self.state.event_stack.append(encounters.Store5(self.char))
+#    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=2)):
+#      self.resolve_until_done()
 
   def testStore6Decline(self):
-    self.character.lore_luck_slider = 2
+    self.char.lore_luck_slider = 2
     self.state.event_stack.append(encounters.Store6(self.char))
     choice = self.resolve_to_choice(MultipleChoice)
     self.assertEqual(choice.choices, ["Yes", "No"])
-    choice.resolve("No")
+    choice.resolve(self.state, "No")
     self.resolve_until_done()
-    self.assertEqual(self.character.dollars, 3)
+    self.assertEqual(self.char.dollars, 3)
 
   def testStore6Poor(self):
-    self.character.lore_luck_slider = 2
-    self.character.dollars = 0
+    self.char.lore_luck_slider = 2
+    self.char.dollars = 0
     self.state.event_stack.append(encounters.Store6(self.char))
     self.resolve_until_done()
-    self.assertEqual(self.character.dollars, 0)
+    self.assertEqual(self.char.dollars, 0)
 
   def testStore6Pass(self):
-    self.character.lore_luck_slider = 2
-    self.character.dollars = 1
+    self.char.lore_luck_slider = 2
+    self.char.dollars = 1
     self.state.event_stack.append(encounters.Store6(self.char))
+    choice = self.resolve_to_choice(MultipleChoice)
+    self.assertEqual(choice.choices, ["Yes", "No"])
+    choice.resolve(self.state, "Yes")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       self.resolve_until_done()
-    self.assertEqual(self.character.dollars, 5)
+    self.assertEqual(self.char.dollars, 5)
 
   def testStore6Fail(self):
-    self.character.lore_luck_slider = 2
-    self.character.dollars = 1
+    self.char.lore_luck_slider = 2
+    self.char.dollars = 1
     self.state.event_stack.append(encounters.Store6(self.char))
+    choice = self.resolve_to_choice(MultipleChoice)
+    self.assertEqual(choice.choices, ["Yes", "No"])
+    choice.resolve(self.state, "Yes")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=2)):
       self.resolve_until_done()
-    self.assertEqual(self.character.dollars, 0)
+    self.assertEqual(self.char.dollars, 0)
 
   def testStore7(self):
     self.state.common.append(items.Dynamite())
     # Why does a young child have dynamite?
-    self.state.event_stack.append(encounters.Store6(self.char))
+    self.state.event_stack.append(encounters.Store7(self.char))
     self.resolve_until_done()
-    self.assertEqual(len(self.possessions), 1)
-    self.assertEqual(self.possessions[0].name, "Dynamite")
+    self.assertEqual(len(self.char.possessions), 1)
+    self.assertEqual(self.char.possessions[0].name, "Dynamite")
 
+
+class GraveyardTest(EncounterTest):
+
+#  def testGraveyard1(self):
+#    raise NotImplementedError("A monster appears")
+
+  def testGraveyard2Pass(self):
+    self.state.event_stack.append(encounters.Graveyard2(self.char))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.sanity, 2)
+    self.assertEqual(self.char.clues, 1)
+
+  def testGraveyard2PassInsane(self):
+    self.char.sanity = 1
+    self.state.event_stack.append(encounters.Graveyard2(self.char))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.sanity, 1)
+    self.assertEqual(self.char.place.name, "Asylum")
+    self.assertEqual(self.char.clues, 1)
+
+  def testGraveyard2Fail(self):
+    self.state.event_stack.append(encounters.Graveyard2(self.char))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=4)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.place.name, "Rivertown")
+
+  def testGraveyard3Pass(self):
+    self.char.fight_will_slider = 2
+    self.state.unique.append(items.HolyWater())
+    self.state.event_stack.append(encounters.Graveyard3(self.char))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.clues, 1)
+    self.assertEqual(len(self.char.possessions), 1)
+    self.assertEqual(self.char.possessions[0].name, "Holy Water")
+
+  def testGraveyard3FailOne(self):
+    self.char.fight_will_slider = 2
+    self.char.stamina = 4
+    self.state.unique.append(items.HolyWater())
+    self.state.event_stack.append(encounters.Graveyard3(self.char))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=1)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.stamina, 3)
+
+  def testGraveyard3FailTwo(self):
+    self.char.fight_will_slider = 2
+    self.char.stamina = 4
+    self.state.unique.append(items.HolyWater())
+    self.state.event_stack.append(encounters.Graveyard3(self.char))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=2)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.stamina, 2)
+
+  def testGraveyard3FailThree(self):
+    self.char.fight_will_slider = 2
+    self.char.stamina = 4
+    self.state.unique.append(items.HolyWater())
+    self.state.event_stack.append(encounters.Graveyard3(self.char))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.stamina, 1)
+
+  def testGraveyard3FailFour(self):
+    self.char.fight_will_slider = 2
+    self.char.stamina = 5
+    self.state.unique.append(items.HolyWater())
+    self.state.event_stack.append(encounters.Graveyard3(self.char))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=4)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.stamina, 1)
+
+  def testGraveyard3FailKO(self):
+    self.char.fight_will_slider = 2
+    self.char.stamina = 4
+    self.state.unique.append(items.HolyWater())
+    self.state.event_stack.append(encounters.Graveyard3(self.char))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=4)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.place.name, "Hospital")
+    self.assertEqual(self.char.stamina, 1)
+
+#  def testGraveyard4NoTrophies(self):
+#    raise NotImplementedError("Count monster trophies")
+#
+#  def testGraveyardAlly(self):
+#    raise NotImplementedError("Spend monster trophies")
+#
+#  def testGraveyardReward(self):
+#    raise NotImplementedError("Spend monster trophies")
+#    raise NotImplementedError("Ally not available")
+
+  def testGraveyard5Fail(self):
+    self.state.event_stack.append(encounters.Graveyard5(self.char))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=4)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.clues, 0)
+
+#  def testGraveyard5Pass(self):
+#    self.state.event_stack.append(encounters.Graveyard5(self.char))
+#    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+#      self.resolve_until_choice(MultipleChoice)
+#    self.assertEqual(self.char.clues, 2)
+#    raise NotImplementedError("Move to another location)
+
+  def testGraveyard6(self):
+    self.state.event_stack.append(encounters.Graveyard6(self.char))
+    self.resolve_until_done()
+    self.assertEqual(self.char.sanity, 5)
+
+  def testGraveyard6Cap(self):
+    self.char.sanity = 4
+    self.state.event_stack.append(encounters.Graveyard6(self.char))
+    self.resolve_until_done()
+    self.assertEqual(self.char.sanity, 5)
+
+#  def testGraveyard7(self):
+#    raise NotImplementedError("Take a monster trophy")
 
 
 if __name__ == '__main__':
