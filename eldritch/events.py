@@ -567,15 +567,19 @@ class Draw(Event):
       self.drawn = []
       deck = getattr(state, self.deck)
       i = 0
+      decksize = len(deck)
       while len(self.drawn) < self.draw_count:
         i += 1
-        if not deck or i > 100:
+        if not deck :
           break
         top = deck.popleft()
         if self.target_type is None or isinstance(top, self.target_type):
           self.drawn.append(top)
         else:
           deck.append(top)
+
+        if i >= decksize:
+          break
       # TODO: is there a scenario when the player can go insane/unconscious before they
       # successfully pick a card?
 
