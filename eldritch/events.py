@@ -535,7 +535,7 @@ class ForceMovement(Event):
 
 class Draw(Event):
 
-  def __init__(self, character, deck, draw_count, prompt="Choose a card"):
+  def __init__(self, character, deck, draw_count, prompt="Choose a card", target_type=None):
     assert deck in {"common", "unique", "spells", "skills", "allies"}
     self.character = character
     self.deck = deck
@@ -545,6 +545,7 @@ class Draw(Event):
     self.drawn = None
     self.choice = None
     self.kept = None
+    self.target_type = target_type
 
   def resolve(self, state):
     if self.kept is not None:
@@ -565,10 +566,20 @@ class Draw(Event):
     if self.drawn is None:
       self.drawn = []
       deck = getattr(state, self.deck)
-      for _ in range(self.draw_count):
-        if not deck:
+      i = 0
+      decksize = len(deck)
+      while len(self.drawn) < self.draw_count:
+        i += 1
+        if not deck :
           break
-        self.drawn.append(deck.popleft())
+        top = deck.popleft()
+        if self.target_type is None or isinstance(top, self.target_type):
+          self.drawn.append(top)
+        else:
+          deck.append(top)
+
+        if i >= decksize:
+          break
       # TODO: is there a scenario when the player can go insane/unconscious before they
       # successfully pick a card?
 

@@ -469,6 +469,40 @@ class DrawRandomTest(EventTest):
     self.assertEqual(self.char.possessions, [food])
     self.assertFalse(self.state.common)
 
+  def testDrawSpecificTypeTop(self):
+    draw = Draw(self.char, "common", 1, target_type=items.Weapon)
+    tommygun = items.TommyGun()
+    self.state.common.extend([tommygun, items.Food(), ])
+    self.assertFalse(draw.is_resolved())
+    self.assertFalse(self.char.possessions)
+    self.state.event_stack.append(draw)
+    self.resolve_until_done()
+    self.assertEqual(self.char.possessions, [tommygun])
+    self.assertEqual([item.name for item in self.state.common], ["Food"])
+
+  def testDrawSpecificTypeMiddle(self):
+    draw = Draw(self.char, "common", 1, target_type=items.Weapon)
+    tommygun = items.TommyGun()
+    self.state.common.extend([items.Food(), tommygun, items.Dynamite(), ])
+    self.assertFalse(draw.is_resolved())
+    self.assertFalse(self.char.possessions)
+    self.state.event_stack.append(draw)
+    self.resolve_until_done()
+    self.assertEqual(self.char.possessions, [tommygun])
+    self.assertEqual([item.name for item in self.state.common], ["Dynamite", "Food"])
+
+  def testDrawSpecificTypeNone(self):
+    draw = Draw(self.char, "common", 1, target_type=items.ResearchMaterials)
+    tommygun = items.TommyGun()
+    self.state.common.extend([items.Food(), tommygun, items.Dynamite(), ])
+    self.assertFalse(draw.is_resolved())
+    self.assertFalse(self.char.possessions)
+    self.state.event_stack.append(draw)
+    self.resolve_until_done()
+    self.assertEqual(self.char.possessions, [])
+    self.assertEqual([item.name for item in self.state.common], ["Food", "Tommy Gun", "Dynamite", ])
+
+
 
 class AttributePrerequisiteTest(EventTest):
 
