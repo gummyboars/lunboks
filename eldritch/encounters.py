@@ -143,23 +143,16 @@ def Cave1(char):
     ], char
   )
   draw = events.Draw(char, "common", 1)
-
   cond = events.Conditional(char, check, "successes", {0: monster, 1: san_loss, 2: draw})
-
-
   return events.Sequence([check, cond], char)
-
 def Cave2(char):
   return events.Loss(char, {"sanity": 1})
-
 def Cave3(char):
   check = events.Check(char, "speed", -1)
   return events.PassFail(char, check, events.Nothing(), events.Loss(char, {"stamina":1}))
-
 def Cave4(char):
   # TODO: A monster appears
   return events.Nothing()
-
 def Cave5(char):
   check = events.Check(char, "lore", -2)
   return events.PassFail(
@@ -168,7 +161,6 @@ def Cave5(char):
     events.Nothing(),
     events.Sequence([events.Loss(char, {'stamina': 1}), events.Delayed(char)], char)
   )
-
 def Cave6(char):
   #prereq = events.ItemPrerequisite(char, "Whiskey")
   prereq = events.AttributePrerequisite(char, "dollars", 0, "at least")
@@ -182,7 +174,6 @@ def Cave6(char):
   seq = events.Sequence([give_whiskey, ally], char)
   choose_give_food = events.BinaryChoice(char, "Discard whiskey to pass automatically?", "Yes", "No", seq, gain)
   return events.PassFail(char, prereq, choose_give_food, gain)
-
 def Cave7(char):
   check = events.Check(char, "luck", 0)
   evil = events.Loss(char, {"sanity": 1, "stamina": 1})
@@ -195,22 +186,17 @@ def Cave7(char):
 
 def Store1(char):
   return events.Gain(char, {"dollars": 1})
-
 def Store2(char):
   return events.Nothing()
-
 def Store3(char):
   #TODO: Sell any common item for twice the price
   return events.Nothing()
-
 def Store4(char):
   return events.Loss(char, {"sanity": 1})
-
 def Store5(char):
   check = events.Check(char, "will", -2)
   draw = events.Draw(char, "common", 3)
   return events.PassFail(char, check, draw, events.Nothing())
-
 def Store6(char):
   prereq = events.AttributePrerequisite(char, "dollars", 1, "at least")
   check = events.Check(char, "lore", -2)
@@ -221,37 +207,30 @@ def Store6(char):
     char, "Pay $1 to guess how many beans in the jar?", "Yes", "No", do_guess, events.Nothing()
   )
   return events.PassFail(char, prereq, choose_guess, events.Nothing())
-
 def Store7(char):
   return events.Draw(char, "common", 1)
 
 def Graveyard1(char):
   #TODO: A monster appears
   return events.Nothing()
-
 def Graveyard2(char):
   check = events.Check(char, "lore", -1)
   fail = events.ForceMovement(char, "Rivertown")
   succeed = events.GainOrLoss(char, gains={'clues': 1}, losses={'sanity': 1})
   return events.PassFail(char, check, succeed, fail)
-
 def Graveyard3(char):
   check = events.Check(char, "combat", -2)
   victory = events.Sequence([events.Draw(char, 'unique', 1), events.Gain(char, {'clues': 1})])
   damage = events.DiceRoll(char, 1)
   defeat = events.Loss(char, {'stamina': damage})
   return events.PassFail(char, check, victory, events.Sequence([damage, defeat], char))
-
 def Graveyard4(char):
   #TODO: Trade monster trophies for Painter
   return events.Nothing()
-
 def Graveyard5(char):
   return events.Nothing()
-
 def Graveyard6(char):
   return events.Gain(char, {"sanity": 2})
-
 def Graveyard7(char):
   return events.Nothing()
 
