@@ -425,10 +425,24 @@ class GameState(object):
         char.delayed_until = None
       elif char.delayed_until is not None:
         return self.next_turn()
+      if isinstance(char.place, places.OtherWorld):
+        if char.place.order == 1:
+          world_name = char.place.info.name + "2"
+          self.event_stack.append(events.Sequence([
+            events.ForceMovement(char, world_name), events.EndMovement(char)], char))
+        else:
+          self.event_stack.append(events.Sequence([
+            events.Return(char, char.place.info.name), events.EndMovement(char)], char))
+        return
       char.movement_points = char.speed(self)
     if self.turn_phase == "encounter":
       if not isinstance(char.place, places.Location):
         return self.next_turn()
+      elif char.place.gate and char.explored:
+        pass  # TODO: close/seal gate
+      elif char.place.gate:
+        self.event_stack.append(events.Sequence(
+          [events.Travel(char, char.place.gate.name), events.EndEncounter(char)], char))
       elif char.place.neighborhood.encounters:
         self.event_stack.append(events.Encounter(char, char.place.name))
     if self.turn_phase == "otherworld":

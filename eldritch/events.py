@@ -105,6 +105,12 @@ class EndMovement(EndTurn):
     super(EndMovement, self).__init__(character, "movement")
 
 
+class EndEncounter(EndTurn):
+
+  def __init__(self, character):
+    super(EndEncounter, self).__init__(character, "encounter")
+
+
 class DiceRoll(Event):
 
   def __init__(self, character, count):
@@ -144,6 +150,7 @@ class MoveOne(Event):
     assert self.dest in self.character.place.connections
     self.character.place = self.dest
     self.character.movement_points -= 1
+    self.character.explored = False
     self.done = True
     return True
 
@@ -522,6 +529,7 @@ class ForceMovement(Event):
 
   def resolve(self, state):
     self.character.place = state.places[self.location_name]
+    self.character.explored = False
     self.done = True
     return True
 
@@ -1462,6 +1470,61 @@ class CombatRound(Event):
     if self.defeated:
       return f"{self.character.name} defeated a {self.monster.name}"
     return f"{self.character.name} did not defeat the {self.monster.name}"
+
+
+class Travel(Event):
+
+  def __init__(self, character, world_name):
+    self.character = character
+    self.world_name = world_name
+    self.done = False
+
+  def resolve(self, state):
+    self.character.place = state.places[self.world_name + "1"]
+    self.character.explored = False  # just in case
+    self.done = True
+
+  def is_resolved(self):
+    return self.done
+
+  def start_str(self):
+    return ""
+
+  def finish_str(self):
+    return f"{self.character.name} moved to {self.world_name}"
+
+
+class Return(Event):
+
+  def __init__(self, character, world_name):
+    self.character = character
+    self.world_name = world_name
+    self.returned = None
+
+  def resolve(self, state):
+    viable_returns = [
+        place for place in state.places.values()
+        if getattr(place, "gate", None) and place.gate.info.name == self.world_name
+    ]
+    if len(viable_returns) == 0:
+      self.returned = False  # TODO: lost in time and space
+    elif len(viable_returns) == 1:
+      self.returned = True
+      self.character.place = viable_returns[0]
+      self.character.explored = True
+    else:
+      self.returned = True
+      self.character.place = viable_returns[0]  # TODO: location choice
+      self.character.explored = True
+
+  def is_resolved(self):
+    return self.returned
+
+  def start_str(self):
+    return ""
+
+  def finish_str(self):
+    return f"{self.character.name} returned"
 
 
 class OpenGate(Event):

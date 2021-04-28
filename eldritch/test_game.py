@@ -11,6 +11,63 @@ if os.path.abspath(sys.path[0]) == os.path.dirname(os.path.abspath(__file__)):
 
 import eldritch.characters as characters
 import eldritch.eldritch as eldritch
+import eldritch.events as events
+import eldritch.mythos as mythos
+
+
+class GateTravelTest(unittest.TestCase):
+
+  def setUp(self):
+    self.state = eldritch.GameState()
+    self.state.initialize()
+    self.state.characters = self.state.characters[:1]
+    self.state.mythos.clear()
+    self.state.mythos.append(mythos.Mythos5())
+    self.state.handle_mythos()  # Opens at the Square.
+    for _ in self.state.resolve_loop():
+      pass
+    # Return all monsters to the cup so the character doesn't have to fight/evade.
+    for m in self.state.monsters:
+      m.place = self.state.monster_cup
+
+  def testMoveToOtherWorld(self):
+    char = self.state.characters[0]
+    self.assertTrue(self.state.places["Square"].gate)
+    world_name = self.state.places["Square"].gate.name
+
+    self.assertFalse(self.state.event_stack)
+    self.state.turn_phase = "movement"
+    char.place = self.state.places["Square"]
+    self.state.event_stack.append(events.EndMovement(char))
+    self.assertEqual(self.state.turn_idx, 0)
+    self.assertEqual(self.state.turn_phase, "movement")
+    for _ in self.state.resolve_loop():
+      if self.state.turn_idx != 0 or self.state.turn_phase not in ("movement", "encounter"):
+        break
+    self.assertEqual(self.state.turn_idx, 0)
+    self.assertEqual(self.state.turn_phase, "otherworld")
+    self.assertEqual(char.place.name, world_name + "1")
+
+  def testOtherWorldMovement(self):
+    char = self.state.characters[0]
+    char.place = self.state.places["City1"]
+    self.state.turn_phase = "upkeep"
+    self.state.event_stack.append(events.EndUpkeep(char))
+    for _ in self.state.resolve_loop():
+      pass
+    self.assertEqual(self.state.turn_phase, "otherworld")
+    self.assertEqual(char.place.name, "City2")
+
+  def testReturnFromOtherWorld(self):
+    char = self.state.characters[0]
+    world_name = self.state.places["Square"].gate.name
+    char.place = self.state.places[world_name + "2"]
+    self.state.turn_phase = "upkeep"
+    self.state.event_stack.append(events.EndUpkeep(char))
+    for _ in self.state.resolve_loop():
+      pass
+    self.assertEqual(self.state.turn_phase, "encounter")
+    self.assertEqual(char.place.name, "Square")
 
 
 class NextTurnTest(unittest.TestCase):

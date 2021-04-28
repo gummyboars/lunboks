@@ -132,6 +132,30 @@ class MovementTest(EventTest):
     self.assertEqual(self.char.place.name, "Graveyard")
     self.assertEqual(self.char.movement_points, 4)
 
+  def testLoseExploredOnMovement(self):
+    self.char.place = self.state.places["Graveyard"]
+    self.char.explored = True
+    movement = Movement(self.char, [self.state.places["Rivertown"]])
+
+    self.state.event_stack.append(movement)
+    self.resolve_until_done()
+
+    self.assertTrue(movement.is_resolved())
+    self.assertEqual(self.char.place.name, "Rivertown")
+    self.assertFalse(self.char.explored)
+
+  def testLoseExploredOnForceMovement(self):
+    self.char.place = self.state.places["Graveyard"]
+    self.char.explored = True
+    movement = ForceMovement(self.char, "Witch")
+
+    self.state.event_stack.append(movement)
+    self.resolve_until_done()
+
+    self.assertTrue(movement.is_resolved())
+    self.assertEqual(self.char.place.name, "Witch")
+    self.assertFalse(self.char.explored)
+
 
 class GainLossTest(EventTest):
 
