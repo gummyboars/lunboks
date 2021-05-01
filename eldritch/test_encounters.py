@@ -440,6 +440,18 @@ class LodgeTest(EncounterTest):
       self.resolve_until_done()
     self.assertEqual(len(self.char.possessions), 0)
 
+  def testLodge4Join(self):
+    self.state.event_stack.append(encounters.Lodge4(self.char))
+    self.char.dollars = 3
+    choice = self.resolve_to_choice(MultipleChoice)
+    self.assertEqual(choice.choices, ["Yes", "No"])
+    choice.resolve(self.state, "Yes")
+    self.assertEqual(self.char.dollars, 0)
+
+  def testLodge4DeclinePass(self):
+    self.state.event_stack.append(encounters.Lodge4(self.char))
+  def testLodge4DeclineFail(self):
+    self.state.event_stack.append(encounters.Lodge4(self.char))
   def testLodge5Pass(self):
     self.state.event_stack.append(encounters.Lodge5(self.char))
     self.assertEqual(self.char.clues, 0)
