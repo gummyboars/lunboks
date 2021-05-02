@@ -598,10 +598,20 @@ class Encounter(Event):
   def __init__(self, character, location_name):
     self.character = character
     self.location_name = location_name
-    self.draw = DrawEncounter(character, location_name, 1)
+    self.draw = None
     self.encounter = None
 
   def resolve(self, state):
+    if self.character.lodge_membership and self.location_name == "Lodge":
+      self.location_name = "Sanctum"
+
+    if self.draw is None:
+      if self.location_name == "Sanctum":
+        neighborhood = state.places["FrenchHill"]
+      else:
+        neighborhood = state.places[self.location_name].neighborhood
+      self.draw = DrawEncounter(self.character, neighborhood, 1)
+
     if not self.draw.is_resolved():
       state.event_stack.append(self.draw)
       return False
@@ -635,15 +645,15 @@ class Encounter(Event):
 
 class DrawEncounter(Event):
 
-  def __init__(self, character, location_name, count):
+  def __init__(self, character, neighborhood, count):
     assert count > 0
     self.character = character
-    self.location_name = location_name
+    self.neighborhood = neighborhood
     self.count = count
     self.cards = []
 
   def resolve(self, state):
-    encounters = state.places[self.location_name].neighborhood.encounters
+    encounters = self.neighborhood.encounters
     assert len(encounters) >= self.count
     self.cards.extend(random.sample(encounters, self.count))
     return True

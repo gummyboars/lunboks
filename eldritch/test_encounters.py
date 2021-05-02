@@ -47,6 +47,37 @@ class DrawEncounterTest(EncounterTest):
     self.resolve_until_done()
     self.assertEqual(self.char.clues, 1)
 
+  def testDrawLodgeEncounter(self):
+    self.char.place = self.state.places["Lodge"]
+    self.state.places["FrenchHill"].encounters = [
+        encounters.EncounterCard(
+          "FrenchHill5", {"Lodge": encounters.Lodge5, "Sanctum": encounters.Sanctum5},
+        )
+    ]
+    self.state.turn_idx = 0
+    self.state.turn_phase = "movement"
+    self.state.next_turn()
+    self.assertEqual(self.char.clues, 0)
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.clues, 3)
+
+  def testDrawLodgeEncounterWithMembership(self):
+    self.char.place = self.state.places["Lodge"]
+    self.char.lodge_membership = True
+    self.state.places["FrenchHill"].encounters = [
+        encounters.EncounterCard(
+          "FrenchHill5", {"Lodge": encounters.Lodge5, "Sanctum": encounters.Sanctum5},
+        )
+    ]
+    self.state.turn_idx = 0
+    self.state.turn_phase = "movement"
+    self.state.next_turn()
+    self.assertEqual(self.char.clues, 0)
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.bless_curse, -1)
+
 
 class DinerTest(EncounterTest):
 
@@ -394,6 +425,41 @@ class LodgeTest(EncounterTest):
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
       self.resolve_until_done()
     self.assertEqual(len(self.char.possessions), 0)
+
+  def testLodge5Pass(self):
+    self.state.event_stack.append(encounters.Lodge5(self.char))
+    self.assertEqual(self.char.clues, 0)
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.clues, 3)
+    self.assertEqual(self.char.place.name, "Lodge")
+
+  def testLodge5Fail(self):
+    self.state.event_stack.append(encounters.Lodge5(self.char))
+    self.char.clues = 8
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
+      # They get the opportunity to spend clue tokens on this failed check, but don't.
+      use_clues = self.resolve_to_usable(0, -1, SpendClue)
+    self.state.done_using[0] = True
+    self.resolve_until_done()
+    self.assertEqual(self.char.clues, 0)
+    self.assertEqual(self.char.place.name, "FrenchHill")
+
+  def testSanctum5Pass(self):
+    self.state.event_stack.append(encounters.Sanctum5(self.char))
+    self.assertEqual(self.char.bless_curse, 0)
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.bless_curse, -1)
+
+  def testSanctum5Fail(self):
+    self.state.event_stack.append(encounters.Sanctum5(self.char))
+    self.assertEqual(self.char.bless_curse, 0)
+    self.assertEqual(self.char.luck(self.state), 3)
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.bless_curse, 0)
+    self.assertEqual(self.char.place.name, "Lodge")
 
 
 class WitchTest(EncounterTest):
@@ -1172,12 +1238,144 @@ class SquareTest(EncounterTest):
     self.assertEqual(len(self.char.possessions), 1)
     self.assertEqual(self.char.possessions[0].name, "Cross")
     
+class ShopTest(EncounterTest):
+
+  def setUp(self):
+    super(ShopTest, self).setUp()
+    self.char.place = self.state.places["Shop"]
+
+  def testShop1Success2(self):
+    self.state.event_stack.append(encounters.Shop1(self.char))
+    self.assertEqual(self.char.luck(self.state), 3)
+    self.assertEqual(self.char.bless_curse, 0)
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.bless_curse, 0)
+
+  def testShop1Success1(self):
+    self.char.lore_luck_slider = 2
+    self.assertEqual(self.char.luck(self.state), 2)
+    self.state.event_stack.append(encounters.Shop1(self.char))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.bless_curse, -1)
+
+  def testShop1Fail(self):
+    self.state.event_stack.append(encounters.Shop1(self.char))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=2)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.bless_curse, -1)
+
+class NewspaperTest(EncounterTest):
+
+  def setUp(self):
+    super(NewspaperTest, self).setUp()
+    self.char.place = self.state.places["Newspaper"]
+
+  def testNewspaper2(self):
+    self.state.event_stack.append(encounters.Newspaper2(self.char))
+    self.resolve_until_done()
+    self.assertEqual(self.char.dollars, 8)
+
+  def testNewspaper3(self):
+    self.state.event_stack.append(encounters.Newspaper3(self.char))
+    self.resolve_until_done()
+    self.assertEqual(self.char.retainer_start, self.state.turn_number+2)
+
+  def testNewspaper4(self):
+    self.state.event_stack.append(encounters.Newspaper4(self.char))
+    self.resolve_until_done()
+    self.assertEqual(self.char.retainer_start, self.state.turn_number+2)
+  
+  def testNewspaper5Pass(self):
+    self.state.event_stack.append(encounters.Newspaper5(self.char))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.clues, 3)
+
+  def testNewspaper5Fail(self):
+    self.state.event_stack.append(encounters.Newspaper5(self.char))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=2)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.clues, 0)
+
+  def testNewspaper6Pass(self):
+    self.state.event_stack.append(encounters.Newspaper6(self.char))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.clues, 1)
+
+  def testNewspaper6Fail(self):
+    self.state.event_stack.append(encounters.Newspaper6(self.char))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=2)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.clues, 0)
+
+  def testNewspaper7(self):
+    self.state.event_stack.append(encounters.Newspaper7(self.char))
+    self.resolve_until_done()
+    self.assertEqual(self.char.sanity, 2)
 
 class TrainTest(EncounterTest):
 
   def setUp(self):
     super(TrainTest, self).setUp()
     self.char.place = self.state.places["Train"]
+    self.state.unique.extend([items.Cross(), items.HolyWater()])
+    # maybe they're magic guns? I cast bullet!
+    self.state.spells.extend([items.TommyGun(), items.Revolver38()])
+    self.state.common.extend([items.Dynamite(), items.Revolver38()])
+
+  def testTrain1Pass(self):
+    self.state.event_stack.append(encounters.Train1(self.char))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+    self.assertEqual(len(self.char.possessions), 1)
+    self.assertEqual(len(self.state.unique), 1)
+    self.assertEqual(self.char.possessions[0].name, "Cross")
+    self.assertEqual(self.char.place.name, "Train")
+    self.assertEqual(self.char.dollars, 3)
+
+  def testTrain1Fail(self):
+    self.state.event_stack.append(encounters.Train1(self.char))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=2)):
+      self.resolve_until_done()
+    self.assertEqual(len(self.char.possessions), 0)
+    self.assertEqual(len(self.state.unique), 2)
+    self.assertEqual(self.char.place.name, "Police")
+    self.assertEqual(self.char.dollars, 2)
+
+  def testTrain2Pass(self):
+    self.char.speed_sneak_slider = 2
+    self.assertEqual(self.char.speed(self.state), 3)
+    self.state.event_stack.append(encounters.Train2(self.char))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+    self.assertEqual(len(self.state.spells), 1)
+    self.assertEqual(len(self.char.possessions), 1)
+    self.assertEqual(self.char.possessions[0].name, "Tommy Gun")
+    self.assertEqual(self.char.sanity, 3)
+
+  def testTrain2Fail(self):
+    self.char.speed_sneak_slider = 1
+    self.assertEqual(self.char.speed(self.state), 2)
+    self.state.event_stack.append(encounters.Train2(self.char))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=1)):
+      self.resolve_until_done()
+    self.assertEqual(len(self.state.spells), 2)
+    self.assertEqual(len(self.char.possessions), 0)
+    self.assertEqual(self.char.sanity, 2)
+
+  def testTrain2FailInsane(self):
+    self.char.speed_sneak_slider = 1
+    self.assertEqual(self.char.speed(self.state), 2)
+    self.state.event_stack.append(encounters.Train2(self.char))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+    self.assertEqual(len(self.state.spells), 2)
+    self.assertEqual(len(self.char.possessions), 0)
+    self.assertEqual(self.char.sanity, 1)
+    self.assertEqual(self.char.place.name, "Asylum")
 
   def testTrain3Stamina(self):
     self.state.event_stack.append(encounters.Train3(self.char))
@@ -1196,6 +1394,81 @@ class TrainTest(EncounterTest):
 
     self.assertEqual(self.char.stamina, 4)
     self.assertEqual(self.char.sanity, 4)
+
+  def testTrain6NoMoney(self):
+    self.state.event_stack.append(encounters.Train6(self.char))
+    self.char.dollars = 2
+    self.resolve_until_done()
+    self.assertEqual(self.char.dollars, 2)
+    self.assertEqual(len(self.char.possessions), 0)
+    self.assertEqual(len(self.state.common), 2)
+    self.assertEqual(len(self.state.unique), 2)
+
+  def testTrain6MoneyRefuse(self):
+    self.state.event_stack.append(encounters.Train6(self.char))
+    self.char.dollars = 4
+    choice = self.resolve_to_choice(MultipleChoice)
+    self.assertEqual(choice.choices, ["Yes", "No"])
+    choice.resolve(self.state, "No")
+    self.resolve_until_done()
+    self.assertEqual(self.char.dollars, 4)
+    self.assertEqual(len(self.char.possessions), 0)
+    self.assertEqual(len(self.state.common), 2)
+    self.assertEqual(len(self.state.unique), 2)
+
+  def testTrain6MoneyAcceptPass(self):
+    self.state.event_stack.append(encounters.Train6(self.char))
+    self.char.dollars = 4
+    choice = self.resolve_to_choice(MultipleChoice)
+    self.assertEqual(choice.choices, ["Yes", "No"])
+    choice.resolve(self.state, "Yes")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.dollars, 1)
+    self.assertEqual(len(self.char.possessions), 1)
+    self.assertEqual(self.char.possessions[0].name, "Cross")
+    self.assertEqual(len(self.state.common), 2)
+    self.assertEqual(len(self.state.unique), 1)
+
+  def testTrain6MoneyAcceptFail(self):
+    self.state.event_stack.append(encounters.Train6(self.char))
+    self.char.dollars = 4
+    choice = self.resolve_to_choice(MultipleChoice)
+    self.assertEqual(choice.choices, ["Yes", "No"])
+    choice.resolve(self.state, "Yes")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=2)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.dollars, 1)
+    self.assertEqual(len(self.char.possessions), 1)
+    self.assertEqual(self.char.possessions[0].name, "Dynamite")
+    self.assertEqual(len(self.state.common), 1)
+    self.assertEqual(len(self.state.unique), 2)
+
+  def testTrain7Pass(self):
+    self.state.event_stack.append(encounters.Train7(self.char))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+    self.assertEqual(len(self.char.possessions), 1)
+    self.assertEqual(self.char.possessions[0].name, "Cross")
+    self.assertEqual(len(self.state.unique), 1)
+
+  def testTrain7Fail(self):
+    self.state.event_stack.append(encounters.Train7(self.char))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=1)):
+      self.resolve_until_done()
+    self.assertEqual(len(self.char.possessions), 0)
+    self.assertEqual(len(self.state.unique), 2)
+    self.assertEqual(self.char.stamina, 2)
+    self.assertEqual(self.char.place.name, "Train")
+
+  def testTrain7FailUnconcious(self):
+    self.state.event_stack.append(encounters.Train7(self.char))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
+      self.resolve_until_done()
+    self.assertEqual(len(self.char.possessions), 0)
+    self.assertEqual(len(self.state.unique), 2)
+    self.assertEqual(self.char.stamina, 1)
+    self.assertEqual(self.char.place.name, "Hospital")
 
 
 class DocksTest(EncounterTest):
