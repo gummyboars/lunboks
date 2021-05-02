@@ -504,6 +504,28 @@ class DrawRandomTest(EventTest):
 
 
 
+class DiscardNamedTest(EventTest):
+  def testDiscardNamed(self):
+    self.char.possessions.append(items.Food())
+    self.char.possessions.append(items.TommyGun())
+    discard = DiscardNamed(self.char, "Food")
+    self.assertFalse(discard.is_resolved())
+    self.state.event_stack.append(discard)
+    self.resolve_until_done()
+    self.assertTrue(discard.is_resolved())
+    self.assertEqual(len(self.char.possessions), 1)
+    self.assertEqual(self.char.possessions[0].name, 'Tommy Gun')
+    self.assertEqual(len(self.state.common), 1)
+
+  def testDontHave(self):
+    self.char.possessions.append(items.TommyGun())
+    discard = DiscardNamed(self.char, "Food")
+    self.assertFalse(discard.is_resolved())
+    self.state.event_stack.append(discard)
+    self.resolve_until_done()
+    self.assertEqual(discard.finish_str(), "Dummy did not have a Food to discard")
+
+
 class AttributePrerequisiteTest(EventTest):
 
   def testPrereq(self):

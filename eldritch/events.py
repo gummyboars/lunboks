@@ -111,9 +111,11 @@ class DiceRoll(Event):
     self.character = character
     self.count = count
     self.roll = None
+    self.sum = None
 
   def resolve(self, state):
     self.roll = [random.randint(1, 6) for _ in range(self.count)]
+    self.sum = sum(self.roll)
     return True
 
   def is_resolved(self):
@@ -769,6 +771,36 @@ class DiscardSpecific(Event):
     return f"{self.character.name} discarded their {self.item.name}"
 
 
+class DiscardNamed(Event):
+
+  def __init__(self, character, item_name):
+    self.character = character
+    self.item_name = item_name
+    self.discarded = None
+
+  def resolve(self, state):
+    for item in self.character.possessions:
+      if item.name == self.item_name:
+        self.character.possessions.remove(item)
+        deck = getattr(state, item.deck)
+        deck.append(item)
+        self.discarded = True
+        return True
+    self.discarded = False
+    return True
+
+  def is_resolved(self):
+    return self.discarded is not None
+
+  def start_str(self):
+    return f"{self.character.name} will discard a {self.item_name}"
+
+  def finish_str(self):
+    if not self.discarded:
+      return f"{self.character.name} did not have a {self.item_name} to discard"
+    return f"{self.character.name} discarded their {self.item_name}"
+
+
 class AttributePrerequisite(Event):
 
   def __init__(self, character, attribute, threshold, operand):
@@ -799,6 +831,40 @@ class AttributePrerequisite(Event):
   def finish_str(self):
     if not self.successes:
       return self.character.name + " does not have " + self.oper_desc + " " + str(self.threshold) + " " + self.attribute
+    return ""
+
+class ItemPrerequisite(Event):
+
+  def __init__(self, character, item_name, threshold=1, operand='at least'):
+    oper_map = {
+        "at least": operator.ge,
+        "less than": operator.lt,
+        "exactly": operator.eq,
+    }
+    assert operand in oper_map
+    self.character = character
+    self.item_name = item_name
+    self.threshold = threshold
+    self.oper_desc = operand
+    self.operand = oper_map[operand]
+    self.successes = None
+
+  def resolve(self, state):
+    self.successes = int(self.operand(
+      sum([item.name == self.item_name for item in self.character.possessions]),
+      self.threshold
+    ))
+    return True
+
+  def is_resolved(self):
+    return self.successes is not None
+
+  def start_str(self):
+    return ""
+
+  def finish_str(self):
+    if not self.successes:
+      return self.character.name + " does not have " + self.oper_desc + " " + str(self.threshold) + " " + self.item_name
     return ""
 
 
