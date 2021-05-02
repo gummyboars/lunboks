@@ -144,10 +144,111 @@ def Witch2(char):
   draw = events.Draw(char, "unique", 1)
   return events.PassFail(char, check, draw, events.Nothing())
 
+def Cave1(char):
+  check = events.Check(char, "luck", 0)
+  san_loss = events.Loss(char, {'sanity': 1})
+  monster = events.Sequence(
+    [
+      san_loss,
+      # TODO: Implement a monster appears
+    ], char
+  )
+  draw = events.Draw(char, "common", 1)
+  cond = events.Conditional(char, check, "successes", {0: monster, 1: san_loss, 2: draw})
+  return events.Sequence([check, cond], char)
+def Cave2(char):
+  return events.Loss(char, {"sanity": 1})
+def Cave3(char):
+  check = events.Check(char, "speed", -1)
+  return events.PassFail(char, check, events.Nothing(), events.Loss(char, {"stamina":1}))
+def Cave4(char):
+  # TODO: A monster appears
+  return events.Nothing()
+def Cave5(char):
+  check = events.Check(char, "lore", -2)
+  return events.PassFail(
+    char,
+    check,
+    events.Nothing(),
+    events.Sequence([events.Loss(char, {'stamina': 1}), events.Delayed(char)], char)
+  )
+def Cave6(char):
+  #prereq = events.ItemPrerequisite(char, "Whiskey")
+  prereq = events.AttributePrerequisite(char, "dollars", 0, "at least")
+  check = events.Check(char, "luck", -2)
+  #TODO: Check whether the ally is available in the deck
+  #ally = events.GainAllyIfAvailable(char, "Tough Guy", otherwise={"weapon": 3})
+  ally = events.DrawSpecific(char, "allies", "Tough Guy")
+  #give_whiskey = events.DiscardNamed(char, "Whiskey")
+  give_whiskey = events.Nothing()
+  gain = events.PassFail(char, check, ally, events.Nothing())
+  seq = events.Sequence([give_whiskey, ally], char)
+  choose_give_food = events.BinaryChoice(char, "Discard whiskey to pass automatically?", "Yes", "No", seq, gain)
+  return events.PassFail(char, prereq, choose_give_food, gain)
+def Cave7(char):
+  check = events.Check(char, "luck", 0)
+  evil = events.Loss(char, {"sanity": 1, "stamina": 1})
+  diary = events.GainOrLoss(char, gains={'clues': 1}, losses={'sanity': 1})
+  tome = events.Draw(char, "unique", 1) # TODO: this is actually draw the first tome
+  cond = events.Conditional(char, check, "successes", {0: evil, 1: diary, 2: tome})
+  read = events.Sequence([check, cond], char)
+  return events.BinaryChoice(char, "Do you read the book?", "Yes", "No", read, events.Nothing())
+
+
+def Store1(char):
+  return events.Gain(char, {"dollars": 1})
+def Store2(char):
+  return events.Nothing()
+def Store3(char):
+  #TODO: Sell any common item for twice the price
+  return events.Nothing()
+def Store4(char):
+  return events.Loss(char, {"sanity": 1})
 def Store5(char):
   check = events.Check(char, "will", -2)
   draw = events.Draw(char, "common", 3)
   return events.PassFail(char, check, draw, events.Nothing())
+def Store6(char):
+  prereq = events.AttributePrerequisite(char, "dollars", 1, "at least")
+  check = events.Check(char, "lore", -2)
+  pay = events.Loss(char, {'dollars': 1})
+  guess = events.PassFail(char, check, events.Gain(char, {'dollars': 5}), events.Nothing())
+  do_guess = events.Sequence([pay, guess], char)
+  choose_guess = events.BinaryChoice(
+    char, "Pay $1 to guess how many beans the jar contains?", "Yes", "No", do_guess, events.Nothing()
+  )
+  return events.PassFail(char, prereq, choose_guess, events.Nothing())
+def Store7(char):
+  return events.Draw(char, "common", 1)
+
+def Graveyard1(char):
+  #TODO: A monster appears
+  return events.Nothing()
+def Graveyard2(char):
+  check = events.Check(char, "lore", -1)
+  fail = events.ForceMovement(char, "Rivertown")
+  succeed = events.GainOrLoss(char, gains={'clues': 1}, losses={'sanity': 1})
+  return events.PassFail(char, check, succeed, fail)
+def Graveyard3(char):
+  check = events.Check(char, "combat", -2)
+  victory = events.Sequence([events.Draw(char, 'unique', 1), events.Gain(char, {'clues': 1})])
+  damage = events.DiceRoll(char, 1)
+  defeat = events.Loss(char, {'stamina': damage})
+  return events.PassFail(char, check, victory, events.Sequence([damage, defeat], char))
+def Graveyard4(char):
+  #TODO: Trade monster trophies for Painter
+  return events.Nothing()
+def Graveyard5(char):
+  check = events.Check(char, 'luck', -2)
+  #TODO: You may move to any location
+  move = events.Nothing()
+  clues = events.Gain(char, {"clues": 2})
+  rubbings = events.Sequence([clues, move], char)
+  return events.PassFail(char, check, rubbings, events.Nothing())
+def Graveyard6(char):
+  return events.Gain(char, {"sanity": 2})
+def Graveyard7(char):
+  return events.Nothing()
 
 def Society4(char):
   check = events.Check(char, "luck", -1)
@@ -606,7 +707,13 @@ def CreateEncounterCards():
         EncounterCard("Northside7", {"Shop": Shop7, "Newspaper": Newspaper7, "Train": Train7}),
       ],
       "Rivertown": [
-        EncounterCard("Rivertown5", {"Store": Store5}),
+        EncounterCard("Rivertown1", {"Cave": Cave1, "Store": Store1, "Graveyard": Graveyard1}),
+        EncounterCard("Rivertown2", {"Cave": Cave2, "Store": Store2, "Graveyard": Graveyard2}),
+        EncounterCard("Rivertown3", {"Cave": Cave3, "Store": Store3, "Graveyard": Graveyard3}),
+        EncounterCard("Rivertown4", {"Cave": Cave4, "Store": Store4, "Graveyard": Graveyard4}),
+        EncounterCard("Rivertown5", {"Cave": Cave5, "Store": Store5, "Graveyard": Graveyard5}),
+        EncounterCard("Rivertown6", {"Cave": Cave6, "Store": Store6, "Graveyard": Graveyard6}),
+        EncounterCard("Rivertown7", {"Cave": Cave7, "Store": Store7, "Graveyard": Graveyard7}),
       ],
       "Southside": [
         EncounterCard("Southside4", {"Society": Society4}),

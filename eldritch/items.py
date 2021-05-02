@@ -49,6 +49,21 @@ class Food(Item):
     prevent = events.LossPrevention(self, event, "stamina", 1)
     return events.Sequence([discard, prevent])
 
+class Whiskey(Item):
+
+  def __init__(self):
+    super(Whiskey, self).__init__("Whiskey", "common", {}, {}, None, 1)
+
+  def get_usable_interrupt(self, event, owner, state):
+    if not isinstance(event, events.GainOrLoss) or owner != event.character:
+      return None
+    if "sanity" not in event.adjustments or event.adjustments["sanity"] >= 0:
+      return None
+
+    discard = events.DiscardSpecific(event.character, self)
+    prevent = events.LossPrevention(self, event, "sanity", 1)
+    return events.Sequence([discard, prevent])
+
 
 class ResearchMaterials(Item):
 
