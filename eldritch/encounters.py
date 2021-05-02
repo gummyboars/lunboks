@@ -204,7 +204,7 @@ def Store6(char):
   guess = events.PassFail(char, check, events.Gain(char, {'dollars': 5}), events.Nothing())
   do_guess = events.Sequence([pay, guess], char)
   choose_guess = events.BinaryChoice(
-    char, "Pay $1 to guess how many beans in the jar?", "Yes", "No", do_guess, events.Nothing()
+    char, "Pay $1 to guess how many beans the jar contains?", "Yes", "No", do_guess, events.Nothing()
   )
   return events.PassFail(char, prereq, choose_guess, events.Nothing())
 def Store7(char):
@@ -228,7 +228,12 @@ def Graveyard4(char):
   #TODO: Trade monster trophies for Painter
   return events.Nothing()
 def Graveyard5(char):
-  return events.Nothing()
+  check = events.Check(char, 'luck', -2)
+  #TODO: You may move to any location
+  move = events.Nothing()
+  clues = events.Gain(char, {"clues": 2})
+  rubbings = events.Sequence([clues, move], char)
+  return events.PassFail(char, check, rubbings, events.Nothing())
 def Graveyard6(char):
   return events.Gain(char, {"sanity": 2})
 def Graveyard7(char):
