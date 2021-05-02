@@ -695,6 +695,7 @@ def Shoppe3(char):
   luck = events.Check(char, "luck", 0)
   dice = events.DiceRoll(char, 2)
   coins = events.Sequence([dice, events.Gain(char, {"dollars": dice})], char)
+  # TODO: add a keep counter
   jackpot = events.Draw(char, "unique", 2)
   cond = events.Conditional(char, luck, "successes", {0: events.Nothing(), 1: coins, 2: jackpot})
   buy = events.Sequence([events.Loss(char, {"dollars": 5}), luck, cond], char)
