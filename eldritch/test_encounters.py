@@ -863,7 +863,6 @@ class WitchTest(EncounterTest):
       self.resolve_until_done()
     self.assertEqual(self.char.place.name, "Asylum")
     self.assertEqual(self.char.sanity, 1)
-    # TODO: I believe your sanity should be decreased after gaining clues, reducing by half
     self.assertEqual(self.char.clues, 2)
 
   def testWitch7Pass(self):
