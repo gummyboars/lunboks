@@ -603,6 +603,10 @@ class Draw(Event):
   def finish_str(self):
     return f"{self.character.name} keeps " + ", ".join(self.kept)
 
+def GainAllyOrReward(character, ally:str, reward: Event):
+  has_ally = ContainsPrerequisite("allies", ally)
+  gain_ally = DrawSpecific(character, "allies", ally)
+  return PassFail(character, has_ally, gain_ally, reward)
 
 class Encounter(Event):
 
@@ -867,6 +871,29 @@ class ItemPrerequisite(Event):
       return self.character.name + " does not have " + self.oper_desc + " " + str(self.threshold) + " " + self.item_name
     return ""
 
+class ContainsPrerequisite(Event):
+
+  def __init__(self, deck, card_name):
+    assert deck in {"common", "unique", "spells", "skills", "allies"}
+    self.deck = deck
+    self.card_name = card_name
+    self.successes = None
+
+  def resolve(self, state):
+    deck = getattr(state, self.deck)
+    self.successes = sum([card.name == self.card_name for card in deck])
+    return True
+
+  def is_resolved(self):
+    return self.successes is not None
+
+  def start_str(self):
+    return ""
+
+  def finish_str(self):
+    if not self.successes:
+      return self.deck + " does not have " + self.card_name
+    return ""
 
 class Check(Event):
 

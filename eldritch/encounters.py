@@ -62,8 +62,8 @@ def Roadhouse1(char):
   # as by discarding a research materials, or by using the violinist's clues, etc.
   prereq = events.AttributePrerequisite(char, "clues", 3, "at least")
   spend = events.Loss(char, {"clues": 3})
-  # TODO: prerequisite of the ally being in the deck.
-  draw = events.DrawSpecific(char, "allies", "Traveling Salesman")
+  draw2 = events.Sequence([events.Draw(char, "common", 1), events.Draw(char, "common", 1)], char)
+  draw = events.GainAllyOrReward(char, "Traveling Salesman", draw2)
   take = events.Sequence([spend, draw], char)
   nothing = events.Nothing()
   choice = events.BinaryChoice(char, "Spend 3 clues for an ally?", "Yes", "No", take, nothing)
@@ -175,14 +175,10 @@ def Cave5(char):
     events.Sequence([events.Loss(char, {'stamina': 1}), events.Delayed(char)], char)
   )
 def Cave6(char):
-  #prereq = events.ItemPrerequisite(char, "Whiskey")
-  prereq = events.AttributePrerequisite(char, "dollars", 0, "at least")
+  prereq = events.ItemPrerequisite(char, "Whiskey")
   check = events.Check(char, "luck", -2)
-  #TODO: Check whether the ally is available in the deck
-  #ally = events.GainAllyIfAvailable(char, "Tough Guy", otherwise={"weapon": 3})
-  ally = events.DrawSpecific(char, "allies", "Tough Guy")
-  #give_whiskey = events.DiscardNamed(char, "Whiskey")
-  give_whiskey = events.Nothing()
+  ally = events.GainAllyOrReward(char, "Tough Guy", events.Draw(char, "common", draw_count=1, target_type=items.Weapon))
+  give_whiskey = events.DiscardNamed(char, "Whiskey")
   gain = events.PassFail(char, check, ally, events.Nothing())
   seq = events.Sequence([give_whiskey, ally], char)
   choose_give_food = events.BinaryChoice(char, "Discard whiskey to pass automatically?", "Yes", "No", seq, gain)
@@ -336,7 +332,7 @@ def Science3(char):
   return events.PassFail(char, prereq, events.Sequence([unique, move], char), events.Nothing())
 def Science4(char):
   stamina = events.Loss(char, {"stamina": 2})
-  ally = events.DrawSpecific(char, "allies", "Arm Wrestler") # TODO: prereq on the ally being in the deck
+  ally = events.GainAllyOrReward(char, "Arm Wrestler", events.Gain(char, {"dollars": 5}))
   return events.BinaryChoice(char, "Arm Wrestle?", "Yes", "No", events.Sequence([stamina, ally], char), events.Nothing())
 def Science5(char):
   check = events.Check(char, "luck", 0)
@@ -530,8 +526,7 @@ def Square1(char):
   return events.Gain(char, {"stamina": 1})
 def Square2(char):
   check = events.Check(char, "will", -1)
-  # TODO: prerequisite ally being in the deck, otherwise two clue tokens
-  ally = events.DrawSpecific(char, "allies", "Fortune Teller")
+  ally = events.GainAllyOrReward(char, "Fortune Teller", events.Gain(char, {'clues': 2}))
   return events.PassFail(char, check, ally, events.Nothing())
 def Square3(char):
   check = events.Check(char, "will", -1)
@@ -603,8 +598,7 @@ def Docks7(char):
 
 def Unnamable1(char):
   loss = events.Loss(char, {"sanity": 2})
-  # TODO: add prerequisite of ally being in deck
-  ally = events.DrawSpecific(char, "allies", "Brave Guy")
+  ally = events.GainAllyOrReward(char, "Brave Guy", events.Gain(char, {"clues": 3}))
   listen = events.Sequence([loss, ally], char)
   return events.BinaryChoice(char, "Listen to the tale?", "Yes", "No", listen, events.Nothing())
 def Unnamable2(char):
@@ -642,8 +636,7 @@ def Isle1(char):
   return events.Sequence([spell, loss], char)
 def Isle2(char):
   check = events.Check(char, "sneak", -1)
-  # TODO add prerequisite for Ally in deck
-  ally = events.DrawSpecific(char, "allies", "Mortician")
+  ally = events.GainAllyOrReward(char, "Mortician", events.Gain(char, {"sanity": 10, "stamina": 10}))
   return events.PassFail(char, check, ally, events.Nothing())
 def Isle3(char):
   stamina = events.Loss(char, {"stamina": 1})
@@ -748,9 +741,7 @@ def Woods5(char):
   #TODO: Check whether you have food to give to the doggy
   prereq = events.ItemPrerequisite(char, "Food")
   check = events.Check(char, "speed", -2)
-  #TODO: Check whether the ally is available in the deck
-  #dog = events.GainAllyIfAvailable(char, "Dog", otherwise={"dollars": 3})
-  dog = events.DrawSpecific(char, "allies", "Dog")
+  dog = events.GainAllyOrReward(char, "Dog", events.Gain(char, {"dollars": 3}))
   give_food = events.DiscardNamed(char, "Food")
   catch = events.PassFail(char, check, dog, events.Nothing())
   seq = events.Sequence([give_food, dog], char)

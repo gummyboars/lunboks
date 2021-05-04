@@ -260,6 +260,18 @@ class RoadhouseTest(EncounterTest):
     self.assertEqual(len(self.char.possessions), 1)
     self.assertEqual(self.char.possessions[0].name, "Traveling Salesman")
 
+  def testRoadhouse1Reward(self):
+    self.char.clues = 3
+    self.state.common.extend([items.Revolver38(), items.Food()])
+    self.state.event_stack.append(encounters.Roadhouse1(self.char))
+    choice = self.resolve_to_choice(MultipleChoice)
+    choice.resolve(self.state, "Yes")
+    self.resolve_until_done()
+    self.assertEqual(self.char.clues, 0)
+    self.assertEqual(len(self.char.possessions), 2)
+    self.assertEqual(self.char.possessions[0].name, ".38 Revolver")
+    self.assertEqual(self.char.possessions[1].name, "Food")
+
   def testRoadhouse2Pass(self):
     self.state.event_stack.append(encounters.Roadhouse2(self.char))
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
@@ -819,6 +831,19 @@ class ScienceTest(EncounterTest):
     self.assertEqual(self.char.stamina, 1)
     self.assertEqual(self.char.place.name, "Science")
 
+  def testScience4Reward(self):
+    self.char.dollars = 3
+    self.state.event_stack.append(encounters.Science4(self.char))
+    # Yeah, yeah, these aren't spells
+    choice = self.resolve_to_choice(MultipleChoice)
+    choice.resolve(self.state, "Yes")
+    self.resolve_until_done()
+    self.assertEqual(len(self.state.allies), 0)
+    self.assertEqual(len(self.char.possessions), 0)
+    self.assertEqual(self.char.stamina, 1)
+    self.assertEqual(self.char.place.name, "Science")
+    self.assertEqual(self.char.dollars, 8)
+
   def testScience4YesUnconcious(self):
     self.char.stamina = 2
     self.state.event_stack.append(encounters.Science4(self.char))
@@ -1150,6 +1175,13 @@ class SquareTest(EncounterTest):
       self.resolve_until_done()
     self.assertEqual(len(self.state.allies), 0)
     self.assertEqual(self.char.possessions[0].name, "Fortune Teller")
+
+  def testSquare2PassReward(self):
+    self.state.event_stack.append(encounters.Square2(self.char))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+    self.assertEqual(len(self.state.allies), 0)
+    self.assertEqual(self.char.clues, 2)
     
   def testSquare2Fail(self):
     self.state.event_stack.append(encounters.Square2(self.char))
@@ -1621,6 +1653,15 @@ class UnnamableTest(EncounterTest):
     self.assertEqual(self.char.possessions[0].name, "Brave Guy")
     self.assertEqual(len(self.state.allies), 0)
 
+  def testUnnamable1SaneReward(self):
+    self.state.event_stack.append(encounters.Unnamable1(self.char))
+    choice = self.resolve_to_choice(MultipleChoice)
+    choice.resolve(self.state, "Yes")
+    self.resolve_until_done()
+    self.assertEqual(self.char.sanity, 1)
+    self.assertEqual(len(self.char.possessions), 0)
+    self.assertEqual(self.char.clues, 3)
+
   def testUnnamable1InSane(self):
     # TODO: can't test clue token loss from going insane
     self.state.event_stack.append(encounters.Unnamable1(self.char))
@@ -1750,7 +1791,16 @@ class IsleTest(EncounterTest):
     self.assertEqual(len(self.char.possessions), 1)
     self.assertEqual(len(self.state.allies), 0)
     self.assertEqual(self.char.possessions[0].name, "Mortician")
-    
+
+  def testIsle2PassReward(self):
+    self.state.event_stack.append(encounters.Isle2(self.char))
+    self.char.stamina = 1
+    self.char.sanity = 1
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.sanity, self.char._max_sanity)
+    self.assertEqual(self.char.stamina, self.char._max_stamina)
+
   def testIsle2Fail(self):
     self.state.event_stack.append(encounters.Isle2(self.char))
     self.state.allies.append(assets.Mortician())
@@ -2158,15 +2208,15 @@ class WoodsTest(EncounterTest):
     self.assertEqual(len(self.char.possessions), 1)
     self.assertEqual(self.char.possessions[0].name, "Dog")
 
-#  def testWoods5FoodReward(self):
-#    self.char.speed_sneak_slider = 2
-#    self.char.possessions.append(items.Food())
-#    self.state.event_stack.append(encounters.Woods5(self.char))
-#    choice = self.resolve_to_choice(MultipleChoice)
-#    choice.resolve(self.state, "Yes")
-#    self.resolve_until_done()
-#    self.assertEqual(len(self.char.possessions), 0)
-#    self.assertEqual(self.char.dollars, 6)
+  def testWoods5FoodReward(self):
+    self.char.speed_sneak_slider = 2
+    self.char.possessions.append(items.Food())
+    self.state.event_stack.append(encounters.Woods5(self.char))
+    choice = self.resolve_to_choice(MultipleChoice)
+    choice.resolve(self.state, "Yes")
+    self.resolve_until_done()
+    self.assertEqual(len(self.char.possessions), 0)
+    self.assertEqual(self.char.dollars, 6)
 
   def testWoods5ChooseLuckAlly(self):
     self.char.speed_sneak_slider = 2
@@ -2440,30 +2490,28 @@ class CaveTest(EncounterTest):
     self.assertEqual(self.char.stamina, 1)
     self.assertEqual(self.char.place.name, "Hospital")
 
-  # TODO: Discard whiskey
-  # def testCave6WhiskeyAlly(self):
-  #   self.char.possessions.append(items.Whiskey())
-  #   self.state.allies.append(assets.ToughGuy())
-  #   self.state.common.extend([items.Food(), items.Revolver38()])
-  #   self.state.event_stack.append(encounters.Cave6(self.char))
-  #   choice = self.resolve_to_choice(MultipleChoice)
-  #   self.assertEqual(choice.choices, ["Yes", "No"])
-  #   choice.resolve(self.state, "Yes")
-  #   self.resolve_until_done()
-  #   print(self.char.possessions)
-  #   self.assertEqual(len(self.char.possessions), 1)
-  #   self.assertEqual(self.char.possessions[0].name, "Tough Guy")
-# TODO: Reward
-#   def testCave6WhiskeyReward(self):
-#     self.char.possessions.append(items.Whiskey())
-#     self.state.common.extend([items.Food(), items.Revolver38()])
-#     self.state.event_stack.append(encounters.Cave6(self.char))
-#     choice = self.resolve_to_choice(MultipleChoice)
-#     self.assertEqual(choice.choices, ["Yes", "No"])
-#     choice.resolve(self.state, "Yes")
-#     self.resolve_until_done()
-#     self.assertEqual(len(self.char.possessions), 1)
-#     self.assertEqual(self.char.possessions[0].name, ".38 Revolver")
+  def testCave6WhiskeyAlly(self):
+    self.char.possessions.append(items.Whiskey())
+    self.state.allies.append(assets.ToughGuy())
+    self.state.common.extend([items.Food(), items.Revolver38()])
+    self.state.event_stack.append(encounters.Cave6(self.char))
+    choice = self.resolve_to_choice(MultipleChoice)
+    self.assertEqual(choice.choices, ["Yes", "No"])
+    choice.resolve(self.state, "Yes")
+    self.resolve_until_done()
+    print(self.char.possessions)
+    self.assertEqual(len(self.char.possessions), 1)
+    self.assertEqual(self.char.possessions[0].name, "Tough Guy")
+  def testCave6WhiskeyReward(self):
+    self.char.possessions.append(items.Whiskey())
+    self.state.common.extend([items.Food(), items.Revolver38()])
+    self.state.event_stack.append(encounters.Cave6(self.char))
+    choice = self.resolve_to_choice(MultipleChoice)
+    self.assertEqual(choice.choices, ["Yes", "No"])
+    choice.resolve(self.state, "Yes")
+    self.resolve_until_done()
+    self.assertEqual(len(self.char.possessions), 1)
+    self.assertEqual(self.char.possessions[0].name, ".38 Revolver")
 
   def testCave6DeclineAlly(self):
     self.char.possessions.append(items.Whiskey())
@@ -2480,18 +2528,18 @@ class CaveTest(EncounterTest):
     self.assertEqual(self.char.possessions[1].name, "Tough Guy")
 
   #TODO: Reward if ally not available
-  # def testCave6DeclineReward(self):
-  #   self.char.possessions.append(items.Whiskey())
-  #   self.state.common.extend([items.Food(), items.Revolver38()])
-  #   self.state.event_stack.append(encounters.Cave6(self.char))
-  #   choice = self.resolve_to_choice(MultipleChoice)
-  #   self.assertEqual(choice.choices, ["Yes", "No"])
-  #   choice.resolve(self.state, "No")
-  #   with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
-  #     self.resolve_until_done()
-  #   self.assertEqual(len(self.char.possessions), 2)
-  #   self.assertEqual(self.char.possessions[0].name, "Whiskey")
-  #   self.assertEqual(self.char.possessions[1].name, ".38 Revolver")
+  def testCave6DeclineReward(self):
+    self.char.possessions.append(items.Whiskey())
+    self.state.common.extend([items.Food(), items.Revolver38()])
+    self.state.event_stack.append(encounters.Cave6(self.char))
+    choice = self.resolve_to_choice(MultipleChoice)
+    self.assertEqual(choice.choices, ["Yes", "No"])
+    choice.resolve(self.state, "No")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+    self.assertEqual(len(self.char.possessions), 2)
+    self.assertEqual(self.char.possessions[0].name, "Whiskey")
+    self.assertEqual(self.char.possessions[1].name, ".38 Revolver")
 
   def testCave6DeclineFail(self):
     self.char.possessions.append(items.Whiskey())
@@ -2509,32 +2557,22 @@ class CaveTest(EncounterTest):
     self.state.allies.append(assets.ToughGuy())
     self.state.common.extend([items.Food(), items.Revolver38()])
     self.state.event_stack.append(encounters.Cave6(self.char))
-    choice = self.resolve_to_choice(MultipleChoice)
-    self.assertEqual(choice.choices, ["Yes", "No"])
-    choice.resolve(self.state, "No")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       self.resolve_until_done()
     self.assertEqual(len(self.char.possessions), 1)
     self.assertEqual(self.char.possessions[0].name, "Tough Guy")
 
-  #TODO: Reward if ally not available
-  # def testCave6NoWhiskeyReward(self):
-  #   self.state.common.extend([items.Food(), items.Revolver38()])
-  #   self.state.event_stack.append(encounters.Cave6(self.char))
-  #   choice = self.resolve_to_choice(MultipleChoice)
-  #   self.assertEqual(choice.choices, ["Yes", "No"])
-  #   choice.resolve(self.state, "No")
-  #   with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
-  #     self.resolve_until_done()
-  #   self.assertEqual(len(self.char.possessions), 1)
-  #   self.assertEqual(self.char.possessions[0].name, ".38 Revolver")
+  def testCave6NoWhiskeyReward(self):
+    self.state.common.extend([items.Food(), items.Revolver38()])
+    self.state.event_stack.append(encounters.Cave6(self.char))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+    self.assertEqual(len(self.char.possessions), 1)
+    self.assertEqual(self.char.possessions[0].name, ".38 Revolver")
 
   def testCave6NoWhiskeyFail(self):
     self.state.common.extend([items.Food(), items.Revolver38()])
     self.state.event_stack.append(encounters.Cave6(self.char))
-    choice = self.resolve_to_choice(MultipleChoice)
-    self.assertEqual(choice.choices, ["Yes", "No"])
-    choice.resolve(self.state, "No")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=2)):
       self.resolve_until_done()
     self.assertEqual(len(self.char.possessions), 0)
