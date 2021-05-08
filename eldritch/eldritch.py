@@ -118,7 +118,8 @@ class GameState(object):
   def for_player(self, char_idx):
     output = self.json_repr()
     if self.turn_idx == char_idx and self.turn_phase == "movement":
-      output["distances"] = self.get_distances(self.turn_idx)
+      if isinstance(self.characters[char_idx].place, places.CityPlace):
+        output["distances"] = self.get_distances(self.turn_idx)
 
     # We only return the counts of these items, not the actual items.
     output["monster_cup"] = len([mon for mon in self.monsters if mon.place == self.monster_cup])
@@ -270,9 +271,9 @@ class GameState(object):
     if isinstance(event, events.GainOrLoss):
       # TODO: both going to zero at the same time means you are devoured.
       if event.character.sanity <= 0:
-        triggers.append(events.Insane(event.character, self.places["Asylum"]))
+        triggers.append(events.Insane(event.character))
       if event.character.stamina <= 0:
-        triggers.append(events.Unconscious(event.character, self.places["Hospital"]))
+        triggers.append(events.Unconscious(event.character))
     triggers.extend(sum([char.get_triggers(event, self) for char in self.characters], []))
     return triggers
 

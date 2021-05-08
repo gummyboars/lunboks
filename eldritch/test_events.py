@@ -235,6 +235,72 @@ class GainLossTest(EventTest):
     self.assertDictEqual(loss.final_adjustments, {"sanity": -4, "stamina": -1})
 
 
+class InsaneUnconsciousTest(EventTest):
+
+  def testGoInsane(self):
+    self.assertEqual(self.char.place.name, "Diner")
+    self.char.sanity = 0
+    self.char.clues = 3
+    insane = Insane(self.char)
+
+    self.state.event_stack.append(insane)
+    self.resolve_until_done()
+
+    self.assertTrue(insane.is_resolved())
+    self.assertEqual(self.char.sanity, 1)
+    self.assertEqual(self.char.place.name, "Asylum")
+    self.assertEqual(self.char.clues, 2)
+    self.assertIsNone(self.char.lose_turn_until)
+
+  def testGoUnconscious(self):
+    self.assertEqual(self.char.place.name, "Diner")
+    self.char.stamina = 0
+    self.char.clues = 1
+    unconscious = Unconscious(self.char)
+
+    self.state.event_stack.append(unconscious)
+    self.resolve_until_done()
+
+    self.assertTrue(unconscious.is_resolved())
+    self.assertEqual(self.char.stamina, 1)
+    self.assertEqual(self.char.place.name, "Hospital")
+    self.assertEqual(self.char.clues, 1)
+    self.assertIsNone(self.char.lose_turn_until)
+
+  def testInsaneInOtherWorld(self):
+    self.char.place = self.state.places["Abyss1"]
+    self.char.sanity = 0
+    self.char.clues = 2
+    insane = Insane(self.char)
+
+    self.state.event_stack.append(insane)
+    self.resolve_until_done()
+
+    self.assertTrue(insane.is_resolved())
+    self.assertEqual(self.char.sanity, 1)
+    self.assertEqual(self.char.place.name, "Lost")
+    self.assertEqual(self.char.clues, 1)
+    self.assertEqual(self.char.lose_turn_until, self.state.turn_idx + 2)
+
+  @mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5))
+  def testInsaneClearsEvents(self):
+    self.char.dollars = 0
+    self.char.clues = 0
+    self.char.sanity = 1
+    seq = Sequence([
+      Sequence([Loss(self.char, {"sanity": 1}), Gain(self.char, {"dollars": 1})], self.char),
+      Gain(self.char, {"clues": 1})
+    ], self.char)
+
+    self.state.event_stack.append(seq)
+    self.resolve_until_done()
+
+    self.assertEqual(self.char.place.name, "Asylum")
+    self.assertEqual(self.char.dollars, 0)
+    self.assertEqual(self.char.clues, 0)
+    self.assertFalse(seq.events[1].is_resolved())
+
+
 class SplitGainTest(EventTest):
 
   def testSplitNumber(self):

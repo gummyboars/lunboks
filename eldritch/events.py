@@ -72,6 +72,29 @@ class Nothing(Event):
     return "Nothing happens"
 
 
+class Sequence(Event):
+
+  def __init__(self, events, character=None):
+    self.events = events
+    self.character = character
+
+  def resolve(self, state):
+    for event in self.events:
+      if not event.is_resolved():
+        state.event_stack.append(event)
+        return False
+    return True
+
+  def is_resolved(self):
+    return all([event.is_resolved() for event in self.events])
+
+  def start_str(self):
+    return ""
+
+  def finish_str(self):
+    return ""
+
+
 class EndTurn(Event):
 
   def __init__(self, character, phase):
@@ -332,58 +355,77 @@ class LossPrevention(Event):
 
 class InsaneOrUnconscious(Event):
 
-  def __init__(self, character, attribute, desc, place):
+  def __init__(self, character, attribute, desc):
+    assert attribute in {"sanity", "stamina"}
     self.character = character
     self.attribute = attribute
     self.desc = desc
-    self.place = place
     self.stack_cleared = False
-    self.force_move = ForceMovement(character, place)
+    self.lose_clues = None
+    self.lose_items = None
+    self.force_move = None
 
   def resolve(self, state):
-    if self.force_move.is_resolved():
-      return True
+    if not self.stack_cleared:
+      assert getattr(self.character, self.attribute) <= 0
+      setattr(self.character, self.attribute, 1)
 
-    assert getattr(self.character, self.attribute) <= 0
-    setattr(self.character, self.attribute, 1)
+      saved_interrupts = state.interrupt_stack[-1]
+      saved_triggers = state.trigger_stack[-1]
+      while (state.event_stack):
+        event = state.event_stack[-1]
+        if hasattr(event, "character") and event.character == self.character:
+          state.pop_event(event)
+        else:
+          break
+      # Note that when we cleared the stack, we also cleared this event. But this event should still
+      # be on the stack and get finished, so we have to put it (and its corresponding interrupts
+      # and triggers) back on the stack.
+      state.interrupt_stack.append(saved_interrupts)
+      state.trigger_stack.append(saved_triggers)
+      state.event_stack.append(self)
+      self.stack_cleared = True
 
-    saved_interrupts = state.interrupt_stack[-1]
-    saved_triggers = state.trigger_stack[-1]
-    while (state.event_stack):
-      event = state.event_stack[-1]
-      if hasattr(event, "character") and event.character == self.character:
-        state.pop_event(event)
+    if not self.lose_clues:
+      self.lose_clues = Loss(self.character, {"clues": self.character.clues // 2})
+      state.event_stack.append(self.lose_clues)
+      return False
+
+    if not self.lose_items:
+      self.lose_items = Nothing()  # TODO: choosing items to lose
+      state.event_stack.append(self.lose_items)
+      return False
+
+    if not self.force_move:
+      if isinstance(self.character.place, places.CityPlace):
+        dest = "Asylum" if self.attribute == "sanity" else "Hospital"
+        self.force_move = ForceMovement(self.character, dest)
       else:
-        break
-    # Note that when we cleared the stack, we also cleared this event. But this event should still
-    # be on the stack and get finished, so we have to put it (and its corresponding interrupts
-    # and triggers) back on the stack.
-    state.interrupt_stack.append(saved_interrupts)
-    state.trigger_stack.append(saved_triggers)
-    state.event_stack.append(self)
-    self.stack_cleared = True
+        self.force_move = LostInTimeAndSpace(self.character)
+      state.event_stack.append(self.force_move)
+      return False
 
-    # TODO: lose half the items and clues.
-    self.character.lost_turn = True
-    state.event_stack.append(self.force_move)
-    return False
+    return True
 
   def is_resolved(self):
-    return self.force_move.is_resolved()
+    steps = [self.lose_clues, self.lose_items, self.force_move]
+    return all(steps) and all([step.is_resolved() for step in steps])
 
   def start_str(self):
     return f"{self.character.name} {self.desc}"
 
   def finish_str(self):
-    return f"{self.character.name} woke up in the {self.place}"
+    if isinstance(self.force_move, ForceMovement):
+      return f"{self.character.name} woke up in the {self.force_move.location_name}"
+    return ""
 
 
-def Insane(character, asylum):
-  return InsaneOrUnconscious(character, "sanity", "went insane", "Asylum")
+def Insane(character):
+  return InsaneOrUnconscious(character, "sanity", "went insane")
 
 
-def Unconscious(character, hospital):
-  return InsaneOrUnconscious(character, "stamina", "got knocked unconscious", "Hospital")
+def Unconscious(character):
+  return InsaneOrUnconscious(character, "stamina", "passed out")
 
 
 class DelayOrLoseTurn(Event):
@@ -419,6 +461,13 @@ def Delayed(character):
 
 def LoseTurn(character):
   return DelayOrLoseTurn(character, "lose_turn")
+
+
+class LostInTimeAndSpace(Sequence):
+
+  def __init__(self, character):
+    super(LostInTimeAndSpace, self).__init__([
+      ForceMovement(character, "Lost"), LoseTurn(character)], character)
 
 
 class BlessCurse(Event):
@@ -1128,29 +1177,6 @@ class Conditional(Event):
 def PassFail(character, condition, pass_result, fail_result):
   outcome = Conditional(character, condition, "successes", {0: fail_result, 1: pass_result})
   return Sequence([condition, outcome], character)
-
-
-class Sequence(Event):
-
-  def __init__(self, events, character=None):
-    self.events = events
-    self.character = character
-
-  def resolve(self, state):
-    for event in self.events:
-      if not event.is_resolved():
-        state.event_stack.append(event)
-        return False
-    return True
-
-  def is_resolved(self):
-    return all([event.is_resolved() for event in self.events])
-
-  def start_str(self):
-    return ""
-
-  def finish_str(self):
-    return ""
 
 
 class Arrested(Sequence):

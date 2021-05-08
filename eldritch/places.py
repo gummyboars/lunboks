@@ -5,7 +5,16 @@ class Place(object):
   pass
 
 
-class CityPlace(object):
+class LostInTimeAndSpace(Place):
+
+  def __init__(self):
+    self.name = "Lost"
+
+  def json_repr(self):
+    return {"name": self.name}
+
+
+class CityPlace(Place):
 
   MOVEMENT_OPPOSITES = {"black": "white", "white": "black"}
 
@@ -183,7 +192,7 @@ def CreatePlaces():
         Northside, Downtown, Easttown, Rivertown,
         FrenchHill, Southside, Uptown, University, Merchant,
         # Other
-        Sky(), Outskirts(),
+        Sky(), Outskirts(), LostInTimeAndSpace(),
       ]
   }
 
