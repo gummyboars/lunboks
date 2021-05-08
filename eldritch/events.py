@@ -1037,6 +1037,88 @@ def GainAllyOrReward(character, ally: str, reward: Event):
   return PassFail(character, has_ally, gain_ally, reward)
 
 
+class Sell(Event):
+
+  def __init__(self, character, target_decks, sell_count=1, discount_type="fixed", discount=0,
+               prompt="Sell items?"):
+    assert discount_type in {"fixed", "rate"}
+    self.character = character
+    self.prompt = prompt
+    self.sell_count = sell_count
+    self.sellable = None
+    self.discount_type = discount_type
+    self.discount = discount
+    self.choice = None
+    self.prices = None
+    self.sold = []
+    self.target_decks = target_decks
+    self.resolved = False
+
+  def resolve(self, state):
+    if self.resolved:
+      # This should never happen??
+      return True
+
+    if self.choice is not None:
+      if not self.choice.is_resolved():  # This should never happen
+        return False
+      if self.choice.choices[self.choice.choice_index] == 'Nothing':
+        self.resolved = True
+        return True
+
+      card = self.sellable.pop(self.choice.choice_index)
+      price = self.prices.pop(self.choice.choice_index)
+
+      self.character.possessions.remove(card)
+      getattr(state, card.deck).append(card)
+
+      self.character.dollars += price
+
+      self.sell_count -= 1
+
+    if self.sellable is None:
+      self.sellable = []
+      for item in self.character.possessions:
+        if item.deck in self.target_decks:
+          self.sellable.append(item)
+
+    if self.sell_count > 0:
+      choices = []
+      self.prices = []
+      for card in self.sellable:
+        price = self.discounted_price(card)
+        self.prices.append(price)
+        choices.append(f"{card.name} for ${price}")
+      choices.append("Nothing")
+
+      self.choice = CardChoice(self.character, self.prompt, choices)
+      state.event_stack.append(self.choice)
+      return False
+
+    if self.sell_count == 0:
+      self.resolved = True
+      return True
+
+    return True
+
+  def is_resolved(self):
+    return self.resolved
+
+  def start_str(self):
+    return f"{self.character.name} may sell {str(self.target_decks)}"
+
+  def finish_str(self):
+    if not self.sold:
+      return f"{self.character.name} sold nothing"
+    return f"{self.character.name} sold " + ", ".join(self.sold)
+
+  def discounted_price(self, card):
+    if self.discount_type == "fixed":
+      return card.price - self.discount
+    elif self.discount_type == 'rate':
+      return card.price - int(self.discount * card.price) # Discounts round up
+
+
 class PurchaseDrawn(Event):
   def __init__(self, character, draw: DrawItems,
                discount_type="fixed", discount=0, keep_count=1, prompt="Buy items?"):

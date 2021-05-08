@@ -319,8 +319,7 @@ def Store1(char):
 def Store2(char):
   return events.Nothing()
 def Store3(char):
-  #TODO: Sell any common item for twice the price
-  return events.Nothing()
+  return events.Sell(char, {"common"}, 1, discount_type='rate', discount=-1.)
 def Store4(char):
   return events.Loss(char, {"sanity": 1})
 def Store5(char):

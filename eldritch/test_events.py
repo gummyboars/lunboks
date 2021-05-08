@@ -1461,5 +1461,67 @@ class PurchaseTest(EventTest):
 
 
 
+
+class SellTest(EventTest):
+  def testSellOneAtList(self):
+    buy = Sell(self.char, {'common'}, 1)
+    self.char.dollars = 3
+    self.assertFalse(buy.is_resolved())
+    self.assertFalse(self.char.possessions)
+    food = items.Food()
+    self.char.possessions.append(food)
+
+    self.state.event_stack.append(buy)
+    choice = self.resolve_to_choice(CardChoice)
+    self.assertEqual(choice.choices, ["Food for $1", "Nothing"])
+    choice.resolve(self.state, "Food for $1")
+    self.resolve_until_done()
+
+    self.assertTrue(buy.is_resolved())
+    self.assertEqual(self.char.dollars, 4)
+    self.assertFalse(self.char.possessions)
+    self.assertEqual(len(self.state.common), 1)
+    self.assertEqual(self.state.common[0].name, "Food")
+
+  def testSellOneDecline(self):
+    buy = Sell(self.char, {'common'}, 1)
+    self.char.dollars = 3
+    self.assertFalse(buy.is_resolved())
+    self.assertFalse(self.char.possessions)
+    food = items.Food()
+    self.char.possessions.append(food)
+
+    self.state.event_stack.append(buy)
+    choice = self.resolve_to_choice(CardChoice)
+    self.assertEqual(choice.choices, ["Food for $1", "Nothing"])
+    choice.resolve(self.state, "Nothing")
+    self.resolve_until_done()
+
+    self.assertTrue(buy.is_resolved())
+    self.assertEqual(self.char.dollars, 3)
+    self.assertFalse(self.state.common)
+    self.assertEqual(len(self.char.possessions), 1)
+    self.assertEqual(self.char.possessions[0].name, "Food")
+
+  def testSellOneDoublePrice(self):
+    buy = Sell(self.char, {'common'}, 1, discount_type='rate', discount=-1)
+    self.char.dollars = 3
+    self.assertFalse(buy.is_resolved())
+    self.assertFalse(self.char.possessions)
+    food = items.Food()
+    self.char.possessions.append(food)
+
+    self.state.event_stack.append(buy)
+    choice = self.resolve_to_choice(CardChoice)
+    self.assertEqual(choice.choices, ["Food for $2", "Nothing"])
+    choice.resolve(self.state, "Food for $2")
+    self.resolve_until_done()
+
+    self.assertTrue(buy.is_resolved())
+    self.assertEqual(self.char.dollars, 5)
+    self.assertFalse(self.char.possessions)
+    self.assertEqual(len(self.state.common), 1)
+    self.assertEqual(self.state.common[0].name, "Food")
+
 if __name__ == '__main__':
   unittest.main()
