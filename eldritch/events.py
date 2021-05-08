@@ -786,6 +786,7 @@ class DrawSpecific(Event):
         deck.remove(item)
         self.character.possessions.append(item)
         self.received = True
+        #TODO: Shuffle the deck after drawing the item
         break
     else:
       self.received = False
