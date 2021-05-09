@@ -1145,11 +1145,12 @@ def Purchase(char, deck, draw_count, discount_type="fixed", discount=0, keep_cou
 
 class Encounter(Event):
 
-  def __init__(self, character, location_name):
+  def __init__(self, character, location_name, count=1):
     self.character = character
     self.location_name = location_name
     self.draw = None
     self.encounter = None
+    self.count = count
 
   def resolve(self, state):
     if isinstance(self.location_name, MapChoice):
@@ -1171,7 +1172,7 @@ class Encounter(Event):
         neighborhood = state.places["FrenchHill"]
       else:
         neighborhood = state.places[self.location_name].neighborhood
-      self.draw = DrawEncounter(self.character, neighborhood, 1)
+      self.draw = DrawEncounter(self.character, neighborhood, self.count)
 
     if not self.draw.is_resolved():
       state.event_stack.append(self.draw)
@@ -1191,7 +1192,7 @@ class Encounter(Event):
     cond = Conditional(
         self.character, choice, "choice_index", {idx: enc for idx, enc in enumerate(encounters)})
     self.encounter = Sequence([choice, cond], self.character)
-    state.stack.append(self.encounter)
+    state.event_stack.append(self.encounter)
     return False
 
   def is_resolved(self):
@@ -1267,7 +1268,7 @@ class GateEncounter(Event):
     cond = Conditional(
         self.character, choice, "choice_index", {idx: enc for idx, enc in enumerate(encounters)})
     self.encounter = Sequence([choice, cond], self.character)
-    state.stack.append(self.encounter)
+    state.event_stack.append(self.encounter)
     return False
 
   def is_resolved(self):
