@@ -72,6 +72,29 @@ class Nothing(Event):
     return "Nothing happens"
 
 
+class Sequence(Event):
+
+  def __init__(self, events, character=None):
+    self.events = events
+    self.character = character
+
+  def resolve(self, state):
+    for event in self.events:
+      if not event.is_resolved():
+        state.event_stack.append(event)
+        return False
+    return True
+
+  def is_resolved(self):
+    return all([event.is_resolved() for event in self.events])
+
+  def start_str(self):
+    return ""
+
+  def finish_str(self):
+    return ""
+
+
 class EndTurn(Event):
 
   def __init__(self, character, phase):
@@ -103,6 +126,12 @@ class EndMovement(EndTurn):
 
   def __init__(self, character):
     super(EndMovement, self).__init__(character, "movement")
+
+
+class EndEncounter(EndTurn):
+
+  def __init__(self, character):
+    super(EndEncounter, self).__init__(character, "encounter")
 
 
 class DiceRoll(Event):
@@ -144,6 +173,7 @@ class MoveOne(Event):
     assert self.dest in self.character.place.connections
     self.character.place = self.dest
     self.character.movement_points -= 1
+    self.character.explored = False
     self.done = True
     return True
 
@@ -325,58 +355,77 @@ class LossPrevention(Event):
 
 class InsaneOrUnconscious(Event):
 
-  def __init__(self, character, attribute, desc, place):
+  def __init__(self, character, attribute, desc):
+    assert attribute in {"sanity", "stamina"}
     self.character = character
     self.attribute = attribute
     self.desc = desc
-    self.place = place
     self.stack_cleared = False
-    self.force_move = ForceMovement(character, place)
+    self.lose_clues = None
+    self.lose_items = None
+    self.force_move = None
 
   def resolve(self, state):
-    if self.force_move.is_resolved():
-      return True
+    if not self.stack_cleared:
+      assert getattr(self.character, self.attribute) <= 0
+      setattr(self.character, self.attribute, 1)
 
-    assert getattr(self.character, self.attribute) <= 0
-    setattr(self.character, self.attribute, 1)
+      saved_interrupts = state.interrupt_stack[-1]
+      saved_triggers = state.trigger_stack[-1]
+      while (state.event_stack):
+        event = state.event_stack[-1]
+        if hasattr(event, "character") and event.character == self.character:
+          state.pop_event(event)
+        else:
+          break
+      # Note that when we cleared the stack, we also cleared this event. But this event should still
+      # be on the stack and get finished, so we have to put it (and its corresponding interrupts
+      # and triggers) back on the stack.
+      state.interrupt_stack.append(saved_interrupts)
+      state.trigger_stack.append(saved_triggers)
+      state.event_stack.append(self)
+      self.stack_cleared = True
 
-    saved_interrupts = state.interrupt_stack[-1]
-    saved_triggers = state.trigger_stack[-1]
-    while (state.event_stack):
-      event = state.event_stack[-1]
-      if hasattr(event, "character") and event.character == self.character:
-        state.pop_event(event)
+    if not self.lose_clues:
+      self.lose_clues = Loss(self.character, {"clues": self.character.clues // 2})
+      state.event_stack.append(self.lose_clues)
+      return False
+
+    if not self.lose_items:
+      self.lose_items = Nothing()  # TODO: choosing items to lose
+      state.event_stack.append(self.lose_items)
+      return False
+
+    if not self.force_move:
+      if isinstance(self.character.place, places.CityPlace):
+        dest = "Asylum" if self.attribute == "sanity" else "Hospital"
+        self.force_move = ForceMovement(self.character, dest)
       else:
-        break
-    # Note that when we cleared the stack, we also cleared this event. But this event should still
-    # be on the stack and get finished, so we have to put it (and its corresponding interrupts
-    # and triggers) back on the stack.
-    state.interrupt_stack.append(saved_interrupts)
-    state.trigger_stack.append(saved_triggers)
-    state.event_stack.append(self)
-    self.stack_cleared = True
+        self.force_move = LostInTimeAndSpace(self.character)
+      state.event_stack.append(self.force_move)
+      return False
 
-    # TODO: lose half the items and clues.
-    self.character.lost_turn = True
-    state.event_stack.append(self.force_move)
-    return False
+    return True
 
   def is_resolved(self):
-    return self.force_move.is_resolved()
+    steps = [self.lose_clues, self.lose_items, self.force_move]
+    return all(steps) and all([step.is_resolved() for step in steps])
 
   def start_str(self):
     return f"{self.character.name} {self.desc}"
 
   def finish_str(self):
-    return f"{self.character.name} woke up in the {self.place}"
+    if isinstance(self.force_move, ForceMovement):
+      return f"{self.character.name} woke up in the {self.force_move.location_name}"
+    return ""
 
 
-def Insane(character, asylum):
-  return InsaneOrUnconscious(character, "sanity", "went insane", "Asylum")
+def Insane(character):
+  return InsaneOrUnconscious(character, "sanity", "went insane")
 
 
-def Unconscious(character, hospital):
-  return InsaneOrUnconscious(character, "stamina", "got knocked unconscious", "Hospital")
+def Unconscious(character):
+  return InsaneOrUnconscious(character, "stamina", "passed out")
 
 
 class DelayOrLoseTurn(Event):
@@ -412,6 +461,13 @@ def Delayed(character):
 
 def LoseTurn(character):
   return DelayOrLoseTurn(character, "lose_turn")
+
+
+class LostInTimeAndSpace(Sequence):
+
+  def __init__(self, character):
+    super(LostInTimeAndSpace, self).__init__([
+      ForceMovement(character, "Lost"), LoseTurn(character)], character)
 
 
 class BlessCurse(Event):
@@ -522,6 +578,7 @@ class ForceMovement(Event):
 
   def resolve(self, state):
     self.character.place = state.places[self.location_name]
+    self.character.explored = False
     self.done = True
     return True
 
@@ -646,7 +703,7 @@ class Encounter(Event):
     choice = CardChoice(self.character, "Choose an Encounter", [card.name for card in draw.cards])
     cond = Conditional(
         self.character, choice, "choice_index", {idx: enc for idx, enc in enumerate(encounters)})
-    self.encounter = Sequence([choice, cond], character)
+    self.encounter = Sequence([choice, cond], self.character)
     state.stack.append(self.encounter)
     return False
 
@@ -685,6 +742,88 @@ class DrawEncounter(Event):
     return f"{self.character.name} drew " + ", ".join([card.name for card in self.cards])
 
 
+class GateEncounter(Event):
+
+  def __init__(self, character, name, colors):
+    self.character = character
+    self.world_name = name
+    self.colors = colors
+    self.draw_count = 1
+    self.draw = None
+    self.cards = []
+    self.encounter = None
+
+  def resolve(self, state):
+    if self.encounter is not None:
+      assert self.encounter.is_resolved()
+      state.gate_cards.extend(self.cards)
+      self.cards = []
+      return True
+
+    if self.draw is not None:
+      assert self.draw.is_resolved()
+      self.cards.append(self.draw.card)
+      self.draw = None
+
+    if len(self.cards) < self.draw_count:
+      self.draw = DrawGateCard(self.character, self.colors)
+      state.event_stack.append(self.draw)
+      return False
+
+    if len(self.cards) == 1:
+      self.encounter = self.cards[0].encounter_event(self.character, self.world_name)
+      state.event_stack.append(self.encounter)
+      return False
+
+    encounters = [card.encounter_event(self.character, self.world_name) for card in self.cards]
+    choice = CardChoice(self.character, "Choose an Encounter", [card.name for card in self.cards])
+    cond = Conditional(
+        self.character, choice, "choice_index", {idx: enc for idx, enc in enumerate(encounters)})
+    self.encounter = Sequence([choice, cond], self.character)
+    state.stack.append(self.encounter)
+    return False
+
+  def is_resolved(self):
+    return self.encounter is not None and self.encounter.is_resolved() and not self.cards
+
+  def start_str(self):
+    return ""
+
+  def finish_str(self):
+    return ""
+
+
+class DrawGateCard(Event):
+
+  def __init__(self, character, colors):
+    self.character = character
+    self.colors = colors
+    self.shuffled = False
+    self.card = None
+
+  def resolve(self, state):
+    while True:
+      card = state.gate_cards.popleft()
+      if card.colors & self.colors:
+        break
+      state.gate_cards.append(card)
+      if card.name == "Shuffle":
+        random.shuffle(state.gate_cards)
+        self.shuffled = True
+    self.card = card
+
+  def is_resolved(self):
+    return self.card is not None
+
+  def start_str(self):
+    return f"{self.character.name} must draw a " + " or ".join(self.colors) + " gate card"
+
+  def finish_str(self):
+    if self.shuffled:
+      return f"{self.character.name} shuffled the deck and then drew {self.card.name}"
+    return f"{self.character.name} drew {self.card.name}"
+
+
 class DrawSpecific(Event):
 
   def __init__(self, character, deck, item_name):
@@ -701,6 +840,7 @@ class DrawSpecific(Event):
         deck.remove(item)
         self.character.possessions.append(item)
         self.received = True
+        #TODO: Shuffle the deck after drawing the item
         break
     else:
       self.received = False
@@ -1067,29 +1207,6 @@ def PassFail(character, condition, pass_result, fail_result):
   return Sequence([condition, outcome], character)
 
 
-class Sequence(Event):
-
-  def __init__(self, events, character=None):
-    self.events = events
-    self.character = character
-
-  def resolve(self, state):
-    for event in self.events:
-      if not event.is_resolved():
-        state.event_stack.append(event)
-        return False
-    return True
-
-  def is_resolved(self):
-    return all([event.is_resolved() for event in self.events])
-
-  def start_str(self):
-    return ""
-
-  def finish_str(self):
-    return ""
-
-
 class Arrested(Sequence):
 
   def __init__(self, character):
@@ -1408,6 +1525,153 @@ class CombatRound(Event):
     if self.defeated:
       return f"{self.character.name} defeated a {self.monster.name}"
     return f"{self.character.name} did not defeat the {self.monster.name}"
+
+
+class Travel(Event):
+
+  def __init__(self, character, world_name):
+    self.character = character
+    self.world_name = world_name
+    self.done = False
+
+  def resolve(self, state):
+    self.character.place = state.places[self.world_name + "1"]
+    self.character.explored = False  # just in case
+    self.done = True
+
+  def is_resolved(self):
+    return self.done
+
+  def start_str(self):
+    return ""
+
+  def finish_str(self):
+    return f"{self.character.name} moved to {self.world_name}"
+
+
+class Return(Event):
+
+  def __init__(self, character, world_name):
+    self.character = character
+    self.world_name = world_name
+    self.returned = None
+
+  def resolve(self, state):
+    viable_returns = [
+        place for place in state.places.values()
+        if getattr(place, "gate", None) and place.gate.info.name == self.world_name
+    ]
+    if len(viable_returns) == 0:
+      self.returned = False  # TODO: lost in time and space
+    elif len(viable_returns) == 1:
+      self.returned = True
+      self.character.place = viable_returns[0]
+      self.character.explored = True
+    else:
+      self.returned = True
+      self.character.place = viable_returns[0]  # TODO: location choice
+      self.character.explored = True
+
+  def is_resolved(self):
+    return self.returned
+
+  def start_str(self):
+    return ""
+
+  def finish_str(self):
+    return f"{self.character.name} returned"
+
+
+class PullThroughGate(Sequence):
+
+  def __init__(self, chars, world_name):
+    assert chars
+    self.chars = chars
+    self.world_name = world_name
+    seq = []
+    for char in chars:
+      seq.extend([Travel(char, world_name), Delayed(char)])
+    super(PullThroughGate, self).__init__(seq)
+
+  def start_str(self):
+    return f"{len(self.chars)} will be pulled through to {self.world_name}"
+
+
+class GateCloseAttempt(Event):
+
+  def __init__(self, character, location_name):
+    self.character = character
+    self.location_name = location_name
+    self.choice = None
+    self.check = None
+    self.seal_choice = None
+    self.closed = None
+    self.sealed = None
+
+  def resolve(self, state):
+    if self.choice is None:
+      self.choice = MultipleChoice(
+          self.character, "Close the gate?", ["Close with fight", "Close with lore", "Don't close"])
+      state.event_stack.append(self.choice)
+      return False
+
+    assert self.choice.is_resolved()
+    if self.choice.choice == "Don't close":
+      self.closed = False
+      self.sealed = False
+      return True
+
+    if self.check is None:
+      difficulty = state.places[self.location_name].gate.difficulty(state)
+      attribute = "lore" if self.choice.choice == "Close with lore" else "fight"
+      self.check = Check(self.character, attribute, difficulty)
+      state.event_stack.append(self.check)
+      return False
+
+    assert self.check.is_resolved()
+    if not self.check.successes:
+      self.closed = False
+      self.sealed = False
+      return True
+
+    if not self.closed:
+      self.closed = True
+      state.gates.append(state.places[self.location_name].gate)  # TODO: take a gate trophy
+      state.places[self.location_name].gate = None
+
+    if self.seal_choice is None:
+      if self.character.clues < 5:  # TODO: this can also have modifiers
+        self.sealed = False
+        return True
+      self.seal_choice = MultipleChoice(
+          self.character, "Seal the gate with 5 clue tokens?", ["Yes", "No"])
+      state.event_stack.append(self.seal_choice)
+      return False
+
+    assert self.seal_choice.is_resolved()
+    if self.seal_choice.choice == "No":
+      self.sealed = False
+      return True
+
+    self.character.clues -= 5  # TODO: spending clues in other ways
+    state.places[self.location_name].sealed = True
+    self.sealed = True
+    return True
+
+  def is_resolved(self):
+    return self.closed is not None and self.sealed is not None
+
+  def start_str(self):
+    pass
+
+  def finish_str(self):
+    if self.choice.choice == "Don't close":
+      return f"{self.character.name} chose not to close the gate at {self.location_name}"
+    if not self.closed:
+      return f"{self.character.name} failed to close the gate at {self.location_name}"
+    if not self.sealed == 1:
+      return f"{self.character.name} closed the gate at {self.location_name} but did not seal it"
+    return f"{self.character.name} closed and sealed the gate at {self.location_name}"
 
 
 class OpenGate(Event):

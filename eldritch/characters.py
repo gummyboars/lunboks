@@ -37,6 +37,7 @@ class Character(object):
     self.focus_points = self.focus
     self.home = home
     self.place = None
+    self.explored = False
 
   def get_json(self, state):
     attrs = [

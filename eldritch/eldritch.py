@@ -14,6 +14,7 @@ import eldritch.characters as characters
 import eldritch.encounters as encounters
 import eldritch.events as events
 import eldritch.gates as gates
+import eldritch.gate_encounters as gate_encounters
 import eldritch.items as items
 import eldritch.monsters as monsters
 import eldritch.mythos as mythos
@@ -23,7 +24,8 @@ import eldritch.places as places
 class GameState(object):
 
   DEQUE_ATTRIBUTES = {"common", "unique", "spells", "skills", "allies", "gates"}
-  HIDDEN_ATTRIBUTES = {"event_stack", "interrupt_stack", "trigger_stack", "usables", "mythos"}
+  HIDDEN_ATTRIBUTES = {
+      "event_stack", "interrupt_stack", "trigger_stack", "usables", "mythos", "gate_cards"}
   TURN_PHASES = ["upkeep", "movement", "encounter", "otherworld", "mythos"]
 
   def __init__(self):
@@ -36,6 +38,7 @@ class GameState(object):
     self.allies = collections.deque()
     self.mythos = collections.deque()
     self.gates = collections.deque()
+    self.gate_cards = collections.deque()
     self.monsters = []
     self.monster_cup = monsters.MonsterCup()
     self.game_stage = "slumber"  # valid values are setup, slumber, awakened, victory, defeat
@@ -62,6 +65,7 @@ class GameState(object):
     infos, other_worlds = places.CreateOtherWorlds()
     self.places.update(other_worlds)
     encounter_cards = encounters.CreateEncounterCards()
+    self.gate_cards.extend(gate_encounters.CreateGateCards())
     for neighborhood_name, cards in encounter_cards.items():
       self.places[neighborhood_name].encounters.extend(cards)
 
@@ -114,7 +118,8 @@ class GameState(object):
   def for_player(self, char_idx):
     output = self.json_repr()
     if self.turn_idx == char_idx and self.turn_phase == "movement":
-      output["distances"] = self.get_distances(self.turn_idx)
+      if isinstance(self.characters[char_idx].place, places.CityPlace):
+        output["distances"] = self.get_distances(self.turn_idx)
 
     # We only return the counts of these items, not the actual items.
     output["monster_cup"] = len([mon for mon in self.monsters if mon.place == self.monster_cup])
@@ -266,9 +271,14 @@ class GameState(object):
     if isinstance(event, events.GainOrLoss):
       # TODO: both going to zero at the same time means you are devoured.
       if event.character.sanity <= 0:
-        triggers.append(events.Insane(event.character, self.places["Asylum"]))
+        triggers.append(events.Insane(event.character))
       if event.character.stamina <= 0:
-        triggers.append(events.Unconscious(event.character, self.places["Hospital"]))
+        triggers.append(events.Unconscious(event.character))
+    if isinstance(event, events.OpenGate) and event.opened:
+      loc = self.places[event.location_name]
+      chars = [char for char in self.characters if char.place == loc]
+      if chars:
+        triggers.append(events.PullThroughGate(chars, loc.gate.name))
     triggers.extend(sum([char.get_triggers(event, self) for char in self.characters], []))
     return triggers
 
@@ -421,17 +431,33 @@ class GameState(object):
         char.delayed_until = None
       elif char.delayed_until is not None:
         return self.next_turn()
+      if isinstance(char.place, places.OtherWorld):
+        if char.place.order == 1:
+          world_name = char.place.info.name + "2"
+          self.event_stack.append(events.Sequence([
+            events.ForceMovement(char, world_name), events.EndMovement(char)], char))
+        else:
+          self.event_stack.append(events.Sequence([
+            events.Return(char, char.place.info.name), events.EndMovement(char)], char))
+        return
       char.movement_points = char.speed(self)
     if self.turn_phase == "encounter":
       if not isinstance(char.place, places.Location):
         return self.next_turn()
+      elif char.place.gate and char.explored:
+        self.event_stack.append(events.Sequence(
+          [events.GateCloseAttempt(char, char.place.name), events.EndEncounter(char)], char))
+      elif char.place.gate:
+        self.event_stack.append(events.Sequence(
+          [events.Travel(char, char.place.gate.name), events.EndEncounter(char)], char))
       elif char.place.neighborhood.encounters:
         self.event_stack.append(events.Encounter(char, char.place.name))
     if self.turn_phase == "otherworld":
       if not isinstance(char.place, places.OtherWorld):
         return self.next_turn()
-      elif True:
-        pass  # TODO
+      else:
+        self.event_stack.append(events.GateEncounter(
+          char, char.place.info.name, char.place.info.colors))
 
   def get_distances(self, char_idx):
     routes = self.get_routes(char_idx)

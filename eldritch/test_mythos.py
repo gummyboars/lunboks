@@ -29,6 +29,11 @@ class OpenGateTest(EventTest):
     self.state.gates.append(self.gate)
     self.square = self.state.places["Square"]
     self.woods = self.state.places["Woods"]
+    # Add two characters to the square.
+    self.state.characters.append(characters.Character("A", 5, 5, 4, 4, 4, 4, 4, 4, 4, "Square"))
+    self.state.characters[-1].place = self.state.places["Square"]
+    self.state.characters.append(characters.Character("B", 5, 5, 4, 4, 4, 4, 4, 4, 4, "Square"))
+    self.state.characters[-1].place = self.state.places["Square"]
 
   def monstersByPlace(self):
     counts = collections.defaultdict(int)
@@ -40,6 +45,9 @@ class OpenGateTest(EventTest):
     self.assertEqual(len(self.state.gates), 1)
     self.assertIsNone(self.square.gate)
     self.assertIsNone(self.woods.gate)
+    self.assertEqual(self.state.characters[0].place.name, "Diner")
+    self.assertEqual(self.state.characters[1].place.name, "Square")
+    self.assertEqual(self.state.characters[2].place.name, "Square")
     monster_counts = self.monstersByPlace()
     self.assertEqual(monster_counts["Square"], 0)
     self.assertEqual(monster_counts["Woods"], 0)
@@ -51,6 +59,9 @@ class OpenGateTest(EventTest):
     self.assertEqual(len(self.state.gates), 0)
     self.assertEqual(self.square.gate, self.gate)
     self.assertIsNone(self.woods.gate)
+    self.assertEqual(self.state.characters[0].place.name, "Diner")
+    self.assertEqual(self.state.characters[1].place.name, "Pluto1")
+    self.assertEqual(self.state.characters[2].place.name, "Pluto1")
     monster_counts = self.monstersByPlace()
     self.assertEqual(monster_counts["Square"], 1)
     self.assertEqual(monster_counts["Woods"], 0)
@@ -60,6 +71,9 @@ class OpenGateTest(EventTest):
     self.assertEqual(len(self.state.gates), 1)
     self.assertIsNone(self.square.gate)
     monster_counts = self.monstersByPlace()
+    self.assertEqual(self.state.characters[0].place.name, "Diner")
+    self.assertEqual(self.state.characters[1].place.name, "Square")
+    self.assertEqual(self.state.characters[2].place.name, "Square")
     self.assertEqual(monster_counts["Square"], 0)
     cup_count = monster_counts["cup"]
     self.square.sealed = True
@@ -70,9 +84,124 @@ class OpenGateTest(EventTest):
     self.assertEqual(len(self.state.gates), 1)
     self.assertIsNone(self.square.gate)
     self.assertTrue(self.square.sealed)
+    self.assertEqual(self.state.characters[0].place.name, "Diner")
+    self.assertEqual(self.state.characters[1].place.name, "Square")
+    self.assertEqual(self.state.characters[2].place.name, "Square")
     monster_counts = self.monstersByPlace()
     self.assertEqual(monster_counts["Square"], 0)
     self.assertEqual(monster_counts["cup"], cup_count)
+
+
+class CloseGateTest(EventTest):
+
+  def setUp(self):
+    super(CloseGateTest, self).setUp()
+    self.square = self.state.places["Square"]
+    self.square.gate = self.state.gates.popleft()
+    self.char.place = self.square
+    self.char.explored = True
+    # Set fight and lore to 4, since max difficulty is -3.
+    self.char.lore_luck_slider = 3
+    self.char.fight_will_slider = 3
+
+  def testDeclineToClose(self):
+    close = GateCloseAttempt(self.char, "Square")
+    self.state.event_stack.append(close)
+
+    choice = self.resolve_to_choice(MultipleChoice)
+    self.assertEqual(choice.choices[2], "Don't close")
+    choice.resolve(self.state, "Don't close")
+    self.resolve_until_done()
+
+    self.assertTrue(close.is_resolved())
+    self.assertTrue(self.square.gate)
+    self.assertFalse(self.square.sealed)
+    self.assertEqual(self.char.clues, 0)
+
+  def testFailToClose(self):
+    close = GateCloseAttempt(self.char, "Square")
+    self.state.event_stack.append(close)
+
+    choice = self.resolve_to_choice(MultipleChoice)
+    self.assertEqual(choice.choices[0], "Close with fight")
+    choice.resolve(self.state, "Close with fight")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
+      self.resolve_until_done()
+
+    self.assertTrue(close.is_resolved())
+    self.assertTrue(self.square.gate)
+    self.assertFalse(self.square.sealed)
+    self.assertEqual(self.char.clues, 0)
+
+  def testCloseWithFight(self):
+    close = GateCloseAttempt(self.char, "Square")
+    self.state.event_stack.append(close)
+
+    choice = self.resolve_to_choice(MultipleChoice)
+    self.assertEqual(choice.choices[0], "Close with fight")
+    choice.resolve(self.state, "Close with fight")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+
+    self.assertTrue(close.is_resolved())
+    self.assertFalse(self.square.gate)
+    self.assertFalse(self.square.sealed)
+    self.assertEqual(self.char.clues, 0)
+
+  def testCloseWithLore(self):
+    close = GateCloseAttempt(self.char, "Square")
+    self.state.event_stack.append(close)
+
+    choice = self.resolve_to_choice(MultipleChoice)
+    self.assertEqual(choice.choices[1], "Close with lore")
+    choice.resolve(self.state, "Close with lore")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+
+    self.assertTrue(close.is_resolved())
+    self.assertFalse(self.square.gate)
+    self.assertFalse(self.square.sealed)
+    self.assertEqual(self.char.clues, 0)
+
+  def testDeclineToSeal(self):
+    self.char.clues = 5
+    close = GateCloseAttempt(self.char, "Square")
+    self.state.event_stack.append(close)
+
+    choice = self.resolve_to_choice(MultipleChoice)
+    choice.resolve(self.state, "Close with lore")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_to_usable(0, -1, SpendClue)
+    self.state.done_using[0] = True
+    seal_choice = self.resolve_to_choice(MultipleChoice)
+    self.assertEqual(seal_choice.choices[1], "No")
+    seal_choice.resolve(self.state, "No")
+    self.resolve_until_done()
+
+    self.assertTrue(close.is_resolved())
+    self.assertFalse(self.square.gate)
+    self.assertFalse(self.square.sealed)
+    self.assertEqual(self.char.clues, 5)
+
+  def testSeal(self):
+    self.char.clues = 6
+    close = GateCloseAttempt(self.char, "Square")
+    self.state.event_stack.append(close)
+
+    choice = self.resolve_to_choice(MultipleChoice)
+    choice.resolve(self.state, "Close with lore")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_to_usable(0, -1, SpendClue)
+    self.state.done_using[0] = True
+    seal_choice = self.resolve_to_choice(MultipleChoice)
+    self.assertEqual(seal_choice.choices[0], "Yes")
+    seal_choice.resolve(self.state, "Yes")
+    self.resolve_until_done()
+
+    self.assertTrue(close.is_resolved())
+    self.assertFalse(self.square.gate)
+    self.assertTrue(self.square.sealed)
+    self.assertEqual(self.char.clues, 1)
 
 
 class SpawnClueTest(EventTest):

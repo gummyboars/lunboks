@@ -304,7 +304,11 @@ def Library3(char):
   loss = events.Loss(char, {"stamina": 2, "sanity": 2})
   return events.PassFail(char, check, events.Sequence([die, gain], char), loss)
 def Library4(char):
-  return events.Nothing() # TODO: GO TO DREAMLANDS!! DO NOT PASS GO! but do return here
+  move = events.ForceMovement(char, "Dreamlands1")
+  # TODO: don't hard-code.
+  enc = events.GateEncounter(char, "Dreamlands", {"blue", "green", "red", "yellow"})
+  ret = events.ForceMovement(char, "Library")
+  return events.Sequence([move, enc, ret], char)
 def Library5(char):
   return events.Loss(char, {"sanity": 1})
 def Library6(char):
@@ -360,11 +364,14 @@ def Shop1(char):
   return events.PassFail(char, check, events.Nothing(), curse)
 def Shop2(char):
   check = events.Check(char, "fight", -1)
-  abyss = events.Nothing() # TODO: abyss, encounter, and come back
+  move = events.ForceMovement(char, "Abyss1")
+  enc = events.GateEncounter(char, "Abyss", {"blue", "red"})  # TODO: don't hard-code.
+  ret = events.ForceMovement(char, "Shop")
+  abyss = events.Sequence([move, enc, ret], char)
   return events.PassFail(char, check, events.Nothing(), abyss)
 def Shop3(char):
   common = events.Nothing() # TODO: search through the common deck and purchase any item
-  unique = events.Nothing() # TODO: searh through the unique deck and purchase any item
+  unique = events.Nothing() # TODO: search through the unique deck and purchase any item
   choice = events.BinaryChoice(char, "Purchase a Common or Unique item?",
                               "Common", "Unique", common, unique)
   return choice
@@ -382,7 +389,7 @@ def Shop5(char):
 def Shop6(char):
   check = events.Check(char, "luck", -1)
   commonUnique = events.Nothing() # TODO: you may purchase the top item of the common and/or unique deck
-  common = events.Nothing() # TODO: you may purchase the top item of the coommon deck
+  common = events.Nothing() # TODO: you may purchase the top item of the common deck
   return events.PassFail(char, check, commonUnique, common)
 def Shop7(char):
   return events.Nothing() # TODO: draw a mythos card, move to the gate location shown, have an encounter there
@@ -552,7 +559,7 @@ def Square7(char):
   draw = events.Draw(char, "spells", 1)
   gain = events.GainOrLoss(char, {"clues": 2}, {"stamina": 1})
   success = events.Sequence([draw, gain], char)
-  fail = events.Nothing() # TODO: RUN!!! It's a GATE!
+  fail = events.OpenGate("Square")
   return events.PassFail(char, check, success, fail)
 
 def Docks1(char):
@@ -588,7 +595,7 @@ def Docks5(char):
   return events.PassFail(char, check, events.Nothing(), loss)
 def Docks6(char):
   check = events.Check(char, "will", 1)
-  lost = events.Nothing() # TODO: Oh No, what time is it?  Where am I?  I'm lost in Time AND Space!
+  lost = events.LostInTimeAndSpace(char)
   return events.PassFail(char, check, events.Nothing(), lost)
 def Docks7(char):
   check = events.Check(char, "luck", -1)
@@ -609,8 +616,7 @@ def Unnamable2(char):
   read = events.PassFail(char, check, spell, events.Sequence([clues, delayed], char))
   return events.BinaryChoice(char, "Read the manuscript?", "Yes", "No", read, events.Nothing())
 def Unnamable3(char):
-  # TODO: WHAT IS THAT THING??? IT LOOKS LIKE A GATE!
-  return events.Nothing()
+  return events.OpenGate("Unnamable")
 def Unnamable4(char):
   check = events.Check(char, "speed", -1)
   move = events.ForceMovement(char, "Merchant")
@@ -623,7 +629,7 @@ def Unnamable5(char):
   return events.PassFail(char, check, unique, loss)
 def Unnamable6(char):
   check = events.Check(char, "speed", -1)
-  lost = events.Nothing() #TODO: I'm stuck inside a clock and I'm somewhere around Mars?
+  lost = events.LostInTimeAndSpace(char)
   return events.PassFail(char, check, events.Nothing(), lost)
 def Unnamable7(char):
   check = events.Check(char, "luck", -1)
@@ -749,8 +755,7 @@ def Woods5(char):
   choose_give_food = events.BinaryChoice(char, "Give food to the dog?", "Yes", "No", seq, catch)
   return events.PassFail(char, prereq, choose_give_food, catch)
 def Woods6(char):
-  #TODO: A Gate and a Monster appear
-  return events.Nothing()
+  return events.OpenGate("Woods")
 def Woods7(char):
   choice = events.MultipleChoice(
     char, "Which would you like to gain?", ["A skill", "2 spells", "4 clues"]
