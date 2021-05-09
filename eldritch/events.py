@@ -949,7 +949,7 @@ class ForceMovement(Event):
     return self.character.name + " moved to " + self.character.place.name
 
 
-class Draw(Event):
+class DrawItems(Event):
 
   def __init__(self, character, deck, draw_count, prompt="Choose a card", target_type=None):
     assert deck in {"common", "unique", "spells", "skills", "allies"}
@@ -957,28 +957,10 @@ class Draw(Event):
     self.deck = deck
     self.prompt = prompt
     self.draw_count = draw_count
-    self.keep_count = 1  # TODO: allow the player to keep more than one?
     self.drawn = None
-    self.choice = None
-    self.kept = None
     self.target_type = target_type
 
   def resolve(self, state):
-    if self.kept is not None:
-      return True
-
-    if self.choice is not None:
-      if not self.choice.is_resolved():  # This should never happen
-        return False
-      kept_cards = [self.drawn[self.choice.choice_index]]
-      discarded_cards = [
-          card for idx, card in enumerate(self.drawn) if idx != self.choice.choice_index]
-      self.kept = [card.name for card in kept_cards]
-      self.character.possessions.extend(kept_cards)
-      for card in discarded_cards:
-        getattr(state, self.deck).append(card)
-      return True
-
     if self.drawn is None:
       self.drawn = []
       deck = getattr(state, self.deck)
@@ -999,6 +981,48 @@ class Draw(Event):
       # TODO: is there a scenario when the player can go insane/unconscious before they
       # successfully pick a card?
 
+    return True
+
+  def is_resolved(self):
+    return self.drawn is not None
+
+  def start_str(self):
+    return f"{self.character.name} draws {self.draw_count} cards from the {self.deck} deck"
+
+  def finish_str(self):
+    return f"{self.character.name} drew " + ", ".join(c.name for c in self.drawn)
+
+class KeepDrawn(Event):
+  def __init__(self, character, draw: DrawItems, prompt="Choose a card"):
+      self.character = character
+      self.draw = draw
+      self.keep_count = 1 #TODO: allow the player to keep more than one?
+      self.drawn = None
+      self.kept = None
+      self.choice = None
+      self.prompt = prompt
+
+  def resolve(self, state):
+    if self.drawn is None:
+      assert self.draw.is_resolved()
+      self.drawn = self.draw.drawn
+
+    if self.is_resolved():
+      # This should never happen??
+      return True
+
+    if self.choice is not None:
+      if not self.choice.is_resolved():  # This should never happen
+        return False
+      kept_cards = [self.drawn[self.choice.choice_index]]
+      discarded_cards = [
+        card for idx, card in enumerate(self.drawn) if idx != self.choice.choice_index]
+      self.kept = [card.name for card in kept_cards]
+      self.character.possessions.extend(kept_cards)
+      for card in discarded_cards:
+        getattr(state, self.draw.deck).append(card)
+      return True
+
     if self.keep_count < len(self.drawn):
       self.choice = CardChoice(self.character, self.prompt, [card.name for card in self.drawn])
       state.event_stack.append(self.choice)
@@ -1006,17 +1030,20 @@ class Draw(Event):
 
     self.character.possessions.extend(self.drawn)
     self.kept = [card.name for card in self.drawn]
-    return True
 
   def is_resolved(self):
     return self.kept is not None
 
   def start_str(self):
-    return f"{self.character.name} draws {self.draw_count} cards from the {self.deck} deck"
+    return ""
 
   def finish_str(self):
-    return f"{self.character.name} keeps " + ", ".join(self.kept)
+    return f"{self.character} kept " + ", ".join(self.kept)
 
+def Draw(character, deck, draw_count, prompt="Choose a card", target_type=None):
+  cards = DrawItems(character, deck, draw_count, target_type=target_type)
+  keep = KeepDrawn(character, cards, prompt)
+  return Sequence([cards, keep])
 
 def GainAllyOrReward(character, ally: str, reward: Event):
   has_ally = ContainsPrerequisite("allies", ally)
@@ -1024,24 +1051,20 @@ def GainAllyOrReward(character, ally: str, reward: Event):
   return PassFail(character, has_ally, gain_ally, reward)
 
 
-class Purchase(Event):
-
-  def __init__(self, character, deck, draw_count, discount_type="fixed", discount=0, keep_count=1, target_type=None,
-               prompt="Buy items?"):
-    assert deck in {"common", "unique", "spells"}
+class PurchaseDrawn(Event):
+  def __init__(self, character, draw: DrawItems,
+               discount_type="fixed", discount=0, keep_count=1, target_type=None, prompt="Buy items?"):
     assert discount_type in {"fixed", "rate"}
     self.character = character
-    self.deck = deck
     self.prompt = prompt
-    self.draw_count = draw_count
     self.keep_count = keep_count
     self.discount_type = discount_type
     self.discount = discount
+    self.draw = draw
     self.drawn = None
     self.choice = None
     self.kept = []
     self.prices = None
-    self.paid = []
     self.target_type = target_type
     self.resolved = False
 
@@ -1049,14 +1072,17 @@ class Purchase(Event):
     if self.resolved:
       # This should never happen??
       return True
+    if self.drawn is None:
+      assert self.draw.is_resolved()
+      self.drawn = self.draw.drawn
 
     if self.choice is not None:
       if not self.choice.is_resolved():  # This should never happen
         return False
-      if self.choice.choices[self.choice.choice_index] == 'Nothing':
+      if self.choice.choices[self.choice.choice_index] == "Nothing":
         self.resolved = True
         for card in self.drawn:
-          getattr(state, self.deck).append(card)
+          getattr(state, self.draw.deck).append(card)
         return True
       kept_card = self.drawn.pop(self.choice.choice_index)
       cost = self.prices.pop(self.choice.choice_index)
@@ -1066,64 +1092,46 @@ class Purchase(Event):
       self.character.possessions.append(kept_card)
       self.keep_count -= 1
 
-    if self.drawn is None:
-      self.drawn = []
-      deck = getattr(state, self.deck)
-      i = 0
-      decksize = len(deck)
-      while len(self.drawn) < self.draw_count:
-        i += 1
-        if not deck:
-          break
-        top = deck.popleft()
-        if self.target_type is None or isinstance(top, self.target_type):
-          self.drawn.append(top)
-        else:
-          deck.append(top)
-
-        if i >= decksize:
-          break
-
-    if self.keep_count > 0:
-      choices = []
-      available = []
-      unavailable = []
-      self.prices = []
-      for card in self.drawn:
-        price = self.discounted_price(card)
-        if price <= self.character.dollars:
-          available.append(card)
-          self.prices.append(price)
-          choices.append(f"{card.name} for ${price}")
-        else:
-          getattr(state, self.deck).append(card)
-          unavailable.append(f"{card.name} for ${price}")
-      self.drawn = available
-      choices.append("Nothing")
-
-      if unavailable:
-        could_not_afford = ' (Could not afford {})'.format(','.join(unavailable))
-      else:
-        could_not_afford = ''
-      if available:
-        self.choice = CardChoice(self.character, self.prompt + could_not_afford, choices)
-        state.event_stack.append(self.choice)
-        return False
-      else:
-        self.resolved = True
-        return True
     if self.keep_count == 0:
       for card in self.drawn:
-        getattr(state, self.deck).append(card)
+        getattr(state, self.draw.deck).append(card)
       self.resolved = True
+      return True
 
-    return True
+    # self.keep_count > 0
+    choices = []
+    available = []
+    unavailable = []
+    self.prices = []
+    for card in self.drawn:
+      price = self.discounted_price(card)
+      if price <= self.character.dollars:
+        available.append(card)
+        self.prices.append(price)
+        choices.append(f"{card.name} for ${price}")
+      else:
+        getattr(state, self.draw.deck).append(card)
+        unavailable.append(f"{card.name} for ${price}")
+    self.drawn = available
+    choices.append("Nothing")
+
+    if unavailable:
+      could_not_afford = " (Could not afford {})".format(",".join(unavailable))
+    else:
+      could_not_afford = ""
+    if available:
+      self.choice = CardChoice(self.character, self.prompt + could_not_afford, choices)
+      state.event_stack.append(self.choice)
+      return False
+    else:
+      self.resolved = True
+      return True
 
   def is_resolved(self):
     return self.resolved
 
   def start_str(self):
-    return f"{self.character.name} draws {self.draw_count} cards from the {self.deck} deck"
+    return f"{self.character.name} chooses among cards to buy"
 
   def finish_str(self):
     if not self.kept:
@@ -1133,8 +1141,17 @@ class Purchase(Event):
   def discounted_price(self, card):
     if self.discount_type == "fixed":
       return card.price - self.discount
-    elif self.discount_type == 'rate':
+    elif self.discount_type == "rate":
       return card.price - int(self.discount * card.price) # Discounts round up
+
+
+def Purchase(char, deck, draw_count, discount_type="fixed", discount=0, keep_count=1,
+             target_type=None, prompt="Buy items?"):
+    items = DrawItems(char, deck, draw_count, target_type=target_type)
+    buy = PurchaseDrawn(
+      char, items, discount_type=discount_type, discount=discount, keep_count=keep_count, prompt=prompt
+    )
+    return Sequence([items, buy])
 
 
 class Encounter(Event):
@@ -1181,7 +1198,7 @@ class Encounter(Event):
 
     encounters = [
         card.encounter_event(self.character, self.location_name) for card in self.draw.cards]
-    choice = CardChoice(self.character, "Choose an Encounter", [card.name for card in draw.cards])
+    choice = CardChoice(self.character, "Choose an Encounter", [card.name for card in self.draw.cards])
     cond = Conditional(
         self.character, choice, "choice_index", {idx: enc for idx, enc in enumerate(encounters)})
     self.encounter = Sequence([choice, cond], self.character)
