@@ -445,7 +445,8 @@ class GameState(object):
       if not isinstance(char.place, places.Location):
         return self.next_turn()
       elif char.place.gate and char.explored:
-        pass  # TODO: close/seal gate
+        self.event_stack.append(events.Sequence(
+          [events.GateCloseAttempt(char, char.place.name), events.EndEncounter(char)], char))
       elif char.place.gate:
         self.event_stack.append(events.Sequence(
           [events.Travel(char, char.place.gate.name), events.EndEncounter(char)], char))

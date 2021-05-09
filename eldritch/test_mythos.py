@@ -92,6 +92,118 @@ class OpenGateTest(EventTest):
     self.assertEqual(monster_counts["cup"], cup_count)
 
 
+class CloseGateTest(EventTest):
+
+  def setUp(self):
+    super(CloseGateTest, self).setUp()
+    self.square = self.state.places["Square"]
+    self.square.gate = self.state.gates.popleft()
+    self.char.place = self.square
+    self.char.explored = True
+    # Set fight and lore to 4, since max difficulty is -3.
+    self.char.lore_luck_slider = 3
+    self.char.fight_will_slider = 3
+
+  def testDeclineToClose(self):
+    close = GateCloseAttempt(self.char, "Square")
+    self.state.event_stack.append(close)
+
+    choice = self.resolve_to_choice(MultipleChoice)
+    self.assertEqual(choice.choices[2], "Don't close")
+    choice.resolve(self.state, "Don't close")
+    self.resolve_until_done()
+
+    self.assertTrue(close.is_resolved())
+    self.assertTrue(self.square.gate)
+    self.assertFalse(self.square.sealed)
+    self.assertEqual(self.char.clues, 0)
+
+  def testFailToClose(self):
+    close = GateCloseAttempt(self.char, "Square")
+    self.state.event_stack.append(close)
+
+    choice = self.resolve_to_choice(MultipleChoice)
+    self.assertEqual(choice.choices[0], "Close with fight")
+    choice.resolve(self.state, "Close with fight")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
+      self.resolve_until_done()
+
+    self.assertTrue(close.is_resolved())
+    self.assertTrue(self.square.gate)
+    self.assertFalse(self.square.sealed)
+    self.assertEqual(self.char.clues, 0)
+
+  def testCloseWithFight(self):
+    close = GateCloseAttempt(self.char, "Square")
+    self.state.event_stack.append(close)
+
+    choice = self.resolve_to_choice(MultipleChoice)
+    self.assertEqual(choice.choices[0], "Close with fight")
+    choice.resolve(self.state, "Close with fight")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+
+    self.assertTrue(close.is_resolved())
+    self.assertFalse(self.square.gate)
+    self.assertFalse(self.square.sealed)
+    self.assertEqual(self.char.clues, 0)
+
+  def testCloseWithLore(self):
+    close = GateCloseAttempt(self.char, "Square")
+    self.state.event_stack.append(close)
+
+    choice = self.resolve_to_choice(MultipleChoice)
+    self.assertEqual(choice.choices[1], "Close with lore")
+    choice.resolve(self.state, "Close with lore")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+
+    self.assertTrue(close.is_resolved())
+    self.assertFalse(self.square.gate)
+    self.assertFalse(self.square.sealed)
+    self.assertEqual(self.char.clues, 0)
+
+  def testDeclineToSeal(self):
+    self.char.clues = 5
+    close = GateCloseAttempt(self.char, "Square")
+    self.state.event_stack.append(close)
+
+    choice = self.resolve_to_choice(MultipleChoice)
+    choice.resolve(self.state, "Close with lore")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_to_usable(0, -1, SpendClue)
+    self.state.done_using[0] = True
+    seal_choice = self.resolve_to_choice(MultipleChoice)
+    self.assertEqual(seal_choice.choices[1], "No")
+    seal_choice.resolve(self.state, "No")
+    self.resolve_until_done()
+
+    self.assertTrue(close.is_resolved())
+    self.assertFalse(self.square.gate)
+    self.assertFalse(self.square.sealed)
+    self.assertEqual(self.char.clues, 5)
+
+  def testSeal(self):
+    self.char.clues = 6
+    close = GateCloseAttempt(self.char, "Square")
+    self.state.event_stack.append(close)
+
+    choice = self.resolve_to_choice(MultipleChoice)
+    choice.resolve(self.state, "Close with lore")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_to_usable(0, -1, SpendClue)
+    self.state.done_using[0] = True
+    seal_choice = self.resolve_to_choice(MultipleChoice)
+    self.assertEqual(seal_choice.choices[0], "Yes")
+    seal_choice.resolve(self.state, "Yes")
+    self.resolve_until_done()
+
+    self.assertTrue(close.is_resolved())
+    self.assertFalse(self.square.gate)
+    self.assertTrue(self.square.sealed)
+    self.assertEqual(self.char.clues, 1)
+
+
 class SpawnClueTest(EventTest):
 
   def setUp(self):

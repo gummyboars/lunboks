@@ -1569,6 +1569,83 @@ class PullThroughGate(Sequence):
     return f"{len(self.chars)} will be pulled through to {self.world_name}"
 
 
+class GateCloseAttempt(Event):
+
+  def __init__(self, character, location_name):
+    self.character = character
+    self.location_name = location_name
+    self.choice = None
+    self.check = None
+    self.seal_choice = None
+    self.closed = None
+    self.sealed = None
+
+  def resolve(self, state):
+    if self.choice is None:
+      self.choice = MultipleChoice(
+          self.character, "Close the gate?", ["Close with fight", "Close with lore", "Don't close"])
+      state.event_stack.append(self.choice)
+      return False
+
+    assert self.choice.is_resolved()
+    if self.choice.choice == "Don't close":
+      self.closed = False
+      self.sealed = False
+      return True
+
+    if self.check is None:
+      difficulty = state.places[self.location_name].gate.difficulty(state)
+      attribute = "lore" if self.choice.choice == "Close with lore" else "fight"
+      self.check = Check(self.character, attribute, difficulty)
+      state.event_stack.append(self.check)
+      return False
+
+    assert self.check.is_resolved()
+    if not self.check.successes:
+      self.closed = False
+      self.sealed = False
+      return True
+
+    if not self.closed:
+      self.closed = True
+      state.gates.append(state.places[self.location_name].gate)  # TODO: take a gate trophy
+      state.places[self.location_name].gate = None
+
+    if self.seal_choice is None:
+      if self.character.clues < 5:  # TODO: this can also have modifiers
+        self.sealed = False
+        return True
+      self.seal_choice = MultipleChoice(
+          self.character, "Seal the gate with 5 clue tokens?", ["Yes", "No"])
+      state.event_stack.append(self.seal_choice)
+      return False
+
+    assert self.seal_choice.is_resolved()
+    if self.seal_choice.choice == "No":
+      self.sealed = False
+      return True
+
+    self.character.clues -= 5  # TODO: spending clues in other ways
+    state.places[self.location_name].sealed = True
+    self.sealed = True
+    return True
+
+  def is_resolved(self):
+    return self.closed is not None and self.sealed is not None
+
+  def start_str(self):
+    pass
+
+  def finish_str(self):
+    if self.choice.choice == "Don't close":
+      return f"{self.character.name} chose not to close the gate at {self.location_name}"
+    if not self.closed:
+      return f"{self.character.name} failed to close the gate at {self.location_name}"
+    if not self.sealed == 1:
+      return f"{self.character.name} closed the gate at {self.location_name} but did not seal it"
+    return f"{self.character.name} closed and sealed the gate at {self.location_name}"
+
+
 class OpenGate(Event):
 
   def __init__(self, location_name):
