@@ -603,10 +603,12 @@ class Draw(Event):
   def finish_str(self):
     return f"{self.character.name} keeps " + ", ".join(self.kept)
 
-def GainAllyOrReward(character, ally:str, reward: Event):
+
+def GainAllyOrReward(character, ally: str, reward: Event):
   has_ally = ContainsPrerequisite("allies", ally)
   gain_ally = DrawSpecific(character, "allies", ally)
   return PassFail(character, has_ally, gain_ally, reward)
+
 
 class Encounter(Event):
 

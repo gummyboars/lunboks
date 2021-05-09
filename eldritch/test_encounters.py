@@ -808,7 +808,6 @@ class ScienceTest(EncounterTest):
 
   def testScience4No(self):
     self.state.event_stack.append(encounters.Science4(self.char))
-    # Yeah, yeah, these aren't spells
     self.state.allies.extend([assets.ArmWrestler()])
     choice = self.resolve_to_choice(MultipleChoice)
     choice.resolve(self.state, "No")
@@ -820,7 +819,6 @@ class ScienceTest(EncounterTest):
 
   def testScience4Yes(self):
     self.state.event_stack.append(encounters.Science4(self.char))
-    # Yeah, yeah, these aren't spells
     self.state.allies.extend([assets.ArmWrestler()])
     choice = self.resolve_to_choice(MultipleChoice)
     choice.resolve(self.state, "Yes")
@@ -834,7 +832,6 @@ class ScienceTest(EncounterTest):
   def testScience4Reward(self):
     self.char.dollars = 3
     self.state.event_stack.append(encounters.Science4(self.char))
-    # Yeah, yeah, these aren't spells
     choice = self.resolve_to_choice(MultipleChoice)
     choice.resolve(self.state, "Yes")
     self.resolve_until_done()
@@ -847,7 +844,6 @@ class ScienceTest(EncounterTest):
   def testScience4YesUnconcious(self):
     self.char.stamina = 2
     self.state.event_stack.append(encounters.Science4(self.char))
-    # Yeah, yeah, these aren't spells
     self.state.allies.extend([assets.ArmWrestler()])
     choice = self.resolve_to_choice(MultipleChoice)
     choice.resolve(self.state, "Yes")
@@ -2499,9 +2495,9 @@ class CaveTest(EncounterTest):
     self.assertEqual(choice.choices, ["Yes", "No"])
     choice.resolve(self.state, "Yes")
     self.resolve_until_done()
-    print(self.char.possessions)
     self.assertEqual(len(self.char.possessions), 1)
     self.assertEqual(self.char.possessions[0].name, "Tough Guy")
+
   def testCave6WhiskeyReward(self):
     self.char.possessions.append(items.Whiskey())
     self.state.common.extend([items.Food(), items.Revolver38()])
@@ -2527,7 +2523,6 @@ class CaveTest(EncounterTest):
     self.assertEqual(self.char.possessions[0].name, "Whiskey")
     self.assertEqual(self.char.possessions[1].name, "Tough Guy")
 
-  #TODO: Reward if ally not available
   def testCave6DeclineReward(self):
     self.char.possessions.append(items.Whiskey())
     self.state.common.extend([items.Food(), items.Revolver38()])
