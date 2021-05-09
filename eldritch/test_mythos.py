@@ -29,6 +29,11 @@ class OpenGateTest(EventTest):
     self.state.gates.append(self.gate)
     self.square = self.state.places["Square"]
     self.woods = self.state.places["Woods"]
+    # Add two characters to the square.
+    self.state.characters.append(characters.Character("A", 5, 5, 4, 4, 4, 4, 4, 4, 4, "Square"))
+    self.state.characters[-1].place = self.state.places["Square"]
+    self.state.characters.append(characters.Character("B", 5, 5, 4, 4, 4, 4, 4, 4, 4, "Square"))
+    self.state.characters[-1].place = self.state.places["Square"]
 
   def monstersByPlace(self):
     counts = collections.defaultdict(int)
@@ -40,6 +45,9 @@ class OpenGateTest(EventTest):
     self.assertEqual(len(self.state.gates), 1)
     self.assertIsNone(self.square.gate)
     self.assertIsNone(self.woods.gate)
+    self.assertEqual(self.state.characters[0].place.name, "Diner")
+    self.assertEqual(self.state.characters[1].place.name, "Square")
+    self.assertEqual(self.state.characters[2].place.name, "Square")
     monster_counts = self.monstersByPlace()
     self.assertEqual(monster_counts["Square"], 0)
     self.assertEqual(monster_counts["Woods"], 0)
@@ -51,6 +59,9 @@ class OpenGateTest(EventTest):
     self.assertEqual(len(self.state.gates), 0)
     self.assertEqual(self.square.gate, self.gate)
     self.assertIsNone(self.woods.gate)
+    self.assertEqual(self.state.characters[0].place.name, "Diner")
+    self.assertEqual(self.state.characters[1].place.name, "Pluto1")
+    self.assertEqual(self.state.characters[2].place.name, "Pluto1")
     monster_counts = self.monstersByPlace()
     self.assertEqual(monster_counts["Square"], 1)
     self.assertEqual(monster_counts["Woods"], 0)
@@ -60,6 +71,9 @@ class OpenGateTest(EventTest):
     self.assertEqual(len(self.state.gates), 1)
     self.assertIsNone(self.square.gate)
     monster_counts = self.monstersByPlace()
+    self.assertEqual(self.state.characters[0].place.name, "Diner")
+    self.assertEqual(self.state.characters[1].place.name, "Square")
+    self.assertEqual(self.state.characters[2].place.name, "Square")
     self.assertEqual(monster_counts["Square"], 0)
     cup_count = monster_counts["cup"]
     self.square.sealed = True
@@ -70,6 +84,9 @@ class OpenGateTest(EventTest):
     self.assertEqual(len(self.state.gates), 1)
     self.assertIsNone(self.square.gate)
     self.assertTrue(self.square.sealed)
+    self.assertEqual(self.state.characters[0].place.name, "Diner")
+    self.assertEqual(self.state.characters[1].place.name, "Square")
+    self.assertEqual(self.state.characters[2].place.name, "Square")
     monster_counts = self.monstersByPlace()
     self.assertEqual(monster_counts["Square"], 0)
     self.assertEqual(monster_counts["cup"], cup_count)

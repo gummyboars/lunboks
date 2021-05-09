@@ -1554,6 +1554,21 @@ class Return(Event):
     return f"{self.character.name} returned"
 
 
+class PullThroughGate(Sequence):
+
+  def __init__(self, chars, world_name):
+    assert chars
+    self.chars = chars
+    self.world_name = world_name
+    seq = []
+    for char in chars:
+      seq.extend([Travel(char, world_name), Delayed(char)])
+    super(PullThroughGate, self).__init__(seq)
+
+  def start_str(self):
+    return f"{len(self.chars)} will be pulled through to {self.world_name}"
+
+
 class OpenGate(Event):
 
   def __init__(self, location_name):

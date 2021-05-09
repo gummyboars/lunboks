@@ -1237,6 +1237,8 @@ class SquareTest(EncounterTest):
     monster_count = len([
       mon for mon in self.state.monsters if mon.place and mon.place.name == "Square"])
     self.assertEqual(monster_count, 1)
+    self.assertEqual(self.char.place.name, self.state.places["Square"].gate.name + "1")
+    self.assertEqual(self.char.delayed_until, self.state.turn_idx + 2)
     
 class ShopTest(EncounterTest):
 
@@ -1742,6 +1744,8 @@ class UnnamableTest(EncounterTest):
     monster_count = len([
       mon for mon in self.state.monsters if mon.place and mon.place.name == "Unnamable"])
     self.assertEqual(monster_count, 1)
+    self.assertEqual(self.char.place.name, self.state.places["Unnamable"].gate.name + "1")
+    self.assertEqual(self.char.delayed_until, self.state.turn_idx + 2)
 
   def testUnnamable4Pass(self):
     self.state.event_stack.append(encounters.Unnamable4(self.char))
@@ -2056,6 +2060,11 @@ class HospitalTest(EncounterTest):
 
 
 class WoodsTest(EncounterTest):
+
+  def setUp(self):
+    super(WoodsTest, self).setUp()
+    self.char.place = self.state.places["Woods"]
+
   def testWoods1Ignore(self):
     self.state.event_stack.append(encounters.Woods1(self.char))
     choice = self.resolve_to_choice(MultipleChoice)
@@ -2320,6 +2329,8 @@ class WoodsTest(EncounterTest):
     monster_count = len([
       mon for mon in self.state.monsters if mon.place and mon.place.name == "Woods"])
     self.assertEqual(monster_count, 1)
+    self.assertEqual(self.char.place.name, self.state.places["Woods"].gate.name + "1")
+    self.assertEqual(self.char.delayed_until, self.state.turn_idx + 2)
 
   def testWoods7Decline(self):
     self.state.event_stack.append(encounters.Woods7(self.char))

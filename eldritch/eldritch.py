@@ -274,6 +274,11 @@ class GameState(object):
         triggers.append(events.Insane(event.character))
       if event.character.stamina <= 0:
         triggers.append(events.Unconscious(event.character))
+    if isinstance(event, events.OpenGate) and event.opened:
+      loc = self.places[event.location_name]
+      chars = [char for char in self.characters if char.place == loc]
+      if chars:
+        triggers.append(events.PullThroughGate(chars, loc.gate.name))
     triggers.extend(sum([char.get_triggers(event, self) for char in self.characters], []))
     return triggers
 
