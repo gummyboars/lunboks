@@ -628,26 +628,22 @@ class Draw(Event):
     if self.drawn is None:
       self.drawn = []
       deck = getattr(state, self.deck)
-      if self.draw_count == 'all':
-        for _ in range(len(deck)):
-          self.drawn.append(deck.popleft())
-      else:
-        i = 0
-        decksize = len(deck)
-        while len(self.drawn) < self.draw_count:
-          i += 1
-          if not deck :
-            break
-          top = deck.popleft()
-          if self.target_type is None or isinstance(top, self.target_type):
-            self.drawn.append(top)
-          else:
-            deck.append(top)
+      i = 0
+      decksize = len(deck)
+      while len(self.drawn) < self.draw_count:
+        i += 1
+        if not deck :
+          break
+        top = deck.popleft()
+        if self.target_type is None or isinstance(top, self.target_type):
+          self.drawn.append(top)
+        else:
+          deck.append(top)
 
-          if i >= decksize:
-            break
-        # TODO: is there a scenario when the player can go insane/unconscious before they
-        # successfully pick a card?
+        if i >= decksize:
+          break
+      # TODO: is there a scenario when the player can go insane/unconscious before they
+      # successfully pick a card?
 
     if self.keep_count < len(self.drawn):
       self.choice = CardChoice(self.character, self.prompt, [card.name for card in self.drawn])

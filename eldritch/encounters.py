@@ -131,7 +131,8 @@ def Lodge1(char):
   return events.PassFail(char, check, draw, events.Nothing())
 def Lodge2(char):
   check = events.Check(char, "fight", -1)
-  ally = events.DrawSpecific(char, "allies", "Thief") # TODO: prereq on the ally being in the deck
+  draw = events.Draw(char, "unique", 1)
+  ally = events.GainAllyOrReward(char, "Thief", draw)
   return events.PassFail(char, check, ally, events.Nothing())
 def Lodge3(char):
   check = events.Check(char, "luck", -1)
@@ -143,11 +144,11 @@ def Lodge4(char):
   check = events.Check(char, "will", -1)
   damage = events.Loss(char, {"stamina": 2})
   membership = events.MembershipChange(char, True)
-  resist = events.PassFail(char, check, events.Nothing(), damage)
   move = events.ForceMovement(char, "FrenchHill")
+  resist = events.PassFail(char, check, move, events.Sequence([damage, move]))
   choice = events.BinaryChoice(char, "Join the Lodge?", "Yes", "No",
                                events.Sequence([pay, membership], char), resist)
-  return events.Sequence([events.PassFail(char, prereq, choice, resist), move], char)
+  return events.PassFail(char, prereq, choice, resist)
 def Lodge5(char):
   check = events.Check(char, "lore", -1)
   gain = events.Gain(char, {"clues": 3})
@@ -174,7 +175,7 @@ def Lodge7(char):
 
 def Sanctum1(char):
   check = events.Check(char, "luck", -2)
-  gain = events.Draw(char, "unique", "all")
+  gain = events.Draw(char, "unique", float("inf"))
   return events.PassFail(char, check, gain, events.Nothing())
 def Sanctum2(char):
   check = events.Check(char, "luck", -1)
@@ -244,8 +245,7 @@ def Witch3(char):
 def Witch4(char):
   return events.Loss(char, {"sanity": 1})
 def Witch5(char):
-  #TODO: A gate and monster appear
-  return events.Nothing()
+  return events.OpenGate("Witch")
 def Witch6(char):
   die = events.DiceRoll(char, 1)
   gain = events.GainOrLoss(char, {"clues": die}, {"sanity": die})
@@ -254,7 +254,10 @@ def Witch7(char):
   check = events.Check(char, "will", -2)
   spell = events.Draw(char, "spells", 1)
   n_items_to_lose = int(len(char.possessions)//2)
-  loss_choice = events.ItemCountChoice(char, "Which items are you missing when you wake up?", n_items_to_lose)
+  #TODO: Lose half your items properly
+  loss_choice = events.ItemCountChoice(
+      char, "Which items are you missing when you wake up?", n_items_to_lose
+  )
   loss = events.Sequence([
     loss_choice,
     #TODO: Lose items that you chose

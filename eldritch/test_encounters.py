@@ -454,9 +454,8 @@ class LodgeTest(EncounterTest):
     self.state.unique.append(items.HolyWater())
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       self.resolve_until_done()
-    # TODO: Implement reward
-    # self.assertEqual(len(self.char.possessions), 1)
-    # self.assertEqual(self.char.possessions[0].name, "Thief")
+    self.assertEqual(len(self.char.possessions), 1)
+    self.assertEqual(self.char.possessions[0].name, "Holy Water")
 
   def testLodge2Fail(self):
     self.state.event_stack.append(encounters.Lodge2(self.char))
