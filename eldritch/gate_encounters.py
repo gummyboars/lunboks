@@ -48,6 +48,17 @@ def Other16(char):
   loss = events.Loss(char, {"stamina": 2})
   return events.PassFail(char, check, gain, loss)
 
+def Plateau29(char):
+  check = events.Check(char, "speed", -1)
+  loss = events.Loss(char, {"stamina": 2})
+  return events.PassFail(char, check, events.Nothing(), loss)
+def Dreamlands29(char):
+  check = events.Check(char, "speed", -1)
+  loss = events.Loss(char, {"stamina": 3})
+  return events.PassFail(char, check, events.Nothing(), loss)
+def Other29(char):
+  return events.Loss(char, {"stamina": 1})
+
 
 def CreateGateCards():
   return [
@@ -55,5 +66,7 @@ def CreateGateCards():
         "Gate10", {"blue"}, {"Dreamlands": Dreamlands10, "Abyss": Abyss10, "Other": Other10}),
       GateCard(
         "Gate16", {"green"}, {"Plateau": Plateau16, "Great Hall": GreatHall16, "Other": Other16}),
+      GateCard(
+        "Gate29", {"red"}, {"Plateau": Plateau29, "Dreamlands": Dreamlands29, "Other": Other29}),
       GateCard("Shuffle", set(), {"Other": lambda char: events.Nothing()}),
   ]

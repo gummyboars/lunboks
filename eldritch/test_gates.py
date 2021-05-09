@@ -31,7 +31,7 @@ class DrawGateEncounter(EventTest):
 
   def testDrawCard(self):
     self.assertEqual(len(self.state.gate_cards), 4)
-    gate_encounter = GateEncounter(self.char, places.OtherWorldInfo("Anywhere", {"blue"}))
+    gate_encounter = GateEncounter(self.char, "Anywhere", {"blue"})
     self.state.event_stack.append(gate_encounter)
     self.resolve_until_done()
     self.assertEqual(len(self.state.gate_cards), 4)
@@ -39,7 +39,7 @@ class DrawGateEncounter(EventTest):
 
   def testDrawColoredCard(self):
     card_count = len(self.state.gate_cards)
-    gate_encounter = GateEncounter(self.char, places.OtherWorldInfo("Nowhere", {"green"}))
+    gate_encounter = GateEncounter(self.char, "Nowhere", {"green"})
     self.state.event_stack.append(gate_encounter)
     self.resolve_until_done()
     self.assertEqual(len(self.state.gate_cards), card_count)
@@ -49,7 +49,7 @@ class DrawGateEncounter(EventTest):
 
   def testDrawMultipleColors(self):
     card_count = len(self.state.gate_cards)
-    gate_encounter = GateEncounter(self.char, places.OtherWorldInfo("Somewhere", {"green", "red"}))
+    gate_encounter = GateEncounter(self.char, "Somewhere", {"green", "red"})
     self.state.event_stack.append(gate_encounter)
     self.resolve_until_done()
     self.assertEqual(len(self.state.gate_cards), card_count)
@@ -58,7 +58,7 @@ class DrawGateEncounter(EventTest):
 
   def testDrawAndShuffle(self):
     card_count = len(self.state.gate_cards)
-    gate_encounter = GateEncounter(self.char, places.OtherWorldInfo("Someplace Else", {"yellow"}))
+    gate_encounter = GateEncounter(self.char, "Someplace Else", {"yellow"})
     self.state.event_stack.append(gate_encounter)
     self.resolve_until_done()
     self.assertEqual(len(self.state.gate_cards), card_count)
@@ -67,7 +67,7 @@ class DrawGateEncounter(EventTest):
 
   def testDrawMultipleColorsWithShuffle(self):
     card_count = len(self.state.gate_cards)
-    gate_encounter = GateEncounter(self.char, places.OtherWorldInfo("Somewhere", {"red", "yellow"}))
+    gate_encounter = GateEncounter(self.char, "Somewhere", {"red", "yellow"})
     self.state.event_stack.append(gate_encounter)
     self.resolve_until_done()
     self.assertEqual(len(self.state.gate_cards), card_count)
@@ -171,6 +171,43 @@ class Gate16Test(GateEncounterTest):
       self.resolve_until_done()
     self.assertEqual(self.char.dollars, 3)
     self.assertEqual(self.char.stamina, 1)
+
+
+class Gate29Test(GateEncounterTest):
+
+  def testPlateau29Pass(self):
+    self.char.stamina = 5
+    self.state.event_stack.append(gate_encounters.Plateau29(self.char))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.stamina, 5)
+
+  def testPlateau29Fail(self):
+    self.char.stamina = 5
+    self.state.event_stack.append(gate_encounters.Plateau29(self.char))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=2)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.stamina, 3)
+
+  def testDreamlands29Pass(self):
+    self.char.stamina = 5
+    self.state.event_stack.append(gate_encounters.Dreamlands29(self.char))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.stamina, 5)
+
+  def testDreamlands29Fail(self):
+    self.char.stamina = 5
+    self.state.event_stack.append(gate_encounters.Dreamlands29(self.char))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=2)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.stamina, 2)
+
+  def testOther29(self):
+    self.char.stamina = 5
+    self.state.event_stack.append(gate_encounters.Other29(self.char))
+    self.resolve_until_done()
+    self.assertEqual(self.char.stamina, 4)
 
 
 if __name__ == '__main__':

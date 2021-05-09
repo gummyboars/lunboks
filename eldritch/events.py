@@ -739,10 +739,10 @@ class DrawEncounter(Event):
 
 class GateEncounter(Event):
 
-  def __init__(self, character, info):
+  def __init__(self, character, name, colors):
     self.character = character
-    self.world_name = info.name
-    self.colors = info.colors
+    self.world_name = name
+    self.colors = colors
     self.draw_count = 1
     self.draw = None
     self.cards = []

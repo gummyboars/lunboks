@@ -450,7 +450,8 @@ class GameState(object):
       if not isinstance(char.place, places.OtherWorld):
         return self.next_turn()
       else:
-        self.event_stack.append(events.GateEncounter(char, char.place.info))
+        self.event_stack.append(events.GateEncounter(
+          char, char.place.info.name, char.place.info.colors))
 
   def get_distances(self, char_idx):
     routes = self.get_routes(char_idx)
