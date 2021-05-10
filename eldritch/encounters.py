@@ -183,7 +183,7 @@ def Sanctum2(char):
   success = events.Nothing() # TODO: claim a monster on the board as a trophy
   nothing = events.Nothing()
   seq = events.Sequence([
-    spend, events.PassFail(char, check, success, nothing)
+    events.PassFail(char, check, success, nothing), spend,
   ])
   choice = events.BinaryChoice(char, "Cast a banishment spell?", "Yes", "No", seq, nothing)
   return choice
