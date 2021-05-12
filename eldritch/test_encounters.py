@@ -487,9 +487,36 @@ class LodgeTest(EncounterTest):
 
   def testLodge4DeclinePass(self):
     self.state.event_stack.append(encounters.Lodge4(self.char))
+    self.char.dollars = 3
+    choice = self.resolve_to_choice(MultipleChoice)
+    self.assertEqual(choice.choices, ["Yes", "No"])
+    choice.resolve(self.state, "No")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
 
   def testLodge4DeclineFail(self):
     self.state.event_stack.append(encounters.Lodge4(self.char))
+    self.char.stamina = 4
+    self.char.dollars = 3
+    choice = self.resolve_to_choice(MultipleChoice)
+    self.assertEqual(choice.choices, ["Yes", "No"])
+    choice.resolve(self.state, "No")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=4)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.stamina, 1)
+    self.assertEqual(self.char.place.name, "FrenchHill")
+
+  def testLodge4DeclineFailKO(self):
+    self.state.event_stack.append(encounters.Lodge4(self.char))
+    self.char.dollars = 3
+    self.char.stamina = 3
+    choice = self.resolve_to_choice(MultipleChoice)
+    self.assertEqual(choice.choices, ["Yes", "No"])
+    choice.resolve(self.state, "No")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=4)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.stamina, 1)
+    self.assertEqual(self.char.place.name, "Hospital")
 
   def testLodge5Pass(self):
     self.state.event_stack.append(encounters.Lodge5(self.char))
@@ -566,7 +593,6 @@ class LodgeTest(EncounterTest):
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       choice = self.resolve_to_choice(CardChoice)
     self.assertEqual(choice.choices, ["Cross", "Holy Water", "Tommy Gun"])
-    self.assertIn("Holy Water", choice.choices)
     choice.resolve(self.state, "Holy Water")
     self.resolve_until_done()
     self.assertEqual(len(self.char.possessions), 1)
@@ -592,7 +618,7 @@ class LodgeTest(EncounterTest):
     choice = self.resolve_to_choice(MultipleChoice)
     choice.resolve(self.state, "Yes")
     # TODO: Choose monster on the board as a trophy
-    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=4)):
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       self.resolve_until_done()
     self.assertEqual(self.char.sanity, 2)
 
@@ -611,6 +637,9 @@ class LodgeTest(EncounterTest):
     choice = self.resolve_to_choice(MultipleChoice)
     self.assertEqual(choice.choices, [0, 1])
     choice.resolve(self.state, 0)
+    self.resolve_until_done()
+    self.assertEqual(self.char.clues, 0)
+    self.assertEqual(self.char.sanity, 1)
 
   def testSanctum3OneSanInsane(self):
     self.char.sanity = 1
@@ -817,9 +846,9 @@ class WitchTest(EncounterTest):
     self.char.sanity = 3
     self.state.event_stack.append(encounters.Witch4(self.char))
     self.resolve_until_done()
-    self.assertEqual(self.char.stamina, 2)
+    self.assertEqual(self.char.sanity, 2)
 
-  def testWitch4(self):
+  def testWitch4Insane(self):
     self.char.sanity = 1
     self.state.event_stack.append(encounters.Witch4(self.char))
     self.resolve_until_done()

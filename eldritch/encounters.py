@@ -142,10 +142,10 @@ def Lodge4(char):
   prereq = events.AttributePrerequisite(char, "dollars", 3, "at least")
   pay = events.Loss(char, {"dollars": 3})
   check = events.Check(char, "will", -1)
-  damage = events.Loss(char, {"stamina": 2})
+  damage = events.Loss(char, {"stamina": 3})
   membership = events.MembershipChange(char, True)
   move = events.ForceMovement(char, "FrenchHill")
-  resist = events.PassFail(char, check, move, events.Sequence([damage, move]))
+  resist = events.PassFail(char, check, move, events.Sequence([damage, move], char))
   choice = events.BinaryChoice(char, "Join the Lodge?", "Yes", "No",
                                events.Sequence([pay, membership], char), resist)
   return events.PassFail(char, prereq, choice, resist)
@@ -185,6 +185,7 @@ def Sanctum2(char):
   seq = events.Sequence([
     events.PassFail(char, check, success, nothing), spend,
   ])
+  # TODO: Reach consensus on whether this is may or must spend 1 sanity
   choice = events.BinaryChoice(char, "Cast a banishment spell?", "Yes", "No", seq, nothing)
   return choice
 def Sanctum3(char):
@@ -223,7 +224,8 @@ def Sanctum7(char):
   return events.PassFail(char, prereq, participate, nothing)
 
 def Witch1(char):
-  ally = events.DrawSpecific(char, "allies", "Police Detective") # TODO: prereq on the ally being in the deck
+  reward = events.Gain(char, {"clues": 2})
+  ally = events.GainAllyOrReward(char,  "Police Detective", reward)
   check = events.Check(char, "lore", -1)
   return events.PassFail(char, check, ally, events.Nothing())
 def Witch2(char):
@@ -261,7 +263,7 @@ def Witch7(char):
   loss = events.Sequence([
     loss_choice,
     #TODO: Lose items that you chose
-  ])
+  ], char)
   return events.PassFail(char, check, spell, loss)
 
 def Cave1(char):
