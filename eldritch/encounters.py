@@ -129,22 +129,142 @@ def Lodge1(char):
   check = events.Check(char, "lore", -1)
   draw = events.Draw(char, "spells", 2)
   return events.PassFail(char, check, draw, events.Nothing())
+def Lodge2(char):
+  check = events.Check(char, "fight", -1)
+  draw = events.Draw(char, "unique", 1)
+  ally = events.GainAllyOrReward(char, "Thief", draw)
+  return events.PassFail(char, check, ally, events.Nothing())
+def Lodge3(char):
+  check = events.Check(char, "luck", -1)
+  curse = events.BlessCurse(char, False)
+  return events.PassFail(char, check, events.Nothing(), curse)
+def Lodge4(char):
+  prereq = events.AttributePrerequisite(char, "dollars", 3, "at least")
+  pay = events.Loss(char, {"dollars": 3})
+  check = events.Check(char, "will", -1)
+  damage = events.Loss(char, {"stamina": 3})
+  membership = events.MembershipChange(char, True)
+  move = events.ForceMovement(char, "FrenchHill")
+  resist = events.PassFail(char, check, move, events.Sequence([damage, move], char))
+  choice = events.BinaryChoice(char, "Join the Lodge?", "Yes", "No",
+                               events.Sequence([pay, membership], char), resist)
+  return events.PassFail(char, prereq, choice, resist)
 def Lodge5(char):
   check = events.Check(char, "lore", -1)
   gain = events.Gain(char, {"clues": 3})
   loss = events.Loss(char, {"clues": float("inf")})
   move = events.ForceMovement(char, "FrenchHill")
   return events.PassFail(char, check, gain, events.Sequence([loss, move], char))
+def Lodge6(char):
+  # Hey, it has the same text!
+  return Lodge4(char)
+def Lodge7(char):
+  check = events.Check(char, "sneak", -2)
+  common1 = events.Draw(char, 'common', 1)
+  common2 = events.Draw(char, 'common', 1)
+  unique1 = events.Draw(char, "unique", 1)
+  unique2 = events.Draw(char, "unique", 1)
+  rolls = events.DiceRoll(char, 2)
+  two_common = events.Sequence([common1, common2], char)
+  two_unique = events.Sequence([unique1, unique2], char)
+  one_each = events.Sequence([common1, unique1], char)
+  cond = events.Conditional(
+    char, rolls, "successes", { 0: two_common, 1: one_each, 2: two_unique, }
+  )
+  return events.PassFail(char, check, events.Sequence([rolls, cond], char), events.Nothing())
 
+def Sanctum1(char):
+  check = events.Check(char, "luck", -2)
+  gain = events.Draw(char, "unique", float("inf"))
+  return events.PassFail(char, check, gain, events.Nothing())
+def Sanctum2(char):
+  check = events.Check(char, "luck", -1)
+  spend = events.Loss(char, {"sanity": 1})
+  success = events.Nothing() # TODO: claim a monster on the board as a trophy
+  nothing = events.Nothing()
+  seq = events.Sequence([
+    events.PassFail(char, check, success, nothing), spend,
+  ])
+  # TODO: Reach consensus on whether this is may or must spend 1 sanity
+  choice = events.BinaryChoice(char, "Cast a banishment spell?", "Yes", "No", seq, nothing)
+  return choice
+def Sanctum3(char):
+  choice = events.MultipleChoice(
+    char, "How many sanity do you want to trade for clues?", list(range(min(char.sanity, 3)+1))
+  )
+  gain = events.GainOrLoss(char, {"clues": choice}, {"sanity": choice})
+  return events.Sequence([choice, gain], char)
+def Sanctum4(char):
+  prereq = events.AttributePrerequisite(char, "dollars", 3, "at least")
+  dues = events.Loss(char, {"dollars": 3})
+  dreams = events.Loss(char, {"sanity": 2})
+  membership = events.MembershipChange(char, False)
+  decline = events.Sequence([membership, dreams], char)
+  return events.PassFail(
+    char,
+    prereq,
+    events.BinaryChoice(char, "Pay your dues?", "Spend $3", "Decline", dues, decline),
+    decline
+  )
 def Sanctum5(char):
   check = events.Check(char, "luck", -2)
   curse = events.BlessCurse(char, False)
   return events.PassFail(char, check, events.Nothing(), curse)
+def Sanctum6(char):
+  return events.Nothing() #TODO: A monster appears
+def Sanctum7(char):
+  prereq = events.AttributePrerequisite(char, "clues", 2, "at least")
+  check = events.Check(char, "lore", -2)
+  close = events.Nothing() # TODO: Close a gate
+  nothing = events.Nothing()
+  cost = events.Loss(char, {"clues": 2, "sanity": 1})
+  ceremony = events.PassFail(char, check, close, nothing)
+  seq = events.Sequence([cost, ceremony], char)
+  participate = events.BinaryChoice(char, "Participate in a gating ceremony?", "Yes", "No", seq, nothing)
+  return events.PassFail(char, prereq, participate, nothing)
 
+def Witch1(char):
+  reward = events.Gain(char, {"clues": 2})
+  ally = events.GainAllyOrReward(char,  "Police Detective", reward)
+  check = events.Check(char, "lore", -1)
+  return events.PassFail(char, check, ally, events.Nothing())
 def Witch2(char):
   check = events.Check(char, "luck", -1)
   draw = events.Draw(char, "unique", 1)
   return events.PassFail(char, check, draw, events.Nothing())
+def Witch3(char):
+  check = events.Check(char, "luck", 0)
+  cond = events.Conditional(
+    char, check, "successes",
+    {
+      0: events.Loss(char, {'sanity': 3}),
+      1: events.Delayed(char),
+      2: events.Loss(char, {'stamina': 1}),
+      3: events.Gain(char, {'stamina': 3})
+    }
+  )
+  return events.Sequence([check, cond], char)
+def Witch4(char):
+  return events.Loss(char, {"sanity": 1})
+def Witch5(char):
+  return events.OpenGate("Witch")
+def Witch6(char):
+  die = events.DiceRoll(char, 1)
+  gain = events.GainOrLoss(char, {"clues": die}, {"sanity": die})
+  return events.Sequence([die, gain], char)
+def Witch7(char):
+  check = events.Check(char, "will", -2)
+  spell = events.Draw(char, "spells", 1)
+  n_items_to_lose = int(len(char.possessions)//2)
+  #TODO: Lose half your items properly
+  loss_choice = events.ItemCountChoice(
+      char, "Which items are you missing when you wake up?", n_items_to_lose
+  )
+  loss = events.Sequence([
+    loss_choice,
+    #TODO: Lose items that you chose
+  ], char)
+  return events.PassFail(char, check, spell, loss)
 
 def Cave1(char):
   check = events.Check(char, "luck", 0)
@@ -837,9 +957,13 @@ def CreateEncounterCards():
         EncounterCard("Easttown7", {"Diner": Diner7, "Roadhouse": Roadhouse7, "Police": Police7}),
       ],
       "FrenchHill": [
-        EncounterCard("FrenchHill1", {"Lodge": Lodge1}),
-        EncounterCard("FrenchHill2", {"Witch": Witch2}),
-        EncounterCard("FrenchHill5", {"Lodge": Lodge5, "Sanctum": Sanctum5}),
+        EncounterCard("FrenchHill1", {"Lodge": Lodge1, "Witch": Witch1, "Sanctum": Sanctum1}),
+        EncounterCard("FrenchHill2", {"Lodge": Lodge2, "Witch": Witch2, "Sanctum": Sanctum2}),
+        EncounterCard("FrenchHill3", {"Lodge": Lodge3, "Witch": Witch3, "Sanctum": Sanctum3}),
+        EncounterCard("FrenchHill4", {"Lodge": Lodge4, "Witch": Witch4, "Sanctum": Sanctum4}),
+        EncounterCard("FrenchHill5", {"Lodge": Lodge5, "Witch": Witch5, "Sanctum": Sanctum5}),
+        EncounterCard("FrenchHill6", {"Lodge": Lodge6, "Witch": Witch6, "Sanctum": Sanctum6}),
+        EncounterCard("FrenchHill7", {"Lodge": Lodge7, "Witch": Witch7, "Sanctum": Sanctum7}),
       ],
       "Merchant": [
         EncounterCard("Merchant1", {"Docks": Docks1, "Unnamable": Unnamable1, "Isle": Isle1}),

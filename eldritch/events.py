@@ -141,10 +141,13 @@ class DiceRoll(Event):
     self.count = count
     self.roll = None
     self.sum = None
+    self.successes = None
 
   def resolve(self, state):
     self.roll = [random.randint(1, 6) for _ in range(self.count)]
     self.sum = sum(self.roll)
+    # Some encounters have: "Roll a die for each X. On a success..."
+    self.successes = self.character.count_successes(self.roll, None)
     return True
 
   def is_resolved(self):
