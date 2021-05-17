@@ -34,7 +34,7 @@ class EventTest(unittest.TestCase):
     for thing in self.state.resolve_loop():  # It's a generator, so you have to loop through it.
       count += 1
       if count > 100:
-        self.fail("Exceeded maximum number of events")
+        self.fail("Exceeded maximum number of events: %s" % self.state.event_stack)
 
   def resolve_until_done(self):
     self.resolve_loop()
@@ -798,7 +798,6 @@ class ItemChoiceTest(EventTest):
     self.assertListEqual(choice.choices, self.char.possessions[:2])
 
     self.resolve_until_done()
-    self.assertFalse(self.state.event_stack)
 
   def testCombatChoice(self):
     choice = CombatChoice(self.char, "choose combat items")
@@ -815,9 +814,103 @@ class ItemChoiceTest(EventTest):
     choice.resolve(self.state, [2])
     self.resolve_until_done()
 
-    self.assertFalse(self.char.possessions[0].active)
+
+class ActivateItemsTest(EventTest):
+
+  def testActivateItem(self):
+    gun = items.TommyGun()
+    self.char.possessions.append(gun)
+    self.assertEqual(self.char.hands_available(), 2)
+    self.assertEqual(self.char.combat(self.state), 4)
+
+    activate = ActivateItem(self.char, gun)
+    self.state.event_stack.append(activate)
+    self.resolve_until_done()
+
+    self.assertEqual(self.char.hands_available(), 0)
+    self.assertEqual(self.char.combat(self.state), 10)
+
+  def testDeactivateItem(self):
+    gun = items.TommyGun()
+    self.char.possessions.append(gun)
+    gun._active = True
+    self.assertEqual(self.char.hands_available(), 0)
+    self.assertEqual(self.char.combat(self.state), 10)
+
+    deactivate = DeactivateItem(self.char, gun)
+    self.state.event_stack.append(deactivate)
+    self.resolve_until_done()
+
+    self.assertEqual(self.char.hands_available(), 2)
+    self.assertEqual(self.char.combat(self.state), 4)
+
+  def testActivateChosenItems(self):
+    self.char.possessions.extend([items.Bullwhip(), items.TommyGun(), items.Revolver38()])
+    self.assertEqual(self.char.hands_available(), 2)
+    self.assertEqual(self.char.combat(self.state), 4)
+
+    item_choice = CombatChoice(self.char, "choose stuff")
+    activate = ActivateChosenItems(self.char, item_choice)
+
+    item_choice.resolve(self.state, [0, 2])
+    self.state.event_stack.append(activate)
+    self.resolve_until_done()
+
+    self.assertEqual(self.char.hands_available(), 0)
+    self.assertTrue(self.char.possessions[0].active)
     self.assertFalse(self.char.possessions[1].active)
     self.assertTrue(self.char.possessions[2].active)
+
+  def testDeactivateItems(self):
+    self.char.possessions.extend([items.Bullwhip(), items.TommyGun(), items.Revolver38()])
+    self.char.possessions[0]._active = True
+    self.char.possessions[2]._active = True
+    self.assertEqual(self.char.hands_available(), 0)
+
+    deactivate = DeactivateItems(self.char)
+    self.state.event_stack.append(deactivate)
+    self.resolve_until_done()
+
+    self.assertEqual(self.char.hands_available(), 2)
+    self.assertFalse(self.char.possessions[0].active)
+    self.assertFalse(self.char.possessions[1].active)
+    self.assertFalse(self.char.possessions[2].active)
+
+
+class CastSpellTest(EventTest):
+
+  def testCastSpell(self):
+    shrivelling = items.Shrivelling()
+    self.char.possessions.append(shrivelling)
+    self.assertEqual(self.char.sanity, 5)
+    self.assertEqual(self.char.hands_available(), 2)
+
+    self.state.event_stack.append(CastSpell(self.char, shrivelling))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+
+    self.assertTrue(shrivelling.in_use)
+    self.assertTrue(shrivelling.active)
+    self.assertEqual(self.char.sanity, 4)
+    self.assertEqual(self.char.hands_available(), 1)
+
+  def testFailToCastSpell(self):
+    shrivelling = items.Shrivelling()
+    self.char.possessions.append(shrivelling)
+    self.assertEqual(self.char.sanity, 5)
+    self.assertEqual(self.char.hands_available(), 2)
+
+    self.state.event_stack.append(CastSpell(self.char, shrivelling))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
+      self.resolve_until_done()
+
+    self.assertTrue(shrivelling.in_use)
+    self.assertFalse(shrivelling.active)
+    self.assertEqual(self.char.sanity, 4)
+    self.assertEqual(self.char.hands_available(), 1)
+
+  def testCastAndGoInsane(self):
+    pass  # TODO: a spell that has a non-combat effect.
 
 
 # TODO: add tests for going unconscious/insane during a mythos/encounter.

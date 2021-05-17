@@ -93,6 +93,7 @@ class GameState(object):
 
     self.common.extend(items.CreateCommon())
     self.unique.extend(items.CreateUnique())
+    self.spells.extend(items.CreateSpells())
     self.skills.extend(abilities.CreateSkills())
     self.allies.extend(assets.CreateAllies())
 
@@ -241,10 +242,10 @@ class GameState(object):
         self.event_stack.append(self.interrupt_stack[-1].pop())
         continue
       # If the event requires the character to make a choice, stop here.
+      self.usables = self.get_usable_interrupts(event)
       if isinstance(event, events.ChoiceEvent) and not event.is_resolved():
         yield None
         return
-      self.usables = self.get_usable_interrupts(event)
       if not all([self.done_using.get(char_idx) for char_idx in self.usables]):
         yield None
         return
@@ -318,17 +319,25 @@ class GameState(object):
 
   def get_triggers(self, event):
     triggers = []
+    # Insane/Unconscious after sanity/stamina loss.
     if isinstance(event, events.GainOrLoss):
       # TODO: both going to zero at the same time means you are devoured.
       if event.character.sanity <= 0:
         triggers.append(events.Insane(event.character))
       if event.character.stamina <= 0:
         triggers.append(events.Unconscious(event.character))
+    # Pulled through a gate if it opens on top of you.
     if isinstance(event, events.OpenGate) and event.opened:
       loc = self.places[event.location_name]
       chars = [char for char in self.characters if char.place == loc]
       if chars:
         triggers.append(events.PullThroughGate(chars, loc.gate.name))
+    # Non-spell items deactivate at the end of a combat round.
+    if isinstance(event, (events.CombatRound, events.InsaneOrUnconscious)):
+      triggers.append(events.DeactivateItems(event.character))
+    # Spells deactivate at the end of an entire combat.
+    if isinstance(event, (events.Combat, events.InsaneOrUnconscious)):
+      triggers.append(events.DeactivateSpells(event.character))
     triggers.extend(sum([char.get_triggers(event, self) for char in self.characters], []))
     return triggers
 

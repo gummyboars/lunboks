@@ -13,7 +13,13 @@ commonNames = [
 uniqueNames = [
   "Holy Water",
 ];
-spellNames = [];
+spellNames = [
+  "Dread Curse",
+  "Find Gate",
+  "Shrivelling",
+  "Voice",
+  "Wither",
+];
 skillNames = [
   "Speed",
   "Sneak",

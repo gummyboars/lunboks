@@ -154,7 +154,7 @@ function handleData(data) {
     handleData(messageQueue.shift());
   }
   updateChoices(data.choice);
-  updateUsables(data.usables);
+  updateUsables(data.usables, data.choice);
   updateEventLog(data.event_log);
 }
 
@@ -206,7 +206,8 @@ function doneUsing(e) {
 }
 
 function clickAsset(assetDiv, assetIdx) {
-  if (itemsToChoose == null) {
+  // FIXME: we should change ItemChoice to choose items one by one.
+  if (assetDiv.classList.contains("usable")) {
     useAsset(assetIdx);
     return;
   }
@@ -367,15 +368,17 @@ function addChoices(uichoice, choices) {
   }
 }
 
-function updateUsables(usables) {
+function updateUsables(usables, choice) {
   let uiuse = document.getElementById("uiuse");
   let pDiv = document.getElementById("possessions");
+  uiuse.style.display = "none";
   if (usables == null) {
-    uiuse.style.display = "none";
     pDiv.classList.remove("use");
     return;
   }
-  uiuse.style.display = "flex";
+  if (choice == null) {
+    uiuse.style.display = "flex";
+  }
   pDiv.classList.add("use");
   let posList = pDiv.getElementsByClassName("possession");
   for (let i = 0; i < posList.length; i++) {
@@ -384,7 +387,9 @@ function updateUsables(usables) {
       posList[i].classList.remove("unusable");
     } else {
       posList[i].classList.remove("usable");
-      posList[i].classList.add("unusable");
+      if (choice == null) {  // TODO: this is hacky.
+        posList[i].classList.add("unusable");
+      }
     }
   }
   // TODO: clues

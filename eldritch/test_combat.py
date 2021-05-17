@@ -269,5 +269,277 @@ class LoseCombatTest(EventTest):
     self.assertEqual(self.char.place.name, "Hospital")
 
 
+class CombatWithItems(EventTest):
+
+  def setUp(self):
+    super(CombatWithItems, self).setUp()
+    self.char.possessions.extend([items.TommyGun(), items.Wither(), items.Revolver38()])
+    cultist = monsters.Cultist()
+    self.combat = Combat(self.char, cultist)
+    self.state.event_stack.append(self.combat)
+
+    fight_or_flee = self.resolve_to_choice(MultipleChoice)
+    fight_or_flee.resolve(self.state, "Fight")
+
+  def testCombatWithWeapon(self):
+    choose_weapons = self.resolve_to_choice(CombatChoice)
+    choose_weapons.resolve(self.state, [0])
+
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+
+    self.assertTrue(self.combat.combat.is_resolved())
+    # Fight (4) + tommy gun (6) + cultist (1)
+    self.assertEqual(len(self.combat.combat.check.roll), 11)
+    self.assertFalse(self.char.possessions[0].active)
+
+  def testCombatWithSpell(self):
+    self.resolve_to_choice(CombatChoice)
+    self.assertIn(0, self.state.usables)
+    self.assertIn(1, self.state.usables[0])
+
+    # Cast the spell.
+    self.state.event_stack.append(self.state.usables[0][1])
+
+    # After casting the spell, we should return to our combat choice.
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      choose_weapons = self.resolve_to_choice(CombatChoice)
+    choose_weapons.resolve(self.state, [])
+
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+
+    self.assertTrue(self.combat.combat.is_resolved())
+    self.assertEqual(len(self.combat.combat.check.roll), 8)  # Fight (4) + wither (3) + cultist (1)
+    self.assertFalse(self.char.possessions[0].active)
+    self.assertFalse(self.char.possessions[1].in_use)
+    self.assertFalse(self.char.possessions[1].active)
+    self.assertTrue(self.char.possessions[1].exhausted)
+    self.assertFalse(self.char.possessions[2].active)
+
+  def testCombatWithSpellAndWeapon(self):
+    choose_weapons = self.resolve_to_choice(CombatChoice)
+
+    # Cannot choose the spell - it must be used as a usable.
+    with self.assertRaises(AssertionError):
+      choose_weapons.resolve(self.state, [1])
+
+    self.state.event_stack.append(self.state.usables[0][1])  # Cast the spell.
+
+    # After casting the spell, we should return to our combat choice.
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      choose_weapons = self.resolve_to_choice(CombatChoice)
+
+    # Cannot choose the spell after using it.
+    with self.assertRaises(AssertionError):
+      choose_weapons.resolve(self.state, [1])
+
+    self.assertEqual(self.char.hands_available(), 1)
+    # Cannot choose a two-handed weapon when one hand is taken by a spell.
+    with self.assertRaises(AssertionError):
+      choose_weapons.resolve(self.state, [0])
+
+    choose_weapons.resolve(self.state, [2])
+
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+
+    self.assertTrue(self.combat.combat.is_resolved())
+    # Fight (4) + wither (3) + revolver (3) + cultist (1)
+    self.assertEqual(len(self.combat.combat.check.roll), 11)
+    self.assertFalse(self.char.possessions[0].active)
+    self.assertFalse(self.char.possessions[1].in_use)
+    self.assertFalse(self.char.possessions[1].active)
+    self.assertTrue(self.char.possessions[1].exhausted)
+    self.assertFalse(self.char.possessions[2].active)
+
+  def testCombatWithFailedSpell(self):
+    choose_weapons = self.resolve_to_choice(CombatChoice)
+    self.state.event_stack.append(self.state.usables[0][1])
+
+    # Fail to cast the spell - it should not be active, but it will still take hands.
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
+      choose_weapons = self.resolve_to_choice(CombatChoice)
+
+    self.assertEqual(self.char.hands_available(), 1)
+    # Cannot choose a two-handed weapon when one hand is taken by a failed spell.
+    with self.assertRaises(AssertionError):
+      choose_weapons.resolve(self.state, [0])
+
+    choose_weapons.resolve(self.state, [2])
+
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+
+    self.assertTrue(self.combat.combat.is_resolved())
+    # Fight (4) + revolver (3) + cultist (1)
+    self.assertEqual(len(self.combat.combat.check.roll), 8)
+    self.assertFalse(self.char.possessions[0].active)
+    self.assertFalse(self.char.possessions[1].in_use)
+    self.assertFalse(self.char.possessions[1].active)
+    self.assertTrue(self.char.possessions[1].exhausted)
+    self.assertFalse(self.char.possessions[2].active)
+
+  def testMultiRoundCombatWithSpell(self):
+    choose_weapons = self.resolve_to_choice(CombatChoice)
+    self.state.event_stack.append(self.state.usables[0][1])
+
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      choose_weapons = self.resolve_to_choice(CombatChoice)
+
+    self.assertEqual(self.char.hands_available(), 1)
+    choose_weapons.resolve(self.state, [2])
+
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
+      fight_or_flee = self.resolve_to_choice(MultipleChoice)
+
+    self.assertFalse(self.char.possessions[0].active)
+    self.assertTrue(self.char.possessions[1].in_use)
+    self.assertTrue(self.char.possessions[1].active)
+    self.assertFalse(self.char.possessions[2].active)
+
+    fight_or_flee.resolve(self.state, "Fight")
+    choose_weapons = self.resolve_to_choice(CombatChoice)
+    choose_weapons.resolve(self.state, [2])
+
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+
+    self.assertTrue(self.combat.combat.is_resolved())
+    # Fight (4) + wither (3) + revolver (3) + cultist (1)
+    self.assertEqual(len(self.combat.combat.check.roll), 11)
+    self.assertFalse(self.char.possessions[0].active)
+    self.assertFalse(self.char.possessions[1].in_use)
+    self.assertFalse(self.char.possessions[1].active)
+    self.assertTrue(self.char.possessions[1].exhausted)
+    self.assertFalse(self.char.possessions[2].active)
+
+  def testMultiRoundCombatDeactivateSpell(self):
+    choose_weapons = self.resolve_to_choice(CombatChoice)
+    self.state.event_stack.append(self.state.usables[0][1])
+
+    # Fail to cast the spell
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
+      choose_weapons = self.resolve_to_choice(CombatChoice)
+
+    self.assertEqual(self.char.hands_available(), 1)
+    self.assertFalse(self.state.usables)  # The spell should not be usable anymore.
+    choose_weapons.resolve(self.state, [])
+
+    # Fail the combat check.
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
+      fight_or_flee = self.resolve_to_choice(MultipleChoice)
+
+    self.assertFalse(self.char.possessions[0].active)
+    self.assertTrue(self.char.possessions[1].in_use)
+    self.assertFalse(self.char.possessions[1].active)
+    self.assertFalse(self.char.possessions[2].active)
+
+    fight_or_flee.resolve(self.state, "Fight")
+    choose_weapons = self.resolve_to_choice(CombatChoice)
+    self.assertIn(0, self.state.usables)
+    self.assertIn(1, self.state.usables[0])
+
+    self.state.event_stack.append(self.state.usables[0][1])
+    choose_weapons = self.resolve_to_choice(CombatChoice)
+
+    self.assertEqual(self.char.hands_available(), 2)
+    self.assertFalse(self.char.possessions[1].in_use)
+    self.assertFalse(self.char.possessions[1].active)
+    choose_weapons.resolve(self.state, [0])
+
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+
+    self.assertTrue(self.combat.combat.is_resolved())
+    # Fight (4) + tommy gun (6) + cultist (1)
+    self.assertEqual(len(self.combat.combat.check.roll), 11)
+    self.assertFalse(self.char.possessions[0].active)
+    self.assertFalse(self.char.possessions[1].in_use)
+    self.assertFalse(self.char.possessions[1].active)
+    self.assertTrue(self.char.possessions[1].exhausted)
+    self.assertFalse(self.char.possessions[2].active)
+
+  def testUnconsciousDeactivatesSpells(self):
+    self.char.stamina = 1
+    choose_weapons = self.resolve_to_choice(CombatChoice)
+    self.state.event_stack.append(self.state.usables[0][1])
+
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      choose_weapons = self.resolve_to_choice(CombatChoice)
+
+    self.assertEqual(self.char.hands_available(), 1)
+    self.assertTrue(self.char.possessions[1].active)
+    choose_weapons.resolve(self.state, [])
+
+    # Fail the combat check.
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
+      self.resolve_until_done()
+
+    self.assertEqual(self.char.place.name, "Hospital")
+    self.assertFalse(self.char.possessions[0].active)
+    self.assertFalse(self.char.possessions[1].in_use)
+    self.assertFalse(self.char.possessions[1].active)
+    self.assertTrue(self.char.possessions[1].exhausted)
+    self.assertFalse(self.char.possessions[2].active)
+
+  def testInsaneBeforeCombat(self):
+    self.char.possessions[1] = items.Shrivelling()
+    self.char.sanity = 1
+
+    choose_weapons = self.resolve_to_choice(CombatChoice)
+    self.state.event_stack.append(self.state.usables[0][1])
+
+    # Attempting to spend your last sanity to cast this spell makes you go insane before combat.
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+
+    self.assertEqual(self.char.place.name, "Asylum")
+    self.assertFalse(self.char.possessions[0].active)
+    self.assertFalse(self.char.possessions[1].in_use)
+    self.assertFalse(self.char.possessions[1].active)
+    self.assertTrue(self.char.possessions[1].exhausted)
+    self.assertFalse(self.char.possessions[2].active)
+
+  def testNeedSanityToCast(self):
+    self.char.possessions[1] = items.DreadCurse()
+    self.char.sanity = 1
+
+    choose_weapons = self.resolve_to_choice(CombatChoice)
+    self.assertFalse(self.state.usables)
+
+  def testDontNeedSanityToDeactivate(self):
+    self.char.possessions[1] = items.DreadCurse()
+    self.char.sanity = 3
+
+    choose_weapons = self.resolve_to_choice(CombatChoice)
+    self.state.event_stack.append(self.state.usables[0][1])
+
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      choose_weapons = self.resolve_to_choice(CombatChoice)
+
+    self.assertEqual(self.char.sanity, 1)
+    self.assertEqual(self.char.hands_available(), 0)
+    self.assertFalse(self.state.usables)
+    choose_weapons.resolve(self.state, [])
+
+    # Fail the combat check.
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
+      fight_or_flee = self.resolve_to_choice(MultipleChoice)
+
+    self.assertIn(0, self.state.usables)
+    self.assertIn(1, self.state.usables[0])
+    self.state.event_stack.append(self.state.usables[0][1])
+
+    fight_or_flee = self.resolve_to_choice(MultipleChoice)
+    self.assertFalse(self.state.usables)
+
+    self.assertFalse(self.char.possessions[0].active)
+    self.assertFalse(self.char.possessions[1].in_use)
+    self.assertFalse(self.char.possessions[1].active)
+    self.assertTrue(self.char.possessions[1].exhausted)
+    self.assertFalse(self.char.possessions[2].active)
+
+
 if __name__ == '__main__':
   unittest.main()

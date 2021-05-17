@@ -623,18 +623,20 @@ def Bank2(char):
   prereq = events.AttributePrerequisite(char, "dollars", 2, "at least")
   nothing = events.Nothing()
   choice = events.BinaryChoice(
-                              char, "Pay $2 for man's last possession?",
-                              "Pay $2",
-                              "Let man and his family go hungry", 
-                              events.Sequence([spend, check, cond], char), nothing)
+      char, "Pay $2 for man's last possession?", "Pay $2", "Let man and his family go hungry",
+      events.Sequence([spend, check, cond], char), nothing,
+  )
   return events.PassFail(char, prereq, choice, nothing)
 def Bank3(char):
   prep = events.CombatChoice(char, "Choose weapons to fight the bank robbers")
+  activate = events.ActivateChosenItems(char, prep)
   check = events.Check(char, "combat", -1)
   robbed = events.Loss(char, {"dollars": char.dollars})
   nothing = events.Nothing()
   cond = events.Conditional(char, check, "successes", {0: robbed, 1: nothing})
-  return events.Sequence([prep, check, cond], char)
+  deactivate = events.DeactivateItems(char)
+  de_spell = events.DeactivateSpells(char)
+  return events.Sequence([prep, activate, check, cond, deactivate, de_spell], char)
 def Bank4(char):
   check = events.Check(char, "luck", -2)
   bless = events.Bless(char)

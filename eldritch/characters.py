@@ -137,6 +137,9 @@ class Character(object):
     threshold = 5 - self.bless_curse
     return len([result for result in roll if result >= threshold])
 
+  def hands_available(self):
+    return 2 - sum([pos.hands_used() for pos in self.possessions if hasattr(pos, "hands_used")])
+
   def abilities(self):
     return []
 

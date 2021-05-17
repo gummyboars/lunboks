@@ -76,17 +76,20 @@ class Sequence(Event):
 
   def __init__(self, events, character=None):
     self.events = events
+    self.idx = 0
     self.character = character
 
   def resolve(self, state):
-    for event in self.events:
-      if not event.is_resolved():
-        state.event_stack.append(event)
-        return False
-    return True
+    if self.idx == len(self.events):
+      return True
+    if not self.events[self.idx].is_resolved():
+      state.event_stack.append(self.events[self.idx])
+      return False
+    self.idx += 1
+    return self.idx == len(self.events)
 
   def is_resolved(self):
-    return all([event.is_resolved() for event in self.events])
+    return self.idx == len(self.events)
 
   def start_str(self):
     return ""
@@ -889,6 +892,256 @@ class ExhaustAsset(Event):
     return f"{self.character.name} exhausted their {self.item.name}"
 
 
+class ActivateItem(Event):
+
+  def __init__(self, character, item):
+    assert item in character.possessions
+    self.character = character
+    self.item = item
+    self.activated = None
+
+  def resolve(self, state):
+    if self.item not in self.character.possessions:
+      self.activated = False
+      return True
+    self.item._active = True
+    self.activated = True
+    return True
+
+  def is_resolved(self):
+    return self.activated is not None
+
+  def start_str(self):
+    return ""
+
+  def finish_str(self):
+    if not self.activated:
+      return ""
+    return f"{self.character.name} is using their {self.item.name}"
+
+
+class ActivateChosenItems(Event):
+
+  def __init__(self, character, item_choice):
+    self.character = character
+    self.item_choice = item_choice
+    self.activated = 0
+
+  def resolve(self, state):
+    assert self.item_choice.is_resolved()
+    self.activated = 0
+    for item in self.item_choice.choices:
+      if not item.active:
+        state.event_stack.append(ActivateItem(self.character, item))
+        return False
+      self.activated += 1
+    return True
+
+  def is_resolved(self):
+    return self.item_choice.is_resolved() and self.activated == len(self.item_choice.choices)
+
+  def start_str(self):
+    return ""
+
+  def finish_str(self):
+    return ""
+
+
+class DeactivateItem(Event):
+
+  def __init__(self, character, item):
+    assert item in character.possessions
+    self.character = character
+    self.item = item
+    self.deactivated = None
+
+  def resolve(self, state):
+    if self.item not in self.character.possessions:
+      self.deactivated = False
+      return True
+    self.item._active = False
+    self.deactivated = True
+    return True
+
+  def is_resolved(self):
+    return self.deactivated is not None
+
+  def start_str(self):
+    return ""
+
+  def finish_str(self):
+    return ""
+
+
+class DeactivateItems(Event):
+
+  def __init__(self, character):
+    self.character = character
+    # TODO: this should be rewritten to deactivate each item exactly once
+
+  def resolve(self, state):
+    for item in self.character.possessions:
+      if getattr(item, "deck", None) in ("common", "unique") and item.active:
+        state.event_stack.append(DeactivateItem(self.character, item))
+        return False
+    return True
+
+  def is_resolved(self):
+    return not any([
+      item.active for item in self.character.possessions
+      if getattr(item, "deck", None) in ("common", "unique")
+    ])
+
+  def start_str(self):
+    return ""
+
+  def finish_str(self):
+    return ""
+
+
+class CastSpell(Event):
+
+  def __init__(self, character, spell, action="exhaust"):
+    assert spell in character.possessions
+    assert action in {"exhaust", "discard"}
+    self.character = character
+    self.spell = spell
+    self.activation = None
+    self.check = None
+    self.cost = None
+    self.success = None
+    if action == "discard":
+      self.action = DiscardSpecific(character, spell)
+    else:
+      self.action = ExhaustAsset(character, spell)
+
+  def resolve(self, state):
+    if self.spell not in self.character.possessions:
+      self.success = False
+      return True
+
+    self.spell.in_use = True
+    self.spell.deactivatable = False
+    # TODO: maybe they should pay the sanity cost first, but we check for insanity after
+    # the spell is over.
+    if not self.check:
+      self.check = Check(self.character, "spell", self.spell.get_difficulty(state))
+      state.event_stack.append(self.check)
+      return False
+    assert self.check.is_resolved()
+
+    if not self.action.is_resolved():
+      state.event_stack.append(self.action)
+      return False
+
+    if self.check.successes < self.spell.get_required_successes(state):
+      self.success = False
+      if not self.cost:
+        self.cost = Loss(self.character, {"sanity": self.spell.sanity_cost})
+        state.event_stack.append(self.cost)
+        return False
+      assert self.cost.is_resolved()
+      return True
+
+    self.success = True
+    if not self.activation:
+      self.activation = self.spell.activate(self.character, state)
+      state.event_stack.append(self.activation)
+      return False
+    assert self.activation.is_resolved()
+
+    if not self.cost:
+      self.cost = Loss(self.character, {"sanity": self.spell.sanity_cost})
+      state.event_stack.append(self.cost)
+      return False
+    assert self.cost.is_resolved()
+    return True
+
+  def is_resolved(self):
+    return self.cost is not None and self.cost.is_resolved()
+
+  def start_str(self):
+    return f"{self.character.name} is casting {self.spell.name}"
+
+  def finish_str(self):
+    if self.success:
+      return f"{self.character.name} successfully cast {self.spell.name}"
+    return f"{self.character.name} failed to cast {self.spell.name}"
+
+
+class MarkDeactivatable(Event):
+
+  def __init__(self, character, spell):
+    assert spell in character.possessions
+    self.character = character
+    self.spell = spell
+    self.done = False
+
+  def resolve(self, state):
+    self.spell.deactivatable = True
+    self.done = True
+
+  def is_resolved(self):
+    return self.done
+
+  def start_str(self):
+    return ""
+
+  def finish_str(self):
+    return ""
+
+
+class DeactivateSpell(Event):
+
+  def __init__(self, character, spell):
+    assert spell in character.possessions
+    self.character = character
+    self.spell = spell
+    self.done = False
+
+  def resolve(self, state):
+    self.spell._active = False
+    self.spell.in_use = False
+    self.spell.deactivatable = False
+    self.done = True
+    return True
+
+  def is_resolved(self):
+    return self.done
+
+  def start_str(self):
+    return ""
+
+  def finish_str(self):
+    return f"{self.spell.name} deactivated"
+
+
+class DeactivateSpells(Event):
+
+  def __init__(self, character):
+    self.character = character
+    # TODO: this should be rewritten to deactivate each spell exactly once
+
+  def resolve(self, state):
+    for spell in self.character.possessions:
+      if getattr(spell, "deck", None) == "spells" and spell.in_use:
+        state.event_stack.append(DeactivateSpell(self.character, spell))
+        return False
+    return True
+
+  def is_resolved(self):
+    return not any([
+      spell.in_use for spell in self.character.possessions
+      if getattr(spell, "deck", None) == "spells"
+    ])
+
+  def start_str(self):
+    return ""
+
+  def finish_str(self):
+    return ""
+
+
 # TODO: also add a discard by name
 class DiscardSpecific(Event):
 
@@ -1303,12 +1556,10 @@ class CombatChoice(ItemChoice):
   def resolve_internal(self, choices):
     for idx in choices:
       assert getattr(self.character.possessions[idx], "hands", None) is not None
-    assert sum([self.character.possessions[idx].hands for idx in choices]) <= 2
+      assert getattr(self.character.possessions[idx], "deck", None) != "spells"
+    hands_used = sum([self.character.possessions[idx].hands for idx in choices])
+    assert hands_used <= self.character.hands_available()
     super(CombatChoice, self).resolve_internal(choices)
-    for pos in self.character.possessions:
-      pos._active = False
-    for pos in self.choices:
-      pos._active = True
 
 
 class ItemCountChoice(ItemChoice):
@@ -1496,6 +1747,7 @@ class CombatRound(Event):
     self.check = None
     self.damage = None
     self.choice = CombatChoice(character, f"Choose weapons to fight the {monster.name}")
+    self.activate = None
     self.defeated = None
 
   def resolve(self, state):
@@ -1503,6 +1755,10 @@ class CombatRound(Event):
       return True
     if not self.choice.is_resolved():
       state.event_stack.append(self.choice)
+      return False
+    if len(self.choice.choices) > 0 and self.activate is None:
+      self.activate = ActivateChosenItems(self.character, self.choice)
+      state.event_stack.append(self.activate)
       return False
     if self.check is None:
       self.check = Check(self.character, "combat", self.monster.difficulty("combat", state))
@@ -1696,7 +1952,6 @@ class OpenGate(Event):
       self.opened = False
       return True  # TODO: monster surge
 
-    # TODO: inevstigators getting sucked in.
     # TODO: if there are no gates tokens left, the ancient one awakens
     self.opened = state.gates.popleft()
     state.places[self.location_name].gate = self.opened

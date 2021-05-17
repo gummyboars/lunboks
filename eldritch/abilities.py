@@ -71,6 +71,7 @@ class Medicine(assets.Asset):
     super(Medicine, self).__init__("Medicine")
 
   def get_usable_trigger(self, event, owner, state):
+    # TODO: an actual event for upkeep
     if self.exhausted:
       return None
     if state.turn_phase != "upkeep" or state.characters[state.turn_idx] != owner:

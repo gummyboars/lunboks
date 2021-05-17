@@ -1534,6 +1534,24 @@ class BankTest(EncounterTest):
       self.resolve_until_done()
     self.assertEqual(self.char.dollars, 3)
 
+  def testBank3Spell(self):
+    self.char.possessions.append(items.Wither())
+    self.state.event_stack.append(encounters.Bank3(self.char))
+    choose_weapons = self.resolve_to_choice(CombatChoice)
+    self.assertIn(0, self.state.usables)
+    self.assertIn(0, self.state.usables[0])
+    self.state.event_stack.append(self.state.usables[0][0])
+
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      choose_weapons = self.resolve_to_choice(CombatChoice)
+    self.assertTrue(self.char.possessions[0].active)
+    choose_weapons.resolve(self.state, [])
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.dollars, 3)
+    self.assertFalse(self.char.possessions[0].active)
+    self.assertFalse(self.char.possessions[0].in_use)
+
   def testBank4Pass(self):
     self.state.event_stack.append(encounters.Bank4(self.char))
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
