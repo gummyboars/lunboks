@@ -249,6 +249,34 @@ class MovementTest(EventTest):
     self.assertEqual(self.char.place.name, "Easttown")
     self.assertEqual(self.char.movement_points, 3)
 
+  def testMoveOneSpaceToMonster(self):
+    cultist = next(monster for monster in self.state.monsters if monster.name == "Maniac")
+    cultist.place = self.state.places["Easttown"]
+    movement = Movement(self.char, [self.state.places["Easttown"]])
+    self.assertFalse(movement.is_resolved())
+    self.assertEqual(self.char.movement_points, 4)
+
+    self.state.event_stack.append(Sequence([movement, EndMovement(self.char)], self.char))
+    choice = self.resolve_to_choice(MultipleChoice)
+    self.assertEqual(choice.choices, ["Fight", "Evade"])
+    choice.resolve(self.state, "Fight")
+
+    next_choice = self.resolve_to_choice(MultipleChoice)
+    self.assertEqual(next_choice.choices, ["Fight", "Flee"])
+    next_choice.resolve(self.state, "Fight")
+
+    third_choice = self.resolve_to_choice(CombatChoice)
+    self.assertIsNone(third_choice.choices)
+    third_choice.resolve(self.state, [])
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+
+    self.assertTrue(movement.is_resolved())
+    self.assertEqual(self.char.place.name, "Easttown")
+    # self.assertEqual(self.char.movement_points, 0)
+    # self.assertIn(cultist, self.char.possessions)
+    # TODO: take the monster as a trophy
+
   def testMoveMultipleSpaces(self):
     movement = Sequence(
         [MoveOne(self.char, dest) for dest in ["Easttown", "Rivertown", "Graveyard"]], self.char)
@@ -261,6 +289,123 @@ class MovementTest(EventTest):
     self.assertTrue(movement.is_resolved())
     self.assertEqual(self.char.place.name, "Graveyard")
     self.assertEqual(self.char.movement_points, 1)
+
+  def testIllegalMoveMultipleSpaces(self):
+    self.char.movement_points = 1
+    movement = Movement(
+        self.char, [self.state.places[name] for name in ["Easttown", "Rivertown", "Graveyard"]])
+    self.assertFalse(movement.is_resolved())
+    self.assertEqual(self.char.movement_points, 1)
+
+    self.state.event_stack.append(movement)
+    self.resolve_until_done()
+
+    self.assertTrue(movement.is_resolved())
+    self.assertEqual(self.char.place.name, "Easttown")
+    self.assertEqual(self.char.movement_points, 0)
+
+  def testMoveMultipleThroughMonster(self):
+    self.char.fight_will_slider = 2
+    cultist = next(monster for monster in self.state.monsters if monster.name == "Cultist")
+    cultist.place = self.state.places["Easttown"]
+    movement = Movement(
+        self.char, [self.state.places[name] for name in ["Easttown", "Rivertown", "Graveyard"]])
+    self.assertFalse(movement.is_resolved())
+    self.assertEqual(self.char.movement_points, 4)
+
+    self.state.event_stack.append(Sequence([movement, EndMovement(self.char)], self.char))
+    choice = self.resolve_to_choice(MultipleChoice)
+    self.assertEqual(choice.choices, ["Fight", "Evade"])
+    choice.resolve(self.state, "Fight")
+
+    next_choice = self.resolve_to_choice(MultipleChoice)
+    self.assertEqual(next_choice.choices, ["Fight", "Flee"])
+    next_choice.resolve(self.state, "Fight")
+
+    third_choice = self.resolve_to_choice(CombatChoice)
+    self.assertIsNone(third_choice.choices)
+    third_choice.resolve(self.state, [])
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+
+    self.assertTrue(movement.is_resolved())
+    self.assertEqual(self.char.place.name, "Easttown")
+    # self.assertEqual(self.char.movement_points, 0)
+    # TODO: ^ should this pass?
+    # self.assertIn(cultist, self.char.possessions)
+    # TODO: take the monster as a trophy
+
+  def testMoveMultipleThroughMonsterFailedEvade(self):
+    self.char.fight_will_slider = 2
+    self.char.speed_sneak_slider = 0
+    self.assertEqual(self.char.stamina, 5)
+    self.assertEqual(self.char.sanity, 5)
+    maniac = next(monster for monster in self.state.monsters if monster.name == "Maniac")
+    maniac.place = self.state.places["Easttown"]
+    movement = Movement(
+        self.char, [self.state.places[name] for name in ["Easttown", "Rivertown", "Graveyard"]])
+    self.assertFalse(movement.is_resolved())
+    self.assertEqual(self.char.movement_points, 4)
+
+    self.state.event_stack.append(Sequence([movement, EndMovement(self.char)], self.char))
+    choice = self.resolve_to_choice(MultipleChoice)
+    self.assertEqual(choice.choices, ["Fight", "Evade"])
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=4)):
+      choice.resolve(self.state, "Evade")
+      next_choice = self.resolve_to_choice(MultipleChoice)
+      self.assertEqual(next_choice.choices, ["Fight", "Flee"])
+      self.assertEqual(self.char.stamina, 4)
+    next_choice.resolve(self.state, "Flee")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+
+    self.assertTrue(movement.is_resolved())
+    self.assertEqual(self.char.place.name, "Easttown")
+    self.assertEqual(self.char.stamina, 4)
+    self.assertEqual(self.char.sanity, 5)
+    # self.assertEqual(self.char.movement_points, 0)
+    # TODO: ^ should this pass?
+
+  def testMoveMultipleThroughTwoMonstersFailedEvade(self):
+    self.char.fight_will_slider = 2
+    self.char.speed_sneak_slider = 0
+    self.assertEqual(self.char.stamina, 5)
+    self.assertEqual(self.char.sanity, 5)
+    monster1 = next(monster for monster in self.state.monsters if monster.name == "Maniac")
+    monster1.place = self.state.places["Easttown"]
+    monster2 = next(monster for monster in self.state.monsters if monster.name == "Subterranean Flier")
+    monster2.place = self.state.places["Easttown"]
+
+    movement = Movement(
+        self.char, [self.state.places[name] for name in ["Easttown", "Rivertown", "Graveyard"]])
+    self.assertFalse(movement.is_resolved())
+    self.assertEqual(self.char.movement_points, 4)
+
+    self.state.event_stack.append(Sequence([movement, EndMovement(self.char)], self.char))
+    choice = self.resolve_to_choice(MultipleChoice)
+    #TODO: Choose which one to evade first
+    # For now, Subterranean Flier is the first
+    self.assertEqual(choice.choices, ["Fight", "Evade"])
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=4)):
+      choice.resolve(self.state, "Evade")
+      next_choice = self.resolve_to_choice(MultipleChoice)
+      self.assertEqual(next_choice.choices, ["Fight", "Flee"])
+      self.assertEqual(self.char.stamina, 2)
+      self.assertEqual(self.char.sanity, 1)
+    next_choice.resolve(self.state, "Flee")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      maniac_choice = self.resolve_to_choice(MultipleChoice)
+      self.assertEqual(maniac_choice.choices, ["Fight", "Evade"])
+      maniac_choice.resolve(self.state, "Evade")
+      self.resolve_until_done()
+
+    self.assertTrue(movement.is_resolved())
+    self.assertEqual(self.char.place.name, "Easttown")
+    self.assertEqual(self.char.stamina, 2)
+    self.assertEqual(self.char.sanity, 1)
+    # self.assertEqual(self.char.movement_points, 0)
+    # TODO: ^ should this pass?
+
 
   def testForceMovement(self):
     movement = ForceMovement(self.char, "Graveyard")

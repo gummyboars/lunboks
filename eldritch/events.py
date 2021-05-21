@@ -297,6 +297,10 @@ class CityMovement(ChoiceEvent):
   def prompt(self):
     return "Move somewhere"
 
+  def __resolve__(self, state):
+      self.done = True
+      self.character.avoid_monsters = False
+
   @property
   def choices(self):
     return sorted(self.routes.keys())
@@ -479,10 +483,12 @@ class MoveOne(Event):
     self.character = character
     self.dest = dest
     self.done = False
+    self.moved = None
 
   def resolve(self, state):
     if self.character.movement_points <= 0:
       self.done = True
+      self.moved = False
       return True
     assert self.dest in [conn.name for conn in self.character.place.connections]
     if not (self.character.place.closed or state.places[self.dest].closed):
@@ -490,16 +496,20 @@ class MoveOne(Event):
       self.character.movement_points -= 1
       self.character.explored = False
     self.done = True
+    self.moved = True
     return True
 
   def is_resolved(self):
     return self.done
 
   def start_str(self):
-    return ""
+    return f"{self.character.name} moving from {self.character.place.name}"
 
   def finish_str(self):
-    return f"{self.character.name} moved to {self.dest}"
+    if self.moved:
+      return f"{self.character.name} moved to {self.dest.name}"
+    else:
+      return f"{self.character.name} did not have enough movement points, and stayed in {self.character.place.name}"
 
 
 class GainOrLoss(Event):
@@ -2258,8 +2268,14 @@ class GateChoice(MapChoice):
 class EvadeOrFightAll(Sequence):
   
   def __init__(self, character, monsters):
+   self.monsters = monsters
+   self.character = character
    super(EvadeOrFightAll, self).__init__([
      EvadeOrCombat(character, monster) for monster in monsters], character)
+
+  def start_str(self):
+    return f"{self.character.name} must evade or fight all of: " \
+           + ", ".join(mon.name for mon in self.monsters)
 
 
 """
@@ -2383,6 +2399,8 @@ class Combat(Event):
     if self.evade.evaded:
       return True
     if self.combat.defeated:
+      self.monster.place = self.character
+      self.character.possessions.append(self.monster)
       return True
     self.choice = None
     return False
@@ -2419,9 +2437,11 @@ class EvadeRound(Event):
       return False
     if self.check.successes >= 1:
       self.evaded = True
+      self.character.avoid_monsters = True
       return True
     self.damage = Loss(
         self.character, {"stamina": self.monster.damage("combat", state, self.character)})
+    self.character.movement_points = 0
     state.event_stack.append(self.damage)
     return False
 
@@ -2434,7 +2454,7 @@ class EvadeRound(Event):
   def finish_str(self):
     if self.evaded:
       return f"{self.character.name} evaded a {self.monster.name}"
-    return f"{self.character.name} did not evade the {self.monster.name}"
+    return f"{self.character.name} did not evade the {self.monster.name} and lost any remaining movement"
 
 
 class CombatRound(Event):
@@ -2450,6 +2470,7 @@ class CombatRound(Event):
     self.defeated = None
 
   def resolve(self, state):
+    self.character.movement_points = 0
     if self.defeated is not None:
       return True
     if not self.choice.is_resolved():
@@ -2473,6 +2494,8 @@ class CombatRound(Event):
         state.event_stack.append(self.damage)
         return False
       # TODO: take the monster as a trophy
+      # Stand-in until we implement trophy code to allow MoveMultipleThroughMonster test to work
+      self.monster.place = None
       self.defeated = True
       return True
     self.defeated = False

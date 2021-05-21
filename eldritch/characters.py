@@ -38,6 +38,7 @@ class Character(object):
     self.home = home
     self.place = None
     self.explored = False
+    self.avoid_monsters = False
 
   def get_json(self, state):
     attrs = [

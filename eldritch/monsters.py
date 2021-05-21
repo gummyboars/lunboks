@@ -1,3 +1,5 @@
+from eldritch.assets import Asset
+
 class MonsterCup(object):
 
   def __init__(self):
@@ -7,7 +9,7 @@ class MonsterCup(object):
     return self.name
 
 
-class Monster(object):
+class Monster(Asset):
 
   MOVEMENTS = {"normal", "fast", "stationary", "flying", "stalker", "aquatic", "unique"}
   DIMENSIONS = {"circle", "triangle", "moon", "hex", "square", "diamond", "star", "slash", "plus"}
@@ -35,7 +37,7 @@ class Monster(object):
     assert not bypass.keys() - damages.keys()
     assert len(attributes & {"magical resistance", "magical immunity"}) < 2
     assert len(attributes & {"physical resistance", "physical immunity"}) < 2
-    self.name = name
+    super(Monster, self).__init__(name)
     self.movement = movement
     self.dimension = dimension
     self.difficulties = ratings
@@ -48,6 +50,9 @@ class Monster(object):
     if "horror" in bypass:
       self._attributes.add("nightmarish")
     self.place = None
+
+  def __repr__(self):
+    return f"<Monster: {self.name} {id(self)} at {self.place}>"
 
   def json_repr(self):
     return {
