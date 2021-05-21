@@ -170,10 +170,11 @@ class Mythos9(Environment):
     )
 
   def get_modifier(self, thing, attribute):
-    if attribute == "luck":
-      return -1
-    if attribute == "sneak":
-      return 1
+    if isinstance(thing.place, places.CityPlace):
+      if attribute == "luck":
+        return -1
+      if attribute == "sneak":
+        return 1
     return 0
 
 
@@ -224,7 +225,7 @@ class Mythos14(Environment):
       gain = events.Gain(char, {'clues': 1})
       check = events.Check(char, 'will', -1)
       wonders = events.PassFail(char, check, events.Nothing(), events.Loss(char, {'sanity': 1}))
-      return events.Sequence([gain, wonders])
+      return events.Sequence([gain, wonders], char)
 
 
 class Mythos15(Environment):
