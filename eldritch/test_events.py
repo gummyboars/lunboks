@@ -815,6 +815,51 @@ class ItemChoiceTest(EventTest):
     self.assertFalse(self.char.possessions[1].active)
     self.assertTrue(self.char.possessions[2].active)
 
+class testTerrorTrack(EventTest):
+  def setUp(self):
+    super(testTerrorTrack, self).setUp()
+    self.assertTrue(self.state.terrortrack==0)
+
+  def testIncreaseTerrorTrack(self):
+    terror = adjustTerrorTrack(0)
+    self.assertFalse(terror.is_resolved())
+    self.assertTrue(self.state.terrortrack==0)
+    self.state.event_stack.append(terror)
+    self.resolve_until_done()
+    self.assertTrue(terror.is_resolved())
+    self.assertTrue(self.state.terrortrack==0)
+
+    terror = adjustTerrorTrack(1)
+    self.assertFalse(terror.is_resolved())
+    self.assertTrue(self.state.terrortrack==0)
+    self.state.event_stack.append(terror)
+    self.resolve_until_done()
+    self.assertTrue(terror.is_resolved())
+    self.assertTrue(self.state.terrortrack==1)
+
+    terror = adjustTerrorTrack(-1)
+    self.assertFalse(terror.is_resolved())
+    self.assertTrue(self.state.terrortrack==1)
+    self.state.event_stack.append(terror)
+    self.resolve_until_done()
+    self.assertTrue(terror.is_resolved())
+    self.assertTrue(self.state.terrortrack==0)
+
+    terror = adjustTerrorTrack( -1)
+    self.assertFalse(terror.is_resolved())
+    self.assertTrue(self.state.terrortrack==0)
+    self.state.event_stack.append(terror)
+    self.resolve_until_done()
+    self.assertTrue(terror.is_resolved())
+    self.assertTrue(self.state.terrortrack==0)
+
+    terror = adjustTerrorTrack(11)
+    self.assertFalse(terror.is_resolved())
+    self.assertTrue(self.state.terrortrack==0)
+    self.state.event_stack.append(terror)
+    self.resolve_until_done()
+    self.assertTrue(terror.is_resolved())
+    self.assertTrue(self.state.terrortrack==10)
 
 # TODO: add tests for going unconscious/insane during a mythos/encounter.
 

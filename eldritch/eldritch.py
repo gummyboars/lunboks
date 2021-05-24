@@ -57,6 +57,7 @@ class GameState(object):
     self.environment = None
     self.ancient_one = None
     self.other_globals = []
+    self.terrortrack = 0
     self.check_result = None
     self.dice_result = []
 

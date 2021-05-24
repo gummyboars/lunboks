@@ -404,6 +404,12 @@ class GlobalModifierTest(EventTest):
     self.resolve_until_done()
     self.assertEqual(self.state.environment, env)
 
+  def testAdjustTerrorTrack(self):
+    headline = Mythos21()
+    self.state.event_stack.append(headline.create_event(self.state))
+    self.resolve_until_done()
+    self.assertEqual(self.state.terrortrack, 1)
+
 
 if __name__ == '__main__':
   unittest.main()

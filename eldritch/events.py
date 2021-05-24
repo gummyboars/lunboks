@@ -1955,3 +1955,36 @@ class ActivateEnvironment(Event):
 
   def finish_str(self):
     return f"{self.env.name} is the new environment"
+
+class adjustTerrorTrack(Event):
+
+  def __init__(self, delta):
+    self.delta = delta
+    self.done = False
+
+  def resolve(self, state):
+    state.terrortrack += self.delta 
+    if state.terrortrack < 0:
+      state.terrortrack = 0
+    if state.terrortrack > 10:
+      state.terrortrack = 10
+
+    if self.delta > 0:
+      pass
+      #TODO remove allies and close areas as needed
+
+    if self.delta < 0:
+      pass
+      #TODO reopen areas
+
+    self.done = True
+    return True
+
+  def is_resolved(self):
+    return self.done
+
+  def start_str(self):
+    return ""
+
+  def finish_str(self):
+    return f"Terror Track adjusted by {self.delta}"

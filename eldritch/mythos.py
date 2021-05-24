@@ -280,6 +280,22 @@ class Mythos20(Headline):
   def create_event(self, state):
     return events.ReturnToCup('streets')
 
+class Mythos21(Headline):
+
+  def __init__(self):
+    super(Mythos21, self).__init__("Mythos21", "Graveyard", "Isle", {"moon"}, {"plus"})
+
+  def create_event(self, state):
+    seq = super(Mythos21, self).create_event(state)
+    seq.events.append(events.adjustTerrorTrack(1))
+    return seq
+
+class Mythos22(Headline):
+
+  def __init__(self):
+    super(Mythos22, self).__init__("Mythos22", "Square", "Unnamable", {"hex"}, {"slash", "triangle", "star"})
+
+  #TODO remove monsters if remvoed raise terror level
 
 class Mythos45(Environment):
 
