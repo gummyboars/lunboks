@@ -486,8 +486,6 @@ class MoveOne(Event):
       return True
     assert self.dest in [conn.name for conn in self.character.place.connections]
     self.character.place = state.places[self.dest]
-    self.character.movement_points -= 1
-    self.character.explored = False
     self.done = True
     return True
 
@@ -2606,6 +2604,12 @@ class GateCloseAttempt(Event):
       self.closed = True
       state.gates.append(state.places[self.location_name].gate)  # TODO: take a gate trophy
       state.places[self.location_name].gate = None
+      closed_until = state.places[self.location_name].closed_until or -1
+      if closed_until > state.turn_number:
+        state.event_stack.append(
+            CloseLocation(self.location_name, closed_until - state.turn_number - 1)
+        )
+        return False
 
     if self.seal_choice is None:
       if self.character.clues < 5:  # TODO: this can also have modifiers
@@ -3014,6 +3018,41 @@ class ReturnToCup(Event):
 
   def finish_str(self):
     return f"{self.returned} monsters returned to the cup"
+
+class CloseLocation(Event):
+
+  def __init__(self, location_name, for_turns=float('inf'), evict=True):
+    self.location_name = location_name
+    self.for_turns = for_turns
+    self.evict = evict
+    self.resolved = False
+
+  def resolve(self, state):
+    until = state.turn_number + self.for_turns + 1
+    place = state.places[self.location_name]
+    place.closed_until = until
+    chars_in_place = [char for char in state.characters if char.place == place]
+    monsters_in_place = [mon for mon in state.monsters if mon.place == place]
+
+    if place.closed and self.evict:
+      to_place = next(iter(place.connections))
+      for char in chars_in_place:
+        state.event_stack.append(ForceMovement(char, to_place.name))
+        return False
+      for monster in monsters_in_place:
+        monster.place = to_place
+
+    self.resolved = True
+    return True
+
+  def is_resolved(self):
+    return self.resolved
+
+  def start_str(self):
+    return f"Closing {self.location_name}"
+
+  def finish_str(self):
+    return ""
 
 
 class ActivateEnvironment(Event):

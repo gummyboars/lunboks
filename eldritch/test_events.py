@@ -1536,5 +1536,56 @@ class SellTest(EventTest):
       self.resolve_until_done()
 
 
+class CloseLocationTest(EventTest):
+  def testCloseForever(self):
+    place_name = "Woods"
+    self.state.event_stack.append(CloseLocation(place_name))
+    self.resolve_until_done()
+    self.assertTrue(self.state.places[place_name].closed)
+
+  def testCloseWithGateForOneTurn(self):
+    place_name = "Woods"
+    place = self.state.places[place_name]
+    place.gate = self.state.gates.popleft()
+    monster = next(iter(self.state.monsters))
+    monster.place = place
+    self.char.place = place
+    self.state.event_stack.append(CloseLocation(place_name, 1))
+    self.resolve_until_done()
+    self.assertEqual(place.closed_until, self.state.turn_number + 2)
+    self.assertEqual(self.char.place, place)
+    self.assertEqual(monster.place, place)
+    self.assertFalse(place.closed)
+    self.state.event_stack.append(GateCloseAttempt(self.char, place_name))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      fight_lore = self.resolve_to_choice(MultipleChoice)
+      self.assertEqual(fight_lore.choices, ["Close with fight", "Close with lore", "Don't close"])
+      fight_lore.resolve(self.state, "Close with fight")
+      self.resolve_until_done()
+    self.assertEqual(place.closed_until, self.state.turn_number + 2)
+    self.assertEqual(self.char.place.name, "Uptown")
+    self.assertEqual(monster.place.name, "Uptown")
+    current_turn = self.state.turn_number
+    while self.state.turn_number == current_turn:
+      self.state.next_turn()
+    self.assertEqual(place.closed_until, self.state.turn_number + 1)
+    current_turn = self.state.turn_number
+    while self.state.turn_number == current_turn:
+      self.state.next_turn()
+    self.assertFalse(place.closed)
+
+  def testMoveToClosedLocation(self):
+    place_name = "Woods"
+    self.state.event_stack.append(CloseLocation(place_name))
+    self.resolve_until_done()
+    self.char.place = self.state.places["Uptown"]
+    self.assertEqual(self.char.place.name, "Uptown")
+    self.assertEqual(self.char.movement_points, 4)
+    self.state.event_stack.append(MoveOne(self.char, self.state.places[place_name]))
+    self.resolve_until_done()
+    self.assertEqual(self.char.place.name, "Uptown")
+    self.assertEqual(self.char.movement_points, 4)
+
+
 if __name__ == '__main__':
   unittest.main()

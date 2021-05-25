@@ -36,13 +36,17 @@ class CityPlace(Place):
     self.movement = {"white": None, "black": None}
     self.neighborhood = None
     self.encounters = None
-    self.closed = False
+    self.closed_until = None
 
   def __eq__(self, other):
     return type(self) == type(other) and self.name == other.name
 
   def __hash__(self):
     return hash(self.name)
+
+  @property
+  def closed(self):
+    return self.closed_until is not None and self.gate is None
 
   def json_repr(self):
     movement = {
