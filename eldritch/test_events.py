@@ -54,6 +54,10 @@ class EventTest(unittest.TestCase):
     self.assertIsInstance(self.state.usables[char_idx][item_idx], event_class)
     return self.state.usables[char_idx][item_idx]
 
+  def _formatMessage(self, msg, standardMsg):
+    ret = super(EventTest, self)._formatMessage(msg, standardMsg)
+    return ret + '\n\n\n' + '\n'.join(self.state.event_log)
+
 
 class DiceRollTest(EventTest):
 
