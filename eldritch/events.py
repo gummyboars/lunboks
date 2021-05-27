@@ -2927,6 +2927,8 @@ class GateCloseAttempt(Event):
         return
 
     if self.seal_choice is None:
+      difficulty = 5
+      difficulty += state.get_modifier(self, 'difficulty')
       spend = values.ExactSpendPrerequisite({"clues": 5})
       self.seal_choice = SpendChoice(
           self.character, "Spend clues to seal the gate?", ["Yes", "No"], spends=[spend, None],
@@ -3246,9 +3248,9 @@ class MoveMonsters(Event):
 
         move_color = "white" if monster.dimension in self.white_dimensions else "black"
         num_moves = 1
-        if monster.movement == "stationary":
+        if monster.get_movement(state) == "stationary":
           num_moves = 0
-        elif monster.movement == "fast":
+        elif monster.get_movement(state) == "fast":
           num_moves = 2
         for _ in range(num_moves):
           moves.append(MoveMonster(monster, move_color))
