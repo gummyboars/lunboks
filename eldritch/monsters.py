@@ -1,4 +1,4 @@
-from eldritch.assets import Asset
+from eldritch import assets
 
 class MonsterCup(object):
 
@@ -9,7 +9,7 @@ class MonsterCup(object):
     return self.name
 
 
-class Monster(Asset):
+class Monster(assets.Asset):
 
   MOVEMENTS = {"normal", "fast", "stationary", "flying", "stalker", "aquatic", "unique"}
   DIMENSIONS = {"circle", "triangle", "moon", "hex", "square", "diamond", "star", "slash", "plus"}

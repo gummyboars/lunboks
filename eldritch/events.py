@@ -297,7 +297,7 @@ class CityMovement(ChoiceEvent):
   def prompt(self):
     return "Move somewhere"
 
-  def __resolve__(self, state):
+  def resolve(self, state):
       self.done = True
       self.character.avoid_monsters = False
 
@@ -509,7 +509,7 @@ class MoveOne(Event):
     if self.moved:
       return f"{self.character.name} moved to {self.dest.name}"
     else:
-      return f"{self.character.name} did not have enough movement points, and stayed in {self.character.place.name}"
+      return f"{self.character.name} stayed in {self.character.place.name}"
 
 
 class GainOrLoss(Event):
@@ -2399,7 +2399,6 @@ class Combat(Event):
     if self.evade.evaded:
       return True
     if self.combat.defeated:
-      self.monster.place = self.character
       self.character.possessions.append(self.monster)
       return True
     self.choice = None

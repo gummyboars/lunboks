@@ -250,8 +250,10 @@ class MovementTest(EventTest):
     self.assertEqual(self.char.movement_points, 3)
 
   def testMoveOneSpaceToMonster(self):
-    cultist = next(monster for monster in self.state.monsters if monster.name == "Maniac")
-    cultist.place = self.state.places["Easttown"]
+    while self.state.turn_phase != "movement":
+      self.state.next_turn()
+    maniac = next(monster for monster in self.state.monsters if monster.name == "Maniac")
+    maniac.place = self.state.places["Easttown"]
     movement = Movement(self.char, [self.state.places["Easttown"]])
     self.assertFalse(movement.is_resolved())
     self.assertEqual(self.char.movement_points, 4)
@@ -273,7 +275,7 @@ class MovementTest(EventTest):
 
     self.assertTrue(movement.is_resolved())
     self.assertEqual(self.char.place.name, "Easttown")
-    # self.assertEqual(self.char.movement_points, 0)
+    self.assertEqual(self.char.movement_points, 0)
     # self.assertIn(cultist, self.char.possessions)
     # TODO: take the monster as a trophy
 
@@ -305,7 +307,8 @@ class MovementTest(EventTest):
     self.assertEqual(self.char.movement_points, 0)
 
   def testMoveMultipleThroughMonster(self):
-    self.char.fight_will_slider = 2
+    while self.state.turn_phase != "movement":
+      self.state.next_turn()
     cultist = next(monster for monster in self.state.monsters if monster.name == "Cultist")
     cultist.place = self.state.places["Easttown"]
     movement = Movement(
@@ -330,14 +333,14 @@ class MovementTest(EventTest):
 
     self.assertTrue(movement.is_resolved())
     self.assertEqual(self.char.place.name, "Easttown")
-    # self.assertEqual(self.char.movement_points, 0)
-    # TODO: ^ should this pass?
+    self.assertEqual(self.char.movement_points, 0)
     # self.assertIn(cultist, self.char.possessions)
     # TODO: take the monster as a trophy
 
   def testMoveMultipleThroughMonsterFailedEvade(self):
-    self.char.fight_will_slider = 2
-    self.char.speed_sneak_slider = 0
+    self.char.speed_sneak_slider = 2
+    while self.state.turn_phase != "movement":
+      self.state.next_turn()
     self.assertEqual(self.char.stamina, 5)
     self.assertEqual(self.char.sanity, 5)
     maniac = next(monster for monster in self.state.monsters if monster.name == "Maniac")
@@ -345,7 +348,7 @@ class MovementTest(EventTest):
     movement = Movement(
         self.char, [self.state.places[name] for name in ["Easttown", "Rivertown", "Graveyard"]])
     self.assertFalse(movement.is_resolved())
-    self.assertEqual(self.char.movement_points, 4)
+    self.assertEqual(self.char.movement_points, 3)
 
     self.state.event_stack.append(Sequence([movement, EndMovement(self.char)], self.char))
     choice = self.resolve_to_choice(MultipleChoice)
@@ -363,12 +366,12 @@ class MovementTest(EventTest):
     self.assertEqual(self.char.place.name, "Easttown")
     self.assertEqual(self.char.stamina, 4)
     self.assertEqual(self.char.sanity, 5)
-    # self.assertEqual(self.char.movement_points, 0)
-    # TODO: ^ should this pass?
+    self.assertEqual(self.char.movement_points, 0)
 
   def testMoveMultipleThroughTwoMonstersFailedEvade(self):
-    self.char.fight_will_slider = 2
-    self.char.speed_sneak_slider = 0
+    self.char.speed_sneak_slider = 1
+    while self.state.turn_phase != "movement":
+      self.state.next_turn()
     self.assertEqual(self.char.stamina, 5)
     self.assertEqual(self.char.sanity, 5)
     monster1 = next(monster for monster in self.state.monsters if monster.name == "Maniac")
@@ -379,7 +382,7 @@ class MovementTest(EventTest):
     movement = Movement(
         self.char, [self.state.places[name] for name in ["Easttown", "Rivertown", "Graveyard"]])
     self.assertFalse(movement.is_resolved())
-    self.assertEqual(self.char.movement_points, 4)
+    self.assertEqual(self.char.movement_points, 2)
 
     self.state.event_stack.append(Sequence([movement, EndMovement(self.char)], self.char))
     choice = self.resolve_to_choice(MultipleChoice)
@@ -403,7 +406,7 @@ class MovementTest(EventTest):
     self.assertEqual(self.char.place.name, "Easttown")
     self.assertEqual(self.char.stamina, 2)
     self.assertEqual(self.char.sanity, 1)
-    # self.assertEqual(self.char.movement_points, 0)
+    self.assertEqual(self.char.movement_points, 0)
     # TODO: ^ should this pass?
 
 
