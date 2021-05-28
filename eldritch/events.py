@@ -485,7 +485,10 @@ class MoveOne(Event):
       self.done = True
       return True
     assert self.dest in [conn.name for conn in self.character.place.connections]
-    self.character.place = state.places[self.dest]
+    if not (self.character.place.closed or self.dest.closed):
+      self.character.place = self.dest
+      self.character.movement_points -= 1
+      self.character.explored = False
     self.done = True
     return True
 
@@ -3036,11 +3039,14 @@ class CloseLocation(Event):
 
     if place.closed and self.evict:
       to_place = next(iter(place.connections))
+      evictions = []
       for char in chars_in_place:
-        state.event_stack.append(ForceMovement(char, to_place.name))
-        return False
+        evictions.append(ForceMovement(char, to_place.name))
       for monster in monsters_in_place:
         monster.place = to_place
+      state.event_stack.append(Sequence(evictions))
+      self.evict = False # So we don't keep looping
+      return False
 
     self.resolved = True
     return True

@@ -799,7 +799,6 @@ class DrawRandomTest(EventTest):
     self.assertEqual([item.name for item in self.state.common], ["Food", "Tommy Gun", "Dynamite", ])
 
 
-
 class DiscardNamedTest(EventTest):
   def testDiscardNamed(self):
     self.char.possessions.append(items.Food())
@@ -1542,9 +1541,20 @@ class CloseLocationTest(EventTest):
     self.state.event_stack.append(CloseLocation(place_name))
     self.resolve_until_done()
     self.assertTrue(self.state.places[place_name].closed)
+    self.char.place = self.state.places["Uptown"]
+    # If we're burning through turns, Dummy needs to not be in a Location
+
+    turn_number = self.state.turn_number
+    while self.state.turn_number < turn_number + 5:
+      self.state.next_turn()
+      self.resolve_until_done()
+    self.assertTrue(self.state.places[place_name].closed)
 
   def testCloseWithGateForOneTurn(self):
     place_name = "Woods"
+    while self.state.turn_phase != 'mythos':
+      self.state.next_turn()
+      self.resolve_until_done()
     place = self.state.places[place_name]
     place.gate = self.state.gates.popleft()
     monster = next(iter(self.state.monsters))
@@ -1552,22 +1562,27 @@ class CloseLocationTest(EventTest):
     self.char.place = place
     self.state.event_stack.append(CloseLocation(place_name, 1))
     self.resolve_until_done()
+
     self.assertEqual(place.closed_until, self.state.turn_number + 2)
     self.assertEqual(self.char.place, place)
     self.assertEqual(monster.place, place)
     self.assertFalse(place.closed)
+
     self.state.event_stack.append(GateCloseAttempt(self.char, place_name))
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       fight_lore = self.resolve_to_choice(MultipleChoice)
-      self.assertEqual(fight_lore.choices, ["Close with fight", "Close with lore", "Don't close"])
-      fight_lore.resolve(self.state, "Close with fight")
+      fight_lore.resolve(self.state, fight_lore.choices[0])
       self.resolve_until_done()
+
     self.assertEqual(place.closed_until, self.state.turn_number + 2)
     self.assertEqual(self.char.place.name, "Uptown")
     self.assertEqual(monster.place.name, "Uptown")
+
     current_turn = self.state.turn_number
     while self.state.turn_number == current_turn:
       self.state.next_turn()
+      self.resolve_until_done()
+
     self.assertEqual(place.closed_until, self.state.turn_number + 1)
     current_turn = self.state.turn_number
     while self.state.turn_number == current_turn:
@@ -1577,14 +1592,49 @@ class CloseLocationTest(EventTest):
   def testMoveToClosedLocation(self):
     place_name = "Woods"
     self.state.event_stack.append(CloseLocation(place_name))
-    self.resolve_until_done()
     self.char.place = self.state.places["Uptown"]
+
+    while self.state.turn_phase != 'movement':
+      self.state.next_turn()
+      self.resolve_until_done()
+
     self.assertEqual(self.char.place.name, "Uptown")
     self.assertEqual(self.char.movement_points, 4)
     self.state.event_stack.append(MoveOne(self.char, self.state.places[place_name]))
     self.resolve_until_done()
     self.assertEqual(self.char.place.name, "Uptown")
     self.assertEqual(self.char.movement_points, 4)
+
+    turn_number = self.state.turn_number
+    while self.state.turn_number < turn_number + 5:
+      self.state.next_turn()
+      self.resolve_until_done()
+    self.assertTrue(self.state.places[place_name].closed)
+
+  def testMoveFromClosedLocation(self):
+    place_name = "Merchant"
+    place = self.state.places[place_name]
+    while self.state.turn_phase != 'mythos':
+      self.state.next_turn()
+      self.resolve_until_done()
+    self.state.event_stack.append(CloseLocation(place_name, for_turns=1, evict=False))
+    self.char.place = place
+    self.resolve_until_done()
+
+    while self.state.turn_phase != 'movement':
+      self.state.next_turn()
+      self.resolve_until_done()
+    self.assertTrue(place.closed)
+    self.state.event_stack.append(
+      Sequence([MoveOne(self.char, self.state.places["Downtown"]), EndMovement(self.char)], self.char)
+    )
+    self.resolve_until_done()
+    self.assertEqual(self.char.place, place)
+
+    self.state.next_turn()
+    while self.state.turn_phase != 'movement':
+      self.state.next_turn()
+    self.assertFalse(place.closed)
 
 
 if __name__ == '__main__':

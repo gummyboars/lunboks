@@ -46,7 +46,7 @@ class CityPlace(Place):
 
   @property
   def closed(self):
-    return self.closed_until is not None and self.gate is None
+    return self.closed_until is not None
 
   def json_repr(self):
     movement = {
@@ -122,6 +122,10 @@ class Location(CityPlace):
     data = super(Location, self).json_repr()
     data.update({attr: getattr(self, attr) for attr in ["unstable", "clues", "gate", "sealed"]})
     return data
+
+  @property
+  def closed(self):
+    return super(Location, self).closed and self.gate is None
 
 
 def CreatePlaces():
