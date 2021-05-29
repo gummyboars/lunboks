@@ -317,16 +317,19 @@ class ReturnToCupTest(EventTest):
 
   def setUp(self):
     super(ReturnToCupTest, self).setUp()
-    self.cultist = [mon for mon in self.state.monsters if mon.name == "Cultist"][0]
-    self.maniac = [mon for mon in self.state.monsters if mon.name == "Maniac"][0]
-    self.dream_flier = [mon for mon in self.state.monsters if mon.name == "Dream Flier"][0]
-    self.zombie = [mon for mon in self.state.monsters if mon.name == "Zombie"][0]
-    self.furry_beast = [mon for mon in self.state.monsters if mon.name == "Furry Beast"][0]
+    self.cultist = monsters.Cultist()
+    self.maniac = monsters.Maniac()
+    self.dream_flier = monsters.DreamFlier()
+    self.zombie = monsters.Zombie()
+    self.furry_beast = monsters.FurryBeast()
     self.cultist.place = self.state.places["Southside"]
     self.maniac.place = self.state.places["Outskirts"]
     self.dream_flier.place = self.state.places["Sky"]
     self.furry_beast.place = self.state.places["Woods"]
     self.zombie.place = None
+    self.state.monsters.clear()
+    self.state.monsters.extend([
+      self.cultist, self.maniac, self.dream_flier, self.zombie, self.furry_beast])
     # TODO: also test for monster trophies
 
   def testReturnByName(self):
@@ -380,6 +383,13 @@ class ReturnToCupTest(EventTest):
 
 
 class GlobalModifierTest(EventTest):
+
+  def setUp(self):
+    super(GlobalModifierTest, self).setUp()
+    more_monsters = [monsters.Cultist(), monsters.Maniac()]
+    for monster in more_monsters:
+      monster.place = self.state.monster_cup
+    self.state.monsters.extend(more_monsters)
 
   def testEnvironmentModifier(self):
     self.assertEqual(self.char.will(self.state), 1)

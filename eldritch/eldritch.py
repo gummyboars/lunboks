@@ -60,6 +60,20 @@ class GameState(object):
     self.check_result = None
     self.dice_result = []
 
+  def initialize_for_tests(self):
+    self.places = places.CreatePlaces()
+    infos, other_worlds = places.CreateOtherWorlds()
+    self.places.update(other_worlds)
+
+    self.gates.extend(gates.CreateGates(infos[:3]))
+    self.monsters = [monsters.Cultist(), monsters.Maniac()]
+    for monster in self.monsters:
+      monster.place = self.monster_cup
+
+    self.characters = characters.CreateCharacters()
+    for char in self.characters:
+      char.place = self.places[char.home]
+
   def initialize(self):
     self.places = places.CreatePlaces()
     infos, other_worlds = places.CreateOtherWorlds()
@@ -85,8 +99,44 @@ class GameState(object):
     self.mythos.extend(mythos.CreateMythos())
 
     self.characters = characters.CreateCharacters()
+    # Abilities and fixed possessions.
     for char in self.characters:
       char.place = self.places[char.home]
+      char.possessions.extend(char.abilities())
+      self.give_fixed_possessions(char, char.fixed_possessions())
+    # Shuffle the decks.
+    for deck in assets.Card.DECKS:
+      random.shuffle(getattr(self, deck))
+    # Random possessions.
+    for char in self.characters:
+      self.give_random_possessions(char, char.random_possessions())
+    # Initial attributes.
+    for char in self.characters:
+      for attr, val in char.initial_attributes().items():
+        setattr(char, attr, val)
+
+  def give_fixed_possessions(self, char, possessions):
+    assert not possessions.keys() - assets.Card.DECKS
+    for deck, names in possessions.items():
+      cards = getattr(self, deck)
+      keep = []
+      rest = []
+      while cards and names:
+        card = cards.popleft()
+        if card.name in names:
+          names.remove(card.name)
+          keep.append(card)
+        else:
+          rest.append(card)
+      assert not names, "could not find %s for %s in %s" % (str(names), char.name, deck)
+      char.possessions.extend(keep)
+      cards.extend(rest)
+
+  def give_random_possessions(self, char, possessions):
+    assert not char.random_possessions().keys() - assets.Card.DECKS
+    for deck, count in possessions.items():
+      for _ in range(count):
+        char.possessions.append(getattr(self, deck).popleft())
 
   def get_modifier(self, thing, attribute):
     modifier = 0

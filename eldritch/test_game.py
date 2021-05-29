@@ -12,6 +12,7 @@ if os.path.abspath(sys.path[0]) == os.path.dirname(os.path.abspath(__file__)):
 import eldritch.characters as characters
 import eldritch.eldritch as eldritch
 import eldritch.events as events
+import eldritch.gate_encounters as gate_encounters
 import eldritch.mythos as mythos
 
 
@@ -19,7 +20,7 @@ class GateTravelTest(unittest.TestCase):
 
   def setUp(self):
     self.state = eldritch.GameState()
-    self.state.initialize()
+    self.state.initialize_for_tests()
     self.state.characters = self.state.characters[:1]
     self.state.mythos.clear()
     self.state.mythos.append(mythos.Mythos5())
@@ -49,6 +50,7 @@ class GateTravelTest(unittest.TestCase):
     self.assertEqual(char.place.name, world_name + "1")
 
   def testOtherWorldMovement(self):
+    self.state.gate_cards.extend(gate_encounters.CreateGateCards())
     char = self.state.characters[0]
     char.place = self.state.places["City1"]
     self.state.turn_phase = "upkeep"
@@ -74,7 +76,7 @@ class NextTurnTest(unittest.TestCase):
 
   def setUp(self):
     self.state = eldritch.GameState()
-    self.state.initialize()
+    self.state.initialize_for_tests()
     self.state.characters = self.state.characters[:3]
 
   def testTurnProgression(self):

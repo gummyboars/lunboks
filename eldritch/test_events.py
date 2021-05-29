@@ -23,7 +23,7 @@ class EventTest(unittest.TestCase):
   def setUp(self):
     self.char = characters.Character("Dummy", 5, 5, 4, 4, 4, 4, 4, 4, 4, "Diner")
     self.state = eldritch.GameState()
-    self.state.initialize()
+    self.state.initialize_for_tests()
     for attr in ["common", "unique", "spells", "skills", "allies"]:
       getattr(self.state, attr).clear()
     self.state.characters = [self.char]

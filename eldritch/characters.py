@@ -137,23 +137,72 @@ class Character(object):
     threshold = 5 - self.bless_curse
     return len([result for result in roll if result >= threshold])
 
+  def abilities(self):
+    return []
+
+
+class Nun(Character):
+
+  def __init__(self):
+    super(Nun, self).__init__("Nun", 3, 7, 4, 4, 3, 4, 4, 6, 1, "Church")
+
+  def initial_attributes(self):
+    return {"bless_curse": 1}
+
+  def fixed_possessions(self):
+    return {"common": ["Cross"], "unique": ["Holy Water"]}
+
+  def random_possessions(self):
+    return {"spells": 2, "skills": 1}
+
+
+class Doctor(Character):
+
+  def __init__(self):
+    super(Doctor, self).__init__("Doctor", 5, 5, 3, 5, 3, 4, 5, 4, 2, "Hospital")
+
+  def abilities(self):
+    return [abilities.Medicine()]
+
+  def initial_attributes(self):
+    return {"dollars": 9, "clues": 1}
+
+  def fixed_possessions(self):
+    return {}
+
+  def random_possessions(self):
+    return {"common": 2, "spells": 2, "skills": 1}
+
+
+class Archaeologist(Character):
+
+  def __init__(self):
+    super(Archaeologist, self).__init__("Archaeologist", 7, 3, 4, 3, 5, 3, 4, 5, 2, "Shop")
+
+  def initial_attributes(self):
+    return {"dollars": 7, "clues": 1}
+
+  def fixed_possessions(self):
+    return {"common": [".38 Revolver", "Bullwhip"]}
+
+  def random_possessions(self):
+    return {"unique": 2, "skills": 1}
+
+
+class Gangster(Character):
+
+  def __init__(self):
+    super(Gangster, self).__init__("Gangster", 7, 3, 5, 4, 6, 4, 3, 3, 1, "House")
+
+  def initial_attributes(self):
+    return {"dollars": 8}
+
+  def fixed_possessions(self):
+    return {"common": ["Dynamite", "Tommy Gun"]}
+
+  def random_possessions(self):
+    return {"unique": 1, "skills": 1}
+
 
 def CreateCharacters():
-  # TODO: there's a lot of cleanup needed here, especially around starting equipment.
-  Nun = Character("Nun", 3, 7, 4, 4, 3, 4, 4, 6, 1, "Church")
-  Nun.bless_curse = 1
-  Doctor = Character("Doctor", 5, 5, 3, 5, 3, 4, 5, 4, 2, "Hospital")
-  Doctor.dollars = 9
-  Doctor.clues = 1
-  Archaeologist = Character("Archaeologist", 7, 3, 4, 3, 5, 3, 4, 5, 2, "Shop")
-  Archaeologist.dollars = 7
-  Archaeologist.clues = 1
-  Gangster = Character("Gangster", 7, 3, 5, 4, 6, 4, 3, 3, 1, "House")
-  Gangster.dollars = 8
-
-  Nun.possessions.extend([items.Cross(), items.HolyWater()])
-  Doctor.possessions.extend([abilities.Medicine()])
-  Archaeologist.possessions.extend([items.Revolver38(), items.Bullwhip()])
-  Gangster.possessions.extend([items.Dynamite(), items.TommyGun()])
-
-  return [Nun, Doctor, Archaeologist, Gangster]
+  return [Nun(), Doctor(), Archaeologist(), Gangster()]
