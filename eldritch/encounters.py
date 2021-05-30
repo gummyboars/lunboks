@@ -213,6 +213,7 @@ def Sanctum5(char):
 def Sanctum6(char):
   return events.Nothing() #TODO: A monster appears
 def Sanctum7(char):
+  # TODO: there has to actually be a gate open for you to do this.
   prereq = events.AttributePrerequisite(char, "clues", 2, "at least")
   check = events.Check(char, "lore", -2)
   close = events.Nothing() # TODO: Close a gate
@@ -358,10 +359,14 @@ def Graveyard4(char):
   return events.Nothing()
 def Graveyard5(char):
   check = events.Check(char, 'luck', -2)
-  #TODO: You may move to any location
-  move = events.Nothing()
+  choice = events.LocationChoice(
+      char, "Move anywhere in the city and have an encounter?", choice_filters={"open"},
+      none_choice="No thanks",
+  )
+  move = events.ForceMovement(char, choice)
+  encounter = events.Encounter(char, choice)
   clues = events.Gain(char, {"clues": 2})
-  rubbings = events.Sequence([clues, move], char)
+  rubbings = events.Sequence([clues, choice, move, encounter], char)
   return events.PassFail(char, check, rubbings, events.Nothing())
 def Graveyard6(char):
   return events.Gain(char, {"sanity": 2})
@@ -516,8 +521,13 @@ def Shop7(char):
 
 def Newspaper1(char):
   money = events.Gain(char, {"dollars": 2})
-  move = events.Nothing() # TODO: move to any location or street, if a location, have an event
-  return events.Sequence([money, move], char)
+  choice = events.LocationChoice(
+      char, "Get a ride anywhere in the city and have an encounter?", choice_filters={"open"},
+      none_choice="No thanks",
+  )
+  move = events.ForceMovement(char, choice)
+  encounter = events.Encounter(char, choice)
+  return events.Sequence([money, choice, move, encounter], char)
 def Newspaper2(char):
   return events.Gain(char, {"dollars": 5})
 def Newspaper3(char):
@@ -552,10 +562,13 @@ def Train3(char):
 def Train4(char):
   return events.Nothing() # TODO: draw the top common item and purchase it for +1 if you wish
 def Train5(char):
-  move = events.Nothing() # TODO: Move to a street or location of your choice and have an encounter there
-  choice = events.BinaryChoice(char, "Accept a ride?", "Yes", "No",
-                              move, events.Nothing())
-  return choice
+  choice = events.LocationChoice(
+      char, "Get a ride anywhere in the city and have an encounter?", choice_filters={"open"},
+      none_choice="No thanks",
+  )
+  move = events.ForceMovement(char, choice)
+  encounter = events.Encounter(char, choice)
+  return events.Sequence([choice, move, encounter], char)
 def Train6(char):
   prereq = events.AttributePrerequisite(char, "dollars", 3, "at least")
   pay = events.Loss(char, {"dollars": 3})
@@ -613,7 +626,13 @@ def Asylum7(char):
   return events.BinaryChoice(char, "Do you resist?", "Yes", "No", fight, rest)
 
 def Bank1(char):
-  return events.Nothing() # TODO: implement location choice
+  choice = events.LocationChoice(
+      char, "Catch a lift to anywhere in the city and have an encounter?",
+      choice_filters={"open"}, none_choice="No thanks",
+  )
+  move = events.ForceMovement(char, choice)
+  encounter = events.Encounter(char, choice)
+  return events.Sequence([choice, move, encounter], char)
 def Bank2(char):
   check = events.Check(char, "luck", -1)
   spend = events.Loss(char, {"dollars": 2})

@@ -136,6 +136,27 @@ class MovementTest(EventTest):
     self.assertEqual(self.char.place.name, "Graveyard")
     self.assertEqual(self.char.movement_points, 4)
 
+  def testForceMovementFromChoice(self):
+    choice = LocationChoice(self.char, "choose a place", choice_filters={"locations"})
+    movement = ForceMovement(self.char, choice)
+    self.state.event_stack.append(Sequence([choice, movement], self.char))
+
+    loc_choice = self.resolve_to_choice(LocationChoice)
+    loc_choice.resolve(self.state, "Woods")
+    self.resolve_until_done()
+
+    self.assertEqual(self.char.place.name, "Woods")
+
+  def testForceMovementNoChoices(self):
+    self.assertEqual(self.char.place.name, "Diner")
+    choice = LocationChoice(self.char, "choose a place", choice_filters={"gate"})
+    movement = ForceMovement(self.char, choice)
+    self.state.event_stack.append(Sequence([choice, movement], self.char))
+
+    self.resolve_until_done()
+
+    self.assertEqual(self.char.place.name, "Diner")
+
   def testLoseExploredOnMovement(self):
     self.char.place = self.state.places["Graveyard"]
     self.char.explored = True
@@ -813,6 +834,48 @@ class ItemChoiceTest(EventTest):
 
     choice.resolve(self.state, [2])
     self.resolve_until_done()
+
+
+class LocationChoiceTest(EventTest):
+
+  def testChooseAnyLocation(self):
+    choice = LocationChoice(self.char, "choose place", choice_filters={"streets", "locations"})
+    self.state.event_stack.append(choice)
+    self.resolve_to_choice(LocationChoice)
+
+    with self.assertRaises(AssertionError):
+      choice.resolve(self.state, "nowhere")
+
+    choice.resolve(self.state, "Diner")
+
+  def testChooseFromFixedLocations(self):
+    choice = LocationChoice(self.char, "choose place", choices=["Diner", "Southside", "Church"])
+    self.state.event_stack.append(choice)
+    self.resolve_to_choice(LocationChoice)
+
+    with self.assertRaises(AssertionError):
+      choice.resolve(self.state, "Bank")
+
+    choice.resolve(self.state, "Diner")
+
+  def testChooseOnlyGateLocations(self):
+    choice = LocationChoice(self.char, "choose place", choice_filters={"gate"})
+    self.state.event_stack.append(choice)
+    self.state.places["Square"].gate = self.state.gates.popleft()
+    self.resolve_to_choice(LocationChoice)
+
+    with self.assertRaises(AssertionError):
+      choice.resolve(self.state, "Woods")
+
+    choice.resolve(self.state, "Square")
+
+  def testChooseGateLocationsNoGates(self):
+    choice = LocationChoice(self.char, "choose place", choice_filters={"gate"})
+    self.state.event_stack.append(choice)
+    self.resolve_until_done()
+
+    self.assertTrue(choice.is_resolved())
+    self.assertIsNone(choice.choice)
 
 
 class ActivateItemsTest(EventTest):

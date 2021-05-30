@@ -583,6 +583,13 @@ class ForceMovement(Event):
     self.done = False
 
   def resolve(self, state):
+    if isinstance(self.location_name, LocationChoice):
+      assert self.location_name.is_resolved()
+      if self.location_name.choice is None:
+        # No need to reset explored, since the character did not move.
+        self.done = True
+        return True
+      self.location_name = self.location_name.choice
     self.character.place = state.places[self.location_name]
     self.character.explored = False
     self.done = True
@@ -682,6 +689,17 @@ class Encounter(Event):
     self.encounter = None
 
   def resolve(self, state):
+    if isinstance(self.location_name, LocationChoice):
+      assert self.location_name.is_resolved()
+      name = self.location_name.choice
+      if name is None or not isinstance(state.places[name], places.Location):
+        if self.encounter:
+          return True
+        self.encounter = Nothing()
+        state.event_stack.append(self.encounter)
+        return False
+      self.location_name = self.location_name.choice
+
     if self.character.lodge_membership and self.location_name == "Lodge":
       self.location_name = "Sanctum"
 
@@ -1482,6 +1500,9 @@ class ChoiceEvent(Event):
   def prompt(self):
     raise NotImplementedError
 
+  def compute_choices(self, state):
+    pass
+
 
 class MultipleChoice(ChoiceEvent):
 
@@ -1575,6 +1596,75 @@ class ItemCountChoice(ItemChoice):
 
 class CardChoice(MultipleChoice):
   pass
+
+
+class LocationChoice(ChoiceEvent):
+
+  VALID_FILTERS = {"streets", "locations", "open", "closed", "gate", "nogate"}
+
+  def __init__(self, character, prompt, choices=None, choice_filters=None, none_choice=None):
+    assert choices or choice_filters
+    assert not (choices and choice_filters)
+    self.character = character
+    self._prompt = prompt
+    if choices:
+      self.choices = choices
+      self.choice_filters = None
+    else:
+      assert choice_filters & self.VALID_FILTERS
+      assert not choice_filters - self.VALID_FILTERS
+      for pair in [{"streets", "locations"}, {"open", "closed"}, {"gate", "nogate"}]:
+        if not choice_filters & pair:
+          choice_filters |= pair
+      self.choices = None
+      self.choice_filters = choice_filters
+    self.choice = None
+    self.none_choice = none_choice
+
+  def resolve(self, state, choice=None):
+    if choice is not None and choice == self.none_choice:
+      self.choices = []  # Hack, mark as resolved without setting self.choice.
+      return True
+    assert choice in self.choices
+    self.choice = choice
+    return True
+
+  def is_resolved(self):
+    # It is possible to have no choices (e.g. with "gate" when there are no gates on the board).
+    # In the case where there are no choices, the choice reader must account for it.
+    return self.choice is not None or self.choices == []
+
+  def compute_choices(self, state):
+    if self.choices:
+      return
+    self.choices = []
+    for name, place in state.places.items():
+      if not isinstance(place, (places.Location, places.Street)):
+        continue
+      if "locations" not in self.choice_filters and isinstance(place, places.Location):
+        continue
+      if "streets" not in self.choice_filters and isinstance(place, places.Street):
+        continue
+      if "closed" not in self.choice_filters and getattr(place, "closed", False):
+        continue
+      if "open" not in self.choice_filters and not getattr(place, "closed", False):
+        continue
+      if "gate" not in self.choice_filters and getattr(place, "gate", None) is not None:
+        continue
+      if "nogate" not in self.choice_filters and getattr(place, "gate", None) is None:
+        continue
+      self.choices.append(name)
+
+  def prompt(self):
+    return self._prompt
+
+  def start_str(self):
+    if self.choices:
+      return f"{self.character.name} must choose one of " + ", ".join(self.choices)
+    return ""  # TODO
+
+  def finish_str(self):
+    return f"{self.character.name} chose {self.choice}"
 
 
 class EvadeOrFightAll(Sequence):

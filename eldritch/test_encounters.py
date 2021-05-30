@@ -80,6 +80,44 @@ class DrawEncounterTest(EncounterTest):
       self.resolve_until_done()
     self.assertEqual(self.char.bless_curse, -1)
 
+  def testDrawEncounterFromChoice(self):
+    self.char.place = self.state.places["Graveyard"]
+    self.state.places["University"].encounters = [
+        encounters.EncounterCard("University2", {"Administration": encounters.Administration2})]
+    choice = LocationChoice(self.char, "choose a place", choice_filters={"locations"})
+    enc = Encounter(self.char, choice)
+    self.state.event_stack.append(Sequence([choice, enc], self.char))
+    loc_choice = self.resolve_to_choice(LocationChoice)
+    loc_choice.resolve(self.state, "Administration")
+    self.resolve_until_done()
+    self.assertEqual(self.char.clues, 1)
+
+  def testDrawEncounterInStreet(self):
+    self.char.place = self.state.places["Graveyard"]
+    self.char.sanity = 3
+    self.state.places["Rivertown"].encounters = [
+        encounters.EncounterCard("Rivertown6", {"Graveyard": encounters.Graveyard6})]
+    choice = LocationChoice(self.char, "choose a place", choice_filters={"locations", "streets"})
+    enc = Encounter(self.char, choice)
+    self.state.event_stack.append(Sequence([choice, enc], self.char))
+    loc_choice = self.resolve_to_choice(LocationChoice)
+    loc_choice.resolve(self.state, "University")
+    self.resolve_until_done()
+    self.assertEqual(self.char.sanity, 3)
+
+  def testDrawEncounterNoChoices(self):
+    self.char.place = self.state.places["Graveyard"]
+    self.char.sanity = 3
+    self.state.places["Rivertown"].encounters = [
+        encounters.EncounterCard("Rivertown6", {"Graveyard": encounters.Graveyard6})]
+    choice = LocationChoice(self.char, "choose a place", choice_filters={"gate"})
+    enc = Encounter(self.char, choice)
+    self.state.event_stack.append(Sequence([choice, enc], self.char))
+    self.resolve_until_done()
+    self.assertEqual(self.char.sanity, 3)
+
+  # TODO: add a test for a gate.
+
 
 class DinerTest(EncounterTest):
 
@@ -1456,6 +1494,25 @@ class BankTest(EncounterTest):
     super(BankTest, self).setUp()
     self.char.place = self.state.places["Bank"]
 
+  def testBank1Move(self):
+    self.state.event_stack.append(encounters.Bank1(self.char))
+    choice = self.resolve_to_choice(LocationChoice)
+
+    self.state.places["University"].encounters = [
+        encounters.EncounterCard("University2", {"Administration": encounters.Administration2})]
+    choice.resolve(self.state, "Administration")
+    self.resolve_until_done()
+    self.assertEqual(self.char.clues, 1)
+    self.assertEqual(self.char.place.name, "Administration")
+
+  def testBank1NoThanks(self):
+    self.state.event_stack.append(encounters.Bank1(self.char))
+    choice = self.resolve_to_choice(LocationChoice)
+    choice.resolve(self.state, "No thanks")
+    self.resolve_until_done()
+    self.assertEqual(self.char.clues, 0)
+    self.assertEqual(self.char.place.name, "Bank")
+
   def testBank2NoMoney(self):
     self.state.event_stack.append(encounters.Bank2(self.char))
     self.char.dollars = 1
@@ -1755,6 +1812,27 @@ class NewspaperTest(EncounterTest):
     super(NewspaperTest, self).setUp()
     self.char.place = self.state.places["Newspaper"]
 
+  def testNewspaper1Move(self):
+    self.state.event_stack.append(encounters.Newspaper1(self.char))
+    choice = self.resolve_to_choice(LocationChoice)
+    self.assertEqual(self.char.dollars, 5)
+
+    self.state.places["University"].encounters = [
+        encounters.EncounterCard("University2", {"Administration": encounters.Administration2})]
+    choice.resolve(self.state, "Administration")
+    self.resolve_until_done()
+    self.assertEqual(self.char.clues, 1)
+    self.assertEqual(self.char.place.name, "Administration")
+
+  def testNewspaper1NoThanks(self):
+    self.state.event_stack.append(encounters.Newspaper1(self.char))
+    choice = self.resolve_to_choice(LocationChoice)
+    self.assertEqual(self.char.dollars, 5)
+    choice.resolve(self.state, "No thanks")
+    self.resolve_until_done()
+    self.assertEqual(self.char.clues, 0)
+    self.assertEqual(self.char.place.name, "Newspaper")
+
   def testNewspaper2(self):
     self.state.event_stack.append(encounters.Newspaper2(self.char))
     self.resolve_until_done()
@@ -1877,6 +1955,25 @@ class TrainTest(EncounterTest):
 
     self.assertEqual(self.char.stamina, 4)
     self.assertEqual(self.char.sanity, 4)
+
+  def testTrain5Move(self):
+    self.state.event_stack.append(encounters.Train5(self.char))
+    choice = self.resolve_to_choice(LocationChoice)
+
+    self.state.places["University"].encounters = [
+        encounters.EncounterCard("University2", {"Administration": encounters.Administration2})]
+    choice.resolve(self.state, "Administration")
+    self.resolve_until_done()
+    self.assertEqual(self.char.clues, 1)
+    self.assertEqual(self.char.place.name, "Administration")
+
+  def testTrain5NoThanks(self):
+    self.state.event_stack.append(encounters.Train5(self.char))
+    choice = self.resolve_to_choice(LocationChoice)
+    choice.resolve(self.state, "No thanks")
+    self.resolve_until_done()
+    self.assertEqual(self.char.clues, 0)
+    self.assertEqual(self.char.place.name, "Train")
 
   def testTrain6NoMoney(self):
     self.state.event_stack.append(encounters.Train6(self.char))
@@ -3548,13 +3645,35 @@ class GraveyardTest(EncounterTest):
       self.resolve_until_done()
     self.assertEqual(self.char.clues, 0)
 
-# Todo: move where you like
-#  def testGraveyard5Pass(self):
-#    self.state.event_stack.append(encounters.Graveyard5(self.char))
-#    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
-#      self.resolve_until_choice(MultipleChoice)
-#    self.assertEqual(self.char.clues, 2)
-#    raise NotImplementedError("Move to another location)
+  def testGraveyard5PassStreet(self):
+    self.state.event_stack.append(encounters.Graveyard5(self.char))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      choice = self.resolve_to_choice(LocationChoice)
+    self.assertEqual(self.char.clues, 2)
+
+    choice.resolve(self.state, "Downtown")
+    self.resolve_until_done()
+
+  def testGraveyard5PassNowhere(self):
+    self.state.event_stack.append(encounters.Graveyard5(self.char))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      choice = self.resolve_to_choice(LocationChoice)
+    self.assertEqual(self.char.clues, 2)
+
+    choice.resolve(self.state, "No thanks")
+    self.resolve_until_done()
+
+  def testGraveyard5PassLocation(self):
+    self.state.event_stack.append(encounters.Graveyard5(self.char))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      choice = self.resolve_to_choice(LocationChoice)
+    self.assertEqual(self.char.clues, 2)
+
+    self.state.places["University"].encounters = [
+        encounters.EncounterCard("University2", {"Administration": encounters.Administration2})]
+    choice.resolve(self.state, "Administration")
+    self.resolve_until_done()
+    self.assertEqual(self.char.clues, 3)
 
   def testGraveyard6(self):
     self.state.event_stack.append(encounters.Graveyard6(self.char))

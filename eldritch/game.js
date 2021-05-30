@@ -51,7 +51,7 @@ function continueInit(gameId) {
     desc.id = "place" + name + "desc";
     desc.classList.add("desc");
     hover.appendChild(desc);
-    div.onclick = function(e) { moveTo(name); };
+    div.onclick = function(e) { clickPlace(name); };
     cont.appendChild(div);
     let opt = document.createElement("OPTION");
     opt.value = name;
@@ -76,7 +76,7 @@ function continueInit(gameId) {
     desc.id = "place" + name + "desc";
     desc.classList.add("desc");
     hover.appendChild(desc);
-    div.onclick = function(e) { moveTo(name); };
+    div.onclick = function(e) { clickPlace(name); };
     cont.appendChild(div);
     let opt = document.createElement("OPTION");
     opt.value = name;
@@ -150,15 +150,20 @@ function handleData(data) {
   updateDice(data.check_result, data.dice_result);
   updateCharacters(data.characters);
   updateMonsters(data.monsters);
-  if (messageQueue.length && !runningAnim.length) {
-    handleData(messageQueue.shift());
-  }
   updateChoices(data.choice);
   updateUsables(data.usables, data.choice);
   updateEventLog(data.event_log);
+  if (messageQueue.length && !runningAnim.length) {
+    handleData(messageQueue.shift());
+  }
 }
 
-function moveTo(place) {
+function clickPlace(place) {
+  let hDiv = document.getElementById("place" + place + "hover");
+  if (hDiv.classList.contains("selectable")) {
+    ws.send(JSON.stringify({"type": "choice", "choice": place}));
+    return;
+  }
   ws.send(JSON.stringify({"type": "move", "place": place}));
 }
 
@@ -291,6 +296,12 @@ function updateChoices(choice) {
   let uichoice = document.getElementById("uichoice");
   let uicardchoice = document.getElementById("uicardchoice");
   let pDiv = document.getElementById("possessions");
+  for (let place of document.getElementsByClassName("place")) {
+    let divId = place.id;
+    let hover = document.getElementById(divId + "hover");
+    hover.classList.remove("selectable");
+    hover.classList.remove("unselectable");
+  }
   if (choice == null) {
     uichoice.style.display = "none";
     itemsToChoose = null;
@@ -322,7 +333,9 @@ function updateChoices(choice) {
     itemsToChoose = null;
     itemChoice = [];
     pDiv.classList.remove("choose");
-    if (choice.cards != null) {
+    if (choice.places != null) {
+      updatePlaceChoices(uichoice, choice.places);
+    } else if (choice.cards != null) {
       addCardChoices(uicardchoice, choice.cards);
     } else {
       addChoices(uichoice, choice.choices);
@@ -482,6 +495,30 @@ function updateDistances(distances) {
     hover.classList.add("reachable");
     let textDiv = document.getElementById("place" + placeName + "desc");
     textDiv.innerText = distances[placeName];
+  }
+}
+
+function updatePlaceChoices(uichoice, places) {
+  let notFound = [];
+  for (let place of document.getElementsByClassName("place")) {
+    let divId = place.id;
+    let hover = document.getElementById(divId + "hover");
+    hover.classList.remove("selectable");
+    hover.classList.add("unselectable");
+  }
+  for (let placeName of places) {
+    let hover = document.getElementById("place" + placeName + "hover");
+    if (hover == null) {
+      notFound.push(placeName);
+      continue;
+    }
+    hover.classList.add("selectable");
+    hover.classList.remove("unselectable");
+    let desc = document.getElementById("place" + placeName + "desc");
+    desc.innerText = "Choose";
+  }
+  if (notFound.length) {
+    addChoices(uichoice, notFound);
   }
 }
 

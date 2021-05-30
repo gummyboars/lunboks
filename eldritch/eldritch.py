@@ -183,6 +183,10 @@ class GameState(object):
         output["choice"] = {"prompt": top_event.prompt()}
         if isinstance(top_event, events.CardChoice):
           output["choice"]["cards"] = top_event.choices
+        elif isinstance(top_event, events.LocationChoice):
+          if top_event.choices is not None:
+            extra_choices = [top_event.none_choice] if top_event.none_choice is not None else []
+            output["choice"]["places"] = top_event.choices + extra_choices
         elif isinstance(top_event, events.MultipleChoice):
           output["choice"]["choices"] = top_event.choices
         elif isinstance(top_event, events.CombatChoice):
@@ -244,8 +248,10 @@ class GameState(object):
       # If the event requires the character to make a choice, stop here.
       self.usables = self.get_usable_interrupts(event)
       if isinstance(event, events.ChoiceEvent) and not event.is_resolved():
-        yield None
-        return
+        event.compute_choices(self)
+        if not event.is_resolved():
+          yield None
+          return
       if not all([self.done_using.get(char_idx) for char_idx in self.usables]):
         yield None
         return
