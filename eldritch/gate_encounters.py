@@ -1,4 +1,4 @@
-import eldritch.events as events
+from eldritch import events
 
 
 class GateCard(object):

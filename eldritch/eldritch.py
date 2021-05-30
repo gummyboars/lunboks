@@ -8,17 +8,17 @@ from game import (
     InvalidPlayer, TooManyPlayers, NotYourTurn,
 )
 
-import eldritch.abilities as abilities
-import eldritch.assets as assets
-import eldritch.characters as characters
-import eldritch.encounters as encounters
-import eldritch.events as events
-import eldritch.gates as gates
-import eldritch.gate_encounters as gate_encounters
-import eldritch.items as items
-import eldritch.monsters as monsters
-import eldritch.mythos as mythos
-import eldritch.places as places
+from eldritch import abilities
+from eldritch import assets
+from eldritch import characters
+from eldritch import encounters
+from eldritch import events
+from eldritch import gates
+from eldritch import gate_encounters
+from eldritch import items
+from eldritch import monsters
+from eldritch import mythos
+from eldritch import places
 
 
 class GameState(object):

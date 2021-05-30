@@ -1,6 +1,6 @@
 from eldritch.assets import Asset, Card
-import eldritch.events as events
-import eldritch.places as places
+from eldritch import events
+from eldritch import places
 
 
 class Item(Card):

@@ -4,7 +4,7 @@ import operator
 from random import SystemRandom
 random = SystemRandom()
 
-import eldritch.places as places
+from eldritch import places
 
 
 class Event(metaclass=abc.ABCMeta):

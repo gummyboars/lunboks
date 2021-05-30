@@ -1,6 +1,6 @@
-import eldritch.events as events
-import eldritch.items as items
-import eldritch.places as places
+from eldritch import events
+from eldritch import items
+from eldritch import places
 
 
 class EncounterCard(object):

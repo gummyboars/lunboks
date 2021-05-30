@@ -1,7 +1,7 @@
 import abc
 import collections
 
-import eldritch.events as events
+from eldritch import events
 
 
 CHECK_TYPES = {"speed", "sneak", "fight", "will", "lore", "luck"}

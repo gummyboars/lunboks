@@ -1,5 +1,5 @@
-import eldritch.assets as assets
-import eldritch.events as events
+from eldritch import assets
+from eldritch import events
 
 
 class BonusSkill(assets.Card):

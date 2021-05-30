@@ -9,11 +9,11 @@ from unittest import mock
 if os.path.abspath(sys.path[0]) == os.path.dirname(os.path.abspath(__file__)):
   sys.path[0] = os.path.dirname(sys.path[0])
 
-import eldritch.events as events
+from eldritch import events
 from eldritch.events import *
-import eldritch.items as items
-import eldritch.monsters as monsters
-import eldritch.mythos as mythos
+from eldritch import items
+from eldritch import monsters
+from eldritch import mythos
 from eldritch.test_events import EventTest
 
 

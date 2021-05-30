@@ -9,11 +9,11 @@ from unittest import mock
 if os.path.abspath(sys.path[0]) == os.path.dirname(os.path.abspath(__file__)):
   sys.path[0] = os.path.dirname(sys.path[0])
 
-import eldritch.characters as characters
-import eldritch.eldritch as eldritch
-import eldritch.events as events
-import eldritch.gate_encounters as gate_encounters
-import eldritch.mythos as mythos
+from eldritch import characters
+from eldritch import eldritch
+from eldritch import events
+from eldritch import gate_encounters
+from eldritch import mythos
 
 
 class GateTravelTest(unittest.TestCase):
