@@ -59,11 +59,18 @@ button {
 .choice {
   width: 100%;
   flex: 1 1 auto;
-  cursor: pointer;
   border-top: 1px solid black;
 }
-.choice:hover {
+.choice.choosable {
+  cursor: pointer;
+}
+.choice.choosable:hover {
   background: saddlebrown;
+}
+.choice.unchoosable {
+  cursor: not-allowed;
+  background: darkgrey;
+  text-decoration: line-through;
 }
 #uiuse {
   position: absolute;

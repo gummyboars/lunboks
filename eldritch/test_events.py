@@ -797,6 +797,32 @@ class BinaryChoiceTest(EventTest):
         self.assertEqual(self.char.dollars, expected_dollars)
 
 
+class PrereqChoiceTest(EventTest):
+
+  def testMismatchedLengths(self):
+    p = AttributePrerequisite(self.char, "dollars", 2, "at least")
+    with self.assertRaises(AssertionError):
+      PrereqChoice(self.char, "choose", ["Yes", "No"], [p])
+
+  def testInvalidChoices(self):
+    c = AttributePrerequisite(self.char, "clues", 1, "at least")
+    d = AttributePrerequisite(self.char, "sanity", 1, "at least")
+    s = AttributePrerequisite(self.char, "stamina", 3, "less than")
+    choices = ["Spend 1 clue", "Spend 1 sanity", "Gain stamina", "Do Nothing"]
+    choice = PrereqChoice(self.char, "choose", choices, [c, d, s, None])
+    self.state.event_stack.append(Sequence([c, d, s, choice], self.char))
+    choice = self.resolve_to_choice(PrereqChoice)
+
+    self.assertEqual(choice.choices, choices)
+    self.assertEqual(choice.invalid_choices, [0, 2])
+
+    with self.assertRaises(AssertionError):
+      choice.resolve(self.state, "Spend 1 clue")
+
+    choice.resolve(self.state, "Spend 1 sanity")
+    self.assertEqual(choice.choice_index, 1)
+
+
 class ItemChoiceTest(EventTest):
 
   def setUp(self):

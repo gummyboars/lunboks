@@ -33,10 +33,10 @@ def Diner1(char):
 def Diner2(char):
   return events.DrawSpecific(char, "common", "Food")
 def Diner3(char):
-  adj = events.GainOrLoss(char, {"stamina": 2}, {"dollars": 1})
-  choice = events.BinaryChoice(char, "Pay $1 for pie?", "Pay $1", "Go Hungry", adj, events.Nothing())
   prereq = events.AttributePrerequisite(char, "dollars", 1, "at least")
-  return events.PassFail(char, prereq, choice, events.Nothing())
+  adj = events.GainOrLoss(char, {"stamina": 2}, {"dollars": 1})
+  return events.BinaryChoice(
+      char, "Pay $1 for pie?", "Pay $1", "Go Hungry", adj, events.Nothing(), prereq)
 def Diner4(char):
   gain = events.Gain(char, {"dollars": 5})
   check = events.Check(char, "will", -2)
@@ -66,8 +66,7 @@ def Roadhouse1(char):
   draw = events.GainAllyOrReward(char, "Traveling Salesman", draw2)
   take = events.Sequence([spend, draw], char)
   nothing = events.Nothing()
-  choice = events.BinaryChoice(char, "Spend 3 clues for an ally?", "Yes", "No", take, nothing)
-  return events.PassFail(char, prereq, choice, nothing)
+  return events.BinaryChoice(char, "Spend 3 clues for an ally?", "Yes", "No", take, nothing, prereq)
 def Roadhouse2(char):
   check = events.Check(char, "luck", -1)
   gain = events.Gain(char, {"dollars": 5})
@@ -146,9 +145,8 @@ def Lodge4(char):
   membership = events.MembershipChange(char, True)
   move = events.ForceMovement(char, "FrenchHill")
   resist = events.PassFail(char, check, move, events.Sequence([damage, move], char))
-  choice = events.BinaryChoice(char, "Join the Lodge?", "Yes", "No",
-                               events.Sequence([pay, membership], char), resist)
-  return events.PassFail(char, prereq, choice, resist)
+  join = events.Sequence([pay, membership], char)
+  return events.BinaryChoice(char, "Pay $3 to join the Lodge?", "Yes", "No", join, resist, prereq)
 def Lodge5(char):
   check = events.Check(char, "lore", -1)
   gain = events.Gain(char, {"clues": 3})
@@ -200,12 +198,7 @@ def Sanctum4(char):
   dreams = events.Loss(char, {"sanity": 2})
   membership = events.MembershipChange(char, False)
   decline = events.Sequence([membership, dreams], char)
-  return events.PassFail(
-    char,
-    prereq,
-    events.BinaryChoice(char, "Pay your dues?", "Spend $3", "Decline", dues, decline),
-    decline
-  )
+  return events.BinaryChoice(char, "Pay your dues?", "Spend $3", "Decline", dues, decline, prereq)
 def Sanctum5(char):
   check = events.Check(char, "luck", -2)
   curse = events.BlessCurse(char, False)
@@ -221,8 +214,8 @@ def Sanctum7(char):
   cost = events.Loss(char, {"clues": 2, "sanity": 1})
   ceremony = events.PassFail(char, check, close, nothing)
   seq = events.Sequence([cost, ceremony], char)
-  participate = events.BinaryChoice(char, "Participate in a gating ceremony?", "Yes", "No", seq, nothing)
-  return events.PassFail(char, prereq, participate, nothing)
+  return events.BinaryChoice(
+      char, "Participate in a gating ceremony?", "Yes", "No", seq, nothing, prereq)
 
 def Witch1(char):
   reward = events.Gain(char, {"clues": 2})
@@ -302,8 +295,8 @@ def Cave6(char):
   give_whiskey = events.DiscardNamed(char, "Whiskey")
   gain = events.PassFail(char, check, ally, events.Nothing())
   seq = events.Sequence([give_whiskey, ally], char)
-  choose_give_food = events.BinaryChoice(char, "Discard whiskey to pass automatically?", "Yes", "No", seq, gain)
-  return events.PassFail(char, prereq, choose_give_food, gain)
+  return events.BinaryChoice(
+      char, "Discard whiskey to pass automatically?", "Yes", "No", seq, gain, prereq)
 def Cave7(char):
   check = events.Check(char, "luck", 0)
   evil = events.Loss(char, {"sanity": 1, "stamina": 1})
@@ -333,10 +326,10 @@ def Store6(char):
   pay = events.Loss(char, {'dollars': 1})
   guess = events.PassFail(char, check, events.Gain(char, {'dollars': 5}), events.Nothing())
   do_guess = events.Sequence([pay, guess], char)
-  choose_guess = events.BinaryChoice(
-    char, "Pay $1 to guess how many beans the jar contains?", "Yes", "No", do_guess, events.Nothing()
+  return events.BinaryChoice(
+    char, "Pay $1 to guess how many beans the jar contains?", "Yes", "No", do_guess,
+    events.Nothing(), prereq,
   )
-  return events.PassFail(char, prereq, choose_guess, events.Nothing())
 def Store7(char):
   return events.Draw(char, "common", 1)
 
@@ -576,9 +569,10 @@ def Train6(char):
   common = events.Draw(char, "common", 1)
   unique = events.Draw(char, "unique", 1)
   item = events.PassFail(char, check, unique, common)
-  choice = events.BinaryChoice(char, "Claim item left at lost and found for $3?", "Yes", "No",
-                               events.Sequence([pay, item], char), events.Nothing())
-  return events.PassFail(char, prereq, choice, events.Nothing())
+  return events.BinaryChoice(
+      char, "Claim item left at lost and found for $3?", "Yes", "No",
+      events.Sequence([pay, item], char), events.Nothing(), prereq,
+  )
 def Train7(char):
   check = events.Check(char, "luck", -1)
   unique = events.Draw(char, "unique", 1)
@@ -641,11 +635,10 @@ def Bank2(char):
   cond = events.Conditional(char, check, "successes", {0: common, 1: unique})
   prereq = events.AttributePrerequisite(char, "dollars", 2, "at least")
   nothing = events.Nothing()
-  choice = events.BinaryChoice(
+  return events.BinaryChoice(
       char, "Pay $2 for man's last possession?", "Pay $2", "Let man and his family go hungry",
-      events.Sequence([spend, check, cond], char), nothing,
+      events.Sequence([spend, check, cond], char), nothing, prereq,
   )
-  return events.PassFail(char, prereq, choice, nothing)
 def Bank3(char):
   prep = events.CombatChoice(char, "Choose weapons to fight the bank robbers")
   activate = events.ActivateChosenItems(char, prep)
@@ -893,8 +886,7 @@ def Woods5(char):
   give_food = events.DiscardNamed(char, "Food")
   catch = events.PassFail(char, check, dog, events.Nothing())
   seq = events.Sequence([give_food, dog], char)
-  choose_give_food = events.BinaryChoice(char, "Give food to the dog?", "Yes", "No", seq, catch)
-  return events.PassFail(char, prereq, choose_give_food, catch)
+  return events.BinaryChoice(char, "Give food to the dog?", "Yes", "No", seq, catch, prereq)
 def Woods6(char):
   return events.OpenGate("Woods")
 def Woods7(char):
@@ -938,8 +930,8 @@ def Shoppe3(char):
   jackpot = events.Draw(char, "unique", 2)
   cond = events.Conditional(char, luck, "successes", {0: events.Nothing(), 1: coins, 2: jackpot})
   buy = events.Sequence([events.Loss(char, {"dollars": 5}), luck, cond], char)
-  box = events.BinaryChoice(char, "Buy the locked trunk?", "Yes", "No", buy, events.Nothing())
-  return events.PassFail(char, prereq, box, events.Nothing())
+  nothing = events.Nothing()
+  return events.BinaryChoice(char, "Buy the locked trunk?", "Yes", "No", buy, nothing, prereq)
 def Shoppe4(char):
   check = events.Check(char, "lore", -1)
   curse = events.Curse(char)

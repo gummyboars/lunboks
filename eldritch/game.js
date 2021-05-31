@@ -336,9 +336,9 @@ function updateChoices(choice) {
     if (choice.places != null) {
       updatePlaceChoices(uichoice, choice.places);
     } else if (choice.cards != null) {
-      addCardChoices(uicardchoice, choice.cards);
+      addCardChoices(uicardchoice, choice.cards, choice.invalid_choices);
     } else {
-      addChoices(uichoice, choice.choices);
+      addChoices(uichoice, choice.choices, choice.invalid_choices);
     }
   }
 }
@@ -371,10 +371,15 @@ function addCardChoices(cardChoice, cards) {
   cardChoice.removeChild(cardChoice.lastChild);
 }
 
-function addChoices(uichoice, choices) {
-  for (let c of choices) {
+function addChoices(uichoice, choices, invalid_choices) {
+  for (let [idx, c] of choices.entries()) {
     let div = document.createElement("DIV");
     div.classList.add("choice");
+    if (invalid_choices != null && invalid_choices.includes(idx)) {
+      div.classList.add("unchoosable");
+    } else {
+      div.classList.add("choosable");
+    }
     div.innerText = c;
     div.onclick = function(e) { makeChoice(c); };
     uichoice.appendChild(div);

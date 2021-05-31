@@ -1514,9 +1514,12 @@ class MultipleChoice(ChoiceEvent):
 
   def resolve(self, state, choice=None):
     assert not self.is_resolved()
-    assert choice in self.choices
+    self.validate_choice(choice)
     self.choice = choice
     return True
+
+  def validate_choice(self, choice):
+    assert choice in self.choices
 
   def is_resolved(self):
     return self.choice is not None
@@ -1537,10 +1540,36 @@ class MultipleChoice(ChoiceEvent):
     return self.choices.index(self.choice)
 
 
-def BinaryChoice(character, prompt, first_choice, second_choice, first_event, second_event):
-  choice = MultipleChoice(character, prompt, [first_choice, second_choice])
-  outcome = Conditional(character, choice, "choice_index", {0: first_event, 1: second_event})
-  return Sequence([choice, outcome], character)
+class PrereqChoice(MultipleChoice):
+
+  def __init__(self, character, prompt, choices, prereqs):
+    assert len(choices) == len(prereqs)
+    super(PrereqChoice, self).__init__(character, prompt, choices)
+    self.prereqs = prereqs
+    self.invalid_choices = []
+
+  def compute_choices(self, state):
+    assert all([prereq is None or prereq.is_resolved() for prereq in self.prereqs])
+    for idx in range(len(self.choices)):
+      if self.prereqs[idx] is not None and self.prereqs[idx].successes < 1:
+        self.invalid_choices.append(idx)
+
+  def validate_choice(self, choice):
+    super(PrereqChoice, self).validate_choice(choice)
+    assert self.choices.index(choice) not in self.invalid_choices
+
+
+def BinaryChoice(
+    character, prompt, first_choice, second_choice, first_event, second_event, prereq=None):
+  sequence = []
+  if prereq is not None:
+    choice = PrereqChoice(character, prompt, [first_choice, second_choice], [prereq, None])
+    sequence.extend([prereq, choice])
+  else:
+    choice = MultipleChoice(character, prompt, [first_choice, second_choice])
+    sequence.append(choice)
+  sequence.append(Conditional(character, choice, "choice_index", {0: first_event, 1: second_event}))
+  return Sequence(sequence, character)
 
 
 class ItemChoice(ChoiceEvent):
