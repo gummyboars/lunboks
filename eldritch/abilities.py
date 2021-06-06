@@ -71,10 +71,19 @@ class Medicine(assets.Asset):
     super(Medicine, self).__init__("Medicine")
 
   def get_usable_trigger(self, event, owner, state):
-    # TODO: an actual event for upkeep
+    if not isinstance(event, events.UpkeepActions):
+      return None
+    return self.get_usable(event, owner, state)
+
+  def get_usable_interrupt(self, event, owner, state):
+    if not isinstance(event, (events.UpkeepActions, events.SliderInput)):
+      return None
+    return self.get_usable(event, owner, state)
+
+  def get_usable(self, event, owner, state):
     if self.exhausted:
       return None
-    if state.turn_phase != "upkeep" or state.characters[state.turn_idx] != owner:
+    if event.character != owner:
       return None
     neighbors = [char for char in state.characters if char.place == owner.place]
     eligible = [char for char in neighbors if char.stamina < char.max_stamina]

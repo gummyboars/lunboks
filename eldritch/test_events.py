@@ -21,7 +21,7 @@ from eldritch import places
 class EventTest(unittest.TestCase):
 
   def setUp(self):
-    self.char = characters.Character("Dummy", 5, 5, 4, 4, 4, 4, 4, 4, 4, "Diner")
+    self.char = characters.Character("Dummy", 5, 5, 4, 4, 4, 4, 4, 4, 2, "Diner")
     self.state = eldritch.GameState()
     self.state.initialize_for_tests()
     for attr in ["common", "unique", "spells", "skills", "allies"]:
@@ -97,10 +97,106 @@ class DiceRollTest(EventTest):
     self.assertListEqual(dice_roll.roll, [])
 
 
+class UpkeepTest(EventTest):
+
+  def testReceiveFocus(self):
+    self.char.focus_points = 0
+    self.state.event_stack.append(Upkeep(self.char))
+    self.resolve_to_choice(SliderInput)
+    self.assertEqual(self.char.focus_points, 2)
+
+  def testUpkeepRolls(self):
+    pass  # TODO: blessings/curses, bank loans, retainers
+
+
+class SliderTest(EventTest):
+
+  def setUp(self):
+    super(SliderTest, self).setUp()
+    self.state.event_stack.append(Upkeep(self.char))
+    self.sliders = self.resolve_to_choice(SliderInput)
+    self.assertFalse(self.sliders.is_resolved())
+
+  def testMoveSliders(self):
+    self.sliders.resolve(self.state, "speed_sneak", 1)
+    self.sliders.resolve(self.state, "done", None)
+    self.assertTrue(self.sliders.is_resolved())
+    self.assertEqual(self.char.focus_points, 0)
+    self.assertEqual(self.char.speed_sneak_slider, 1)
+    self.assertEqual(self.char.fight_will_slider, 3)
+    self.assertEqual(self.char.lore_luck_slider, 3)
+
+  def testTryOverspendFocus(self):
+    with self.assertRaises(AssertionError):
+      self.sliders.resolve(self.state, "speed_sneak", 0)
+
+  def testChangeMindOnSliders(self):
+    self.sliders.resolve(self.state, "speed_sneak", 1)
+    with self.assertRaises(AssertionError):
+      self.sliders.resolve(self.state, "fight_will", 2)
+    self.sliders.resolve(self.state, "speed_sneak", 2)
+    self.sliders.resolve(self.state, "fight_will", 2)
+    self.sliders.resolve(self.state, "done", None)
+    self.assertTrue(self.sliders.is_resolved())
+    self.assertEqual(self.char.focus_points, 0)
+    self.assertEqual(self.char.speed_sneak_slider, 2)
+    self.assertEqual(self.char.fight_will_slider, 2)
+    self.assertEqual(self.char.lore_luck_slider, 3)
+
+  def testResetSliders(self):
+    self.sliders.resolve(self.state, "speed_sneak", 2)
+    self.sliders.resolve(self.state, "fight_will", 2)
+    self.sliders.resolve(self.state, "reset", None)
+    self.sliders.resolve(self.state, "done", None)
+    self.assertTrue(self.sliders.is_resolved())
+    self.assertEqual(self.char.focus_points, 2)
+    self.assertEqual(self.char.speed_sneak_slider, 3)
+    self.assertEqual(self.char.fight_will_slider, 3)
+    self.assertEqual(self.char.lore_luck_slider, 3)
+
+
+class MovementPhaseTest(EventTest):
+
+  def setUp(self):
+    super(MovementPhaseTest, self).setUp()
+    self.state.turn_phase = "movement"
+    self.char.movement_points = 0
+    self.movement = Movement(self.char)
+    self.state.event_stack.append(self.movement)
+
+  def testDelayed(self):
+    self.char.delayed_until = self.state.turn_number + 1
+    self.resolve_until_done()
+
+    self.assertEqual(self.char.delayed_until, self.state.turn_number + 1)
+    self.assertIsNone(self.movement.move)
+    self.assertEqual(self.char.movement_points, 0)
+
+  def testNoLongerDelayed(self):
+    self.char.delayed_until = self.state.turn_number
+    self.resolve_to_choice(CityMovement)
+
+    self.assertIsNone(self.char.delayed_until)
+    self.assertEqual(self.char.movement_points, 4)
+
+  def testChoiceInCity(self):
+    self.resolve_to_choice(CityMovement)
+
+  def testMoveInOtherWorld(self):
+    self.char.place = self.state.places["Dreamlands1"]
+    self.resolve_until_done()
+    self.assertEqual(self.char.place.name, "Dreamlands2")
+
+  def testLost(self):
+    self.char.place = self.state.places["Lost"]
+    self.resolve_until_done()
+    self.assertEqual(self.char.place.name, "Lost")
+
+
 class MovementTest(EventTest):
 
   def testMoveOneSpace(self):
-    movement = Movement(self.char, [self.state.places["Easttown"]])
+    movement = MoveOne(self.char, "Easttown")
     self.assertFalse(movement.is_resolved())
     self.assertEqual(self.char.movement_points, 4)
 
@@ -112,8 +208,8 @@ class MovementTest(EventTest):
     self.assertEqual(self.char.movement_points, 3)
 
   def testMoveMultipleSpaces(self):
-    movement = Movement(
-        self.char, [self.state.places[name] for name in ["Easttown", "Rivertown", "Graveyard"]])
+    movement = Sequence(
+        [MoveOne(self.char, dest) for dest in ["Easttown", "Rivertown", "Graveyard"]], self.char)
     self.assertFalse(movement.is_resolved())
     self.assertEqual(self.char.movement_points, 4)
 
@@ -160,7 +256,7 @@ class MovementTest(EventTest):
   def testLoseExploredOnMovement(self):
     self.char.place = self.state.places["Graveyard"]
     self.char.explored = True
-    movement = Movement(self.char, [self.state.places["Rivertown"]])
+    movement = MoveOne(self.char, "Rivertown")
 
     self.state.event_stack.append(movement)
     self.resolve_until_done()
@@ -180,6 +276,55 @@ class MovementTest(EventTest):
     self.assertTrue(movement.is_resolved())
     self.assertEqual(self.char.place.name, "Witch")
     self.assertFalse(self.char.explored)
+
+
+class CityMovementTest(EventTest):
+
+  def setUp(self):
+    super(CityMovementTest, self).setUp()
+    self.movement = CityMovement(self.char)
+    self.state.event_stack.append(self.movement)
+    self.resolve_to_choice(CityMovement)  # runs compute_choices
+
+  def testAcceptableChoice(self):
+    self.resolve_to_choice(CityMovement)
+    self.movement.resolve(self.state, "Southside")
+    self.resolve_to_choice(CityMovement)
+    self.assertFalse(self.movement.is_resolved())
+    self.assertEqual(self.char.movement_points, 0)
+
+  def testChooseFarAway(self):
+    with self.assertRaises(AssertionError):
+      self.movement.resolve(self.state, "Woods")
+    self.assertFalse(self.movement.is_resolved())
+
+  def testCannotWalkPastMonster(self):
+    self.state.monsters[0].place = self.state.places["Easttown"]
+    self.resolve_to_choice(CityMovement)
+    with self.assertRaises(AssertionError):
+      self.movement.resolve(self.state, "Roadhouse")
+    self.movement.resolve(self.state, "Easttown")
+    self.resolve_to_choice(CityMovement)
+    self.assertFalse(self.movement.is_resolved())
+
+  def testNoMovementPoints(self):
+    self.char.movement_points = 0
+    self.resolve_to_choice(CityMovement)
+    self.assertEqual(self.movement.choices, [])
+
+  def testCannotMoveThroughClosedArea(self):
+    self.state.places["Easttown"].closed = True
+    self.resolve_to_choice(CityMovement)
+    with self.assertRaises(AssertionError):
+      self.movement.resolve(self.state, "Roadhouse")
+    with self.assertRaises(AssertionError):
+      self.movement.resolve(self.state, "Easttown")
+
+  def testCannotMoveThroughDistantClosedArea(self):
+    self.state.places["Rivertown"].closed = True
+    self.resolve_to_choice(CityMovement)
+    with self.assertRaises(AssertionError):
+      self.movement.resolve(self.state, "Southside")
 
 
 class GainLossTest(EventTest):
@@ -902,6 +1047,24 @@ class LocationChoiceTest(EventTest):
 
     self.assertTrue(choice.is_resolved())
     self.assertIsNone(choice.choice)
+
+
+class RefreshItemsTest(EventTest):
+
+  def testRefreshItems(self):
+    self.char.possessions.extend([items.Wither(), items.Wither(), items.Bullwhip(), items.Cross()])
+    self.char.possessions[0]._exhausted = True
+    self.char.possessions[2]._exhausted = True
+
+    self.state.event_stack.append(RefreshAssets(self.char))
+    self.resolve_until_done()
+    self.assertFalse(self.char.possessions[0].exhausted)
+    self.assertFalse(self.char.possessions[2].exhausted)
+
+  def testRefreshNothing(self):
+    self.char.possessions.clear()
+    self.state.event_stack.append(RefreshAssets(self.char))
+    self.resolve_until_done()
 
 
 class ActivateItemsTest(EventTest):

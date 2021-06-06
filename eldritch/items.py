@@ -88,7 +88,7 @@ class Bullwhip(Weapon):
       return None
     if event.check_type != "combat":
       return None
-    return None  # FIXME: create an event here
+    return None  # TODO: create an event here
 
 
 def Revolver38():
@@ -185,8 +185,7 @@ class Voice(Spell):
     # return events.CastSpell(owner, self)
 
   def get_trigger(self, event, owner, state):
-    # TODO: an event for the mythos phase
-    if isinstance(event, events.EndTurn) and state.turn_phase == "upkeep" and self.active:
+    if isinstance(event, events.Mythos) and self.active:
       return events.DeactivateSpell(owner, self)
     return None
 

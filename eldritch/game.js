@@ -144,7 +144,7 @@ function handleData(data) {
   } else {
     updateYou(null);
   }
-  updateTurn(data.characters[data.turn_idx], data.turn_phase);
+  updateDone(data.turn_number, data.sliders);
   updatePlaces(data.places);
   updateDistances(data.distances);
   updateDice(data.check_result, data.dice_result);
@@ -159,12 +159,7 @@ function handleData(data) {
 }
 
 function clickPlace(place) {
-  let hDiv = document.getElementById("place" + place + "hover");
-  if (hDiv.classList.contains("selectable")) {
-    ws.send(JSON.stringify({"type": "choice", "choice": place}));
-    return;
-  }
-  ws.send(JSON.stringify({"type": "move", "place": place}));
+  ws.send(JSON.stringify({"type": "choice", "choice": place}));
 }
 
 function setSlider(sliderName, sliderValue) {
@@ -187,10 +182,6 @@ function spawnClue(e) {
   ws.send(JSON.stringify({"type": "clue", "place": place}));
 }
 
-function mythos(e) {
-  ws.send(JSON.stringify({"type": "mythos"}));
-}
-
 function makeChoice(val) {
   if (itemsToChoose == null) {
     ws.send(JSON.stringify({"type": "choice", "choice": val}));
@@ -211,7 +202,7 @@ function doneUsing(e) {
 }
 
 function clickAsset(assetDiv, assetIdx) {
-  // FIXME: we should change ItemChoice to choose items one by one.
+  // TODO: we should change ItemChoice to choose items one by one.
   if (assetDiv.classList.contains("usable")) {
     useAsset(assetIdx);
     return;
@@ -237,8 +228,16 @@ function makeCheck(e) {
   ws.send(JSON.stringify({"type": "check", "modifier": modifier, "check_type": check_type}));
 }
 
-function endTurn(e) {
+function start(e) {
   ws.send(JSON.stringify({"type": "end_turn"}));
+}
+
+function done(e) {
+  ws.send(JSON.stringify({"type": "choice", "choice": "done"}));
+}
+
+function doneSliders(e) {
+  ws.send(JSON.stringify({"type": "set_slider", "name": "done"}));
 }
 
 function updateDice(checkResult, diceResult) {
@@ -527,9 +526,19 @@ function updatePlaceChoices(uichoice, places) {
   }
 }
 
-function updateTurn(character, phase) {
-  let btn = document.getElementById("turn").firstChild;
-  btn.innerText = character.name + "'s " + phase + " phase";
+function updateDone(turnNumber, sliders) {
+  let btn = document.getElementById("done").firstChild;
+  if (turnNumber == -1) {
+    btn.innerText = "Start";
+    btn.onclick = start;
+    return;
+  }
+  btn.innerText = "Done";
+  if (sliders) {
+    btn.onclick = doneSliders;
+  } else {
+    btn.onclick = done;
+  }
 }
 
 function updateEventLog(eventLog) {

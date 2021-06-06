@@ -192,8 +192,8 @@ class MedicineTest(EventTest):
     self.state.turn_phase = "upkeep"
 
   def testMedicine(self):
-    end_turn = events.EndUpkeep(self.char)  # TODO: this should be some other type of event.
-    self.state.event_stack.append(end_turn)
+    upkeep = events.UpkeepActions(self.char)
+    self.state.event_stack.append(upkeep)
     self.resolve_to_usable(0, 0, Sequence)
 
     self.state.event_stack.append(self.state.usables[0][0])
@@ -211,8 +211,8 @@ class MedicineTest(EventTest):
     nun.place = self.char.place
     self.state.characters.append(nun)
 
-    end_turn = events.EndUpkeep(self.char)
-    self.state.event_stack.append(end_turn)
+    upkeep = events.UpkeepActions(self.char)
+    self.state.event_stack.append(upkeep)
     self.resolve_to_usable(0, 0, Sequence)
 
     self.state.event_stack.append(self.state.usables[0][0])

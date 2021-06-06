@@ -879,7 +879,6 @@ def Woods4(char):
   ], char)
   return events.PassFail(char, check, events.Nothing(), bushwhack)
 def Woods5(char):
-  #TODO: Check whether you have food to give to the doggy
   prereq = events.ItemPrerequisite(char, "Food")
   check = events.Check(char, "speed", -2)
   dog = events.GainAllyOrReward(char, "Dog", events.Gain(char, {"dollars": 3}))

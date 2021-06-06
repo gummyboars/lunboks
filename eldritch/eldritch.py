@@ -27,6 +27,13 @@ class GameState(object):
   HIDDEN_ATTRIBUTES = {
       "event_stack", "interrupt_stack", "trigger_stack", "usables", "mythos", "gate_cards"}
   TURN_PHASES = ["upkeep", "movement", "encounter", "otherworld", "mythos"]
+  TURN_TYPES = {
+      "upkeep": events.Upkeep,
+      "movement": events.Movement,
+      "encounter": events.EncounterPhase,
+      "otherworld": events.OtherWorldPhase,
+      "mythos": events.Mythos,
+  }
 
   def __init__(self):
     self.places = {}
@@ -59,6 +66,7 @@ class GameState(object):
     self.other_globals = []
     self.check_result = None
     self.dice_result = []
+    self.test_mode = False
 
   def initialize_for_tests(self):
     self.places = places.CreatePlaces()
@@ -73,6 +81,8 @@ class GameState(object):
     self.characters = characters.CreateCharacters()
     for char in self.characters:
       char.place = self.places[char.home]
+
+    self.test_mode = True
 
   def initialize(self):
     self.places = places.CreatePlaces()
@@ -115,6 +125,11 @@ class GameState(object):
     for char in self.characters:
       for attr, val in char.initial_attributes().items():
         setattr(char, attr, val)
+
+    self.turn_idx = 0
+    self.turn_number = -1
+    self.turn_phase = "mythos"
+    self.event_stack.append(events.Mythos(None))
 
   def give_fixed_possessions(self, char, possessions):
     assert not possessions.keys() - assets.Card.DECKS
@@ -168,9 +183,6 @@ class GameState(object):
 
   def for_player(self, char_idx):
     output = self.json_repr()
-    if self.turn_idx == char_idx and self.turn_phase == "movement":
-      if isinstance(self.characters[char_idx].place, places.CityPlace):
-        output["distances"] = self.get_distances(self.turn_idx)
 
     # We only return the counts of these items, not the actual items.
     output["monster_cup"] = len([mon for mon in self.monsters if mon.place == self.monster_cup])
@@ -184,7 +196,7 @@ class GameState(object):
         if isinstance(top_event, events.CardChoice):
           output["choice"]["cards"] = top_event.choices
           output["choice"]["invalid_choices"] = getattr(top_event, "invalid_choices", [])
-        elif isinstance(top_event, events.LocationChoice):
+        elif isinstance(top_event, (events.LocationChoice, events.CityMovement)):
           if top_event.choices is not None:
             extra_choices = [top_event.none_choice] if top_event.none_choice is not None else []
             output["choice"]["places"] = top_event.choices + extra_choices
@@ -197,6 +209,9 @@ class GameState(object):
           output["choice"]["items"] = top_event.count
         else:
           raise RuntimeError("Unknown choice type %s" % top_event.__class__.__name__)
+    if top_event and isinstance(top_event, events.SliderInput) and not top_event.is_resolved():
+      if top_event.character == self.characters[char_idx]:
+        output["sliders"] = True
     if self.usables.get(char_idx):
       output["usables"] = list(self.usables[char_idx].keys())
     else:
@@ -210,18 +225,12 @@ class GameState(object):
   def handle(self, char_idx, data):
     if char_idx not in range(len(self.characters)):
       raise InvalidPlayer("no such player %s" % char_idx)
-    if data.get("type") == "end_turn":
-      self.handle_end_turn(char_idx)
-    elif data.get("type") == "set_slider":
+    if data.get("type") == "set_slider":
       self.handle_slider(char_idx, data.get("name"), data.get("value"))
-    elif data.get("type") == "move":
-      self.handle_move(char_idx, data.get("place"))
     elif data.get("type") == "check":  # TODO: remove
       self.handle_check(char_idx, data.get("check_type"), data.get("modifier"))
     elif data.get("type") == "monster":  # TODO: remove
       self.handle_spawn_monster(data.get("monster"), data.get("place"))
-    elif data.get("type") == "mythos":
-      self.handle_mythos()
     elif data.get("type") == "gate":  # TODO: remove
       self.handle_spawn_gate(data.get("place"))
     elif data.get("type") == "clue":  # TODO: remove
@@ -232,6 +241,8 @@ class GameState(object):
       self.handle_use(char_idx, data.get("idx"))
     elif data.get("type") == "done_using":
       self.handle_done_using(char_idx)
+    elif data.get("type") == "end_turn":
+      pass
     else:
       raise UnknownMove(data.get("type"))
 
@@ -249,11 +260,15 @@ class GameState(object):
         continue
       # If the event requires the character to make a choice, stop here.
       self.usables = self.get_usable_interrupts(event)
+      # TODO: maybe we can have an Input class. Or a needs_input() method.
       if isinstance(event, events.ChoiceEvent) and not event.is_resolved():
         event.compute_choices(self)
         if not event.is_resolved():
           yield None
           return
+      if isinstance(event, events.SliderInput) and not event.is_resolved():
+        yield None
+        return
       if not all([self.done_using.get(char_idx) for char_idx in self.usables]):
         yield None
         return
@@ -272,6 +287,8 @@ class GameState(object):
         return
       self.pop_event(event)
       yield None
+      if not self.event_stack and not self.test_mode:
+        self.next_turn()
 
   def start_event(self, event):
     # TODO: what about multiple events added to the stack at the same time? disallow?
@@ -303,9 +320,6 @@ class GameState(object):
     if event.is_resolved() and event.finish_str():
       self.event_log.append("  " * len(self.event_stack) + event.finish_str())
     self.clear_usables()
-    # TODO: maybe find a better way to detect when the turn is over. Test with going insane.
-    if event.is_resolved() and isinstance(event, events.EndTurn):
-      self.next_turn()
 
   def clear_usables(self):
     self.usables.clear()
@@ -314,7 +328,7 @@ class GameState(object):
   # TODO: global interrupts/triggers from ancient one, environment, other mythos/encounter cards
   def get_interrupts(self, event):
     interrupts = []
-    if isinstance(event, (events.MoveOne, events.EndMovement)):
+    if isinstance(event, events.MoveOne):
       nearby_monsters = [mon for mon in self.monsters if mon.place == event.character.place]
       if nearby_monsters:
         interrupts.append(events.EvadeOrFightAll(event.character, nearby_monsters))
@@ -334,6 +348,12 @@ class GameState(object):
         triggers.append(events.Insane(event.character))
       if event.character.stamina <= 0:
         triggers.append(events.Unconscious(event.character))
+    # Must fight monsters when you end your movement.
+    if isinstance(event, (events.CityMovement, events.Return)):
+      # TODO: special handling for the turn that you return from another world
+      nearby_monsters = [mon for mon in self.monsters if mon.place == event.character.place]
+      if nearby_monsters:
+        triggers.append(events.EvadeOrFightAll(event.character, nearby_monsters))
     # Pulled through a gate if it opens on top of you.
     if isinstance(event, events.OpenGate) and event.opened:
       loc = self.places[event.location_name]
@@ -363,6 +383,7 @@ class GameState(object):
     self.done_using[char_idx] = True
 
   def handle_choice(self, char_idx, choice):
+    assert self.event_stack
     event = self.event_stack[-1]
     assert isinstance(event, events.ChoiceEvent)
     assert event.character == self.characters[char_idx]
@@ -382,11 +403,6 @@ class GameState(object):
     if self.event_stack:
       raise InvalidInput("there are events on the stack")
     self.event_stack.append(events.Check(self.characters[char_idx], check_type, modifier))
-
-  def handle_mythos(self):
-    chosen = self.mythos.popleft()
-    self.mythos.append(chosen)
-    self.event_stack.append(chosen.create_event(self))
 
   def handle_spawn_monster(self, monster_name, place):
     assert place in self.places
@@ -409,70 +425,26 @@ class GameState(object):
     self.event_stack.append(events.SpawnClue(place))
 
   def handle_slider(self, char_idx, name, value):
-    if char_idx != self.turn_idx:
-      raise NotYourTurn("It is not your turn.")
-    if self.turn_phase != "upkeep":
-      raise InvalidMove("You may only move sliders during the upkeep phase.")
-    if name is None:
-      raise InvalidInput("missing slider name")
-    char = self.characters[char_idx]
-    if not hasattr(char, name + "_slider"):
-      raise InvalidInput("invalid slider name %s" % name)
-    try:
-      value = int(value)
-    except (ValueError, TypeError):
-      raise InvalidInput("invalid value %s" % value)
-    if 0 > value or value >= len(getattr(char, "_" + name)):
-      raise InvalidInput("invalid slider value %s" % value)
-    slots_moved = abs(getattr(char, name + "_slider") - value)
-    if slots_moved > char.focus_points:
-      raise InvalidMove(
-          "You only have %s focus left; you would need %s." % (char.focus_points, slots_moved))
-    char.focus_points -= slots_moved
-    setattr(char, name + "_slider", value)
-
-  def handle_move(self, char_idx, place):
-    if char_idx != self.turn_idx:
-      raise NotYourTurn("It is not your turn.")
-    if self.turn_phase != "movement":
-      raise InvalidMove("You may only move during the movement phase.")
-    if place is None:
-      raise InvalidInput("no place")
-    if place not in self.places:
-      raise InvalidInput("unknown place")
-    routes = self.get_routes(char_idx)
-    if place not in routes or len(routes[place]) > self.characters[char_idx].movement_points:
-      raise InvalidMove(
-          "You cannot reach that location with %s movement." %
-          self.characters[char_idx].movement_points
-      )
-    self.event_stack.append(events.Movement(
-      self.characters[char_idx], [self.places[name] for name in routes[place]]))
-
-  def handle_end_turn(self, char_idx):
-    if char_idx != self.turn_idx:
-      raise NotYourTurn("It is not your turn.")
-    if self.event_stack:
-      raise InvalidMove("There are unresolved events.")
-    if self.turn_phase == "movement":
-      self.event_stack.append(events.EndMovement(self.characters[char_idx]))
-    elif self.turn_phase == "upkeep":
-      self.event_stack.append(events.EndUpkeep(self.characters[char_idx]))
-    else:
-      self.next_turn()  # TODO - this is not valid
+    assert self.event_stack
+    event = self.event_stack[-1]
+    if not isinstance(event, events.SliderInput):
+      raise InvalidMove("It is not time to move your sliders.")
+    if event.character != self.characters[char_idx]:
+      raise NotYourTurn("It is not your turn to set sliders.")
+    event.resolve(self, name, value)
 
   def next_turn(self):
     # TODO: game stages other than slumber
     # Handle the end of the mythos phase separately.
     if self.turn_phase == "mythos":
       self.turn_number += 1
-      self.first_player += 1
-      self.first_player %= len(self.characters)
+      if self.turn_number != 0:
+        self.first_player += 1
+        self.first_player %= len(self.characters)
       self.turn_idx = self.first_player
       self.turn_phase = "upkeep"
-      # TODO: separate upkeep into three phases - refresh, upkeep actions, adjust skills.
-      for char in self.characters:
-        if char.lose_turn_until == self.turn_number:
+      for char in self.characters:  # TODO: is this the right place to check for this?
+        if char.lose_turn_until and char.lose_turn_until <= self.turn_number:
           char.lose_turn_until = None
     else:
       self.turn_idx += 1
@@ -483,82 +455,9 @@ class GameState(object):
         # Guaranteed to not go off the end of the list because this is not the mythos phase.
         phase_idx = self.TURN_PHASES.index(self.turn_phase)
         self.turn_phase = self.TURN_PHASES[phase_idx + 1]
-        # No start-of-turn effects or skipping for the mythos phase.
-        if self.turn_phase == "mythos":
-          return
 
-    # Handle start-of-turn effects or turn skipping.
-    char = self.characters[self.turn_idx]
-    if char.lose_turn_until is not None:
-      return self.next_turn()
-    if self.turn_phase == "upkeep":
-      char.focus_points = char.focus
-    if self.turn_phase == "movement":
-      if char.delayed_until == self.turn_number:
-        char.delayed_until = None
-      elif char.delayed_until is not None:
-        return self.next_turn()
-      if isinstance(char.place, places.OtherWorld):
-        if char.place.order == 1:
-          world_name = char.place.info.name + "2"
-          self.event_stack.append(events.Sequence([
-            events.ForceMovement(char, world_name), events.EndMovement(char)], char))
-        else:
-          self.event_stack.append(events.Sequence([
-            events.Return(char, char.place.info.name), events.EndMovement(char)], char))
-        return
-      char.movement_points = char.speed(self)
-    if self.turn_phase == "encounter":
-      if not isinstance(char.place, places.Location):
-        return self.next_turn()
-      elif char.place.gate and char.explored:
-        self.event_stack.append(events.Sequence(
-          [events.GateCloseAttempt(char, char.place.name), events.EndEncounter(char)], char))
-      elif char.place.gate:
-        self.event_stack.append(events.Sequence(
-          [events.Travel(char, char.place.gate.name), events.EndEncounter(char)], char))
-      elif char.place.neighborhood.encounters:
-        self.event_stack.append(events.Encounter(char, char.place.name))
-    if self.turn_phase == "otherworld":
-      if not isinstance(char.place, places.OtherWorld):
-        return self.next_turn()
-      else:
-        self.event_stack.append(events.GateEncounter(
-          char, char.place.info.name, char.place.info.colors))
-
-  def get_distances(self, char_idx):
-    routes = self.get_routes(char_idx)
-    return {loc: len(route) for loc, route in routes.items()}
-
-  def get_routes(self, char_idx):
-    if self.characters[char_idx].movement_points == 0:
-      return {}
-    routes = {self.characters[char_idx].place.name: []}
-    if self.characters[char_idx].place.closed:
-      return routes
-
-    monster_counts = collections.defaultdict(int)
-    for monster in self.monsters:
-      monster_counts[monster.place.name] += 1
-
-    queue = collections.deque()
-    for place in self.characters[char_idx].place.connections:
-      if not place.closed:
-        queue.append((place, []))
-    while queue:
-      place, route = queue.popleft()
-      if place.name in routes:
-        continue
-      if place.closed:  # TODO: more possibilities?
-        continue
-      routes[place.name] = route + [place.name]
-      if len(routes[place.name]) == self.characters[char_idx].movement_points:
-        continue
-      if monster_counts[place.name] > 0:
-        continue
-      for next_place in place.connections:
-        queue.append((next_place, route + [place.name]))
-    return routes
+    # We are done updating turn phase, turn number, turn index, and first player.
+    self.event_stack.append(self.TURN_TYPES[self.turn_phase](self.characters[self.turn_idx]))
 
 
 class EldritchGame(BaseGame):

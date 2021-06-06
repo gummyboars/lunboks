@@ -53,6 +53,20 @@ class Event(metaclass=abc.ABCMeta):
     raise NotImplementedError
 
 
+class ChoiceEvent(Event):
+
+  @abc.abstractmethod
+  def resolve(self, state, choice=None):
+    raise NotImplementedError
+
+  @abc.abstractmethod
+  def prompt(self):
+    raise NotImplementedError
+
+  def compute_choices(self, state):
+    pass
+
+
 class Nothing(Event):
 
   def __init__(self):
@@ -98,16 +112,105 @@ class Sequence(Event):
     return ""
 
 
-class EndTurn(Event):
+class Turn(Event):
 
-  def __init__(self, character, phase):
+  def check_lose_turn(self):
+    if self.character.lose_turn_until is not None:
+      self.done = True
+      return True
+    return False
+
+
+class Upkeep(Turn):
+
+  def __init__(self, character):
     self.character = character
-    self.phase = phase
+    self.focus_given = False
+    self.refresh = None
+    self.actions = None
+    self.sliders = None
     self.done = False
 
   def resolve(self, state):
+    if self.check_lose_turn():
+      return True
+    if not self.focus_given:
+      self.character.focus_points = self.character.focus
+      self.focus_given = True
+    if self.refresh is None:
+      self.refresh = RefreshAssets(self.character)
+      state.event_stack.append(self.refresh)
+      return False
+    if self.actions is None:
+      self.actions = UpkeepActions(self.character)
+      state.event_stack.append(self.actions)
+      return False
+    if self.sliders is None:
+      self.sliders = SliderInput(self.character)
+      state.event_stack.append(self.sliders)
+      return False
     self.done = True
     return True
+
+  def is_resolved(self):
+    return self.done
+
+  def start_str(self):
+    return f"{self.character.name}'s upkeep"
+
+  def finish_str(self):
+    return ""
+
+
+class UpkeepActions(Nothing):
+
+  def __init__(self, character):
+    super(UpkeepActions, self).__init__()
+    self.character = character
+
+
+class SliderInput(Event):
+
+  def __init__(self, character):
+    self.character = character
+    self.initial = {}
+    self.initial_focus = character.focus_points  # TODO: are there usables that cost focus?
+    for key, val in self.character.__dict__.items():
+      if key.endswith("_slider"):
+        self.initial[key[:-7]] = val
+    assert len(self.initial) >= 3
+    self.done = False
+
+  def resolve(self, state, name, value):
+    assert isinstance(name, str), "invalid slider name"
+    if name == "done":
+      assert self._total_spent() <= self.initial_focus, "You do not have enough focus."
+      self.character.focus_points = self.initial_focus - self._total_spent()
+      self.done = True
+      return True
+    if name == "reset":
+      for slider_name, orig in self.initial.items():
+        setattr(self.character, slider_name + "_slider", orig)
+      return False
+
+    assert hasattr(self.character, name + "_slider"), "invalid slider name %s" % name
+    assert isinstance(value, int), "invalid slider value"
+    assert 0 <= value, "invalid slider value %s" % value
+    assert value < len(getattr(self.character, "_" + name)), "invalid slider value %s" % value
+    total_spent = self._total_spent(without=name)
+    if abs(self.initial[name] - value) + total_spent > self.initial_focus:
+      raise AssertionError("You do not have enough focus.")
+
+    setattr(self.character, name + "_slider", value)
+    self.character.focus_points = self.initial_focus - self._total_spent()
+    return False
+
+  def _total_spent(self, without=None):
+    # TODO: special characters like the spy
+    return sum([
+      abs(orig - getattr(self.character, slider_name + "_slider"))
+      for slider_name, orig in self.initial.items() if slider_name != without
+    ])
 
   def is_resolved(self):
     return self.done
@@ -119,22 +222,224 @@ class EndTurn(Event):
     return ""
 
 
-class EndUpkeep(EndTurn):
+class Movement(Turn):
 
   def __init__(self, character):
-    super(EndUpkeep, self).__init__(character, "upkeep")
+    self.character = character
+    self.move = None
+    self.done = False
+
+  def resolve(self, state):
+    if self.check_lose_turn():
+      return True
+    if self.character.delayed_until is not None:
+      if self.character.delayed_until <= state.turn_number:
+        self.character.delayed_until = None
+      else:
+        self.done = True
+        return True
+
+    if self.move is None:
+      if isinstance(self.character.place, places.OtherWorld):
+        if self.character.place.order == 1:
+          world_name = self.character.place.info.name + "2"
+          self.move = ForceMovement(self.character, world_name)
+        else:
+          self.move = Return(self.character, self.character.place.info.name)
+      elif isinstance(self.character.place, places.CityPlace):
+        self.character.movement_points = self.character.speed(state)
+        self.move = CityMovement(self.character)
+      else:
+        self.move = Nothing()  # TODO: handle lost in time and space?
+      state.event_stack.append(self.move)
+      return False
+
+    assert self.move.is_resolved()
+    self.done = True
+    return True
+
+  def is_resolved(self):
+    return self.done
+
+  def start_str(self):
+    return f"{self.character.name}'s movement"
+
+  def finish_str(self):
+    return ""
 
 
-class EndMovement(EndTurn):
+class CityMovement(ChoiceEvent):
 
   def __init__(self, character):
-    super(EndMovement, self).__init__(character, "movement")
+    self.character = character
+    self.routes = {}
+    self.none_choice = "done"
+    self.done = False
+
+  def resolve(self, state, choice=None):
+    if choice == self.none_choice:
+      self.done = True
+      return True
+    assert choice in self.routes
+    state.event_stack.append(
+        Sequence([MoveOne(self.character, dest) for dest in self.routes[choice]], self.character))
+    return False
+
+  def is_resolved(self):
+    return self.done
+
+  def start_str(self):
+    return ""
+
+  def finish_str(self):
+    return ""
+
+  def prompt(self):
+    return "Move somewhere"
+
+  @property
+  def choices(self):
+    return sorted(self.routes.keys())
+
+  def compute_choices(self, state):
+    self.routes = self.get_routes(state)  # TODO: annotate
+
+  def get_distances(self, state):
+    routes = self.get_routes(state)
+    return {loc: len(route) for loc, route in routes.items()}
+
+  def get_routes(self, state):
+    if self.character.movement_points == 0:
+      return {}
+    routes = {self.character.place.name: []}
+    if self.character.place.closed:
+      return routes
+
+    monster_counts = collections.defaultdict(int)
+    for monster in state.monsters:
+      monster_counts[monster.place.name] += 1
+
+    queue = collections.deque()
+    for place in self.character.place.connections:
+      if not place.closed:
+        queue.append((place, []))
+    while queue:
+      place, route = queue.popleft()
+      if place.name in routes:
+        continue
+      if place.closed:  # TODO: more possibilities?
+        continue
+      routes[place.name] = route + [place.name]
+      if len(routes[place.name]) == self.character.movement_points:
+        continue
+      if monster_counts[place.name] > 0:
+        continue
+      for next_place in place.connections:
+        queue.append((next_place, route + [place.name]))
+    return routes
 
 
-class EndEncounter(EndTurn):
+class EncounterPhase(Turn):
 
   def __init__(self, character):
-    super(EndEncounter, self).__init__(character, "encounter")
+    self.character = character
+    self.action = None
+    self.done = False
+
+  def resolve(self, state):
+    if self.check_lose_turn():
+      return True
+    if self.action is None:
+      if not isinstance(self.character.place, places.Location):
+        self.done = True
+        return True
+      if self.character.place.gate and self.character.explored:
+        self.action = GateCloseAttempt(self.character, self.character.place.name)
+      elif self.character.place.gate:
+        self.action = Travel(self.character, self.character.place.gate.name)
+      elif self.character.place.neighborhood.encounters:
+        # TODO: fixed encounters
+        self.action = Encounter(self.character, self.character.place.name)
+      else:
+        self.action = Nothing()
+      state.event_stack.append(self.action)
+      return False
+
+    assert self.action.is_resolved()
+    self.done = True
+    return True
+
+  def is_resolved(self):
+    return self.done
+
+  def start_str(self):
+    return f"{self.character.name}'s encounter phase"
+
+  def finish_str(self):
+    return ""
+
+
+class OtherWorldPhase(Turn):
+
+  def __init__(self, character):
+    self.character = character
+    self.action = None
+    self.done = False
+
+  def resolve(self, state):
+    if self.check_lose_turn():
+      return True
+    if self.action is None:
+      if not isinstance(self.character.place, places.OtherWorld):
+        self.done = True
+        return True
+      self.action = GateEncounter(
+          self.character, self.character.place.info.name, self.character.place.info.colors)
+      state.event_stack.append(self.action)
+      return False
+
+    assert self.action.is_resolved()
+    self.done = True
+    return True
+
+  def is_resolved(self):
+    return self.done
+
+  def start_str(self):
+    return f"{self.character.name}'s other world phase"
+
+  def finish_str(self):
+    return ""
+
+
+class Mythos(Turn):
+
+  def __init__(self, _):
+    self.action = None
+    self.done = False
+
+  def resolve(self, state):
+    if self.action is None:
+      # TODO: drawing the mythos card needs to be its own event
+      # TODO: account for the shuffle card
+      chosen = state.mythos.popleft()
+      state.mythos.append(chosen)
+      self.action = chosen.create_event(state)
+      state.event_stack.append(self.action)
+      return False
+
+    assert self.action.is_resolved()
+    self.done = True
+    return True
+
+  def is_resolved(self):
+    return self.done
+
+  def start_str(self):
+    return "Mythos phase"
+
+  def finish_str(self):
+    return ""
 
 
 class DiceRoll(Event):
@@ -176,8 +481,8 @@ class MoveOne(Event):
     if self.character.movement_points <= 0:
       self.done = True
       return True
-    assert self.dest in self.character.place.connections
-    self.character.place = self.dest
+    assert self.dest in [conn.name for conn in self.character.place.connections]
+    self.character.place = state.places[self.dest]
     self.character.movement_points -= 1
     self.character.explored = False
     self.done = True
@@ -190,11 +495,7 @@ class MoveOne(Event):
     return ""
 
   def finish_str(self):
-    return f"{self.character.name} moved to {self.dest.name}"
-
-
-def Movement(character, route):
-  return Sequence([MoveOne(character, dest) for dest in route], character)
+    return f"{self.character.name} moved to {self.dest}"
 
 
 class GainOrLoss(Event):
@@ -390,6 +691,8 @@ class InsaneOrUnconscious(Event):
       state.interrupt_stack.append(saved_interrupts)
       state.trigger_stack.append(saved_triggers)
       state.event_stack.append(self)
+      assert len(state.event_stack) == len(state.trigger_stack)
+      assert len(state.event_stack) == len(state.interrupt_stack)
       self.stack_cleared = True
 
     if not self.lose_clues:
@@ -910,6 +1213,61 @@ class ExhaustAsset(Event):
     return f"{self.character.name} exhausted their {self.item.name}"
 
 
+class RefreshAsset(Event):
+
+  def __init__(self, character, item):
+    assert item in character.possessions
+    self.character = character
+    self.item = item
+    self.refreshed = None
+
+  def resolve(self, state):
+    if self.item not in self.character.possessions:
+      self.refreshed = False
+      return True
+    self.item._exhausted = False
+    self.refreshed = True
+    return True
+
+  def is_resolved(self):
+    return self.refreshed is not None
+
+  def start_str(self):
+    return ""
+
+  def finish_str(self):
+    if not self.refreshed:
+      return ""
+    return f"{self.character.name} refreshed their {self.item.name}"
+
+
+class RefreshAssets(Event):
+
+  def __init__(self, character):
+    self.character = character
+    self.to_refresh = None
+    self.idx = 0
+
+  def resolve(self, state):
+    if self.to_refresh is None:
+      self.to_refresh = [item for item in self.character.possessions if item.exhausted]
+    while self.idx < len(self.to_refresh):
+      if self.to_refresh[self.idx].exhausted:
+        state.event_stack.append(RefreshAsset(self.character, self.to_refresh[self.idx]))
+        return False
+      self.idx += 1
+    return True
+
+  def is_resolved(self):
+    return self.to_refresh is not None and self.idx == len(self.to_refresh)
+
+  def start_str(self):
+    return ""
+
+  def finish_str(self):
+    return ""
+
+
 class ActivateItem(Event):
 
   def __init__(self, character, item):
@@ -1160,7 +1518,6 @@ class DeactivateSpells(Event):
     return ""
 
 
-# TODO: also add a discard by name
 class DiscardSpecific(Event):
 
   def __init__(self, character, item):
@@ -1310,6 +1667,7 @@ class ContainsPrerequisite(Event):
     if not self.successes:
       return self.deck + " does not have " + self.card_name
     return ""
+
 
 class Check(Event):
 
@@ -1488,20 +1846,6 @@ class Arrested(Sequence):
       ForceMovement(character, "Police"), LoseTurn(character),
       Loss(character, {"dollars": character.dollars // 2}),
     ], character)
-
-
-class ChoiceEvent(Event):
-
-  @abc.abstractmethod
-  def resolve(self, state, choice=None):
-    raise NotImplementedError
-
-  @abc.abstractmethod
-  def prompt(self):
-    raise NotImplementedError
-
-  def compute_choices(self, state):
-    pass
 
 
 class MultipleChoice(ChoiceEvent):
