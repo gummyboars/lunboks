@@ -742,6 +742,28 @@ function endTurn() {
   };
   ws.send(JSON.stringify(msg));
 }
+function updateCostCard() {
+  let container = document.getElementById("uicost");
+  while (container.firstChild) {
+    container.removeChild(container.firstChild);
+  }
+  // TODO: cleaner way of getting the height/width of the cost card.
+  let prerendered = getAsset("costcard", "");
+  if (prerendered == null) {
+    return;
+  }
+  let cnv = document.createElement("CANVAS");
+  cnv.height = cardHeight;
+  cnv.width = cardHeight / prerendered.height * prerendered.width;
+  cnv.style.display = "block";
+  renderAssetToCanvas(cnv, "costcard", "");
+  let div = document.createElement("DIV");
+  div.style.maxWidth = cnv.width + "px";
+  div.style.width = cnv.width + "px";
+  div.style.height = cnv.height + "px";
+  div.appendChild(cnv);
+  container.appendChild(div);
+}
 function updateCards() {
   if (cards == null) {
     return;
@@ -1643,6 +1665,7 @@ function chooseSkin(e) {
 function refreshUI() {
   createSelectors();
   updateCards();
+  updateCostCard();
   updatePlayerData();
   updateBuyDev();
 }

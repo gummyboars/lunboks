@@ -50,6 +50,7 @@ assetNames = [
   "largestarmy",
   "robber",
   "pirate",
+  "costcard",
 ];
 
 function initializeNames() {

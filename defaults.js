@@ -40,6 +40,8 @@ function initializeDefaults() {
   assets.appendChild(longestRoute);
   let largestArmy = createCard("indianred", "defaultlargestarmy", cardHeight * 4 / 5, cardHeight, "Army");
   assets.appendChild(largestArmy);
+  let costCard = createCard("white", "defaultcostcard", cardHeight * 4 / 5, cardHeight, "Costs");
+  assets.appendChild(costCard);
 
   let portbase = document.createElement("CANVAS");
   portbase.width = tileWidth;
