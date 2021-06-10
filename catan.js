@@ -1672,7 +1672,7 @@ function refreshUI() {
 function initDefaultSkin() {
   let sources = localStorage.getItem("sources");
   if (sources == null) {
-    initializeSpace();
+    initializeNone();
   }
 }
 function init() {
