@@ -2156,6 +2156,8 @@ class SeafarerShores(Seafarers):
       raise InvalidPlayer("Must have 3 or 4 players.")
     self._compute_contiguous_islands()
     self._compute_edges()
+    self.port_corners.clear()
+    self._compute_ports()
     self._init_dev_cards()
     self.placement_islands = [self.corners_to_islands[(3, 1)]]
 
