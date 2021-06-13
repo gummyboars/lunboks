@@ -120,9 +120,14 @@ function initializeDefaults() {
 function getTextSize(ctx, text, maxWidth, maxHeight) {
   ctx.font = "72px sans-serif";
   let measurements = ctx.measureText(text);
-  // let textHeight = measurements.actualBoundingBoxAscent + measurements.actualBoundingBoxDescent;
-  // TODO: doesn't work in firefox
-  let textHeight = measurements.fontBoundingBoxAscent + measurements.fontBoundingBoxDescent;
+  let textHeight;
+  if (measurements.emHeightAscent) {
+    textHeight = measurements.emHeightAscent + measurements.emHeightDescent;
+  } else if (measurements.fontBoundingBoxAscent) {
+    textHeight = measurements.fontBoundingBoxAscent + measurements.fontBoundingBoxDescent;
+  } else {
+    textHeight = measurements.actualBoundingBoxAscent + measurements.actualBoundingBoxDescent;
+  }
   let shrinkRatio = Math.min(maxWidth / measurements.width, maxHeight / textHeight);
   return Math.floor(72 * shrinkRatio);
 }
