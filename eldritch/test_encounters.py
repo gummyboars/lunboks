@@ -974,6 +974,8 @@ class SocietyTest(EncounterTest):
     self.char.place = self.state.places["Society"]
     # I cast GUN!
     self.state.spells.extend([items.Revolver38(), items.TommyGun()])
+    self.state.unique.extend([items.HolyWater(), items.Cross()])
+
 
   def testSociety1No(self):
     self.state.event_stack.append(encounters.Society1(self.char))
@@ -986,6 +988,11 @@ class SocietyTest(EncounterTest):
     self.state.event_stack.append(encounters.Society1(self.char))
     choice = self.resolve_to_choice(MultipleChoice)
     choice.resolve(self.state, "Yes")
+    self.state.places["Uptown"].encounters = [
+        encounters.EncounterCard("Uptown1", {"Hospital": encounters.Hospital1, "Woods": encounters.Woods1, "Shoppe": encounters.Shoppe1}),
+        encounters.EncounterCard("Uptown2", {"Hospital": encounters.Hospital2, "Woods": encounters.Woods2, "Shoppe": encounters.Shoppe2}),
+    ]
+
     choice2 = self.resolve_to_choice(CardChoice)
     self.assertEqual(choice2.choices[0][0:6], "Uptown")
     self.assertEqual(choice2.choices[1][0:6], "Uptown")
@@ -994,6 +1001,10 @@ class SocietyTest(EncounterTest):
   def testSociety2Broke(self):
     self.state.event_stack.append(encounters.Society2(self.char))
     self.char.dollars = 2
+    choice = self.resolve_to_choice(MultipleChoice)
+    with self.assertRaises(AssertionError):
+      choice.resolve(self.state, "Yes")
+    choice.resolve(self.state, "No")
     self.resolve_until_done()
     self.assertEqual(self.char.dollars, 2)
     self.assertEqual(len(self.char.possessions), 0)
@@ -1111,6 +1122,53 @@ class SocietyTest(EncounterTest):
     self.assertEqual(self.char.sanity, 1)
     self.assertEqual(self.char.place.name, "Asylum")
 
+  #TODO: update when Gate
+  def testSociety6NoTropy(self):
+    self.char.dollars = 0
+    self.state.allies.append(assets.OldProfessor())
+    self.state.event_stack.append(encounters.Society6(self.char))
+    choice = self.resolve_to_choice(MultipleChoice)
+    with self.assertRaises(AssertionError):
+      choice.resolve(self.state, "Yes")
+    choice.resolve(self.state, "No")
+    self.resolve_until_done()
+    self.assertEqual(self.char.dollars, 0)
+    self.assertEqual(len(self.char.possessions), 0)
+
+  #TODO: update when Gate
+  def testSociety6TrophyNo(self):
+    self.char.dollars = 2
+    self.state.allies.append(assets.OldProfessor())
+    self.state.event_stack.append(encounters.Society6(self.char))
+    choice = self.resolve_to_choice(MultipleChoice)
+    choice.resolve(self.state, "No")
+    self.resolve_until_done()
+    self.assertEqual(self.char.dollars, 2)
+    self.assertEqual(len(self.char.possessions), 0)
+
+  #TODO: update when Gate
+  def testSociety6TrophyYesAlly(self):
+    self.char.dollars = 2
+    self.state.allies.append(assets.OldProfessor())
+    self.state.event_stack.append(encounters.Society6(self.char))
+    choice = self.resolve_to_choice(MultipleChoice)
+    choice.resolve(self.state, "Yes")
+    self.resolve_until_done()
+    self.assertEqual(self.char.dollars, 1)
+    self.assertEqual(len(self.char.possessions), 1)
+    self.assertEqual(self.char.possessions[0].name, "Old Professor")
+
+  #TODO: update when Gate
+  def testSociety6TrohyYesNoAlly(self):
+    self.char.dollars = 2
+    self.state.event_stack.append(encounters.Society6(self.char))
+    choice = self.resolve_to_choice(MultipleChoice)
+    choice.resolve(self.state, "Yes")
+    self.resolve_until_done()
+    self.assertEqual(self.char.dollars, 1)
+    self.assertEqual(len(self.char.possessions), 1)
+    self.assertEqual(self.char.possessions[0].name, "Holy Water")
+
   def testSociety7No(self):
     self.state.event_stack.append(encounters.Society7(self.char))
     choice = self.resolve_to_choice(MultipleChoice)
@@ -1122,6 +1180,12 @@ class SocietyTest(EncounterTest):
     self.state.event_stack.append(encounters.Society7(self.char))
     choice = self.resolve_to_choice(MultipleChoice)
     choice.resolve(self.state, "Yes")
+
+    self.state.places["Rivertown"].encounters = [
+        encounters.EncounterCard("Rivertown1",  {"Cave": encounters.Cave1, "Store": encounters.Store1, "Graveyard": encounters.Graveyard1}),
+        encounters.EncounterCard("Rivertown2", {"Cave": encounters.Cave2, "Store": encounters.Store2, "Graveyard": encounters.Graveyard2})
+    ]
+
     choice2 = self.resolve_to_choice(CardChoice)
     self.assertEqual(choice2.choices[0][0:9], "Rivertown")
     self.assertEqual(choice2.choices[1][0:9], "Rivertown")
@@ -1173,6 +1237,10 @@ class HouseTest(EncounterTest):
     self.state.event_stack.append(encounters.House2(self.char))
     choice = self.resolve_to_choice(MultipleChoice)
     choice.resolve(self.state, "Yes")
+    self.state.places["FrenchHill"].encounters = [
+        encounters.EncounterCard("FrenchHill1", {"Lodge": encounters.Lodge1, "Witch": encounters.Witch1, "Sanctum": encounters.Sanctum1}),
+        encounters.EncounterCard("FrenchHill2", {"Lodge": encounters.Lodge2, "Witch": encounters.Witch2, "Sanctum": encounters.Sanctum2}),
+    ]
     choice2 = self.resolve_to_choice(CardChoice)
     self.assertEqual(choice2.choices[0][0:10], "FrenchHill")
     self.assertEqual(choice2.choices[1][0:10], "FrenchHill")
@@ -1206,34 +1274,38 @@ class HouseTest(EncounterTest):
     self.assertEqual(self.char.possessions[0].name, ".38 Revolver")
     self.assertEqual(len(self.state.common), 1)
 
-  def testHouse6Fail(self):
+  def testHouse6Pass(self):
     self.state.event_stack.append(encounters.House6(self.char))
-    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=2)):
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       self.resolve_until_done()
     self.assertEqual(self.char.stamina, 3)
     self.assertEqual(self.char.sanity, 3)
 
-  def testHouse6PassSanity(self):
+  def testHouse6FailSanity(self):
     self.state.event_stack.append(encounters.House6(self.char))
-    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=2)):
       choice = self.resolve_to_choice(MultipleChoice)
     choice.resolve(self.state, "Sanity")
     self.resolve_until_done()
     self.assertEqual(self.char.stamina, 3)
-    self.assertEqual(self.char.sanity, 4)
+    self.assertEqual(self.char.sanity, 2)
 
-  def testHouse6PassStamina(self):
+  def testHouse6FailStamina(self):
     self.state.event_stack.append(encounters.House6(self.char))
-    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=2)):
       choice = self.resolve_to_choice(MultipleChoice)
     choice.resolve(self.state, "Stamina")
     self.resolve_until_done()
-    self.assertEqual(self.char.stamina, 4)
+    self.assertEqual(self.char.stamina, 2)
     self.assertEqual(self.char.sanity, 3)
 
   def testHouse7Poor(self):
     self.state.event_stack.append(encounters.House7(self.char))
     self.char.dollars = 2
+    choice = self.resolve_to_choice(MultipleChoice)
+    with self.assertRaises(AssertionError):
+      choice.resolve(self.state, "Yes")
+    choice.resolve(self.state, "No")
     self.resolve_until_done()
     self.assertEqual(self.char.dollars, 2)
     self.assertEqual(self.char.stamina, 3)
@@ -1349,7 +1421,7 @@ class ChurchTest(EncounterTest):
     self.resolve_until_done()
     self.assertEqual(self.char.bless_curse, 0)
 
-  def testChurch3money(self):
+  def testChurch3Money(self):
     self.char.dollars = 7
     self.state.event_stack.append(encounters.Church3(self.char))
     choice = self.resolve_to_choice(MultipleChoice)
@@ -1380,7 +1452,7 @@ class ChurchTest(EncounterTest):
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=2)):
       self.resolve_until_done()
     self.assertEqual(self.char.sanity, 2)
-    self.assertEqual(self.char.place.name, "Church")
+    self.assertEqual(self.char.place.name, "Southside")
 
   def testChurch5Pass1(self):
     self.state.event_stack.append(encounters.Church5(self.char))
@@ -1400,6 +1472,10 @@ class ChurchTest(EncounterTest):
   def testChurch6NoClues(self):
     self.state.event_stack.append(encounters.Church6(self.char))
     self.assertEqual(self.char.clues, 0)
+    choice = self.resolve_to_choice(MultipleChoice)
+    with self.assertRaises(AssertionError):
+      choice.resolve(self.state, "Yes")
+    choice.resolve(self.state, "No")
     self.resolve_until_done()
     self.assertEqual(self.char.clues, 0)
 
@@ -1412,7 +1488,7 @@ class ChurchTest(EncounterTest):
     self.resolve_until_done()
     self.assertEqual(self.char.clues, 2)
 
-  def testChurch6CluesNo(self):
+  def testChurch6CluesYes(self):
     # Actually check for doom track removal and roll
     self.state.event_stack.append(encounters.Church6(self.char))
     self.char.clues = 2
