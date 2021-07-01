@@ -1197,8 +1197,8 @@ class PurchaseTest(EventTest):
 
     self.state.event_stack.append(buy)
     choice = self.resolve_to_choice(CardChoice)
-    self.assertEqual(choice.choices, ["Food for $1", "Nothing"])
-    choice.resolve(self.state, "Food for $1")
+    self.assertEqual(choice.choices, ["Food", "Nothing"])
+    choice.resolve(self.state, "Food")
     self.resolve_until_done()
 
     self.assertTrue(buy.is_resolved())
@@ -1216,7 +1216,7 @@ class PurchaseTest(EventTest):
 
     self.state.event_stack.append(buy)
     choice = self.resolve_to_choice(CardChoice)
-    self.assertEqual(choice.choices, ["Food for $1", "Nothing"])
+    self.assertEqual(choice.choices, ["Food", "Nothing"])
     choice.resolve(self.state, "Nothing")
     self.resolve_until_done()
 
@@ -1243,6 +1243,27 @@ class PurchaseTest(EventTest):
     self.assertEqual(self.state.common[0], food)
     self.assertFalse(self.char.possessions)
 
+  def testPurchaseTwoAtListAffordOne(self):
+    buy = Purchase(self.char, "common", 2, keep_count=2)
+    self.char.dollars = 3
+    self.assertFalse(buy.is_resolved())
+    self.assertFalse(self.char.possessions)
+    food = items.Food()
+    gun = items.TommyGun()
+    self.state.common.extend([gun, food])
+
+    self.state.event_stack.append(buy)
+    choice = self.resolve_to_choice(CardChoice)
+    self.assertEqual(choice.choices, ["Food", "Nothing"])
+    choice.resolve(self.state, "Food")
+    self.resolve_until_done()
+
+    self.assertTrue(buy.is_resolved())
+    self.assertEqual(self.char.dollars, 2)
+    self.assertEqual(self.char.possessions, [food])
+    self.assertEqual(len(self.state.common), 1)
+    self.assertEqual(self.state.common[0], gun)
+
   def testPurchaseTwoAtList(self):
     buy = Purchase(self.char, "common", 2, keep_count=2)
     self.char.dollars = 8
@@ -1254,11 +1275,11 @@ class PurchaseTest(EventTest):
 
     self.state.event_stack.append(buy)
     choice = self.resolve_to_choice(CardChoice)
-    self.assertEqual(choice.choices, ["Food for $1", "Tommy Gun for $7", "Nothing"])
-    choice.resolve(self.state, "Tommy Gun for $7")
+    self.assertEqual(choice.choices, ["Food", "Tommy Gun", "Nothing"])
+    choice.resolve(self.state, "Tommy Gun")
     choice = self.resolve_to_choice(CardChoice)
-    self.assertEqual(choice.choices, ["Food for $1", "Nothing"])
-    choice.resolve(self.state, "Food for $1")
+    self.assertEqual(choice.choices, ["Food", "Nothing"])
+    choice.resolve(self.state, "Food")
     self.resolve_until_done()
 
     self.assertTrue(buy.is_resolved())
@@ -1277,11 +1298,11 @@ class PurchaseTest(EventTest):
 
     self.state.event_stack.append(buy)
     choice = self.resolve_to_choice(CardChoice)
-    self.assertEqual(choice.choices, ["Food for $0", "Tommy Gun for $6", "Nothing"])
-    choice.resolve(self.state, "Tommy Gun for $6")
+    self.assertEqual(choice.choices, ["Food", "Tommy Gun", "Nothing"])
+    choice.resolve(self.state, "Tommy Gun")
     choice = self.resolve_to_choice(CardChoice)
-    self.assertEqual(choice.choices, ["Food for $0", "Nothing"])
-    choice.resolve(self.state, "Food for $0")
+    self.assertEqual(choice.choices, ["Food", "Nothing"])
+    choice.resolve(self.state, "Food")
     self.resolve_until_done()
 
     self.assertTrue(buy.is_resolved())
@@ -1300,11 +1321,11 @@ class PurchaseTest(EventTest):
 
     self.state.event_stack.append(buy)
     choice = self.resolve_to_choice(CardChoice)
-    self.assertEqual(choice.choices, ["Food for $1", "Tommy Gun for $4", "Nothing"])
-    choice.resolve(self.state, "Tommy Gun for $4")
+    self.assertEqual(choice.choices, ["Food", "Tommy Gun", "Nothing"])
+    choice.resolve(self.state, "Tommy Gun")
     choice = self.resolve_to_choice(CardChoice)
-    self.assertEqual(choice.choices, ["Food for $1", "Nothing"])
-    choice.resolve(self.state, "Food for $1")
+    self.assertEqual(choice.choices, ["Food", "Nothing"])
+    choice.resolve(self.state, "Food")
     self.resolve_until_done()
 
     self.assertTrue(buy.is_resolved())
@@ -1323,8 +1344,8 @@ class PurchaseTest(EventTest):
 
     self.state.event_stack.append(buy)
     choice = self.resolve_to_choice(CardChoice)
-    self.assertEqual(choice.choices, ["Food for $2", "Tommy Gun for $8", "Nothing"])
-    choice.resolve(self.state, "Tommy Gun for $8")
+    self.assertEqual(choice.choices, ["Food", "Tommy Gun", "Nothing"])
+    choice.resolve(self.state, "Tommy Gun")
     self.resolve_until_done()
 
     self.assertTrue(buy.is_resolved())
@@ -1345,8 +1366,8 @@ class PurchaseTest(EventTest):
 
     self.state.event_stack.append(buy)
     choice = self.resolve_to_choice(CardChoice)
-    self.assertEqual(choice.choices, ["Food for $1", "Tommy Gun for $7", "Nothing"])
-    choice.resolve(self.state, "Tommy Gun for $7")
+    self.assertEqual(choice.choices, ["Food", "Tommy Gun", "Nothing"])
+    choice.resolve(self.state, "Tommy Gun")
     self.resolve_until_done()
 
     self.assertTrue(buy.is_resolved())

@@ -987,7 +987,11 @@ class DrawItems(Event):
     return self.drawn is not None
 
   def start_str(self):
-    return f"{self.character.name} draws {self.draw_count} cards from the {self.deck} deck"
+    if self.target_type is None:
+      return f"{self.character.name} draws {self.draw_count} cards from the {self.deck} deck"
+    else:
+      return (f"{self.character.name} draws {self.draw_count} {self.target_type} "
+              + f"cards from the {self.deck} deck")
 
   def finish_str(self):
     return f"{self.character.name} drew " + ", ".join(c.name for c in self.drawn)
@@ -1043,7 +1047,7 @@ class KeepDrawn(Event):
 def Draw(character, deck, draw_count, prompt="Choose a card", target_type=None):
   cards = DrawItems(character, deck, draw_count, target_type=target_type)
   keep = KeepDrawn(character, cards, prompt)
-  return Sequence([cards, keep])
+  return Sequence([cards, keep], character)
 
 def GainAllyOrReward(character, ally: str, reward: Event):
   has_ally = ContainsPrerequisite("allies", ally)
@@ -1079,14 +1083,14 @@ class PurchaseDrawn(Event):
     if self.choice is not None:
       if not self.choice.is_resolved():  # This should never happen
         return False
-      if self.choice.choices[self.choice.choice_index] == "Nothing":
+      if self.choice.choice == "Nothing":
         self.resolved = True
-        for card in self.drawn:
-          getattr(state, self.draw.deck).append(card)
+        getattr(state, self.draw.deck).extend(self.drawn)
         return True
+      # Note that by now, we should have returned the unavailable cards to the deck
       kept_card = self.drawn.pop(self.choice.choice_index)
       cost = self.prices.pop(self.choice.choice_index)
-      self.kept.append(self.choice.choices[self.choice.choice_index])
+      self.kept.append(self.choice.choice)
       assert cost <= self.character.dollars
       self.character.dollars -= cost
       self.character.possessions.append(kept_card)
@@ -1108,10 +1112,10 @@ class PurchaseDrawn(Event):
       if price <= self.character.dollars:
         available.append(card)
         self.prices.append(price)
-        choices.append(f"{card.name} for ${price}")
+        choices.append(f"{card.name}")
       else:
         getattr(state, self.draw.deck).append(card)
-        unavailable.append(f"{card.name} for ${price}")
+        unavailable.append(f"{card.name}")
     self.drawn = available
     choices.append("Nothing")
 
@@ -1151,7 +1155,7 @@ def Purchase(char, deck, draw_count, discount_type="fixed", discount=0, keep_cou
     buy = PurchaseDrawn(
       char, items, discount_type=discount_type, discount=discount, keep_count=keep_count, prompt=prompt
     )
-    return Sequence([items, buy])
+    return Sequence([items, buy], char)
 
 
 class Encounter(Event):
