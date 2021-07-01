@@ -1034,6 +1034,7 @@ class KeepDrawn(Event):
 
     self.character.possessions.extend(self.drawn)
     self.kept = [card.name for card in self.drawn]
+    return True
 
   def is_resolved(self):
     return self.kept is not None
