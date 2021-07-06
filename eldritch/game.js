@@ -139,11 +139,7 @@ function finishAnim(div) {
   }
 }
 function handleData(data) {
-  if (data.player_idx != null) {
-    updateYou(data.characters[data.player_idx]);
-  } else {
-    updateYou(null);
-  }
+  updateCharacterSheets(data.characters, data.player_idx, data.first_player);
   updateDone(data.turn_number, data.sliders);
   updatePlaces(data.places);
   updateDistances(data.distances);
@@ -294,7 +290,12 @@ function updateMonsters(monster_list) {
 function updateChoices(choice) {
   let uichoice = document.getElementById("uichoice");
   let uicardchoice = document.getElementById("uicardchoice");
-  let pDiv = document.getElementById("possessions");
+  let pDiv;
+  if (!document.getElementsByClassName("you").length) {
+    pDiv = document.createElement("DIV");  // Dummy div.
+  } else {
+    pDiv = document.getElementsByClassName("you")[0].getElementsByClassName("possessions")[0];
+  }
   for (let place of document.getElementsByClassName("place")) {
     let divId = place.id;
     let hover = document.getElementById(divId + "hover");
@@ -387,7 +388,12 @@ function addChoices(uichoice, choices, invalid_choices) {
 
 function updateUsables(usables, choice) {
   let uiuse = document.getElementById("uiuse");
-  let pDiv = document.getElementById("possessions");
+  let pDiv;
+  if (!document.getElementsByClassName("you").length) {
+    pDiv = document.createElement("DIV");  // Dummy div.
+  } else {
+    pDiv = document.getElementsByClassName("you")[0].getElementsByClassName("possessions")[0];
+  }
   uiuse.style.display = "none";
   if (usables == null) {
     pDiv.classList.remove("use");
@@ -555,21 +561,106 @@ function updateEventLog(eventLog) {
   logDiv.scrollTop = logDiv.scrollHeight;
 }
 
-function updateYou(character) {
-  // TODO handle null, since this may be an observer.
+function updateCharacterSheets(characters, playerIdx, firstPlayer) {
+  let rightUI = document.getElementById("uiright");
+  for (let [idx, character] of characters.entries()) {
+    let sheet;
+    if (rightUI.getElementsByClassName("player").length <= idx) {
+      sheet = createCharacterSheet(idx, character, rightUI);
+    } else {
+      sheet = rightUI.getElementsByClassName("player")[idx];
+    }
+    let order = idx - firstPlayer;
+    if (order < 0) {
+      order += characters.length;
+    }
+    updateCharacterSheet(sheet, character, order, playerIdx == idx);
+  }
+  let unCollapsed = false;
+  for (let sheet of document.getElementsByClassName("player")) {
+    if (!sheet.classList.contains("collapsed")) {
+      unCollapsed = true;
+      break;
+    }
+  }
+  if (!unCollapsed && document.getElementsByClassName("you").length) {
+    document.getElementsByClassName("you")[0].classList.remove("collapsed");
+  }
+}
+
+function createCharacterSheet(idx, character, rightUI) {
+  let div = document.createElement("DIV");
+  div.classList.add("player");
+  div.classList.add("collapsed");
+
+  let charTop = document.createElement("DIV");
+  charTop.classList.add("playertop");
+  let charPic = document.createElement("DIV");
+  charPic.classList.add("playerpicouter");
+  charPic.onclick = function(e) { expandSheet(div) };
+  let cnv = document.createElement("CANVAS");
+  cnv.classList.add("playerpiccanvas");
+  charPic.appendChild(cnv);
+  charTop.appendChild(charPic);
+
+  let charInfo = document.createElement("DIV");
+  charInfo.classList.add("playerinfo");
+  let charName = document.createElement("DIV");
+  charName.classList.add("playername");
+  charName.onclick = function(e) { expandSheet(div) };
+  charInfo.appendChild(charName);
+  let charStats = document.createElement("DIV");
+  charStats.classList.add("playerstats");
+  charInfo.appendChild(charStats);
+  charTop.appendChild(charInfo);
+  div.appendChild(charTop);
+
+  let sliders = document.createElement("DIV");
+  sliders.classList.add("sliders");
+  let spacer = document.createElement("DIV");
+  spacer.classList.add("sliderspacer");
+  sliders.appendChild(spacer);
+  div.appendChild(sliders);
+  let possessions = document.createElement("DIV");
+  possessions.classList.add("possessions");
+  div.appendChild(possessions);
+  let spacer2 = document.createElement("DIV");
+  spacer2.classList.add("sliderspacer");
+  div.appendChild(spacer2);
+
+  rightUI.appendChild(div);
+  return div;
+}
+
+function expandSheet(sheetDiv) {
+  for (let sheet of document.getElementsByClassName("player")) {
+    if (sheet == sheetDiv) {
+      sheet.classList.remove("collapsed");
+    } else {
+      sheet.classList.add("collapsed");
+    }
+  }
+}
+
+function updateCharacterSheet(sheet, character, order, isPlayer) {
   let width = document.getElementById("boardcanvas").width;
-  let pdata = document.getElementById("player");
   let markerWidth = width * markerWidthRatio;
   let markerHeight = width * markerHeightRatio;
-  let picDiv = document.getElementById("playerpic");
-  let cnv = document.getElementById("playerpiccanvas");
+  let picDiv = sheet.getElementsByClassName("playerpicouter")[0];
+  let cnv = sheet.getElementsByClassName("playerpiccanvas")[0];
   picDiv.style.width = markerWidth + "px";
   picDiv.style.height = markerHeight + "px";
   cnv.width = markerWidth;
   cnv.height = markerHeight;
   renderAssetToCanvas(cnv, character.name, "");
-  document.getElementById("playername").innerText = character.name;
-  let stats = document.getElementById("playerstats");
+  if (isPlayer) {
+    sheet.classList.add("you");
+  } else {
+    sheet.classList.remove("you");
+  }
+  sheet.style.order = order;
+  sheet.getElementsByClassName("playername")[0].innerText = character.name;
+  let stats = sheet.getElementsByClassName("playerstats")[0];
   while (stats.firstChild) {
     stats.removeChild(stats.firstChild);
   }
@@ -586,26 +677,26 @@ function updateYou(character) {
     let statDiv = document.createElement("DIV");
     statDiv.classList.add("stat");
     statDiv.innerText = text;
-    if (cfg[0] == "clues") {
+    if (isPlayer && cfg[0] == "clues") {
       statDiv.classList.add("clue");
       // TODO: make this nicer
       statDiv.onclick = function(e) { useAsset(-1) };
     }
     stats.appendChild(statDiv);
   }
-  updateSliders(character);
-  updatePossessions(character);
+  updateSliders(sheet, character, isPlayer);
+  updatePossessions(sheet, character, isPlayer);
 }
 
-function updateSliders(character) {
+function updateSliders(sheet, character, isPlayer) {
   for (let sliderName in character.sliders) {
-    let sliderDiv = document.getElementById("slider_" + sliderName);
+    let sliderDiv = sheet.getElementsByClassName("slider_" + sliderName)[0];
     if (sliderDiv == null) {
-      sliderDiv = createSlider(sliderName, character.sliders[sliderName]);
-      document.getElementById("sliders").appendChild(sliderDiv);
+      sliderDiv = createSlider(sliderName, character.sliders[sliderName], isPlayer);
+      sheet.getElementsByClassName("sliders")[0].appendChild(sliderDiv);
       let spacerDiv = document.createElement("DIV");
       spacerDiv.classList.add("sliderspacer");
-      document.getElementById("sliders").appendChild(spacerDiv);
+      sheet.getElementsByClassName("sliders")[0].appendChild(spacerDiv);
     }
     let selection = character.sliders[sliderName].selection;
     let pairs = sliderDiv.getElementsByClassName("slidervaluepair");
@@ -622,12 +713,12 @@ function updateSliders(character) {
   }
 }
 
-function createSlider(sliderName, sliderInfo) {
+function createSlider(sliderName, sliderInfo, isPlayer) {
   let firstName = sliderName.split("_")[0];
   let secondName = sliderName.split("_")[1];
   let sliderDiv = document.createElement("DIV");
   sliderDiv.classList.add("slider");
-  sliderDiv.id = "slider_" + sliderName;
+  sliderDiv.classList.add("slider_" + sliderName);
   let nameDiv = document.createElement("DIV");
   nameDiv.classList.add("sliderpair");
   nameDiv.classList.add("slidernames");
@@ -655,23 +746,25 @@ function createSlider(sliderName, sliderInfo) {
     secondDiv.innerText = pair[1];
     pairDiv.appendChild(firstDiv);
     pairDiv.appendChild(secondDiv);
-    pairDiv.onclick = function(e) { setSlider(sliderName, idx); };
+    if (isPlayer) {
+      pairDiv.onclick = function(e) { setSlider(sliderName, idx); };
+    }
     sliderDiv.appendChild(pairDiv);
   }
   return sliderDiv;
 }
 
-function updatePossessions(character) {
-  let pDiv = document.getElementById("possessions");
+function updatePossessions(sheet, character, isPlayer) {
+  let pDiv = sheet.getElementsByClassName("possessions")[0];
   while (pDiv.firstChild) {
     pDiv.removeChild(pDiv.firstChild);
   }
   for (let i = 0; i < character.possessions.length; i++) {
-    pDiv.appendChild(createPossession(character.possessions[i], i));
+    pDiv.appendChild(createPossession(character.possessions[i], i, isPlayer));
   }
 }
 
-function createPossession(info, idx) {
+function createPossession(info, idx, isPlayer) {
   let width = document.getElementById("boardcanvas").width;
   let posWidth = 3 * width * markerWidthRatio / 2;
   let posHeight = 3 * width * markerHeightRatio / 2;
@@ -702,11 +795,13 @@ function createPossession(info, idx) {
     }
     div.appendChild(highlightDiv);
   }
-  if (itemChoice.includes(idx)) {
-    div.classList.add("chosen");
-  }
-  div.onclick = function(e) { clickAsset(div, idx); };
   // TODO: show some information about bonuses that aren't active right now
+  if (isPlayer) {
+    if (itemChoice.includes(idx)) {
+      div.classList.add("chosen");
+    }
+    div.onclick = function(e) { clickAsset(div, idx); };
+  }
   return div;
 }
 

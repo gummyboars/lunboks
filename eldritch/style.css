@@ -144,6 +144,7 @@ button {
   min-height: 0;
   height: 100%;
   flex: 1 1 100%;
+  order: 20;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -242,29 +243,30 @@ button {
   pointer-events: none;
   z-index: 5;
 }
-#player {
+.player {
   width: 100%;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   align-items: center;
   background: silver;
+  border-top: 1px solid black;
 }
-#playertop {
+.playertop {
   width: 100%;
   display: flex;
   flex-direction: row;
   justify-content: space-around;
   align-items: center;
 }
-#playerpicouter {
+.playerpicouter {
   flex: 1 1 auto;
   display: flex;
   flex-direction: row;
   justify-content: center;
   align-items: center;
 }
-#playerinfo {
+.playerinfo {
   width: 70%;
   flex: 0 1 auto;
   display: flex;
@@ -272,7 +274,7 @@ button {
   justify-content: space-between;
   align-items: center;
 }
-#playerstats {
+.playerstats {
   display: flex;
   flex-wrap: wrap;
   flex-direction: row;
@@ -284,13 +286,16 @@ button {
 .stat.clue {
   cursor: pointer;
 }
-#sliders {
+.sliders {
   width: 100%;
   align-self: flex-end;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   align-items: center;
+}
+.collapsed .sliders {
+  display: none;
 }
 .slider {
   width: 100%;
@@ -310,7 +315,7 @@ button {
   justify-content: space-between;
   align-items: center;
 }
-.slidervaluepair {
+.you .slidervaluepair {
   cursor: pointer;
 }
 .slidernames {
@@ -347,10 +352,10 @@ button {
   border-radius: 0 0 50% 50%;
   border-color: rgba(0, 0, 0, 0);
 }
-.sliderdeselected:hover .slidertop {
+.you .sliderdeselected:hover .slidertop {
   border-color: rgba(0, 0, 255, 0.5);
 }
-.sliderdeselected:hover .sliderbottom {
+.you .sliderdeselected:hover .sliderbottom {
   border-color: rgba(255, 0, 0, 0.5);
 }
 .sliderselected .slidertop {
@@ -359,13 +364,16 @@ button {
 .sliderselected .sliderbottom {
   border-color: red;
 }
-#possessions {
+.possessions {
   width: 100%;
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-start;
   align-items: flex-start;
   align-content: flex-start;
+}
+.collapsed .possessions {
+  display: none;
 }
 .possession {
   position: relative;
@@ -375,17 +383,17 @@ button {
 .possession.active {
   border-color: green;
 }
-#possessions.use .usable {
+.possessions.use .usable {
   cursor: pointer;
 }
-#possessions.use .unusable {
+.possessions.use .unusable {
   filter: grayscale(70%) brightness(70%);
 }
-#possessions.choose .possession {
+.possessions.choose .possession {
   cursor: pointer;
   transition: transform 0.2s;
 }
-#possessions.choose .possession.chosen {
+.possessions.choose .possession.chosen {
   transform-origin: center;
   transform: scale(1.2, 1.2);
 }
