@@ -27,61 +27,76 @@ function continueInit(gameId) {
   renderAssetToCanvas(document.getElementById("boardcanvas"), "board", "");
   let width = document.getElementById("boardcanvas").width;
   let cont = document.getElementById("board");
-  for (let name in locations) {
-    let div = document.createElement("DIV");
-    div.id = "place" + name;
-    div.style.width = Math.floor(2*radiusRatio*width) + "px";
-    div.style.height = Math.floor(2*radiusRatio*width) + "px";
-    div.classList.add("place", "location");
-    div.style.top = Math.round(locations[name].y*width) + "px";
-    div.style.left = Math.round(locations[name].x*width) + "px";
-    let gate = document.createElement("CANVAS");
-    gate.id = "place" + name + "gate";
-    gate.classList.add("gate");
-    gate.width = Math.floor(2*radiusRatio*width);
-    gate.height = Math.floor(2*radiusRatio*width);
-    div.appendChild(gate);
-    let hover = document.createElement("DIV");
-    hover.id = "place" + name + "hover";
-    hover.classList.add("placehover", "location");
-    hover.style.width = "100%";
-    hover.style.height = "100%";
-    div.appendChild(hover);
-    let desc = document.createElement("DIV");
-    desc.id = "place" + name + "desc";
-    desc.classList.add("desc");
-    hover.appendChild(desc);
-    div.onclick = function(e) { clickPlace(name); };
-    cont.appendChild(div);
-    let opt = document.createElement("OPTION");
-    opt.value = name;
-    opt.text = name;
-    document.getElementById("placechoice").appendChild(opt);
-  }
-  for (let name in streets) {
-    let div = document.createElement("DIV");
-    div.id = "place" + name;
-    div.style.width = Math.floor(width*widthRatio) + "px";
-    div.style.height = Math.floor(width*heightRatio) + "px";
-    div.classList.add("place");
-    div.style.top = Math.round(streets[name].y*width) + "px";
-    div.style.left = Math.round(streets[name].x*width) + "px";
-    let hover = document.createElement("DIV");
-    hover.id = "place" + name + "hover";
-    hover.classList.add("placehover");
-    hover.style.width = "100%";
-    hover.style.height = "100%";
-    div.appendChild(hover);
-    let desc = document.createElement("DIV");
-    desc.id = "place" + name + "desc";
-    desc.classList.add("desc");
-    hover.appendChild(desc);
-    div.onclick = function(e) { clickPlace(name); };
-    cont.appendChild(div);
-    let opt = document.createElement("OPTION");
-    opt.value = name;
-    opt.text = name;
-    document.getElementById("placechoice").appendChild(opt);
+  let heights = {"location": Math.floor(2*radiusRatio*width), "street": Math.floor(width*heightRatio)};
+  let widths = {"location": Math.floor(2*radiusRatio*width), "street": Math.floor(width*widthRatio)};
+  for (let [placeType, places] of [["location", locations], ["street", streets]]) {
+    for (let name in places) {
+      let div = document.createElement("DIV");
+      div.id = "place" + name;
+      div.style.width = widths[placeType] + "px";
+      div.style.height = heights[placeType] + "px";
+      div.classList.add("place");
+      div.style.top = Math.round(places[name].y*width) + "px";
+      div.style.left = Math.round(places[name].x*width) + "px";
+      div.onmouseenter = bringToTop;
+      let box = document.createElement("DIV");
+      box.id = "place" + name + "box";
+      box.classList.add("placebox", "placeboxhover");  // FIXME
+      div.appendChild(box);
+      let monsters = document.createElement("DIV");
+      monsters.id = "place" + name + "monsters";
+      monsters.classList.add("placemonsters");
+      monsters.style.height = div.style.height;
+      let details = document.createElement("DIV");
+      details.id = "place" + name + "details";
+      details.classList.add("placedetails");
+      details.style.height = div.style.height;
+      if (places[name].y < 0.3) {
+        box.classList.add("placeupper");
+        box.appendChild(details);
+        box.appendChild(monsters);
+      } else {
+        box.classList.add("placelower");
+        box.appendChild(monsters);
+        box.appendChild(details);
+      }
+      if (places[name].x < 0.5) {
+        box.classList.add("placeleft");
+      } else {
+        box.classList.add("placeright");
+      }
+
+      let chars = document.createElement("DIV");
+      chars.id = "place" + name + "chars";
+      chars.classList.add("placechars");
+      chars.style.height = div.style.height;
+      chars.style.minWidth = div.style.width;
+      details.appendChild(chars);
+      let gateDiv = document.createElement("DIV");
+      gateDiv.id = "place" + name + "gate";
+      gateDiv.classList.add("placegate");
+      gateDiv.style.height = div.style.height;
+      gateDiv.style.width = div.style.width;
+      details.appendChild(gateDiv);
+      let gate = document.createElement("CANVAS");
+      gate.classList.add("gate");
+      gate.width = Math.floor(2*radiusRatio*width);
+      gate.height = Math.floor(2*radiusRatio*width);
+      gateDiv.appendChild(gate);
+      let select = document.createElement("DIV");
+      select.id = "place" + name + "select";
+      select.classList.add("placeselect", placeType);
+      select.style.height = div.style.height;
+      select.style.width = div.style.width;
+      select.onclick = function(e) { clickPlace(name); };
+      details.appendChild(select);
+      cont.appendChild(div);
+
+      let opt = document.createElement("OPTION");
+      opt.value = name;
+      opt.text = name;
+      document.getElementById("placechoice").appendChild(opt);
+    }
   }
   for (let name of monsterNames) {
     let opt = document.createElement("OPTION");
@@ -142,8 +157,6 @@ function handleData(data) {
   updateCharacterSheets(data.characters, data.player_idx, data.first_player);
   updateDone(data.turn_number, data.sliders);
   updatePlaces(data.places);
-  updateDistances(data.distances);
-  updateDice(data.check_result, data.dice_result);
   updateCharacters(data.characters);
   updateMonsters(data.monsters);
   updateChoices(data.choice);
@@ -176,6 +189,30 @@ function spawnGate(e) {
 function spawnClue(e) {
   let place = document.getElementById("placechoice").value;
   ws.send(JSON.stringify({"type": "clue", "place": place}));
+}
+
+function bringToTop(e) {
+  // It turns out that for siblings in the DOM, browsers give precedence to the sibling that
+  // comes later in the dom when calculating which element is being hovered. So once the user
+  // hovers over a box, we put that box last so that it gets priority over all the other boxes.
+  // This is a convoluted way of doing it - it turns out that if you move the dom element that
+  // you just moused over, firefox has trouble with applying the hover attributes. So instead
+  // of moving the element to the end, we move all OTHER elements before it, and this makes
+  // firefox happy.
+  let board = e.currentTarget.parentNode;
+  let divsToMove = [];
+  let found = false;
+  for (let i = 0; i < board.children.length; i++) {
+    if (found && board.children[i].classList.contains("place")) {
+      divsToMove.push(board.children[i]);
+    }
+    if (board.children[i] == e.currentTarget) {
+      found = true;
+    }
+  }
+  for (let other of divsToMove) {
+    board.insertBefore(other, e.currentTarget);
+  }
 }
 
 function makeChoice(val) {
@@ -248,7 +285,7 @@ function updateDice(checkResult, diceResult) {
 
 function updateCharacters(newCharacters) {
   for (let character of newCharacters) {
-    let place = document.getElementById("place" + character.place);
+    let place = document.getElementById("place" + character.place + "chars");
     if (place == null) {
       // TODO: may need to remove the character instead of letting them stay on the board.
       console.log("Unknown place " + character.place);
@@ -273,9 +310,9 @@ function updateMonsters(monster_list) {
       }
       continue;
     }
-    let place = document.getElementById("place" + monster.place);
+    let place = document.getElementById("place" + monster.place + "monsters");
     if (place == null) {
-      console.log("Unknown place " + character.place);
+      console.log("Unknown place " + monster.place);
       continue;
     }
     if (monsters[i] == null) {
@@ -296,11 +333,10 @@ function updateChoices(choice) {
   } else {
     pDiv = document.getElementsByClassName("you")[0].getElementsByClassName("possessions")[0];
   }
-  for (let place of document.getElementsByClassName("place")) {
-    let divId = place.id;
-    let hover = document.getElementById(divId + "hover");
-    hover.classList.remove("selectable");
-    hover.classList.remove("unselectable");
+  for (let place of document.getElementsByClassName("placeselect")) {
+    place.classList.remove("selectable");
+    place.classList.remove("unselectable");
+    place.innerText = "";
   }
   if (choice == null) {
     uichoice.style.display = "none";
@@ -474,58 +510,38 @@ function animateMovingDiv(div, destParent) {
 function updatePlaces(places) {
   for (let placeName in places) {
     let place = places[placeName];
-    let pDiv = document.getElementById("place" + placeName);
-    let gateCnv = document.getElementById("place" + placeName + "gate");
-    if (gateCnv == null) {  // Only locations have gates.
+    let gateDiv = document.getElementById("place" + placeName + "gate");
+    if (gateDiv == null) {  // Some places cannot have gates.
       continue;
     }
-    if (place.gate) {
+    let gateCnv = gateDiv.getElementsByTagName("CANVAS")[0];
+    if (place.gate) {  // TODO: sealed
       renderAssetToCanvas(gateCnv, place.gate.name, "");
+      gateDiv.classList.add("placegatepresent");
     } else {
       let ctx = gateCnv.getContext("2d");
       ctx.clearRect(0, 0, gateCnv.width, gateCnv.height);
+      gateDiv.classList.remove("placegatepresent");
     }
-  }
-}
-
-function updateDistances(distances) {
-  for (let place of document.getElementsByClassName("place")) {
-    let divId = place.id;
-    let hover = document.getElementById(divId + "hover");
-    hover.classList.remove("reachable");
-    hover.classList.add("unreachable");
-    let desc = document.getElementById(divId + "desc");
-    if (desc != null) {
-      desc.innerText = "X";
-    }
-  }
-  for (let placeName in distances) {
-    let hover = document.getElementById("place" + placeName + "hover");
-    hover.classList.remove("unreachable");
-    hover.classList.add("reachable");
-    let textDiv = document.getElementById("place" + placeName + "desc");
-    textDiv.innerText = distances[placeName];
   }
 }
 
 function updatePlaceChoices(uichoice, places) {
   let notFound = [];
-  for (let place of document.getElementsByClassName("place")) {
-    let divId = place.id;
-    let hover = document.getElementById(divId + "hover");
-    hover.classList.remove("selectable");
-    hover.classList.add("unselectable");
+  for (let place of document.getElementsByClassName("placeselect")) {
+    place.classList.remove("selectable");
+    place.classList.add("unselectable");
+    place.innerText = "❌";
   }
   for (let placeName of places) {
-    let hover = document.getElementById("place" + placeName + "hover");
-    if (hover == null) {
+    let place = document.getElementById("place" + placeName + "select");
+    if (place == null) {
       notFound.push(placeName);
       continue;
     }
-    hover.classList.add("selectable");
-    hover.classList.remove("unselectable");
-    let desc = document.getElementById("place" + placeName + "desc");
-    desc.innerText = "Choose";
+    place.classList.add("selectable");
+    place.classList.remove("unselectable");
+    place.innerText = "Choose";
   }
   if (notFound.length) {
     addChoices(uichoice, notFound);
