@@ -101,7 +101,6 @@ function initializeDefaults() {
     {names: skillNames, color: "gold"},
     {names: allyNames, color: "darkorange"},
     {names: abilityNames, color: "sienna"},
-    {names: monsterNames, color: "black", fgColor: "white"},
   ];
   for (let cfg of cfgs) {
     for (let name of cfg.names) {
@@ -109,6 +108,14 @@ function initializeDefaults() {
       asset.id = "default" + name;
       assets.appendChild(asset);
     }
+  }
+  for (let name of monsterNames) {
+    let asset = createTextSquare(name, "black", board.width, "white");
+    asset.id = "default" + name;
+    assets.appendChild(asset);
+    asset = createTextSquare(name + " back", "black", board.width, "white");
+    asset.id = "default" + name + "back";
+    assets.appendChild(asset);
   }
   for (let world of otherWorlds) {
     let asset = createTextCircle(world, "palegoldenrod", board.width, "black");
@@ -181,6 +188,28 @@ function createTextRectangle(name, bgColor, boardWidth, fgColor) {
   let cnv = document.createElement("CANVAS");
   cnv.width = 3 * boardWidth * markerWidthRatio;
   cnv.height = 3 * boardWidth * markerHeightRatio;
+  let ctx = cnv.getContext("2d");
+  ctx.save();
+  ctx.fillStyle = bgColor;
+  ctx.fillRect(0, 0, cnv.width, cnv.height);
+  let fontSize = getTextSize(ctx, name, cnv.width, cnv.height);
+  ctx.font = fontSize + "px sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  if (fgColor != null) {
+    ctx.fillStyle = fgColor;
+  } else {
+    ctx.fillStyle = "black";
+  }
+  ctx.fillText(name, cnv.width/2, cnv.height/2);
+  ctx.restore();
+  return cnv;
+}
+
+function createTextSquare(name, bgColor, boardWidth, fgColor) {
+  let cnv = document.createElement("CANVAS");
+  cnv.width = boardWidth / 12;
+  cnv.height = boardWidth / 12;
   let ctx = cnv.getContext("2d");
   ctx.save();
   ctx.fillStyle = bgColor;

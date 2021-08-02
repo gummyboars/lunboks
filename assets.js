@@ -21,6 +21,9 @@ function getAsset(assetName, variant) {
     img = document.getElementById("canvas" + assetName);
   }
   if (img == null) {
+    img = document.getElementById("default" + assetName + variant);
+  }
+  if (img == null) {
     img = document.getElementById("default" + assetName);
   }
   return img;

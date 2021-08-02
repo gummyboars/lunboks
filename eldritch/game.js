@@ -43,10 +43,11 @@ function continueInit(gameId) {
       box.id = "place" + name + "box";
       box.classList.add("placebox", "placeboxhover");  // FIXME
       div.appendChild(box);
-      let monsters = document.createElement("DIV");
-      monsters.id = "place" + name + "monsters";
-      monsters.classList.add("placemonsters");
-      monsters.style.height = div.style.height;
+      let monstersDiv = document.createElement("DIV");
+      monstersDiv.id = "place" + name + "monsters";
+      monstersDiv.classList.add("placemonsters");
+      monstersDiv.style.height = div.style.height;
+      monstersDiv.onclick = function(e) { showMonsters(monstersDiv, name); };
       let details = document.createElement("DIV");
       details.id = "place" + name + "details";
       details.classList.add("placedetails");
@@ -54,10 +55,10 @@ function continueInit(gameId) {
       if (places[name].y < 0.3) {
         box.classList.add("placeupper");
         box.appendChild(details);
-        box.appendChild(monsters);
+        box.appendChild(monstersDiv);
       } else {
         box.classList.add("placelower");
-        box.appendChild(monsters);
+        box.appendChild(monstersDiv);
         box.appendChild(details);
       }
       if (places[name].x < 0.5) {
@@ -325,6 +326,25 @@ function updateCharacters(newCharacters) {
   }
 }
 
+function showMonsters(placeDiv, name) {
+  let box = document.getElementById("monsterdetailsbox");
+  while (box.children.length) {
+    box.removeChild(box.firstChild);
+  }
+  for (let monsterDiv of placeDiv.getElementsByClassName("monster")) {
+    let container = document.createElement("DIV");
+    container.appendChild(createMonsterDiv(monsterDiv.monsterName, 2, ""));
+    container.appendChild(createMonsterDiv(monsterDiv.monsterName, 2, "back"));
+    box.appendChild(container);
+  }
+  document.getElementById("monsterdetailsname").innerText = name;
+  document.getElementById("monsterdetails").style.display = "flex";
+}
+
+function hideMonsters(e) {
+  document.getElementById("monsterdetails").style.display = "none";
+}
+
 function updateMonsters(monster_list) {
   for (let i = 0; i < monster_list.length; i++) {
     let monster = monster_list[i];
@@ -341,7 +361,7 @@ function updateMonsters(monster_list) {
       continue;
     }
     if (monsters[i] == null) {
-      monsters[i] = createMonsterDiv(monster.name);
+      monsters[i] = createMonsterDiv(monster.name, 1, "");
       place.appendChild(monsters[i]);
     } else {
       animateMovingDiv(monsters[i], place);
@@ -479,20 +499,20 @@ function updateUsables(usables, choice) {
   // TODO: clues
 }
 
-function createMonsterDiv(name) {
+function createMonsterDiv(name, scale, side) {
   let width = document.getElementById("boardcanvas").width;
-  let markerWidth = width * markerWidthRatio;
   let markerHeight = width * markerHeightRatio;
   let div = document.createElement("DIV");
-  div.style.width = + markerWidth + "px";
-  div.style.height = markerHeight + "px";
+  div.style.width = + markerHeight * scale + "px";
+  div.style.height = markerHeight * scale + "px";
   div.classList.add("monster");
   let cnv = document.createElement("CANVAS");
   cnv.classList.add("monstercnv");
-  cnv.width = markerWidth;
-  cnv.height = markerHeight;
-  renderAssetToCanvas(cnv, name, "");
+  cnv.width = markerHeight * scale;
+  cnv.height = markerHeight * scale;
+  renderAssetToCanvas(cnv, name, side);
   div.appendChild(cnv);
+  div.monsterName = name;
   return div;
 }
 
