@@ -110,9 +110,12 @@ function initializeDefaults() {
       assets.appendChild(asset);
     }
   }
-  for (let gateName of gateNames) {
-    let asset = createTextCircle(gateName, "palegoldenrod", board.width, "black");
-    asset.id = "default" + gateName;
+  for (let world of otherWorlds) {
+    let asset = createTextCircle(world, "palegoldenrod", board.width, "black");
+    asset.id = "default" + "Gate " + world;
+    assets.appendChild(asset);
+    asset = createOtherWorld(world, board.width);
+    asset.id = "default" + world;
     assets.appendChild(asset);
   }
 }
@@ -213,6 +216,53 @@ function createTextCircle(name, bgColor, boardWidth, fgColor) {
   ctx.textBaseline = "middle";
   ctx.fillStyle = fgColor;
   ctx.fillText(name, radius, radius);
+  ctx.restore();
+  return cnv;
+}
+
+function createOtherWorld(name, boardWidth) {
+  let colors = {
+    "Abyss": ["red", "blue"],
+    "Another Dimension": ["blue", "green", "red", "gold"],
+    "City": ["green", "gold"],
+    "Great Hall": ["blue", "green"],
+    "Plateau": ["red", "green"],
+    "Sunken City": ["red", "gold"],
+    "Dreamlands": ["blue", "green", "red", "gold"],
+    "Pluto": ["blue", "gold"],
+  };
+  let cnv = document.createElement("CANVAS");
+  let worldSize = boardWidth / 8;
+  cnv.width = worldSize;
+  cnv.height = worldSize;
+  let ctx = cnv.getContext("2d");
+  ctx.save();
+  ctx.fillStyle = "palegoldenrod";
+  ctx.fillRect(0, 0, worldSize, worldSize);
+  let fontSize = getTextSize(ctx, name, worldSize * 3 / 4, worldSize / 4);
+  ctx.font = fontSize + "px sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillStyle = "black";
+  ctx.fillText(name, worldSize / 2, worldSize / 8);
+  ctx.strokeStyle = "black";
+  ctx.moveTo(0, worldSize / 4);
+  ctx.lineTo(worldSize, worldSize / 4);
+  ctx.stroke();
+  ctx.moveTo(worldSize / 2, worldSize / 4);
+  ctx.lineTo(worldSize / 2, worldSize);
+  ctx.stroke();
+  for (let [idx, color] of colors[name].entries()) {
+    let x, y;
+    if (idx < 2) {
+      x = worldSize * 15 / 16;
+    } else {
+      x = worldSize * 14 / 16;
+    }
+    y = (idx % 2) * worldSize / 16;
+    ctx.fillStyle = color;
+    ctx.fillRect(x, y, worldSize / 16, worldSize / 16);
+  }
   ctx.restore();
   return cnv;
 }

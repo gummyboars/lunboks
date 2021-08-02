@@ -104,6 +104,39 @@ function continueInit(gameId) {
     opt.text = name;
     document.getElementById("monsterchoice").appendChild(opt);
   }
+  for (let [idx, name] of otherWorlds.entries()) {
+    let div = document.createElement("DIV");
+    div.id = "world" + name;
+    div.classList.add("world");
+    div.style.width = Math.floor(width/8) + "px";
+    div.style.maxHeight = Math.floor(width/8) + "px";
+    let worldbox = document.createElement("DIV");
+    worldbox.id = "world" + name + "box";
+    worldbox.classList.add("worldbox");
+    worldbox.style.width = Math.floor(width/8) + "px";
+    worldbox.style.height = Math.floor(width/8) + "px";
+    for (let [i, side] of [[1, "left"], [2, "right"]]) {
+      let world = document.createElement("DIV");
+      world.id = "place" + name + i + "chars";
+      world.classList.add("world" + side, "worldchars");
+      worldbox.appendChild(world);
+    }
+    div.appendChild(worldbox);
+    let cnv = document.createElement("CANVAS");
+    cnv.classList.add("worldcnv");
+    cnv.width = width / 8;
+    cnv.height = width / 8;
+    renderAssetToCanvas(cnv, name, "");
+    div.appendChild(cnv);
+    if (idx < otherWorlds.length / 2) {
+      document.getElementById("worldstop").appendChild(div);
+    } else {
+      document.getElementById("worldsbottom").appendChild(div);
+    }
+  }
+  let worlds = document.getElementById("worlds");
+  worlds.style.height = Math.floor(width/16) + "px";
+  worlds.style.maxHeight = Math.floor(width/16) + "px";
 }
 
 // TODO: dedup
@@ -145,9 +178,11 @@ function onmsg(e) {
     handleData(data);
   }
 }
-function finishAnim(div) {
+function doneAnimating(div) {
   div.ontransitionend = null;
   div.ontransitioncancel = null;
+}
+function finishAnim() {
   runningAnim.shift();
   if (messageQueue.length && !runningAnim.length) {
     handleData(messageQueue.shift());
@@ -271,16 +306,6 @@ function done(e) {
 
 function doneSliders(e) {
   ws.send(JSON.stringify({"type": "set_slider", "name": "done"}));
-}
-
-function updateDice(checkResult, diceResult) {
-  if (checkResult == null || diceResult == null) {
-    document.getElementById("dice").innerText = "no dice";
-    document.getElementById("result").innerText = "no check";
-    return;
-  }
-  document.getElementById("dice").innerText = diceResult.join();
-  document.getElementById("result").innerText = checkResult ? "pass" : "fail";
 }
 
 function updateCharacters(newCharacters) {
@@ -492,6 +517,42 @@ function animateMovingDiv(div, destParent) {
   if (div.parentNode == destParent) {
     return;
   }
+  let divToShow = null;
+  if (destParent.classList.contains("worldchars")) {
+    divToShow = destParent.parentNode.parentNode;
+  } else if (div.parentNode.classList.contains("worldchars")) {
+    divToShow = div.parentNode.parentNode.parentNode;
+  }
+  if (divToShow == null) {
+    // Moving from the board to the board. Just animate the marker's movement.
+    moveAndTranslateNode(div, destParent);
+    runningAnim.push(true);  // Doesn't really matter what we push.
+    div.ontransitionend = function() { div.classList.remove("moving"); doneAnimating(div); finishAnim(); };
+    div.ontransitioncancel = function() { div.classList.remove("moving"); doneAnimating(div); finishAnim(); };
+    setTimeout(function() { div.classList.add("moving"); div.style.transform = "none"; }, 10);
+    return;
+  }
+
+  // Moving from or to another world. Show the other world, then animate, then unshow.
+  let lastAnim = function() {
+    divToShow.ontransitionend = function() { doneAnimating(divToShow); finishAnim(); };
+    divToShow.ontransitioncancel = function() { doneAnimating(divToShow); finishAnim(); };
+    divToShow.classList.remove("shown");
+  }
+  let continueAnim = function() {
+    doneAnimating(divToShow);
+    moveAndTranslateNode(div, destParent);
+    div.ontransitionend = function() { div.classList.remove("moving"); doneAnimating(div); lastAnim(); };
+    div.ontransitioncancel = function() { div.classList.remove("moving"); doneAnimating(div); lastAnim(); };
+    setTimeout(function() { div.classList.add("moving"); div.style.transform = "none"; }, 10);
+  }
+  runningAnim.push(true);
+  divToShow.ontransitionend = continueAnim;
+  divToShow.ontransitioncancel = continueAnim;
+  divToShow.classList.add("shown");
+}
+
+function moveAndTranslateNode(div, destParent) {
   let oldRect = div.getBoundingClientRect();
   div.parentNode.removeChild(div);
   destParent.appendChild(div);
@@ -500,11 +561,6 @@ function animateMovingDiv(div, destParent) {
   let diffY = Math.floor((oldRect.top - newRect.top) / scale);
   // TODO: also transition the destination characters.
   div.style.transform = "translateX(" + diffX + "px) translateY(" + diffY + "px)";
-  
-  runningAnim.push(true);  // Doesn't really matter what we push.
-  div.ontransitionend = function() { div.classList.remove("moving"); finishAnim(div); };
-  div.ontransitioncancel = function() { div.classList.remove("moving"); finishAnim(div); };
-  setTimeout(function() { div.classList.add("moving"); div.style.transform = "none"; }, 10);
 }
 
 function updatePlaces(places) {
@@ -516,7 +572,7 @@ function updatePlaces(places) {
     }
     let gateCnv = gateDiv.getElementsByTagName("CANVAS")[0];
     if (place.gate) {  // TODO: sealed
-      renderAssetToCanvas(gateCnv, place.gate.name, "");
+      renderAssetToCanvas(gateCnv, "Gate " + place.gate.name, "");
       gateDiv.classList.add("placegatepresent");
     } else {
       let ctx = gateCnv.getContext("2d");

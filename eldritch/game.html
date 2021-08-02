@@ -31,15 +31,18 @@
           <canvas id="boardcanvas"></canvas>
         </div>
         <div id="uibottom">
-          Modifier&nbsp;<input id="modifier" type="text" value="0" /><br />
-          <div id="done"><button>Done</button></div>
-          <div id="result"></div>
-          <div id="dice"></div>
-          <select id="monsterchoice"></select>
-          <select id="placechoice"></select>
-          <button onclick="spawnMonster(event)">Spawn Monster</button>
-          <button onclick="spawnGate(event)">Spawn Gate</button>
-          <button onclick="spawnClue(event)">Spawn Clue</button>
+          <div id="worlds">
+            <div id="worldstop" class="worldsrow"></div>
+            <div id="worldsbottom" class="worldsrow"></div>
+          </div>
+          <div style="flex: 1 1 auto">
+            <div id="done"><button>Done</button></div>
+            <select id="monsterchoice"></select>
+            <select id="placechoice"></select>
+            <button onclick="spawnMonster(event)">Spawn Monster</button>
+            <button onclick="spawnGate(event)">Spawn Gate</button>
+            <button onclick="spawnClue(event)">Spawn Clue</button>
+          </div>
         </div>
       </div>
       <div id="uiright">

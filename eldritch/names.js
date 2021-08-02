@@ -75,7 +75,7 @@ monsterNames = [
   "Witch",
   "Zombie",
 ];
-gateNames = [
+otherWorlds = [
   "Abyss",
   "Another Dimension",
   "City",
@@ -85,7 +85,11 @@ gateNames = [
   "Dreamlands",
   "Pluto",
 ];
-assetNames = ["board"].concat(characterNames).concat(commonNames).concat(uniqueNames).concat(spellNames).concat(skillNames).concat(allyNames).concat(abilityNames).concat(monsterNames).concat(gateNames);
+gateNames = [];
+for (let world of otherWorlds) {
+  gateNames.push("Gate " + world);
+}
+assetNames = ["board"].concat(characterNames).concat(commonNames).concat(uniqueNames).concat(spellNames).concat(skillNames).concat(allyNames).concat(abilityNames).concat(monsterNames).concat(otherWorlds).concat(gateNames);
 serverNames = {};
 for (let name of assetNames) {
   if (name == "board") {
