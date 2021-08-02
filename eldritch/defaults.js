@@ -128,6 +128,15 @@ function initializeDefaults() {
   let clue = createTextCircle("🔍", "#47BA1F", board.width, "black", 0.65);
   clue.id = "defaultClue";
   assets.appendChild(clue);
+  let outskirts = createTextSquare("Outskirts", "purple", board.width, "black");
+  outskirts.id = "defaultOutskirts";
+  assets.appendChild(outskirts);
+  let sky = createTextSquare("Sky", "green", board.width, "black");
+  sky.id = "defaultSky";
+  assets.appendChild(sky);
+  let lost = createTextSquare("Lost", "yellow", board.width, "black");
+  lost.id = "defaultLost";
+  assets.appendChild(lost);
 }
 
 function getTextSize(ctx, text, maxWidth, maxHeight) {

@@ -345,6 +345,15 @@ button {
   top: 0;
   left: 0;
 }
+#extra {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+.misc {
+  position: relative;
+}
 .monster {
   z-index: 10; /* TODO */
   position: relative;

@@ -145,6 +145,26 @@ function continueInit(gameId) {
   let worlds = document.getElementById("worlds");
   worlds.style.height = Math.floor(width/16) + "px";
   worlds.style.maxHeight = Math.floor(width/16) + "px";
+  for (let extra of ["Lost", "Sky", "Outskirts"]) {
+    let div = document.getElementById("place" + extra);
+    div.style.width = Math.floor(width/15) + "px";
+    div.style.height = Math.floor(width/15) + "px";
+    let box = document.getElementById("place" + extra + "box");
+    let cnv = document.createElement("CANVAS");
+    cnv.classList.add("worldcnv");
+    cnv.width = width / 15;
+    cnv.height = width / 15;
+    renderAssetToCanvas(cnv, extra, "");
+    box.appendChild(cnv);
+    if (extra != "Lost") {
+      let monstersDiv = box.getElementsByClassName("placemonsters")[0];
+      monstersDiv.onclick = function(e) { showMonsters(monstersDiv, extra); };
+    }
+  }
+  let outskirtsBox = document.getElementById("placeOutskirtsbox");
+  outskirtsBox.ondragenter = dragEnter;
+  outskirtsBox.ondragover = dragOver;
+  outskirtsBox.ondrop = drop;
 
   let markerWidth = width * markerWidthRatio;
   let markerHeight = width * markerHeightRatio;
@@ -372,7 +392,7 @@ function dropMonster(e) {
     return;
   }
   let placeName = e.currentTarget.id.substring(5, e.currentTarget.id.length - 3)
-  if (streets[placeName] == null && locations[placeName] == null) {
+  if (streets[placeName] == null && locations[placeName] == null && placeName != "Outskirts") {
     console.log("dragged to a place that's not a place");
     return;
   }
