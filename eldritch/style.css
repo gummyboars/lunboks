@@ -443,6 +443,16 @@ button {
 .placeleft .gate {
   left: 0;
 }
+.clue {
+  align-self: center;
+  position: relative;
+}
+.cluecnv {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 6;
+}
 #monsterdetails {
   position: absolute;
   top: 50%;

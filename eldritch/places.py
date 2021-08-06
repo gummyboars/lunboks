@@ -129,7 +129,7 @@ def CreatePlaces():
   Downtown = Street("Downtown", "Downtown")
   Downtown._add_connections(Bank, Asylum, Square)
   Roadhouse = Location("Roadhouse", "Hibb's Roadhouse", True)
-  Diner = Location("Diner", "Velma's Diner", True)
+  Diner = Location("Diner", "Velma's Diner", False)
   Police = Location("Police", "Police Station", False, None)  # TODO: jail?
   Easttown = Street("Easttown", "Easttown")
   Easttown._add_connections(Roadhouse, Diner, Police)

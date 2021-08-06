@@ -405,6 +405,25 @@ class GainLossTest(EventTest):
     self.assertDictEqual(loss.final_adjustments, {"sanity": -4, "stamina": -1})
 
 
+class CollectCluesTest(EventTest):
+
+  def testCollectNoClues(self):
+    collect = CollectClues(self.char, "Diner")
+    self.state.event_stack.append(collect)
+    self.resolve_until_done()
+    self.assertEqual(collect.picked_up, 0)
+    self.assertEqual(self.char.clues, 0)
+
+  def testCollectTwoClues(self):
+    collect = CollectClues(self.char, "Diner")
+    self.state.event_stack.append(collect)
+    self.state.places["Diner"].clues = 2
+    self.resolve_until_done()
+    self.assertEqual(collect.picked_up, 2)
+    self.assertEqual(self.state.places["Diner"].clues, 0)
+    self.assertEqual(self.char.clues, 2)
+
+
 class InsaneUnconsciousTest(EventTest):
 
   def testGoInsane(self):

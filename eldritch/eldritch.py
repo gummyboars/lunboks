@@ -125,6 +125,9 @@ class GameState(object):
     for char in self.characters:
       for attr, val in char.initial_attributes().items():
         setattr(char, attr, val)
+    for place in self.places.values():
+      if isinstance(place, places.Location) and place.unstable:
+        place.clues += 1
 
     self.turn_idx = 0
     self.turn_number = -1
@@ -354,6 +357,8 @@ class GameState(object):
       nearby_monsters = [mon for mon in self.monsters if mon.place == event.character.place]
       if nearby_monsters:
         triggers.append(events.EvadeOrFightAll(event.character, nearby_monsters))
+      if isinstance(event.character.place, places.Location) and event.character.place.clues:
+        triggers.append(events.CollectClues(event.character, event.character.place.name))
     # Pulled through a gate if it opens on top of you.
     if isinstance(event, events.OpenGate) and event.opened:
       loc = self.places[event.location_name]

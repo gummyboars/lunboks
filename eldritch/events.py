@@ -660,6 +660,47 @@ class LossPrevention(Event):
     return f"{self.prevention_source.name} prevented {self.amount_prevented} {self.attribute} loss"
 
 
+class CollectClues(Event):
+
+  def __init__(self, character, place):
+    self.character = character
+    self.place = place
+    self.gain = None
+    self.picked_up = None
+    self.done = False
+
+  def resolve(self, state):
+    if self.picked_up is None:
+      if self.character.place.name != self.place:
+        self.done = True
+        return True
+      self.picked_up = state.places[self.place].clues
+
+    if not self.picked_up:
+      self.done = True
+      return True
+
+    if self.gain is None:
+      self.gain = Gain(self.character, {"clues": self.picked_up})
+      state.event_stack.append(self.gain)
+      return False
+
+    state.places[self.place].clues -= self.picked_up
+    self.done = True
+    return True
+
+  def is_resolved(self):
+    return self.done
+
+  def start_str(self):
+    return ""
+
+  def finish_str(self):
+    if self.picked_up is None:
+      return ""
+    return f"{self.character.name} picked up {self.picked_up} clues at {self.place}"
+
+
 class InsaneOrUnconscious(Event):
 
   def __init__(self, character, attribute, desc):

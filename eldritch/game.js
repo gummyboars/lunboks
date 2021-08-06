@@ -587,18 +587,50 @@ function updatePlaces(places) {
   for (let placeName in places) {
     let place = places[placeName];
     let gateDiv = document.getElementById("place" + placeName + "gate");
-    if (gateDiv == null) {  // Some places cannot have gates.
-      continue;
+    if (gateDiv != null) {  // Some places cannot have gates.
+      updateGate(place, gateDiv);
     }
-    let gateCnv = gateDiv.getElementsByTagName("CANVAS")[0];
-    if (place.gate) {  // TODO: sealed
-      renderAssetToCanvas(gateCnv, "Gate " + place.gate.name, "");
-      gateDiv.classList.add("placegatepresent");
-    } else {
-      let ctx = gateCnv.getContext("2d");
-      ctx.clearRect(0, 0, gateCnv.width, gateCnv.height);
-      gateDiv.classList.remove("placegatepresent");
+    if (place.clues != null) {
+      updateClues(place);
     }
+  }
+}
+
+function updateClues(place) {
+  let boardWidth = document.getElementById("boardcanvas").width;
+  let size = Math.floor(radiusRatio * boardWidth * 3 / 4);
+  // TODO: maybe put them somewhere else?
+  let charsDiv = document.getElementById("place" + place.name + "chars");
+  let numClues = charsDiv.getElementsByClassName("clue").length;
+  while (numClues > place.clues) {
+    charsDiv.removeChild(charsDiv.getElementsByClassName("clue")[0]);
+    numClues--;
+  }
+  while (numClues < place.clues) {
+    let clueDiv = document.createElement("DIV");
+    clueDiv.classList.add("clue");
+    clueDiv.style.height = size + "px";
+    clueDiv.style.width = size + "px";
+    let cnv = document.createElement("CANVAS");
+    cnv.classList.add("cluecnv");
+    cnv.width = size;
+    cnv.height = size;
+    renderAssetToCanvas(cnv, "Clue", "");
+    clueDiv.appendChild(cnv);
+    charsDiv.appendChild(clueDiv);
+    numClues++;
+  }
+}
+
+function updateGate(place, gateDiv) {
+  let gateCnv = gateDiv.getElementsByTagName("CANVAS")[0];
+  if (place.gate) {  // TODO: sealed
+    renderAssetToCanvas(gateCnv, "Gate " + place.gate.name, "");
+    gateDiv.classList.add("placegatepresent");
+  } else {
+    let ctx = gateCnv.getContext("2d");
+    ctx.clearRect(0, 0, gateCnv.width, gateCnv.height);
+    gateDiv.classList.remove("placegatepresent");
   }
 }
 

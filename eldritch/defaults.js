@@ -118,13 +118,16 @@ function initializeDefaults() {
     assets.appendChild(asset);
   }
   for (let world of otherWorlds) {
-    let asset = createTextCircle(world, "palegoldenrod", board.width, "black");
+    let asset = createTextCircle(world, "palegoldenrod", board.width, "black", 0.3);
     asset.id = "default" + "Gate " + world;
     assets.appendChild(asset);
     asset = createOtherWorld(world, board.width);
     asset.id = "default" + world;
     assets.appendChild(asset);
   }
+  let clue = createTextCircle("🔍", "#47BA1F", board.width, "black", 0.65);
+  clue.id = "defaultClue";
+  assets.appendChild(clue);
 }
 
 function getTextSize(ctx, text, maxWidth, maxHeight) {
@@ -228,7 +231,7 @@ function createTextSquare(name, bgColor, boardWidth, fgColor) {
   return cnv;
 }
 
-function createTextCircle(name, bgColor, boardWidth, fgColor) {
+function createTextCircle(name, bgColor, boardWidth, fgColor, heightFactor) {
   let cnv = document.createElement("CANVAS");
   let radius = boardWidth * radiusRatio;
   cnv.width = 2 * radius;
@@ -239,7 +242,7 @@ function createTextCircle(name, bgColor, boardWidth, fgColor) {
   ctx.beginPath();
   ctx.arc(radius, radius, radius, 0, 2 * Math.PI);
   ctx.fill();
-  let fontSize = getTextSize(ctx, name, cnv.width, 0.3 * cnv.height);
+  let fontSize = getTextSize(ctx, name, cnv.width, heightFactor * cnv.height);
   ctx.font = fontSize + "px sans-serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
