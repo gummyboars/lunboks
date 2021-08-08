@@ -330,7 +330,7 @@ class CityMovementTest(EventTest):
     self.assertEqual(self.movement.choices, [])
 
   def testCannotMoveThroughClosedArea(self):
-    self.state.places["Easttown"].closed = True
+    self.state.event_stack.append(CloseLocation("Easttown"))
     self.resolve_to_choice(CityMovement)
     with self.assertRaises(AssertionError):
       self.movement.resolve(self.state, "Roadhouse")
@@ -338,7 +338,7 @@ class CityMovementTest(EventTest):
       self.movement.resolve(self.state, "Easttown")
 
   def testCannotMoveThroughDistantClosedArea(self):
-    self.state.places["Rivertown"].closed = True
+    self.state.event_stack.append(CloseLocation("Rivertown"))
     self.resolve_to_choice(CityMovement)
     with self.assertRaises(AssertionError):
       self.movement.resolve(self.state, "Southside")
@@ -1577,6 +1577,7 @@ class CloseLocationTest(EventTest):
     self.assertEqual(place.closed_until, self.state.turn_number + 2)
     self.assertEqual(self.char.place.name, "Uptown")
     self.assertEqual(monster.place.name, "Uptown")
+    self.assertTrue(place.closed)
 
     current_turn = self.state.turn_number
     while self.state.turn_number == current_turn:
@@ -1626,7 +1627,7 @@ class CloseLocationTest(EventTest):
       self.resolve_until_done()
     self.assertTrue(place.closed)
     self.state.event_stack.append(
-      Sequence([MoveOne(self.char, self.state.places["Downtown"]), EndMovement(self.char)], self.char)
+      Sequence([MoveOne(self.char, self.state.places["Downtown"]), ], self.char)
     )
     self.resolve_until_done()
     self.assertEqual(self.char.place, place)

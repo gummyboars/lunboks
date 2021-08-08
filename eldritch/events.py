@@ -485,8 +485,8 @@ class MoveOne(Event):
       self.done = True
       return True
     assert self.dest in [conn.name for conn in self.character.place.connections]
-    if not (self.character.place.closed or self.dest.closed):
-      self.character.place = self.dest
+    if not (self.character.place.closed or state.places[self.dest].closed):
+      self.character.place = state.places[self.dest]
       self.character.movement_points -= 1
       self.character.explored = False
     self.done = True
@@ -3038,6 +3038,7 @@ class CloseLocation(Event):
     monsters_in_place = [mon for mon in state.monsters if mon.place == place]
 
     if place.closed and self.evict:
+      # TODO: is it possible for a street to evict on close?
       to_place = next(iter(place.connections))
       evictions = []
       for char in chars_in_place:

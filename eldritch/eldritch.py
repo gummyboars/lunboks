@@ -573,7 +573,7 @@ class GameState(object):
       else:
         self.event_stack.append(events.Upkeep(self.characters[self.turn_idx]))
       for place in self.places.values():
-        if hasattr(place, 'closed_until') and place.closed_until == self.turn_number:
+        if getattr(place, 'closed_until', None) == self.turn_number:
           place.closed_until = None
       return
 
