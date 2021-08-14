@@ -18,6 +18,42 @@ from eldritch import items
 from eldritch import places
 from eldritch import values
 
+def advance_to_turn_phase(state, target_phase):
+  phase_events = state.TURN_TYPES
+  i = 0
+  while state.turn_phase != target_phase and i < 10:
+    event = phase_events[state.turn_phase]
+    print(state.turn_phase, event)
+    if state.turn_phase == 'mythos':
+      pass
+    elif state.turn_phase == 'movement':
+      for char in state.characters:
+        state.event_stack.append(event(char))
+        for _ in state.resolve_loop():
+          if state.turn_phase != 'movement':
+            break
+    elif state.turn_phase == 'encounter':
+      for char in state.characters:
+        state.event_stack.append(event(char))
+        for _ in state.resolve_loop():
+          if state.event_stack and not state.event_stack[0].done:
+            break
+
+    elif state.turn_phase == 'upkeep':
+      state.event_stack.append(events.Upkeep(state.characters[0]))
+      for _ in state.resolve_loop():
+        print(state.event_stack)
+        pass
+      print("Now for each character")
+      for turn_idx in range(len(state.characters)):
+        state.event_stack[-1].done = True
+        for _ in state.resolve_loop():
+          print(state.event_stack)
+          pass
+    else:
+      raise NotImplementedError()
+    i += 1
+
 
 class EventTest(unittest.TestCase):
 
@@ -1552,9 +1588,7 @@ class CloseLocationTest(EventTest):
 
   def testCloseWithGateForOneTurn(self):
     place_name = "Woods"
-    while self.state.turn_phase != 'mythos':
-      self.state.next_turn()
-      self.resolve_until_done()
+    advance_to_turn_phase(self.state, 'mythos')
     place = self.state.places[place_name]
     place.gate = self.state.gates.popleft()
     monster = next(iter(self.state.monsters))
