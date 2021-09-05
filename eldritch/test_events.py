@@ -1186,6 +1186,198 @@ class CastSpellTest(EventTest):
 
 # TODO: add tests for going unconscious/insane during a mythos/encounter.
 
+class PurchaseTest(EventTest):
+  def testPurchaseOneAtList(self):
+    buy = Purchase(self.char, "common", 1)
+    self.char.dollars = 3
+    self.assertFalse(buy.is_resolved())
+    self.assertFalse(self.char.possessions)
+    food = items.Food()
+    self.state.common.append(food)
+
+    self.state.event_stack.append(buy)
+    choice = self.resolve_to_choice(CardChoice)
+    self.assertEqual(choice.choices, ["Food", "Nothing"])
+    choice.resolve(self.state, "Food")
+    self.resolve_until_done()
+
+    self.assertTrue(buy.is_resolved())
+    self.assertEqual(self.char.dollars, 2)
+    self.assertEqual(self.char.possessions, [food])
+    self.assertFalse(self.state.common)
+
+  def testPurchaseOneAtListDecline(self):
+    buy = Purchase(self.char, "common", 1)
+    self.char.dollars = 3
+    self.assertFalse(buy.is_resolved())
+    self.assertFalse(self.char.possessions)
+    food = items.Food()
+    self.state.common.append(food)
+
+    self.state.event_stack.append(buy)
+    choice = self.resolve_to_choice(CardChoice)
+    self.assertEqual(choice.choices, ["Food", "Nothing"])
+    choice.resolve(self.state, "Nothing")
+    self.resolve_until_done()
+
+    self.assertTrue(buy.is_resolved())
+    self.assertEqual(self.char.dollars, 3)
+    self.assertFalse(self.char.possessions)
+    self.assertEqual(len(self.state.common), 1)
+    self.assertEqual(self.state.common[0], food)
+
+  def testPurchaseOneAtListPoor(self):
+    buy = Purchase(self.char, "common", 1)
+    self.char.dollars = 0
+    self.assertFalse(buy.is_resolved())
+    self.assertFalse(self.char.possessions)
+    food = items.Food()
+    self.state.common.append(food)
+
+    # When you are too poor to buy the item, you do not get a choice.
+    self.state.event_stack.append(buy)
+    self.resolve_until_done()
+
+    self.assertTrue(buy.is_resolved())
+    self.assertEqual(len(self.state.common), 1)
+    self.assertEqual(self.state.common[0], food)
+    self.assertFalse(self.char.possessions)
+
+  def testPurchaseTwoAtListAffordOne(self):
+    buy = Purchase(self.char, "common", 2, keep_count=2)
+    self.char.dollars = 3
+    self.assertFalse(buy.is_resolved())
+    self.assertFalse(self.char.possessions)
+    food = items.Food()
+    gun = items.TommyGun()
+    self.state.common.extend([gun, food])
+
+    self.state.event_stack.append(buy)
+    choice = self.resolve_to_choice(CardChoice)
+    self.assertEqual(choice.choices, ["Food", "Nothing"])
+    choice.resolve(self.state, "Food")
+    self.resolve_until_done()
+
+    self.assertTrue(buy.is_resolved())
+    self.assertEqual(self.char.dollars, 2)
+    self.assertEqual(self.char.possessions, [food])
+    self.assertEqual(len(self.state.common), 1)
+    self.assertEqual(self.state.common[0], gun)
+
+  def testPurchaseTwoAtList(self):
+    buy = Purchase(self.char, "common", 2, keep_count=2)
+    self.char.dollars = 8
+    self.assertFalse(buy.is_resolved())
+    self.assertFalse(self.char.possessions)
+    food = items.Food()
+    gun = items.TommyGun()
+    self.state.common.extend([food, gun])
+
+    self.state.event_stack.append(buy)
+    choice = self.resolve_to_choice(CardChoice)
+    self.assertEqual(choice.choices, ["Food", "Tommy Gun", "Nothing"])
+    choice.resolve(self.state, "Tommy Gun")
+    choice = self.resolve_to_choice(CardChoice)
+    self.assertEqual(choice.choices, ["Food", "Nothing"])
+    choice.resolve(self.state, "Food")
+    self.resolve_until_done()
+
+    self.assertTrue(buy.is_resolved())
+    self.assertEqual(self.char.dollars, 0)
+    self.assertEqual(self.char.possessions, [gun, food])
+    self.assertFalse(self.state.common)
+
+  def testPurchaseTwoAtFixedDiscount(self):
+    buy = Purchase(self.char, "common", 2, keep_count=2, discount=1)
+    self.char.dollars = 6
+    self.assertFalse(buy.is_resolved())
+    self.assertFalse(self.char.possessions)
+    food = items.Food()
+    gun = items.TommyGun()
+    self.state.common.extend([food, gun])
+
+    self.state.event_stack.append(buy)
+    choice = self.resolve_to_choice(CardChoice)
+    self.assertEqual(choice.choices, ["Food", "Tommy Gun", "Nothing"])
+    choice.resolve(self.state, "Tommy Gun")
+    choice = self.resolve_to_choice(CardChoice)
+    self.assertEqual(choice.choices, ["Food", "Nothing"])
+    choice.resolve(self.state, "Food")
+    self.resolve_until_done()
+
+    self.assertTrue(buy.is_resolved())
+    self.assertEqual(self.char.dollars, 0)
+    self.assertEqual(self.char.possessions, [gun, food])
+    self.assertFalse(self.state.common)
+
+  def testPurchaseTwoAtHalfDiscount(self):
+    buy = Purchase(self.char, "common", 2, keep_count=2, discount_type="rate", discount=.5)
+    self.char.dollars = 8
+    self.assertFalse(buy.is_resolved())
+    self.assertFalse(self.char.possessions)
+    food = items.Food()
+    gun = items.TommyGun()
+    self.state.common.extend([food, gun])
+
+    self.state.event_stack.append(buy)
+    choice = self.resolve_to_choice(CardChoice)
+    self.assertEqual(choice.choices, ["Food", "Tommy Gun", "Nothing"])
+    choice.resolve(self.state, "Tommy Gun")
+    choice = self.resolve_to_choice(CardChoice)
+    self.assertEqual(choice.choices, ["Food", "Nothing"])
+    choice.resolve(self.state, "Food")
+    self.resolve_until_done()
+
+    self.assertTrue(buy.is_resolved())
+    self.assertEqual(self.char.dollars, 3)
+    self.assertEqual(self.char.possessions, [gun, food])
+    self.assertFalse(self.state.common)
+
+  def testPurchaseTwoAtExtraCost(self):
+    buy = Purchase(self.char, "common", 2, keep_count=2, discount=-1)
+    self.char.dollars = 8
+    self.assertFalse(buy.is_resolved())
+    self.assertFalse(self.char.possessions)
+    food = items.Food()
+    gun = items.TommyGun()
+    self.state.common.extend([food, gun])
+
+    self.state.event_stack.append(buy)
+    choice = self.resolve_to_choice(CardChoice)
+    self.assertEqual(choice.choices, ["Food", "Tommy Gun", "Nothing"])
+    choice.resolve(self.state, "Tommy Gun")
+    self.resolve_until_done()
+
+    self.assertTrue(buy.is_resolved())
+    self.assertEqual(self.char.dollars, 0)
+    self.assertEqual(self.char.possessions, [gun])
+    self.assertEqual(len(self.state.common), 1)
+    self.assertEqual(self.state.common[0], food)
+
+  def testDraw2Purchase1AtList(self):
+    buy = Purchase(self.char, "common", 2, keep_count=1)
+    self.char.dollars = 8
+    self.assertFalse(buy.is_resolved())
+    self.assertFalse(self.char.possessions)
+    food = items.Food()
+    gun = items.TommyGun()
+    cross = items.Cross()
+    self.state.common.extend([food, gun, cross])
+
+    self.state.event_stack.append(buy)
+    choice = self.resolve_to_choice(CardChoice)
+    self.assertEqual(choice.choices, ["Food", "Tommy Gun", "Nothing"])
+    choice.resolve(self.state, "Tommy Gun")
+    self.resolve_until_done()
+
+    self.assertTrue(buy.is_resolved())
+    self.assertEqual(self.char.dollars, 1)
+    self.assertEqual(self.char.possessions, [gun])
+    self.assertEqual(len(self.state.common), 2)
+    self.assertSequenceEqual(self.state.common, [cross, food])
+
+
+
 
 if __name__ == '__main__':
   unittest.main()
