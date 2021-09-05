@@ -1222,23 +1222,23 @@ class PurchaseTest(EventTest):
 
     self.assertTrue(buy.is_resolved())
     self.assertEqual(self.char.dollars, 3)
-    self.assertFalse(self.char.possessions, [])
+    self.assertFalse(self.char.possessions)
     self.assertEqual(len(self.state.common), 1)
     self.assertEqual(self.state.common[0], food)
 
   def testPurchaseOneAtListPoor(self):
-    draw = Purchase(self.char, "common", 1)
+    buy = Purchase(self.char, "common", 1)
     self.char.dollars = 0
-    self.assertFalse(draw.is_resolved())
+    self.assertFalse(buy.is_resolved())
     self.assertFalse(self.char.possessions)
     food = items.Food()
     self.state.common.append(food)
 
     # When you are too poor to buy the item, you do not get a choice.
-    self.state.event_stack.append(draw)
+    self.state.event_stack.append(buy)
     self.resolve_until_done()
 
-    self.assertTrue(draw.is_resolved())
+    self.assertTrue(buy.is_resolved())
     self.assertEqual(len(self.state.common), 1)
     self.assertEqual(self.state.common[0], food)
     self.assertFalse(self.char.possessions)
@@ -1289,7 +1289,7 @@ class PurchaseTest(EventTest):
 
   def testPurchaseTwoAtFixedDiscount(self):
     buy = Purchase(self.char, "common", 2, keep_count=2, discount=1)
-    self.char.dollars = 8
+    self.char.dollars = 6
     self.assertFalse(buy.is_resolved())
     self.assertFalse(self.char.possessions)
     food = items.Food()
@@ -1306,7 +1306,7 @@ class PurchaseTest(EventTest):
     self.resolve_until_done()
 
     self.assertTrue(buy.is_resolved())
-    self.assertEqual(self.char.dollars, 2)
+    self.assertEqual(self.char.dollars, 0)
     self.assertEqual(self.char.possessions, [gun, food])
     self.assertFalse(self.state.common)
 
@@ -1374,8 +1374,7 @@ class PurchaseTest(EventTest):
     self.assertEqual(self.char.dollars, 1)
     self.assertEqual(self.char.possessions, [gun])
     self.assertEqual(len(self.state.common), 2)
-    self.assertEqual(self.state.common[0], cross)
-    self.assertEqual(self.state.common[1], food)
+    self.assertSequenceEqual(self.state.common, [cross, food])
 
 
 

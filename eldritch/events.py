@@ -989,9 +989,8 @@ class DrawItems(Event):
   def start_str(self):
     if self.target_type is None:
       return f"{self.character.name} draws {self.draw_count} cards from the {self.deck} deck"
-    else:
-      return (f"{self.character.name} draws {self.draw_count} {self.target_type} "
-              + f"cards from the {self.deck} deck")
+    return (f"{self.character.name} draws {self.draw_count} {self.target_type} "
+            + f"cards from the {self.deck} deck")
 
   def finish_str(self):
     return f"{self.character.name} drew " + ", ".join(c.name for c in self.drawn)
@@ -1058,7 +1057,8 @@ def GainAllyOrReward(character, ally: str, reward: Event):
 
 class PurchaseDrawn(Event):
   def __init__(self, character, draw: DrawItems,
-               discount_type="fixed", discount=0, keep_count=1, target_type=None, prompt="Buy items?"):
+               discount_type="fixed", discount=0, keep_count=1, prompt="Buy items?"):
+    # TODO: draw could be something other than DrawItems (Northside 5)
     assert discount_type in {"fixed", "rate"}
     self.character = character
     self.prompt = prompt
@@ -1070,7 +1070,6 @@ class PurchaseDrawn(Event):
     self.choice = None
     self.kept = []
     self.prices = None
-    self.target_type = target_type
     self.resolved = False
 
   def resolve(self, state):
@@ -1119,6 +1118,8 @@ class PurchaseDrawn(Event):
         unavailable.append(f"{card.name}")
     self.drawn = available
     choices.append("Nothing")
+    #TODO: In some circumstances, you must purchase at least
+    # one card if able (e.g. General Store)
 
     if unavailable:
       could_not_afford = " (Could not afford {})".format(",".join(unavailable))
@@ -1145,7 +1146,7 @@ class PurchaseDrawn(Event):
 
   def discounted_price(self, card):
     if self.discount_type == "fixed":
-      return card.price - self.discount
+      return max(card.price - self.discount, 0)
     elif self.discount_type == "rate":
       return card.price - int(self.discount * card.price) # Discounts round up
 
