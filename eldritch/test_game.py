@@ -79,6 +79,13 @@ class GateTravelTest(unittest.TestCase):
     self.state.event_stack.append(upkeep)
     for _ in self.state.resolve_loop():
       pass
+
+    self.assertTrue(self.state.event_stack)
+    self.assertIsInstance(self.state.event_stack[-1], events.GateChoice)
+    self.state.event_stack[-1].resolve(self.state, "Square")
+    for _ in self.state.resolve_loop():
+      pass
+
     self.assertEqual(self.state.turn_phase, "encounter")
     self.assertEqual(char.place.name, "Square")
     self.assertTrue(self.state.event_stack)

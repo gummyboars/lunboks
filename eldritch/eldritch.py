@@ -199,7 +199,7 @@ class GameState(object):
         if isinstance(top_event, events.CardChoice):
           output["choice"]["cards"] = top_event.choices
           output["choice"]["invalid_choices"] = getattr(top_event, "invalid_choices", [])
-        elif isinstance(top_event, (events.LocationChoice, events.CityMovement)):
+        elif isinstance(top_event, (events.MapChoice, events.CityMovement)):
           if top_event.choices is not None:
             extra_choices = [top_event.none_choice] if top_event.none_choice is not None else []
             output["choice"]["places"] = top_event.choices + extra_choices
