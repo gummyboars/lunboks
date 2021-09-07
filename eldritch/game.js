@@ -210,6 +210,7 @@ function handleData(data) {
   updateMonsters(data.monsters);
   updateMonsterChoices(data.choice, data.monsters);
   updateUsables(data.usables, data.choice);
+  updateDice(data.dice, data.roll, data.roller == data.player_idx);
   updateEventLog(data.event_log);
   if (messageQueue.length && !runningAnim.length) {
     handleData(messageQueue.shift());
@@ -222,6 +223,10 @@ function clickPlace(place) {
 
 function setSlider(sliderName, sliderValue) {
   ws.send(JSON.stringify({"type": "set_slider", "name": sliderName, "value": sliderValue}));
+}
+
+function roll(e) {
+  ws.send(JSON.stringify({"type": "roll"}));
 }
 
 function spawnMonster(e) {
@@ -904,6 +909,44 @@ function updateDone(gameStage, sliders) {
     btn.onclick = doneSliders;
   } else {
     btn.onclick = done;
+  }
+}
+
+function updateDice(numDice, roll, yours) {
+  let diceDiv = document.getElementById("dice");
+  if (numDice == null) {
+    diceDiv.style.display = "none";
+    return;
+  }
+  diceDiv.style.display = "flex";
+  if (yours) {
+    document.getElementById("roll").getElementsByTagName("button")[0].style.display = "block";
+  } else {
+    document.getElementById("roll").getElementsByTagName("button")[0].style.display = "none";
+  }
+  while (diceDiv.getElementsByClassName("die").length > numDice) {
+    diceDiv.removeChild(diceDiv.getElementsByClassName("die")[0])
+  }
+  while (diceDiv.getElementsByClassName("die").length < numDice) {
+    let die = document.createElement("DIV");
+    die.classList.add("die");
+    diceDiv.appendChild(die);
+  }
+
+  let allDice = diceDiv.getElementsByClassName("die");
+  for (let die of allDice) {
+    die.innerText = "?";
+  }
+
+  if (roll == null) {
+    return;
+  }
+  for (let [idx, val] of roll.entries()) {
+    if (idx >= allDice.length) {
+      console.log("too many dice rolls");
+      return;
+    }
+    allDice[idx].innerText = val;
   }
 }
 

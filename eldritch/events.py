@@ -1879,6 +1879,14 @@ class Check(Event):
     self.roll = self.dice.roll[:]
     self.count_successes()
 
+  @property
+  def count(self):
+    if self.roll is not None:
+      return len(self.roll)
+    if self.dice is None:
+      return None
+    return self.dice.count
+
   def count_successes(self):
     self.successes = self.character.count_successes(self.roll, self.check_type)
 
