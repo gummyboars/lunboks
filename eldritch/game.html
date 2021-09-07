@@ -61,7 +61,12 @@
           <div id="uiprompt" class="uiprompt"></div>
           <div id="uicardchoice"></div>
         </div>
-        <div id="uiuse"><span id="usetext">Use Items or Abilities</span><button onclick="doneUsing(event)" id="doneusing">Done Using</button></div>
+        <div id="uicenter">
+          <div id="uiuse"><span id="usetext">Use Items or Abilities</span><button onclick="doneUsing(event)" id="doneusing">Done Using</button></div>
+          <div id="dice">
+            <div id="roll"><button onclick="roll(event)">Roll</button></div>
+          </div>
+        </div>
         <div id="worlds"></div>
         <div id="board" class="cnvcontainer">
           <canvas id="boardcanvas"></canvas>

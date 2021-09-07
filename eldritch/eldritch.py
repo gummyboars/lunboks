@@ -211,8 +211,23 @@ class GameState:
     if char_idx is not None and char_idx < len(self.characters):
       char = self.characters[char_idx]
 
-    output["choice"] = None
     top_event = self.event_stack[-1] if self.event_stack else None
+    if top_event and isinstance(top_event, (events.Check, events.DiceRoll, events.SpendClue)):
+      roller = top_event
+      bonus = 0
+      for event in reversed(self.event_stack):
+        if not isinstance(event, (events.Check, events.DiceRoll, events.SpendClue)):
+          break
+        if isinstance(event, events.SpendClue):
+          bonus += 1
+        if isinstance(event, events.Check):
+          roller = event
+          break
+      assert not isinstance(roller, events.SpendClue)  # This should never happen.
+      output["dice"] = roller.count + bonus if roller.count is not None else None
+      output["roll"] = roller.roll
+      output["roller"] = self.characters.index(roller.character)
+    output["choice"] = None
     if top_event and isinstance(top_event, events.ChoiceEvent) and not top_event.is_done():
       if top_event.character == char:
         output["choice"] = {"prompt": top_event.prompt()}
@@ -272,6 +287,8 @@ class GameState:
       self.handle_spawn_clue(data.get("place"))
     elif data.get("type") == "choice":
       self.handle_choice(char_idx, data.get("choice"))
+    elif data.get("type") == "roll":
+      self.handle_roll(char_idx)
     elif data.get("type") == "use":
       self.handle_use(char_idx, data.get("handle"))
     elif data.get("type") == "done_using":
@@ -299,6 +316,9 @@ class GameState:
         if not event.is_done():
           yield None
           return
+      if not self.test_mode and isinstance(event, events.DiceRoll) and not event.is_done():
+        yield None
+        return
       if isinstance(event, events.SliderInput) and not event.is_done():
         yield None
         return
@@ -480,6 +500,13 @@ class GameState:
     assert isinstance(event, events.ChoiceEvent)
     assert event.character == self.characters[char_idx]
     event.resolve(self, choice)
+
+  def handle_roll(self, char_idx):
+    assert self.event_stack
+    event = self.event_stack[-1]
+    assert isinstance(event, events.DiceRoll)
+    assert event.character == self.characters[char_idx]
+    event.resolve(self)
 
   def handle_check(self, char_idx, check_type, modifier):
     if check_type is None:

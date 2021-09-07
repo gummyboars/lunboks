@@ -543,14 +543,14 @@ class InsaneTest(unittest.TestCase):
       pass
     self.assertEqual(self.state.turn_idx, 0)
     self.assertEqual(self.state.turn_phase, "mythos")
-    self.assertIsInstance(self.state.event_stack[-1], events.Check)
+    self.assertIsInstance(self.state.event_stack[-1], events.DiceRoll)
     self.assertEqual(self.state.event_stack[-1].character, self.state.characters[0])
     self.state.event_stack.append(events.Loss(self.state.characters[0], {"sanity": 1}))
     for _ in self.state.resolve_loop():
       pass
     self.assertEqual(self.state.turn_idx, 0)
     self.assertEqual(self.state.turn_phase, "mythos")
-    self.assertIsInstance(self.state.event_stack[-1], events.Check)
+    self.assertIsInstance(self.state.event_stack[-1], events.DiceRoll)
     self.assertEqual(self.state.event_stack[-1].character, self.state.characters[1])
 
 
