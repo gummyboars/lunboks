@@ -158,14 +158,14 @@ class TestLoadState(unittest.TestCase):
     self.assertEqual(obja, objb, path)
 
 
-class BreakpointTest(unittest.TestCase):
+class BreakpointTestMixin(unittest.TestCase):
 
   def breakpoint(self):
     t = threading.Thread(target=server.ws_main, args=(server.GLOBAL_LOOP,))
     t.start()
     server.GAMES['test'] = game.GameHandler('test', catan.CatanGame)
     server.GAMES['test'].game = self.g
-    server.main()
+    server.main(8001)
     t.join()
 
 
@@ -327,7 +327,7 @@ class PlacementRestrictionsTest(unittest.TestCase):
     self.c.handle(0, {"type": "settle", "location": [3, 3]})
 
 
-class TestIslandCalculations(BreakpointTest):
+class TestIslandCalculations(BreakpointTestMixin):
 
   def setUp(self):
     self.c = catan.SeafarerIslands()
@@ -421,7 +421,7 @@ class TestIslandCalculations(BreakpointTest):
     self.assertCountEqual(self.c.foreign_landings[2], [(8, 6)])
 
 
-class BaseInputHandlerTest(BreakpointTest):
+class BaseInputHandlerTest(BreakpointTestMixin):
 
   TEST_FILE = "test.json"
   EXTRA_RULES = []
@@ -1512,7 +1512,7 @@ class TestShipMovement(BaseInputHandlerTest):
       self.c.handle(0, {"type": "move_ship", "from": [5, 5, 6, 4], "to": [2, 6, 3, 5]})
 
 
-class TestShipMovement(BaseInputHandlerTest):
+class TestShipMovementLongestRoute(BaseInputHandlerTest):
   
   TEST_FILE = "ship_test.json"
 
@@ -1794,7 +1794,7 @@ class TestLongestRouteCalculation(BaseInputHandlerTest):
     self.assertEqual(val, 4, "cannot go through someone else's port")
 
 
-class TestLongestRouteAssignment(BreakpointTest):
+class TestLongestRouteAssignment(BreakpointTestMixin):
 
   def setUp(self):
     # Be sure to call add_road on the last road for each player to recalculate longest road.
@@ -2010,7 +2010,7 @@ class TestBuyDevCard(BaseInputHandlerTest):
     self.assertEqual(self.c.player_data[0].cards["yearofplenty"], 1)
 
 
-class TestExtraBuildPhase(BreakpointTest):
+class TestExtraBuildPhase(BreakpointTestMixin):
 
   def setUp(self):
     self.g = catan.CatanGame()
@@ -2192,7 +2192,7 @@ class TestGameOptions(unittest.TestCase):
     self.assertSetEqual(self.c.rules, set())
     self.assertEqual(self.c.scenario, "Random Map")
     self.assertTrue(issubclass(self.c.game_class, catan.RandomMap))
-    self.assertFalse(issubclass(self.c.game_class, catan.DebugRules))
+    self.assertFalse(issubclass(self.c.game_class, catan.DebugRulesMixin))
 
   def testOptions(self):
     self.c.scenario = "Beginner's Map"
@@ -2260,7 +2260,7 @@ class TestGameOptions(unittest.TestCase):
     self.c.handle_start(
         "one", {"options": {"Scenario": "The Four Islands", "Friendly Robber": True}})
     self.assertIsInstance(self.c.game, catan.SeafarerIslands)
-    self.assertNotIsInstance(self.c.game, catan.DebugRules)
+    self.assertNotIsInstance(self.c.game, catan.DebugRulesMixin)
     self.assertFalse(self.c.game.rob_at_two)
 
   def testStartWithFourPlayers(self):

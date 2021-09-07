@@ -807,7 +807,7 @@ class DiscardNamedTest(EventTest):
 
 class AttributePrerequisiteTest(EventTest):
 
-  def testPrereq(self):
+  def testPrereqFail(self):
     prereq = AttributePrerequisite(self.char, "dollars", 2, "at least")
     self.assertEqual(self.char.dollars, 0)
     self.assertFalse(prereq.is_resolved())
@@ -818,7 +818,7 @@ class AttributePrerequisiteTest(EventTest):
     self.assertTrue(prereq.is_resolved())
     self.assertEqual(prereq.successes, 0)
 
-  def testPrereq(self):
+  def testPrereqPass(self):
     prereq = AttributePrerequisite(self.char, "dollars", 2, "at least")
     self.char.dollars = 2
     self.assertFalse(prereq.is_resolved())
