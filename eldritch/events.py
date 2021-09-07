@@ -115,7 +115,10 @@ class Sequence(Event):
 class Turn(Event):
 
   def check_lose_turn(self):
-    if self.character.lose_turn_until is not None:
+    char = getattr(self, "character", None)
+    if not char:
+      return False
+    if char.lose_turn_until is not None:
       self.done = True
       return True
     return False
@@ -2787,8 +2790,8 @@ class ReturnToCup(Event):
   def __init__(self, names=None, places=None):
     assert names or places
     assert not (names and places)
-    self.names = set(names) if names else None
-    self.places = set(places) if places else None
+    self.names = set(names if names else [])
+    self.places = set(places if places else [])
     self.returned = None
 
   def resolve(self, state):

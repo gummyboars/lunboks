@@ -909,17 +909,17 @@ def Shoppe2(char):
   #TODO: Implement "Turn the top card of one location deck face up, next player to have an enounter there draws that encounter"
   return events.Nothing()
   # What follows is the start of an implementation
-  streets = {
-    placename: place
-    for placename, place in char.game_state.places.items()
-    if isinstance(place, places.Street)
-  }
-  choice = events.MultipleChoice(
-    char,
-    "Choose a location deck to view the top card of",
-    list(keys(streets))
-  )
-  return choice
+  # streets = {
+  #   placename: place
+  #   for placename, place in char.game_state.places.items()
+  #   if isinstance(place, places.Street)
+  # }
+  # choice = events.MultipleChoice(
+  #   char,
+  #   "Choose a location deck to view the top card of",
+  #   list(keys(streets))
+  # )
+  # return choice
 def Shoppe3(char):
   prereq = events.AttributePrerequisite(char, "dollars", 5, "at least")
   luck = events.Check(char, "luck", 0)

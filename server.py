@@ -224,7 +224,7 @@ def ws_main(loop):
   global GLOBAL_WS_SERVER
   asyncio.set_event_loop(loop)
   asyncio.ensure_future(SendGameUpdates())
-  start_server = websockets.serve(HandleWebsocket, '', port)
+  start_server = websockets.server.serve(HandleWebsocket, '', port)
   GLOBAL_WS_SERVER = loop.run_until_complete(start_server)
   print("Websocket server started on port %d" % port)
   loop.run_forever()

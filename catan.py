@@ -1704,16 +1704,16 @@ class TestMap(CatanState):
     self._init_dev_cards()
 
 
-class DebugRules(object):
+class DebugRulesMixin(object):
 
   def __init__(self, *args, **kwargs):
-    super(DebugRules, self).__init__(*args, **kwargs)
+    super(DebugRulesMixin, self).__init__(*args, **kwargs)
     self.debug = True
     self.next_die_roll = None
 
   @classmethod
   def computed_attrs(cls):
-    return super(DebugRules, cls).computed_attrs() | {"debug", "next_die_roll"}
+    return super(DebugRulesMixin, cls).computed_attrs() | {"debug", "next_die_roll"}
 
   def debug_roll_dice(self, count):
     for i in range(count):
@@ -1729,10 +1729,10 @@ class DebugRules(object):
     if self.next_die_roll is not None:
       with mock.patch.object(random, "randint") as randint:
         randint.side_effect=[self.next_die_roll // 2, (self.next_die_roll+1) // 2]
-        super(DebugRules, self).handle_roll_dice()
+        super(DebugRulesMixin, self).handle_roll_dice()
       self.next_die_roll = None
       return
-    super(DebugRules, self).handle_roll_dice()
+    super(DebugRulesMixin, self).handle_roll_dice()
 
 
 class Seafarers(CatanState):
@@ -1754,7 +1754,7 @@ class Seafarers(CatanState):
   def parse_json(cls, gamedata):
     game = super(Seafarers, cls).parse_json(gamedata)
     game.built_this_turn = [tuple(loc) for loc in gamedata["built_this_turn"]]
-    game._compute_contiguous_islands()
+    game._compute_contiguous_islands()  # pylint: disable=no-member
     # When loading json, these islands get turned into lists. Turn them into tuples instead.
     for attr in ["home_corners", "foreign_landings"]:
       mapping = getattr(game, attr)
@@ -1765,8 +1765,8 @@ class Seafarers(CatanState):
         idx: [tuple(corner) for corner in corner_list] for idx, corner_list in mapping.items()
       })
     # Same idea for placement_islands, except it's a list.
-    if game.placement_islands is not None:
-      game.placement_islands = [tuple(corner) for corner in game.placement_islands]
+    if game.placement_islands is not None:  # pylint: disable=no-member
+      game.placement_islands = [tuple(corner) for corner in game.placement_islands]  # pylint: disable=no-member
     return game
 
   def json_for_player(self):
@@ -1961,7 +1961,7 @@ class Seafarers(CatanState):
   def add_piece(self, piece):
     if self.game_phase.startswith("place") and self.placement_islands is not None:
       canonical_corner = self.corners_to_islands.get(piece.location.as_tuple())
-      if canonical_corner not in self.placement_islands:
+      if canonical_corner not in self.placement_islands:  # pylint: disable=unsupported-membership-test
         raise InvalidMove("You cannot place your first settlements in that area.")
     super(Seafarers, self).add_piece(piece)
     if piece.piece_type == "settlement":
@@ -2369,7 +2369,7 @@ class CatanGame(BaseGame):
   ])
   RULES = collections.OrderedDict([
       ("5-6 Players", ExtraPlayers),
-      ("Debug", DebugRules),
+      ("Debug", DebugRulesMixin),
   ])
 
   def __init__(self):
