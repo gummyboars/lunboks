@@ -930,7 +930,7 @@ class ForceMovement(Event):
     self.done = False
 
   def resolve(self, state):
-    if isinstance(self.location_name, LocationChoice):
+    if isinstance(self.location_name, MapChoice):
       assert self.location_name.is_resolved()
       if self.location_name.choice is None:
         # No need to reset explored, since the character did not move.
@@ -1172,7 +1172,7 @@ class Encounter(Event):
     self.encounter = None
 
   def resolve(self, state):
-    if isinstance(self.location_name, LocationChoice):
+    if isinstance(self.location_name, MapChoice):
       assert self.location_name.is_resolved()
       name = self.location_name.choice
       if name is None or not isinstance(state.places[name], places.Location):
@@ -2151,28 +2151,18 @@ class CardChoice(MultipleChoice):
   pass
 
 
-class LocationChoice(ChoiceEvent):
+class MapChoice(ChoiceEvent, metaclass=abc.ABCMeta):
 
-  VALID_FILTERS = {"streets", "locations", "open", "closed", "gate", "nogate"}
-
-  def __init__(self, character, prompt, choices=None, choice_filters=None, none_choice=None):
-    assert choices or choice_filters
-    assert not (choices and choice_filters)
+  def __init__(self, character, prompt, none_choice=None):
     self.character = character
     self._prompt = prompt
-    if choices:
-      self.choices = choices
-      self.choice_filters = None
-    else:
-      assert choice_filters & self.VALID_FILTERS
-      assert not choice_filters - self.VALID_FILTERS
-      for pair in [{"streets", "locations"}, {"open", "closed"}, {"gate", "nogate"}]:
-        if not choice_filters & pair:
-          choice_filters |= pair
-      self.choices = None
-      self.choice_filters = choice_filters
-    self.choice = None
+    self.choices = None
     self.none_choice = none_choice
+    self.choice = None
+
+  @abc.abstractmethod
+  def compute_choices(self, state):
+    raise NotImplementedError
 
   def resolve(self, state, choice=None):
     if choice is not None and choice == self.none_choice:
@@ -2187,8 +2177,33 @@ class LocationChoice(ChoiceEvent):
     # In the case where there are no choices, the choice reader must account for it.
     return self.choice is not None or self.choices == []
 
+  def prompt(self):
+    return self._prompt
+
+
+class PlaceChoice(MapChoice):
+
+  VALID_FILTERS = {"streets", "locations", "open", "closed"}
+
+  def __init__(self, character, prompt, choices=None, choice_filters=None, none_choice=None):
+    assert choices or choice_filters
+    assert not (choices and choice_filters)
+    super(PlaceChoice, self).__init__(character, prompt, none_choice=none_choice)
+    if choices:
+      self.fixed_choices = choices
+      self.choice_filters = None
+    else:
+      assert choice_filters & self.VALID_FILTERS
+      assert not choice_filters - self.VALID_FILTERS
+      for pair in [{"streets", "locations"}, {"open", "closed"}]:
+        if not choice_filters & pair:
+          choice_filters |= pair
+      self.fixed_choices = None
+      self.choice_filters = choice_filters
+
   def compute_choices(self, state):
-    if self.choices:
+    if self.fixed_choices:
+      self.choices = self.fixed_choices
       return
     self.choices = []
     for name, place in state.places.items():
@@ -2202,14 +2217,7 @@ class LocationChoice(ChoiceEvent):
         continue
       if "open" not in self.choice_filters and not getattr(place, "closed", False):
         continue
-      if "gate" not in self.choice_filters and getattr(place, "gate", None) is not None:
-        continue
-      if "nogate" not in self.choice_filters and getattr(place, "gate", None) is None:
-        continue
       self.choices.append(name)
-
-  def prompt(self):
-    return self._prompt
 
   def start_str(self):
     if self.choices:
@@ -2217,7 +2225,35 @@ class LocationChoice(ChoiceEvent):
     return ""  # TODO
 
   def finish_str(self):
+    if self.choice is None:
+      return f"there were no valid choices, or {self.character.name} chose none"  # TODO
     return f"{self.character.name} chose {self.choice}"
+
+
+class GateChoice(MapChoice):
+
+  def __init__(self, character, prompt, gate_name=None, none_choice=None):
+    super(GateChoice, self).__init__(character, prompt, none_choice=none_choice)
+    self.gate_name = gate_name
+
+  def compute_choices(self, state):
+    self.choices = []
+    for name, place in state.places.items():
+      if not isinstance(place, (places.Location, places.Street)):
+        continue
+      if getattr(place, "gate", None) is not None:
+        if place.gate.name == self.gate_name or self.gate_name is None:
+          self.choices.append(name)
+
+  def start_str(self):
+    if self.gate_name is not None:
+      return f"{self.character.name} must choose a gate to {self.gate_name}"
+    return f"{self.character.name} must choose a gate"
+
+  def finish_str(self):
+    if self.choice is None:
+      return f"there were no open gates to {self.gate_name}"
+    return f"{self.character.name} chose the gate at {self.choice}"
 
 
 class EvadeOrFightAll(Sequence):
@@ -2456,26 +2492,26 @@ class Return(Event):
   def __init__(self, character, world_name):
     self.character = character
     self.world_name = world_name
+    self.return_choice = None
     self.returned = None
 
   def resolve(self, state):
-    viable_returns = [
-        place for place in state.places.values()
-        if getattr(place, "gate", None) and place.gate.info.name == self.world_name
-    ]
-    if len(viable_returns) == 0:
+    if self.return_choice is None:
+      self.return_choice = GateChoice(self.character, "Choose a gate to return to", self.world_name)
+      state.event_stack.append(self.return_choice)
+      return False
+    assert self.return_choice.is_resolved()
+
+    if self.return_choice.choice is None:  # Unable to return
       self.returned = False  # TODO: lost in time and space
-    elif len(viable_returns) == 1:
-      self.returned = True
-      self.character.place = viable_returns[0]
-      self.character.explored = True
-    else:
-      self.returned = True
-      self.character.place = viable_returns[0]  # TODO: location choice
-      self.character.explored = True
+      return True
+    self.character.place = state.places[self.return_choice.choice]
+    self.character.explored = True
+    self.returned = True
+    return True
 
   def is_resolved(self):
-    return self.returned
+    return self.returned is not None
 
   def start_str(self):
     return ""

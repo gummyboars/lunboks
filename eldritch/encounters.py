@@ -352,7 +352,7 @@ def Graveyard4(char):
   return events.Nothing()
 def Graveyard5(char):
   check = events.Check(char, 'luck', -2)
-  choice = events.LocationChoice(
+  choice = events.PlaceChoice(
       char, "Move anywhere in the city and have an encounter?", choice_filters={"open"},
       none_choice="No thanks",
   )
@@ -514,7 +514,7 @@ def Shop7(char):
 
 def Newspaper1(char):
   money = events.Gain(char, {"dollars": 2})
-  choice = events.LocationChoice(
+  choice = events.PlaceChoice(
       char, "Get a ride anywhere in the city and have an encounter?", choice_filters={"open"},
       none_choice="No thanks",
   )
@@ -555,7 +555,7 @@ def Train3(char):
 def Train4(char):
   return events.Nothing() # TODO: draw the top common item and purchase it for +1 if you wish
 def Train5(char):
-  choice = events.LocationChoice(
+  choice = events.PlaceChoice(
       char, "Get a ride anywhere in the city and have an encounter?", choice_filters={"open"},
       none_choice="No thanks",
   )
@@ -620,7 +620,7 @@ def Asylum7(char):
   return events.BinaryChoice(char, "Do you resist?", "Yes", "No", fight, rest)
 
 def Bank1(char):
-  choice = events.LocationChoice(
+  choice = events.PlaceChoice(
       char, "Catch a lift to anywhere in the city and have an encounter?",
       choice_filters={"open"}, none_choice="No thanks",
   )

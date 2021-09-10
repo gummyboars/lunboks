@@ -233,11 +233,11 @@ class MovementTest(EventTest):
     self.assertEqual(self.char.movement_points, 4)
 
   def testForceMovementFromChoice(self):
-    choice = LocationChoice(self.char, "choose a place", choice_filters={"locations"})
+    choice = PlaceChoice(self.char, "choose a place", choice_filters={"locations"})
     movement = ForceMovement(self.char, choice)
     self.state.event_stack.append(Sequence([choice, movement], self.char))
 
-    loc_choice = self.resolve_to_choice(LocationChoice)
+    loc_choice = self.resolve_to_choice(PlaceChoice)
     loc_choice.resolve(self.state, "Woods")
     self.resolve_until_done()
 
@@ -245,7 +245,7 @@ class MovementTest(EventTest):
 
   def testForceMovementNoChoices(self):
     self.assertEqual(self.char.place.name, "Diner")
-    choice = LocationChoice(self.char, "choose a place", choice_filters={"gate"})
+    choice = PlaceChoice(self.char, "choose a place", choice_filters={"closed"})
     movement = ForceMovement(self.char, choice)
     self.state.event_stack.append(Sequence([choice, movement], self.char))
 
@@ -1026,12 +1026,12 @@ class ItemChoiceTest(EventTest):
     self.resolve_until_done()
 
 
-class LocationChoiceTest(EventTest):
+class PlaceChoiceTest(EventTest):
 
   def testChooseAnyLocation(self):
-    choice = LocationChoice(self.char, "choose place", choice_filters={"streets", "locations"})
+    choice = PlaceChoice(self.char, "choose place", choice_filters={"streets", "locations"})
     self.state.event_stack.append(choice)
-    self.resolve_to_choice(LocationChoice)
+    self.resolve_to_choice(PlaceChoice)
 
     with self.assertRaises(AssertionError):
       choice.resolve(self.state, "nowhere")
@@ -1039,33 +1039,58 @@ class LocationChoiceTest(EventTest):
     choice.resolve(self.state, "Diner")
 
   def testChooseFromFixedLocations(self):
-    choice = LocationChoice(self.char, "choose place", choices=["Diner", "Southside", "Church"])
+    choice = PlaceChoice(self.char, "choose place", choices=["Diner", "Southside", "Church"])
     self.state.event_stack.append(choice)
-    self.resolve_to_choice(LocationChoice)
+    self.resolve_to_choice(PlaceChoice)
 
     with self.assertRaises(AssertionError):
       choice.resolve(self.state, "Bank")
 
     choice.resolve(self.state, "Diner")
 
+
+class GateChoiceTest(EventTest):
+
   def testChooseOnlyGateLocations(self):
-    choice = LocationChoice(self.char, "choose place", choice_filters={"gate"})
+    choice = GateChoice(self.char, "choose place")
     self.state.event_stack.append(choice)
     self.state.places["Square"].gate = self.state.gates.popleft()
-    self.resolve_to_choice(LocationChoice)
+    self.resolve_to_choice(GateChoice)
 
     with self.assertRaises(AssertionError):
       choice.resolve(self.state, "Woods")
 
     choice.resolve(self.state, "Square")
+    self.assertTrue(choice.is_resolved())
 
   def testChooseGateLocationsNoGates(self):
-    choice = LocationChoice(self.char, "choose place", choice_filters={"gate"})
+    choice = GateChoice(self.char, "choose place")
     self.state.event_stack.append(choice)
     self.resolve_until_done()
 
     self.assertTrue(choice.is_resolved())
     self.assertIsNone(choice.choice)
+
+  def testChooseSpecificGateLocations(self):
+    self.state.places["Square"].gate = self.state.gates.popleft()
+    choice = GateChoice(self.char, "return somewhere", self.state.places["Square"].gate.name)
+
+    self.state.places["Woods"].gate = self.state.gates.popleft()
+    self.assertEqual(self.state.places["Square"].gate.name, self.state.places["Woods"].gate.name)
+    self.state.places["Witch"].gate = self.state.gates.popleft()
+    self.assertNotEqual(self.state.places["Witch"].gate.name, self.state.places["Woods"].gate.name)
+
+    self.state.event_stack.append(choice)
+    self.resolve_to_choice(GateChoice)
+
+    with self.assertRaises(AssertionError):
+      choice.resolve(self.state, None)
+
+    with self.assertRaises(AssertionError):
+      choice.resolve(self.state, "Witch")
+
+    choice.resolve(self.state, "Woods")
+    self.assertTrue(choice.is_resolved())
 
 
 class RefreshItemsTest(EventTest):

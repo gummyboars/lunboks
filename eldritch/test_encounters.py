@@ -84,10 +84,10 @@ class DrawEncounterTest(EncounterTest):
     self.char.place = self.state.places["Graveyard"]
     self.state.places["University"].encounters = [
         encounters.EncounterCard("University2", {"Administration": encounters.Administration2})]
-    choice = LocationChoice(self.char, "choose a place", choice_filters={"locations"})
+    choice = PlaceChoice(self.char, "choose a place", choice_filters={"locations"})
     enc = Encounter(self.char, choice)
     self.state.event_stack.append(Sequence([choice, enc], self.char))
-    loc_choice = self.resolve_to_choice(LocationChoice)
+    loc_choice = self.resolve_to_choice(PlaceChoice)
     loc_choice.resolve(self.state, "Administration")
     self.resolve_until_done()
     self.assertEqual(self.char.clues, 1)
@@ -97,10 +97,10 @@ class DrawEncounterTest(EncounterTest):
     self.char.sanity = 3
     self.state.places["Rivertown"].encounters = [
         encounters.EncounterCard("Rivertown6", {"Graveyard": encounters.Graveyard6})]
-    choice = LocationChoice(self.char, "choose a place", choice_filters={"locations", "streets"})
+    choice = PlaceChoice(self.char, "choose a place", choice_filters={"locations", "streets"})
     enc = Encounter(self.char, choice)
     self.state.event_stack.append(Sequence([choice, enc], self.char))
-    loc_choice = self.resolve_to_choice(LocationChoice)
+    loc_choice = self.resolve_to_choice(PlaceChoice)
     loc_choice.resolve(self.state, "University")
     self.resolve_until_done()
     self.assertEqual(self.char.sanity, 3)
@@ -110,7 +110,7 @@ class DrawEncounterTest(EncounterTest):
     self.char.sanity = 3
     self.state.places["Rivertown"].encounters = [
         encounters.EncounterCard("Rivertown6", {"Graveyard": encounters.Graveyard6})]
-    choice = LocationChoice(self.char, "choose a place", choice_filters={"gate"})
+    choice = PlaceChoice(self.char, "choose a place", choice_filters={"closed"})
     enc = Encounter(self.char, choice)
     self.state.event_stack.append(Sequence([choice, enc], self.char))
     self.resolve_until_done()
@@ -1511,7 +1511,7 @@ class BankTest(EncounterTest):
 
   def testBank1Move(self):
     self.state.event_stack.append(encounters.Bank1(self.char))
-    choice = self.resolve_to_choice(LocationChoice)
+    choice = self.resolve_to_choice(PlaceChoice)
 
     self.state.places["University"].encounters = [
         encounters.EncounterCard("University2", {"Administration": encounters.Administration2})]
@@ -1522,7 +1522,7 @@ class BankTest(EncounterTest):
 
   def testBank1NoThanks(self):
     self.state.event_stack.append(encounters.Bank1(self.char))
-    choice = self.resolve_to_choice(LocationChoice)
+    choice = self.resolve_to_choice(PlaceChoice)
     choice.resolve(self.state, "No thanks")
     self.resolve_until_done()
     self.assertEqual(self.char.clues, 0)
@@ -1832,7 +1832,7 @@ class NewspaperTest(EncounterTest):
 
   def testNewspaper1Move(self):
     self.state.event_stack.append(encounters.Newspaper1(self.char))
-    choice = self.resolve_to_choice(LocationChoice)
+    choice = self.resolve_to_choice(PlaceChoice)
     self.assertEqual(self.char.dollars, 5)
 
     self.state.places["University"].encounters = [
@@ -1844,7 +1844,7 @@ class NewspaperTest(EncounterTest):
 
   def testNewspaper1NoThanks(self):
     self.state.event_stack.append(encounters.Newspaper1(self.char))
-    choice = self.resolve_to_choice(LocationChoice)
+    choice = self.resolve_to_choice(PlaceChoice)
     self.assertEqual(self.char.dollars, 5)
     choice.resolve(self.state, "No thanks")
     self.resolve_until_done()
@@ -1976,7 +1976,7 @@ class TrainTest(EncounterTest):
 
   def testTrain5Move(self):
     self.state.event_stack.append(encounters.Train5(self.char))
-    choice = self.resolve_to_choice(LocationChoice)
+    choice = self.resolve_to_choice(PlaceChoice)
 
     self.state.places["University"].encounters = [
         encounters.EncounterCard("University2", {"Administration": encounters.Administration2})]
@@ -1987,7 +1987,7 @@ class TrainTest(EncounterTest):
 
   def testTrain5NoThanks(self):
     self.state.event_stack.append(encounters.Train5(self.char))
-    choice = self.resolve_to_choice(LocationChoice)
+    choice = self.resolve_to_choice(PlaceChoice)
     choice.resolve(self.state, "No thanks")
     self.resolve_until_done()
     self.assertEqual(self.char.clues, 0)
@@ -3702,7 +3702,7 @@ class GraveyardTest(EncounterTest):
   def testGraveyard5PassStreet(self):
     self.state.event_stack.append(encounters.Graveyard5(self.char))
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
-      choice = self.resolve_to_choice(LocationChoice)
+      choice = self.resolve_to_choice(PlaceChoice)
     self.assertEqual(self.char.clues, 2)
 
     choice.resolve(self.state, "Downtown")
@@ -3711,7 +3711,7 @@ class GraveyardTest(EncounterTest):
   def testGraveyard5PassNowhere(self):
     self.state.event_stack.append(encounters.Graveyard5(self.char))
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
-      choice = self.resolve_to_choice(LocationChoice)
+      choice = self.resolve_to_choice(PlaceChoice)
     self.assertEqual(self.char.clues, 2)
 
     choice.resolve(self.state, "No thanks")
@@ -3720,7 +3720,7 @@ class GraveyardTest(EncounterTest):
   def testGraveyard5PassLocation(self):
     self.state.event_stack.append(encounters.Graveyard5(self.char))
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
-      choice = self.resolve_to_choice(LocationChoice)
+      choice = self.resolve_to_choice(PlaceChoice)
     self.assertEqual(self.char.clues, 2)
 
     self.state.places["University"].encounters = [
