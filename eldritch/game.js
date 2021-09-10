@@ -401,8 +401,8 @@ function updateChoices(choice) {
   while (uichoice.getElementsByClassName("choice").length) {
     uichoice.removeChild(uichoice.getElementsByClassName("choice")[0]);
   }
-  while (uicardchoice.getElementsByClassName("cardchoice").length) {
-    uicardchoice.removeChild(uicardchoice.getElementsByClassName("cardchoice")[0]);
+  while (uicardchoice.getElementsByClassName("cardholder").length) {
+    uicardchoice.removeChild(uicardchoice.getElementsByClassName("cardholder")[0]);
   }
   // Set prompt.
   document.getElementById("uiprompt").innerText = choice.prompt;
@@ -415,24 +415,26 @@ function updateChoices(choice) {
     itemChoice = [];
     pDiv.classList.remove("choose");
     if (choice.places != null) {
-      updatePlaceChoices(uichoice, choice.places);
+      updatePlaceChoices(uichoice, choice.places, choice.annotations);
     } else if (choice.cards != null) {
-      addCardChoices(uicardchoice, choice.cards, choice.invalid_choices);
+      addCardChoices(uicardchoice, choice.cards, choice.invalid_choices, choice.annotations);
     } else {
       addChoices(uichoice, choice.choices, choice.invalid_choices);
     }
   }
 }
 
-function addCardChoices(cardChoice, cards) {
+function addCardChoices(cardChoice, cards, invalidChoices, annotations) {
   if (!cards) {
     return;
   }
-  for (let c of cards) {
+  for (let [idx, card] of cards.entries()) {
+    let holder = document.createElement("DIV");
+    holder.classList.add("cardholder");
     let div = document.createElement("DIV");
     div.classList.add("cardchoice");
-    div.onclick = function(e) { makeChoice(c); };
-    let asset = getAsset(c, "");
+    div.onclick = function(e) { makeChoice(card); };
+    let asset = getAsset(card, "");
     let elemWidth = asset.naturalWidth || asset.width;
     let elemHeight = asset.naturalHeight || asset.height;
     div.style.width = elemWidth + "px";
@@ -441,9 +443,15 @@ function addCardChoices(cardChoice, cards) {
     cnv.width = elemWidth;
     cnv.height = elemHeight;
     cnv.classList.add("markercnv");  // TODO: use a better class name for this
-    renderAssetToCanvas(cnv, c, "");
+    renderAssetToCanvas(cnv, card, "");
     div.appendChild(cnv);
-    cardChoice.appendChild(div);
+    holder.appendChild(div);
+    let desc = document.createElement("DIV");
+    if (annotations != null && annotations.length > idx) {
+      desc.innerText = annotations[idx];
+    }
+    holder.appendChild(desc);
+    cardChoice.appendChild(holder);
     let spacer = document.createElement("DIV");
     spacer.style.height = "100%";
     spacer.style.width = 0.1 * elemWidth + "px";
@@ -452,11 +460,11 @@ function addCardChoices(cardChoice, cards) {
   cardChoice.removeChild(cardChoice.lastChild);
 }
 
-function addChoices(uichoice, choices, invalid_choices) {
+function addChoices(uichoice, choices, invalidChoices) {
   for (let [idx, c] of choices.entries()) {
     let div = document.createElement("DIV");
     div.classList.add("choice");
-    if (invalid_choices != null && invalid_choices.includes(idx)) {
+    if (invalidChoices != null && invalidChoices.includes(idx)) {
       div.classList.add("unchoosable");
     } else {
       div.classList.add("choosable");
@@ -634,14 +642,14 @@ function updateGate(place, gateDiv) {
   }
 }
 
-function updatePlaceChoices(uichoice, places) {
+function updatePlaceChoices(uichoice, places, annotations) {
   let notFound = [];
   for (let place of document.getElementsByClassName("placeselect")) {
     place.classList.remove("selectable");
     place.classList.add("unselectable");
     place.innerText = "❌";
   }
-  for (let placeName of places) {
+  for (let [idx, placeName] of places.entries()) {
     let place = document.getElementById("place" + placeName + "select");
     if (place == null) {
       notFound.push(placeName);
@@ -650,6 +658,11 @@ function updatePlaceChoices(uichoice, places) {
     place.classList.add("selectable");
     place.classList.remove("unselectable");
     place.innerText = "Choose";
+    if (annotations != null && annotations.length > idx) {
+      place.innerText = annotations[idx];
+    } else {
+      place.innerText = "Choose";
+    }
   }
   if (notFound.length) {
     addChoices(uichoice, notFound);

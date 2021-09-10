@@ -66,6 +66,9 @@ class ChoiceEvent(Event):
   def compute_choices(self, state):
     pass
 
+  def annotations(self):
+    return None
+
 
 class Nothing(Event):
 
@@ -303,6 +306,9 @@ class CityMovement(ChoiceEvent):
   @property
   def choices(self):
     return sorted(self.routes.keys())
+
+  def annotations(self):
+    return [f"Move ({len(self.routes[dest])})" for dest in sorted(self.routes.keys())]
 
   def compute_choices(self, state):
     self.routes = self.get_routes(state)  # TODO: annotate
@@ -1045,7 +1051,7 @@ class KeepDrawn(Event):
     return ""
 
   def finish_str(self):
-    return f"{self.character} kept " + ", ".join(self.kept)
+    return f"{self.character.name} kept " + ", ".join(self.kept)
 
 def Draw(character, deck, draw_count, prompt="Choose a card", target_type=None):
   cards = DrawItems(character, deck, draw_count, target_type=target_type)
@@ -1129,7 +1135,8 @@ class PurchaseDrawn(Event):
     else:
       could_not_afford = ""
     if available:
-      self.choice = CardChoice(self.character, self.prompt + could_not_afford, choices)
+      self.choice = CardChoice(
+          self.character, self.prompt + could_not_afford, choices, [f"${p}" for p in self.prices])
       state.event_stack.append(self.choice)
       return False
     else:
@@ -2030,11 +2037,12 @@ class Arrested(Sequence):
 
 class MultipleChoice(ChoiceEvent):
 
-  def __init__(self, character, prompt, choices):
+  def __init__(self, character, prompt, choices, annotations=None):
     self.character = character
     self._prompt = prompt
     self.choices = choices
     self.choice = None
+    self._annotations = annotations
 
   def resolve(self, state, choice=None):
     assert not self.is_resolved()
@@ -2057,6 +2065,9 @@ class MultipleChoice(ChoiceEvent):
   def prompt(self):
     return self._prompt
 
+  def annotations(self):
+    return self._annotations
+
   @property
   def choice_index(self):
     if self.choice is None:
@@ -2066,9 +2077,9 @@ class MultipleChoice(ChoiceEvent):
 
 class PrereqChoice(MultipleChoice):
 
-  def __init__(self, character, prompt, choices, prereqs):
+  def __init__(self, character, prompt, choices, prereqs, annotations=None):
     assert len(choices) == len(prereqs)
-    super(PrereqChoice, self).__init__(character, prompt, choices)
+    super(PrereqChoice, self).__init__(character, prompt, choices, annotations)
     self.prereqs = prereqs
     self.invalid_choices = []
 
@@ -2232,9 +2243,10 @@ class PlaceChoice(MapChoice):
 
 class GateChoice(MapChoice):
 
-  def __init__(self, character, prompt, gate_name=None, none_choice=None):
+  def __init__(self, character, prompt, gate_name=None, none_choice=None, annotation=None):
     super(GateChoice, self).__init__(character, prompt, none_choice=none_choice)
     self.gate_name = gate_name
+    self.annotation = annotation
 
   def compute_choices(self, state):
     self.choices = []
@@ -2254,6 +2266,11 @@ class GateChoice(MapChoice):
     if self.choice is None:
       return f"there were no open gates to {self.gate_name}"
     return f"{self.character.name} chose the gate at {self.choice}"
+
+  def annotations(self):
+    if self.annotation and self.choices is not None:
+      return [self.annotation for _ in self.choices]
+    return None
 
 
 class EvadeOrFightAll(Sequence):
@@ -2497,7 +2514,8 @@ class Return(Event):
 
   def resolve(self, state):
     if self.return_choice is None:
-      self.return_choice = GateChoice(self.character, "Choose a gate to return to", self.world_name)
+      self.return_choice = GateChoice(
+          self.character, "Choose a gate to return to", self.world_name, annotation="Return")
       state.event_stack.append(self.return_choice)
       return False
     assert self.return_choice.is_resolved()

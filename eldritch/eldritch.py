@@ -196,6 +196,7 @@ class GameState(object):
     if top_event and isinstance(top_event, events.ChoiceEvent) and not top_event.is_resolved():
       if top_event.character == self.characters[char_idx]:
         output["choice"] = {"prompt": top_event.prompt()}
+        output["choice"]["annotations"] = top_event.annotations()
         if isinstance(top_event, events.CardChoice):
           output["choice"]["cards"] = top_event.choices
           output["choice"]["invalid_choices"] = getattr(top_event, "invalid_choices", [])
