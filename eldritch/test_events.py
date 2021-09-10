@@ -180,7 +180,13 @@ class MovementPhaseTest(EventTest):
     self.assertEqual(self.char.movement_points, 4)
 
   def testChoiceInCity(self):
-    self.resolve_to_choice(CityMovement)
+    movement = self.resolve_to_choice(CityMovement)
+    self.assertIn("Easttown", movement.choices)
+    self.assertIn("Graveyard", movement.choices)
+
+    self.assertEqual(len(movement.annotations()), len(movement.choices))
+    self.assertEqual(movement.annotations()[movement.choices.index("Easttown")], "Move (1)")
+    self.assertEqual(movement.annotations()[movement.choices.index("Graveyard")], "Move (3)")
 
   def testMoveInOtherWorld(self):
     self.char.place = self.state.places["Dreamlands1"]
@@ -1073,7 +1079,7 @@ class GateChoiceTest(EventTest):
 
   def testChooseSpecificGateLocations(self):
     self.state.places["Square"].gate = self.state.gates.popleft()
-    choice = GateChoice(self.char, "return somewhere", self.state.places["Square"].gate.name)
+    choice = GateChoice(self.char, "return", self.state.places["Square"].gate.name, None, "Return")
 
     self.state.places["Woods"].gate = self.state.gates.popleft()
     self.assertEqual(self.state.places["Square"].gate.name, self.state.places["Woods"].gate.name)
@@ -1082,6 +1088,8 @@ class GateChoiceTest(EventTest):
 
     self.state.event_stack.append(choice)
     self.resolve_to_choice(GateChoice)
+
+    self.assertEqual(choice.annotations(), ["Return", "Return"])
 
     with self.assertRaises(AssertionError):
       choice.resolve(self.state, None)
@@ -1223,6 +1231,7 @@ class PurchaseTest(EventTest):
     self.state.event_stack.append(buy)
     choice = self.resolve_to_choice(CardChoice)
     self.assertEqual(choice.choices, ["Food", "Nothing"])
+    self.assertEqual(choice.annotations(), ["$1"])
     choice.resolve(self.state, "Food")
     self.resolve_until_done()
 
@@ -1301,6 +1310,7 @@ class PurchaseTest(EventTest):
     self.state.event_stack.append(buy)
     choice = self.resolve_to_choice(CardChoice)
     self.assertEqual(choice.choices, ["Food", "Tommy Gun", "Nothing"])
+    self.assertEqual(choice.annotations(), ["$1", "$7"])
     choice.resolve(self.state, "Tommy Gun")
     choice = self.resolve_to_choice(CardChoice)
     self.assertEqual(choice.choices, ["Food", "Nothing"])
@@ -1324,6 +1334,7 @@ class PurchaseTest(EventTest):
     self.state.event_stack.append(buy)
     choice = self.resolve_to_choice(CardChoice)
     self.assertEqual(choice.choices, ["Food", "Tommy Gun", "Nothing"])
+    self.assertEqual(choice.annotations(), ["$0", "$6"])
     choice.resolve(self.state, "Tommy Gun")
     choice = self.resolve_to_choice(CardChoice)
     self.assertEqual(choice.choices, ["Food", "Nothing"])
@@ -1347,6 +1358,7 @@ class PurchaseTest(EventTest):
     self.state.event_stack.append(buy)
     choice = self.resolve_to_choice(CardChoice)
     self.assertEqual(choice.choices, ["Food", "Tommy Gun", "Nothing"])
+    self.assertEqual(choice.annotations(), ["$1", "$4"])
     choice.resolve(self.state, "Tommy Gun")
     choice = self.resolve_to_choice(CardChoice)
     self.assertEqual(choice.choices, ["Food", "Nothing"])
@@ -1370,6 +1382,7 @@ class PurchaseTest(EventTest):
     self.state.event_stack.append(buy)
     choice = self.resolve_to_choice(CardChoice)
     self.assertEqual(choice.choices, ["Food", "Tommy Gun", "Nothing"])
+    self.assertEqual(choice.annotations(), ["$2", "$8"])
     choice.resolve(self.state, "Tommy Gun")
     self.resolve_until_done()
 
