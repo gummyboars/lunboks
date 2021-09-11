@@ -1,9 +1,11 @@
 ws = null;
+dragged = null;
 characters = {};
 monsters = {};
 scale = 1;
 itemsToChoose = null;
 itemChoice = [];
+monsterChoice = {};
 runningAnim = [];
 messageQueue = [];
 
@@ -42,6 +44,9 @@ function continueInit(gameId) {
       let box = document.createElement("DIV");
       box.id = "place" + name + "box";
       box.classList.add("placebox", "placeboxhover");  // FIXME
+      box.ondrop = drop;
+      box.ondragenter = dragEnter;
+      box.ondragover = dragOver;
       div.appendChild(box);
       let monstersDiv = document.createElement("DIV");
       monstersDiv.id = "place" + name + "monsters";
@@ -194,8 +199,9 @@ function handleData(data) {
   updateDone(data.turn_number, data.sliders);
   updatePlaces(data.places);
   updateCharacters(data.characters);
-  updateMonsters(data.monsters);
   updateChoices(data.choice);
+  updateMonsterChoices(data.choice, data.monsters);
+  updateMonsters(data.monsters);
   updateUsables(data.usables, data.choice);
   updateEventLog(data.event_log);
   if (messageQueue.length && !runningAnim.length) {
@@ -286,8 +292,76 @@ function clickAsset(assetDiv, assetIdx) {
   }
 }
 
+function confirmMonsterChoice(e) {
+  let choices = {};
+  for (let idx in monsterChoice) {
+    if (choices[monsterChoice[idx]] == null) {
+      choices[monsterChoice[idx]] = [];
+    }
+    choices[monsterChoice[idx]].push(parseInt(idx));
+  }
+  console.log(choices);
+  ws.send(JSON.stringify({"type": "choice", "choice": choices}));
+}
+
+function resetMonsterChoice(e) {
+  for (let monsterDiv of document.getElementsByClassName("monster")) {
+    if (monsterDiv.monsterIdx != null && monsterDiv.draggable) {
+      document.getElementById("monsterchoices").appendChild(monsterDiv);
+    }
+  }
+  monsterChoice = {};
+}
+
 function useAsset(idx) {
   ws.send(JSON.stringify({"type": "use", "idx": idx}));
+}
+
+function dragStart(e) {
+  dragged = e.target;
+}
+
+function dragEnd(e) {
+  dragged = null;
+}
+
+function dragEnter(e) {
+  e.preventDefault();
+}
+
+function dragOver(e) {
+  e.preventDefault();
+}
+
+function drop(e) {
+  if (dragged == null) {
+    console.log("dropped elem that was not dragged");
+    return;
+  }
+  if (!dragged.classList.contains("monster")) {
+    console.log("dragged elem was not a monster");
+    return;
+  }
+  if (dragged.monsterIdx == null) {
+    console.log("dragged elem did not have an id");
+    return;
+  }
+  if (!e.currentTarget.id.startsWith("place") || !e.currentTarget.id.endsWith("box")) {
+    console.log("dragged to something that's not a place");
+    return;
+  }
+  let placeName = e.currentTarget.id.substring(5, e.currentTarget.id.length - 3)
+  if (streets[placeName] == null && locations[placeName] == null) {
+    console.log("dragged to a place that's not a place");
+    return;
+  }
+  if (!e.currentTarget.getElementsByClassName("placemonsters").length) {
+    console.log("dragged to a place that has no monsters div");
+    return;
+  }
+  e.preventDefault();
+  e.currentTarget.getElementsByClassName("placemonsters")[0].appendChild(dragged);
+  monsterChoice[dragged.monsterIdx] = placeName;
 }
 
 function makeCheck(e) {
@@ -348,20 +422,26 @@ function hideMonsters(e) {
 function updateMonsters(monster_list) {
   for (let i = 0; i < monster_list.length; i++) {
     let monster = monster_list[i];
-    if (monster == null || !monster.place || monster.place == "cup") {
+    let monsterPlace = monsterChoice[i] || null;
+    // If we're moving monsters, remember where the user has placed the monster.
+    if (monsterPlace == null && monster != null && monster.place && monster.place != "cup") {
+      monsterPlace = monster.place;
+    }
+    if (monsterPlace == null) {
       if (monsters[i] != null) {
         monsters[i].parentNode.removeChild(monsters[i]);  // TODO: animate
         monsters[i] = null;
       }
       continue;
     }
-    let place = document.getElementById("place" + monster.place + "monsters");
+    let place = document.getElementById("place" + monsterPlace + "monsters");
     if (place == null) {
       console.log("Unknown place " + monster.place);
       continue;
     }
     if (monsters[i] == null) {
       monsters[i] = createMonsterDiv(monster.name, 1, "");
+      monsters[i].monsterIdx = i;
       place.appendChild(monsters[i]);
     } else {
       animateMovingDiv(monsters[i], place);
@@ -383,7 +463,7 @@ function updateChoices(choice) {
     place.classList.remove("unselectable");
     place.innerText = "";
   }
-  if (choice == null) {
+  if (choice == null || choice.monsters != null) {
     uichoice.style.display = "none";
     itemsToChoose = null;
     itemChoice = [];
@@ -420,6 +500,36 @@ function updateChoices(choice) {
       addCardChoices(uicardchoice, choice.cards, choice.invalid_choices, choice.annotations);
     } else {
       addChoices(uichoice, choice.choices, choice.invalid_choices);
+    }
+  }
+}
+
+function updateMonsterChoices(choice, monsterList) {
+  // TODO: indicate how many monsters each location should receive.
+  let uimonsterchoice = document.getElementById("uimonsterchoice");
+  let choicesBox = document.getElementById("monsterchoices");
+  if (choice == null || choice.monsters == null) {
+    uimonsterchoice.style.display = "none";
+    for (let monsterIdx in monsters) {
+      if (monsters[monsterIdx] == null) {
+        continue;
+      }
+      monsters[monsterIdx].draggable = false;
+      monsters[monsterIdx].ondragstart = null;
+      monsters[monsterIdx].ondragend = null;
+    }
+    monsterChoice = {};
+    return;
+  }
+  uimonsterchoice.style.display = "flex";
+  for (let monsterIdx of choice.monsters) {
+    if (monsters[monsterIdx] == null) {
+      monsters[monsterIdx] = createMonsterDiv(monsterList[monsterIdx].name, 1, "");
+      monsters[monsterIdx].monsterIdx = monsterIdx;
+      monsters[monsterIdx].draggable = true;
+      monsters[monsterIdx].ondragstart = dragStart;
+      monsters[monsterIdx].ondragend = dragEnd;
+      choicesBox.appendChild(monsters[monsterIdx]);
     }
   }
 }

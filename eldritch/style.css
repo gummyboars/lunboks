@@ -78,6 +78,33 @@ button {
   background: darkgrey;
   text-decoration: line-through;
 }
+#uimonsterchoice {
+  position: absolute;
+  top: 10%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 10;
+  display: none;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  background: sienna;
+  color: black;
+  font-size: 3em;
+  border: 1px solid black;
+}
+#monsterchoices {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+}
+#monterchoicebuttons {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+}
 #uiuse {
   position: absolute;
   top: 50%;
