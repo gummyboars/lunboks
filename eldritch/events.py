@@ -1037,75 +1037,37 @@ def GainAllyOrReward(character, ally: str, reward: Event):
   return PassFail(character, has_ally, gain_ally, reward)
 
 
-class Sell(Event):
+class SellChosen(Event):
 
-  def __init__(self, character, target_decks, sell_count=1, discount_type="fixed", discount=0,
-               prompt="Sell items?"):
+  def __init__(self, character, choice, discount_type="fixed", discount=0):
     assert discount_type in {"fixed", "rate"}
     self.character = character
-    self.prompt = prompt
-    self.sell_count = sell_count
+    self.choice = choice
     self.sellable = None
     self.discount_type = discount_type
     self.discount = discount
-    self.choice = None
-    self.prices = None
-    self.sold = []
-    self.target_decks = target_decks
+    self.prices = []
     self.resolved = False
 
   def resolve(self, state):
     if self.resolved:
       # This should never happen??
       return True
-
-    if self.choice is not None:
-      if not self.choice.is_resolved():  # This should never happen
-        return False
-      if self.choice.choices[self.choice.choice_index] == 'Nothing':
-        self.resolved = True
-        return True
-
-      card = self.sellable.pop(self.choice.choice_index)
-      price = self.prices.pop(self.choice.choice_index)
-
+    for card in self.choice.chosen:
+      price = self.discounted_price(card)
+      self.prices.append(price)
+      self.character.dollars += price
       self.character.possessions.remove(card)
       getattr(state, card.deck).append(card)
-
-      self.character.dollars += price
-
-      self.sell_count -= 1
-
-    if self.sellable is None:
-      self.sellable = []
-      for item in self.character.possessions:
-        if item.deck in self.target_decks:
-          self.sellable.append(item)
-
-    if self.sell_count > 0:
-      choices = []
-      self.prices = []
-      for card in self.sellable:
-        price = self.discounted_price(card)
-        self.prices.append(price)
-        choices.append(f"{card.name} for ${price}")
-      choices.append("Nothing")
-
-      self.choice = CardChoice(self.character, self.prompt, choices)
-      state.event_stack.append(self.choice)
-      return False
-
-    if self.sell_count == 0:
-      self.resolved = True
-      return True
-
+    self.resolved = True
+    self.sold = [card.name for card in self.choice.chosen]
     return True
 
   def is_resolved(self):
     return self.resolved
 
   def start_str(self):
-    return f"{self.character.name} may sell {str(self.target_decks)}"
+    return f"{self.character.name} selling {str(self.choice.chosen)}"
 
   def finish_str(self):
     if not self.sold:
@@ -1118,6 +1080,15 @@ class Sell(Event):
     elif self.discount_type == 'rate':
       return card.price - int(self.discount * card.price) # Discounts round up
 
+
+def Sell(char, decks, sell_count=1, discount_type="fixed", discount=0,
+         prompt="Sell item?"):
+    # TODO: Implement possibility to sell multiple items
+    items = ItemChoice(char, prompt, decks=decks, nothing_option=True)
+    sell = SellChosen(
+            char, items, discount_type=discount_type, discount=discount,
+    )
+    return Sequence([items, sell], char)
 
 class PurchaseDrawn(Event):
   def __init__(self, character, draw: DrawItems,
@@ -1551,7 +1522,7 @@ class ActivateChosenItems(Event):
   def resolve(self, state):
     assert self.item_choice.is_resolved()
     self.activated = 0
-    for item in self.item_choice.choices:
+    for item in self.item_choice.chosen:
       if not item.active:
         state.event_stack.append(ActivateItem(self.character, item))
         return False
@@ -1559,7 +1530,7 @@ class ActivateChosenItems(Event):
     return True
 
   def is_resolved(self):
-    return self.item_choice.is_resolved() and self.activated == len(self.item_choice.choices)
+    return self.item_choice.is_resolved() and self.activated == len(self.item_choice.chosen)
 
   def start_str(self):
     return ""
@@ -2088,22 +2059,49 @@ def BinaryChoice(
 
 class ItemChoice(ChoiceEvent):
 
-  def __init__(self, character, prompt):
+  def __init__(self, character, prompt, decks=None, item_type=None, nothing_option=False):
     self.character = character
     self._prompt = prompt
     self.choices = None
+    self.chosen = None
+    if decks is None:
+      decks = {'spells', 'common', 'unique', 'skills', 'allies'}
+    assert decks.issubset({'spells', 'common', 'unique', 'skills', 'allies'}), f"{decks} contains invalid deck"
+    # can one choose a skill in any circumstances?
+    self.decks = decks
+    self.item_type = item_type
+    self.nothing_option = nothing_option
 
   def resolve(self, state, choice=None):
     if self.is_resolved():
       return True
-    assert all([0 <= idx < len(self.character.possessions) for idx in choice])
+    assert (
+            (choice == 'Nothing')
+            or all([0 <= idx < len(self.character.possessions) for idx in choice])
+    )
     self.resolve_internal(choice)
 
   def resolve_internal(self, choices):
-    self.choices = [self.character.possessions[idx] for idx in choices]
+    if choices == 'Nothing':
+        self.chosen = []
+    else:
+      self.chosen = list([
+        self.character.possessions[idx]
+        for idx in choices
+        if self.character.possessions[idx].deck in self.decks
+    ])
+
+  def compute_choices(self, state):
+    self.choices = [
+      idx for idx in range(len(self.character.possessions))
+        if self.character.possessions[idx].deck in self.decks
+    ]
+    if self.nothing_option:
+      self.choices.append("Nothing")
+
 
   def is_resolved(self):
-    return self.choices is not None
+    return self.chosen is not None
 
   def start_str(self):
     return f"{self.character.name} must " + self.prompt()
@@ -2133,8 +2131,8 @@ class CombatChoice(ItemChoice):
 
 class ItemCountChoice(ItemChoice):
 
-  def __init__(self, character, prompt, count):
-    super(ItemCountChoice, self).__init__(character, prompt)
+  def __init__(self, character, prompt, count, decks=None):
+    super(ItemCountChoice, self).__init__(character, prompt, decks=decks)
     self.count = count
 
   def resolve_internal(self, choices):

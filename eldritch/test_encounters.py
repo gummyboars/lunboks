@@ -3897,9 +3897,9 @@ class StoreTest(EncounterTest):
   def testStore3(self):
     self.state.event_stack.append(encounters.Store3(self.char))
     self.char.possessions.append(items.Food())
-    choice = self.resolve_to_choice(MultipleChoice)
-    self.assertEqual(choice.choices, ["Food for $2", "Nothing"])
-    choice.resolve(self.state, "Food for $2")
+    choice = self.resolve_to_choice(ItemChoice)
+    self.assertEqual(choice.choices, [0, "Nothing"])
+    choice.resolve(self.state, [0])
     self.resolve_until_done()
     self.assertFalse(self.char.possessions)
     self.assertEqual(self.char.dollars, 5)
