@@ -99,12 +99,6 @@ button {
   justify-content: center;
   align-items: center;
 }
-#monterchoicebuttons {
-  display: flex;
-  flex-direction: row;
-  justify-content: center;
-  align-items: center;
-}
 #uiuse {
   position: absolute;
   top: 50%;
