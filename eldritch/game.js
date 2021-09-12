@@ -200,8 +200,8 @@ function handleData(data) {
   updatePlaces(data.places);
   updateCharacters(data.characters);
   updateChoices(data.choice);
-  updateMonsterChoices(data.choice, data.monsters);
   updateMonsters(data.monsters);
+  updateMonsterChoices(data.choice, data.monsters);
   updateUsables(data.usables, data.choice);
   updateEventLog(data.event_log);
   if (messageQueue.length && !runningAnim.length) {
@@ -300,7 +300,6 @@ function confirmMonsterChoice(e) {
     }
     choices[monsterChoice[idx]].push(parseInt(idx));
   }
-  console.log(choices);
   ws.send(JSON.stringify({"type": "choice", "choice": choices}));
 }
 
