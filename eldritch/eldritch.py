@@ -211,6 +211,8 @@ class GameState(object):
           output["choice"]["items"] = 0
         elif isinstance(top_event, events.ItemCountChoice):
           output["choice"]["items"] = top_event.count
+        elif isinstance(top_event, events.MonsterSurge):
+          output["choice"]["monsters"] = top_event.to_spawn
         else:
           raise RuntimeError("Unknown choice type %s" % top_event.__class__.__name__)
     if top_event and isinstance(top_event, events.SliderInput) and not top_event.is_resolved():
