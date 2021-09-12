@@ -2647,7 +2647,9 @@ class OpenGate(Event):
       return True
     if state.places[self.location_name].gate is not None:
       self.opened = False
-      return True  # TODO: monster surge
+      self.spawn = MonsterSurge(self.location_name)
+      state.event_stack.append(self.spawn)
+      return False
 
     # TODO: if there are no gates tokens left, the ancient one awakens
     self.opened = state.gates.popleft()
@@ -2699,6 +2701,65 @@ class SpawnGateMonster(Event):
 
   def finish_str(self):
     return f"{len(self.spawned)} monsters appeared at {self.location_name}."
+
+
+class MonsterSurge(ChoiceEvent):
+
+  def __init__(self, location_name):
+    self.location_name = location_name  # May be None for certain mythos cards.
+    self.spawned = None
+    self.open_gates = None
+    self.max_count = None
+    self.min_count = None
+    self.character = None
+    self.to_spawn = None
+
+  def compute_choices(self, state):
+    if self.to_spawn is not None:
+      return
+    if self.location_name is not None:
+      assert getattr(state.places[self.location_name], "gate", None) is not None
+    self.open_gates = [
+        name for name, place in state.places.items() if getattr(place, "gate", None) is not None]
+    open_count = len(self.open_gates)
+    characters = len(state.characters)
+    spawn_count = max(open_count, characters)
+    # TODO: if count exceeds monster limit, send some to the outskirts.
+    self.min_count = spawn_count // open_count
+    self.max_count = (spawn_count + open_count - 1) // open_count
+    self.character = state.characters[state.first_player]
+    monster_indexes = [
+        idx for idx, monster in enumerate(state.monsters) if monster.place == state.monster_cup]
+    # TODO: if there are no monsters left, the ancient one awakens.
+    self.to_spawn = random.sample(monster_indexes, spawn_count)
+
+  def resolve(self, state, choice=None):
+    assert isinstance(choice, dict)
+    assert all(isinstance(val, list) for val in choice.values())
+    assert not set(choice.keys()) - set(self.open_gates)
+    assert set(sum(choice.values(), [])) == set(self.to_spawn)
+    assert max(len(val) for val in choice.values()) == self.max_count
+    assert min(len(val) for val in choice.values()) == self.min_count
+    if self.location_name:
+      assert self.location_name in choice
+      assert len(choice[self.location_name]) == self.max_count
+
+    for location_name, monster_indexes in choice.items():
+      for monster_idx in monster_indexes:
+        state.monsters[monster_idx].place = state.places[location_name]
+    self.spawned = True
+
+  def is_resolved(self):
+    return self.spawned
+
+  def prompt(self):
+    return ""
+
+  def start_str(self):
+    return ""
+
+  def finish_str(self):
+    return ""
 
 
 class SpawnClue(Event):
