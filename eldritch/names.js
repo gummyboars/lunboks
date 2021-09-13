@@ -11,7 +11,9 @@ commonNames = [
   "Research Materials",
 ];
 uniqueNames = [
+  "Enchanted Knife",
   "Holy Water",
+  "Magic Lamp",
 ];
 spellNames = [
   "Dread Curse",
@@ -38,7 +40,7 @@ allyNames = [
   "Police Detective",
   "Thief",
   "Brave Guy",
-  "Mortician",
+  "Police Inspector",
   "Arm Wrestler",
   "Visiting Painter",
   "Tough Guy",

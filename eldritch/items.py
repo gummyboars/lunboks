@@ -20,12 +20,8 @@ class Item(Card):
 
 class Weapon(Item):
 
-  BONUS_TYPES = {"physical", "magical", None}
-
-  def __init__(self, name, deck, active_bonuses, passive_bonuses, hands, price, bonus_type):
-    assert bonus_type in self.BONUS_TYPES
+  def __init__(self, name, deck, active_bonuses, passive_bonuses, hands, price):
     super(Weapon, self).__init__(name, deck, active_bonuses, passive_bonuses, hands, price, "weapon")
-    self.bonus_type = bonus_type
 
 
 class OneshotWeapon(Weapon):
@@ -81,7 +77,7 @@ class ResearchMaterials(Item):
 class Bullwhip(Weapon):
 
   def __init__(self):
-    super(Bullwhip, self).__init__("Bullwhip", "common", {"combat": 1}, {}, 1, 2, "physical")
+    super(Bullwhip, self).__init__("Bullwhip", "common", {"physical": 1}, {}, 1, 2)
 
   def get_usable_trigger(self, event, owner, state):
     if not isinstance(event, events.Check) or owner != event.character:
@@ -91,16 +87,30 @@ class Bullwhip(Weapon):
     return None  # TODO: create an event here
 
 
+class Cross(Weapon):
+
+  def __init__(self):
+    super(Cross, self).__init__("Cross", "common", {}, {"horror": 1}, 1, 3)
+
+  def get_bonus(self, check_type, attributes):
+    bonus = super(Cross, self).get_bonus(check_type, attributes)
+    if self.active and check_type == "magical" and attributes and "undead" in attributes:
+      bonus += 3
+    return bonus
+
+
 def Revolver38():
-  return Weapon(".38 Revolver", "common", {"combat": 3}, {}, 1, 4, "physical")
-def Cross():  # TODO: bonus against undead.
-  return Weapon("Cross", "common", {}, {"horror": 1}, 1, 3, "magical")
+  return Weapon(".38 Revolver", "common", {"physical": 3}, {}, 1, 4)
 def Dynamite():
-  return OneshotWeapon("Dynamite", "common", {"combat": 8}, {}, 2, 4, "physical")
+  return OneshotWeapon("Dynamite", "common", {"physical": 8}, {}, 2, 4)
 def HolyWater():
-  return OneshotWeapon("Holy Water", "unique", {"combat": 6}, {}, 2, 4, "magical")
+  return OneshotWeapon("Holy Water", "unique", {"magical": 6}, {}, 2, 4)
+def EnchantedKnife():
+  return Weapon("Enchanted Knife", "unique", {"magical": 3}, {}, 1, 5)
+def MagicLamp():
+  return Weapon("Magic Lamp", "unique", {"magical": 5}, {}, 2, 7)
 def TommyGun():
-  return Weapon("Tommy Gun", "common", {"combat": 6}, {}, 2, 7, "physical")
+  return Weapon("Tommy Gun", "common", {"physical": 6}, {}, 2, 7)
 
 
 class Spell(Item):
@@ -162,11 +172,11 @@ class CombatSpell(Spell):
 
 
 def Wither():
-  return CombatSpell("Wither", {"combat": 3}, 1, 0, 0)
+  return CombatSpell("Wither", {"magical": 3}, 1, 0, 0)
 def Shrivelling():
-  return CombatSpell("Shrivelling", {"combat": 6}, 1, -1, 1)
+  return CombatSpell("Shrivelling", {"magical": 6}, 1, -1, 1)
 def DreadCurse():
-  return CombatSpell("Dread Curse", {"combat": 9}, 2, -2, 2)
+  return CombatSpell("Dread Curse", {"magical": 9}, 2, -2, 2)
 
 
 class Voice(Spell):
@@ -236,6 +246,8 @@ def CreateCommon():
 def CreateUnique():
   counts = {
       HolyWater: 4,
+      EnchantedKnife: 2,
+      MagicLamp: 1,
   }
   uniques = []
   for item, count in counts.items():

@@ -777,7 +777,7 @@ def Isle1(char):
 def Isle2(char):
   check = events.Check(char, "sneak", -1)
   reward = events.Gain(char, {"sanity": float("inf"), "stamina": float("inf")})
-  ally = events.GainAllyOrReward(char, "Mortician", reward)
+  ally = events.GainAllyOrReward(char, "Police Inspector", reward)
   return events.PassFail(char, check, ally, events.Nothing())
 def Isle3(char):
   stamina = events.Loss(char, {"stamina": 1})

@@ -6,6 +6,9 @@ class GlobalEffect(object):
   def get_modifier(self, thing, attribute):
     return 0
 
+  def get_override(self, thing, attribute):
+    return None
+
   def get_interrupt(self, event, owner, state):
     return None
 

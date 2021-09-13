@@ -1125,33 +1125,33 @@ class ActivateItemsTest(EventTest):
     gun = items.TommyGun()
     self.char.possessions.append(gun)
     self.assertEqual(self.char.hands_available(), 2)
-    self.assertEqual(self.char.combat(self.state), 4)
+    self.assertEqual(self.char.combat(self.state, None), 4)
 
     activate = ActivateItem(self.char, gun)
     self.state.event_stack.append(activate)
     self.resolve_until_done()
 
     self.assertEqual(self.char.hands_available(), 0)
-    self.assertEqual(self.char.combat(self.state), 10)
+    self.assertEqual(self.char.combat(self.state, None), 10)
 
   def testDeactivateItem(self):
     gun = items.TommyGun()
     self.char.possessions.append(gun)
     gun._active = True
     self.assertEqual(self.char.hands_available(), 0)
-    self.assertEqual(self.char.combat(self.state), 10)
+    self.assertEqual(self.char.combat(self.state, None), 10)
 
     deactivate = DeactivateItem(self.char, gun)
     self.state.event_stack.append(deactivate)
     self.resolve_until_done()
 
     self.assertEqual(self.char.hands_available(), 2)
-    self.assertEqual(self.char.combat(self.state), 4)
+    self.assertEqual(self.char.combat(self.state, None), 4)
 
   def testActivateChosenItems(self):
     self.char.possessions.extend([items.Bullwhip(), items.TommyGun(), items.Revolver38()])
     self.assertEqual(self.char.hands_available(), 2)
-    self.assertEqual(self.char.combat(self.state), 4)
+    self.assertEqual(self.char.combat(self.state, None), 4)
 
     item_choice = CombatChoice(self.char, "choose stuff")
     activate = ActivateChosenItems(self.char, item_choice)

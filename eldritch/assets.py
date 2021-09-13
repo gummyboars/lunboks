@@ -6,6 +6,7 @@ from eldritch import events
 
 CHECK_TYPES = {"speed", "sneak", "fight", "will", "lore", "luck"}
 SUB_CHECKS = {"evade": "sneak", "combat": "fight", "horror": "will", "spell": "lore"}
+COMBAT_SUBTYPES = {"physical", "magical"}
 
 
 class Asset(metaclass=abc.ABCMeta):
@@ -24,12 +25,21 @@ class Asset(metaclass=abc.ABCMeta):
   def exhausted(self):
     return self._exhausted
 
-  def get_bonus(self, check_type):
+  def get_bonus(self, check_type, attributes):
     return 0
 
   @property
   def bonuses(self):
-    return {check: self.get_bonus(check) for check in CHECK_TYPES | SUB_CHECKS.keys()}
+    bonuses = {check: self.get_bonus(check, None) for check in CHECK_TYPES | SUB_CHECKS.keys()}
+    bonuses["combat"] = sum([
+      self.get_bonus(check, None) for check in {"combat", "physical", "magical"}])
+    return bonuses
+
+  def get_modifier(self, other, attribute):
+    return None
+
+  def get_override(self, other, attribute):
+    return None
 
   def get_interrupt(self, event, owner, state):
     return None
@@ -54,10 +64,11 @@ class Asset(metaclass=abc.ABCMeta):
 class Card(Asset):
 
   DECKS = {"common", "unique", "spells", "skills", "allies"}
+  VALID_BONUS_TYPES = CHECK_TYPES | SUB_CHECKS.keys() | COMBAT_SUBTYPES
 
   def __init__(self, name, deck, active_bonuses, passive_bonuses):
     assert deck in self.DECKS
-    assert not ((active_bonuses.keys() | passive_bonuses.keys()) - CHECK_TYPES - SUB_CHECKS.keys())
+    assert not ((active_bonuses.keys() | passive_bonuses.keys()) - self.VALID_BONUS_TYPES)
     super(Card, self).__init__(name)
     self.deck = deck
     self.active_bonuses = collections.defaultdict(int)
@@ -70,7 +81,7 @@ class Card(Asset):
   def active(self):
     return self._active
 
-  def get_bonus(self, check_type):
+  def get_bonus(self, check_type, attributes):
     bonus = self.passive_bonuses[check_type]
     if self.active:
       bonus += self.active_bonuses[check_type]
@@ -86,26 +97,71 @@ def PoliceDetective():
   return Card("Police Detective", "allies", {}, {"fight": 1, "lore": 1})
 def Thief():
   return Card("Thief", "allies", {}, {"sneak": 2})
-def BraveGuy():
-  return Card("Brave Guy", "allies", {}, {"speed": 2})
-def Mortician():
-  return Card("Mortician", "allies", {}, {"will": 2})
 def ArmWrestler():
   return Card("Arm Wrestler", "allies", {}, {})  # TODO: maximum stamina
-def VisitingPainter():
-  return Card("Visiting Painter", "allies", {}, {"speed": 1, "luck": 1})
-def ToughGuy():
-  return Card("Tough Guy", "allies", {}, {"fight": 2})
-def OldProfessor():
-  return Card("Old Professor", "allies", {}, {"lore": 2})
 def Dog():
   return Card("Dog", "allies", {}, {})  # TODO: maximum sanity
+
+
+class BraveGuy(Card):
+
+  def __init__(self):
+    super(BraveGuy, self).__init__("Brave Guy", "allies", {}, {"speed": 2})
+
+  def get_override(self, other, attribute):
+    if attribute == "nightmarish":
+      return False
+    return None
+
+
+class PoliceInspector(Card):
+
+  def __init__(self):
+    super(PoliceInspector, self).__init__("Police Inspector", "allies", {}, {"will": 2})
+
+  def get_override(self, other, attribute):
+    if attribute == "endless":
+      return False
+    return None
+
+
+class VisitingPainter(Card):
+
+  def __init__(self):
+    super(VisitingPainter, self).__init__("Visiting Painter", "allies", {}, {"speed": 1, "luck": 1})
+
+  def get_override(self, other, attribute):
+    if attribute == "physical resistance":
+      return False
+    return None
+
+
+class OldProfessor(Card):
+
+  def __init__(self):
+    super(OldProfessor, self).__init__("Old Professor", "allies", {}, {"lore": 2})
+
+  def get_override(self, other, attribute):
+    if attribute == "magical resistance":
+      return False
+    return None
+
+
+class ToughGuy(Card):
+
+  def __init__(self):
+    super(ToughGuy, self).__init__("Tough Guy", "allies", {}, {"fight": 2})
+
+  def get_override(self, other, attribute):
+    if attribute == "overwhelming":
+      return False
+    return None
 
 
 def CreateAllies():
   return [
       ally() for ally in [
         FortuneTeller, TravelingSalesman, PoliceDetective, Thief, BraveGuy,
-        Mortician, ArmWrestler, VisitingPainter, ToughGuy, OldProfessor, Dog
+        PoliceInspector, ArmWrestler, VisitingPainter, ToughGuy, OldProfessor, Dog,
       ]
   ]
