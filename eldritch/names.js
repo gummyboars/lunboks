@@ -5,6 +5,7 @@ commonNames = [
   ".38 Revolver",
   "Bullwhip",
   "Cross",
+  "Dark Cloak",
   "Dynamite",
   "Food",
   "Tommy Gun",
@@ -17,7 +18,9 @@ uniqueNames = [
 ];
 spellNames = [
   "Dread Curse",
+  "Enchant Weapon",
   "Find Gate",
+  "Red Sign",
   "Shrivelling",
   "Voice",
   "Wither",

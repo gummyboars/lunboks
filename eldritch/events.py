@@ -1468,6 +1468,8 @@ class ActivateItem(Event):
       self.activated = False
       return True
     self.item._active = True
+    if hasattr(self.item, "activate"):
+      self.item.activate()
     self.activated = True
     return True
 
@@ -1523,6 +1525,8 @@ class DeactivateItem(Event):
       self.deactivated = False
       return True
     self.item._active = False
+    if hasattr(self.item, "deactivate"):
+      self.item.deactivate()
     self.deactivated = True
     return True
 
@@ -1564,7 +1568,7 @@ class DeactivateItems(Event):
 
 class CastSpell(Event):
 
-  def __init__(self, character, spell, action="exhaust"):
+  def __init__(self, character, spell, choice=None, action="exhaust"):
     assert spell in character.possessions
     assert action in {"exhaust", "discard"}
     self.character = character
@@ -1573,6 +1577,7 @@ class CastSpell(Event):
     self.check = None
     self.cost = None
     self.success = None
+    self.choice = choice
     if action == "discard":
       self.action = DiscardSpecific(character, spell)
     else:
@@ -1585,6 +1590,7 @@ class CastSpell(Event):
 
     self.spell.in_use = True
     self.spell.deactivatable = False
+    self.spell.choice = self.choice
     # TODO: maybe they should pay the sanity cost first, but we check for insanity after
     # the spell is over.
     if not self.check:
@@ -1608,7 +1614,7 @@ class CastSpell(Event):
 
     self.success = True
     if not self.activation:
-      self.activation = self.spell.activate(self.character, state)
+      self.activation = self.spell.get_cast_event(self.character, state)
       state.event_stack.append(self.activation)
       return False
     assert self.activation.is_resolved()
@@ -1666,6 +1672,8 @@ class DeactivateSpell(Event):
     self.spell._active = False
     self.spell.in_use = False
     self.spell.deactivatable = False
+    if hasattr(self.spell, "deactivate"):
+      self.spell.deactivate()
     self.done = True
     return True
 
@@ -2138,11 +2146,16 @@ class ItemChoice(ChoiceEvent):
   def prompt(self):
     return self._prompt
 
+  @property
+  def choice_count(self):
+    return len(self.choices) if self.choices else 0
+
 
 class CombatChoice(ItemChoice):
 
   def resolve_internal(self, choices):
     for idx in choices:
+      assert getattr(self.character.possessions[idx], "item_type", None) == "weapon"
       assert getattr(self.character.possessions[idx], "hands", None) is not None
       assert getattr(self.character.possessions[idx], "deck", None) != "spells"
     hands_used = sum([self.character.possessions[idx].hands for idx in choices])
@@ -2159,6 +2172,17 @@ class ItemCountChoice(ItemChoice):
   def resolve_internal(self, choices):
     assert self.count == len(choices)
     super(ItemCountChoice, self).resolve_internal(choices)
+
+
+class SinglePhysicalWeaponChoice(ItemChoice):
+
+  def resolve_internal(self, choices):
+    assert len(choices) < 2
+    if choices:
+      chosen = self.character.possessions[choices[0]]
+      assert getattr(chosen, "item_type", None) == "weapon"
+      assert chosen.active_bonuses["physical"] or chosen.passive_bonuses["physical"]
+    super(SinglePhysicalWeaponChoice, self).resolve_internal(choices)
 
 
 class CardChoice(MultipleChoice):
@@ -2329,6 +2353,7 @@ class EvadeOrCombat(Event):
     self.evade = EvadeRound(character, monster)
     prompt = f"Fight the {monster.name} or evade it?"
     self.choice = BinaryChoice(character, prompt, "Fight", "Evade", self.combat, self.evade)
+    self.choice.events[0].monster = monster
 
   def resolve(self, state):
     if not self.choice.is_resolved():
@@ -2397,6 +2422,7 @@ class Combat(Event):
         return False
       prompt = f"Fight the {self.monster.name} or flee from it?"
       self.choice = BinaryChoice(self.character, prompt, "Fight", "Flee", self.combat, self.evade)
+      self.choice.events[0].monster = self.monster
       state.event_stack.append(self.choice)
       return False
 
@@ -2466,6 +2492,7 @@ class CombatRound(Event):
     self.check = None
     self.damage = None
     self.choice = CombatChoice(character, f"Choose weapons to fight the {monster.name}")
+    self.choice.monster = self.monster
     self.activate = None
     self.defeated = None
 
