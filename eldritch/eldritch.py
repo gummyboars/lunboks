@@ -165,6 +165,19 @@ class GameState(object):
       modifier += glob.get_modifier(thing, attribute)
     return modifier
 
+  def get_override(self, thing, attribute):
+    override = None
+    for glob in self.globals():
+      if not glob:
+        continue
+      val = glob.get_override(thing, attribute)
+      if val is None:
+        continue
+      if override is None:
+        override = val
+      override = override and val
+    return override
+
   def globals(self):
     return [self.rumor, self.environment, self.ancient_one] + self.other_globals
 

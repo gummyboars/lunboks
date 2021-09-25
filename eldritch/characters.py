@@ -88,8 +88,11 @@ class Character(object):
   def evade(self, state):
     return self.sneak(state) + self.bonus("evade", state)
 
-  def combat(self, state):
-    return self.fight(state) + self.bonus("combat", state)
+  def combat(self, state, attributes):
+    combat = self.fight(state)
+    for bonus_type in {"physical", "magical", "combat"}:
+      combat += self.bonus(bonus_type, state, attributes)
+    return combat
 
   def horror(self, state):
     return self.will(state) + self.bonus("horror", state)
@@ -129,9 +132,31 @@ class Character(object):
       triggers[-1] = events.SpendClue(self, event)
     return triggers
 
-  def bonus(self, check_name, state):
+  def bonus(self, check_name, state, attributes=None):
     modifier = state.get_modifier(self, check_name)
-    return sum([p.get_bonus(check_name) for p in self.possessions]) + modifier
+    for p in self.possessions:
+      bonus = p.get_bonus(check_name, attributes)
+      if attributes and check_name in {"magical", "physical"}:
+        if check_name + " immunity" in attributes:
+          bonus = 0
+        elif check_name + " resistance" in attributes:
+          bonus = (bonus + 1) // 2
+      modifier += bonus
+    return modifier
+
+  def get_modifier(self, other, attribute):
+    return sum([p.get_modifier(other, attribute) or 0 for p in self.possessions])
+
+  def get_override(self, other, attribute):
+    override = None
+    for p in self.possessions:
+      val = p.get_override(other, attribute)
+      if val is None:
+        continue
+      if override is None:
+        override = val
+      override = override and val
+    return override
 
   def count_successes(self, roll, check_type):
     threshold = 5 - self.bless_curse

@@ -2414,12 +2414,12 @@ class IsleTest(EncounterTest):
 
   def testIsle2Pass(self):
     self.state.event_stack.append(encounters.Isle2(self.char))
-    self.state.allies.append(assets.Mortician())
+    self.state.allies.append(assets.PoliceInspector())
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       self.resolve_until_done()
     self.assertEqual(len(self.char.possessions), 1)
     self.assertEqual(len(self.state.allies), 0)
-    self.assertEqual(self.char.possessions[0].name, "Mortician")
+    self.assertEqual(self.char.possessions[0].name, "Police Inspector")
 
   def testIsle2PassReward(self):
     self.state.event_stack.append(encounters.Isle2(self.char))
@@ -2432,7 +2432,7 @@ class IsleTest(EncounterTest):
 
   def testIsle2Fail(self):
     self.state.event_stack.append(encounters.Isle2(self.char))
-    self.state.allies.append(assets.Mortician())
+    self.state.allies.append(assets.PoliceInspector())
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=2)):
       self.resolve_until_done()
     self.assertEqual(len(self.char.possessions), 0)

@@ -17,24 +17,36 @@ class Monster(object):
       "magical resistance", "magical immunity", "physical resistance", "physical immunity",
       "undead", "ambush", "elusive", "endless", "mask", "spawn",
   }
+  ALL_ATTRIBUTES = ATTRIBUTES | {"nightmarish", "overwhelming"}
 
-  def __init__(self, name, movement, dimension, difficulties, damages, toughness, attributes=None):
+  def __init__(
+      self, name, movement, dimension, ratings, damages, toughness, attributes=None, bypass=None):
     if attributes is None:
-      attributes = []
+      attributes = set()
+    if bypass is None:
+      bypass = {}
     assert movement in self.MOVEMENTS
     assert dimension in self.DIMENSIONS
-    assert not {"evade", "combat"} - difficulties.keys()
-    assert not difficulties.keys() - self.DIFFICULTIES
+    assert not {"evade", "combat"} - ratings.keys()
+    assert not ratings.keys() - self.DIFFICULTIES
     assert not damages.keys() - self.DAMAGES
-    assert not damages.keys() - difficulties.keys()
-    assert not set(attributes) - self.ATTRIBUTES
+    assert not damages.keys() - ratings.keys()
+    assert not attributes - self.ATTRIBUTES
+    assert not bypass.keys() - damages.keys()
+    assert len(attributes & {"magical resistance", "magical immunity"}) < 2
+    assert len(attributes & {"physical resistance", "physical immunity"}) < 2
     self.name = name
     self.movement = movement
     self.dimension = dimension
-    self.difficulties = difficulties
+    self.difficulties = ratings
     self.damages = damages
     self._toughness = toughness
-    self.attributes = attributes
+    self._attributes = attributes
+    self.bypass = bypass
+    if "combat" in bypass:
+      self._attributes.add("overwhelming")
+    if "horror" in bypass:
+      self._attributes.add("nightmarish")
     self.place = None
 
   def json_repr(self):
@@ -42,28 +54,47 @@ class Monster(object):
         "name": self.name,
         "movement": self.movement,
         "dimension": self.dimension,
-        "attributes": sorted(list(self.attributes)),
         "place": getattr(self.place, "name", None),
     }
 
-  @property
-  def undead(self):
-    return "undead" in self.attributes
-
-  def difficulty(self, check_type, state):
-    modifier = state.get_modifier(self, check_type + "difficulty")
-    if modifier:
-      return (self.difficulties.get(check_type) or 0) + modifier
+  def difficulty(self, check_type, state, char):
+    state_modifier = state.get_modifier(self, check_type + "difficulty") or 0
+    char_modifier = char.get_modifier(self, check_type + "difficulty") or 0
+    if state_modifier or char_modifier:
+      return (self.difficulties.get(check_type) or 0) + state_modifier + char_modifier
     return self.difficulties.get(check_type)
 
-  def damage(self, check_type, state):
-    modifier = state.get_modifier(self, check_type + "damage")
-    if modifier:
-      return (self.damages.get(check_type) or 0) + modifier
+  def damage(self, check_type, state, char):
+    state_modifier = state.get_modifier(self, check_type + "damage") or 0
+    char_modifier = char.get_modifier(self, check_type + "damage") or 0
+    if state_modifier or char_modifier:
+      return min((self.damages.get(check_type) or 0) + state_modifier + char_modifier, 0)
     return self.damages.get(check_type)
 
-  def toughness(self, state):
-    return self._toughness + state.get_modifier(self, "toughness")
+  def bypass_damage(self, check_type, state):
+    return self.bypass.get(check_type)
+
+  def toughness(self, state, char):
+    state_modifier = state.get_modifier(self, "toughness")
+    char_modifier = char.get_modifier(self, "toughness")
+    return max(self._toughness + (state_modifier or 0) + (char_modifier or 0), 1)
+
+  def attributes(self, state, char):
+    attrs = set()
+    for attr in self.ALL_ATTRIBUTES:
+      if self.has_attribute(attr, state, char):
+        attrs.add(attr)
+    return attrs
+
+  def has_attribute(self, attribute, state, char):
+    state_override = state.get_override(self, attribute)
+    char_override = char.get_override(self, attribute)
+    # Prefer specific overrides (at the item level) over general ones (environment, ancient one).
+    if char_override is not None:
+      return char_override
+    if state_override is not None:
+      return state_override
+    return attribute in self._attributes
 
 
 def GiantInsect():
@@ -74,14 +105,14 @@ def GiantInsect():
 def LandSquid():
   return Monster(
       "Land Squid", "unique", "triangle", {"evade": 1, "horror": -2, "combat": -3},
-      {"horror": 2, "combat": 3}, 3
+      {"horror": 2, "combat": 3}, 3,
   )
 def Cultist():
   return Monster("Cultist", "normal", "moon", {"evade": -3, "combat": 1}, {"combat": 1}, 1)
 def TentacleTree():
   return Monster(
       "Tentacle Tree", "stationary", "hex", {"evade": -2, "horror": 0, "combat": -1},
-      {"horror": 3, "combat": 3}, 3, {"physical resistance"},
+      {"horror": 3, "combat": 3}, 3, {"physical resistance"}, {"horror": 1},
   )
 def DimensionalShambler():
   return Monster(
@@ -92,6 +123,7 @@ def GiantWorm():
   return Monster(
       "Giant Worm", "normal", "circle", {"evade": -1, "horror": -1, "combat": -3},
       {"horror": 4, "combat": 4}, 3, {"physical resistance", "magical resistance"},
+      {"combat": 1, "horror": 1},
   )
 def ElderThing():  # TODO: custom class after adding item discarding
   return Monster(
@@ -106,7 +138,7 @@ def FlameMatrix():
 def SubterraneanFlier():
   return Monster(
       "Subterranean Flier", "flying", "hex", {"evade": 0, "horror": -2, "combat": -3},
-      {"horror": 4, "combat": 3}, 3, {"physical resistance"}
+      {"horror": 4, "combat": 3}, 3, {"physical resistance"}, {"combat": 1, "horror": 1},
   )
 def FormlessSpawn():
   return Monster(
@@ -126,7 +158,7 @@ def Ghoul():
 def FurryBeast():
   return Monster(
       "Furry Beast", "normal", "slash", {"evade": -2, "horror": -1, "combat": -2},
-      {"horror": 2, "combat": 4}, 3,  # TODO: overwhelming
+      {"horror": 2, "combat": 4}, 3, None, {"combat": 1},
   )
 def Haunter():
   return Monster(
@@ -158,7 +190,7 @@ def DreamFlier():  # TODO: failing a combat check sends you through a gate
 def GiantAmoeba():
   return Monster(
       "Giant Amoeba", "fast", "diamond", {"evade": -1, "horror": -1, "combat": -1},
-      {"horror": 3, "combat": 3}, 3, {"physical resistance"},
+      {"horror": 3, "combat": 3}, 3, {"physical resistance"}, {"horror": 1},
   )
 def Octopoid():
   return Monster(
