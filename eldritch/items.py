@@ -99,6 +99,8 @@ class Cross(Weapon):
     return bonus
 
 
+def DarkCloak():
+  return Item("Dark Cloak", "common", {}, {"evade": 1}, None, 2)
 def Revolver38():
   return Weapon(".38 Revolver", "common", {"physical": 3}, {}, 1, 4)
 def Dynamite():
@@ -121,6 +123,7 @@ class Spell(Item):
     self.sanity_cost = sanity_cost
     self.in_use = False
     self.deactivatable = False
+    self.choice = None
 
   def get_difficulty(self, state):
     return self.difficulty
@@ -131,7 +134,7 @@ class Spell(Item):
   def hands_used(self):
     return self.hands if self.in_use else 0
 
-  def activate(self, owner, state):
+  def get_cast_event(self, owner, state):
     return events.Nothing()
 
 
@@ -142,8 +145,8 @@ class CombatSpell(Spell):
       return False
     if isinstance(event, events.CombatChoice) and not event.is_resolved():
       return True
-    # May cast even before making the decision to fight or evade. TODO: this is hacky.
-    if isinstance(event, events.MultipleChoice) and event.prompt().endswith("or flee from it?") and not event.is_resolved():
+    # May cast even before making the decision to fight or evade. TODO: this is hacky/fragile.
+    if isinstance(event, events.MultipleChoice) and event.choices[0] == "Fight" and not event.is_resolved():
       return True
     return False
 
@@ -167,8 +170,14 @@ class CombatSpell(Spell):
       return events.MarkDeactivatable(owner, self)
     return None
 
-  def activate(self, owner, state):
+  def get_cast_event(self, owner, state):
     return events.ActivateItem(owner, self)
+
+  def activate(self):
+    pass
+
+  def deactivate(self):
+    pass
 
 
 def Wither():
@@ -177,6 +186,80 @@ def Shrivelling():
   return CombatSpell("Shrivelling", {"magical": 6}, 1, -1, 1)
 def DreadCurse():
   return CombatSpell("Dread Curse", {"magical": 9}, 2, -2, 2)
+
+
+class EnchantWeapon(CombatSpell):
+
+  def __init__(self):
+    super(EnchantWeapon, self).__init__("Enchant Weapon", {}, 0, 0, 1)
+    self.weapon = None
+    self.active_change = 0
+    self.passive_change = 0
+
+  def get_usable_interrupt(self, event, owner, state):
+    interrupt = super(EnchantWeapon, self).get_usable_interrupt(event, owner, state)
+    if not isinstance(interrupt, events.CastSpell):
+      return interrupt
+
+    # Instead of immediately casting the spell, ask the user to make a choice. If they have no
+    # valid choices (or if they choose nothing), then don't cast the spell at all.
+    choice = events.SinglePhysicalWeaponChoice(owner, "Choose a physical weapon to enchant")
+    cast = events.CastSpell(owner, self, choice=choice)
+    return events.Sequence([
+      choice, events.Conditional(owner, choice, "choice_count", {0: events.Nothing(), 1: cast})],
+      owner,
+    )
+
+  def activate(self):
+    assert self.choice.is_resolved()
+    assert len(self.choice.choices) == 1
+    self.weapon = self.choice.choices[0]
+    self.active_change = self.weapon.active_bonuses["physical"]
+    self.passive_change = self.weapon.passive_bonuses["physical"]
+    self.weapon.active_bonuses["physical"] -= self.active_change
+    self.weapon.active_bonuses["magical"] += self.active_change
+    self.weapon.passive_bonuses["physical"] -= self.passive_change
+    self.weapon.passive_bonuses["magical"] += self.passive_change
+
+  def deactivate(self):
+    if self.weapon is None:
+      return
+    self.weapon.active_bonuses["physical"] += self.active_change
+    self.weapon.active_bonuses["magical"] -= self.active_change
+    self.weapon.passive_bonuses["physical"] += self.passive_change
+    self.weapon.passive_bonuses["magical"] -= self.passive_change
+    self.active_change = 0
+    self.passive_change = 0
+    self.weapon = None
+
+
+class RedSign(CombatSpell):
+
+  INVALID_ATTRIBUTES = {"magical immunity", "elusive", "mask", "spawn"}
+
+  def __init__(self):
+    super(RedSign, self).__init__("Red Sign", {}, 1, -1, 1)
+
+  def get_usable_interrupt(self, event, owner, state):
+    interrupt = super(RedSign, self).get_usable_interrupt(event, owner, state)
+    if not isinstance(interrupt, events.CastSpell):
+      return interrupt
+
+    assert hasattr(event, "monster")
+    attributes = sorted(event.monster.attributes(state, owner) - self.INVALID_ATTRIBUTES)
+    choice = events.MultipleChoice(owner, "Choose an ability to ignore", attributes + ["none"])
+    cast = events.CastSpell(owner, self, choice=choice)
+    return events.Sequence([choice, cast], owner)
+
+  def get_modifier(self, other, attribute):
+    if self.active and attribute == "toughness":
+      return -1
+    return None
+
+  def get_override(self, other, attribute):
+    if self.active and self.choice is not None and attribute == self.choice.choice:
+      return False
+    return None
 
 
 class Voice(Spell):
@@ -232,13 +315,13 @@ class FindGate(Spell):
       return None
     return events.CastSpell(owner, self)
 
-  def activate(self, owner, state):
+  def get_cast_event(self, owner, state):
     return events.Return(owner, owner.place.info.name)  # TODO: cancel the ForceMovement if any.
 
 
 def CreateCommon():
   common = []
-  for item in [Revolver38, Dynamite, TommyGun, Food, ResearchMaterials, Bullwhip, Cross]:
+  for item in [DarkCloak, Revolver38, Dynamite, TommyGun, Food, ResearchMaterials, Bullwhip, Cross]:
     common.extend([item(), item()])
   return common
 
@@ -258,7 +341,9 @@ def CreateUnique():
 def CreateSpells():
   counts = {
       DreadCurse: 4,
+      EnchantWeapon: 3,
       FindGate: 4,
+      RedSign: 2,
       Shrivelling: 5,
       Voice: 3,
       Wither: 6,
