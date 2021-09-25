@@ -2366,8 +2366,10 @@ class Combat(Event):
   def resolve(self, state):
     # Horror check
     if self.monster.difficulty("horror", state, self.character) is not None and self.horror is None:
-      self.horror = Check(self.character, "horror", self.monster.difficulty("horror", state, self.character))
-      self.sanity_loss = Loss(self.character, {"sanity": self.monster.damage("horror", state, self.character)})
+      self.horror = Check(
+          self.character, "horror", self.monster.difficulty("horror", state, self.character))
+      self.sanity_loss = Loss(
+          self.character, {"sanity": self.monster.damage("horror", state, self.character)})
     if self.horror is not None:
       if not self.horror.is_resolved():
         state.event_stack.append(self.horror)
@@ -2378,7 +2380,8 @@ class Combat(Event):
           state.event_stack.append(self.sanity_loss)
           return False
         # Nightmarish for successful horror check
-        if self.horror.successes >= 1 and self.monster.has_attribute("nightmarish", state, self.character):
+        nightmarish = self.monster.has_attribute("nightmarish", state, self.character)
+        if self.horror.successes >= 1 and nightmarish:
           self.sanity_loss = Loss(
               self.character, {"sanity": self.monster.bypass_damage("horror", state)})
           state.event_stack.append(self.sanity_loss)
@@ -2430,14 +2433,16 @@ class EvadeRound(Event):
     if self.evaded is not None:
       return True
     if self.check is None:
-      self.check = Check(self.character, "evade", self.monster.difficulty("evade", state, self.character))
+      self.check = Check(
+          self.character, "evade", self.monster.difficulty("evade", state, self.character))
     if not self.check.is_resolved():
       state.event_stack.append(self.check)
       return False
     if self.check.successes >= 1:
       self.evaded = True
       return True
-    self.damage = Loss(self.character, {"stamina": self.monster.damage("combat", state, self.character)})
+    self.damage = Loss(
+        self.character, {"stamina": self.monster.damage("combat", state, self.character)})
     state.event_stack.append(self.damage)
     return False
 
@@ -2476,20 +2481,23 @@ class CombatRound(Event):
       return False
     if self.check is None:
       attrs = self.monster.attributes(state, self.character)
-      self.check = Check(self.character, "combat", self.monster.difficulty("combat", state, self.character), attrs)
+      self.check = Check(
+          self.character, "combat", self.monster.difficulty("combat", state, self.character), attrs)
     if not self.check.is_resolved():
       state.event_stack.append(self.check)
       return False
     if self.check.successes >= self.monster.toughness(state, self.character):
       if self.monster.has_attribute("overwhelming", state, self.character) and self.damage is None:
-        self.damage = Loss(self.character, {"stamina": self.monster.bypass_damage("combat", state)})
+        self.damage = Loss(
+            self.character, {"stamina": self.monster.bypass_damage("combat", state)})
         state.event_stack.append(self.damage)
         return False
       # TODO: take the monster as a trophy
       self.defeated = True
       return True
     self.defeated = False
-    self.damage = Loss(self.character, {"stamina": self.monster.damage("combat", state, self.character)})
+    self.damage = Loss(
+        self.character, {"stamina": self.monster.damage("combat", state, self.character)})
     state.event_stack.append(self.damage)
     return False
 
