@@ -19,6 +19,20 @@ class Dummy(object):
       setattr(self, name, value)
 
 
+class DummyChar(Dummy):
+
+  def __init__(self, **kwargs):
+    self.possessions = []
+    super(DummyChar, self).__init__(**kwargs)
+
+
+class DummyState(Dummy):
+
+  def __init__(self, **kwargs):
+    self.common = []
+    super(DummyState, self).__init__(**kwargs)
+
+
 class CalculationTest(unittest.TestCase):
 
   def testDelayedAttribute(self):
@@ -77,14 +91,14 @@ class CalculationTest(unittest.TestCase):
 class PrerequisiteTest(unittest.TestCase):
 
   def testAttributePrereq(self):
-    char = Dummy(clues=0, dollars=0)
+    char = DummyChar(clues=0, dollars=0)
     prereq = AttributePrerequisite(char, "clues", 2, "at least")
     self.assertEqual(prereq.value(None), 0)
     char.clues = 2
     self.assertEqual(prereq.value(None), 1)
 
   def testItemPrereq(self):
-    char = Dummy(possessions=[])
+    char = DummyChar()
     prereq = ItemPrerequisite(char, "bar")
     self.assertEqual(prereq.value(None), 0)
     char.possessions.append(Dummy(name="foo"))
@@ -93,7 +107,7 @@ class PrerequisiteTest(unittest.TestCase):
     self.assertEqual(prereq.value(None), 1)
 
   def testContainsPrereq(self):
-    state = Dummy(common=[])
+    state = DummyState()
     prereq = ContainsPrerequisite("common", "bar")
     self.assertEqual(prereq.value(state), 0)
     state.common.extend([Dummy(name="foo"), Dummy(name="bar"), Dummy(name="bar")])
