@@ -1,6 +1,7 @@
 from eldritch.assets import Asset, Card
 from eldritch import events
 from eldritch import places
+from eldritch import values
 
 
 class Item(Card):
@@ -42,7 +43,10 @@ class Food(Item):
   def get_usable_interrupt(self, event, owner, state):
     if not isinstance(event, events.GainOrLoss) or owner != event.character:
       return None
-    if "stamina" not in event.adjustments or event.adjustments["stamina"] >= 0:
+    if isinstance(event.losses.get("stamina"), values.Value):
+      if event.losses["stamina"].value(state) < 1:
+        return None
+    elif event.losses.get("stamina", 0) < 1:
       return None
 
     discard = events.DiscardSpecific(event.character, self)
@@ -57,7 +61,10 @@ class Whiskey(Item):
   def get_usable_interrupt(self, event, owner, state):
     if not isinstance(event, events.GainOrLoss) or owner != event.character:
       return None
-    if "sanity" not in event.adjustments or event.adjustments["sanity"] >= 0:
+    if isinstance(event.losses.get("sanity"), values.Value):
+      if event.losses["sanity"].value(state) < 1:
+        return None
+    elif event.losses.get("sanity", 0) < 1:
       return None
 
     discard = events.DiscardSpecific(event.character, self)

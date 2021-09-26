@@ -16,6 +16,7 @@ from eldritch import events
 from eldritch.events import *
 from eldritch import items
 from eldritch import places
+from eldritch import values
 
 
 class EventTest(unittest.TestCase):
@@ -393,10 +394,9 @@ class GainLossTest(EventTest):
 
   @mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=[4, 1]))
   def testDieRollLoss(self):
-    # Use an ordered dict to make sure we lose 4 sanity and 1 stamina.
     sanity_die = DiceRoll(self.char, 1)
     stamina_die = DiceRoll(self.char, 1)
-    loss = Loss(self.char, {"sanity": sanity_die, "stamina": stamina_die})
+    loss = Loss(self.char, {"sanity": values.Die(sanity_die), "stamina": values.Die(stamina_die)})
     self.assertFalse(loss.is_resolved())
     self.assertEqual(self.char.sanity, 5)
     self.assertEqual(self.char.stamina, 5)
@@ -518,7 +518,7 @@ class SplitGainTest(EventTest):
     self.char.stamina = 1
     self.char.sanity = 1
     die_roll = DiceRoll(self.char, 1)
-    split_gain = SplitGain(self.char, "stamina", "sanity", die_roll)
+    split_gain = SplitGain(self.char, "stamina", "sanity", values.Die(die_roll))
 
     self.state.event_stack.append(Sequence([die_roll, split_gain], self.char))
     choice = self.resolve_to_choice(MultipleChoice)
@@ -534,7 +534,8 @@ class SplitGainTest(EventTest):
     self.char.stamina = 1
     self.char.sanity = 1
     first_choice = MultipleChoice(self.char, "prompt", [0, 1, 2, 3, 4, 5])
-    split_gain = SplitGain(self.char, "stamina", "sanity", first_choice)
+    split_gain = SplitGain(
+        self.char, "stamina", "sanity", values.Calculation(first_choice, "choice"))
 
     self.state.event_stack.append(Sequence([first_choice, split_gain], self.char))
     choice = self.resolve_to_choice(MultipleChoice)
@@ -643,10 +644,10 @@ class StatusChangeTest(EventTest):
     self.assertEqual(curse.change, -1)
 
   def testArrested(self):
-    self.char.dollars = 5
     self.assertEqual(self.char.place.name, "Diner")
     self.assertIsNone(self.char.lose_turn_until)
     arrest = Arrested(self.char)
+    self.char.dollars = 5
 
     self.state.event_stack.append(arrest)
     self.resolve_until_done()
@@ -811,31 +812,6 @@ class DiscardNamedTest(EventTest):
     self.assertEqual(discard.finish_str(), "Dummy did not have a Food to discard")
 
 
-class AttributePrerequisiteTest(EventTest):
-
-  def testPrereqFail(self):
-    prereq = AttributePrerequisite(self.char, "dollars", 2, "at least")
-    self.assertEqual(self.char.dollars, 0)
-    self.assertFalse(prereq.is_resolved())
-
-    self.state.event_stack.append(prereq)
-    self.resolve_until_done()
-
-    self.assertTrue(prereq.is_resolved())
-    self.assertEqual(prereq.successes, 0)
-
-  def testPrereqPass(self):
-    prereq = AttributePrerequisite(self.char, "dollars", 2, "at least")
-    self.char.dollars = 2
-    self.assertFalse(prereq.is_resolved())
-
-    self.state.event_stack.append(prereq)
-    self.resolve_until_done()
-
-    self.assertTrue(prereq.is_resolved())
-    self.assertEqual(prereq.successes, 1)
-
-
 class CheckTest(EventTest):
 
   @mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=[4, 5, 1, 3]))
@@ -905,6 +881,13 @@ class ConditionalTest(EventTest):
     cond = Conditional(self.char, check, "successes", {1: success_result, 0: fail_result})
     return Sequence([check, cond])
 
+  def createValueConditional(self):
+    val = values.Calculation(self.char, "dollars")
+    success = Gain(self.char, {"clues": 1})
+    fail = Loss(self.char, {"sanity": 1})
+    mega = Gain(self.char, {"clues": 2})
+    return Conditional(self.char, val, "anything", {1: success, 0: fail, 2: mega})
+
   @mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5))
   def testPassCondition(self):
     seq = self.createConditional()
@@ -939,6 +922,57 @@ class ConditionalTest(EventTest):
     self.assertTrue(cond.result_map[0].is_resolved())
     self.assertFalse(cond.result_map[1].is_resolved())
 
+  def testPassValue(self):
+    cond = self.createValueConditional()
+    self.assertFalse(cond.is_resolved())
+    self.assertEqual(self.char.clues, 0)
+    self.assertEqual(self.char.sanity, 5)
+
+    self.state.event_stack.append(cond)
+    self.char.dollars = 1
+    self.resolve_until_done()
+
+    self.assertTrue(cond.is_resolved())
+    self.assertEqual(self.char.sanity, 5)
+    self.assertEqual(self.char.clues, 1)
+    self.assertFalse(cond.result_map[0].is_resolved())
+    self.assertTrue(cond.result_map[1].is_resolved())
+    self.assertFalse(cond.result_map[2].is_resolved())
+
+  def testFailValue(self):
+    cond = self.createValueConditional()
+    self.assertFalse(cond.is_resolved())
+    self.assertEqual(self.char.clues, 0)
+    self.assertEqual(self.char.sanity, 5)
+
+    self.state.event_stack.append(cond)
+    self.char.dollars = 0
+    self.resolve_until_done()
+
+    self.assertTrue(cond.is_resolved())
+    self.assertEqual(self.char.sanity, 4)
+    self.assertEqual(self.char.clues, 0)
+    self.assertTrue(cond.result_map[0].is_resolved())
+    self.assertFalse(cond.result_map[1].is_resolved())
+    self.assertFalse(cond.result_map[2].is_resolved())
+
+  def testSuperPassValue(self):
+    cond = self.createValueConditional()
+    self.assertFalse(cond.is_resolved())
+    self.assertEqual(self.char.clues, 0)
+    self.assertEqual(self.char.sanity, 5)
+
+    self.state.event_stack.append(cond)
+    self.char.dollars = 3
+    self.resolve_until_done()
+
+    self.assertTrue(cond.is_resolved())
+    self.assertEqual(self.char.sanity, 5)
+    self.assertEqual(self.char.clues, 2)
+    self.assertFalse(cond.result_map[0].is_resolved())
+    self.assertFalse(cond.result_map[1].is_resolved())
+    self.assertTrue(cond.result_map[2].is_resolved())
+
 
 class BinaryChoiceTest(EventTest):
 
@@ -970,17 +1004,17 @@ class BinaryChoiceTest(EventTest):
 class PrereqChoiceTest(EventTest):
 
   def testMismatchedLengths(self):
-    p = AttributePrerequisite(self.char, "dollars", 2, "at least")
+    p = values.AttributePrerequisite(self.char, "dollars", 2, "at least")
     with self.assertRaises(AssertionError):
       PrereqChoice(self.char, "choose", ["Yes", "No"], [p])
 
   def testInvalidChoices(self):
-    c = AttributePrerequisite(self.char, "clues", 1, "at least")
-    d = AttributePrerequisite(self.char, "sanity", 1, "at least")
-    s = AttributePrerequisite(self.char, "stamina", 3, "less than")
+    c = values.AttributePrerequisite(self.char, "clues", 1, "at least")
+    d = values.AttributePrerequisite(self.char, "sanity", 1, "at least")
+    s = values.AttributePrerequisite(self.char, "stamina", 2, "at most")
     choices = ["Spend 1 clue", "Spend 1 sanity", "Gain stamina", "Do Nothing"]
     choice = PrereqChoice(self.char, "choose", choices, [c, d, s, None])
-    self.state.event_stack.append(Sequence([c, d, s, choice], self.char))
+    self.state.event_stack.append(choice)
     choice = self.resolve_to_choice(PrereqChoice)
 
     self.assertEqual(choice.choices, choices)

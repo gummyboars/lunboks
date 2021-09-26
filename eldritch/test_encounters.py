@@ -1275,13 +1275,41 @@ class ScienceTest(EncounterTest):
   
   def testScience2Pass(self):
     self.state.event_stack.append(encounters.Science2(self.char))
-    # Yeah, yeah, these aren't spells
-    self.state.spells.extend([items.Revolver38(), items.TommyGun()])
+    self.state.spells.extend([items.Wither(), items.Shrivelling()])
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       self.resolve_until_done()
     self.assertEqual(len(self.state.spells), 1)
     self.assertEqual(len(self.char.possessions), 1)
-    self.assertEqual(self.char.possessions[0].name, ".38 Revolver")
+    self.assertEqual(self.char.possessions[0].name, "Wither")
+
+  def testScience3WithSpells(self):
+    self.state.event_stack.append(encounters.Science3(self.char))
+    self.char.possessions.extend([items.Wither(), items.Wither(), items.Shrivelling()])
+    self.state.unique.append(items.HolyWater())
+    self.resolve_until_done()
+    self.assertEqual(len(self.state.unique), 1)
+    self.assertEqual(len(self.char.possessions), 3)
+    self.assertEqual(self.char.place.name, "Science")
+
+  def testScience3WithOtherItems(self):
+    self.state.event_stack.append(encounters.Science3(self.char))
+    self.char.possessions.extend([items.Wither(), items.Revolver38(), items.TommyGun()])
+    self.state.unique.append(items.HolyWater())
+    self.resolve_until_done()
+    self.assertFalse(self.state.unique)
+    self.assertEqual(len(self.char.possessions), 4)
+    self.assertEqual(self.char.possessions[3].name, "Holy Water")
+    self.assertEqual(self.char.place.name, "University")
+
+  def testScience3WithoutSpells(self):
+    self.state.event_stack.append(encounters.Science3(self.char))
+    self.char.possessions.extend([items.Wither(), items.Shrivelling()])
+    self.state.unique.append(items.HolyWater())
+    self.resolve_until_done()
+    self.assertFalse(self.state.unique)
+    self.assertEqual(len(self.char.possessions), 3)
+    self.assertEqual(self.char.possessions[2].name, "Holy Water")
+    self.assertEqual(self.char.place.name, "University")
 
   def testScience4No(self):
     self.state.event_stack.append(encounters.Science4(self.char))
@@ -2125,11 +2153,12 @@ class DocksTest(EncounterTest):
     self.assertEqual(self.char.lose_turn_until, self.state.turn_number + 2)
 
   def testDocks3Pass(self):
-    # TODO: needs to implement scaling money
+    self.assertEqual(self.char.dollars, 3)
     self.state.event_stack.append(encounters.Docks3(self.char))
-    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)) as rand:
       self.resolve_until_done()
-    self.assertEqual(self.char.dollars, 6)
+      self.assertEqual(rand.call_count, 2)
+    self.assertEqual(self.char.dollars, 9)
     self.assertEqual(self.char.stamina, 3)
     self.assertEqual(self.char.place.name, "Docks")
 
