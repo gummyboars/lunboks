@@ -23,7 +23,19 @@ class DummyChar(Dummy):
 
   def __init__(self, **kwargs):
     self.possessions = []
+    self.override = None
     super(DummyChar, self).__init__(**kwargs)
+
+  def get_override(self, other, attribute):
+    return self.override
+
+
+class DummyMonster(Dummy):
+
+  def has_attribute(self, attribute, state, char):
+    if char.get_override(self, attribute) is not None:
+      return char.get_override(self, attribute)
+    return getattr(self, attribute)
 
 
 class DummyState(Dummy):
@@ -112,6 +124,17 @@ class PrerequisiteTest(unittest.TestCase):
     self.assertEqual(prereq.value(state), 0)
     state.common.extend([Dummy(name="foo"), Dummy(name="bar"), Dummy(name="bar")])
     self.assertEqual(prereq.value(state), 2)
+
+  def testMonsterPrereq(self):
+    state = DummyState()
+    char = DummyChar()
+    monster = DummyMonster(ambush=True)
+    prereq = NoAmbushPrerequisite(monster, char)
+    self.assertEqual(prereq.value(state), 0)
+    char.override = True
+    self.assertEqual(prereq.value(state), 0)
+    char.override = False
+    self.assertEqual(prereq.value(state), 1)
 
 
 if __name__ == '__main__':

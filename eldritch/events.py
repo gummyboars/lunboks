@@ -1989,6 +1989,7 @@ class PrereqChoice(MultipleChoice):
     self.invalid_choices = []
 
   def compute_choices(self, state):
+    self.invalid_choices.clear()
     for idx in range(len(self.choices)):
       if self.prereqs[idx] is not None and self.prereqs[idx].value(state) < 1:
         self.invalid_choices.append(idx)
@@ -2307,12 +2308,10 @@ class Combat(Event):
     if self.choice is None:
       self.combat = CombatRound(self.character, self.monster)
       self.evade = EvadeRound(self.character, self.monster)
-      if self.monster.has_attribute("ambush", state, self.character):
-        self.choice = self.combat  # Hack: Avoid entering this branch on the next call to resolve()
-        state.event_stack.append(self.combat)
-        return False
+      no_ambush = values.NoAmbushPrerequisite(self.monster, self.character)
       prompt = f"Fight the {self.monster.name} or flee from it?"
-      self.choice = BinaryChoice(self.character, prompt, "Fight", "Flee", self.combat, self.evade)
+      self.choice = BinaryChoice(
+          self.character, prompt, "Flee", "Fight", self.evade, self.combat, no_ambush)
       self.choice.events[0].monster = self.monster
       state.event_stack.append(self.choice)
       return False

@@ -95,3 +95,19 @@ class ContainsPrerequisite(Value):
 
   def value(self, state):
     return sum([card.name == self.card_name for card in getattr(state, self.deck)])
+
+
+class MonsterAttributePrerequisite(Value):
+
+  def __init__(self, monster, attribute, character):
+    self.monster = monster
+    self.attribute = attribute
+    self.character = character
+
+  def value(self, state):
+    return int(self.monster.has_attribute(self.attribute, state, self.character))
+
+
+def NoAmbushPrerequisite(monster, character):
+  return Calculation(
+      1, None, operator.sub, MonsterAttributePrerequisite(monster, "ambush", character))
