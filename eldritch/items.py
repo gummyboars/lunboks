@@ -153,7 +153,7 @@ class CombatSpell(Spell):
     if isinstance(event, events.CombatChoice) and not event.is_resolved():
       return True
     # May cast even before making the decision to fight or evade. TODO: this is hacky/fragile.
-    if isinstance(event, events.MultipleChoice) and event.choices[0] == "Fight" and not event.is_resolved():
+    if isinstance(event, events.MultipleChoice) and hasattr(event, "monster") and not event.is_resolved():
       return True
     return False
 

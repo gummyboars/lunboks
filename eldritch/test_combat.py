@@ -550,13 +550,21 @@ class AmbushTest(EventTest):
     combat = Combat(self.char, ghoul)
     self.state.event_stack.append(combat)
 
-    # Should not resolve to MultipleChoice - it's an ambush monster.
+    fight_or_flee = self.resolve_to_choice(MultipleChoice)
+    # Should not be able to flee - it's an ambush monster.
+    with self.assertRaises(AssertionError):
+      fight_or_flee.resolve(self.state, "Flee")
+    fight_or_flee.resolve(self.state, "Fight")
     choose_weapons = self.resolve_to_choice(CombatChoice)
     choose_weapons.resolve(self.state, [])
 
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
-      weapons_again = self.resolve_to_choice(CombatChoice)
+      fight_or_flee = self.resolve_to_choice(MultipleChoice)
     self.assertEqual(self.char.stamina, 4)
+    # Still should not be able to flee.
+    with self.assertRaises(AssertionError):
+      fight_or_flee.resolve(self.state, "Flee")
+    fight_or_flee.resolve(self.state, "Fight")
 
   def testAmbushFromFailedEvade(self):
     ghoul = monsters.Ghoul()
@@ -569,7 +577,11 @@ class AmbushTest(EventTest):
 
     # Fail the evade check, validate that we go straight to the next combat round.
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
-      choose_weapons = self.resolve_to_choice(CombatChoice)
+      fight_or_flee = self.resolve_to_choice(MultipleChoice)
+
+    with self.assertRaises(AssertionError):
+      fight_or_flee.resolve(self.state, "Flee")
+    fight_or_flee.resolve(self.state, "Fight")
 
 
 class ResistanceAndImmunityTest(EventTest):
@@ -1329,21 +1341,24 @@ class CombatWithRedSignTest(EventTest):
     self.assertTrue(self.combat.combat.is_resolved())
     self.assertEqual(self.char.stamina, 5)
 
-  '''
-  TODO: change ambush to still give a choice to fight or flee, so that this spell can be cast
-  at the time of that choice
   def testIgnoresAmbush(self):
     ghoul = monsters.Ghoul()
+    self.char.speed_sneak_slider = 0
     self.combat = Combat(self.char, ghoul)
     self.state.event_stack.append(self.combat)
+    fight_or_flee = self.resolve_to_choice(MultipleChoice)
+    with self.assertRaises(AssertionError):
+      fight_or_flee.resolve(self.state, "Flee")
+    fight_or_flee.resolve(self.state, "Fight")
     choose_weapons = self.resolve_to_choice(CombatChoice)
 
     choose_weapons.resolve(self.state, [])
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
-      self.resolve_until_done()
+      fight_or_flee = self.resolve_to_choice(MultipleChoice)
 
-    # Do not get a fight or flee choice because of ambush.
-    choose_weapons = self.resolve_to_choice(CombatChoice)
+    # Cannot flee because of ambush.
+    with self.assertRaises(AssertionError):
+      fight_or_flee.resolve(self.state, "Flee")
 
     self.state.event_stack.append(self.state.usables[0][2])
     choose_ignore = self.resolve_to_choice(MultipleChoice)
@@ -1351,21 +1366,19 @@ class CombatWithRedSignTest(EventTest):
     choose_ignore.resolve(self.state, "ambush")
 
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
-      choose_weapons = self.resolve_to_choice(CombatChoice)
-    self.assertEqual(ghoul.toughness(self.state, self.char), 2)
-    choose_weapons.resolve(self.state, [1])
+      fight_or_flee = self.resolve_to_choice(MultipleChoice)
 
-    self.assertEqual(self.char.stamina, 5)
-    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)) as rand:
+    # Now that we've successfully cast the spell to ignore ambush, we can flee.
+    fight_or_flee.resolve(self.state, "Flee")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       self.resolve_until_done()
-      self.assertEqual(rand.call_count, 5)  # Fight (4) + ghoul (-2) + revolver (3)
 
-    self.assertTrue(self.combat.combat.is_resolved())
-    self.assertEqual(self.char.stamina, 5)
+    self.assertFalse(self.combat.combat.is_resolved())
+    self.assertTrue(self.combat.evade.is_resolved())
+    self.assertTrue(self.combat.evade.evaded)
     self.assertFalse(self.char.possessions[2].active)
     self.assertFalse(self.char.possessions[2].in_use)
     self.assertTrue(self.char.possessions[2].exhausted)
-    '''
 
   def testIgnoresUndead(self):
     zombie = monsters.Zombie()
