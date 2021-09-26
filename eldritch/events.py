@@ -1,9 +1,11 @@
 import abc
 import collections
+import math
 import operator
 from random import SystemRandom
 random = SystemRandom()
 
+from eldritch import values
 from eldritch import places
 
 
@@ -22,8 +24,6 @@ class Event(metaclass=abc.ABCMeta):
   Draw: The character will draw one or more items/skills/allies
   DrawSpecific: The character searches the given deck for a specific card and takes it.
   Purchase: The character will draw one or more items and purchase one of them, if possible.
-  AttributePrerequisite: Evaluates whether a character meets a specific prerequisite and stores
-    either 0 or 1 in the successes attribute.
   Check: The character makes a skill check. The result is stored in the successes attribute.
   Conditional: Has a map of minimum successes to events, along with an event that determines the
     number of successes (either a check or a prerequisite). After the first event is resolved, the
@@ -513,6 +513,8 @@ class GainOrLoss(Event):
     assert not gains.keys() - {"stamina", "sanity", "dollars", "clues"}
     assert not losses.keys() - {"stamina", "sanity", "dollars", "clues"}
     assert not gains.keys() & losses.keys()
+    assert all(isinstance(val, (int, values.Value)) or math.isinf(val) for val in gains.values())
+    assert all(isinstance(val, (int, values.Value)) or math.isinf(val) for val in losses.values())
     self.character = character
     self.gains = collections.defaultdict(int)
     self.gains.update(gains)
@@ -521,8 +523,19 @@ class GainOrLoss(Event):
     self.final_adjustments = None
 
   def resolve(self, state):
+    assert not self.gains.keys() & self.losses.keys()
+    adjustments = {}
+    for attr, gain in self.gains.items():
+      val = gain.value(state) if isinstance(gain, values.Value) else gain
+      if val > 0:
+        adjustments[attr] = val
+    for attr, loss in self.losses.items():
+      val = loss.value(state) if isinstance(loss, values.Value) else loss
+      if val > 0:
+        adjustments[attr] = -val
+
     self.final_adjustments = {}
-    for attr, adjustment in self.adjustments.items():
+    for attr, adjustment in adjustments.items():
       old_val = getattr(self.character, attr)
       new_val = old_val + adjustment
       if new_val < 0:
@@ -535,31 +548,6 @@ class GainOrLoss(Event):
       setattr(self.character, attr, new_val)
     return True
 
-  @property
-  def adjustments(self):
-    computed = collections.defaultdict(int)
-    for attr, gain in self.gains.items():
-      if isinstance(gain, DiceRoll):
-        assert gain.is_resolved()
-        adj = sum(gain.roll)
-      elif isinstance(gain, MultipleChoice):
-        assert gain.is_resolved() and isinstance(gain.choice, int)
-        adj = gain.choice
-      else:
-        adj = gain
-      computed[attr] += adj
-    for attr, loss in self.losses.items():
-      if isinstance(loss, DiceRoll):
-        assert loss.is_resolved()
-        adj = sum(loss.roll)
-      elif isinstance(loss, MultipleChoice):
-        assert loss.is_resolved() and isinstance(loss.choice, int)
-        adj = loss.choice
-      else:
-        adj = loss
-      computed[attr] -= adj
-    return computed
-
   def is_resolved(self):
     return self.final_adjustments is not None
 
@@ -571,6 +559,8 @@ class GainOrLoss(Event):
       "%s %s" % (count, attr) for attr, count in self.final_adjustments.items() if count > 0])
     losses = ", ".join([
       "%s %s" % (-count, attr) for attr, count in self.final_adjustments.items() if count < 0])
+    if not gains and not losses:
+      return ""
     result = "gained %s" % gains if gains else ""
     result += " and " if (gains and losses) else ""
     result += "lost %s" % losses if losses else ""
@@ -588,9 +578,7 @@ def Loss(character, losses):
 class SplitGain(Event):
 
   def __init__(self, character, attr1, attr2, amount):
-    assert isinstance(amount, (int, MultipleChoice, DiceRoll))
-    if isinstance(amount, MultipleChoice):
-      assert all([isinstance(choice, int) for choice in amount.choices])
+    assert isinstance(amount, (int, values.Value))
     self.character = character
     self.attr1 = attr1
     self.attr2 = attr2
@@ -599,19 +587,11 @@ class SplitGain(Event):
     self.gain = None
 
   def resolve(self, state):
-    if isinstance(self.amount, (MultipleChoice, DiceRoll)):
-      assert self.amount.is_resolved()
-
     if self.gain is not None:
       assert self.gain.is_resolved()
       return True
 
-    if isinstance(self.amount, MultipleChoice):
-      amount = self.amount.choice
-    elif isinstance(self.amount, DiceRoll):
-      amount = sum(self.amount.roll)
-    else:
-      amount = self.amount
+    amount = self.amount.value(state) if isinstance(self.amount, values.Value) else self.amount
 
     if self.choice is not None:
       assert self.choice.is_resolved()
@@ -640,33 +620,33 @@ class LossPrevention(Event):
 
   def __init__(self, prevention_source, source_event, attribute, amount):
     assert isinstance(source_event, GainOrLoss)
-    assert attribute in source_event.adjustments
-    assert source_event.adjustments[attribute] < 0
+    assert isinstance(amount, (int, values.Value)) or math.isinf(amount)
+    assert attribute in source_event.losses
     self.prevention_source = prevention_source
     self.source_event = source_event
     self.attribute = attribute
     self.amount = amount
-    self.amount_prevented = None
-    self.done = False
+    self.prevented = None
 
   def resolve(self, state):
-    if self.source_event.adjustments[self.attribute] >= 0:
-      self.amount_prevented = 0
-      return True
-    self.amount_prevented = min(self.amount, -self.source_event.adjustments[self.attribute])
-    self.source_event.gains[self.attribute] += self.amount_prevented
+    reduced_loss = values.Calculation(
+        self.source_event.losses[self.attribute], None, operator.sub, self.amount)
+    self.source_event.losses[self.attribute] = reduced_loss
+    self.prevented = self.amount
+    if isinstance(self.amount, values.Value):
+      self.prevented = self.amount.value(state)
     return True
 
   def is_resolved(self):
-    return self.amount_prevented is not None
+    return self.prevented is not None
 
   def start_str(self):
     return ""
 
   def finish_str(self):
-    if not self.amount_prevented:
+    if not self.prevented:
       return ""
-    return f"{self.prevention_source.name} prevented {self.amount_prevented} {self.attribute} loss"
+    return f"{self.prevention_source.name} prevented {self.prevented} {self.attribute} loss"
 
 
 class CollectClues(Event):
@@ -1059,7 +1039,7 @@ def Draw(character, deck, draw_count, prompt="Choose a card", target_type=None):
   return Sequence([cards, keep], character)
 
 def GainAllyOrReward(character, ally: str, reward: Event):
-  has_ally = ContainsPrerequisite("allies", ally)
+  has_ally = values.ContainsPrerequisite("allies", ally)
   gain_ally = DrawSpecific(character, "allies", ally)
   return PassFail(character, has_ally, gain_ally, reward)
 
@@ -1773,97 +1753,6 @@ class DiscardNamed(Event):
     return f"{self.character.name} discarded their {self.item_name}"
 
 
-class AttributePrerequisite(Event):
-
-  def __init__(self, character, attribute, threshold, operand):
-    oper_map = {
-        "at least": operator.ge,
-        "less than": operator.lt,
-        "exactly": operator.eq,
-    }
-    assert operand in oper_map
-    assert attribute in {"dollars", "clues", "stamina", "sanity", "movement_points"}
-    self.character = character
-    self.attribute = attribute
-    self.threshold = threshold
-    self.oper_desc = operand
-    self.operand = oper_map[operand]
-    self.successes = None
-
-  def resolve(self, state):
-    self.successes = int(self.operand(getattr(self.character, self.attribute), self.threshold))
-    return True
-
-  def is_resolved(self):
-    return self.successes is not None
-
-  def start_str(self):
-    return ""
-
-  def finish_str(self):
-    if not self.successes:
-      return self.character.name + " does not have " + self.oper_desc + " " + str(self.threshold) + " " + self.attribute
-    return ""
-
-class ItemPrerequisite(Event):
-
-  def __init__(self, character, item_name, threshold=1, operand='at least'):
-    oper_map = {
-        "at least": operator.ge,
-        "less than": operator.lt,
-        "exactly": operator.eq,
-    }
-    assert operand in oper_map
-    self.character = character
-    self.item_name = item_name
-    self.threshold = threshold
-    self.oper_desc = operand
-    self.operand = oper_map[operand]
-    self.successes = None
-
-  def resolve(self, state):
-    self.successes = int(self.operand(
-      sum([item.name == self.item_name for item in self.character.possessions]),
-      self.threshold
-    ))
-    return True
-
-  def is_resolved(self):
-    return self.successes is not None
-
-  def start_str(self):
-    return ""
-
-  def finish_str(self):
-    if not self.successes:
-      return self.character.name + " does not have " + self.oper_desc + " " + str(self.threshold) + " " + self.item_name
-    return ""
-
-class ContainsPrerequisite(Event):
-
-  def __init__(self, deck, card_name):
-    assert deck in {"common", "unique", "spells", "skills", "allies"}
-    self.deck = deck
-    self.card_name = card_name
-    self.successes = None
-
-  def resolve(self, state):
-    deck = getattr(state, self.deck)
-    self.successes = sum([card.name == self.card_name for card in deck])
-    return True
-
-  def is_resolved(self):
-    return self.successes is not None
-
-  def start_str(self):
-    return ""
-
-  def finish_str(self):
-    if not self.successes:
-      return self.deck + " does not have " + self.card_name
-    return ""
-
-
 class Check(Event):
 
   def __init__(self, character, check_type, modifier, attributes=None):
@@ -1995,7 +1884,7 @@ class RerollCheck(Event):
 class Conditional(Event):
 
   def __init__(self, character, condition, attribute, result_map):
-    assert hasattr(condition, attribute)
+    assert isinstance(condition, values.Value) or hasattr(condition, attribute)
     assert all([isinstance(key, int) for key in result_map])
     assert min(result_map.keys()) == 0
     self.character = character
@@ -2005,22 +1894,24 @@ class Conditional(Event):
     self.result = None
 
   def resolve(self, state):
-    assert self.condition.is_resolved()
+    assert isinstance(self.condition, values.Value) or self.condition.is_resolved()
     if self.result is not None:
       if not self.result.is_resolved():  # NOTE: this should never happen
         state.event_stack.append(self.result)
         return False
       return True
 
+    if isinstance(self.condition, values.Value):
+      value = self.condition.value(state)
+    else:
+      value = getattr(self.condition, self.attribute)
+
     for min_result in reversed(sorted(self.result_map)):
-      if getattr(self.condition, self.attribute) >= min_result:
+      if value >= min_result:
         self.result = self.result_map[min_result]
         state.event_stack.append(self.result)
         return False
-    raise RuntimeError(
-        "result map without result for %s: %s" %
-        (getattr(self.condition, self.attribute), self.result_map)
-    )
+    raise RuntimeError("result map without result for %s: %s" % (value, self.result_map))
 
   def is_resolved(self):
     return self.result is not None and self.result.is_resolved()
@@ -2034,6 +1925,8 @@ class Conditional(Event):
 
 def PassFail(character, condition, pass_result, fail_result):
   outcome = Conditional(character, condition, "successes", {0: fail_result, 1: pass_result})
+  if isinstance(condition, values.Value):
+    return outcome
   return Sequence([condition, outcome], character)
 
 
@@ -2042,7 +1935,7 @@ class Arrested(Sequence):
   def __init__(self, character):
     super(Arrested, self).__init__([
       ForceMovement(character, "Police"), LoseTurn(character),
-      Loss(character, {"dollars": character.dollars // 2}),
+      Loss(character, {"dollars": values.Calculation(character, "dollars", operator.floordiv, 2)}),
     ], character)
 
 
@@ -2090,14 +1983,14 @@ class PrereqChoice(MultipleChoice):
 
   def __init__(self, character, prompt, choices, prereqs, annotations=None):
     assert len(choices) == len(prereqs)
+    assert all([prereq is None or isinstance(prereq, values.Value) for prereq in prereqs])
     super(PrereqChoice, self).__init__(character, prompt, choices, annotations)
     self.prereqs = prereqs
     self.invalid_choices = []
 
   def compute_choices(self, state):
-    assert all([prereq is None or prereq.is_resolved() for prereq in self.prereqs])
     for idx in range(len(self.choices)):
-      if self.prereqs[idx] is not None and self.prereqs[idx].successes < 1:
+      if self.prereqs[idx] is not None and self.prereqs[idx].value(state) < 1:
         self.invalid_choices.append(idx)
 
   def validate_choice(self, choice):
@@ -2107,14 +2000,12 @@ class PrereqChoice(MultipleChoice):
 
 def BinaryChoice(
     character, prompt, first_choice, second_choice, first_event, second_event, prereq=None):
-  sequence = []
   if prereq is not None:
     choice = PrereqChoice(character, prompt, [first_choice, second_choice], [prereq, None])
-    sequence.extend([prereq, choice])
   else:
     choice = MultipleChoice(character, prompt, [first_choice, second_choice])
-    sequence.append(choice)
-  sequence.append(Conditional(character, choice, "choice_index", {0: first_event, 1: second_event}))
+  sequence = [
+      choice, Conditional(character, choice, "choice_index", {0: first_event, 1: second_event})]
   return Sequence(sequence, character)
 
 

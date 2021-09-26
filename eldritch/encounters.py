@@ -1,6 +1,9 @@
+import operator
+
 from eldritch import events
 from eldritch import items
 from eldritch import places
+from eldritch import values
 
 
 class EncounterCard(object):
@@ -23,17 +26,17 @@ class EncounterCard(object):
 
 
 def Diner1(char):
-  prereq = events.AttributePrerequisite(char, "dollars", 1, "at least")
+  prereq = values.AttributePrerequisite(char, "dollars", 1, "at least")
   dollar_choice = events.MultipleChoice(
       char, "How many dollars do you want to pay?", [x for x in range(0, min(char.dollars+1, 7))])
-  spend = events.Loss(char, {"dollars": dollar_choice})
-  gain = events.SplitGain(char, "stamina", "sanity", dollar_choice)
+  spend = events.Loss(char, {"dollars": values.Calculation(dollar_choice, "choice")})
+  gain = events.SplitGain(char, "stamina", "sanity", values.Calculation(dollar_choice, "choice"))
   spend_and_gain = events.Sequence([dollar_choice, spend, gain], char)
   return events.PassFail(char, prereq, spend_and_gain, events.Nothing())
 def Diner2(char):
   return events.DrawSpecific(char, "common", "Food")
 def Diner3(char):
-  prereq = events.AttributePrerequisite(char, "dollars", 1, "at least")
+  prereq = values.AttributePrerequisite(char, "dollars", 1, "at least")
   adj = events.GainOrLoss(char, {"stamina": 2}, {"dollars": 1})
   return events.BinaryChoice(
       char, "Pay $1 for pie?", "Pay $1", "Go Hungry", adj, events.Nothing(), prereq)
@@ -53,14 +56,14 @@ def Diner6(char):
 def Diner7(char):
   move = events.ForceMovement(char, "Easttown")
   die = events.DiceRoll(char, 1)
-  gain = events.Gain(char, {"dollars": die})
+  gain = events.Gain(char, {"dollars": values.Die(die)})
   check = events.Check(char, "sneak", -1)
   return events.PassFail(char, check, events.Sequence([die, gain]), move)
 
 def Roadhouse1(char):
   # TODO: this prerequisite should account for characters that can spend clues in other ways, such
   # as by discarding a research materials, or by using the violinist's clues, etc.
-  prereq = events.AttributePrerequisite(char, "clues", 3, "at least")
+  prereq = values.AttributePrerequisite(char, "clues", 3, "at least")
   spend = events.Loss(char, {"clues": 3})
   draw2 = events.Sequence([events.Draw(char, "common", 1), events.Draw(char, "common", 1)], char)
   draw = events.GainAllyOrReward(char, "Traveling Salesman", draw2)
@@ -73,7 +76,7 @@ def Roadhouse2(char):
   dollar_loss = events.Loss(char, {"dollars": 3})
   stamina_loss = events.Loss(char, {"stamina": 1})
   move = events.ForceMovement(char, "Easttown")
-  prereq = events.AttributePrerequisite(char, "dollars", 3, "at least")
+  prereq = values.AttributePrerequisite(char, "dollars", 3, "at least")
   loss = events.PassFail(char, prereq, dollar_loss, events.Sequence([stamina_loss, move], char))
   return events.PassFail(char, check, gain, loss)
 def Roadhouse3(char):
@@ -138,7 +141,7 @@ def Lodge3(char):
   curse = events.BlessCurse(char, False)
   return events.PassFail(char, check, events.Nothing(), curse)
 def Lodge4(char):
-  prereq = events.AttributePrerequisite(char, "dollars", 3, "at least")
+  prereq = values.AttributePrerequisite(char, "dollars", 3, "at least")
   pay = events.Loss(char, {"dollars": 3})
   check = events.Check(char, "will", -1)
   damage = events.Loss(char, {"stamina": 3})
@@ -190,10 +193,14 @@ def Sanctum3(char):
   choice = events.MultipleChoice(
     char, "How many sanity do you want to trade for clues?", list(range(min(char.sanity, 3)+1))
   )
-  gain = events.GainOrLoss(char, {"clues": choice}, {"sanity": choice})
+  gain = events.GainOrLoss(
+      char,
+      {"clues": values.Calculation(choice, "choice")},
+      {"sanity": values.Calculation(choice, "choice")},
+  )
   return events.Sequence([choice, gain], char)
 def Sanctum4(char):
-  prereq = events.AttributePrerequisite(char, "dollars", 3, "at least")
+  prereq = values.AttributePrerequisite(char, "dollars", 3, "at least")
   dues = events.Loss(char, {"dollars": 3})
   dreams = events.Loss(char, {"sanity": 2})
   membership = events.MembershipChange(char, False)
@@ -207,7 +214,7 @@ def Sanctum6(char):
   return events.Nothing() #TODO: A monster appears
 def Sanctum7(char):
   # TODO: there has to actually be a gate open for you to do this.
-  prereq = events.AttributePrerequisite(char, "clues", 2, "at least")
+  prereq = values.AttributePrerequisite(char, "clues", 2, "at least")
   check = events.Check(char, "lore", -2)
   close = events.Nothing() # TODO: Close a gate
   nothing = events.Nothing()
@@ -244,7 +251,7 @@ def Witch5(char):
   return events.OpenGate("Witch")
 def Witch6(char):
   die = events.DiceRoll(char, 1)
-  gain = events.GainOrLoss(char, {"clues": die}, {"sanity": die})
+  gain = events.GainOrLoss(char, {"clues": values.Die(die)}, {"sanity": values.Die(die)})
   return events.Sequence([die, gain], char)
 def Witch7(char):
   check = events.Check(char, "will", -2)
@@ -289,7 +296,7 @@ def Cave5(char):
     events.Sequence([events.Loss(char, {'stamina': 1}), events.Delayed(char)], char)
   )
 def Cave6(char):
-  prereq = events.ItemPrerequisite(char, "Whiskey")
+  prereq = values.ItemPrerequisite(char, "Whiskey")
   check = events.Check(char, "luck", -2)
   ally = events.GainAllyOrReward(char, "Tough Guy", events.Draw(char, "common", draw_count=1, target_type=items.Weapon))
   give_whiskey = events.DiscardNamed(char, "Whiskey")
@@ -321,7 +328,7 @@ def Store5(char):
   draw = events.Draw(char, "common", 3)
   return events.PassFail(char, check, draw, events.Nothing())
 def Store6(char):
-  prereq = events.AttributePrerequisite(char, "dollars", 1, "at least")
+  prereq = values.AttributePrerequisite(char, "dollars", 1, "at least")
   check = events.Check(char, "lore", -2)
   pay = events.Loss(char, {'dollars': 1})
   guess = events.PassFail(char, check, events.Gain(char, {'dollars': 5}), events.Nothing())
@@ -345,7 +352,7 @@ def Graveyard3(char):
   check = events.Check(char, "combat", -2)
   victory = events.Sequence([events.Draw(char, 'unique', 1), events.Gain(char, {'clues': 1})])
   damage = events.DiceRoll(char, 1)
-  defeat = events.Loss(char, {'stamina': damage})
+  defeat = events.Loss(char, {'stamina': values.Die(damage)})
   return events.PassFail(char, check, victory, events.Sequence([damage, defeat], char))
 def Graveyard4(char):
   #TODO: Trade monster trophies for Painter
@@ -418,7 +425,7 @@ def Library2(char):
 def Library3(char):
   check = events.Check(char, "lore", -2)
   die = events.DiceRoll(char, 1)
-  gain = events.Gain(char, {"clues": die})
+  gain = events.Gain(char, {"clues": values.Die(die)})
   loss = events.Loss(char, {"stamina": 2, "sanity": 2})
   return events.PassFail(char, check, events.Sequence([die, gain], char), loss)
 def Library4(char):
@@ -430,7 +437,7 @@ def Library4(char):
 def Library5(char):
   return events.Loss(char, {"sanity": 1})
 def Library6(char):
-  prereq = events.AttributePrerequisite(char, "dollars", 4, "at least")
+  prereq = values.AttributePrerequisite(char, "dollars", 4, "at least")
   pay = events.Loss(char, {"dollars": 4})
   move = events.ForceMovement(char, "University")
   return events.PassFail(char, prereq, pay, move)
@@ -448,7 +455,7 @@ def Science2(char):
   fight = events.PassFail(char, check, events.Nothing(), lose)
   return events.Sequence([spell, fight], char) 
 def Science3(char):
-  prereq = events.AttributePrerequisite(char, "dollars", 2, "less than") # TODO: the money is a lie, it's actually number of spells
+  prereq = values.ItemDeckPrerequisite(char, "spells", 2, "at most")
   unique = events.Draw(char, "unique", 1)
   move = events.ForceMovement(char, "University")
   return events.PassFail(char, prereq, events.Sequence([unique, move], char), events.Nothing())
@@ -459,7 +466,7 @@ def Science4(char):
 def Science5(char):
   check = events.Check(char, "luck", 0)
   die = events.DiceRoll(char, 1)
-  win = events.SplitGain(char, "stamina", "sanity", die)
+  win = events.SplitGain(char, "stamina", "sanity", values.Die(die))
   coffee = events.Gain(char, {"stamina": 1})
   return events.PassFail(char, check, events.Sequence([die, win], char), coffee)
 def Science6(char):
@@ -469,7 +476,7 @@ def Science6(char):
 def Science7(char):
   check = events.Check(char, "lore", -2)
   die = events.DiceRoll(char, 1)
-  stamina = events.Loss(char, {"stamina": die})
+  stamina = events.Loss(char, {"stamina": values.Die(die)})
   close_gates = events.Nothing() # TODO: close all of the gates!
   move = events.ForceMovement(char, "Hospital")
   fail = events.Sequence([die, stamina, move], char)
@@ -495,10 +502,10 @@ def Shop3(char):
   return choice
 def Shop4(char):
   check = events.Check(char, "luck",-1)
-  prereq = events.AttributePrerequisite(char, "dollars", 1, "at least") # TODO: This is actually a check that you an item
+  prereq = values.ItemCountPrerequisite(char, 1, "at least")
   loss = events.Nothing() # TODO: Lose one item of your choice
-  newEvent = events.Nothing() # TODO: draw a new encounter
-  fail = events.PassFail(char, prereq, loss, newEvent)
+  new_encounter = events.Encounter(char, "Shop")
+  fail = events.PassFail(char, prereq, loss, new_encounter)
   return events.PassFail(char, check, events.Nothing(), fail)
 def Shop5(char):
   # TODO: Oh Dear:  3 common items for sale, any player may purchase 1 or more
@@ -548,7 +555,7 @@ def Train2(char):
   check = events.Check(char, "speed", -2)
   spell = events.Draw(char, "spells", 1)
   die = events.DiceRoll(char, 1)
-  sanity = events.Loss(char, {"sanity": die})
+  sanity = events.Loss(char, {"sanity": values.Die(die)})
   return events.PassFail(char, check, spell, events.Sequence([die, sanity], char))
 def Train3(char):
   return events.SplitGain(char, "stamina", "sanity", 2)
@@ -563,7 +570,7 @@ def Train5(char):
   encounter = events.Encounter(char, choice)
   return events.Sequence([choice, move, encounter], char)
 def Train6(char):
-  prereq = events.AttributePrerequisite(char, "dollars", 3, "at least")
+  prereq = values.AttributePrerequisite(char, "dollars", 3, "at least")
   pay = events.Loss(char, {"dollars": 3})
   check = events.Check(char, "luck", -2)
   common = events.Draw(char, "common", 1)
@@ -577,7 +584,7 @@ def Train7(char):
   check = events.Check(char, "luck", -1)
   unique = events.Draw(char, "unique", 1)
   die = events.DiceRoll(char, 1)
-  stab = events.Loss(char, {"stamina": die})
+  stab = events.Loss(char, {"stamina": values.Die(die)})
   return events.PassFail(char, check, unique, events.Sequence([die, stab], char))
 
 def Asylum1(char):
@@ -633,7 +640,7 @@ def Bank2(char):
   common = events.Draw(char, "common", 1)
   unique = events.Draw(char, "unique", 1)
   cond = events.Conditional(char, check, "successes", {0: common, 1: unique})
-  prereq = events.AttributePrerequisite(char, "dollars", 2, "at least")
+  prereq = values.AttributePrerequisite(char, "dollars", 2, "at least")
   nothing = events.Nothing()
   return events.BinaryChoice(
       char, "Pay $2 for man's last possession?", "Pay $2", "Let man and his family go hungry",
@@ -643,7 +650,7 @@ def Bank3(char):
   prep = events.CombatChoice(char, "Choose weapons to fight the bank robbers")
   activate = events.ActivateChosenItems(char, prep)
   check = events.Check(char, "combat", -1)
-  robbed = events.Loss(char, {"dollars": char.dollars})
+  robbed = events.Loss(char, {"dollars": float("inf")})
   nothing = events.Nothing()
   cond = events.Conditional(char, check, "successes", {0: robbed, 1: nothing})
   deactivate = events.DeactivateItems(char)
@@ -712,7 +719,7 @@ def Docks2(char):
   return events.Sequence([items, passfail], char)
 def Docks3(char):
   check = events.Check(char, "fight", 0)
-  dollars = events.Gain(char, {"dollars": 3}) # TODO: This is really dollars * number of successes
+  dollars = events.Gain(char, {"dollars": values.Calculation(check, "successes", operator.mul, 3)})
   move = events.ForceMovement(char, "Merchant")
   stamina = events.Loss(char, {"stamina": 1})
   cond= events.Conditional(char, check, "successes", {0: events.Sequence([stamina, move], char), 1: dollars})
@@ -800,7 +807,7 @@ def Isle7(char):
   return events.PassFail(char, check, clues, events.Nothing())
 
 def Hospital1(char):
-  prereq = events.AttributePrerequisite(char, "clues", 1, "at least")
+  prereq = values.AttributePrerequisite(char, "clues", 1, "at least")
   return events.PassFail(char, prereq, events.Loss(char, {"clues": 1}), events.Nothing())
 def Hospital2(char):
   sanity = events.Loss(char, {"sanity": 1})
@@ -814,7 +821,7 @@ def Hospital3(char):
   die = events.DiceRoll(char, 1)
   cond = events.Conditional(
     char, die, "sum",
-    {0: events.Nothing(), 1: events.Gain(char, {"stamina": die}), 4: events.Nothing()}
+    {0: events.Nothing(), 1: events.Gain(char, {"stamina": values.Die(die)}), 4: events.Nothing()},
   )
   return events.Sequence([die, cond], char)
 def Hospital4(char):
@@ -879,7 +886,7 @@ def Woods4(char):
   ], char)
   return events.PassFail(char, check, events.Nothing(), bushwhack)
 def Woods5(char):
-  prereq = events.ItemPrerequisite(char, "Food")
+  prereq = values.ItemPrerequisite(char, "Food")
   check = events.Check(char, "speed", -2)
   dog = events.GainAllyOrReward(char, "Dog", events.Gain(char, {"dollars": 3}))
   give_food = events.DiscardNamed(char, "Food")
@@ -921,10 +928,10 @@ def Shoppe2(char):
   # )
   # return choice
 def Shoppe3(char):
-  prereq = events.AttributePrerequisite(char, "dollars", 5, "at least")
+  prereq = values.AttributePrerequisite(char, "dollars", 5, "at least")
   luck = events.Check(char, "luck", 0)
   dice = events.DiceRoll(char, 2)
-  coins = events.Sequence([dice, events.Gain(char, {"dollars": dice})], char)
+  coins = events.Sequence([dice, events.Gain(char, {"dollars": values.Die(dice)})], char)
   # TODO: add a keep counter
   jackpot = events.Draw(char, "unique", 2)
   cond = events.Conditional(char, luck, "successes", {0: events.Nothing(), 1: coins, 2: jackpot})
