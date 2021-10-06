@@ -25,8 +25,7 @@ class EventTest(unittest.TestCase):
     self.char = characters.Character("Dummy", 5, 5, 4, 4, 4, 4, 4, 4, 2, "Diner")
     self.state = eldritch.GameState()
     self.state.initialize_for_tests()
-    for attr in ["common", "unique", "spells", "skills", "allies"]:
-      getattr(self.state, attr).clear()
+    self.state.all_characters["Dummy"] = self.char
     self.state.characters = [self.char]
     self.char.place = self.state.places[self.char.home]
 

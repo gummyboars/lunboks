@@ -55,7 +55,10 @@ class Character(object):
       }
     computed = ["speed", "sneak", "fight", "will", "lore", "luck"]
     data.update({attr: getattr(self, attr)(state) for attr in computed})
-    data["place"] = self.place.name
+    data["place"] = self.place.name if self.place is not None else None
+    data["fixed"] = sum(self.fixed_possessions().values(), [])
+    data["random"] = self.random_possessions()
+    data["initial"] = self.initial_attributes()
     return data
 
   # TODO: add global effects to all properties
@@ -168,6 +171,15 @@ class Character(object):
   def abilities(self):
     return []
 
+  def initial_attributes(self):
+    return {}
+
+  def fixed_possessions(self):
+    return {}
+
+  def random_possessions(self):
+    return {}
+
 
 class Nun(Character):
 
@@ -233,4 +245,4 @@ class Gangster(Character):
 
 
 def CreateCharacters():
-  return [Nun(), Doctor(), Archaeologist(), Gangster()]
+  return {c.name: c for c in [Nun(), Doctor(), Archaeologist(), Gangster()]}

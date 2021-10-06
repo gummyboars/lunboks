@@ -23,6 +23,45 @@ button {
   background: sienna;
   z-index: 40; /* error should be shown over everything else */
 }
+#charselect {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 20;
+  display: none;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  background: sienna;
+  color: black;
+  font-size: 3em;
+  border: 1px solid black;
+}
+#charchoices {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: space-between;
+}
+#charchoice {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+}
+.charchoicebutton {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+#charselectbuttons {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: space-between;
+}
 #uichoice {
   position: absolute;
   top: 50%;

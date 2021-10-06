@@ -31,8 +31,10 @@ class OpenGateTest(EventTest):
     self.woods = self.state.places["Woods"]
     # Add two characters to the square.
     self.state.characters.append(characters.Character("A", 5, 5, 4, 4, 4, 4, 4, 4, 4, "Square"))
+    self.state.all_characters["A"] = self.state.characters[-1]
     self.state.characters[-1].place = self.state.places["Square"]
     self.state.characters.append(characters.Character("B", 5, 5, 4, 4, 4, 4, 4, 4, 4, "Square"))
+    self.state.all_characters["B"] = self.state.characters[-1]
     self.state.characters[-1].place = self.state.places["Square"]
 
   def monstersByPlace(self):
@@ -110,8 +112,10 @@ class MonsterSurgeTest(EventTest):
 
     self.state.characters.clear()
     self.state.characters.append(characters.Character("A", 5, 5, 4, 4, 4, 4, 4, 4, 4, "Square"))
+    self.state.all_characters["A"] = self.state.characters[-1]
     self.state.characters[-1].place = self.state.places["Square"]
     self.state.characters.append(characters.Character("B", 5, 5, 4, 4, 4, 4, 4, 4, 4, "Square"))
+    self.state.all_characters["B"] = self.state.characters[-1]
     self.state.characters[-1].place = self.state.places["Square"]
 
   def monstersByPlace(self):
@@ -187,8 +191,10 @@ class MonsterSurgeTest(EventTest):
 
   def testUnevenGatesAndCharacters(self):
     self.state.characters.append(characters.Character("C", 5, 5, 4, 4, 4, 4, 4, 4, 4, "Square"))
+    self.state.all_characters["C"] = self.state.characters[-1]
     self.state.characters[-1].place = self.state.places["Square"]
     self.state.characters.append(characters.Character("D", 5, 5, 4, 4, 4, 4, 4, 4, 4, "Square"))
+    self.state.all_characters["D"] = self.state.characters[-1]
     self.state.characters[-1].place = self.state.places["Square"]
 
     self.state.places["Isle"].gate = gates.Gate(self.info, -2)
@@ -357,6 +363,7 @@ class SpawnClueTest(EventTest):
     buddy = characters.Character("Buddy", 5, 5, 4, 4, 4, 4, 4, 4, 4, "Square")
     buddy.place = self.square
     buddy.clues = 2
+    self.state.all_characters["Buddy"] = buddy
     self.state.characters.append(buddy)
 
     self.state.event_stack.append(SpawnClue("Square"))
