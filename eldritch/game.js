@@ -2,10 +2,12 @@ ws = null;
 dragged = null;
 characters = {};
 monsters = {};
+allCharacters = {};
 scale = 1;
 itemsToChoose = null;
 itemChoice = [];
 monsterChoice = {};
+charChoice = null;
 runningAnim = [];
 messageQueue = [];
 
@@ -143,6 +145,15 @@ function continueInit(gameId) {
   let worlds = document.getElementById("worlds");
   worlds.style.height = Math.floor(width/16) + "px";
   worlds.style.maxHeight = Math.floor(width/16) + "px";
+
+  let markerWidth = width * markerWidthRatio;
+  let markerHeight = width * markerHeightRatio;
+  let charChoice = document.getElementById("charchoice");
+  let cnv = document.getElementById("charchoicecnv");
+  charChoice.style.width = markerWidth + "px";
+  charChoice.style.height = markerHeight + "px";
+  cnv.width = markerWidth;
+  cnv.height = markerHeight;
 }
 
 // TODO: dedup
@@ -195,8 +206,10 @@ function finishAnim() {
   }
 }
 function handleData(data) {
+  allCharacters = data.all_characters;
+  updateCharacterSelect(data.characters, data.player_idx, data.pending_name, data.pending_chars);
   updateCharacterSheets(data.characters, data.player_idx, data.first_player);
-  updateDone(data.turn_number, data.sliders);
+  updateDone(data.game_stage, data.sliders);
   updatePlaces(data.places);
   updateCharacters(data.characters);
   updateChoices(data.choice);
@@ -370,8 +383,34 @@ function makeCheck(e) {
   ws.send(JSON.stringify({"type": "check", "modifier": modifier, "check_type": check_type}));
 }
 
+function prevChar(e) {
+  let sortedKeys = Object.keys(allCharacters).sort();
+  let currentIdx = sortedKeys.indexOf(charChoice);
+  if (currentIdx <= 0) {
+    charChoice = sortedKeys[sortedKeys.length-1];
+  } else {
+    charChoice = sortedKeys[currentIdx-1];
+  }
+  drawChosenChar(charChoice);
+}
+
+function nextChar(e) {
+  let sortedKeys = Object.keys(allCharacters).sort();
+  let currentIdx = sortedKeys.indexOf(charChoice);
+  if (currentIdx >= sortedKeys.length - 1) {
+    charChoice = sortedKeys[0];
+  } else {
+    charChoice = sortedKeys[currentIdx+1];
+  }
+  drawChosenChar(charChoice);
+}
+
+function selectChar(e) {
+  ws.send(JSON.stringify({"type": "join", "char": charChoice}));
+}
+
 function start(e) {
-  ws.send(JSON.stringify({"type": "end_turn"}));
+  ws.send(JSON.stringify({"type": "start"}));
 }
 
 function done(e) {
@@ -778,9 +817,9 @@ function updatePlaceChoices(uichoice, places, annotations) {
   }
 }
 
-function updateDone(turnNumber, sliders) {
+function updateDone(gameStage, sliders) {
   let btn = document.getElementById("done").firstChild;
-  if (turnNumber == -1) {
+  if (gameStage == "setup") {
     btn.innerText = "Start";
     btn.onclick = start;
     return;
@@ -805,6 +844,44 @@ function updateEventLog(eventLog) {
     logDiv.appendChild(textDiv);
   }
   logDiv.scrollTop = logDiv.scrollHeight;
+}
+
+function updateCharacterSelect(characters, playerIdx, pendingName, pendingChars) {
+  let charSelect = document.getElementById("charselect");
+  if (playerIdx != null) {  // TODO: choosing a new character.
+    charSelect.style.display = "none";
+    return;
+  }
+  charSelect.style.display = "flex";
+  // TODO: choosing a different character after picking a character.
+  if (pendingName != null) {
+    drawChosenChar(pendingName);
+    document.getElementById("choosecharbutton").innerText = "Chosen";
+    return;
+  }
+  document.getElementById("choosecharbutton").innerText = "Choose";
+  if (charChoice == null) {
+    let keys = Object.keys(allCharacters);
+    for (let character of characters) {
+      let idx = keys.indexOf(character.name);
+      if (idx >= 0) {
+        keys.splice(idx, 1);
+      }
+    }
+    for (let name of pendingChars) {
+      let idx = keys.indexOf(name);
+      if (idx >= 0) {
+        keys.splice(idx, 1);
+      }
+    }
+    charChoice = keys.sort()[0];
+  }
+  drawChosenChar(charChoice);
+}
+
+function drawChosenChar(name) {
+  let cnv = document.getElementById("charchoicecnv");
+  renderAssetToCanvas(cnv, name, "");
 }
 
 function updateCharacterSheets(characters, playerIdx, firstPlayer) {

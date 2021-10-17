@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import json
 import os
 import sys
 import unittest
@@ -14,6 +15,20 @@ from eldritch import eldritch
 from eldritch import events
 from eldritch import gate_encounters
 from eldritch import mythos
+import game
+
+
+class NoMythos(mythos.GlobalEffect):
+
+  def create_event(self, state):
+    return events.Nothing()
+
+
+class PauseMythos(mythos.GlobalEffect):
+
+  def create_event(self, state):
+    return events.BinaryChoice(
+        state.characters[state.first_player], "", "A", "B", events.Nothing(), events.Nothing())
 
 
 class GateTravelTest(unittest.TestCase):
@@ -21,7 +36,10 @@ class GateTravelTest(unittest.TestCase):
   def setUp(self):
     self.state = eldritch.GameState()
     self.state.initialize_for_tests()
-    self.state.characters = self.state.characters[:1]
+    self.state.all_characters.update({"Nun": characters.Nun()})
+    self.state.characters = [self.state.all_characters["Nun"]]
+    for char in self.state.characters:
+      char.place = self.state.places[char.home]
     self.state.mythos.clear()
     self.state.mythos.append(mythos.Mythos5())
     self.state.event_stack.append(events.Mythos(None))  # Opens at the Square.
@@ -31,6 +49,9 @@ class GateTravelTest(unittest.TestCase):
     # Return all monsters to the cup so the character doesn't have to fight/evade.
     for m in self.state.monsters:
       m.place = self.state.monster_cup
+    self.state.game_stage = "slumber"
+    self.state.turn_phase = "upkeep"
+    self.state.turn_number = 0
     self.state.test_mode = False
 
   def testMoveToOtherWorld(self):
@@ -98,7 +119,14 @@ class NextTurnTest(unittest.TestCase):
   def setUp(self):
     self.state = eldritch.GameState()
     self.state.initialize_for_tests()
-    self.state.characters = self.state.characters[:3]
+    for name in ["Nun", "Doctor", "Archaeologist"]:
+      self.state.all_characters[name] = getattr(characters, name)()
+      self.state.characters.append(self.state.all_characters[name])
+    for char in self.state.characters:
+      char.place = self.state.places[char.home]
+    self.state.game_stage = "slumber"
+    self.state.turn_phase = "upkeep"
+    self.state.turn_number = 0
     self.state.test_mode = False
 
   def testTurnProgression(self):
@@ -259,7 +287,14 @@ class InsaneTest(unittest.TestCase):
   def setUp(self):
     self.state = eldritch.GameState()
     self.state.initialize_for_tests()
-    self.state.characters = self.state.characters[:3]
+    for name in ["Nun", "Doctor", "Archaeologist"]:
+      self.state.all_characters[name] = getattr(characters, name)()
+      self.state.characters.append(self.state.all_characters[name])
+    for char in self.state.characters:
+      char.place = self.state.places[char.home]
+    self.state.game_stage = "slumber"
+    self.state.turn_phase = "upkeep"
+    self.state.turn_number = 0
     self.state.test_mode = False
 
   def testInsaneUpkeep(self):
@@ -353,12 +388,123 @@ class InsaneTest(unittest.TestCase):
     self.assertEqual(self.state.event_stack[-1].character, self.state.characters[1])
 
 
-class OutputTest(unittest.TestCase):
+class PlayerJoinTest(unittest.TestCase):
 
-  def testCanProduceJSON(self):
-    game = eldritch.EldritchGame()
-    game.connect_user("session")
-    game.for_player("session")
+  def setUp(self):
+    self.game = eldritch.EldritchGame()
+
+  def handle(self, session, data):
+    res = self.game.handle(session, data)
+    if res is None:
+      return
+    for _ in res:
+      pass
+
+  def testJoinJSON(self):
+    self.game.connect_user("session")
+    data = self.game.for_player("session")
+    self.assertIsNone(json.loads(data)["player_idx"])
+    self.assertIsNone(json.loads(data)["pending_name"])
+
+    self.handle("session", {"type": "join", "char": "Nun"})
+    data = self.game.for_player("session")
+    self.assertIsNone(json.loads(data)["player_idx"])
+    self.assertEqual(json.loads(data)["pending_name"], "Nun")
+
+    self.handle("session", {"type": "start"})
+    data = self.game.for_player("session")
+    self.assertEqual(json.loads(data)["player_idx"], 0)
+    self.assertIsNone(json.loads(data)["pending_name"])
+
+  def testCannotStartWithoutPlayers(self):
+    self.game.connect_user("A")
+    with self.assertRaises(AssertionError):
+      self.handle("A", {"type": "start"})
+
+  def testCannotReuseCharacter(self):
+    self.game.connect_user("A")
+    self.handle("A", {"type": "join", "char": "Nun"})
+    self.assertEqual(len(self.game.game.characters), 0)
+    self.game.connect_user("B")
+
+    # Cannot reuse a pending character.
+    with self.assertRaisesRegex(game.InvalidMove, "already taken"):
+      self.handle("B", {"type": "join", "char": "Nun"})
+
+    self.handle("A", {"type": "start", "char": "Nun"})
+    self.assertEqual(len(self.game.game.characters), 1)
+
+    # Cannot reuse a character already playing.
+    with self.assertRaisesRegex(game.InvalidMove, "already taken"):
+      self.handle("B", {"type": "join", "char": "Nun"})
+
+  def testCanSwitchCharacter(self):
+    self.game.connect_user("A")
+    self.handle("A", {"type": "join", "char": "Nun"})
+    self.assertEqual(self.game.game.pending_chars, ["Nun"])
+    self.handle("A", {"type": "join", "char": "Doctor"})
+    self.assertEqual(self.game.game.pending_chars, ["Doctor"])
+
+  def testClearPendingCharactersOnDisconnect(self):
+    self.game.connect_user("A")
+    self.handle("A", {"type": "join", "char": "Nun"})
+    self.assertIn("A", self.game.pending_sessions)
+    self.game.connect_user("B")
+    with self.assertRaisesRegex(game.InvalidMove, "already taken"):
+      self.handle("B", {"type": "join", "char": "Nun"})
+    self.assertNotIn("B", self.game.pending_sessions)
+
+    self.game.disconnect_user("A")
+    self.assertNotIn("A", self.game.pending_sessions)
+    self.handle("B", {"type": "join", "char": "Nun"})
+    self.assertIn("B", self.game.pending_sessions)
+
+  @mock.patch.object(mythos, "CreateMythos", return_value=[NoMythos(), PauseMythos()])
+  def testJoinMidGame(self, _):
+    self.game.connect_user("A")
+    self.handle("A", {"type": "join", "char": "Nun"})
+    self.handle("A", {"type": "start"})
+    self.assertEqual(len(self.game.game.characters), 1)
+    self.assertEqual(self.game.game.characters[0].name, "Nun")
+    self.assertEqual(self.game.game.characters[0].place.name, "Church")
+
+    self.assertEqual(self.game.game.game_stage, "slumber")
+    self.assertEqual(self.game.game.turn_phase, "upkeep")
+
+    self.game.connect_user("B")
+    self.handle("B", {"type": "join", "char": "Doctor"})
+    self.assertEqual(len(self.game.game.characters), 1)  # Should not be in the game yet.
+    self.assertEqual(self.game.player_sessions, {"A": 0})
+    self.handle("A", {"type": "set_slider", "name": "done"})
+
+    # Move to the streets so that there is no encounter.
+    self.handle("A", {"type": "choice", "choice": "Southside"})
+    self.handle("A", {"type": "choice", "choice": "done"})
+
+    # Should now be in the pause mythos, with A needing to make a choice. No new characters yet.
+    self.assertEqual(self.game.game.turn_phase, "mythos")
+    self.assertEqual(len(self.game.game.characters), 1)
+
+    self.game.connect_user("C")
+    self.handle("C", {"type": "join", "char": "Gangster"})
+    self.assertEqual(len(self.game.game.characters), 1)
+
+    self.handle("A", {"type": "choice", "choice": "A"})
+    self.assertEqual(self.game.game.turn_phase, "upkeep")
+
+    self.assertEqual(len(self.game.game.characters), 3)
+    self.assertEqual(self.game.game.characters[1].name, "Doctor")
+    self.assertEqual(self.game.game.characters[2].name, "Gangster")
+    # Now that new players have joined, they should enter the first player rotation.
+    self.assertEqual(self.game.game.first_player, 1)
+    self.assertEqual(self.game.game.turn_idx, 1)
+
+    # Make sure the new characters get their starting equipment and are placed on the board.
+    self.assertEqual(self.game.game.characters[1].place.name, "Hospital")
+    self.assertEqual(self.game.game.characters[2].place.name, "House")
+
+    self.assertIn("Medicine", {pos.name for pos in self.game.game.characters[1].possessions})
+    self.assertIn("Tommy Gun", {pos.name for pos in self.game.game.characters[2].possessions})
 
 
 if __name__ == '__main__':

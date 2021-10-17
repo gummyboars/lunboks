@@ -206,9 +206,10 @@ class MedicineTest(EventTest):
     self.assertTrue(self.char.possessions[0].exhausted)
 
   def testMultipleOptions(self):
-    nun = characters.CreateCharacters()[0]  # TODO: it should return a map?
+    nun = characters.CreateCharacters()["Nun"]
     nun.stamina = 1
     nun.place = self.char.place
+    self.state.all_characters["Nun"] = nun
     self.state.characters.append(nun)
 
     upkeep = events.UpkeepActions(self.char)

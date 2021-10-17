@@ -26,6 +26,7 @@ class GameState(object):
   DEQUE_ATTRIBUTES = {"common", "unique", "spells", "skills", "allies", "gates"}
   HIDDEN_ATTRIBUTES = {
       "event_stack", "interrupt_stack", "trigger_stack", "usables", "mythos", "gate_cards"}
+  CUSTOM_ATTRIBUTES = {"characters", "all_characters"}
   TURN_PHASES = ["upkeep", "movement", "encounter", "otherworld", "mythos"]
   TURN_TYPES = {
       "upkeep": events.Upkeep,
@@ -38,6 +39,8 @@ class GameState(object):
   def __init__(self):
     self.places = {}
     self.characters = []
+    self.all_characters = characters.CreateCharacters()
+    self.pending_chars = []
     self.common = collections.deque()
     self.unique = collections.deque()
     self.spells = collections.deque()
@@ -48,16 +51,16 @@ class GameState(object):
     self.gate_cards = collections.deque()
     self.monsters = []
     self.monster_cup = monsters.MonsterCup()
-    self.game_stage = "slumber"  # valid values are setup, slumber, awakened, victory, defeat
+    self.game_stage = "setup"  # valid values are setup, slumber, awakened, victory, defeat
     # valid values are setup, upkeep, movement, encounter, otherworld, mythos, awakened
-    self.turn_phase = "upkeep"
+    self.turn_phase = "setup"
     self.event_stack = collections.deque()
     self.interrupt_stack = collections.deque()
     self.trigger_stack = collections.deque()
     self.usables = {}
     self.done_using = {}
     self.event_log = []
-    self.turn_number = 0
+    self.turn_number = -1
     self.turn_idx = 0
     self.first_player = 0
     self.rumor = None
@@ -78,10 +81,10 @@ class GameState(object):
     for monster in self.monsters:
       monster.place = self.monster_cup
 
-    self.characters = characters.CreateCharacters()
-    for char in self.characters:
-      char.place = self.places[char.home]
-
+    self.game_stage = "slumber"
+    self.turn_idx = 0
+    self.turn_number = 0
+    self.turn_phase = "upkeep"
     self.test_mode = True
 
   def initialize(self):
@@ -109,30 +112,13 @@ class GameState(object):
 
     self.mythos.extend(mythos.CreateMythos())
 
-    self.characters = characters.CreateCharacters()
-    # Abilities and fixed possessions.
-    for char in self.characters:
-      char.place = self.places[char.home]
-      char.possessions.extend(char.abilities())
-      self.give_fixed_possessions(char, char.fixed_possessions())
     # Shuffle the decks.
     for deck in assets.Card.DECKS:
       random.shuffle(getattr(self, deck))
-    # Random possessions.
-    for char in self.characters:
-      self.give_random_possessions(char, char.random_possessions())
-    # Initial attributes.
-    for char in self.characters:
-      for attr, val in char.initial_attributes().items():
-        setattr(char, attr, val)
+    # Place initial clues. TODO: some characters may change location stability.
     for place in self.places.values():
       if isinstance(place, places.Location) and place.unstable:
         place.clues += 1
-
-    self.turn_idx = 0
-    self.turn_number = -1
-    self.turn_phase = "mythos"
-    self.event_stack.append(events.Mythos(None))
 
   def give_fixed_possessions(self, char, possessions):
     assert not possessions.keys() - assets.Card.DECKS
@@ -188,13 +174,18 @@ class GameState(object):
     output = {}
     output.update({
       key: getattr(self, key) for key in
-      self.__dict__.keys() - self.DEQUE_ATTRIBUTES - self.HIDDEN_ATTRIBUTES - {"characters"}
+      self.__dict__.keys() - self.DEQUE_ATTRIBUTES - self.HIDDEN_ATTRIBUTES - self.CUSTOM_ATTRIBUTES
     })
     for attr in self.DEQUE_ATTRIBUTES:
       output[attr] = list(getattr(self, attr))
+
     output["characters"] = []
     for char in self.characters:
       output["characters"].append(char.get_json(self))
+
+    output["all_characters"] = {}
+    for name, char in self.all_characters.items():
+      output["all_characters"][name] = char.get_json(self)
     return output
 
   def for_player(self, char_idx):
@@ -204,10 +195,14 @@ class GameState(object):
     output["monster_cup"] = len([mon for mon in self.monsters if mon.place == self.monster_cup])
     output["gates"] = len(self.gates)
 
+    char = None
+    if char_idx is not None and char_idx < len(self.characters):
+      char = self.characters[char_idx]
+
     output["choice"] = None
     top_event = self.event_stack[-1] if self.event_stack else None
     if top_event and isinstance(top_event, events.ChoiceEvent) and not top_event.is_resolved():
-      if top_event.character == self.characters[char_idx]:
+      if top_event.character == char:
         output["choice"] = {"prompt": top_event.prompt()}
         output["choice"]["annotations"] = top_event.annotations()
         if isinstance(top_event, events.CardChoice):
@@ -229,7 +224,7 @@ class GameState(object):
         else:
           raise RuntimeError("Unknown choice type %s" % top_event.__class__.__name__)
     if top_event and isinstance(top_event, events.SliderInput) and not top_event.is_resolved():
-      if top_event.character == self.characters[char_idx]:
+      if top_event.character == char:
         output["sliders"] = True
     if self.usables.get(char_idx):
       output["usables"] = list(self.usables[char_idx].keys())
@@ -242,6 +237,10 @@ class GameState(object):
     pass  # TODO
 
   def handle(self, char_idx, data):
+    if data.get("type") == "start":
+      self.handle_start()  # TODO: set sliders before starting the game.
+      return self.resolve_loop()
+
     if char_idx not in range(len(self.characters)):
       raise InvalidPlayer("no such player %s" % char_idx)
     if data.get("type") == "set_slider":
@@ -260,8 +259,6 @@ class GameState(object):
       self.handle_use(char_idx, data.get("idx"))
     elif data.get("type") == "done_using":
       self.handle_done_using(char_idx)
-    elif data.get("type") == "end_turn":
-      pass
     else:
       raise UnknownMove(data.get("type"))
 
@@ -394,6 +391,33 @@ class GameState(object):
     t = {idx: char.get_usable_triggers(event, self) for idx, char in enumerate(self.characters)}
     return {char_idx: trigger_list for char_idx, trigger_list in t.items() if trigger_list}
 
+  def handle_start(self):
+    assert self.game_stage == "setup"
+    assert len(self.pending_chars) > 0
+    self.game_stage = "slumber"
+    self.turn_idx = 0
+    self.turn_number = -1
+    self.turn_phase = "mythos"
+    self.initialize()
+    self.add_pending_players()
+    self.event_stack.append(events.Mythos(None))
+
+  def handle_join(self, player_idx, old_name, char_name):
+    if player_idx is not None:
+      raise InvalidMove("You are already playing.")
+    if char_name not in self.all_characters:
+      raise InvalidMove(f"Unknown character {char_name}")
+    if char_name in {char.name for char in self.characters} or char_name in self.pending_chars:
+      raise InvalidMove("That character is already taken.")
+
+    if self.game_stage not in ["setup", "slumber"]:
+      raise InvalidMove("You cannot join the game right now.")
+    if old_name == char_name:
+      return
+    if old_name is not None and old_name in self.pending_chars:
+      self.pending_chars.remove(old_name)
+    self.pending_chars.append(char_name)
+
   def handle_use(self, char_idx, possession_idx):
     assert char_idx in self.usables
     assert possession_idx in self.usables[char_idx]
@@ -411,8 +435,6 @@ class GameState(object):
     event.resolve(self, choice)
 
   def handle_check(self, char_idx, check_type, modifier):
-    if char_idx != self.turn_idx:
-      raise NotYourTurn("It is not your turn.")
     if check_type is None:
       raise InvalidInput("no check type")
     if check_type not in assets.CHECK_TYPES:
@@ -458,6 +480,7 @@ class GameState(object):
     # TODO: game stages other than slumber
     # Handle the end of the mythos phase separately.
     if self.turn_phase == "mythos":
+      self.add_pending_players()
       self.turn_number += 1
       if self.turn_number != 0:
         self.first_player += 1
@@ -480,22 +503,42 @@ class GameState(object):
     # We are done updating turn phase, turn number, turn index, and first player.
     self.event_stack.append(self.TURN_TYPES[self.turn_phase](self.characters[self.turn_idx]))
 
+  def add_pending_players(self):
+    assert not {char.name for char in self.characters} & set(self.pending_chars)
+    assert len(set(self.pending_chars)) == len(self.pending_chars)
+    new_characters = []
+    for name in self.pending_chars:
+      new_characters.append(self.all_characters[name])
+    self.characters.extend(new_characters)
+    self.pending_chars.clear()
+
+    # Abilities and fixed possessions.
+    for char in new_characters:
+      char.place = self.places[char.home]
+      char.possessions.extend(char.abilities())
+      self.give_fixed_possessions(char, char.fixed_possessions())
+    # Random possessions.
+    for char in new_characters:
+      self.give_random_possessions(char, char.random_possessions())
+    # Initial attributes.
+    for char in new_characters:
+      for attr, val in char.initial_attributes().items():
+        setattr(char, attr, val)
+
 
 class EldritchGame(BaseGame):
 
   def __init__(self):
     self.game = GameState()
-    self.game.initialize()
     self.connected = set()
     self.host = None
-    self.player_sessions = collections.OrderedDict()
+    self.player_sessions = {}
+    self.pending_sessions = {}
 
   def game_url(self, game_id):
     return f"/eldritch/game.html?game_id={game_id}"
 
   def game_status(self):
-    if self.game is None:
-      return "unstarted eldritch game (%s players)" % len(self.player_sessions)
     return self.game.game_status()
 
   @classmethod
@@ -503,19 +546,12 @@ class EldritchGame(BaseGame):
     return None  # TODO
 
   def json_str(self):
-    if self.game is None:
-      return "{}"
     output = self.game.json_repr()
-    output["player_sessions"] = dict(self.player_sessions)
+    output["player_sessions"] = self.player_sessions
+    output["pending_sessions"] = self.pending_sessions
     return json.dumps(output, cls=CustomEncoder)
 
   def for_player(self, session):
-    if self.game is None:
-      data = {
-          "game_stage": "not_started",
-          "players": [],  # TODO
-      }
-      return json.dumps(data, cls=CustomEncoder)
     output = self.game.for_player(self.player_sessions.get(session))
     is_connected = {idx: sess in self.connected for sess, idx in self.player_sessions.items()}
     '''
@@ -524,26 +560,21 @@ class EldritchGame(BaseGame):
       output["characters"][idx]["disconnected"] = not is_connected.get(idx, False)
       '''
     output["player_idx"] = self.player_sessions.get(session)
+    output["pending_name"] = self.pending_sessions.get(session)
     return json.dumps(output, cls=CustomEncoder)
 
   def connect_user(self, session):
     self.connected.add(session)
-    if self.game is not None:
-      # TODO: properly handle letting players join the game.
-      if session not in self.player_sessions:
-        missing = set(range(len(self.game.characters))) - set(self.player_sessions.values())
-        if missing:
-          self.player_sessions[session] = min(missing)
-      return
     if self.host is None:
       self.host = session
 
   def disconnect_user(self, session):
     self.connected.remove(session)
-    if self.game is not None:
-      return
-    if session in self.player_sessions:
-      del self.player_sessions[session]
+    if session in self.pending_sessions:
+      name = self.pending_sessions[session]
+      if name in self.game.pending_chars:
+        self.game.pending_chars.remove(name)
+      del self.pending_sessions[session]
     if self.host == session:
       if not self.connected:
         self.host = None
@@ -551,6 +582,31 @@ class EldritchGame(BaseGame):
         self.host = list(self.connected)[0]
 
   def handle(self, session, data):
-    if self.player_sessions.get(session) is None:
+    if not isinstance(data, dict):
+      raise InvalidMove("Data must be a dictionary.")
+    if data.get("type") == "join":
+      self.handle_join(session, data)
+      yield None
+      return 
+    if session not in self.player_sessions and data.get("type") != "start":
       raise InvalidPlayer("Unknown player")
-    return self.game.handle(self.player_sessions[session], data)
+    if data.get("type") == "start":
+      assert session == self.host
+    for val in self.game.handle(self.player_sessions.get(session), data):
+      self.update_pending_players()
+      yield val
+
+  def handle_join(self, session, data):
+    self.game.handle_join(
+        self.player_sessions.get(session), self.pending_sessions.get(session), data.get("char"))
+    self.pending_sessions[session] = data.get("char")
+
+  def update_pending_players(self):
+    if not self.pending_sessions:
+      return
+    indexes = {char.name: idx for idx, char in enumerate(self.game.characters)}
+    pending = {name: session for session, name in self.pending_sessions.items()}
+    updated = indexes.keys() & pending.keys()
+    for name in updated:
+      self.player_sessions[pending[name]] = indexes[name]
+      self.pending_sessions.pop(pending[name])
