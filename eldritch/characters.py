@@ -48,7 +48,7 @@ class Character(object):
     ]
     data = {attr: getattr(self, attr) for attr in attrs}
     data["sliders"] = {}
-    for slider in ["speed_sneak", "fight_will", "lore_luck"]:
+    for slider in self.sliders():
       data["sliders"][slider] = {
           "pairs": getattr(self, "_" + slider),
           "selection": getattr(self, slider + "_slider"),
@@ -167,6 +167,16 @@ class Character(object):
 
   def hands_available(self):
     return 2 - sum([pos.hands_used() for pos in self.possessions if hasattr(pos, "hands_used")])
+
+  def sliders(self):
+    sliders = {}
+    for key, val in self.__dict__.items():
+      if key.endswith("_slider"):
+        sliders[key[:-7]] = val
+    return sliders
+
+  def focus_cost(self, pending_sliders):
+    return sum([abs(orig - pending_sliders[name]) for name, orig in self.sliders().items()])
 
   def abilities(self):
     return []

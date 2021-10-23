@@ -464,6 +464,7 @@ class PlayerJoinTest(unittest.TestCase):
     self.game.connect_user("A")
     self.handle("A", {"type": "join", "char": "Nun"})
     self.handle("A", {"type": "start"})
+    self.handle("A", {"type": "set_slider", "name": "done"})
     self.assertEqual(len(self.game.game.characters), 1)
     self.assertEqual(self.game.game.characters[0].name, "Nun")
     self.assertEqual(self.game.game.characters[0].place.name, "Church")
@@ -505,6 +506,20 @@ class PlayerJoinTest(unittest.TestCase):
 
     self.assertIn("Medicine", {pos.name for pos in self.game.game.characters[1].possessions})
     self.assertIn("Tommy Gun", {pos.name for pos in self.game.game.characters[2].possessions})
+
+    # Validate that new characters get a chance to set their sliders before upkeep.
+    self.assertTrue(self.game.game.event_stack)
+    self.assertIsInstance(self.game.game.event_stack[-1], events.SliderInput)
+    self.assertTrue(self.game.game.event_stack[-1].free)
+
+    self.handle("B", {"type": "set_slider", "name": "done"})
+    self.handle("C", {"type": "set_slider", "name": "done"})
+
+    # It is now the doctor's upkeep. They should be able to spend focus to move their sliders.
+    self.assertTrue(self.game.game.event_stack)
+    self.assertIsInstance(self.game.game.event_stack[-1], events.SliderInput)
+    self.assertEqual(self.game.game.event_stack[-1].character, self.game.game.characters[1])
+    self.assertFalse(self.game.game.event_stack[-1].free)
 
 
 if __name__ == '__main__':
