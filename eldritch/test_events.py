@@ -154,6 +154,17 @@ class SliderTest(EventTest):
     self.assertEqual(self.char.fight_will_slider, 3)
     self.assertEqual(self.char.lore_luck_slider, 3)
 
+  def testFreeSliders(self):
+    self.sliders.free = True
+    self.sliders.resolve(self.state, "speed_sneak", 0)
+    self.sliders.resolve(self.state, "fight_will", 0)
+    self.sliders.resolve(self.state, "done", None)
+    self.assertTrue(self.sliders.is_resolved())
+    self.assertEqual(self.char.focus_points, 2)
+    self.assertEqual(self.char.speed_sneak_slider, 0)
+    self.assertEqual(self.char.fight_will_slider, 0)
+    self.assertEqual(self.char.lore_luck_slider, 3)
+
 
 class MovementPhaseTest(EventTest):
 

@@ -177,46 +177,39 @@ class UpkeepActions(Nothing):
 
 class SliderInput(Event):
 
-  def __init__(self, character):
+  def __init__(self, character, free=False):
     self.character = character
-    self.initial = {}
-    self.initial_focus = character.focus_points  # TODO: are there usables that cost focus?
-    for key, val in self.character.__dict__.items():
-      if key.endswith("_slider"):
-        self.initial[key[:-7]] = val
-    assert len(self.initial) >= 3
+    self.pending = self.character.sliders()
+    assert len(self.pending) >= 3
+    self.free = free
     self.done = False
 
   def resolve(self, state, name, value):
     assert isinstance(name, str), "invalid slider name"
+    assert name in self.pending.keys() | {"done", "reset"}
     if name == "done":
-      assert self._total_spent() <= self.initial_focus, "You do not have enough focus."
-      self.character.focus_points = self.initial_focus - self._total_spent()
+      if not self.free:
+        if self.character.focus_cost(self.pending) > self.character.focus_points:
+          raise AssertionError("You do not have enough focus.")
+        self.character.focus_points -= self.character.focus_cost(self.pending)
+      for name, value in self.pending.items():
+        setattr(self.character, name + "_slider", value)
       self.done = True
       return True
     if name == "reset":
-      for slider_name, orig in self.initial.items():
-        setattr(self.character, slider_name + "_slider", orig)
+      self.pending = self.character.sliders()
       return False
 
-    assert hasattr(self.character, name + "_slider"), "invalid slider name %s" % name
     assert isinstance(value, int), "invalid slider value"
     assert 0 <= value, "invalid slider value %s" % value
     assert value < len(getattr(self.character, "_" + name)), "invalid slider value %s" % value
-    total_spent = self._total_spent(without=name)
-    if abs(self.initial[name] - value) + total_spent > self.initial_focus:
-      raise AssertionError("You do not have enough focus.")
-
-    setattr(self.character, name + "_slider", value)
-    self.character.focus_points = self.initial_focus - self._total_spent()
+    pending = self.pending.copy()
+    pending[name] = value
+    if not self.free:
+      if self.character.focus_cost(pending) > self.character.focus_points:
+        raise AssertionError("You do not have enough focus.")
+    self.pending = pending
     return False
-
-  def _total_spent(self, without=None):
-    # TODO: special characters like the spy
-    return sum([
-      abs(orig - getattr(self.character, slider_name + "_slider"))
-      for slider_name, orig in self.initial.items() if slider_name != without
-    ])
 
   def is_resolved(self):
     return self.done

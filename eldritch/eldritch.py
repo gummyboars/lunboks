@@ -226,6 +226,9 @@ class GameState(object):
     if top_event and isinstance(top_event, events.SliderInput) and not top_event.is_resolved():
       if top_event.character == char:
         output["sliders"] = True
+        # TODO: distinguish between pending/current sliders, pending/current focus.
+        for name, value in top_event.pending.items():
+          output["characters"][char_idx]["sliders"][name]["selection"] = value
     if self.usables.get(char_idx):
       output["usables"] = list(self.usables[char_idx].keys())
     else:
@@ -399,8 +402,12 @@ class GameState(object):
     self.turn_number = -1
     self.turn_phase = "mythos"
     self.initialize()
-    self.add_pending_players()
-    self.event_stack.append(events.Mythos(None))
+    seq = self.add_pending_players()
+    if seq.events:
+      seq.events.append(events.Mythos(None))
+      self.event_stack.append(seq)
+    else:
+      self.event_stack.append(events.Mythos(None))
 
   def handle_join(self, player_idx, old_name, char_name):
     if player_idx is not None:
@@ -480,7 +487,7 @@ class GameState(object):
     # TODO: game stages other than slumber
     # Handle the end of the mythos phase separately.
     if self.turn_phase == "mythos":
-      self.add_pending_players()
+      seq = self.add_pending_players()
       self.turn_number += 1
       if self.turn_number != 0:
         self.first_player += 1
@@ -490,20 +497,29 @@ class GameState(object):
       for char in self.characters:  # TODO: is this the right place to check for this?
         if char.lose_turn_until and char.lose_turn_until <= self.turn_number:
           char.lose_turn_until = None
-    else:
-      self.turn_idx += 1
-      self.turn_idx %= len(self.characters)
+      if seq.events:
+        seq.events.append(events.Upkeep(self.characters[self.turn_idx]))
+        self.event_stack.append(seq)
+      else:
+        self.event_stack.append(events.Upkeep(self.characters[self.turn_idx]))
+      return
 
-      # Handle a switch to the next turn phase.
-      if self.turn_idx == self.first_player:
-        # Guaranteed to not go off the end of the list because this is not the mythos phase.
-        phase_idx = self.TURN_PHASES.index(self.turn_phase)
-        self.turn_phase = self.TURN_PHASES[phase_idx + 1]
+    self.turn_idx += 1
+    self.turn_idx %= len(self.characters)
+
+    # Handle a switch to the next turn phase.
+    if self.turn_idx == self.first_player:
+      # Guaranteed to not go off the end of the list because this is not the mythos phase.
+      phase_idx = self.TURN_PHASES.index(self.turn_phase)
+      self.turn_phase = self.TURN_PHASES[phase_idx + 1]
 
     # We are done updating turn phase, turn number, turn index, and first player.
     self.event_stack.append(self.TURN_TYPES[self.turn_phase](self.characters[self.turn_idx]))
 
   def add_pending_players(self):
+    if not self.pending_chars:
+      return events.Sequence([], None)
+
     assert not {char.name for char in self.characters} & set(self.pending_chars)
     assert len(set(self.pending_chars)) == len(self.pending_chars)
     new_characters = []
@@ -524,6 +540,8 @@ class GameState(object):
     for char in new_characters:
       for attr, val in char.initial_attributes().items():
         setattr(char, attr, val)
+
+    return events.Sequence([events.SliderInput(char, free=True) for char in new_characters], None)
 
 
 class EldritchGame(BaseGame):
