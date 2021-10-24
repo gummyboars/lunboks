@@ -22,6 +22,20 @@
         </div>
       </div>
       <div id="uimain">
+        <div id="giveselect">
+          <div id="givetext">How much do you want to give?</div>
+          <div id="givebottom">
+            <datalist id="giveoptions">
+              <option value="0" label="0"></option>
+            </datalist>
+            <input type="range" min="0" value="0" list="giveoptions" id="giveslider" oninput="updateGive(value)"></input>
+            <output for="giveslider" id="givevalue">0</output>
+          </div>
+          <div id="givebuttons">
+            <button onclick="cancelGive(event)">Cancel</button>
+            <button onclick="finishGive(event)">Give</button>
+          </div>
+        </div>
         <div id="charselect">
           <div id="charchoices">
             <div id="prevchar" class="charchoicebutton" onclick="prevChar(event)">◀️</div>

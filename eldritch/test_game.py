@@ -10,10 +10,13 @@ from unittest import mock
 if os.path.abspath(sys.path[0]) == os.path.dirname(os.path.abspath(__file__)):
   sys.path[0] = os.path.dirname(sys.path[0])
 
+from eldritch import abilities
 from eldritch import characters
 from eldritch import eldritch
 from eldritch import events
 from eldritch import gate_encounters
+from eldritch import items
+from eldritch import monsters
 from eldritch import mythos
 import game
 
@@ -112,6 +115,103 @@ class GateTravelTest(unittest.TestCase):
     self.assertTrue(self.state.event_stack)
     self.assertIsInstance(self.state.event_stack[-1], events.MultipleChoice)
     self.assertEqual(self.state.event_stack[-1].prompt(), "Close the gate?")
+
+
+class TradingTest(unittest.TestCase):
+
+  def setUp(self):
+    self.state = eldritch.GameState()
+    self.state.initialize_for_tests()
+    for name in ["Nun", "Gangster"]:
+      self.state.all_characters[name] = getattr(characters, name)()
+      self.state.characters.append(self.state.all_characters[name])
+    for char in self.state.characters:
+      char.place = self.state.places["Southside"]
+    self.nun = self.state.characters[0]
+    self.gangster = self.state.characters[1]
+    self.nun.possessions.extend([items.Cross(), abilities.Bravery()])
+    self.gangster.possessions.extend([items.TommyGun(), abilities.Marksman()])
+    self.state.game_stage = "slumber"
+    self.state.turn_phase = "movement"
+    self.state.turn_number = 0
+    self.state.test_mode = False
+    self.state.event_stack.append(events.Movement(self.nun))
+    for _ in self.state.resolve_loop():
+      pass
+
+  def testGiveItem(self):
+    self.assertEqual(len(self.nun.possessions), 2)
+    self.assertEqual(len(self.gangster.possessions), 2)
+    self.state.handle_give(0, 1, 0, None)
+    self.assertEqual([pos.name for pos in self.nun.possessions], ["Bravery"])
+    self.assertEqual(
+        [pos.name for pos in self.gangster.possessions], ["Tommy Gun", "Marksman", "Cross"])
+
+  def testGiveDollars(self):
+    self.nun.dollars = 3
+    self.gangster.dollars = 2
+    self.state.handle_give(0, 1, "dollars", 2)
+    self.assertEqual(self.nun.dollars, 1)
+    self.assertEqual(self.gangster.dollars, 4)
+
+  def testGiveInvalidDollars(self):
+    self.nun.dollars = 3
+    self.gangster.dollars = 2
+    with self.assertRaises(game.InvalidMove):
+      self.state.handle_give(0, 1, "dollars", 4)
+    with self.assertRaises(game.InvalidMove):
+      self.state.handle_give(0, 1, "dollars", -1)
+    with self.assertRaises(game.InvalidMove):
+      self.state.handle_give(0, 1, "dollars", 1.5)
+    with self.assertRaises(game.InvalidMove):
+      self.state.handle_give(0, 1, "dollars", None)
+    self.assertEqual(self.nun.dollars, 3)
+    self.state.handle_give(0, 1, "dollars", 3)
+    self.assertEqual(self.nun.dollars, 0)
+    self.assertEqual(self.gangster.dollars, 5)
+
+  def testGiveInvalidItem(self):
+    with self.assertRaises(game.InvalidMove):
+      self.state.handle_give(0, 1, 1, None)
+    with self.assertRaises(game.InvalidMove):
+      self.state.handle_give(0, 1, -1, None)
+    with self.assertRaises(game.InvalidMove):
+      self.state.handle_give(0, 1, 2, None)
+    with self.assertRaises(game.InvalidMove):
+      self.state.handle_give(0, 1, "Cross", None)
+    self.assertEqual([pos.name for pos in self.nun.possessions], ["Cross", "Bravery"])
+    self.assertEqual([pos.name for pos in self.gangster.possessions], ["Tommy Gun", "Marksman"])
+
+  def testGiveInvalidRecipient(self):
+    with self.assertRaises(game.InvalidMove):
+      self.state.handle_give(0, 0, 0, None)
+    with self.assertRaises(game.InvalidPlayer):
+      self.state.handle_give(0, 2, 0, None)
+    with self.assertRaises(game.InvalidPlayer):
+      self.state.handle_give(0, -1, 0, None)
+    with self.assertRaises(game.InvalidPlayer):
+      self.state.handle_give(0, "Gangster", 0, None)
+    self.assertEqual([pos.name for pos in self.nun.possessions], ["Cross", "Bravery"])
+    self.assertEqual([pos.name for pos in self.gangster.possessions], ["Tommy Gun", "Marksman"])
+
+  def testGiveInvalidTime(self):
+    self.state.monsters.append(monsters.Cultist())
+    self.state.monsters[0].place = self.state.places["Southside"]
+    self.state.event_stack[-1].resolve(self.state, "done")
+    for _ in self.state.resolve_loop():
+      pass
+
+    # Choice to fight or evade the cultist.
+    self.assertTrue(self.state.event_stack)
+    self.assertIsInstance(self.state.event_stack[-1], events.MultipleChoice)
+    # Cannot trade items during combat.
+    with self.assertRaises(game.InvalidMove):
+      self.state.handle_give(0, 1, 0, None)
+
+  def testGiveOtherLocation(self):
+    self.nun.place = self.state.places["Church"]
+    with self.assertRaises(game.InvalidMove):
+      self.state.handle_give(0, 1, 0, None)
 
 
 class NextTurnTest(unittest.TestCase):

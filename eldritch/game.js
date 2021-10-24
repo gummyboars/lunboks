@@ -350,12 +350,21 @@ function drop(e) {
     console.log("dropped elem that was not dragged");
     return;
   }
-  if (!dragged.classList.contains("monster")) {
-    console.log("dragged elem was not a monster");
-    return;
+  if (dragged.classList.contains("monster")) {
+    return dropMonster(e);
   }
+  if (dragged.classList.contains("possession")) {
+    return dropPossession(e);
+  }
+  if (dragged.classList.contains("dollars")) {
+    return dropDollars(dragged, e);
+  }
+  console.log("dragged elem was neither a monster nor a possession nor dollars");
+}
+
+function dropMonster(e) {
   if (dragged.monsterIdx == null) {
-    console.log("dragged elem did not have an id");
+    console.log("dragged monster did not have an id");
     return;
   }
   if (!e.currentTarget.id.startsWith("place") || !e.currentTarget.id.endsWith("box")) {
@@ -374,6 +383,79 @@ function drop(e) {
   e.preventDefault();
   e.currentTarget.getElementsByClassName("placemonsters")[0].appendChild(dragged);
   monsterChoice[dragged.monsterIdx] = placeName;
+}
+
+function dropPossession(e) {
+  if (dragged.idx == null) {
+    console.log("dragged elem did not have an index");
+    return;
+  }
+  if (!e.currentTarget.classList.contains("playertop")) {
+    console.log("dragged to something that's not a player");
+    return;
+  }
+  if (e.currentTarget.idx == null) {
+    console.log("dragged to a player without an id");
+    return;
+  }
+  e.preventDefault();
+  ws.send(JSON.stringify({"type": "give", "recipient": e.currentTarget.idx, "idx": dragged.idx}));
+}
+
+function dropDollars(dragged, e) {
+  if (!e.currentTarget.classList.contains("playertop")) {
+    console.log("dragged to something that's not a player");
+    return;
+  }
+  if (e.currentTarget.idx == null) {
+    console.log("dragged to a player without an id");
+    return;
+  }
+  let colonIdx = dragged.innerText.indexOf(":");
+  let valueText = dragged.innerText.substring(colonIdx+1).trim();
+  let maxAmount = parseInt(valueText, 10);
+  if (isNaN(maxAmount)) {
+    console.log("dragged a non-integer number of dollars");
+    return;
+  }
+  e.preventDefault();
+  showGive(maxAmount, e.currentTarget.idx);
+}
+
+function showGive(maxAmount, idx) {
+  let datalist = document.getElementById("giveoptions");
+  while (datalist.children.length) {
+    datalist.removeChild(datalist.firstChild);
+  }
+  for (let i = 0; i <= maxAmount; i++) {
+    let option = document.createElement("OPTION");
+    option.value = i;
+    option.label = i;
+    datalist.appendChild(option);
+  }
+  document.getElementById("giveslider").max = maxAmount;
+  document.getElementById("giveselect").style.display = "flex";
+  document.getElementById("giveselect").idx = idx;
+  updateGive(document.getElementById("giveslider").value);
+}
+
+function updateGive(value) {
+  document.getElementById("givevalue").value = value;
+}
+
+function cancelGive(e) {
+  document.getElementById("giveselect").style.display = "none";
+}
+
+function finishGive(e) {
+  document.getElementById("giveselect").style.display = "none";
+  let msg = {
+    "type": "give",
+    "recipient": document.getElementById("giveselect").idx,
+    "idx": "dollars",
+    "amount": parseInt(document.getElementById("giveslider").value, 10),
+  };
+  ws.send(JSON.stringify(msg));
 }
 
 function makeCheck(e) {
@@ -918,6 +1000,10 @@ function createCharacterSheet(idx, character, rightUI) {
 
   let charTop = document.createElement("DIV");
   charTop.classList.add("playertop");
+  charTop.idx = idx;
+  charTop.ondrop = drop;
+  charTop.ondragenter = dragEnter;
+  charTop.ondragover = dragOver;
   let charPic = document.createElement("DIV");
   charPic.classList.add("playerpicouter");
   charPic.onclick = function(e) { expandSheet(div) };
@@ -1000,10 +1086,16 @@ function updateCharacterSheet(sheet, character, order, isPlayer) {
     let statDiv = document.createElement("DIV");
     statDiv.classList.add("stat");
     statDiv.innerText = text;
+    // TODO: make this nicer
     if (isPlayer && cfg[0] == "clues") {
       statDiv.classList.add("clue");
-      // TODO: make this nicer
       statDiv.onclick = function(e) { useAsset(-1) };
+    }
+    if (isPlayer && cfg[0] == "dollars") {
+      statDiv.classList.add("dollars");
+      statDiv.draggable = true;
+      statDiv.ondragstart = dragStart;
+      statDiv.ondragend = dragEnd;
     }
     stats.appendChild(statDiv);
   }
@@ -1096,6 +1188,7 @@ function createPossession(info, idx, isPlayer) {
   if (info.active) {
     div.classList.add("active");
   }
+  div.idx = idx;
   let cnv = document.createElement("CANVAS");
   div.style.width = posWidth + "px";
   div.style.height = posHeight + "px";
@@ -1124,6 +1217,9 @@ function createPossession(info, idx, isPlayer) {
       div.classList.add("chosen");
     }
     div.onclick = function(e) { clickAsset(div, idx); };
+    div.draggable = true;
+    div.ondragstart = dragStart;
+    div.ondragend = dragEnd;
   }
   return div;
 }

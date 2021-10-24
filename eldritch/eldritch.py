@@ -241,13 +241,15 @@ class GameState(object):
 
   def handle(self, char_idx, data):
     if data.get("type") == "start":
-      self.handle_start()  # TODO: set sliders before starting the game.
+      self.handle_start()
       return self.resolve_loop()
 
     if char_idx not in range(len(self.characters)):
       raise InvalidPlayer("no such player %s" % char_idx)
     if data.get("type") == "set_slider":
       self.handle_slider(char_idx, data.get("name"), data.get("value"))
+    elif data.get("type") == "give":
+      self.handle_give(char_idx, data.get("recipient"), data.get("idx"), data.get("amount"))
     elif data.get("type") == "check":  # TODO: remove
       self.handle_check(char_idx, data.get("check_type"), data.get("modifier"))
     elif data.get("type") == "monster":  # TODO: remove
@@ -482,6 +484,44 @@ class GameState(object):
     if event.character != self.characters[char_idx]:
       raise NotYourTurn("It is not your turn to set sliders.")
     event.resolve(self, name, value)
+
+  def handle_give(self, char_idx, recipient_idx, idx, amount):
+    assert self.event_stack
+    event = self.event_stack[-1]
+    if not isinstance(recipient_idx, int):
+      raise InvalidPlayer("Invalid recipient")
+    if recipient_idx < 0 or recipient_idx >= len(self.characters):
+      raise InvalidPlayer("Invalid recipient")
+    if recipient_idx == char_idx:
+      raise InvalidMove("You cannot trade with yourself")
+    recipient = self.characters[recipient_idx]
+    donor = self.characters[char_idx]
+
+    # TODO: trading in other worlds, trading during the final battle
+    if not isinstance(event, (events.CityMovement)):
+      raise InvalidMove("You cannot trade at this time.")
+    if donor.place != recipient.place:
+      raise InvalidMove("You must be in the same place to trade.")
+
+    if idx == "dollars":
+      if not isinstance(amount, int):
+        raise InvalidMove("Invalid quantity")
+      if amount < 0 or amount > donor.dollars:
+        raise InvalidMove("Invaild quantity")
+      recipient.dollars += amount
+      donor.dollars -= amount
+      return
+
+    if not isinstance(idx, int):
+      raise InvalidMove("Invalid possession index")
+    if idx < 0 or idx >= len(donor.possessions):
+      raise InvalidMove("Invalid possession index")
+    # TODO: trading the deputy's revolver and patrol wagon
+    if getattr(donor.possessions[idx], "deck", None) not in {"common", "unique", "spells"}:
+      raise InvalidMove("You can only trade items")
+
+    # TODO: turn this into an event.
+    recipient.possessions.append(donor.possessions.pop(idx))
 
   def next_turn(self):
     # TODO: game stages other than slumber
