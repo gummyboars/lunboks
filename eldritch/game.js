@@ -734,7 +734,24 @@ function updateUsables(usables, choice) {
       }
     }
   }
-  // TODO: clues
+  let includesAbility = false;
+  for (let val of usables) {
+    if (val != "clues" && val != "trade") {
+      includesAbility = true;
+    }
+  }
+  document.getElementById("usetext").innerText = "Use Items or Abilities";
+  document.getElementById("doneusing").innerText = "Done Using";
+  if (!includesAbility) {
+    if (usables.includes("trade")) {
+      document.getElementById("usetext").innerText = "Trade?";
+      document.getElementById("doneusing").innerText = "Done Trading";
+    } else if (usables.includes("clues")) {
+      document.getElementById("usetext").innerText = "Use clues?";
+      document.getElementById("doneusing").innerText = "Done Using";
+    }
+  }
+  // TODO: make clues change apperance when usable
 }
 
 function createMonsterDiv(name, scale, side) {
@@ -800,8 +817,8 @@ function animateMovingDiv(div, destParent) {
   let continueAnim = function() {
     doneAnimating(divToShow);
     moveAndTranslateNode(div, destParent);
-    div.ontransitionend = function() { div.classList.remove("moving"); doneAnimating(div); lastAnim(); };
-    div.ontransitioncancel = function() { div.classList.remove("moving"); doneAnimating(div); lastAnim(); };
+    div.ontransitionend = function() { div.classList.remove("moving"); doneAnimating(div); setTimeout(lastAnim, 10); };
+    div.ontransitioncancel = function() { div.classList.remove("moving"); doneAnimating(div); setTimeout(lastAnim, 10); };
     setTimeout(function() { div.classList.add("moving"); div.style.transform = "none"; }, 10);
   }
   runningAnim.push(true);
@@ -1089,7 +1106,7 @@ function updateCharacterSheet(sheet, character, order, isPlayer) {
     // TODO: make this nicer
     if (isPlayer && cfg[0] == "clues") {
       statDiv.classList.add("clue");
-      statDiv.onclick = function(e) { useAsset(-1) };
+      statDiv.onclick = function(e) { useAsset("clues") };
     }
     if (isPlayer && cfg[0] == "dollars") {
       statDiv.classList.add("dollars");

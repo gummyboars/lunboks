@@ -358,6 +358,10 @@ class GameState(object):
 
   def get_usable_interrupts(self, event):
     i = {idx: char.get_usable_interrupts(event, self) for idx, char in enumerate(self.characters)}
+    # If the character is in another world with another character, let them trade before moving.
+    if isinstance(event, events.ForceMovement) and self.turn_phase == "movement":
+      if len([char for char in self.characters if char.place == event.character.place]) > 1:
+        i[self.characters.index(event.character)]["trade"] = events.Nothing()
     return {char_idx: interrupt_list for char_idx, interrupt_list in i.items() if interrupt_list}
 
   def get_triggers(self, event):
@@ -394,6 +398,10 @@ class GameState(object):
 
   def get_usable_triggers(self, event):
     t = {idx: char.get_usable_triggers(event, self) for idx, char in enumerate(self.characters)}
+    # If the character moved from another world to another character, let them trade after moving.
+    if isinstance(event, (events.ForceMovement, events.Return)) and self.turn_phase == "movement":
+      if len([char for char in self.characters if char.place == event.character.place]) > 1:
+        t[self.characters.index(event.character)]["trade"] = events.Nothing()
     return {char_idx: trigger_list for char_idx, trigger_list in t.items() if trigger_list}
 
   def handle_start(self):
@@ -430,6 +438,7 @@ class GameState(object):
   def handle_use(self, char_idx, possession_idx):
     assert char_idx in self.usables
     assert possession_idx in self.usables[char_idx]
+    assert possession_idx != "trade"  # "trade" is just a placeholder
     self.event_stack.append(self.usables[char_idx].pop(possession_idx))
 
   def handle_done_using(self, char_idx):
@@ -486,8 +495,6 @@ class GameState(object):
     event.resolve(self, name, value)
 
   def handle_give(self, char_idx, recipient_idx, idx, amount):
-    assert self.event_stack
-    event = self.event_stack[-1]
     if not isinstance(recipient_idx, int):
       raise InvalidPlayer("Invalid recipient")
     if recipient_idx < 0 or recipient_idx >= len(self.characters):
@@ -497,8 +504,7 @@ class GameState(object):
     recipient = self.characters[recipient_idx]
     donor = self.characters[char_idx]
 
-    # TODO: trading in other worlds, trading during the final battle
-    if not isinstance(event, (events.CityMovement)):
+    if not self.can_trade():
       raise InvalidMove("You cannot trade at this time.")
     if donor.place != recipient.place:
       raise InvalidMove("You must be in the same place to trade.")
@@ -522,6 +528,20 @@ class GameState(object):
 
     # TODO: turn this into an event.
     recipient.possessions.append(donor.possessions.pop(idx))
+
+  def can_trade(self):
+    if self.turn_phase != "movement":  # TODO: trading during the final battle
+      return False
+    if not self.event_stack:
+      return False
+    event = self.event_stack[-1]
+    if isinstance(event, (events.CityMovement, events.ForceMovement, events.Return)):
+      return True
+    if len(self.event_stack) < 2:
+      return False
+    if isinstance(self.event_stack[-2], events.Return) and isinstance(event, events.GateChoice):
+      return True
+    return False
 
   def next_turn(self):
     # TODO: game stages other than slumber

@@ -117,7 +117,7 @@ class GateTravelTest(unittest.TestCase):
     self.assertEqual(self.state.event_stack[-1].prompt(), "Close the gate?")
 
 
-class TradingTest(unittest.TestCase):
+class TradingTestBase(unittest.TestCase):
 
   def setUp(self):
     self.state = eldritch.GameState()
@@ -125,8 +125,6 @@ class TradingTest(unittest.TestCase):
     for name in ["Nun", "Gangster"]:
       self.state.all_characters[name] = getattr(characters, name)()
       self.state.characters.append(self.state.all_characters[name])
-    for char in self.state.characters:
-      char.place = self.state.places["Southside"]
     self.nun = self.state.characters[0]
     self.gangster = self.state.characters[1]
     self.nun.possessions.extend([items.Cross(), abilities.Bravery()])
@@ -136,6 +134,14 @@ class TradingTest(unittest.TestCase):
     self.state.turn_number = 0
     self.state.test_mode = False
     self.state.event_stack.append(events.Movement(self.nun))
+
+
+class TradingTest(TradingTestBase):
+
+  def setUp(self):
+    super(TradingTest, self).setUp()
+    for char in self.state.characters:
+      char.place = self.state.places["Southside"]
     for _ in self.state.resolve_loop():
       pass
 
@@ -212,6 +218,66 @@ class TradingTest(unittest.TestCase):
     self.nun.place = self.state.places["Church"]
     with self.assertRaises(game.InvalidMove):
       self.state.handle_give(0, 1, 0, None)
+
+
+class OtherWorldTradingTest(TradingTestBase):
+
+  def testTradeBeforeMoving(self):
+    for char in self.state.characters:
+      char.place = self.state.places["Dreamlands1"]
+    for _ in self.state.resolve_loop():
+      pass
+    self.assertTrue(self.state.event_stack)
+    self.assertTrue(self.state.usables)
+    self.assertIn(0, self.state.usables)
+    self.assertIn("trade", self.state.usables[0])
+    self.state.handle_give(1, 0, 0, None)
+    self.assertEqual(len(self.nun.possessions), 3)
+    self.assertEqual(len(self.gangster.possessions), 1)
+
+  def testTradeAfterMoving(self):
+    self.nun.place = self.state.places["Dreamlands1"]
+    self.gangster.place = self.state.places["Dreamlands2"]
+    for _ in self.state.resolve_loop():
+      pass
+    self.assertEqual(self.nun.place.name, "Dreamlands2")
+    self.assertTrue(self.state.event_stack)
+    self.assertTrue(self.state.usables)
+    self.assertIn(0, self.state.usables)
+    self.assertIn("trade", self.state.usables[0])
+    self.state.done_using[0] = True
+    for _ in self.state.resolve_loop():
+      pass
+    self.assertNotEqual(self.state.turn_idx, 0)
+
+  def testTradeBeforeReturn(self):
+    self.state.places["Square"].gate = self.state.gates.popleft()
+    name = self.state.places["Square"].gate.name + "2"
+    self.nun.place = self.state.places[name]
+    self.gangster.place = self.state.places[name]
+    for _ in self.state.resolve_loop():
+      pass
+    self.assertIsInstance(self.state.event_stack[-1], events.GateChoice)
+    self.state.handle_give(0, 1, 0, None)
+    self.assertEqual([pos.name for pos in self.nun.possessions], ["Bravery"])
+    self.assertEqual(
+        [pos.name for pos in self.gangster.possessions], ["Tommy Gun", "Marksman", "Cross"])
+
+  def testTradeOnReturn(self):
+    self.state.places["Square"].gate = self.state.gates.popleft()
+    name = self.state.places["Square"].gate.name + "2"
+    self.nun.place = self.state.places[name]
+    self.gangster.place = self.state.places["Square"]
+    for _ in self.state.resolve_loop():
+      pass
+    self.assertIsInstance(self.state.event_stack[-1], events.GateChoice)
+    self.state.event_stack[-1].resolve(self.state, "Square")
+    for _ in self.state.resolve_loop():
+      pass
+    self.assertEqual(self.nun.place.name, "Square")
+    self.assertTrue(self.state.usables)
+    self.assertIn(0, self.state.usables)
+    self.assertIn("trade", self.state.usables[0])
 
 
 class NextTurnTest(unittest.TestCase):

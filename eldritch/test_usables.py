@@ -26,7 +26,7 @@ class ClueTokenTest(EventTest):
 
   def testSpendClues(self):
     self.char.clues = 3
-    self.resolve_to_usable(0, -1, SpendClue)
+    self.resolve_to_usable(0, "clues", SpendClue)
     self.assertTrue(self.check.is_resolved())
     self.assertEqual(len(self.state.event_stack), 1)
     self.assertEqual(self.state.event_stack[-1], self.check)
@@ -35,8 +35,8 @@ class ClueTokenTest(EventTest):
     old_roll = self.check.roll[:]
 
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
-      self.state.event_stack.append(self.state.usables[0][-1])
-      self.resolve_to_usable(0, -1, SpendClue)
+      self.state.event_stack.append(self.state.usables[0]["clues"])
+      self.resolve_to_usable(0, "clues", SpendClue)
 
     new_successes = self.check.successes
     new_roll = self.check.roll
@@ -50,13 +50,13 @@ class ClueTokenTest(EventTest):
 
   def testNoCluesLeft(self):
     self.char.clues = 1
-    self.resolve_to_usable(0, -1, SpendClue)
+    self.resolve_to_usable(0, "clues", SpendClue)
     self.assertTrue(self.check.is_resolved())
     self.assertEqual(len(self.state.event_stack), 1)
     self.assertEqual(self.state.event_stack[-1], self.check)
     self.assertEqual(len(self.state.usables), 1)
 
-    self.state.event_stack.append(self.state.usables[0][-1])
+    self.state.event_stack.append(self.state.usables[0]["clues"])
     self.resolve_loop()
 
     self.assertFalse(self.state.usables)
@@ -64,21 +64,21 @@ class ClueTokenTest(EventTest):
   def testBonusDieFromSkill(self):
     self.char.clues = 2
     self.char.possessions.append(abilities.Fight())
-    self.resolve_to_usable(0, -1, SpendClue)
+    self.resolve_to_usable(0, "clues", SpendClue)
     self.assertTrue(self.check.is_resolved())
     self.assertEqual(len(self.state.event_stack), 1)
     self.assertEqual(self.state.event_stack[-1], self.check)
     self.assertEqual(len(self.state.usables), 1)
     old_roll = self.check.roll[:]
 
-    self.state.event_stack.append(self.state.usables[0][-1])
-    self.resolve_to_usable(0, -1, SpendClue)
+    self.state.event_stack.append(self.state.usables[0]["clues"])
+    self.resolve_to_usable(0, "clues", SpendClue)
 
     new_roll = self.check.roll[:]
     self.assertEqual(len(new_roll), 2+len(old_roll))
 
     self.assertEqual(len(self.state.event_stack), 1)
-    self.state.event_stack.append(self.state.usables[0][-1])
+    self.state.event_stack.append(self.state.usables[0]["clues"])
     self.resolve_loop()
 
     last_roll = self.check.roll[:]
