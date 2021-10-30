@@ -299,7 +299,7 @@ class CloseGateTest(EventTest):
     choice = self.resolve_to_choice(MultipleChoice)
     choice.resolve(self.state, "Close with lore")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
-      self.resolve_to_usable(0, -1, SpendClue)
+      self.resolve_to_usable(0, "clues", SpendClue)
     self.state.done_using[0] = True
     seal_choice = self.resolve_to_choice(MultipleChoice)
     self.assertEqual(seal_choice.choices[1], "No")
@@ -319,7 +319,7 @@ class CloseGateTest(EventTest):
     choice = self.resolve_to_choice(MultipleChoice)
     choice.resolve(self.state, "Close with lore")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
-      self.resolve_to_usable(0, -1, SpendClue)
+      self.resolve_to_usable(0, "clues", SpendClue)
     self.state.done_using[0] = True
     seal_choice = self.resolve_to_choice(MultipleChoice)
     self.assertEqual(seal_choice.choices[0], "Yes")

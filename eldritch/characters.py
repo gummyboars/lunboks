@@ -130,9 +130,8 @@ class Character(object):
         idx: p.get_usable_trigger(event, self, state) for idx, p in enumerate(self.possessions)
         if p.get_usable_trigger(event, self, state)
     }
-    # TODO: revisit index
     if self.clues > 0 and isinstance(event, events.Check) and event.character == self:
-      triggers[-1] = events.SpendClue(self, event)
+      triggers["clues"] = events.SpendClue(self, event)
     return triggers
 
   def bonus(self, check_name, state, attributes=None):
