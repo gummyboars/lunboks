@@ -124,15 +124,17 @@ class MonsterSurgeTest(EventTest):
       counts[monster.place.name if monster.place is not None else "nowhere"] += 1
     return counts
 
-  def testMoreCharactersThanGates(self):
-    self.state.event_stack.append(MonsterSurge("Woods"))
-    surge = self.resolve_to_choice(MonsterSurge)
+  def testOnlyOneGate(self):
+    surge = MonsterSurge("Woods")
+    self.state.event_stack.append(surge)
+
+    # With only one gate open, the surge does not present the user with a choice.
+    self.resolve_until_done()
     self.assertEqual(len(surge.to_spawn), 2)  # Number of characters
     self.assertEqual(surge.open_gates, ["Woods"])
     self.assertEqual(surge.max_count, 2)
     self.assertEqual(surge.min_count, 2)
 
-    surge.resolve(self.state, {"Woods": surge.to_spawn})
     monster_counts = self.monstersByPlace()
     self.assertEqual(monster_counts["Woods"], 2)
     self.assertEqual(monster_counts["cup"], 5)
@@ -218,6 +220,201 @@ class MonsterSurgeTest(EventTest):
     self.assertEqual(self.state.monsters[1].place.name, "Woods")
     self.assertEqual(self.state.monsters[5].place.name, "Woods")
     self.assertEqual(self.state.monsters[6].place.name, "Witch")
+
+  def testSendToOutskirts(self):
+    # Add 4 monsters to the outskirts.
+    outskirt_monsters = [
+      monsters.Cultist(), monsters.Maniac(), monsters.Vampire(), monsters.Witch(),
+    ]
+    self.state.monsters.extend(outskirt_monsters)
+    for monster in outskirt_monsters:
+      monster.place = self.state.places["Outskirts"]
+    # Add 5 monsters to the board.
+    board_monsters = [
+      monsters.Cultist(), monsters.Ghost(), monsters.Maniac(), monsters.Vampire(), monsters.Witch(),
+    ]
+    for monster in board_monsters:
+      monster.place = self.state.places["Square"]
+    self.state.monsters.extend(board_monsters)
+
+    self.assertEqual(self.state.monster_limit(), 5)
+    self.assertEqual(self.state.outskirts_limit(), 6)
+
+    self.state.event_stack.append(MonsterSurge("Woods"))
+    surge = self.resolve_to_choice(MonsterSurge)
+    self.assertEqual(len(surge.to_spawn), 2)
+    self.assertEqual(surge.spawn_count, 0)
+    self.assertEqual(surge.outskirts_count, 2)
+    self.assertEqual(surge.min_count, 0)
+    self.assertEqual(surge.max_count, 0)
+    surge.to_spawn = [0, 1]
+
+    with self.assertRaises(AssertionError):
+      surge.resolve(self.state, {"Woods": [0, 1]})
+    with self.assertRaises(AssertionError):
+      surge.resolve(self.state, {"Woods": [0], "Outskirts": [1]})
+    with self.assertRaises(AssertionError):
+      surge.resolve(self.state, {"Outskirts": [1]})
+
+    surge.resolve(self.state, {"Outskirts": [0, 1]})
+
+    counts = self.monstersByPlace()
+    self.assertEqual(counts["Outskirts"], 6)
+    self.assertEqual(counts["Square"], 5)
+    self.assertEqual(counts["Woods"], 0)
+    self.assertEqual(counts["cup"], 5)
+
+  def testAllToCup(self):
+    # Add 5 monsters to the outskirts.
+    outskirt_monsters = [
+      monsters.Cultist(), monsters.Maniac(), monsters.Vampire(), monsters.Witch(), monsters.Ghoul(),
+    ]
+    self.state.monsters.extend(outskirt_monsters)
+    for monster in outskirt_monsters:
+      monster.place = self.state.places["Outskirts"]
+    # Add 5 monsters to the board.
+    board_monsters = [
+      monsters.Cultist(), monsters.Ghost(), monsters.Maniac(), monsters.Vampire(), monsters.Witch(),
+    ]
+    for monster in board_monsters:
+      monster.place = self.state.places["Square"]
+    self.state.monsters.extend(board_monsters)
+
+    self.state.event_stack.append(MonsterSurge("Woods"))
+    surge = self.resolve_to_choice(MonsterSurge)
+    self.assertEqual(len(surge.to_spawn), 2)
+    self.assertEqual(surge.spawn_count, 0)
+    self.assertEqual(surge.outskirts_count, 0)
+    self.assertEqual(surge.min_count, 0)
+    self.assertEqual(surge.max_count, 0)
+    surge.to_spawn = [0, 1]
+
+    with self.assertRaises(AssertionError):
+      surge.resolve(self.state, {"Woods": [0, 1]})
+    with self.assertRaises(AssertionError):
+      surge.resolve(self.state, {"Outskirts": [0, 1]})
+
+    surge.resolve(self.state, {})
+
+    counts = self.monstersByPlace()
+    self.assertEqual(counts["Outskirts"], 0)
+    self.assertEqual(counts["Square"], 5)
+    self.assertEqual(counts["Woods"], 0)
+    self.assertEqual(counts["cup"], 12)
+
+  def testSomeMonstersToEach(self):
+    # There are a total of 6 characters
+    for name in ["C", "D", "E", "F"]:
+      self.state.characters.append(characters.Character(name, 5, 5, 4, 4, 4, 4, 4, 4, 4, "Square"))
+      self.state.all_characters[name] = self.state.characters[-1]
+      self.state.characters[-1].place = self.state.places["Square"]
+
+    # Put one monster in the outskirts
+    self.state.monsters.append(monsters.Cultist())
+    self.state.monsters[-1].place = self.state.places["Outskirts"]
+
+    # Put 7 monsters on the board
+    for _ in range(7):
+      self.state.monsters.append(monsters.Maniac())
+      self.state.monsters[-1].place = self.state.places["Witch"]
+
+    self.state.event_stack.append(MonsterSurge("Woods"))
+    surge = self.resolve_to_choice(MonsterSurge)
+    self.assertEqual(len(surge.to_spawn), 6)
+    self.assertEqual(surge.spawn_count, 2)
+    self.assertEqual(surge.outskirts_count, 2)
+    self.assertEqual(surge.min_count, 2)
+    self.assertEqual(surge.max_count, 2)
+    surge.to_spawn = [1, 2, 3, 4, 5, 6]
+
+    surge.resolve(self.state, {"Woods": [3, 4], "Outskirts": [5, 6]})
+    counts = self.monstersByPlace()
+    self.assertEqual(counts["Outskirts"], 2)
+    self.assertEqual(counts["Witch"], 7)
+    self.assertEqual(counts["Woods"], 2)
+    self.assertEqual(counts["cup"], 4)
+
+
+class MonsterSpawnCountTest(unittest.TestCase):
+
+  def testCounts(self):
+    test_cases = [
+        {
+            "num_gates": 2, "num_chars": 3, "on_board": 3, "in_outskirts": 0,
+            "board": 3, "outskirts": 0, "cup": 0, "clears": 0,
+        },
+        {
+            "num_gates": 2, "num_chars": 3, "on_board": 3, "in_outskirts": 5,
+            "board": 3, "outskirts": 0, "cup": 0, "clears": 0,
+        },
+        {
+            "num_gates": 2, "num_chars": 3, "on_board": 6, "in_outskirts": 0,
+            "board": 0, "outskirts": 3, "cup": 0, "clears": 0,
+        },
+        {
+            "num_gates": 2, "num_chars": 3, "on_board": 5, "in_outskirts": 0,
+            "board": 1, "outskirts": 2, "cup": 0, "clears": 0,
+        },
+        {
+            "num_gates": 2, "num_chars": 3, "on_board": 5, "in_outskirts": 4,
+            "board": 1, "outskirts": 0, "cup": 2, "clears": 1,
+        },
+        {
+            "num_gates": 2, "num_chars": 3, "on_board": 5, "in_outskirts": 5,
+            "board": 1, "outskirts": 1, "cup": 1, "clears": 1,
+        },
+        {
+            "num_gates": 2, "num_chars": 3, "on_board": 6, "in_outskirts": 2,
+            "monster_limit": float("inf"), "board": 3, "outskirts": 0, "cup": 0, "clears": 0,
+        },
+        {
+            "num_gates": 4, "num_chars": 3, "on_board": 3, "in_outskirts": 0,
+            "board": 3, "outskirts": 1, "cup": 0, "clears": 0,
+        },
+        {
+            "num_gates": 4, "num_chars": 3, "on_board": 5, "in_outskirts": 0,
+            "board": 1, "outskirts": 3, "cup": 0, "clears": 0,
+        },
+        {
+            "num_gates": 4, "num_chars": 3, "on_board": 5, "in_outskirts": 4,
+            "board": 1, "outskirts": 1, "cup": 2, "clears": 1,
+        },
+        {
+            "num_gates": 4, "num_chars": 3, "on_board": 5, "in_outskirts": 4,
+            "monster_limit": float("inf"), "board": 4, "outskirts": 0, "cup": 0, "clears": 0,
+        },
+        {
+            "num_gates": 4, "num_chars": 7, "on_board": 9, "in_outskirts": 0,
+            "board": 1, "outskirts": 0, "cup": 6, "clears": 3,
+        },
+        {
+            "num_gates": 4, "num_chars": 7, "on_board": 9, "in_outskirts": 1,
+            "board": 1, "outskirts": 1, "cup": 5, "clears": 3,
+        },
+        {
+            "num_gates": 4, "num_chars": 8, "on_board": 11, "in_outskirts": 0,
+            "board": 0, "outskirts": 0, "cup": 8, "clears": 8,
+        },
+    ]
+
+    for test_case in test_cases:
+      with self.subTest(**test_case):
+        num_gates, num_chars = test_case["num_gates"], test_case["num_chars"]
+        on_board, in_outskirts = test_case["on_board"], test_case["in_outskirts"]
+        monster_limit = test_case.get("monster_limit", 3 + num_chars)
+        outskirts_limit = 8 - num_chars
+        expected_board, expected_outskirts = test_case["board"], test_case["outskirts"]
+        expected_cup, expected_clears = test_case["cup"], test_case["clears"]
+
+        board, outskirts, cup, clears = MonsterSurge.spawn_counts(
+            max(num_gates, num_chars), on_board, in_outskirts, monster_limit, outskirts_limit,
+        )
+
+        self.assertEqual(board, expected_board)
+        self.assertEqual(outskirts, expected_outskirts)
+        self.assertEqual(cup, expected_cup)
+        self.assertEqual(clears, expected_clears)
+        self.assertEqual(cup, max(num_gates, num_chars) - board - outskirts)
 
 
 class CloseGateTest(EventTest):
@@ -466,10 +663,10 @@ class ReturnToCupTest(EventTest):
     self.state.event_stack.append(r)
     self.resolve_until_done()
 
-    self.assertEqual(r.returned, 2)
+    self.assertEqual(r.returned, 1)  # The outskirts don't count.
 
     self.assertEqual(self.dream_flier.place, self.state.monster_cup)
-    self.assertEqual(self.maniac.place, self.state.monster_cup)
+    self.assertEqual(self.maniac.place.name, "Outskirts")
     self.assertIsNone(self.zombie.place)
     self.assertEqual(self.cultist.place.name, "Southside")
 

@@ -37,6 +37,7 @@ class GameState(object):
   }
 
   def __init__(self):
+    self.name = "game"
     self.places = {}
     self.characters = []
     self.all_characters = characters.CreateCharacters()
@@ -167,6 +168,15 @@ class GameState(object):
   def globals(self):
     return [self.rumor, self.environment, self.ancient_one] + self.other_globals
 
+  def monster_limit(self):
+    # TODO: return infinity when the terror track reaches 10
+    limit = len(self.characters) + 3
+    return limit + self.get_modifier(self, "monster_limit")
+
+  def outskirts_limit(self):
+    limit = 8 - len(self.characters)
+    return limit + self.get_modifier(self, "outskirts_limit")
+
   def game_status(self):
     return "eldritch game"  # TODO
 
@@ -219,7 +229,7 @@ class GameState(object):
           output["choice"]["items"] = 0
         elif isinstance(top_event, events.ItemCountChoice):
           output["choice"]["items"] = top_event.count
-        elif isinstance(top_event, events.MonsterSurge):
+        elif isinstance(top_event, events.MonsterSpawnChoice):
           output["choice"]["monsters"] = top_event.to_spawn
         else:
           raise RuntimeError("Unknown choice type %s" % top_event.__class__.__name__)

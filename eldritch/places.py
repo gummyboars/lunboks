@@ -14,6 +14,15 @@ class LostInTimeAndSpace(Place):
     return {"name": self.name}
 
 
+class Outskirts(Place):
+
+  def __init__(self):
+    self.name = "Outskirts"
+
+  def json_repr(self):
+    return {"name": self.name}
+
+
 class CityPlace(Place):
 
   MOVEMENT_OPPOSITES = {"black": "white", "white": "black"}
@@ -64,12 +73,6 @@ class Sky(CityPlace):
 
   def __init__(self):
     super(Sky, self).__init__("Sky", "Sky")
-
-
-class Outskirts(CityPlace):
-
-  def __init__(self):
-    super(Outskirts, self).__init__("Outskirts", "Outskirts")
 
 
 class Street(CityPlace):
