@@ -373,11 +373,141 @@ def Graveyard6(char):
 def Graveyard7(char):
   return events.Nothing()
 
+def Society1(char):
+  move = events.ForceMovement(char, "Woods")
+  encounter = events.Encounter(char, "Woods", 2)
+  accept = events.Sequence([move, encounter], char)
+  return events.BinaryChoice(char, "Accept Ride?", "Yes", "No", accept, events.Nothing())
+def Society2(char):
+  prereq = values.AttributePrerequisite(char, "dollars", 3, "at least")
+  move = events.ForceMovement(char, "Southside")
+  luck = events.Check(char, "luck", -1)
+  move_dream = events.ForceMovement(char, "Dreamlands1")
+  # TODO: don't hard-code.
+  enc = events.GateEncounter(char, "Dreamlands", {"blue", "green", "red", "yellow"})
+  ret = events.ForceMovement(char, "Society")
+  dreamlands =  events.Sequence([move_dream, enc, ret], char)
+  spell = events.Draw(char, "spells", 1)
+  pay = events.Loss(char, {"dollars": 3})
+  searchstacks = events.PassFail(char, luck, spell, dreamlands)
+  library = events.Sequence([pay, searchstacks], char)
+  return events.BinaryChoice(
+    char,"Pay $3 to access the private library", "Yes", "No", library, move, prereq=prereq
+  )
+def Society3(char):
+  check = events.Check(char, "sneak", -1)
+  sanity = events.Gain(char, {"sanity": 1})
+  curse = events.Curse(char)
+  stamina = events.Loss(char, {"stamina": 2})
+  move = events.ForceMovement(char, "Southside")
+  return events.PassFail(char, check, sanity, events.Sequence([curse, stamina, move], char))
 def Society4(char):
   check = events.Check(char, "luck", -1)
   skill = events.Sequence([events.Draw(char, "skills", 1), events.Delayed(char)], char)
   cond = events.Conditional(char, check, "successes", {0: events.Nothing(), 2: skill})
   return events.Sequence([check, cond], char)
+def Society5(char):
+  return events.Loss(char, {"sanity": 1})
+def Society6(char):
+  # TODO: spend gate trophy
+  prereq = values.AttributePrerequisite(char, "dollars", 1, "at least") # TODO: actually a gate trophy
+  reward = events.Draw(char, "unique", 1)
+  ally =  events.GainAllyOrReward(char, "Old Professor", reward)
+  spend = events.Loss(char, {"dollars": 1}) #TODO: if only gate trophies were this cheap
+  take = events.Sequence([spend, ally], char)
+  nothing = events.Nothing()
+  return events.BinaryChoice(char, "Spend a Gate Trophy?", "Yes", "No", take, nothing, prereq)
+def Society7(char):
+  move = events.ForceMovement(char, "Cave")
+  encounter = events.Encounter(char, "Cave", 2)
+  cave = events.Sequence([move, encounter], char)
+  return events.BinaryChoice(char, "Go with Cindy?", "Yes", "No", cave, events.Nothing())
+
+def House1(char):
+  luck = events. Check(char, "luck", 0)
+  move_dream = events.ForceMovement(char, "Dreamlands1")
+  # TODO: don't hard-code.
+  enc_dream = events.GateEncounter(char, "Dreamlands", {"blue", "green", "red", "yellow"})
+  ret = events.ForceMovement(char, "House")
+  dreamlands = events.Sequence([move_dream, enc_dream, ret], char)
+  move_abyss = events.ForceMovement(char, "Abyss1")
+  # TODO: don't hard-code.
+  enc_abyss = events.GateEncounter(char, "Abyss", {"blue","red"})
+  abyss = events.Sequence([move_abyss, enc_abyss, ret], char)
+  return events.PassFail(char, luck, dreamlands, abyss)
+def House2(char):
+  move = events.ForceMovement(char, "Lodge")
+  encounter = events.Encounter(char, "Lodge", 2)
+  lodge = events.Sequence([move, encounter], char)
+  return events.BinaryChoice(char, "Enter the tunnel?", "Yes", "No", lodge, events.Nothing())
+def House3(char):
+  die = events.DiceRoll(char, 1)
+  stamina = events.Gain(char, {"stamina":  values.Die(die)})
+  return events.Sequence([die, stamina], char)
+def House4(char):
+  stay = events.Delayed(char)
+  common = events.Nothing() # TODO: coming soon from Peter! draw and purchase
+  unique = events.Nothing() # TODO: coming soon from Peter! draw and purchase 
+  item = events.BinaryChoice(char, "Purchase a common or unique item?", "Common", "Unique", common, unique)
+  will = events.Check(char, "will", 0)
+  converse = events.PassFail(char, will, item, stay)
+  return events.BinaryChoice(char, "Converse with travelling Salesman?", "Yes", "No", converse, events.Nothing())
+def House5(char):
+  return events.Draw(char, "common", 1)
+def House6(char):
+  luck = events.Check(char, "luck", -1)
+  stamina = events.Loss(char, {"stamina": 1})
+  sanity = events.Loss(char, {"sanity": 1})
+  choice = events.BinaryChoice(char, "Lose 1 stamina or sanity?", "Stamina", "Sanity", stamina, sanity)
+  return events.PassFail(char, luck, events.Nothing(), choice)
+def House7(char):
+  prereq = values.AttributePrerequisite(char, "dollars", 3, "at least")
+  pay = events.Loss(char, {"dollars": 3})
+  gain = events.SplitGain(char, "sanity", "stamina", 4)
+  stay = events.Sequence([pay, gain], char)
+  return events.BinaryChoice(
+    char, "Spend $3 to spend the night?", "Yes", "No", stay, events.Nothing(), prereq
+  )
+
+def Church1(char):
+  return events.Loss(char, {"sanity": 1})
+def Church2(char):
+  return events.Bless(char)
+def Church3(char):
+  money = events.Loss(char, {"dollars": (char.dollars + 1)//2})
+  items = events.Nothing() # TODO: Lose half your items
+  return events.BinaryChoice(
+    char, "Donate half or your money or half of your items.", "Money", "Items", money, items)
+def Church4(char):
+  holywater = events.DrawSpecific(char, "unique", "Holy Water")
+  return events.BinaryChoice(char, "Search for Holy Water?", "Yes", "No", holywater, events.Nothing())
+def Church5(char):
+  check = events.Check(char, "luck", 0)
+  loseSanity = events.Loss(char, {"sanity": 3})
+  move = events.ForceMovement(char, "Southside")
+  loseAndMove = events.Sequence([loseSanity, move], char)
+  gainSanity = events.Gain(char, {"sanity": char.max_sanity})
+  cond =  events.Conditional(char, check, "successes", {0: loseAndMove, 1: move, 2: gainSanity})
+  return events.Sequence([check, cond], char)
+def Church6(char):
+  #TODO: remove a counter from the doomtrack
+  prereq = values.AttributePrerequisite(char, "clues", 1, "at least")
+  clue = events.Loss(char, {"clues": 1})
+  roll = events.Nothing() #TODO: roll for a success
+  doom = events.Nothing() #TODO: remove a doom token
+  chance = events.Sequence([clue, roll, doom], char)
+  return events.BinaryChoice(char, "Spend a clue token for a chance to remove a Doom Token?", 
+                            "Yes",
+                            "No",
+                            chance,
+                            events.Nothing(),
+                            prereq)
+def Church7(char):
+  check = events.Check(char, "speed", -1)
+  loss = events.Loss(char, {"stamina": 2})
+  move = events.ForceMovement(char, "Southside")
+  flee = events.Sequence([loss, move], char)
+  return events.PassFail(char, check, move, flee)
 
 def Administration1(char):
   check = events.Check(char, "lore", -1)
@@ -1012,7 +1142,13 @@ def CreateEncounterCards():
         EncounterCard("Rivertown7", {"Cave": Cave7, "Store": Store7, "Graveyard": Graveyard7}),
       ],
       "Southside": [
-        EncounterCard("Southside4", {"Society": Society4}),
+        EncounterCard("Southside1", {"Society": Society1, "House": House1, "Church": Church1}),
+        EncounterCard("Southside2", {"Society": Society2, "House": House2, "Church": Church2}),
+        EncounterCard("Southside3", {"Society": Society3, "House": House3, "Church": Church3}),
+        EncounterCard("Southside4", {"Society": Society4, "House": House4, "Church": Church4}),
+        EncounterCard("Southside5", {"Society": Society5, "House": House5, "Church": Church5}),
+        EncounterCard("Southside6", {"Society": Society6, "House": House6, "Church": Church6}),
+        EncounterCard("Southside7", {"Society": Society7, "House": House7, "Church": Church7}),
       ],
       "University": [
         EncounterCard("University1", {"Administration": Administration1, "Library": Library1, "Science": Science1}),
@@ -1027,7 +1163,8 @@ def CreateEncounterCards():
         EncounterCard("Uptown1", {"Hospital": Hospital1, "Woods": Woods1, "Shoppe": Shoppe1}),
         EncounterCard("Uptown2", {"Hospital": Hospital2, "Woods": Woods2, "Shoppe": Shoppe2}),
         EncounterCard("Uptown3", {"Hospital": Hospital3, "Woods": Woods3, "Shoppe": Shoppe3}),
-        EncounterCard("Uptown4", {"Hospital": Hospital4, "Woods": Woods4, "Shoppe": Shoppe4}),
+        #TODO: make this point to Woods4 once fixed
+        EncounterCard("Uptown4", {"Hospital": Hospital4, "Woods": Woods5, "Shoppe": Shoppe4}),
         EncounterCard("Uptown5", {"Hospital": Hospital5, "Woods": Woods5, "Shoppe": Shoppe5}),
         EncounterCard("Uptown6", {"Hospital": Hospital6, "Woods": Woods6, "Shoppe": Shoppe6}),
         EncounterCard("Uptown7", {"Hospital": Hospital7, "Woods": Woods7, "Shoppe": Shoppe7}),
