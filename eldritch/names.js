@@ -94,7 +94,7 @@ gateNames = [];
 for (let world of otherWorlds) {
   gateNames.push("Gate " + world);
 }
-extraNames = ["Clue"];
+extraNames = ["Lost", "Sky", "Outskirts", "Clue"];
 assetNames = ["board"].concat(characterNames).concat(commonNames).concat(uniqueNames).concat(spellNames).concat(skillNames).concat(allyNames).concat(abilityNames).concat(monsterNames).concat(otherWorlds).concat(gateNames).concat(extraNames);
 serverNames = {};
 for (let name of assetNames) {
