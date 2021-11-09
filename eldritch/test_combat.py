@@ -1019,6 +1019,7 @@ class CombatWithEnchantedWeapon(EventTest):
 
     self.state.event_stack.append(self.state.usables[0][2])  # Cast enchant weapon.
     choose_enchant = self.resolve_to_choice(SinglePhysicalWeaponChoice)
+    self.assertFalse(choose_enchant.choices)
     with self.assertRaises(AssertionError):
       choose_enchant.resolve(self.state, [1])
     choose_enchant.resolve(self.state, [])

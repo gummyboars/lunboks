@@ -1063,6 +1063,7 @@ class ItemChoiceTest(EventTest):
   def testCombatChoice(self):
     choice = CombatChoice(self.char, "choose combat items")
     self.state.event_stack.append(choice)
+    self.resolve_to_choice(ItemChoice)
 
     # Cannot use Food in combat.
     with self.assertRaises(AssertionError):
@@ -1200,6 +1201,8 @@ class ActivateItemsTest(EventTest):
     item_choice = CombatChoice(self.char, "choose stuff")
     activate = ActivateChosenItems(self.char, item_choice)
 
+    self.state.event_stack.append(item_choice)
+    self.resolve_to_choice(CombatChoice)
     item_choice.resolve(self.state, [0, 2])
     self.state.event_stack.append(activate)
     self.resolve_until_done()
@@ -1473,7 +1476,7 @@ class SellTest(EventTest):
 
     self.state.event_stack.append(sell)
     choice = self.resolve_to_choice(ItemChoice)
-    self.assertEqual(choice.choices, [0, "Nothing"])
+    self.assertEqual(choice.choices, [0])
     choice.resolve(self.state, [0])
     self.resolve_until_done()
 
@@ -1493,8 +1496,8 @@ class SellTest(EventTest):
 
     self.state.event_stack.append(sell)
     choice = self.resolve_to_choice(ItemChoice)
-    self.assertEqual(choice.choices, [0, "Nothing"])
-    choice.resolve(self.state, "Nothing")
+    self.assertEqual(choice.choices, [0])
+    choice.resolve(self.state, [])
     self.resolve_until_done()
 
     self.assertTrue(sell.is_resolved())
@@ -1513,7 +1516,7 @@ class SellTest(EventTest):
 
     self.state.event_stack.append(buy)
     choice = self.resolve_to_choice(ItemChoice)
-    self.assertEqual(choice.choices, [0, "Nothing"])
+    self.assertEqual(choice.choices, [0])
     choice.resolve(self.state, [0])
     self.resolve_until_done()
 
@@ -1522,6 +1525,16 @@ class SellTest(EventTest):
     self.assertFalse(self.char.possessions)
     self.assertEqual(len(self.state.common), 1)
     self.assertEqual(self.state.common[0].name, "Food")
+
+  def testInvalidSale(self):
+    self.char.possessions = [items.Food(), items.HolyWater()]
+    sell = Sell(self.char, {'common'}, 1)
+    self.state.event_stack.append(sell)
+    choice = self.resolve_to_choice(ItemChoice)
+    with self.assertRaises(AssertionError):
+      choice.resolve(self.state, [1])
+      self.resolve_until_done()
+
 
 if __name__ == '__main__':
   unittest.main()

@@ -319,7 +319,7 @@ def Store1(char):
 def Store2(char):
   return events.Nothing()
 def Store3(char):
-  return events.Sell(char, {"common"}, 1, discount_type='rate', discount=-1.)
+  return events.Sell(char, {"common"}, 1, discount_type='rate', discount=-1)
 def Store4(char):
   return events.Loss(char, {"sanity": 1})
 def Store5(char):

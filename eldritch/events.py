@@ -7,6 +7,7 @@ random = SystemRandom()
 
 from eldritch import values
 from eldritch import places
+from eldritch import items
 
 
 class Event(metaclass=abc.ABCMeta):
@@ -1048,15 +1049,15 @@ class SellChosen(Event):
     self.discount = discount
     self.prices = []
     self.resolved = False
+    self.sold = None
 
   def resolve(self, state):
     if self.resolved:
       # This should never happen??
       return True
+    self.prices = [self.discounted_price(card) for card in self.choice.chosen]
+    self.character.dollars += sum(self.prices)
     for card in self.choice.chosen:
-      price = self.discounted_price(card)
-      self.prices.append(price)
-      self.character.dollars += price
       self.character.possessions.remove(card)
       getattr(state, card.deck).append(card)
     self.resolved = True
@@ -1067,7 +1068,7 @@ class SellChosen(Event):
     return self.resolved
 
   def start_str(self):
-    return f"{self.character.name} selling {str(self.choice.chosen)}"
+    return f"{self.character.name} selling " + ", ".join(i.name for i in self.choice.chosen)
 
   def finish_str(self):
     if not self.sold:
@@ -1083,11 +1084,8 @@ class SellChosen(Event):
 
 def Sell(char, decks, sell_count=1, discount_type="fixed", discount=0,
          prompt="Sell item?"):
-    # TODO: Implement possibility to sell multiple items
-    items = ItemChoice(char, prompt, decks=decks, nothing_option=True)
-    sell = SellChosen(
-            char, items, discount_type=discount_type, discount=discount,
-    )
+    items = ItemCountChoice(char, prompt, sell_count, min_count=0, decks=decks)
+    sell = SellChosen( char, items, discount_type=discount_type, discount=discount)
     return Sequence([items, sell], char)
 
 class PurchaseDrawn(Event):
@@ -2059,7 +2057,7 @@ def BinaryChoice(
 
 class ItemChoice(ChoiceEvent):
 
-  def __init__(self, character, prompt, decks=None, item_type=None, nothing_option=False):
+  def __init__(self, character, prompt, decks=None, item_type=None):
     self.character = character
     self._prompt = prompt
     self.choices = None
@@ -2067,38 +2065,25 @@ class ItemChoice(ChoiceEvent):
     if decks is None:
       decks = {'spells', 'common', 'unique', 'skills', 'allies'}
     assert decks.issubset({'spells', 'common', 'unique', 'skills', 'allies'}), f"{decks} contains invalid deck"
-    # can one choose a skill in any circumstances?
     self.decks = decks
     self.item_type = item_type
-    self.nothing_option = nothing_option
 
   def resolve(self, state, choice=None):
     if self.is_resolved():
       return True
-    assert (
-            (choice == 'Nothing')
-            or all([0 <= idx < len(self.character.possessions) for idx in choice])
-    )
+    assert all([0 <= idx < len(self.character.possessions) for idx in choice])
     self.resolve_internal(choice)
 
   def resolve_internal(self, choices):
-    if choices == 'Nothing':
-        self.chosen = []
-    else:
-      self.chosen = list([
-        self.character.possessions[idx]
-        for idx in choices
-        if self.character.possessions[idx].deck in self.decks
-    ])
+    assert all(idx in self.choices for idx in choices)
+    self.chosen = [self.character.possessions[idx] for idx in choices]
 
   def compute_choices(self, state):
     self.choices = [
-      idx for idx in range(len(self.character.possessions))
-        if self.character.possessions[idx].deck in self.decks
+      idx for idx, pos in enumerate(self.character.possessions)
+      if (getattr(pos, "deck", None) in self.decks)
+         and (self.item_type is None or getattr(pos, "item_type") == self.item_type)
     ]
-    if self.nothing_option:
-      self.choices.append("Nothing")
-
 
   def is_resolved(self):
     return self.chosen is not None
@@ -2131,24 +2116,28 @@ class CombatChoice(ItemChoice):
 
 class ItemCountChoice(ItemChoice):
 
-  def __init__(self, character, prompt, count, decks=None):
+  def __init__(self, character, prompt, count, min_count=None, decks=None):
     super(ItemCountChoice, self).__init__(character, prompt, decks=decks)
     self.count = count
+    self.min_count = count if min_count is None else min_count
 
   def resolve_internal(self, choices):
-    assert self.count == len(choices)
+    assert self.min_count <= len(choices) <= self.count
     super(ItemCountChoice, self).resolve_internal(choices)
 
 
-class SinglePhysicalWeaponChoice(ItemChoice):
+class SinglePhysicalWeaponChoice(ItemCountChoice):
+  def __init__(self, char, prompt):
+    super(SinglePhysicalWeaponChoice, self).__init__(char, prompt, 1, min_count=0)
 
-  def resolve_internal(self, choices):
-    assert len(choices) < 2
-    if choices:
-      chosen = self.character.possessions[choices[0]]
-      assert getattr(chosen, "item_type", None) == "weapon"
-      assert chosen.active_bonuses["physical"] or chosen.passive_bonuses["physical"]
-    super(SinglePhysicalWeaponChoice, self).resolve_internal(choices)
+  def compute_choices(self, state):
+    self.choices = [
+      idx for idx, pos in enumerate(self.character.possessions)
+      if (getattr(pos, "deck", None) in self.decks)
+         and getattr(pos, "item_type", None) == "weapon"
+         and (pos.active_bonuses["physical"] or pos.passive_bonuses["physical"])
+    ]
+
 
 
 class CardChoice(MultipleChoice):
