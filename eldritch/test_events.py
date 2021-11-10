@@ -15,44 +15,15 @@ from eldritch import eldritch
 from eldritch import events
 from eldritch.events import *
 from eldritch import items
+from eldritch import mythos
 from eldritch import places
 from eldritch import values
 
-def advance_to_turn_phase(state, target_phase):
-  phase_events = state.TURN_TYPES
-  i = 0
-  while state.turn_phase != target_phase and i < 10:
-    event = phase_events[state.turn_phase]
-    print(state.turn_phase, event)
-    if state.turn_phase == 'mythos':
-      pass
-    elif state.turn_phase == 'movement':
-      for char in state.characters:
-        state.event_stack.append(event(char))
-        for _ in state.resolve_loop():
-          if state.turn_phase != 'movement':
-            break
-    elif state.turn_phase == 'encounter':
-      for char in state.characters:
-        state.event_stack.append(event(char))
-        for _ in state.resolve_loop():
-          if state.event_stack and not state.event_stack[0].done:
-            break
 
-    elif state.turn_phase == 'upkeep':
-      state.event_stack.append(events.Upkeep(state.characters[0]))
-      for _ in state.resolve_loop():
-        print(state.event_stack)
-        pass
-      print("Now for each character")
-      for turn_idx in range(len(state.characters)):
-        state.event_stack[-1].done = True
-        for _ in state.resolve_loop():
-          print(state.event_stack)
-          pass
-    else:
-      raise NotImplementedError()
-    i += 1
+class NoMythos(mythos.GlobalEffect):
+
+  def create_event(self, state):
+    return events.Nothing()
 
 
 class EventTest(unittest.TestCase):
@@ -89,6 +60,24 @@ class EventTest(unittest.TestCase):
     self.assertIn(item_idx, self.state.usables[char_idx])
     self.assertIsInstance(self.state.usables[char_idx][item_idx], event_class)
     return self.state.usables[char_idx][item_idx]
+
+  def advance_turn(self, target_turn, target_phase):
+    self.state.mythos.extend([NoMythos()] * (target_turn - self.state.turn_number + 1))
+    while True:
+      for _ in self.state.resolve_loop():
+        if self.state.turn_number == target_turn and self.state.turn_phase == target_phase:
+          break
+      if self.state.turn_number == target_turn and self.state.turn_phase == target_phase:
+        break
+      if not self.state.event_stack:
+        self.state.next_turn()
+        continue
+      if self.state.turn_phase == "upkeep":
+        self.assertIsInstance(self.state.event_stack[-1], events.SliderInput)
+        self.state.event_stack[-1].resolve(self.state, "done", None)
+      elif self.state.turn_phase == "movement":
+        self.assertIsInstance(self.state.event_stack[-1], events.CityMovement)
+        self.state.event_stack[-1].resolve(self.state, "done")
 
   def _formatMessage(self, msg, standardMsg):
     ret = super(EventTest, self)._formatMessage(msg, standardMsg)
@@ -1300,6 +1289,103 @@ class CastSpellTest(EventTest):
 
 
 # TODO: add tests for going unconscious/insane during a mythos/encounter.
+
+
+class CloseLocationTest(EventTest):
+  def testCloseForever(self):
+    place_name = "Woods"
+    self.state.event_stack.append(CloseLocation(place_name))
+    self.resolve_until_done()
+    self.assertTrue(self.state.places[place_name].closed)
+    self.char.place = self.state.places["Uptown"]
+    # If we're burning through turns, Dummy needs to not be in a Location
+
+    self.advance_turn(self.state.turn_number + 5, "movement")
+    self.assertTrue(self.state.places[place_name].closed)
+
+  def testCloseWithGateForOneTurn(self):
+    place_name = "Woods"
+    self.advance_turn(self.state.turn_number, "mythos")
+    self.resolve_until_done()
+    place = self.state.places[place_name]
+    place.gate = self.state.gates.popleft()
+    monster = next(iter(self.state.monsters))
+    monster.place = place
+    self.char.place = place
+    self.state.event_stack.append(CloseLocation(place_name, 1))
+    self.resolve_until_done()
+
+    self.assertEqual(place.closed_until, self.state.turn_number + 2)
+    self.assertEqual(self.char.place, place)
+    self.assertEqual(monster.place, place)
+    self.assertFalse(place.closed)
+
+    self.state.event_stack.append(GateCloseAttempt(self.char, place_name))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      fight_lore = self.resolve_to_choice(MultipleChoice)
+      fight_lore.resolve(self.state, fight_lore.choices[0])
+      self.resolve_until_done()
+
+    self.assertEqual(place.closed_until, self.state.turn_number + 2)
+    self.assertEqual(self.char.place.name, "Uptown")
+    self.assertEqual(monster.place.name, "Uptown")
+    self.assertTrue(place.closed)
+    self.char.place = self.state.places["Southside"]
+
+    self.advance_turn(self.state.turn_number+1, "mythos")
+    self.assertEqual(place.closed_until, self.state.turn_number + 1)
+    self.resolve_until_done()
+
+    self.advance_turn(self.state.turn_number+1, "upkeep")
+    self.assertFalse(place.closed)
+
+  def testMoveToClosedLocation(self):
+    place_name = "Woods"
+    self.state.event_stack.append(CloseLocation(place_name))
+    self.char.place = self.state.places["Uptown"]
+
+    while self.state.turn_phase != 'movement':
+      self.state.next_turn()
+      self.resolve_until_done()
+
+    self.assertEqual(self.char.place.name, "Uptown")
+    self.assertEqual(self.char.movement_points, 4)
+    self.state.event_stack.append(MoveOne(self.char, self.state.places[place_name]))
+    self.resolve_until_done()
+    self.assertEqual(self.char.place.name, "Uptown")
+    self.assertEqual(self.char.movement_points, 4)
+
+    turn_number = self.state.turn_number
+    while self.state.turn_number < turn_number + 5:
+      self.state.next_turn()
+      self.resolve_until_done()
+    self.assertTrue(self.state.places[place_name].closed)
+
+  def testMoveFromClosedLocation(self):
+    place_name = "Merchant"
+    place = self.state.places[place_name]
+    while self.state.turn_phase != 'mythos':
+      self.state.next_turn()
+      self.resolve_until_done()
+    self.state.event_stack.append(CloseLocation(place_name, for_turns=1, evict=False))
+    self.char.place = place
+    self.resolve_until_done()
+
+    while self.state.turn_phase != 'movement':
+      self.state.next_turn()
+      self.resolve_until_done()
+    self.assertTrue(place.closed)
+    self.state.event_stack.append(
+      Sequence([MoveOne(self.char, self.state.places["Downtown"]), ], self.char)
+    )
+    self.resolve_until_done()
+    self.assertEqual(self.char.place, place)
+
+    self.state.next_turn()
+    while self.state.turn_phase != 'movement':
+      self.state.next_turn()
+    self.assertFalse(place.closed)
+
 
 class PurchaseTest(EventTest):
   def testPurchaseOneAtList(self):
