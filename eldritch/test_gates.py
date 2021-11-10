@@ -88,6 +88,94 @@ class GateEncounterTest(EventTest):
     self.char.clues = 0
 
 
+class Gate2Test(GateEncounterTest):
+
+  def testAbyss2(self):
+    self.char.place = self.state.places["Abyss2"]
+    self.state.event_stack.append(gate_encounters.Abyss2(self.char))
+      self.resolve_until_done()
+    self.assertEqual(self.char.stamina, 4)
+    
+  def testPluto2Pass(self):
+    self.char.place = self.state.places["Pluto2"]
+    self.state.event_stack.append(gate_encounters.Pluto2(self.char))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.place.name, "Pluto2")
+
+  def testPluto2Fail(self):
+    self.char.place = self.state.places["Pluto2"]
+    self.state.event_stack.append(gate_encounters.Pluto2(self.char))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.place.name, "Lost")    
+
+  def testOther2Pass(self):
+    self.char.place = self.state.places["Other2"]
+    self.state.gates.clear() #Throws away gate markers
+    self.info = places.OtherWorldInfo("Dreamlands", {"blue", "yellow", "green", "red"}) #Defines colored encounters that can happen in Dreamlands
+    self.gate = gates.Gate(self.info, 0) #Creates a gate marker of difficulty 0
+    self.state.gates.append(self.gate) #Takes the gate marker created in the previous line and adds it to the pile of gates that was previously cleared in the line two above
+    self.state.places["Square"].gate = self.state.gates.popleft() #At Independence Square, we are going to take a gate off of the gate pile defined above, that goes to the Dreamlands
+    self.state.event_stack.append(gate_encounters.Other2(self.char))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      choice = self.resolve_to_choice(GateChoice) #Resolve event stack until user/player has to choose which gate to come back through
+    choice.resolve(self.state, "Square") #Player has to choose Square
+    self.resolve_until_done()
+    self.assertEqual(self.char.place.name, "Square")    
+    #TODO "In either event, you automatically close the gate you entered through
+
+  def testOther2Fail(self):
+    self.char.place = self.state.places["Other2"]
+    self.state.event_stack.append(gate_encounters.Other2(self.char))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
+      self.resolve_until_done()
+    self.assertIsNone(self.char.place.name, "Lost")
+    #TODO "In either event, you automatically close the gate you entered through
+
+
+class Gate5Test(GateEncounterTest):
+
+  def testDreamlands5(self):
+    self.char.place = self.state.places["Dreamlands5"]
+    self.state.event_stack.append(gate_encounters.Dreamlands5(self.char))
+    self.resolve_until_done()
+    
+  def testAbyss5Pass(self):
+    self.char.place = self.state.places["Abyss5"]
+    self.state.unique.append(items.HolyWater()) #Adds "Holy Water" item to the unique pile
+    self.state.event_stack.append(gate_encounters.Abyss5(self.char))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.dollars, 6)
+    self.assertEqual(len(self.char.possessions), 1) #len refers to the "length" (or quantity) of entries in the character's possessions, which should be exactly 1; technically, this line is unnecessary with the next line
+    self.assertEqual(self.char.possessions[0].name, "Holy Water") #"Real programmers use 0-index
+
+  def testAbyss5Fail(self):
+    self.char.place = self.state.places["Abyss5"]
+    self.state.event_stack.append(gate_encounters.Abyss5(self.char))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.dollars, 3)
+    self.assertEqual(len(self.char.possessions), 0)
+
+  def testOther5Pass(self):
+    self.assertEqual(self.char.luck(self.state), 3)
+    self.char.place = self.state.places["Other5"]
+    self.state.event_stack.append(gate_encounters.Other5(self.char))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.clues, 2)
+    
+  def testOther5Fail(self):
+    self.assertEqual(self.char.luck(self.state), 3)
+    self.char.place = self.state.places["Other5"]
+    self.state.event_stack.append(gate_encounters.Other5(self.char))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.clues, 0)
+
+
 class Gate10Test(GateEncounterTest):
 
   def testDreamlands10Pass(self):
