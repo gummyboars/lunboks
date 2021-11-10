@@ -152,7 +152,7 @@ class Character(object):
   def get_override(self, other, attribute):
     override = None
     for p in self.possessions:
-      val = p.get_override(other, attribute)
+      val = p.get_override(other, attribute) # pylint: disable=assignment-from-none
       if val is None:
         continue
       if override is None:

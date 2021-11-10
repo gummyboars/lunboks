@@ -7,6 +7,7 @@ random = SystemRandom()
 
 from eldritch import values
 from eldritch import places
+from eldritch import items
 
 
 class Event(metaclass=abc.ABCMeta):
@@ -1037,6 +1038,55 @@ def GainAllyOrReward(character, ally: str, reward: Event):
   return PassFail(character, has_ally, gain_ally, reward)
 
 
+class SellChosen(Event):
+
+  def __init__(self, character, choice, discount_type="fixed", discount=0):
+    assert discount_type in {"fixed", "rate"}
+    self.character = character
+    self.choice = choice
+    self.discount_type = discount_type
+    self.discount = discount
+    self.prices = []
+    self.resolved = False
+    self.sold = None
+
+  def resolve(self, state):
+    if self.resolved:
+      # This should never happen??
+      return True
+    self.prices = [self.discounted_price(card) for card in self.choice.chosen]
+    self.character.dollars += sum(self.prices)
+    for card in self.choice.chosen:
+      self.character.possessions.remove(card)
+      getattr(state, card.deck).append(card)
+    self.resolved = True
+    self.sold = [card.name for card in self.choice.chosen]
+    return True
+
+  def is_resolved(self):
+    return self.resolved
+
+  def start_str(self):
+    return f"{self.character.name} selling " + ", ".join(i.name for i in self.choice.chosen)
+
+  def finish_str(self):
+    if not self.sold:
+      return f"{self.character.name} sold nothing"
+    return f"{self.character.name} sold " + ", ".join(self.sold)
+
+  def discounted_price(self, card):
+    if self.discount_type == "fixed":
+      return card.price - self.discount
+    elif self.discount_type == 'rate':
+      return card.price - int(self.discount * card.price) # Discounts round up
+
+
+def Sell(char, decks, sell_count=1, discount_type="fixed", discount=0,
+         prompt="Sell item?"):
+    items = ItemCountChoice(char, prompt, sell_count, min_count=0, decks=decks)
+    sell = SellChosen( char, items, discount_type=discount_type, discount=discount)
+    return Sequence([items, sell], char)
+
 class PurchaseDrawn(Event):
   def __init__(self, character, draw: DrawItems,
                discount_type="fixed", discount=0, keep_count=1, prompt="Buy items?"):
@@ -1469,7 +1519,7 @@ class ActivateChosenItems(Event):
   def resolve(self, state):
     assert self.item_choice.is_resolved()
     self.activated = 0
-    for item in self.item_choice.choices:
+    for item in self.item_choice.chosen:
       if not item.active:
         state.event_stack.append(ActivateItem(self.character, item))
         return False
@@ -1477,7 +1527,7 @@ class ActivateChosenItems(Event):
     return True
 
   def is_resolved(self):
-    return self.item_choice.is_resolved() and self.activated == len(self.item_choice.choices)
+    return self.item_choice.is_resolved() and self.activated == len(self.item_choice.chosen)
 
   def start_str(self):
     return ""
@@ -2006,10 +2056,16 @@ def BinaryChoice(
 
 class ItemChoice(ChoiceEvent):
 
-  def __init__(self, character, prompt):
+  def __init__(self, character, prompt, decks=None, item_type=None):
     self.character = character
     self._prompt = prompt
     self.choices = None
+    self.chosen = None
+    if decks is None:
+      decks = {'spells', 'common', 'unique', 'skills', 'allies'}
+    assert decks.issubset({'spells', 'common', 'unique', 'skills', 'allies'}), f"{decks} contains invalid deck"
+    self.decks = decks
+    self.item_type = item_type
 
   def resolve(self, state, choice=None):
     if self.is_resolved():
@@ -2018,10 +2074,18 @@ class ItemChoice(ChoiceEvent):
     self.resolve_internal(choice)
 
   def resolve_internal(self, choices):
-    self.choices = [self.character.possessions[idx] for idx in choices]
+    assert all(idx in self.choices for idx in choices)
+    self.chosen = [self.character.possessions[idx] for idx in choices]
+
+  def compute_choices(self, state):
+    self.choices = [
+      idx for idx, pos in enumerate(self.character.possessions)
+      if (getattr(pos, "deck", None) in self.decks)
+         and (self.item_type is None or getattr(pos, "item_type") == self.item_type)
+    ]
 
   def is_resolved(self):
-    return self.choices is not None
+    return self.chosen is not None
 
   def start_str(self):
     return f"{self.character.name} must " + self.prompt()
@@ -2051,24 +2115,28 @@ class CombatChoice(ItemChoice):
 
 class ItemCountChoice(ItemChoice):
 
-  def __init__(self, character, prompt, count):
-    super(ItemCountChoice, self).__init__(character, prompt)
+  def __init__(self, character, prompt, count, min_count=None, decks=None):
+    super(ItemCountChoice, self).__init__(character, prompt, decks=decks)
     self.count = count
+    self.min_count = count if min_count is None else min_count
 
   def resolve_internal(self, choices):
-    assert self.count == len(choices)
+    assert self.min_count <= len(choices) <= self.count
     super(ItemCountChoice, self).resolve_internal(choices)
 
 
-class SinglePhysicalWeaponChoice(ItemChoice):
+class SinglePhysicalWeaponChoice(ItemCountChoice):
+  def __init__(self, char, prompt):
+    super(SinglePhysicalWeaponChoice, self).__init__(char, prompt, 1, min_count=0)
 
-  def resolve_internal(self, choices):
-    assert len(choices) < 2
-    if choices:
-      chosen = self.character.possessions[choices[0]]
-      assert getattr(chosen, "item_type", None) == "weapon"
-      assert chosen.active_bonuses["physical"] or chosen.passive_bonuses["physical"]
-    super(SinglePhysicalWeaponChoice, self).resolve_internal(choices)
+  def compute_choices(self, state):
+    self.choices = [
+      idx for idx, pos in enumerate(self.character.possessions)
+      if (getattr(pos, "deck", None) in self.decks)
+         and getattr(pos, "item_type", None) == "weapon"
+         and (pos.active_bonuses["physical"] or pos.passive_bonuses["physical"])
+    ]
+
 
 
 class CardChoice(MultipleChoice):

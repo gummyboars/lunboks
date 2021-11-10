@@ -1,8 +1,6 @@
 import abc
 import collections
 
-from eldritch import events
-
 
 CHECK_TYPES = {"speed", "sneak", "fight", "will", "lore", "luck"}
 SUB_CHECKS = {"evade": "sneak", "combat": "fight", "horror": "will", "spell": "lore"}

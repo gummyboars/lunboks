@@ -3896,7 +3896,22 @@ class StoreTest(EncounterTest):
 
   def testStore3(self):
     self.state.event_stack.append(encounters.Store3(self.char))
-    # TODO: Implement sale for twice the price
+    self.char.possessions.append(items.Food())
+    choice = self.resolve_to_choice(ItemChoice)
+    self.assertEqual(choice.choices, [0])
+    choice.resolve(self.state, [0])
+    self.resolve_until_done()
+    self.assertFalse(self.char.possessions)
+    self.assertEqual(self.char.dollars, 5)
+
+  def testStore3IllegalSale(self):
+    self.state.event_stack.append(encounters.Store3(self.char))
+    self.char.possessions.append(items.Food())
+    self.char.possessions.append(items.Food())
+    choice = self.resolve_to_choice(ItemChoice)
+    self.assertEqual(choice.choices, [0, 1])
+    with self.assertRaises(AssertionError):
+      choice.resolve(self.state, [0, 1])
 
   def testStore4(self):
     self.state.event_stack.append(encounters.Store4(self.char))

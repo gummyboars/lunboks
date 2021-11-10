@@ -1056,13 +1056,14 @@ class ItemChoiceTest(EventTest):
     with self.assertRaises(AssertionError):
       choice.resolve(self.state, [0, 1, 2])
     choice.resolve(self.state, [0, 1])
-    self.assertListEqual(choice.choices, self.char.possessions[:2])
+    self.assertListEqual(choice.chosen, self.char.possessions[:2])
 
     self.resolve_until_done()
 
   def testCombatChoice(self):
     choice = CombatChoice(self.char, "choose combat items")
     self.state.event_stack.append(choice)
+    self.resolve_to_choice(ItemChoice)
 
     # Cannot use Food in combat.
     with self.assertRaises(AssertionError):
@@ -1200,6 +1201,8 @@ class ActivateItemsTest(EventTest):
     item_choice = CombatChoice(self.char, "choose stuff")
     activate = ActivateChosenItems(self.char, item_choice)
 
+    self.state.event_stack.append(item_choice)
+    self.resolve_to_choice(CombatChoice)
     item_choice.resolve(self.state, [0, 2])
     self.state.event_stack.append(activate)
     self.resolve_until_done()
@@ -1459,6 +1462,78 @@ class PurchaseTest(EventTest):
     self.assertSequenceEqual(self.state.common, [cross, food])
 
 
+
+
+
+class SellTest(EventTest):
+  def testSellOneAtList(self):
+    sell = Sell(self.char, {'common'}, 1)
+    self.char.dollars = 3
+    self.assertFalse(sell.is_resolved())
+    self.assertFalse(self.char.possessions)
+    food = items.Food()
+    self.char.possessions.append(food)
+
+    self.state.event_stack.append(sell)
+    choice = self.resolve_to_choice(ItemChoice)
+    self.assertEqual(choice.choices, [0])
+    choice.resolve(self.state, [0])
+    self.resolve_until_done()
+
+    self.assertTrue(sell.is_resolved())
+    self.assertEqual(self.char.dollars, 4)
+    self.assertFalse(self.char.possessions)
+    self.assertEqual(len(self.state.common), 1)
+    self.assertEqual(self.state.common[0].name, "Food")
+
+  def testSellOneDecline(self):
+    sell = Sell(self.char, {'common'}, 1)
+    self.char.dollars = 3
+    self.assertFalse(sell.is_resolved())
+    self.assertFalse(self.char.possessions)
+    food = items.Food()
+    self.char.possessions.append(food)
+
+    self.state.event_stack.append(sell)
+    choice = self.resolve_to_choice(ItemChoice)
+    self.assertEqual(choice.choices, [0])
+    choice.resolve(self.state, [])
+    self.resolve_until_done()
+
+    self.assertTrue(sell.is_resolved())
+    self.assertEqual(self.char.dollars, 3)
+    self.assertFalse(self.state.common)
+    self.assertEqual(len(self.char.possessions), 1)
+    self.assertEqual(self.char.possessions[0].name, "Food")
+
+  def testSellOneDoublePrice(self):
+    buy = Sell(self.char, {'common'}, 1, discount_type='rate', discount=-1)
+    self.char.dollars = 3
+    self.assertFalse(buy.is_resolved())
+    self.assertFalse(self.char.possessions)
+    food = items.Food()
+    self.char.possessions.append(food)
+
+    self.state.event_stack.append(buy)
+    choice = self.resolve_to_choice(ItemChoice)
+    self.assertEqual(choice.choices, [0])
+    choice.resolve(self.state, [0])
+    self.resolve_until_done()
+
+    self.assertTrue(buy.is_resolved())
+    self.assertEqual(self.char.dollars, 5)
+    self.assertFalse(self.char.possessions)
+    self.assertEqual(len(self.state.common), 1)
+    self.assertEqual(self.state.common[0].name, "Food")
+
+  def testInvalidSale(self):
+    self.char.possessions = [items.Food(), items.HolyWater()]
+    sell = Sell(self.char, {'common'}, 1)
+    self.state.event_stack.append(sell)
+    choice = self.resolve_to_choice(ItemChoice)
+    with self.assertRaises(AssertionError):
+      choice.resolve(self.state, [1])
+      self.resolve_until_done()
 
 
 if __name__ == '__main__':

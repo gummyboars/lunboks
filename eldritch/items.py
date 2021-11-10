@@ -1,4 +1,4 @@
-from eldritch.assets import Asset, Card
+from eldritch.assets import Card
 from eldritch import events
 from eldritch import places
 from eldritch import values
@@ -219,8 +219,8 @@ class EnchantWeapon(CombatSpell):
 
   def activate(self):
     assert self.choice.is_resolved()
-    assert len(self.choice.choices) == 1
-    self.weapon = self.choice.choices[0]
+    assert len(self.choice.chosen) == 1
+    self.weapon = self.choice.chosen[0]
     self.active_change = self.weapon.active_bonuses["physical"]
     self.passive_change = self.weapon.passive_bonuses["physical"]
     self.weapon.active_bonuses["physical"] -= self.active_change
