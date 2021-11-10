@@ -1044,7 +1044,6 @@ class SellChosen(Event):
     assert discount_type in {"fixed", "rate"}
     self.character = character
     self.choice = choice
-    self.sellable = None
     self.discount_type = discount_type
     self.discount = discount
     self.prices = []
