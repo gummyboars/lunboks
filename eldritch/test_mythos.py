@@ -16,7 +16,7 @@ from eldritch import gates
 from eldritch import monsters
 from eldritch.mythos import *
 from eldritch import places
-from eldritch.test_events import EventTest
+from eldritch.test_events import EventTest, Canceller
 
 
 class OpenGateTest(EventTest):
@@ -91,6 +91,34 @@ class OpenGateTest(EventTest):
     self.assertEqual(self.state.characters[2].place.name, "Square")
     monster_counts = self.monstersByPlace()
     self.assertEqual(monster_counts["Square"], 0)
+    self.assertEqual(monster_counts["cup"], cup_count)
+
+  def testOpenGateSpawnCancelled(self):
+    self.assertEqual(self.state.characters[0].place.name, "Diner")
+    self.assertEqual(self.state.characters[1].place.name, "Square")
+    self.assertEqual(self.state.characters[2].place.name, "Square")
+    monster_counts = self.monstersByPlace()
+    self.assertEqual(monster_counts["Square"], 0)
+    self.assertEqual(monster_counts["Woods"], 0)
+    cup_count = monster_counts["cup"]
+    self.state.characters[0].possessions.append(Canceller(SpawnGateMonster))
+
+    open_gate = OpenGate("Square")
+    self.state.event_stack.append(open_gate)
+    self.resolve_until_done()
+
+    self.assertTrue(open_gate.is_resolved())
+    self.assertTrue(open_gate.spawn.is_cancelled())
+    self.assertFalse(open_gate.spawn.is_resolved())
+
+    self.assertEqual(self.square.gate, self.gate)
+    self.assertIsNone(self.woods.gate)
+    self.assertEqual(self.state.characters[0].place.name, "Diner")
+    self.assertEqual(self.state.characters[1].place.name, "Pluto1")
+    self.assertEqual(self.state.characters[2].place.name, "Pluto1")
+    monster_counts = self.monstersByPlace()
+    self.assertEqual(monster_counts["Square"], 0)
+    self.assertEqual(monster_counts["Woods"], 0)
     self.assertEqual(monster_counts["cup"], cup_count)
 
 
@@ -528,6 +556,61 @@ class CloseGateTest(EventTest):
     self.assertTrue(self.square.sealed)
     self.assertEqual(self.char.clues, 1)
 
+  def testCloseChoiceCancelled(self):
+    close = GateCloseAttempt(self.char, "Square")
+    self.state.event_stack.append(close)
+    self.char.possessions.append(Canceller(MultipleChoice))
+
+    self.resolve_until_done()
+
+    self.assertTrue(close.is_resolved())
+    self.assertTrue(self.square.gate)
+    self.assertFalse(self.square.sealed)
+    self.assertEqual(self.char.clues, 0)
+    self.assertTrue(close.choice.is_cancelled())
+    self.assertFalse(close.closed)
+    self.assertFalse(close.sealed)
+
+  def testCloseCheckCancelled(self):
+    close = GateCloseAttempt(self.char, "Square")
+    self.state.event_stack.append(close)
+    self.char.possessions.append(Canceller(Check))
+
+    choice = self.resolve_to_choice(MultipleChoice)
+    choice.resolve(self.state, "Close with lore")
+    self.resolve_until_done()
+
+    self.assertTrue(close.is_resolved())
+    self.assertTrue(self.square.gate)
+    self.assertFalse(self.square.sealed)
+    self.assertEqual(self.char.clues, 0)
+    self.assertTrue(close.check.is_cancelled())
+    self.assertFalse(close.closed)
+    self.assertFalse(close.sealed)
+
+  def testSealChoiceCancelled(self):
+    self.char.clues = 6
+    close = GateCloseAttempt(self.char, "Square")
+    self.state.event_stack.append(close)
+    self.char.possessions.append(Canceller(MultipleChoice, 1))
+
+    choice = self.resolve_to_choice(MultipleChoice)
+    choice.resolve(self.state, "Close with lore")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_to_usable(0, "clues", SpendClue)
+    self.state.done_using[0] = True
+    self.resolve_until_done()
+
+    self.assertTrue(close.is_resolved())
+    self.assertFalse(self.square.gate)
+    self.assertFalse(self.square.sealed)
+    self.assertEqual(self.char.clues, 6)
+    self.assertFalse(close.choice.is_cancelled())
+    self.assertFalse(close.check.is_cancelled())
+    self.assertTrue(close.seal_choice.is_cancelled())
+    self.assertTrue(close.closed)
+    self.assertFalse(close.sealed)
+
 
 class SpawnClueTest(EventTest):
 
@@ -571,6 +654,22 @@ class SpawnClueTest(EventTest):
 
     self.assertEqual(self.char.clues, 0)
     self.assertEqual(buddy.clues, 3)
+    self.assertEqual(self.square.clues, 0)
+
+  def testSpawnClueChoiceCancelled(self):
+    self.char.place = self.square
+    buddy = characters.Character("Buddy", 5, 5, 4, 4, 4, 4, 4, 4, 4, "Square")
+    buddy.place = self.square
+    buddy.clues = 2
+    self.state.all_characters["Buddy"] = buddy
+    self.state.characters.append(buddy)
+    self.char.possessions.append(Canceller(MultipleChoice))
+
+    self.state.event_stack.append(SpawnClue("Square"))
+    self.resolve_until_done()
+
+    self.assertEqual(self.char.clues, 1)
+    self.assertEqual(buddy.clues, 2)
     self.assertEqual(self.square.clues, 0)
 
 
@@ -622,6 +721,29 @@ class MoveMonsterTest(EventTest):
     self.assertEqual(self.state.monsters[1].place.name, "Rivertown")
     self.assertEqual(self.state.monsters[2].place.name, "Southside")
     self.assertEqual(self.state.monsters[3].place.name, "Rivertown")
+
+  def testOneMovementCancelled(self):
+    self.state.monsters.clear()
+    self.state.monsters.extend([
+        monsters.Cultist(), monsters.Maniac(), monsters.Maniac(), monsters.Witch(),
+    ])
+
+    for monster in self.state.monsters:
+      monster.place = self.state.places["Rivertown"]
+
+    move = MoveMonsters({"square"}, {"circle", "moon"})
+    self.state.event_stack.append(move)
+    self.char.possessions.append(Canceller(MoveMonster, 2))
+    self.resolve_until_done()
+
+    self.assertTrue(move.is_resolved())
+    self.assertTrue(move.moves.is_resolved())
+    self.assertFalse(move.moves.events[2].is_resolved())
+    self.assertTrue(move.moves.events[2].is_cancelled())
+    self.assertEqual(self.state.monsters[0].place.name, "Easttown")
+    self.assertEqual(self.state.monsters[1].place.name, "Easttown")
+    self.assertEqual(self.state.monsters[2].place.name, "Rivertown")
+    self.assertEqual(self.state.monsters[3].place.name, "Easttown")
 
   def testMovementAfterSpawn(self):
     self.state.monsters.clear()
@@ -736,6 +858,36 @@ class GlobalModifierTest(EventTest):
     self.state.event_stack.append(env.create_event(self.state))
     self.resolve_until_done()
     self.assertEqual(self.state.environment, env)
+
+
+class MythosPhaseTest(EventTest):
+
+  def setUp(self):
+    super().setUp()
+    self.mythos = Mythos(self.char)
+    self.state.event_stack.append(self.mythos)
+    self.state.mythos.clear()
+    self.state.mythos.append(Mythos6())
+
+  def testMythos(self):
+    self.resolve_until_done()
+    self.assertTrue(self.mythos.is_resolved())
+    self.assertTrue(self.mythos.action.is_resolved())
+
+  def testCancelledEnvironment(self):
+    self.char.possessions.append(Canceller(ActivateEnvironment))
+    self.resolve_until_done()
+    self.assertTrue(self.mythos.is_resolved())
+    self.assertTrue(self.mythos.action.is_resolved())
+    self.assertFalse(self.mythos.action.events[3].is_resolved())
+    self.assertTrue(self.mythos.action.events[3].is_cancelled())
+
+  def testCancelWholeMythos(self):
+    self.char.possessions.append(Canceller(Sequence))
+    self.resolve_until_done()
+    self.assertTrue(self.mythos.is_resolved())
+    self.assertFalse(self.mythos.action.is_resolved())
+    self.assertTrue(self.mythos.action.is_cancelled())
 
 
 if __name__ == "__main__":

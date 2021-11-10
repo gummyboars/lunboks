@@ -209,7 +209,7 @@ class GameState:
 
     output["choice"] = None
     top_event = self.event_stack[-1] if self.event_stack else None
-    if top_event and isinstance(top_event, events.ChoiceEvent) and not top_event.is_resolved():
+    if top_event and isinstance(top_event, events.ChoiceEvent) and not top_event.is_done():
       if top_event.character == char:
         output["choice"] = {"prompt": top_event.prompt()}
         output["choice"]["annotations"] = top_event.annotations()
@@ -231,7 +231,7 @@ class GameState:
           output["choice"]["monsters"] = top_event.to_spawn
         else:
           raise RuntimeError(f"Unknown choice type {top_event.__class__.__name__}")
-    if top_event and isinstance(top_event, events.SliderInput) and not top_event.is_resolved():
+    if top_event and isinstance(top_event, events.SliderInput) and not top_event.is_done():
       if top_event.character == char:
         output["sliders"] = True
         # TODO: distinguish between pending/current sliders, pending/current focus.
@@ -290,20 +290,20 @@ class GameState:
       # If the event requires the character to make a choice, stop here.
       self.usables = self.get_usable_interrupts(event)
       # TODO: maybe we can have an Input class. Or a needs_input() method.
-      if isinstance(event, events.ChoiceEvent) and not event.is_resolved():
+      if isinstance(event, events.ChoiceEvent) and not event.is_done():
         event.compute_choices(self)
-        if not event.is_resolved():
+        if not event.is_done():
           yield None
           return
-      if isinstance(event, events.SliderInput) and not event.is_resolved():
+      if isinstance(event, events.SliderInput) and not event.is_done():
         yield None
         return
       if not all(self.done_using.get(char_idx) for char_idx in self.usables):
         yield None
         return
-      if not event.is_resolved():
+      if not event.is_done():
         event.resolve(self)
-      if not event.is_resolved():
+      if not event.is_done():
         continue
       if self.finish_event(event):
         yield None

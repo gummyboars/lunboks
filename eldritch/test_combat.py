@@ -15,7 +15,7 @@ from eldritch.events import *
 from eldritch import items
 from eldritch import monsters
 from eldritch import mythos
-from eldritch.test_events import EventTest
+from eldritch.test_events import EventTest, Canceller
 
 
 class CombatTest(EventTest):
@@ -152,6 +152,191 @@ class CombatTest(EventTest):
     self.assertFalse(combat_round.defeated)
     self.assertIsNotNone(combat_round.damage)
 
+  def testHorrorCheckCancelled(self):
+    self.assertEqual(self.char.sanity, 5)
+    zombie = monsters.Zombie()
+    combat = Combat(self.char, zombie)
+    self.state.event_stack.append(combat)
+    self.char.possessions.append(Canceller(Check))
+
+    self.resolve_to_choice(MultipleChoice)
+    # If the horror check is cancelled, proceed as if it had 0 successes.
+    self.assertIsNotNone(combat.horror)
+    self.assertFalse(combat.horror.is_resolved())
+    self.assertTrue(combat.horror.is_cancelled())
+    self.assertTrue(combat.sanity_loss.is_resolved())
+    self.assertEqual(self.char.sanity, 4)
+
+  def testSanityLossCancelled(self):
+    self.assertEqual(self.char.sanity, 5)
+    zombie = monsters.Zombie()
+    combat = Combat(self.char, zombie)
+    self.state.event_stack.append(combat)
+    self.char.possessions.append(Canceller(GainOrLoss))
+
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
+      self.resolve_to_choice(MultipleChoice)
+    self.assertTrue(combat.horror.is_resolved())
+    self.assertFalse(combat.sanity_loss.is_resolved())
+    self.assertTrue(combat.sanity_loss.is_cancelled())
+    self.assertEqual(self.char.sanity, 5)
+
+  def testChoiceCancelled(self):
+    zombie = monsters.Zombie()
+    combat = Combat(self.char, zombie)
+    self.state.event_stack.append(combat)
+    self.char.possessions.append(Canceller(MultipleChoice))
+
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      # We still expect to hit a MultipleChoice. The first one will be cancelled, but since we
+      # have neither evaded nor defeated the monster, we will just start a new round of combat.
+      self.resolve_to_choice(MultipleChoice)
+    # TODO: assertions on the cancelled choice
+
+  def testCancelledEvade(self):
+    self.assertEqual(self.char.stamina, 5)
+    zombie = monsters.Zombie()
+    combat = Combat(self.char, zombie)
+    self.state.event_stack.append(combat)
+    self.char.possessions.append(Canceller(EvadeRound))
+
+    fight_or_flee = self.resolve_to_choice(MultipleChoice)
+    fight_or_flee.resolve(self.state, "Flee")
+
+    # Again, the evade round gets cancelled, but we have neither evaded nor defeated the monster,
+    # so we end up back at another fight or flee choice.
+    self.resolve_to_choice(MultipleChoice)
+    self.assertEqual(self.char.stamina, 5)
+
+  def testCancelledEvadeCheck(self):
+    self.assertEqual(self.char.stamina, 5)
+    zombie = monsters.Zombie()
+    combat = Combat(self.char, zombie)
+    self.state.event_stack.append(combat)
+
+    fight_or_flee = self.resolve_to_choice(MultipleChoice)
+    fight_or_flee.resolve(self.state, "Flee")
+
+    # Cancel the next check (the evade check). The character will fail to evade and take damage.
+    self.char.possessions.append(Canceller(Check))
+    self.resolve_to_choice(MultipleChoice)
+    self.assertEqual(self.char.stamina, 3)
+
+  def testCancelledEvadeDamage(self):
+    self.assertEqual(self.char.stamina, 5)
+    zombie = monsters.Zombie()
+    combat = Combat(self.char, zombie)
+    self.state.event_stack.append(combat)
+
+    fight_or_flee = self.resolve_to_choice(MultipleChoice)
+    fight_or_flee.resolve(self.state, "Flee")
+    first_evade = combat.evade
+
+    # Cancel the next stamina loss from the evade check. We should end up back in combat.
+    self.char.possessions.append(Canceller(GainOrLoss))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
+      self.resolve_to_choice(MultipleChoice)
+    self.assertEqual(self.char.stamina, 5)
+    self.assertTrue(first_evade.damage.is_cancelled())
+
+  def testCancelledCombat(self):
+    self.assertEqual(self.char.stamina, 5)
+    zombie = monsters.Zombie()
+    combat = Combat(self.char, zombie)
+    self.state.event_stack.append(combat)
+    self.char.possessions.append(Canceller(CombatRound))
+
+    fight_or_flee = self.resolve_to_choice(MultipleChoice)
+    fight_or_flee.resolve(self.state, "Fight")
+    first_combat = combat.combat
+
+    # The combat round gets cancelled, but we have neither evaded nor defeated the monster,
+    # so we end up back at another fight or flee choice.
+    self.resolve_to_choice(MultipleChoice)
+    self.assertEqual(self.char.stamina, 5)
+    self.assertTrue(first_combat.is_cancelled())
+
+  def testCancelledCombatCheck(self):
+    self.assertEqual(self.char.stamina, 5)
+    zombie = monsters.Zombie()
+    combat = Combat(self.char, zombie)
+    self.state.event_stack.append(combat)
+
+    fight_or_flee = self.resolve_to_choice(MultipleChoice)
+    fight_or_flee.resolve(self.state, "Fight")
+    first_combat = combat.combat
+
+    combat_choice = self.resolve_to_choice(CombatChoice)
+    combat_choice.resolve(self.state, [])
+
+    # Cancel the check for the combat round.
+    self.char.possessions.append(Canceller(Check))
+    self.resolve_to_choice(MultipleChoice)
+    self.assertEqual(self.char.stamina, 3)
+    self.assertTrue(first_combat.check.is_cancelled())
+
+  def testCancelledCombatChoice(self):
+    self.assertEqual(self.char.stamina, 5)
+    self.char.possessions.append(items.TommyGun())
+    zombie = monsters.Zombie()
+    combat = Combat(self.char, zombie)
+    self.state.event_stack.append(combat)
+
+    fight_or_flee = self.resolve_to_choice(MultipleChoice)
+    fight_or_flee.resolve(self.state, "Fight")
+    first_combat = combat.combat
+
+    # Cancel the choice of items to use.
+    self.char.possessions.append(Canceller(CombatChoice))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
+      self.resolve_to_choice(MultipleChoice)
+
+    self.assertEqual(self.char.stamina, 3)
+    self.assertTrue(first_combat.choice.is_cancelled())
+
+  def testCancelledItemActivation(self):
+    self.assertEqual(self.char.stamina, 5)
+    self.char.possessions.append(items.TommyGun())
+    zombie = monsters.Zombie()
+    combat = Combat(self.char, zombie)
+    self.state.event_stack.append(combat)
+
+    fight_or_flee = self.resolve_to_choice(MultipleChoice)
+    fight_or_flee.resolve(self.state, "Fight")
+    first_combat = combat.combat
+    combat_choice = self.resolve_to_choice(CombatChoice)
+    combat_choice.resolve(self.state, [0])
+
+    # Cancel the choice of items to use.
+    self.char.possessions.append(Canceller(ActivateChosenItems))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
+      self.resolve_to_choice(MultipleChoice)
+
+    self.assertEqual(self.char.stamina, 3)
+    self.assertTrue(first_combat.activate.is_cancelled())
+
+  def testCancelledCombatDamage(self):
+    self.assertEqual(self.char.stamina, 5)
+    zombie = monsters.Zombie()
+    combat = Combat(self.char, zombie)
+    self.state.event_stack.append(combat)
+
+    fight_or_flee = self.resolve_to_choice(MultipleChoice)
+    fight_or_flee.resolve(self.state, "Fight")
+    first_combat = combat.combat
+
+    combat_choice = self.resolve_to_choice(CombatChoice)
+    combat_choice.resolve(self.state, [])
+
+    # Cancel the choice of items to use.
+    self.char.possessions.append(Canceller(GainOrLoss))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
+      self.resolve_to_choice(MultipleChoice)
+
+    self.assertEqual(self.char.stamina, 5)
+    self.assertTrue(first_combat.is_resolved())
+    self.assertTrue(first_combat.damage.is_cancelled())
+
 
 class CombatOrEvadeTest(EventTest):
 
@@ -193,6 +378,44 @@ class CombatOrEvadeTest(EventTest):
     self.assertEqual(self.char.sanity, 4)
     self.assertEqual(self.char.stamina, 3)
 
+  def testCancelledEvade(self):
+    zombie = monsters.Zombie()
+    evade_or_combat = EvadeOrCombat(self.char, zombie)
+    self.state.event_stack.append(evade_or_combat)
+    self.char.possessions.append(Canceller(EvadeRound))
+
+    fight_or_evade = self.resolve_to_choice(MultipleChoice)
+    fight_or_evade.resolve(self.state, "Evade")
+
+    fight_or_flee = self.resolve_to_choice(MultipleChoice)
+    self.assertCountEqual(fight_or_flee.choices, ["Fight", "Flee"])
+    self.assertTrue(evade_or_combat.evade.is_cancelled())
+
+  def testCancelledChoice(self):
+    zombie = monsters.Zombie()
+    evade_or_combat = EvadeOrCombat(self.char, zombie)
+    self.state.event_stack.append(evade_or_combat)
+    self.char.possessions.append(Canceller(MultipleChoice))
+
+    fight_or_flee = self.resolve_to_choice(MultipleChoice)
+    self.assertCountEqual(fight_or_flee.choices, ["Fight", "Flee"])
+
+    self.assertFalse(evade_or_combat.evade.is_done())
+
+  def testCancelledCombat(self):
+    zombie = monsters.Zombie()
+    evade_or_combat = EvadeOrCombat(self.char, zombie)
+    self.state.event_stack.append(evade_or_combat)
+    self.char.possessions.append(Canceller(Combat))
+
+    fight_or_evade = self.resolve_to_choice(MultipleChoice)
+    self.assertCountEqual(fight_or_evade.choices, ["Fight", "Evade"])
+    fight_or_evade.resolve(self.state, "Fight")
+    self.resolve_until_done()
+
+    self.assertTrue(evade_or_combat.is_resolved())
+    self.assertFalse(evade_or_combat.combat.is_resolved())
+
 
 class LoseCombatTest(EventTest):
 
@@ -215,8 +438,9 @@ class LoseCombatTest(EventTest):
     self.resolve_until_done()
     self.assertEqual(self.char.sanity, 1)
     self.assertFalse(comb2.is_resolved())
-    self.assertFalse(comb1.is_resolved())
     self.assertFalse(comb1.combat.is_resolved())
+    self.assertTrue(comb1.combat.is_cancelled())
+    self.assertIsNone(comb1.combat.combat)
 
     self.assertEqual(self.char.place.name, "Asylum")
 
