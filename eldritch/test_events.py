@@ -1663,17 +1663,14 @@ class CloseLocationTest(EventTest):
     self.resolve_until_done()
     self.assertTrue(self.state.places[place_name].closed)
     self.char.place = self.state.places["Uptown"]
-    # If we're burning through turns, Dummy needs to not be in a Location
-
-    turn_number = self.state.turn_number
-    while self.state.turn_number < turn_number + 5:
-      self.state.next_turn()
-      self.resolve_until_done()
+    self.advance_turn(self.state.turn_number + 5, 'mythos')
+    self.resolve_until_done()
     self.assertTrue(self.state.places[place_name].closed)
 
   def testCloseWithGateForOneTurn(self):
     place_name = "Woods"
-    advance_to_turn_phase(self.state, 'mythos')
+    self.advance_turn(self.state.turn_number, 'mythos')
+    self.resolve_until_done()
     place = self.state.places[place_name]
     place.gate = self.state.gates.popleft()
     monster = next(iter(self.state.monsters))
@@ -1698,62 +1695,61 @@ class CloseLocationTest(EventTest):
     self.assertEqual(monster.place.name, "Uptown")
     self.assertTrue(place.closed)
 
-    current_turn = self.state.turn_number
-    while self.state.turn_number == current_turn:
-      self.state.next_turn()
+    self.advance_turn(self.state.turn_number + 1, 'movement')
+    movement = self.resolve_to_choice(CityMovement)
+    movement.resolve(self.state, movement.none_choice)
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      choice = self.resolve_to_choice(MultipleChoice)
+      choice.resolve(self.state, "Fight")
+      choice = self.resolve_to_choice(MultipleChoice)
+      choice.resolve(self.state, "Fight")
+      choice = self.resolve_to_choice(CombatChoice)
+      choice.resolve(self.state, [])
       self.resolve_until_done()
 
     self.assertEqual(place.closed_until, self.state.turn_number + 1)
-    current_turn = self.state.turn_number
-    while self.state.turn_number == current_turn:
-      self.state.next_turn()
+
+    self.advance_turn(self.state.turn_number + 1, 'movement')
     self.assertFalse(place.closed)
 
   def testMoveToClosedLocation(self):
     place_name = "Woods"
     self.state.event_stack.append(CloseLocation(place_name))
+    self.resolve_until_done()
     self.char.place = self.state.places["Uptown"]
 
-    while self.state.turn_phase != 'movement':
-      self.state.next_turn()
-      self.resolve_until_done()
-
+    self.advance_turn(self.state.turn_number + 1, 'movement')
+    movement = self.resolve_to_choice(CityMovement)
     self.assertEqual(self.char.place.name, "Uptown")
     self.assertEqual(self.char.movement_points, 4)
-    self.state.event_stack.append(MoveOne(self.char, self.state.places[place_name]))
+    self.assertNotIn(place_name, movement.choices)
+    movement.resolve(self.state, movement.none_choice)
     self.resolve_until_done()
-    self.assertEqual(self.char.place.name, "Uptown")
-    self.assertEqual(self.char.movement_points, 4)
 
-    turn_number = self.state.turn_number
-    while self.state.turn_number < turn_number + 5:
-      self.state.next_turn()
-      self.resolve_until_done()
+    self.advance_turn(self.state.turn_number + 5, 'movement')
+    movement = self.resolve_to_choice(CityMovement)
+    self.assertNotIn(place_name, movement.choices)
     self.assertTrue(self.state.places[place_name].closed)
 
   def testMoveFromClosedLocation(self):
     place_name = "Merchant"
     place = self.state.places[place_name]
-    while self.state.turn_phase != 'mythos':
-      self.state.next_turn()
-      self.resolve_until_done()
-    self.state.event_stack.append(CloseLocation(place_name, for_turns=1, evict=False))
     self.char.place = place
+    self.advance_turn(self.state.turn_number, 'mythos')
     self.resolve_until_done()
-
-    while self.state.turn_phase != 'movement':
-      self.state.next_turn()
-      self.resolve_until_done()
+    self.state.event_stack.append(CloseLocation(place_name, for_turns=1, evict=False))
+    self.resolve_until_done()
     self.assertTrue(place.closed)
-    self.state.event_stack.append(
-      Sequence([MoveOne(self.char, self.state.places["Downtown"]), ], self.char)
-    )
+    self.advance_turn(self.state.turn_number + 1, 'movement')
+    movement = self.resolve_to_choice(CityMovement)
+    self.assertNotIn("Downtown", movement.choices)
+    self.assertTrue(place.closed)
+    movement.resolve(self.state, movement.none_choice)
     self.resolve_until_done()
-    self.assertEqual(self.char.place, place)
 
-    self.state.next_turn()
-    while self.state.turn_phase != 'movement':
-      self.state.next_turn()
+    self.advance_turn(self.state.turn_number + 1, 'movement')
+    movement = self.resolve_to_choice(CityMovement)
+    self.assertIn("Downtown", movement.choices)
     self.assertFalse(place.closed)
 
 
