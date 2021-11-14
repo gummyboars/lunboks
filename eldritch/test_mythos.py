@@ -100,8 +100,8 @@ class MonsterSurgeTest(EventTest):
     super(MonsterSurgeTest, self).setUp()
     self.state.monsters.clear()
     self.state.monsters.extend([
-      monsters.Cultist(), monsters.Ghost(), monsters.Maniac(), monsters.Vampire(),
-      monsters.Warlock(), monsters.Witch(), monsters.Zombie(),
+        monsters.Cultist(), monsters.Ghost(), monsters.Maniac(), monsters.Vampire(),
+        monsters.Warlock(), monsters.Witch(), monsters.Zombie(),
     ])
     for monster in self.state.monsters:
       monster.place = self.state.monster_cup
@@ -224,14 +224,14 @@ class MonsterSurgeTest(EventTest):
   def testSendToOutskirts(self):
     # Add 4 monsters to the outskirts.
     outskirt_monsters = [
-      monsters.Cultist(), monsters.Maniac(), monsters.Vampire(), monsters.Witch(),
+        monsters.Cultist(), monsters.Maniac(), monsters.Vampire(), monsters.Witch(),
     ]
     self.state.monsters.extend(outskirt_monsters)
     for monster in outskirt_monsters:
       monster.place = self.state.places["Outskirts"]
     # Add 5 monsters to the board.
     board_monsters = [
-      monsters.Cultist(), monsters.Ghost(), monsters.Maniac(), monsters.Vampire(), monsters.Witch(),
+        monsters.Cultist(), monsters.Ghost(), monsters.Maniac(), monsters.Vampire(), monsters.Witch(),
     ]
     for monster in board_monsters:
       monster.place = self.state.places["Square"]
@@ -267,14 +267,14 @@ class MonsterSurgeTest(EventTest):
   def testAllToCup(self):
     # Add 5 monsters to the outskirts.
     outskirt_monsters = [
-      monsters.Cultist(), monsters.Maniac(), monsters.Vampire(), monsters.Witch(), monsters.Ghoul(),
+        monsters.Cultist(), monsters.Maniac(), monsters.Vampire(), monsters.Witch(), monsters.Ghoul(),
     ]
     self.state.monsters.extend(outskirt_monsters)
     for monster in outskirt_monsters:
       monster.place = self.state.places["Outskirts"]
     # Add 5 monsters to the board.
     board_monsters = [
-      monsters.Cultist(), monsters.Ghost(), monsters.Maniac(), monsters.Vampire(), monsters.Witch(),
+        monsters.Cultist(), monsters.Ghost(), monsters.Maniac(), monsters.Vampire(), monsters.Witch(),
     ]
     for monster in board_monsters:
       monster.place = self.state.places["Square"]
@@ -609,10 +609,10 @@ class MoveMonsterTest(EventTest):
   def testMovementTypes(self):
     self.state.monsters.clear()
     self.state.monsters.extend([
-      monsters.Cultist(),  # moon, moves on black
-      monsters.Ghost(),  # moon, stationary
-      monsters.DimensionalShambler(),  # square, moves on white
-      monsters.Ghoul(),  # hex, no movement
+        monsters.Cultist(),  # moon, moves on black
+        monsters.Ghost(),  # moon, stationary
+        monsters.DimensionalShambler(),  # square, moves on white
+        monsters.Ghoul(),  # hex, no movement
     ])
 
     for monster in self.state.monsters:
@@ -655,7 +655,7 @@ class ReturnToCupTest(EventTest):
     self.zombie.place = None
     self.state.monsters.clear()
     self.state.monsters.extend([
-      self.cultist, self.maniac, self.dream_flier, self.zombie, self.furry_beast])
+        self.cultist, self.maniac, self.dream_flier, self.zombie, self.furry_beast])
     # TODO: also test for monster trophies
 
   def testReturnByName(self):

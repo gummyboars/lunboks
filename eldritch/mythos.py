@@ -33,9 +33,9 @@ class MythosCard(GlobalEffect):
 
   def create_event(self, state):
     return events.Sequence([
-      events.OpenGate(self.gate_location),
-      events.SpawnClue(self.clue_location),
-      events.MoveMonsters(self.white_dimensions, self.black_dimensions),
+        events.OpenGate(self.gate_location),
+        events.SpawnClue(self.clue_location),
+        events.MoveMonsters(self.white_dimensions, self.black_dimensions),
     ])
 
   def json_repr(self):
@@ -49,7 +49,7 @@ class Headline(MythosCard):
 class Environment(MythosCard):
 
   def __init__(
-      self, name, gate_location, clue_location, white_dimensions, black_dimensions, env_type):
+          self, name, gate_location, clue_location, white_dimensions, black_dimensions, env_type):
     super(Environment, self).__init__(
         name, gate_location, clue_location, white_dimensions, black_dimensions)
     assert env_type in {"weather", "urban", "mystic"}

@@ -2,13 +2,14 @@ import collections
 from http import HTTPStatus
 import json
 from random import SystemRandom
-random = SystemRandom()
 from unittest import mock
 
 from game import (
     BaseGame, ValidatePlayer, CustomEncoder, InvalidInput, UnknownMove, InvalidMove,
     InvalidPlayer, TooManyPlayers, NotYourTurn,
 )
+
+random = SystemRandom()
 
 RESOURCES = ["rsrc1", "rsrc2", "rsrc3", "rsrc4", "rsrc5"]
 PLAYABLE_DEV_CARDS = ["yearofplenty", "monopoly", "roadbuilding", "knight"]
@@ -21,13 +22,13 @@ TILE_SEQUENCE = [
     (16, 6), (16, 8), (13, 9), (10, 10),  # down the side to the bottom
     (7, 9), (4, 8), (4, 6),  # back up the left side
     (7, 5), (10, 4), (13, 5), (13, 7), (10, 8), (7, 7), (10, 6)  # inner loop
-    ]
+]
 SPACE_TILE_SEQUENCE = [
     (4, 2), (7, 1), (10, 0), (13, 1), (16, 2), (19, 3),  # around the top
     (19, 5), (19, 7), (19, 9),  # down the right side
     (16, 10), (13, 11), (10, 12), (7, 11), (4, 10), (1, 9),  # around the bottom
     (1, 7), (1, 5), (1, 3)  # up the left side
-    ]
+]
 SPACE_TILE_ROTATIONS = [5, 0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5]
 
 
@@ -55,6 +56,7 @@ def _validate_name(current_name, used_names, data):
 
 _event = collections.namedtuple(
     "Event", ["event_type", "public_text", "secret_text", "visible_players"])
+
 
 class Event(_event):
 
@@ -173,7 +175,7 @@ class TileLocation(Location):
     ]
     edges = []
     for idx, corner in enumerate(corners):
-      edges.append(corner.get_edge(corners[(idx+1)%6]))
+      edges.append(corner.get_edge(corners[(idx+1) % 6]))
     return edges
 
 
@@ -298,9 +300,9 @@ class Road(object):
     }
     if self.road_type == "ship":
       data.update({
-        "closed": self.closed,
-        "movable": self.movable,
-        "source": self.source,
+          "closed": self.closed,
+          "movable": self.movable,
+          "source": self.source,
       })
     return data
 
@@ -311,8 +313,10 @@ class Road(object):
     if value["road_type"] == "ship":
       assert value.get("source") is not None
       source = CornerLocation(value["source"][0], value["source"][1])
-    return Road(value["location"], value["road_type"], value["player"], value.get("closed", False),
-        value.get("movable", True), source)
+    return Road(
+        value["location"], value["road_type"], value["player"], value.get("closed", False),
+        value.get("movable", True), source,
+    )
 
   def __str__(self):
     return str(self.json_repr())
@@ -366,9 +370,11 @@ class Tile(object):
 
   @staticmethod
   def parse_json(value):
-    return Tile(value["location"][0], value["location"][1], value["tile_type"],
-        value["is_land"], value["number"], value["rotation"], value.get("variant") or "",
-        value.get("land_rotations") or [])
+    return Tile(
+        value["location"][0], value["location"][1], value["tile_type"], value["is_land"],
+        value["number"], value["rotation"], value.get("variant") or "",
+        value.get("land_rotations") or [],
+    )
 
   def __str__(self):
     return str(self.json_repr())
@@ -775,8 +781,9 @@ class CatanState(object):
       raise InvalidMove("You cannot play the %s right now." % robber_type)
     chosen_tile = self.tiles.get(tuple(location))
     if chosen_tile is None or land != chosen_tile.is_land:
-      raise InvalidMove("You must play the %s on a valid %s tile." %
-          (robber_type, "land" if land else "{space}"))
+      raise InvalidMove(
+          "You must play the %s on a valid %s tile." % (robber_type, "land" if land else "{space}")
+      )
     new_location = TileLocation(*location)
     if getattr(self, robber_type) == new_location:
       raise InvalidMove("You must move the %s to a different tile." % robber_type)
@@ -792,8 +799,8 @@ class CatanState(object):
   def handle_robber(self, location, current_player):
     robber_loc = self.validate_robber_location(location, "robber", land=True)
     adjacent_players = set([
-      self.pieces[loc.as_tuple()].player for loc in robber_loc.get_corner_locations()
-      if loc.as_tuple() in self.pieces
+        self.pieces[loc.as_tuple()].player for loc in robber_loc.get_corner_locations()
+        if loc.as_tuple() in self.pieces
     ])
     self.check_friendly_robber(current_player, adjacent_players, "robber")
     self.event_log.append(Event("robber", "{player%s} moved the robber" % current_player))
@@ -802,7 +809,7 @@ class CatanState(object):
 
   def activate_robber(self, current_player, adjacent_players):
     robbable_players = set([
-      idx for idx in adjacent_players if self.player_data[idx].resource_card_count()])
+        idx for idx in adjacent_players if self.player_data[idx].resource_card_count()])
     robbable_players -= {current_player}
     if len(robbable_players) > 1:
       self.rob_players = list(robbable_players)
@@ -837,10 +844,10 @@ class CatanState(object):
     self.player_data[rob_player].cards[chosen_rsrc] -= 1
     self.player_data[current_player].cards[chosen_rsrc] += 1
     self.event_log.append(Event(
-      "rob",
-      "{player%s} stole a card from {player%s}" % (current_player, rob_player),
-      "{player%s} stole a {%s} from {player%s}" % (current_player, chosen_rsrc, rob_player),
-      [current_player, rob_player],
+        "rob",
+        "{player%s} stole a card from {player%s}" % (current_player, rob_player),
+        "{player%s} stole a {%s} from {player%s}" % (current_player, chosen_rsrc, rob_player),
+        [current_player, rob_player],
     ))
 
   def remaining_resources(self, rsrc):
@@ -1047,8 +1054,8 @@ class CatanState(object):
     self._remove_resources(resources, player, "buy a development card")
     card_type = self.add_dev_card(player)
     self.event_log.append(Event(
-      "buy_dev", "{player%s} bought a dev card" % player,
-      "{player%s} bought a %s" % (player, card_type), [player],
+        "buy_dev", "{player%s} bought a dev card" % player,
+        "{player%s} bought a %s" % (player, card_type), [player],
     ))
 
   def handle_discard(self, selection, player):
@@ -1151,7 +1158,7 @@ class CatanState(object):
       raise InvalidMove("You must choose exactly one resource to monopolize.")
     card_type = list(resource_selection.keys())[0]
     self.event_log.append(Event(
-      "monopoly", "{player%s} played a monopoly on {%s}" % (player, card_type)))
+        "monopoly", "{player%s} played a monopoly on {%s}" % (player, card_type)))
     counts = {}
     for opponent_idx in range(len(self.player_data)):
       if player == opponent_idx:
@@ -1237,8 +1244,8 @@ class CatanState(object):
     gave_text = ", ".join(["%s {%s}" % (count, rsrc) for rsrc, count in my_give.items()])
     recv_text = ", ".join(["%s {%s}" % (count, rsrc) for rsrc, count in my_want.items()])
     self.event_log.append(Event(
-      "trade", "{player%s} traded %s for %s with {player%s}" % (
-      player, gave_text, recv_text, counter_player),
+        "trade", "{player%s} traded %s for %s with {player%s}" % (
+            player, gave_text, recv_text, counter_player),
     ))
     for rsrc, count in my_give.items():
       self.player_data[player].cards[rsrc] -= count
@@ -1270,7 +1277,7 @@ class CatanState(object):
     gave_text = ", ".join(["%s {%s}" % (count, rsrc) for rsrc, count in offer[self.GIVE].items()])
     recv_text = ", ".join(["%s {%s}" % (count, rsrc) for rsrc, count in offer[self.WANT].items()])
     self.event_log.append(Event(
-      "trade", "{player%s} traded %s with the bank for %s" % (player, gave_text, recv_text)))
+        "trade", "{player%s} traded %s with the bank for %s" % (player, gave_text, recv_text)))
     # Now, make the trade.
     for rsrc, want in offer[self.WANT].items():
       self.player_data[player].cards[rsrc] += want
@@ -1310,8 +1317,8 @@ class CatanState(object):
       if len(receive_players) == 1:
         the_player = list(receive_players.keys())[0]
         self.event_log.append(Event(
-          "shortage", "{player%s} was due %s {%s} but only received %s due to a shortage" % (
-            the_player, receive_players[the_player], rsrc, remaining),
+            "shortage", "{player%s} was due %s {%s} but only received %s due to a shortage" % (
+                the_player, receive_players[the_player], rsrc, remaining),
         ))
         receive_players[the_player] = remaining
         continue
@@ -1319,7 +1326,7 @@ class CatanState(object):
       # in the supply, then no players receive any of this resource.
       receive_players.clear()
       self.event_log.append(Event(
-        "shortage", "There was a shortage of {%s} - no players received any" % rsrc))
+          "shortage", "There was a shortage of {%s} - no players received any" % rsrc))
 
     # Do the actual resource distribution.
     received = collections.defaultdict(lambda: collections.defaultdict(int))
@@ -1388,7 +1395,7 @@ class CatanState(object):
     if new_max < 5:
       if self.longest_route_player is not None:
         self.event_log.append(Event(
-          "longest_route", "{player%s} loses longest route" % self.longest_route_player))
+            "longest_route", "{player%s} loses longest route" % self.longest_route_player))
       self.longest_route_player = None
       return
 
@@ -1409,7 +1416,7 @@ class CatanState(object):
         self.longest_route_player = eligible[0]
     else:
       self.event_log.append(Event(
-        "longest_route", "Nobody receives longest route because of a tie."))
+          "longest_route", "Nobody receives longest route because of a tie."))
       self.longest_route_player = None
 
   def _add_road(self, road):
@@ -1513,7 +1520,7 @@ class CatanState(object):
         self.tiles[location].variant = "corner"
       else:
         # Takes advantage of the return order of get_adjacent_tiles.
-        upper_left = locs[(tile_rotation+2)%6].as_tuple()
+        upper_left = locs[(tile_rotation+2) % 6].as_tuple()
         if upper_left in self.tiles:
           self.tiles[location].variant = "edgeleft"
         else:
@@ -1623,7 +1630,7 @@ class CatanState(object):
     friendly_robber = GameOption(name="Friendly Robber", default=False)
     victory = GameOption(name="Victory Points", default=10, choices=[8, 9, 10, 11, 12, 13, 14, 15])
     return collections.OrderedDict([
-      ("Friendly Robber", friendly_robber), ("Victory Points", victory)])
+        ("Friendly Robber", friendly_robber), ("Victory Points", victory)])
 
   def init(self, options):
     self.rob_at_two = not options.get("Friendly Robber")
@@ -1728,7 +1735,7 @@ class DebugRulesMixin(object):
   def handle_roll_dice(self):
     if self.next_die_roll is not None:
       with mock.patch.object(random, "randint") as randint:
-        randint.side_effect=[self.next_die_roll // 2, (self.next_die_roll+1) // 2]
+        randint.side_effect = [self.next_die_roll // 2, (self.next_die_roll+1) // 2]
         super(DebugRulesMixin, self).handle_roll_dice()
       self.next_die_roll = None
       return
@@ -1762,7 +1769,7 @@ class Seafarers(CatanState):
         for corner in corner_list:
           assert game.pieces[tuple(corner)].player == idx
       mapping.update({
-        idx: [tuple(corner) for corner in corner_list] for idx, corner_list in mapping.items()
+          idx: [tuple(corner) for corner in corner_list] for idx, corner_list in mapping.items()
       })
     # Same idea for placement_islands, except it's a list.
     if game.placement_islands is not None:  # pylint: disable=no-member
@@ -1822,7 +1829,7 @@ class Seafarers(CatanState):
     if sum(available.values()) <= 0:
       self.collect_counts.clear()
       return
-    min_available = min(available.values()) # The minimum available of any collectible resource.
+    min_available = min(available.values())  # The minimum available of any collectible resource.
     if min_available >= total_collect:
       # Special case: if there are enough resources available such that no player can deplete
       # the bank, all players may collect resources at the same time.
@@ -1874,8 +1881,8 @@ class Seafarers(CatanState):
   def handle_pirate(self, player_idx, location):
     pirate_loc = self.validate_robber_location(location, "pirate", land=False)
     adjacent_players = set([
-      self.roads[edge.as_tuple()].player for edge in pirate_loc.get_edge_locations()
-      if edge.as_tuple() in self.roads and self.roads[edge.as_tuple()].road_type == "ship"
+        self.roads[edge.as_tuple()].player for edge in pirate_loc.get_edge_locations()
+        if edge.as_tuple() in self.roads and self.roads[edge.as_tuple()].road_type == "ship"
     ])
     self.check_friendly_robber(player_idx, adjacent_players, "pirate")
     self.event_log.append(Event("pirate", "{player%s} moved the pirate" % player_idx))
@@ -1887,8 +1894,10 @@ class Seafarers(CatanState):
     if sum(selection.values()) != self.collect_counts[player_idx]:
       raise InvalidMove("You must select %s resources." % self.collect_counts[player_idx])
     if selection.keys() & set(self.shortage_resources):
-      raise InvalidMove("There is a shortage of {%s}; you cannot collect any." %
-          ("}, {".join(self.shortage_resources)))
+      raise InvalidMove(
+          "There is a shortage of {%s}; you cannot collect any." % (
+              "}, {".join(self.shortage_resources))
+      )
     # TODO: dedup with code from year of plenty
     overdrawn = [rsrc for rsrc in selection if selection[rsrc] > self.remaining_resources(rsrc)]
     if overdrawn:
@@ -2461,11 +2470,11 @@ class CatanGame(BaseGame):
       # the state object that we don't have before the game starts.
       data = self.game_class().for_player(None)
       data.update({
-        "type": "game_state",
-        "host": self.host == session,
-        "you": player_idx,
-        "started": False,
-        "player_data": [player.json_for_player(False) for player in self.player_sessions.values()],
+          "type": "game_state",
+          "host": self.host == session,
+          "you": player_idx,
+          "started": False,
+          "player_data": [player.json_for_player(False) for player in self.player_sessions.values()],
       })
 
       options = self.game_class.get_options()
@@ -2591,7 +2600,7 @@ class CatanGame(BaseGame):
       new_sessions[session] = idx
     # NOTE: init after initializing players - the number of players matters to init.
     game.init(self.choices)
-    # NOTE: only update internal state after computing all new states so that internal state 
+    # NOTE: only update internal state after computing all new states so that internal state
     # remains consistent if something above throws an exception.
     self.game = game
     self.player_sessions.clear()

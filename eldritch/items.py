@@ -26,7 +26,7 @@ class Weapon(Item):
 
 
 class OneshotWeapon(Weapon):
-  
+
   def get_trigger(self, event, owner, state):
     if not isinstance(event, events.Check) or event.check_type != "combat":
       return None
@@ -52,6 +52,7 @@ class Food(Item):
     discard = events.DiscardSpecific(event.character, self)
     prevent = events.LossPrevention(self, event, "stamina", 1)
     return events.Sequence([discard, prevent], owner)
+
 
 class Whiskey(Item):
 
@@ -108,16 +109,28 @@ class Cross(Weapon):
 
 def DarkCloak():
   return Item("Dark Cloak", "common", {}, {"evade": 1}, None, 2)
+
+
 def Revolver38():
   return Weapon(".38 Revolver", "common", {"physical": 3}, {}, 1, 4)
+
+
 def Dynamite():
   return OneshotWeapon("Dynamite", "common", {"physical": 8}, {}, 2, 4)
+
+
 def HolyWater():
   return OneshotWeapon("Holy Water", "unique", {"magical": 6}, {}, 2, 4)
+
+
 def EnchantedKnife():
   return Weapon("Enchanted Knife", "unique", {"magical": 3}, {}, 1, 5)
+
+
 def MagicLamp():
   return Weapon("Magic Lamp", "unique", {"magical": 5}, {}, 2, 7)
+
+
 def TommyGun():
   return Weapon("Tommy Gun", "common", {"physical": 6}, {}, 2, 7)
 
@@ -189,8 +202,12 @@ class CombatSpell(Spell):
 
 def Wither():
   return CombatSpell("Wither", {"magical": 3}, 1, 0, 0)
+
+
 def Shrivelling():
   return CombatSpell("Shrivelling", {"magical": 6}, 1, -1, 1)
+
+
 def DreadCurse():
   return CombatSpell("Dread Curse", {"magical": 9}, 2, -2, 2)
 
@@ -213,8 +230,8 @@ class EnchantWeapon(CombatSpell):
     choice = events.SinglePhysicalWeaponChoice(owner, "Choose a physical weapon to enchant")
     cast = events.CastSpell(owner, self, choice=choice)
     return events.Sequence([
-      choice, events.Conditional(owner, choice, "choice_count", {0: events.Nothing(), 1: cast})],
-      owner,
+        choice, events.Conditional(owner, choice, "choice_count", {0: events.Nothing(), 1: cast})],
+        owner,
     )
 
   def activate(self):

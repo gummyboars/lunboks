@@ -3,11 +3,12 @@ import collections
 import math
 import operator
 from random import SystemRandom
-random = SystemRandom()
 
-from eldritch import values
 from eldritch import places
-from eldritch import items
+from eldritch import values
+
+
+random = SystemRandom()
 
 
 class Event(metaclass=abc.ABCMeta):
@@ -551,9 +552,9 @@ class GainOrLoss(Event):
 
   def finish_str(self):
     gains = ", ".join([
-      "%s %s" % (count, attr) for attr, count in self.final_adjustments.items() if count > 0])
+        "%s %s" % (count, attr) for attr, count in self.final_adjustments.items() if count > 0])
     losses = ", ".join([
-      "%s %s" % (-count, attr) for attr, count in self.final_adjustments.items() if count < 0])
+        "%s %s" % (-count, attr) for attr, count in self.final_adjustments.items() if count < 0])
     if not gains and not losses:
       return ""
     result = "gained %s" % gains if gains else ""
@@ -801,7 +802,7 @@ class LostInTimeAndSpace(Sequence):
 
   def __init__(self, character):
     super(LostInTimeAndSpace, self).__init__([
-      ForceMovement(character, "Lost"), LoseTurn(character)], character)
+        ForceMovement(character, "Lost"), LoseTurn(character)], character)
 
 
 class BlessCurse(Event):
@@ -952,7 +953,7 @@ class DrawItems(Event):
       decksize = len(deck)
       while len(self.drawn) < self.draw_count:
         i += 1
-        if not deck :
+        if not deck:
           break
         top = deck.popleft()
         if self.target_type is None or isinstance(top, self.target_type):
@@ -979,15 +980,16 @@ class DrawItems(Event):
   def finish_str(self):
     return f"{self.character.name} drew " + ", ".join(c.name for c in self.drawn)
 
+
 class KeepDrawn(Event):
   def __init__(self, character, draw: DrawItems, prompt="Choose a card"):
-      self.character = character
-      self.draw = draw
-      self.keep_count = 1 #TODO: allow the player to keep more than one?
-      self.drawn = None
-      self.kept = None
-      self.choice = None
-      self.prompt = prompt
+    self.character = character
+    self.draw = draw
+    self.keep_count = 1  # TODO: allow the player to keep more than one?
+    self.drawn = None
+    self.kept = None
+    self.choice = None
+    self.prompt = prompt
 
   def resolve(self, state):
     if self.drawn is None:
@@ -1003,7 +1005,7 @@ class KeepDrawn(Event):
         return False
       kept_cards = [self.drawn[self.choice.choice_index]]
       discarded_cards = [
-        card for idx, card in enumerate(self.drawn) if idx != self.choice.choice_index]
+          card for idx, card in enumerate(self.drawn) if idx != self.choice.choice_index]
       self.kept = [card.name for card in kept_cards]
       self.character.possessions.extend(kept_cards)
       for card in discarded_cards:
@@ -1028,10 +1030,12 @@ class KeepDrawn(Event):
   def finish_str(self):
     return f"{self.character.name} kept " + ", ".join(self.kept)
 
+
 def Draw(character, deck, draw_count, prompt="Choose a card", target_type=None):
   cards = DrawItems(character, deck, draw_count, target_type=target_type)
   keep = KeepDrawn(character, cards, prompt)
   return Sequence([cards, keep], character)
+
 
 def GainAllyOrReward(character, ally: str, reward: Event):
   has_ally = values.ContainsPrerequisite("allies", ally)
@@ -1079,14 +1083,15 @@ class SellChosen(Event):
     if self.discount_type == "fixed":
       return card.price - self.discount
     elif self.discount_type == 'rate':
-      return card.price - int(self.discount * card.price) # Discounts round up
+      return card.price - int(self.discount * card.price)  # Discounts round up
 
 
 def Sell(char, decks, sell_count=1, discount_type="fixed", discount=0,
          prompt="Sell item?"):
-    items = ItemCountChoice(char, prompt, sell_count, min_count=0, decks=decks)
-    sell = SellChosen( char, items, discount_type=discount_type, discount=discount)
-    return Sequence([items, sell], char)
+  items = ItemCountChoice(char, prompt, sell_count, min_count=0, decks=decks)
+  sell = SellChosen(char, items, discount_type=discount_type, discount=discount)
+  return Sequence([items, sell], char)
+
 
 class PurchaseDrawn(Event):
   def __init__(self, character, draw: DrawItems,
@@ -1151,7 +1156,7 @@ class PurchaseDrawn(Event):
         unavailable.append(f"{card.name}")
     self.drawn = available
     choices.append("Nothing")
-    #TODO: In some circumstances, you must purchase at least
+    # TODO: In some circumstances, you must purchase at least
     # one card if able (e.g. General Store)
 
     if unavailable:
@@ -1182,16 +1187,16 @@ class PurchaseDrawn(Event):
     if self.discount_type == "fixed":
       return max(card.price - self.discount, 0)
     elif self.discount_type == "rate":
-      return card.price - int(self.discount * card.price) # Discounts round up
+      return card.price - int(self.discount * card.price)  # Discounts round up
 
 
 def Purchase(char, deck, draw_count, discount_type="fixed", discount=0, keep_count=1,
              target_type=None, prompt="Buy items?"):
-    items = DrawItems(char, deck, draw_count, target_type=target_type)
-    buy = PurchaseDrawn(
+  items = DrawItems(char, deck, draw_count, target_type=target_type)
+  buy = PurchaseDrawn(
       char, items, discount_type=discount_type, discount=discount, keep_count=keep_count, prompt=prompt
-    )
-    return Sequence([items, buy], char)
+  )
+  return Sequence([items, buy], char)
 
 
 class Encounter(Event):
@@ -1379,7 +1384,7 @@ class DrawSpecific(Event):
         deck.remove(item)
         self.character.possessions.append(item)
         self.received = True
-        #TODO: Shuffle the deck after drawing the item
+        # TODO: Shuffle the deck after drawing the item
         break
     else:
       self.received = False
@@ -1580,8 +1585,8 @@ class DeactivateItems(Event):
 
   def is_resolved(self):
     return not any([
-      item.active for item in self.character.possessions
-      if getattr(item, "deck", None) in ("common", "unique")
+        item.active for item in self.character.possessions
+        if getattr(item, "deck", None) in ("common", "unique")
     ])
 
   def start_str(self):
@@ -1727,8 +1732,8 @@ class DeactivateSpells(Event):
 
   def is_resolved(self):
     return not any([
-      spell.in_use for spell in self.character.possessions
-      if getattr(spell, "deck", None) == "spells"
+        spell.in_use for spell in self.character.possessions
+        if getattr(spell, "deck", None) == "spells"
     ])
 
   def start_str(self):
@@ -1891,7 +1896,7 @@ class AddExtraDie(Event):
     return self.done
 
   def start_str(self):
-    return f"{self.character.name} gets an extra die just because" # TODO
+    return f"{self.character.name} gets an extra die just because"  # TODO
 
   def finish_str(self):
     return ""
@@ -1979,8 +1984,8 @@ class Arrested(Sequence):
 
   def __init__(self, character):
     super(Arrested, self).__init__([
-      ForceMovement(character, "Police"), LoseTurn(character),
-      Loss(character, {"dollars": values.Calculation(character, "dollars", operator.floordiv, 2)}),
+        ForceMovement(character, "Police"), LoseTurn(character),
+        Loss(character, {"dollars": values.Calculation(character, "dollars", operator.floordiv, 2)}),
     ], character)
 
 
@@ -2045,7 +2050,7 @@ class PrereqChoice(MultipleChoice):
 
 
 def BinaryChoice(
-    character, prompt, first_choice, second_choice, first_event, second_event, prereq=None):
+        character, prompt, first_choice, second_choice, first_event, second_event, prereq=None):
   if prereq is not None:
     choice = PrereqChoice(character, prompt, [first_choice, second_choice], [prereq, None])
   else:
@@ -2080,9 +2085,9 @@ class ItemChoice(ChoiceEvent):
 
   def compute_choices(self, state):
     self.choices = [
-      idx for idx, pos in enumerate(self.character.possessions)
-      if (getattr(pos, "deck", None) in self.decks)
-         and (self.item_type is None or getattr(pos, "item_type") == self.item_type)
+        idx for idx, pos in enumerate(self.character.possessions)
+        if (getattr(pos, "deck", None) in self.decks)
+        and (self.item_type is None or getattr(pos, "item_type") == self.item_type)
     ]
 
   def is_resolved(self):
@@ -2132,12 +2137,11 @@ class SinglePhysicalWeaponChoice(ItemCountChoice):
 
   def compute_choices(self, state):
     self.choices = [
-      idx for idx, pos in enumerate(self.character.possessions)
-      if (getattr(pos, "deck", None) in self.decks)
-         and getattr(pos, "item_type", None) == "weapon"
-         and (pos.active_bonuses["physical"] or pos.passive_bonuses["physical"])
+        idx for idx, pos in enumerate(self.character.possessions)
+        if (getattr(pos, "deck", None) in self.decks)
+        and getattr(pos, "item_type", None) == "weapon"
+        and (pos.active_bonuses["physical"] or pos.passive_bonuses["physical"])
     ]
-
 
 
 class CardChoice(MultipleChoice):
@@ -2256,10 +2260,10 @@ class GateChoice(MapChoice):
 
 
 class EvadeOrFightAll(Sequence):
-  
+
   def __init__(self, character, monsters):
-   super(EvadeOrFightAll, self).__init__([
-     EvadeOrCombat(character, monster) for monster in monsters], character)
+    super(EvadeOrFightAll, self).__init__([
+        EvadeOrCombat(character, monster) for monster in monsters], character)
 
 
 """
@@ -3022,6 +3026,7 @@ class ReturnToCup(Event):
   def finish_str(self):
     return f"{self.returned} monsters returned to the cup"
 
+
 class CloseLocation(Event):
 
   def __init__(self, location_name, for_turns=float('inf'), evict=True):
@@ -3046,7 +3051,7 @@ class CloseLocation(Event):
       for monster in monsters_in_place:
         monster.place = to_place
       state.event_stack.append(Sequence(evictions))
-      self.evict = False # So we don't keep looping
+      self.evict = False  # So we don't keep looping
       return False
 
     self.resolved = True

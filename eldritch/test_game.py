@@ -521,7 +521,7 @@ class InsaneTest(unittest.TestCase):
     self.state.turn_idx = 0
     self.state.turn_phase = "otherworld"
     self.state.gate_cards.append(gate_encounters.GateCard(
-      "Gate29", {"red"}, {"Other": gate_encounters.Other29}))  # lose one stamina
+        "Gate29", {"red"}, {"Other": gate_encounters.Other29}))  # lose one stamina
     for _ in self.state.resolve_loop():
       if self.state.turn_phase != "otherworld":
         break

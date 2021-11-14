@@ -37,22 +37,40 @@ class RerollSkill(assets.Card):
 
 def Speed():
   return BonusSkill("Speed", "speed")
+
+
 def Sneak():
   return BonusSkill("Sneak", "sneak")
+
+
 def Fight():
   return BonusSkill("Fight", "fight")
+
+
 def Will():
   return BonusSkill("Will", "will")
+
+
 def Lore():
   return BonusSkill("Lore", "lore")
+
+
 def Luck():
   return BonusSkill("Luck", "luck")
+
+
 def Stealth():
   return RerollSkill("Stealth", "evade")
+
+
 def Marksman():
   return RerollSkill("Marksman", "combat")
+
+
 def Bravery():
   return RerollSkill("Bravery", "horror")
+
+
 def ExpertOccultist():
   return RerollSkill("Expert Occultist", "spell")
 

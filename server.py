@@ -3,7 +3,7 @@
 import argparse
 import asyncio
 from http import HTTPStatus
-from http.server import HTTPServer,BaseHTTPRequestHandler
+from http.server import HTTPServer, BaseHTTPRequestHandler
 import json
 import os
 import random
@@ -190,9 +190,9 @@ async def SendGames(websocket):
   game_data = []
   for game_id, game in GAMES.items():
     game_data.append({
-      "game_id": game_id,
-      "status": game.game_status(),
-      "url": game.game_url(),
+        "game_id": game_id,
+        "status": game.game_status(),
+        "url": game.game_url(),
     })
   await websocket.send(json.dumps({"games": game_data}))
   INDEX_WEBSOCKETS.add(websocket)
@@ -210,9 +210,9 @@ async def SendGameUpdates():
     game_data = []
     for game_id, game in GAMES.items():
       game_data.append({
-        "game_id": game_id,
-        "status": game.game_status(),
-        "url": game.game_url(),
+          "game_id": game_id,
+          "status": game.game_status(),
+          "url": game.game_url(),
       })
     coroutines = [ws.send(json.dumps({"games": game_data})) for ws in INDEX_WEBSOCKETS]
     asyncio.gather(*coroutines)
