@@ -30,7 +30,7 @@ class Asset(metaclass=abc.ABCMeta):
   def bonuses(self):
     bonuses = {check: self.get_bonus(check, None) for check in CHECK_TYPES | SUB_CHECKS.keys()}
     bonuses["combat"] = sum([
-      self.get_bonus(check, None) for check in {"combat", "physical", "magical"}])
+        self.get_bonus(check, None) for check in {"combat", "physical", "magical"}])
     return bonuses
 
   def get_modifier(self, other, attribute):
@@ -89,14 +89,24 @@ class Card(Asset):
 # TODO: drawing things when these allies join you
 def FortuneTeller():
   return Card("Fortune Teller", "allies", {}, {"luck": 2})
+
+
 def TravelingSalesman():
   return Card("Traveling Salesman", "allies", {}, {"sneak": 1, "will": 1})
+
+
 def PoliceDetective():
   return Card("Police Detective", "allies", {}, {"fight": 1, "lore": 1})
+
+
 def Thief():
   return Card("Thief", "allies", {}, {"sneak": 2})
+
+
 def ArmWrestler():
   return Card("Arm Wrestler", "allies", {}, {})  # TODO: maximum stamina
+
+
 def Dog():
   return Card("Dog", "allies", {}, {})  # TODO: maximum sanity
 
@@ -159,7 +169,7 @@ class ToughGuy(Card):
 def CreateAllies():
   return [
       ally() for ally in [
-        FortuneTeller, TravelingSalesman, PoliceDetective, Thief, BraveGuy,
-        PoliceInspector, ArmWrestler, VisitingPainter, ToughGuy, OldProfessor, Dog,
+          FortuneTeller, TravelingSalesman, PoliceDetective, Thief, BraveGuy,
+          PoliceInspector, ArmWrestler, VisitingPainter, ToughGuy, OldProfessor, Dog,
       ]
   ]

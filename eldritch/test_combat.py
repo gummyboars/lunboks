@@ -596,13 +596,13 @@ class ResistanceAndImmunityTest(EventTest):
     fight_or_flee.resolve(self.state, "Fight")
 
     choose_weapons = self.resolve_to_choice(CombatChoice)
-    choose_weapons.resolve(self.state, [1]) # choose a single enchanted knife
+    choose_weapons.resolve(self.state, [1])  # choose a single enchanted knife
     self.assertEqual(self.char.fight(self.state), 4)
     self.assertEqual(witch.difficulty("combat", self.state, self.char), -3)
 
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)) as rand:
       fight_or_flee = self.resolve_to_choice(MultipleChoice)
-      self.assertEqual(rand.call_count, 3) # Fight of 4, -3 combat rating, +2 enchanted knife.
+      self.assertEqual(rand.call_count, 3)  # Fight of 4, -3 combat rating, +2 enchanted knife.
 
     fight_or_flee.resolve(self.state, "Fight")
     choose_weapons = self.resolve_to_choice(CombatChoice)
@@ -612,7 +612,7 @@ class ResistanceAndImmunityTest(EventTest):
       fight_or_flee = self.resolve_to_choice(MultipleChoice)
       # Note that each knife gets its bonus of 3 cut in half and rounded up - they are calculated
       # separately as opposed to adding their bonuses together and then taking half.
-      self.assertEqual(rand.call_count, 5) # Fight of 4, -3 combat rating, +2 per enchanted knife.
+      self.assertEqual(rand.call_count, 5)  # Fight of 4, -3 combat rating, +2 per enchanted knife.
 
     fight_or_flee.resolve(self.state, "Fight")
     choose_weapons = self.resolve_to_choice(CombatChoice)
@@ -620,7 +620,7 @@ class ResistanceAndImmunityTest(EventTest):
 
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)) as rand:
       self.resolve_until_done()
-      self.assertEqual(rand.call_count, 7) # Fight of 4, -3 combat rating, +6 for tommy gun.
+      self.assertEqual(rand.call_count, 7)  # Fight of 4, -3 combat rating, +6 for tommy gun.
 
   def testMagicalImmunity(self):
     self.char.possessions.extend([items.Revolver38(), items.EnchantedKnife()])
@@ -636,7 +636,7 @@ class ResistanceAndImmunityTest(EventTest):
 
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)) as rand:
       fight_or_flee = self.resolve_to_choice(MultipleChoice)
-      self.assertEqual(rand.call_count, 2) # Fight of 4, -2 combat rating, +0 enchanted knife.
+      self.assertEqual(rand.call_count, 2)  # Fight of 4, -2 combat rating, +0 enchanted knife.
 
     fight_or_flee.resolve(self.state, "Fight")
     choose_weapons = self.resolve_to_choice(CombatChoice)
@@ -646,7 +646,7 @@ class ResistanceAndImmunityTest(EventTest):
       self.resolve_until_done()
       # Note that each knife gets its bonus of 3 cut in half and rounded up - they are calculated
       # separately as opposed to adding their bonuses together and then taking half.
-      self.assertEqual(rand.call_count, 5) # Fight of 4, -2 combat rating, +3 revolver.
+      self.assertEqual(rand.call_count, 5)  # Fight of 4, -2 combat rating, +3 revolver.
 
   def testOldProfessorNegatesMagicalResistance(self):
     self.char.possessions.extend([items.MagicLamp(), assets.OldProfessor()])
@@ -662,7 +662,7 @@ class ResistanceAndImmunityTest(EventTest):
 
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)) as rand:
       self.resolve_until_done()
-      self.assertEqual(rand.call_count, 6) # Fight of 4, -3 combat rating, +5 magic lamp.
+      self.assertEqual(rand.call_count, 6)  # Fight of 4, -3 combat rating, +5 magic lamp.
 
   def testOldProfessorHasNoEffectOnMagicalImmunity(self):
     self.char.possessions.extend([items.MagicLamp(), assets.OldProfessor()])
@@ -678,7 +678,7 @@ class ResistanceAndImmunityTest(EventTest):
 
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)) as rand:
       self.resolve_until_done()
-      self.assertEqual(rand.call_count, 2) # Fight of 4, -2 combat rating, +0 magic lamp.
+      self.assertEqual(rand.call_count, 2)  # Fight of 4, -2 combat rating, +0 magic lamp.
 
   def testPhysicalResistance(self):
     self.char.possessions.extend([items.Revolver38(), items.Revolver38(), items.EnchantedKnife()])
@@ -694,7 +694,7 @@ class ResistanceAndImmunityTest(EventTest):
 
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)) as rand:
       fight_or_flee = self.resolve_to_choice(MultipleChoice)
-      self.assertEqual(rand.call_count, 5) # Fight of 4, -3 combat rating, +2 per revolver.
+      self.assertEqual(rand.call_count, 5)  # Fight of 4, -3 combat rating, +2 per revolver.
 
     fight_or_flee.resolve(self.state, "Fight")
     choose_weapons = self.resolve_to_choice(CombatChoice)
@@ -702,7 +702,7 @@ class ResistanceAndImmunityTest(EventTest):
 
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)) as rand:
       self.resolve_until_done()
-      self.assertEqual(rand.call_count, 6) # Fight of 4, -3 combat rating, +3 knife, +2 revolver.
+      self.assertEqual(rand.call_count, 6)  # Fight of 4, -3 combat rating, +3 knife, +2 revolver.
 
   def testPhysicalImmunity(self):
     self.char.possessions.extend([items.Revolver38(), items.Revolver38(), items.EnchantedKnife()])
@@ -718,7 +718,7 @@ class ResistanceAndImmunityTest(EventTest):
 
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)) as rand:
       fight_or_flee = self.resolve_to_choice(MultipleChoice)
-      self.assertEqual(rand.call_count, 1) # Fight of 4, -3 combat rating, +0 per revolver.
+      self.assertEqual(rand.call_count, 1)  # Fight of 4, -3 combat rating, +0 per revolver.
 
     fight_or_flee.resolve(self.state, "Fight")
     choose_weapons = self.resolve_to_choice(CombatChoice)
@@ -726,7 +726,7 @@ class ResistanceAndImmunityTest(EventTest):
 
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)) as rand:
       self.resolve_until_done()
-      self.assertEqual(rand.call_count, 4) # Fight of 4, -3 combat rating, +3 knife, +0 revolver.
+      self.assertEqual(rand.call_count, 4)  # Fight of 4, -3 combat rating, +3 knife, +0 revolver.
 
   def testPainterNegatesPhysicalResistance(self):
     self.char.possessions.extend([items.TommyGun(), assets.VisitingPainter()])
@@ -742,7 +742,7 @@ class ResistanceAndImmunityTest(EventTest):
 
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)) as rand:
       self.resolve_until_done()
-      self.assertEqual(rand.call_count, 7) # Fight of 4, -3 combat rating, +6 tommy gun.
+      self.assertEqual(rand.call_count, 7)  # Fight of 4, -3 combat rating, +6 tommy gun.
 
   def testPainterHasNoEffectOnPhysicalImmunity(self):
     self.char.possessions.extend([items.TommyGun(), assets.VisitingPainter()])
@@ -758,7 +758,7 @@ class ResistanceAndImmunityTest(EventTest):
 
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)) as rand:
       self.resolve_until_done()
-      self.assertEqual(rand.call_count, 1) # Fight of 4, -3 combat rating, +0 tommy gun.
+      self.assertEqual(rand.call_count, 1)  # Fight of 4, -3 combat rating, +0 tommy gun.
 
 
 class NightmarishOverwhelmingTest(EventTest):
@@ -783,7 +783,7 @@ class NightmarishOverwhelmingTest(EventTest):
 
     fight_or_flee.resolve(self.state, "Fight")
     choose_weapons = self.resolve_to_choice(CombatChoice)
-    choose_weapons.resolve(self.state, [0, 1]) # I gotta say, this is pretty teriffic.
+    choose_weapons.resolve(self.state, [0, 1])  # I gotta say, this is pretty teriffic.
 
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       self.resolve_until_done()
@@ -883,7 +883,7 @@ class UndeadTest(EventTest):
 
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)) as rand:
       fight_or_flee = self.resolve_to_choice(MultipleChoice)
-      self.assertEqual(rand.call_count, 3) # Fight 4, -1 combat rating
+      self.assertEqual(rand.call_count, 3)  # Fight 4, -1 combat rating
 
     fight_or_flee.resolve(self.state, "Fight")
     choose_weapons = self.resolve_to_choice(CombatChoice)
@@ -891,7 +891,7 @@ class UndeadTest(EventTest):
 
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)) as rand:
       self.resolve_until_done()
-      self.assertEqual(rand.call_count, 6) # Fight 4, -1 combat rating, +3 cross
+      self.assertEqual(rand.call_count, 6)  # Fight 4, -1 combat rating, +3 cross
 
   def testUseCrossAgainstLiving(self):
     self.char.possessions.extend([items.Cross()])
@@ -906,7 +906,7 @@ class UndeadTest(EventTest):
 
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)) as rand:
       self.resolve_until_done()
-      self.assertEqual(rand.call_count, 5) # Fight 4, +1 combat rating
+      self.assertEqual(rand.call_count, 5)  # Fight 4, +1 combat rating
 
 
 class CombatWithEnchantedWeapon(EventTest):
@@ -938,12 +938,12 @@ class CombatWithEnchantedWeapon(EventTest):
     choose_enchant = self.resolve_to_choice(SinglePhysicalWeaponChoice)
 
     with self.assertRaises(AssertionError):
-      choose_enchant.resolve(self.state, [0]) # Cannot choose dark cloak.
+      choose_enchant.resolve(self.state, [0])  # Cannot choose dark cloak.
     with self.assertRaises(AssertionError):
-      choose_enchant.resolve(self.state, [2]) # Cannot choose itself.
+      choose_enchant.resolve(self.state, [2])  # Cannot choose itself.
     with self.assertRaises(AssertionError):
-      choose_enchant.resolve(self.state, [3]) # Cannot choose a magic weapon.
-    choose_enchant.resolve(self.state, [1]) # Enchant the revolver.
+      choose_enchant.resolve(self.state, [3])  # Cannot choose a magic weapon.
+    choose_enchant.resolve(self.state, [1])  # Enchant the revolver.
 
     # Now that we've chosen, successfully cast the spell.
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
@@ -951,11 +951,11 @@ class CombatWithEnchantedWeapon(EventTest):
     self.assertTrue(self.char.possessions[2].active)
     self.assertEqual(self.char.hands_available(), 2)  # Enchant weapon is handless.
 
-    choose_weapons.resolve(self.state, [1]) # We already cast on the revolver, now choose to use it.
+    choose_weapons.resolve(self.state, [1])  # We already cast on the revolver, now choose to use it.
 
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)) as rand:
       self.resolve_until_done()
-      self.assertEqual(rand.call_count, 5) # Fight (4) + spawn (-2) + revolver (3)
+      self.assertEqual(rand.call_count, 5)  # Fight (4) + spawn (-2) + revolver (3)
 
     self.assertTrue(self.combat.combat.is_resolved())
     self.assertFalse(self.char.possessions[1].active)
@@ -979,7 +979,7 @@ class CombatWithEnchantedWeapon(EventTest):
 
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)) as rand:
       self.resolve_until_done()
-      self.assertEqual(rand.call_count, 2) # Fight (4) + spawn (-2) + 0 (physical immunity)
+      self.assertEqual(rand.call_count, 2)  # Fight (4) + spawn (-2) + 0 (physical immunity)
 
     self.assertTrue(self.combat.combat.is_resolved())
     self.assertFalse(self.char.possessions[2].active)
@@ -1011,7 +1011,7 @@ class CombatWithEnchantedWeapon(EventTest):
 
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)) as rand:
       self.resolve_until_done()
-      self.assertEqual(rand.call_count, 2) # Fight (4) + priest (-2) + 0 (magical immunity)
+      self.assertEqual(rand.call_count, 2)  # Fight (4) + priest (-2) + 0 (magical immunity)
 
   def testNoValidWeapons(self):
     self.char.possessions[1] = items.EnchantWeapon()  # Replace the revolver.
@@ -1031,7 +1031,7 @@ class CombatWithEnchantedWeapon(EventTest):
 
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)) as rand:
       self.resolve_until_done()
-      self.assertEqual(rand.call_count, 2) # Fight (4) + spawn (-2)
+      self.assertEqual(rand.call_count, 2)  # Fight (4) + spawn (-2)
 
     self.assertTrue(self.combat.combat.is_resolved())
     self.assertFalse(self.char.possessions[2].active)
@@ -1070,7 +1070,7 @@ class CombatWithEnchantedWeapon(EventTest):
     choose_weapons.resolve(self.state, [1, 4])
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)) as rand:
       self.resolve_until_done()
-      self.assertEqual(rand.call_count, 8) # Fight (4) + spawn (-2) + revolvers (2*3)
+      self.assertEqual(rand.call_count, 8)  # Fight (4) + spawn (-2) + revolvers (2*3)
 
     self.assertTrue(self.combat.combat.is_resolved())
     self.assertFalse(self.char.possessions[2].active)
@@ -1096,7 +1096,7 @@ class CombatWithEnchantedWeapon(EventTest):
     # Lose the first round of combat
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)) as rand:
       fight_or_flee = self.resolve_to_choice(MultipleChoice)
-      self.assertEqual(rand.call_count, 5) # Fight (4) + spawn (-2) + revolver (3)
+      self.assertEqual(rand.call_count, 5)  # Fight (4) + spawn (-2) + revolver (3)
 
     fight_or_flee.resolve(self.state, "Fight")
     choose_weapons = self.resolve_to_choice(CombatChoice)
@@ -1105,7 +1105,7 @@ class CombatWithEnchantedWeapon(EventTest):
     # Enchant weapon should still be active in the second round
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)) as rand:
       fight_or_flee = self.resolve_to_choice(MultipleChoice)
-      self.assertEqual(rand.call_count, 5) # Fight (4) + spawn (-2) + revolver (3)
+      self.assertEqual(rand.call_count, 5)  # Fight (4) + spawn (-2) + revolver (3)
 
     fight_or_flee.resolve(self.state, "Fight")
     choose_weapons = self.resolve_to_choice(CombatChoice)
@@ -1118,7 +1118,7 @@ class CombatWithEnchantedWeapon(EventTest):
     choose_weapons.resolve(self.state, [1])
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)) as rand:
       self.resolve_until_done()
-      self.assertEqual(rand.call_count, 2) # Fight (4) + spawn (-2) + revolver (0)
+      self.assertEqual(rand.call_count, 2)  # Fight (4) + spawn (-2) + revolver (0)
 
   def testGoInsaneWhileCastingEnchantWeapon(self):
     self.char.sanity = 1
@@ -1180,19 +1180,19 @@ class CombatWithEnchantedWeapon(EventTest):
     choose_weapons.resolve(self.state, [1])
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)) as rand:
       self.resolve_until_done()
-      self.assertEqual(rand.call_count, 5) # Fight (4) + spawn (-2) + revolver (3)
+      self.assertEqual(rand.call_count, 5)  # Fight (4) + spawn (-2) + revolver (3)
 
     self.state.event_stack.append(Combat(self.char, monsters.FormlessSpawn()))
     fight_or_flee = self.resolve_to_choice(MultipleChoice)
     fight_or_flee.resolve(self.state, "Fight")
 
     choose_weapons = self.resolve_to_choice(CombatChoice)
-    self.assertNotIn(0, self.state.usables) # They have nothing they can use
+    self.assertNotIn(0, self.state.usables)  # They have nothing they can use
     choose_weapons.resolve(self.state, [1])
 
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)) as rand:
       self.resolve_until_done()
-      self.assertEqual(rand.call_count, 2) # Fight (4) + spawn (-2) + physical immunity (0)
+      self.assertEqual(rand.call_count, 2)  # Fight (4) + spawn (-2) + physical immunity (0)
 
 
 class CombatWithRedSignTest(EventTest):
@@ -1395,7 +1395,7 @@ class CombatWithRedSignTest(EventTest):
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       choose_weapons = self.resolve_to_choice(CombatChoice)
     self.assertEqual(zombie.toughness(self.state, self.char), 1)
-    choose_weapons.resolve(self.state, [1]) # Cross
+    choose_weapons.resolve(self.state, [1])  # Cross
 
     # The cross provides no bonus against the zombie because we are ignoring its undead attribute.
     # This is a dumb thing to do, but is still perfectly valid.
@@ -1407,7 +1407,7 @@ class CombatWithRedSignTest(EventTest):
 
   def testTwoCopies(self):
     self.char.possessions.extend([items.RedSign(), items.Cross()])
-    scary = monsters.Monster( # Nightmarish overwhelming monster with 3 toughness.
+    scary = monsters.Monster(  # Nightmarish overwhelming monster with 3 toughness.
         "Scary", "normal", "moon", {"evade": 0, "horror": 0, "combat": 0},
         {"horror": 2, "combat": 2}, 3, None, {"horror": 1, "combat": 1},
     )
@@ -1455,7 +1455,7 @@ class CombatWithRedSignTest(EventTest):
     self.assertEqual(self.char.stamina, 5)
 
   def testWithToughGuy(self):
-    self.char.possessions.append(assets.ToughGuy()) # Ignores overwhelming
+    self.char.possessions.append(assets.ToughGuy())  # Ignores overwhelming
     self.char.fight_will_slider = 1
     self.assertEqual(self.char.will(self.state), 3)
     flier = monsters.SubterraneanFlier()
@@ -1486,7 +1486,7 @@ class CombatWithRedSignTest(EventTest):
     self.assertEqual(self.char.stamina, 5)
 
   def testWithPainter(self):
-    self.char.possessions.append(assets.VisitingPainter()) # Ignores physical resistance
+    self.char.possessions.append(assets.VisitingPainter())  # Ignores physical resistance
     self.char.fight_will_slider = 1
     self.assertEqual(self.char.will(self.state), 3)
     flier = monsters.SubterraneanFlier()

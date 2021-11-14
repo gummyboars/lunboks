@@ -194,16 +194,16 @@ def CreatePlaces():
 
   return {
       place.name: place for place in [
-        # Locations
-        Shop, Newspaper, Train, Bank, Asylum, Square,
-        Roadhouse, Diner, Police, Graveyard, Cave, Store,
-        Witch, Lodge, House, Church, Society, Woods, Shoppe, Hospital,
-        Library, Administration, Science, Unnamable, Docks, Isle,
-        # Streets
-        Northside, Downtown, Easttown, Rivertown,
-        FrenchHill, Southside, Uptown, University, Merchant,
-        # Other
-        Sky(), Outskirts(), LostInTimeAndSpace(),
+          # Locations
+          Shop, Newspaper, Train, Bank, Asylum, Square,
+          Roadhouse, Diner, Police, Graveyard, Cave, Store,
+          Witch, Lodge, House, Church, Society, Woods, Shoppe, Hospital,
+          Library, Administration, Science, Unnamable, Docks, Isle,
+          # Streets
+          Northside, Downtown, Easttown, Rivertown,
+          FrenchHill, Southside, Uptown, University, Merchant,
+          # Other
+          Sky(), Outskirts(), LostInTimeAndSpace(),
       ]
   }
 

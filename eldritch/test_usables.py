@@ -44,7 +44,7 @@ class ClueTokenTest(EventTest):
     self.assertEqual(new_successes, old_successes+1)
     self.assertEqual(len(self.state.event_stack), 1)
     self.assertEqual(self.state.event_stack[-1], self.check)
-    
+
     self.state.done_using[0] = True
     self.resolve_loop()
 
@@ -109,7 +109,7 @@ class RerollTest(EventTest):
     self.assertFalse(self.state.usables)
 
     new_roll = self.check.roll
-    self.assertNotEqual(old_roll, new_roll) # TODO: 1 / 1296 chance of failing.
+    self.assertNotEqual(old_roll, new_roll)  # TODO: 1 / 1296 chance of failing.
 
 
 class OneshotItemTest(EventTest):

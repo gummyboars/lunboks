@@ -400,11 +400,12 @@ class TestIslandCalculations(BreakpointTestMixin):
     self.assertIn("landings", data)
     self.assertCountEqual(
         data["landings"], [
-          {"player": 0, "location": (9, 3)},
-          {"player": 1, "location": (12, 2)},
-          {"player": 1, "location": (5, 7)},
-          {"player": 2, "location": (8, 6)},
-    ])
+            {"player": 0, "location": (9, 3)},
+            {"player": 1, "location": (12, 2)},
+            {"player": 1, "location": (5, 7)},
+            {"player": 2, "location": (8, 6)},
+        ],
+    )
 
   def testSaveAndLoad(self):
     self.settleForeignIslands()
@@ -457,6 +458,7 @@ class DebugRulesOffTest(BaseInputHandlerTest):
       self.g.handle_post(handler, "/roll_dice", {"count": ["5"]}, None)
       self.assertTrue(handler.send_error.called)
       self.assertFalse(dist.called)
+
 
 class DebugRulesOnTest(BaseInputHandlerTest):
 
@@ -1438,7 +1440,7 @@ class TestShipOpenClosedCalculation(BaseInputHandlerTest):
 
 
 class TestShipMovement(BaseInputHandlerTest):
-  
+
   TEST_FILE = "sea_test.json"
 
   def setUp(self):
@@ -1513,7 +1515,7 @@ class TestShipMovement(BaseInputHandlerTest):
 
 
 class TestShipMovementLongestRoute(BaseInputHandlerTest):
-  
+
   TEST_FILE = "ship_test.json"
 
   def setUp(self):

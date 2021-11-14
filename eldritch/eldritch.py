@@ -1,24 +1,25 @@
 import collections
 import json
 from random import SystemRandom
-random = SystemRandom()
 
+from eldritch import places
+from eldritch import mythos
+from eldritch import monsters
+from eldritch import items
+from eldritch import gate_encounters
+from eldritch import gates
+from eldritch import events
+from eldritch import encounters
+from eldritch import characters
+from eldritch import assets
+from eldritch import abilities
 from game import (
     BaseGame, ValidatePlayer, CustomEncoder, InvalidInput, UnknownMove, InvalidMove,
     InvalidPlayer, TooManyPlayers, NotYourTurn,
 )
 
-from eldritch import abilities
-from eldritch import assets
-from eldritch import characters
-from eldritch import encounters
-from eldritch import events
-from eldritch import gates
-from eldritch import gate_encounters
-from eldritch import items
-from eldritch import monsters
-from eldritch import mythos
-from eldritch import places
+
+random = SystemRandom()
 
 
 class GameState(object):
@@ -183,8 +184,8 @@ class GameState(object):
   def json_repr(self):
     output = {}
     output.update({
-      key: getattr(self, key) for key in
-      self.__dict__.keys() - self.DEQUE_ATTRIBUTES - self.HIDDEN_ATTRIBUTES - self.CUSTOM_ATTRIBUTES
+        key: getattr(self, key) for key in
+        self.__dict__.keys() - self.DEQUE_ATTRIBUTES - self.HIDDEN_ATTRIBUTES - self.CUSTOM_ATTRIBUTES
     })
     for attr in self.DEQUE_ATTRIBUTES:
       output[attr] = list(getattr(self, attr))
@@ -678,7 +679,7 @@ class EldritchGame(BaseGame):
     if data.get("type") == "join":
       self.handle_join(session, data)
       yield None
-      return 
+      return
     if session not in self.player_sessions and data.get("type") != "start":
       raise InvalidPlayer("Unknown player")
     if data.get("type") == "start":

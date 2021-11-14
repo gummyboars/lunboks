@@ -518,8 +518,8 @@ class InsaneUnconsciousTest(EventTest):
     self.char.clues = 0
     self.char.sanity = 1
     seq = Sequence([
-      Sequence([Loss(self.char, {"sanity": 1}), Gain(self.char, {"dollars": 1})], self.char),
-      Gain(self.char, {"clues": 1})
+        Sequence([Loss(self.char, {"sanity": 1}), Gain(self.char, {"dollars": 1})], self.char),
+        Gain(self.char, {"clues": 1})
     ], self.char)
 
     self.state.event_stack.append(seq)
@@ -758,7 +758,7 @@ class DrawRandomTest(EventTest):
     self.assertFalse(self.char.possessions)
     dynamite = items.Dynamite()
     self.state.common.extend([
-      items.Food(), dynamite, items.Revolver38(), items.TommyGun(), items.Bullwhip()])
+        items.Food(), dynamite, items.Revolver38(), items.TommyGun(), items.Bullwhip()])
 
     self.state.event_stack.append(draw)
     choice = self.resolve_to_choice(CardChoice)
@@ -1485,9 +1485,6 @@ class PurchaseTest(EventTest):
     self.assertEqual(self.char.possessions, [gun])
     self.assertEqual(len(self.state.common), 2)
     self.assertSequenceEqual(self.state.common, [cross, food])
-
-
-
 
 
 class SellTest(EventTest):
