@@ -15,8 +15,15 @@ from eldritch import eldritch
 from eldritch import events
 from eldritch.events import *
 from eldritch import items
+from eldritch import mythos
 from eldritch import places
 from eldritch import values
+
+
+class NoMythos(mythos.GlobalEffect):
+
+  def create_event(self, state):
+    return events.Nothing()
 
 
 class EventTest(unittest.TestCase):
@@ -53,6 +60,24 @@ class EventTest(unittest.TestCase):
     self.assertIn(item_idx, self.state.usables[char_idx])
     self.assertIsInstance(self.state.usables[char_idx][item_idx], event_class)
     return self.state.usables[char_idx][item_idx]
+
+  def advance_turn(self, target_turn, target_phase):
+    self.state.mythos.extend([NoMythos()] * (target_turn - self.state.turn_number + 1))
+    while True:
+      for _ in self.state.resolve_loop():
+        if self.state.turn_number == target_turn and self.state.turn_phase == target_phase:
+          break
+      if self.state.turn_number == target_turn and self.state.turn_phase == target_phase:
+        break
+      if not self.state.event_stack:
+        self.state.next_turn()
+        continue
+      if self.state.turn_phase == "upkeep":
+        self.assertIsInstance(self.state.event_stack[-1], events.SliderInput)
+        self.state.event_stack[-1].resolve(self.state, "done", None)
+      elif self.state.turn_phase == "movement":
+        self.assertIsInstance(self.state.event_stack[-1], events.CityMovement)
+        self.state.event_stack[-1].resolve(self.state, "done")
 
   def _formatMessage(self, msg, standardMsg):
     ret = super(EventTest, self)._formatMessage(msg, standardMsg)
@@ -330,7 +355,7 @@ class CityMovementTest(EventTest):
     self.assertEqual(self.movement.choices, [])
 
   def testCannotMoveThroughClosedArea(self):
-    self.state.places["Easttown"].closed = True
+    self.state.event_stack.append(CloseLocation("Easttown"))
     self.resolve_to_choice(CityMovement)
     with self.assertRaises(AssertionError):
       self.movement.resolve(self.state, "Roadhouse")
@@ -338,7 +363,7 @@ class CityMovementTest(EventTest):
       self.movement.resolve(self.state, "Easttown")
 
   def testCannotMoveThroughDistantClosedArea(self):
-    self.state.places["Rivertown"].closed = True
+    self.state.event_stack.append(CloseLocation("Rivertown"))
     self.resolve_to_choice(CityMovement)
     with self.assertRaises(AssertionError):
       self.movement.resolve(self.state, "Southside")
@@ -797,7 +822,6 @@ class DrawRandomTest(EventTest):
     self.resolve_until_done()
     self.assertEqual(self.char.possessions, [])
     self.assertEqual([item.name for item in self.state.common], ["Food", "Tommy Gun", "Dynamite", ])
-
 
 
 class DiscardNamedTest(EventTest):
@@ -1266,6 +1290,7 @@ class CastSpellTest(EventTest):
 
 # TODO: add tests for going unconscious/insane during a mythos/encounter.
 
+
 class PurchaseTest(EventTest):
   def testPurchaseOneAtList(self):
     buy = Purchase(self.char, "common", 1)
@@ -1534,6 +1559,107 @@ class SellTest(EventTest):
     with self.assertRaises(AssertionError):
       choice.resolve(self.state, [1])
       self.resolve_until_done()
+
+
+class CloseLocationTest(EventTest):
+  def testCloseForever(self):
+    place_name = "Woods"
+    self.char.place = self.state.places["Woods"]
+    self.state.event_stack.append(CloseLocation(place_name))
+    # evict=True is implicit
+    self.resolve_until_done()
+    self.assertTrue(self.state.places[place_name].closed)
+    self.assertEqual(self.char.place.name, "Uptown")
+    self.advance_turn(self.state.turn_number + 5, 'mythos')
+    self.resolve_until_done()
+    self.assertTrue(self.state.places[place_name].closed)
+
+  def testCloseWithGateForOneTurn(self):
+    place_name = "Woods"
+    self.advance_turn(self.state.turn_number, 'mythos')
+    self.resolve_until_done()
+    place = self.state.places[place_name]
+    place.gate = self.state.gates.popleft()
+    monster = next(iter(self.state.monsters))
+    monster.place = place
+    self.char.place = place
+    self.state.event_stack.append(CloseLocation(place_name, 1))
+    self.resolve_until_done()
+
+    self.assertEqual(place.closed_until, self.state.turn_number + 2)
+    self.assertEqual(self.char.place, place)
+    self.assertEqual(monster.place, place)
+    self.assertFalse(place.closed)
+
+    self.state.event_stack.append(GateCloseAttempt(self.char, place_name))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      fight_lore = self.resolve_to_choice(MultipleChoice)
+      fight_lore.resolve(self.state, fight_lore.choices[0])
+      self.resolve_until_done()
+
+    self.assertEqual(place.closed_until, self.state.turn_number + 2)
+    self.assertEqual(self.char.place.name, "Uptown")
+    self.assertEqual(monster.place.name, "Uptown")
+    self.assertTrue(place.closed)
+
+    self.advance_turn(self.state.turn_number + 1, 'movement')
+    movement = self.resolve_to_choice(CityMovement)
+    movement.resolve(self.state, movement.none_choice)
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      # Need to kill the cultist to advance through movement
+      choice = self.resolve_to_choice(MultipleChoice)
+      choice.resolve(self.state, "Fight")
+      choice = self.resolve_to_choice(MultipleChoice)
+      choice.resolve(self.state, "Fight")
+      choice = self.resolve_to_choice(CombatChoice)
+      choice.resolve(self.state, [])
+      self.resolve_until_done()
+
+    self.assertEqual(place.closed_until, self.state.turn_number + 1)
+
+    self.advance_turn(self.state.turn_number + 1, 'movement')
+    self.assertFalse(place.closed)
+
+  def testMoveToClosedLocation(self):
+    place_name = "Woods"
+    self.state.event_stack.append(CloseLocation(place_name))
+    self.resolve_until_done()
+    self.char.place = self.state.places["Uptown"]
+
+    self.advance_turn(self.state.turn_number + 1, 'movement')
+    movement = self.resolve_to_choice(CityMovement)
+    self.assertEqual(self.char.place.name, "Uptown")
+    self.assertEqual(self.char.movement_points, 4)
+    self.assertNotIn(place_name, movement.choices)
+    movement.resolve(self.state, movement.none_choice)
+    self.resolve_until_done()
+
+    self.advance_turn(self.state.turn_number + 5, 'movement')
+    movement = self.resolve_to_choice(CityMovement)
+    self.assertNotIn(place_name, movement.choices)
+    self.assertTrue(self.state.places[place_name].closed)
+
+  def testMoveFromClosedLocation(self):
+    place_name = "Merchant"
+    place = self.state.places[place_name]
+    self.char.place = place
+    self.advance_turn(self.state.turn_number, 'mythos')
+    self.resolve_until_done()
+    self.state.event_stack.append(CloseLocation(place_name, for_turns=1, evict=False))
+    self.resolve_until_done()
+    self.assertTrue(place.closed)
+    self.assertEqual(self.char.place.name, place_name)
+    self.advance_turn(self.state.turn_number + 1, 'movement')
+    movement = self.resolve_to_choice(CityMovement)
+    self.assertNotIn("Downtown", movement.choices)
+    self.assertTrue(place.closed)
+    movement.resolve(self.state, movement.none_choice)
+    self.resolve_until_done()
+
+    self.advance_turn(self.state.turn_number + 1, 'movement')
+    movement = self.resolve_to_choice(CityMovement)
+    self.assertIn("Downtown", movement.choices)
+    self.assertFalse(place.closed)
 
 
 if __name__ == '__main__':

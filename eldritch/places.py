@@ -36,13 +36,17 @@ class CityPlace(Place):
     self.movement = {"white": None, "black": None}
     self.neighborhood = None
     self.encounters = None
-    self.closed = False
+    self.closed_until = None
 
   def __eq__(self, other):
     return type(self) == type(other) and self.name == other.name
 
   def __hash__(self):
     return hash(self.name)
+
+  @property
+  def closed(self):
+    return self.closed_until is not None
 
   def json_repr(self):
     movement = {
@@ -118,6 +122,10 @@ class Location(CityPlace):
     data = super(Location, self).json_repr()
     data.update({attr: getattr(self, attr) for attr in ["unstable", "clues", "gate", "sealed"]})
     return data
+
+  @property
+  def closed(self):
+    return super(Location, self).closed and self.gate is None
 
 
 def CreatePlaces():

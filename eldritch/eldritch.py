@@ -572,6 +572,9 @@ class GameState(object):
         self.event_stack.append(seq)
       else:
         self.event_stack.append(events.Upkeep(self.characters[self.turn_idx]))
+      for place in self.places.values():
+        if getattr(place, 'closed_until', None) == self.turn_number:
+          place.closed_until = None
       return
 
     self.turn_idx += 1
