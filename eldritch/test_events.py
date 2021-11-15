@@ -1564,10 +1564,12 @@ class SellTest(EventTest):
 class CloseLocationTest(EventTest):
   def testCloseForever(self):
     place_name = "Woods"
+    self.char.place = self.state.places["Woods"]
     self.state.event_stack.append(CloseLocation(place_name))
+    # evict=True is implicit
     self.resolve_until_done()
     self.assertTrue(self.state.places[place_name].closed)
-    self.char.place = self.state.places["Uptown"]
+    self.assertEqual(self.char.place.name, "Uptown")
     self.advance_turn(self.state.turn_number + 5, 'mythos')
     self.resolve_until_done()
     self.assertTrue(self.state.places[place_name].closed)
@@ -1604,6 +1606,7 @@ class CloseLocationTest(EventTest):
     movement = self.resolve_to_choice(CityMovement)
     movement.resolve(self.state, movement.none_choice)
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      # Need to kill the cultist to advance through movement
       choice = self.resolve_to_choice(MultipleChoice)
       choice.resolve(self.state, "Fight")
       choice = self.resolve_to_choice(MultipleChoice)
@@ -1645,6 +1648,7 @@ class CloseLocationTest(EventTest):
     self.state.event_stack.append(CloseLocation(place_name, for_turns=1, evict=False))
     self.resolve_until_done()
     self.assertTrue(place.closed)
+    self.assertEqual(self.char.place.name, place_name)
     self.advance_turn(self.state.turn_number + 1, 'movement')
     movement = self.resolve_to_choice(CityMovement)
     self.assertNotIn("Downtown", movement.choices)
