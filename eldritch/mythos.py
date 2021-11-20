@@ -3,6 +3,8 @@ from eldritch import events
 
 class GlobalEffect(object):
 
+  # pylint: disable=unused-argument
+
   def get_modifier(self, thing, attribute):
     return 0
 
@@ -31,7 +33,7 @@ class MythosCard(GlobalEffect):
     self.white_dimensions = white_dimensions
     self.black_dimensions = black_dimensions
 
-  def create_event(self, state):
+  def create_event(self, state):  # pylint: disable=unused-argument
     return events.Sequence([
         events.OpenGate(self.gate_location),
         events.SpawnClue(self.clue_location),
@@ -88,7 +90,7 @@ class Mythos2(Environment):
     return 0
 
   def get_interrupt(self, event, owner, state):
-    if not isinstance(event, events.Draw) or event.deck != "unique":
+    if not isinstance(event, events.DrawItems) or event.deck != "unique":
       return None
     if len(state.event_stack) < 2:
       return None
@@ -128,7 +130,7 @@ class Mythos5(Headline):
 
   def create_event(self, state):
     seq = super(Mythos5, self).create_event(state)
-    seq.events.append(events.ReturnToCup(places={"Sky", "Outskirts"}))
+    seq.events.append(events.ReturnToCup(from_places={"Sky", "Outskirts"}))
     return seq
 
 
@@ -158,7 +160,7 @@ class Mythos11(Headline):
 
   def create_event(self, state):
     seq = super(Mythos11, self).create_event(state)
-    seq.events.append(events.ReturnToCup(places={"Southside", "House", "Church", "Society"}))
+    seq.events.append(events.ReturnToCup(from_places={"Southside", "House", "Church", "Society"}))
     return seq
 
 

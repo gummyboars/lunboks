@@ -39,7 +39,7 @@ class CityPlace(Place):
     self.closed_until = None
 
   def __eq__(self, other):
-    return type(self) == type(other) and self.name == other.name
+    return self.__class__ == other.__class__ and self.name == other.name
 
   def __hash__(self):
     return hash(self.name)
@@ -129,6 +129,8 @@ class Location(CityPlace):
 
 
 def CreatePlaces():
+  # pylint: disable=invalid-name
+  # pylint: disable=protected-access
   Newspaper = Location("Newspaper", "Newspaper", False)
   Train = Location("Train", "Train Station", False)
   Shop = Location("Shop", "Curiositie Shoppe", False, None)

@@ -1,0 +1,46 @@
+[BASIC]
+function-rgx=(([a-z_]+)|(([A-Z][a-z]*)+))
+method-rgx=(([a-z_)+)|(test([A-Z][a-z0-9]*)+)
+
+[FORMAT]
+indent-after-paren=4
+indent-string='  '
+max-line-length=100
+
+[STRING]
+check-quote-consistency=yes
+
+[VARIABLES]
+ignored-argument-names=^char$|^_.*|^unused_
+
+[MISCELLANEOUS]
+notes=FIXME,
+      XXX
+
+[MESSAGES CONTROL]
+disable=missing-module-docstring,
+        missing-class-docstring,
+        missing-function-docstring,
+        too-many-locals,
+        too-many-instance-attributes,
+        too-many-arguments,
+        too-many-statements,
+        too-many-branches,
+        too-many-return-statements,
+        too-many-lines,
+        too-few-public-methods,
+        too-many-public-methods,
+        no-self-use,
+        use-sequence-for-iteration,
+        similarities,
+        super-with-arguments,
+        consider-using-f-string,
+        unused-wildcard-import,
+        wildcard-import,
+        line-too-long,
+        inconsistent-quotes,
+        useless-object-inheritance,
+        wrong-import-position,
+
+[REPORTS]
+score=no

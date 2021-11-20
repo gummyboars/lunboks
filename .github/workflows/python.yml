@@ -29,7 +29,10 @@ jobs:
         autopep8 --diff --exit-code **/*.py
     - name: Analysing the code with pylint
       run: |
-        pylint -E `find . -name '*.py'`
+        pylint -E **/*.py
+    - name: Analysing code style with pylint
+      run: |
+        pylint eldritch/*.py
     - name: Test
       run: |
         python -m unittest

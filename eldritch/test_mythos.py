@@ -576,9 +576,6 @@ class SpawnClueTest(EventTest):
 
 class MoveMonsterTest(EventTest):
 
-  def setUp(self):
-    super(MoveMonsterTest, self).setUp()
-
   def testMoveMonsterWhite(self):
     monster = self.state.monsters[0]
     monster.place = self.state.places["Rivertown"]
@@ -659,11 +656,11 @@ class ReturnToCupTest(EventTest):
     # TODO: also test for monster trophies
 
   def testReturnByName(self):
-    r = ReturnToCup(names={"Dream Flier", "Maniac", "Zombie"})
-    self.state.event_stack.append(r)
+    ret = ReturnToCup(names={"Dream Flier", "Maniac", "Zombie"})
+    self.state.event_stack.append(ret)
     self.resolve_until_done()
 
-    self.assertEqual(r.returned, 1)  # The outskirts don't count.
+    self.assertEqual(ret.returned, 1)  # The outskirts don't count.
 
     self.assertEqual(self.dream_flier.place, self.state.monster_cup)
     self.assertEqual(self.maniac.place.name, "Outskirts")
@@ -671,11 +668,11 @@ class ReturnToCupTest(EventTest):
     self.assertEqual(self.cultist.place.name, "Southside")
 
   def testReturnByLocation(self):
-    r = ReturnToCup(places={"Southside", "Woods"})
-    self.state.event_stack.append(r)
+    ret = ReturnToCup(from_places={"Southside", "Woods"})
+    self.state.event_stack.append(ret)
     self.resolve_until_done()
 
-    self.assertEqual(r.returned, 2)
+    self.assertEqual(ret.returned, 2)
 
     self.assertEqual(self.cultist.place, self.state.monster_cup)
     self.assertEqual(self.furry_beast.place, self.state.monster_cup)
@@ -684,11 +681,11 @@ class ReturnToCupTest(EventTest):
     self.assertIsNone(self.zombie.place)
 
   def testReturnInStreets(self):
-    r = ReturnToCup(places={"streets"})
-    self.state.event_stack.append(r)
+    ret = ReturnToCup(from_places={"streets"})
+    self.state.event_stack.append(ret)
     self.resolve_until_done()
 
-    self.assertEqual(r.returned, 1)
+    self.assertEqual(ret.returned, 1)
 
     self.assertEqual(self.cultist.place, self.state.monster_cup)
     self.assertEqual(self.furry_beast.place.name, "Woods")
@@ -696,11 +693,11 @@ class ReturnToCupTest(EventTest):
     self.assertEqual(self.dream_flier.place.name, "Sky")
 
   def testReturnInLocations(self):
-    r = ReturnToCup(places={"locations"})
-    self.state.event_stack.append(r)
+    ret = ReturnToCup(from_places={"locations"})
+    self.state.event_stack.append(ret)
     self.resolve_until_done()
 
-    self.assertEqual(r.returned, 1)
+    self.assertEqual(ret.returned, 1)
 
     self.assertEqual(self.cultist.place.name, "Southside")
     self.assertEqual(self.furry_beast.place, self.state.monster_cup)

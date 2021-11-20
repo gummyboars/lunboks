@@ -2,7 +2,6 @@ import operator
 
 from eldritch import events
 from eldritch import items
-from eldritch import places
 from eldritch import values
 
 
@@ -28,7 +27,7 @@ class EncounterCard(object):
 def Diner1(char):
   prereq = values.AttributePrerequisite(char, "dollars", 1, "at least")
   dollar_choice = events.MultipleChoice(
-      char, "How many dollars do you want to pay?", [x for x in range(0, min(char.dollars+1, 7))])
+      char, "How many dollars do you want to pay?", list(range(0, min(char.dollars+1, 7))))
   spend = events.Loss(char, {"dollars": values.Calculation(dollar_choice, "choice")})
   gain = events.SplitGain(char, "stamina", "sanity", values.Calculation(dollar_choice, "choice"))
   spend_and_gain = events.Sequence([dollar_choice, spend, gain], char)
@@ -620,9 +619,9 @@ def Church2(char):
 
 def Church3(char):
   money = events.Loss(char, {"dollars": (char.dollars + 1)//2})
-  items = events.Nothing()  # TODO: Lose half your items
+  lose = events.Nothing()  # TODO: Lose half your items
   return events.BinaryChoice(
-      char, "Donate half or your money or half of your items.", "Money", "Items", money, items)
+      char, "Donate half or your money or half of your items.", "Money", "Items", money, lose)
 
 
 def Church4(char):
@@ -632,11 +631,11 @@ def Church4(char):
 
 def Church5(char):
   check = events.Check(char, "luck", 0)
-  loseSanity = events.Loss(char, {"sanity": 3})
+  lose_sanity = events.Loss(char, {"sanity": 3})
   move = events.ForceMovement(char, "Southside")
-  loseAndMove = events.Sequence([loseSanity, move], char)
-  gainSanity = events.Gain(char, {"sanity": char.max_sanity})
-  cond = events.Conditional(char, check, "successes", {0: loseAndMove, 1: move, 2: gainSanity})
+  lose_and_move = events.Sequence([lose_sanity, move], char)
+  gain_sanity = events.Gain(char, {"sanity": char.max_sanity})
+  cond = events.Conditional(char, check, "successes", {0: lose_and_move, 1: move, 2: gain_sanity})
   return events.Sequence([check, cond], char)
 
 
@@ -845,9 +844,9 @@ def Shop5(char):
 
 def Shop6(char):
   check = events.Check(char, "luck", -1)
-  commonUnique = events.Nothing()  # TODO: you may purchase the top item of the common and/or unique deck
+  common_unique = events.Nothing()  # TODO: you may purchase the top item of the common and/or unique deck
   common = events.Nothing()  # TODO: you may purchase the top item of the common deck
-  return events.PassFail(char, check, commonUnique, common)
+  return events.PassFail(char, check, common_unique, common)
 
 
 def Shop7(char):
@@ -1113,12 +1112,12 @@ def Docks2(char):
   # TODO: you should just be able to draw two items
   item1 = events.Draw(char, "common", 1)
   item2 = events.Draw(char, "common", 1)
-  items = events.Sequence([item1, item2], char)
+  draws = events.Sequence([item1, item2], char)
   check = events.Check(char, "luck", -1)
   success = events.Nothing()
   fail = events.Arrested(char)
   passfail = events.PassFail(char, check, success, fail)
-  return events.Sequence([items, passfail], char)
+  return events.Sequence([draws, passfail], char)
 
 
 def Docks3(char):
@@ -1331,15 +1330,15 @@ def Woods4(char):
 #  bushwhack1c = events.ItemChoice(char, "Choose second item to lose")
 #  bushwhack1d = events.DiscardSpecific(char, bushwhack1c)
   n_items = min(len(char.possessions), 2)
-  items = events.ItemCountChoice(char, f"Choose {n_items} to discard", n_items)
+  item_choice = events.ItemCountChoice(char, f"Choose {n_items} to discard", n_items)
   bushwhack2 = events.Loss(char, {"stamina": 2})
   bushwhack = events.Sequence([
       #    bushwhack1a,
       #    bushwhack1b,
       #    bushwhack1c,
       #    bushwhack1d,
-      items,
-      events.DiscardSpecific(char, items),
+      item_choice,
+      events.DiscardSpecific(char, item_choice),
       bushwhack2,
   ], char)
   return events.PassFail(char, check, events.Nothing(), bushwhack)

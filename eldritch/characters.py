@@ -1,7 +1,5 @@
 from eldritch import abilities
 from eldritch import events
-from eldritch import items
-from eldritch import places
 
 
 class Character(object):
@@ -136,8 +134,8 @@ class Character(object):
 
   def bonus(self, check_name, state, attributes=None):
     modifier = state.get_modifier(self, check_name)
-    for p in self.possessions:
-      bonus = p.get_bonus(check_name, attributes)
+    for pos in self.possessions:
+      bonus = pos.get_bonus(check_name, attributes)
       if attributes and check_name in {"magical", "physical"}:
         if check_name + " immunity" in attributes:
           bonus = 0
@@ -151,8 +149,8 @@ class Character(object):
 
   def get_override(self, other, attribute):
     override = None
-    for p in self.possessions:
-      val = p.get_override(other, attribute)  # pylint: disable=assignment-from-none
+    for pos in self.possessions:
+      val = pos.get_override(other, attribute)  # pylint: disable=assignment-from-none
       if val is None:
         continue
       if override is None:
@@ -161,6 +159,7 @@ class Character(object):
     return override
 
   def count_successes(self, roll, check_type):
+    # pylint: disable=unused-argument
     threshold = 5 - self.bless_curse
     return len([result for result in roll if result >= threshold])
 

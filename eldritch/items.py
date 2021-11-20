@@ -145,16 +145,16 @@ class Spell(Item):
     self.deactivatable = False
     self.choice = None
 
-  def get_difficulty(self, state):
+  def get_difficulty(self, state):  # pylint: disable=unused-argument
     return self.difficulty
 
-  def get_required_successes(self, state):
+  def get_required_successes(self, state):  # pylint: disable=unused-argument
     return 1
 
   def hands_used(self):
     return self.hands if self.in_use else 0
 
-  def get_cast_event(self, owner, state):
+  def get_cast_event(self, owner, state):  # pylint: disable=unused-argument
     return events.Nothing()
 
 

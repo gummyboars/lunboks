@@ -13,9 +13,9 @@ from eldritch import encounters
 from eldritch import characters
 from eldritch import assets
 from eldritch import abilities
-from game import (
-    BaseGame, ValidatePlayer, CustomEncoder, InvalidInput, UnknownMove, InvalidMove,
-    InvalidPlayer, TooManyPlayers, NotYourTurn,
+from game import (  # pylint: disable=unused-import
+    BaseGame, CustomEncoder, InvalidInput, UnknownMove, InvalidMove, InvalidPlayer, NotYourTurn,
+    ValidatePlayer, TooManyPlayers,
 )
 
 
@@ -301,7 +301,7 @@ class GameState(object):
       if isinstance(event, events.SliderInput) and not event.is_resolved():
         yield None
         return
-      if not all([self.done_using.get(char_idx) for char_idx in self.usables]):
+      if not all(self.done_using.get(char_idx) for char_idx in self.usables):
         yield None
         return
       if not event.is_resolved():
@@ -314,7 +314,7 @@ class GameState(object):
         self.event_stack.append(self.trigger_stack[-1].pop())
         continue
       self.usables = self.get_usable_triggers(event)
-      if not all([self.done_using.get(char_idx) for char_idx in self.usables]):
+      if not all(self.done_using.get(char_idx) for char_idx in self.usables):
         yield None
         return
       self.pop_event(event)
@@ -408,12 +408,12 @@ class GameState(object):
     return triggers
 
   def get_usable_triggers(self, event):
-    t = {idx: char.get_usable_triggers(event, self) for idx, char in enumerate(self.characters)}
+    trgs = {idx: char.get_usable_triggers(event, self) for idx, char in enumerate(self.characters)}
     # If the character moved from another world to another character, let them trade after moving.
     if isinstance(event, (events.ForceMovement, events.Return)) and self.turn_phase == "movement":
       if len([char for char in self.characters if char.place == event.character.place]) > 1:
-        t[self.characters.index(event.character)]["trade"] = events.Nothing()
-    return {char_idx: trigger_list for char_idx, trigger_list in t.items() if trigger_list}
+        trgs[self.characters.index(event.character)]["trade"] = events.Nothing()
+    return {char_idx: trigger_list for char_idx, trigger_list in trgs.items() if trigger_list}
 
   def handle_start(self):
     assert self.game_stage == "setup"
@@ -471,7 +471,7 @@ class GameState(object):
     try:
       modifier = int(modifier)
     except (ValueError, TypeError):
-      raise InvalidInput("invalid difficulty")
+      raise InvalidInput("invalid difficulty")  # pylint: disable=raise-missing-from
     if self.event_stack:
       raise InvalidInput("there are events on the stack")
     self.event_stack.append(events.Check(self.characters[char_idx], check_type, modifier))
@@ -488,12 +488,12 @@ class GameState(object):
 
   def handle_spawn_gate(self, place):
     assert place in self.places
-    assert getattr(self.places[place], "unstable", False) == True
+    assert getattr(self.places[place], "unstable", False) is True
     self.event_stack.append(events.OpenGate(place))
 
   def handle_spawn_clue(self, place):
     assert place in self.places
-    assert getattr(self.places[place], "unstable", False) == True
+    assert getattr(self.places[place], "unstable", False) is True
     self.event_stack.append(events.SpawnClue(place))
 
   def handle_slider(self, char_idx, name, value):
@@ -634,7 +634,7 @@ class EldritchGame(BaseGame):
     return self.game.game_status()
 
   @classmethod
-  def parse_json(cls, json_str):
+  def parse_json(cls, json_str):  # pylint: disable=arguments-renamed,unused-argument
     return None  # TODO
 
   def json_str(self):
@@ -645,12 +645,10 @@ class EldritchGame(BaseGame):
 
   def for_player(self, session):
     output = self.game.for_player(self.player_sessions.get(session))
-    is_connected = {idx: sess in self.connected for sess, idx in self.player_sessions.items()}
-    '''
-    TODO: send connection information somehow
-    for idx in range(len(output["characters"])):
-      output["characters"][idx]["disconnected"] = not is_connected.get(idx, False)
-      '''
+    # is_connected = {idx: sess in self.connected for sess, idx in self.player_sessions.items()}
+    # TODO: send connection information somehow
+    # for idx in range(len(output["characters"])):
+    #   output["characters"][idx]["disconnected"] = not is_connected.get(idx, False)
     output["player_idx"] = self.player_sessions.get(session)
     output["pending_name"] = self.pending_sessions.get(session)
     return json.dumps(output, cls=CustomEncoder)

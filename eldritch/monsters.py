@@ -71,7 +71,7 @@ class Monster(object):
       return min((self.damages.get(check_type) or 0) + state_modifier + char_modifier, 0)
     return self.damages.get(check_type)
 
-  def bypass_damage(self, check_type, state):
+  def bypass_damage(self, check_type, state):  # pylint: disable=unused-argument
     return self.bypass.get(check_type)
 
   def toughness(self, state, char):

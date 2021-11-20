@@ -23,7 +23,7 @@ import game
 
 class NoMythos(mythos.GlobalEffect):
 
-  def create_event(self, state):
+  def create_event(self, state):  # pylint: disable=unused-argument
     return events.Nothing()
 
 
@@ -50,8 +50,8 @@ class GateTravelTest(unittest.TestCase):
       if not self.state.event_stack:
         break
     # Return all monsters to the cup so the character doesn't have to fight/evade.
-    for m in self.state.monsters:
-      m.place = self.state.monster_cup
+    for mon in self.state.monsters:
+      mon.place = self.state.monster_cup
     self.state.game_stage = "slumber"
     self.state.turn_phase = "upkeep"
     self.state.turn_number = 0
