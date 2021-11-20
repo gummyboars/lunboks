@@ -9,6 +9,8 @@ COMBAT_SUBTYPES = {"physical", "magical"}
 
 class Asset(metaclass=abc.ABCMeta):
 
+  # pylint: disable=unused-argument
+
   JSON_ATTRS = {"name", "active", "exhausted", "hands", "bonuses"}
 
   def __init__(self, name):
@@ -66,7 +68,7 @@ class Card(Asset):
 
   def __init__(self, name, deck, active_bonuses, passive_bonuses):
     assert deck in self.DECKS
-    assert not ((active_bonuses.keys() | passive_bonuses.keys()) - self.VALID_BONUS_TYPES)
+    assert not (active_bonuses.keys() | passive_bonuses.keys()) - self.VALID_BONUS_TYPES
     super(Card, self).__init__(name)
     self.deck = deck
     self.active_bonuses = collections.defaultdict(int)

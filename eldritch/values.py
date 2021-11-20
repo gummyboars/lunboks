@@ -84,7 +84,9 @@ def ItemDeckPrerequisite(character, deck, threshold=1, operand="at least"):
 
 def ItemCountPrerequisite(character, threshold=1, operand="at least"):
   oper = {"at least": operator.ge, "at most": operator.le, "exactly": operator.eq}[operand]
-  return ItemDeckCount(character, {"common", "unique", "spells"})
+  return Calculation(
+      ItemDeckCount(character, {"common", "unique", "spells"}), None, oper, threshold
+  )
 
 
 class ContainsPrerequisite(Value):

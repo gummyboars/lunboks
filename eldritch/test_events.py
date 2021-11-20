@@ -22,7 +22,7 @@ from eldritch import values
 
 class NoMythos(mythos.GlobalEffect):
 
-  def create_event(self, state):
+  def create_event(self, state):  # pylint: disable=unused-argument
     return events.Nothing()
 
 
@@ -38,7 +38,7 @@ class EventTest(unittest.TestCase):
 
   def resolve_loop(self):
     count = 0
-    for thing in self.state.resolve_loop():  # It's a generator, so you have to loop through it.
+    for _ in self.state.resolve_loop():  # It's a generator, so you have to loop through it.
       count += 1
       if count > 100:
         self.fail("Exceeded maximum number of events: %s" % self.state.event_stack)
@@ -1038,16 +1038,16 @@ class BinaryChoiceTest(EventTest):
 class PrereqChoiceTest(EventTest):
 
   def testMismatchedLengths(self):
-    p = values.AttributePrerequisite(self.char, "dollars", 2, "at least")
+    prereq = values.AttributePrerequisite(self.char, "dollars", 2, "at least")
     with self.assertRaises(AssertionError):
-      PrereqChoice(self.char, "choose", ["Yes", "No"], [p])
+      PrereqChoice(self.char, "choose", ["Yes", "No"], [prereq])
 
   def testInvalidChoices(self):
-    c = values.AttributePrerequisite(self.char, "clues", 1, "at least")
-    d = values.AttributePrerequisite(self.char, "sanity", 1, "at least")
-    s = values.AttributePrerequisite(self.char, "stamina", 2, "at most")
+    clues = values.AttributePrerequisite(self.char, "clues", 1, "at least")
+    sanity = values.AttributePrerequisite(self.char, "sanity", 1, "at least")
+    stamina = values.AttributePrerequisite(self.char, "stamina", 2, "at most")
     choices = ["Spend 1 clue", "Spend 1 sanity", "Gain stamina", "Do Nothing"]
-    choice = PrereqChoice(self.char, "choose", choices, [c, d, s, None])
+    choice = PrereqChoice(self.char, "choose", choices, [clues, sanity, stamina, None])
     self.state.event_stack.append(choice)
     choice = self.resolve_to_choice(PrereqChoice)
 
@@ -1174,6 +1174,7 @@ class RefreshItemsTest(EventTest):
 
   def testRefreshItems(self):
     self.char.possessions.extend([items.Wither(), items.Wither(), items.Bullwhip(), items.Cross()])
+    # pylint: disable=protected-access
     self.char.possessions[0]._exhausted = True
     self.char.possessions[2]._exhausted = True
 
@@ -1206,7 +1207,7 @@ class ActivateItemsTest(EventTest):
   def testDeactivateItem(self):
     gun = items.TommyGun()
     self.char.possessions.append(gun)
-    gun._active = True
+    gun._active = True  # pylint: disable=protected-access
     self.assertEqual(self.char.hands_available(), 0)
     self.assertEqual(self.char.combat(self.state, None), 10)
 
@@ -1238,6 +1239,7 @@ class ActivateItemsTest(EventTest):
 
   def testDeactivateItems(self):
     self.char.possessions.extend([items.Bullwhip(), items.TommyGun(), items.Revolver38()])
+    # pylint: disable=protected-access
     self.char.possessions[0]._active = True
     self.char.possessions[2]._active = True
     self.assertEqual(self.char.hands_available(), 0)

@@ -12,6 +12,7 @@ if os.path.abspath(sys.path[0]) == os.path.dirname(os.path.abspath(__file__)):
 from eldritch.values import *
 
 
+# pylint: disable=attribute-defined-outside-init
 class Dummy(object):
 
   def __init__(self, **kwargs):
@@ -26,13 +27,13 @@ class DummyChar(Dummy):
     self.override = None
     super(DummyChar, self).__init__(**kwargs)
 
-  def get_override(self, other, attribute):
+  def get_override(self, other, attribute):  # pylint: disable=unused-argument
     return self.override
 
 
 class DummyMonster(Dummy):
 
-  def has_attribute(self, attribute, state, char):
+  def has_attribute(self, attribute, state, char):  # pylint: disable=unused-argument
     if char.get_override(self, attribute) is not None:
       return char.get_override(self, attribute)
     return getattr(self, attribute)
@@ -61,18 +62,18 @@ class CalculationTest(unittest.TestCase):
 
   def testMathOnAttributeTest(self):
     obj = Dummy()
-    calc = Calculation(obj, "x", operator.mul, 4)
+    calc = Calculation(obj, "attr", operator.mul, 4)
     with self.assertRaises(AttributeError):
       calc.value(None)
-    obj.x = 3
+    obj.attr = 3
     self.assertEqual(calc.value(None), 12)
 
   def testUnaryOperator(self):
     obj = Dummy()
-    calc = Calculation(obj, "x", operator.neg)
+    calc = Calculation(obj, "val", operator.neg)
     with self.assertRaises(AttributeError):
       calc.value(None)
-    obj.x = 3
+    obj.val = 3
     self.assertEqual(calc.value(None), -3)
 
   def testChainedValues(self):

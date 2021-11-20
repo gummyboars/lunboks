@@ -14,8 +14,6 @@ from eldritch import assets
 from eldritch import encounters
 from eldritch import events
 from eldritch import gate_encounters
-from eldritch import places
-from eldritch import characters
 from eldritch.events import *
 from eldritch import items
 from eldritch.test_events import EventTest
@@ -576,7 +574,7 @@ class LodgeTest(EncounterTest):
     self.char.clues = 8
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
       # They get the opportunity to spend clue tokens on this failed check, but don't.
-      use_clues = self.resolve_to_usable(0, "clues", SpendClue)
+      self.resolve_to_usable(0, "clues", SpendClue)
     self.state.done_using[0] = True
     self.resolve_until_done()
     self.assertEqual(self.char.clues, 0)
@@ -956,7 +954,7 @@ class WitchTest(EncounterTest):
     self.state.event_stack.append(encounters.Witch7(self.char))
     self.char.possessions.extend([items.Revolver38(), items.TommyGun()])
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=4)):
-      choice = self.resolve_to_choice(events.ItemChoice)
+      choice = self.resolve_to_choice(events.ItemChoice)  # pylint: disable=unused-variable
     # TODO: Learn how to use ItemCountChoice
     # self.assertEqual(choice.choices, ['.38 Revolver', 'Tommy Gun'])
     # choice.resolve('Tommy Gun')
@@ -2974,6 +2972,7 @@ class IsleTest(EncounterTest):
     self.char.sanity = 1
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       self.resolve_until_done()
+    # pylint: disable=protected-access
     self.assertEqual(self.char.sanity, self.char._max_sanity)
     self.assertEqual(self.char.stamina, self.char._max_stamina)
 
@@ -3308,11 +3307,9 @@ class WoodsTest(EncounterTest):
     # self.state.common.append((items.Shotgun()))
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       self.resolve_until_done()
-    """
-    self.assertEqual(len(self.state.common), 0)
-    self.assertEqual(len(self.char.common), 1)
-    self.assertEqual(self.char.common[0].name, "Shotgun")
-    """
+    # self.assertEqual(len(self.state.common), 0)
+    # self.assertEqual(len(self.char.common), 1)
+    # self.assertEqual(self.char.common[0].name, "Shotgun")
 
   def testWoods3Fail(self):
     self.state.event_stack.append(encounters.Woods3(self.char))

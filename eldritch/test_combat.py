@@ -488,7 +488,7 @@ class CombatWithItems(EventTest):
     self.char.possessions[1] = items.Shrivelling()
     self.char.sanity = 1
 
-    choose_weapons = self.resolve_to_choice(CombatChoice)
+    self.resolve_to_choice(CombatChoice)
     self.state.event_stack.append(self.state.usables[0][1])
 
     # Attempting to spend your last sanity to cast this spell makes you go insane before combat.
@@ -506,7 +506,7 @@ class CombatWithItems(EventTest):
     self.char.possessions[1] = items.DreadCurse()
     self.char.sanity = 1
 
-    choose_weapons = self.resolve_to_choice(CombatChoice)
+    self.resolve_to_choice(CombatChoice)
     self.assertFalse(self.state.usables)
 
   def testDontNeedSanityToDeactivate(self):
@@ -526,13 +526,13 @@ class CombatWithItems(EventTest):
 
     # Fail the combat check.
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
-      fight_or_flee = self.resolve_to_choice(MultipleChoice)
+      self.resolve_to_choice(MultipleChoice)  # fight or flee
 
     self.assertIn(0, self.state.usables)
     self.assertIn(1, self.state.usables[0])
     self.state.event_stack.append(self.state.usables[0][1])
 
-    fight_or_flee = self.resolve_to_choice(MultipleChoice)
+    self.resolve_to_choice(MultipleChoice)
     self.assertFalse(self.state.usables)
 
     self.assertFalse(self.char.possessions[0].active)
@@ -1202,6 +1202,7 @@ class CombatWithRedSignTest(EventTest):
     self.char.possessions.extend([items.EnchantedKnife(), items.Revolver38(), items.RedSign()])
 
   def start(self, monster):
+    # pylint: disable=attribute-defined-outside-init
     self.combat = Combat(self.char, monster)
     self.state.event_stack.append(self.combat)
 
@@ -1345,8 +1346,8 @@ class CombatWithRedSignTest(EventTest):
   def testIgnoresAmbush(self):
     ghoul = monsters.Ghoul()
     self.char.speed_sneak_slider = 0
-    self.combat = Combat(self.char, ghoul)
-    self.state.event_stack.append(self.combat)
+    combat = Combat(self.char, ghoul)
+    self.state.event_stack.append(combat)
     fight_or_flee = self.resolve_to_choice(MultipleChoice)
     with self.assertRaises(AssertionError):
       fight_or_flee.resolve(self.state, "Flee")
@@ -1374,9 +1375,9 @@ class CombatWithRedSignTest(EventTest):
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       self.resolve_until_done()
 
-    self.assertFalse(self.combat.combat.is_resolved())
-    self.assertTrue(self.combat.evade.is_resolved())
-    self.assertTrue(self.combat.evade.evaded)
+    self.assertFalse(combat.combat.is_resolved())
+    self.assertTrue(combat.evade.is_resolved())
+    self.assertTrue(combat.evade.evaded)
     self.assertFalse(self.char.possessions[2].active)
     self.assertFalse(self.char.possessions[2].in_use)
     self.assertTrue(self.char.possessions[2].exhausted)
