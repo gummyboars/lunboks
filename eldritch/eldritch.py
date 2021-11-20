@@ -22,7 +22,7 @@ from game import (  # pylint: disable=unused-import
 random = SystemRandom()
 
 
-class GameState(object):
+class GameState:
 
   DEQUE_ATTRIBUTES = {"common", "unique", "spells", "skills", "allies", "gates"}
   HIDDEN_ATTRIBUTES = {
@@ -135,7 +135,7 @@ class GameState(object):
           keep.append(card)
         else:
           rest.append(card)
-      assert not names, "could not find %s for %s in %s" % (str(names), char.name, deck)
+      assert not names, f"could not find {str(names)} for {char.name} in {deck}"
       char.possessions.extend(keep)
       cards.extend(rest)
 
@@ -182,11 +182,8 @@ class GameState(object):
     return "eldritch game"  # TODO
 
   def json_repr(self):
-    output = {}
-    output.update({
-        key: getattr(self, key) for key in
-        self.__dict__.keys() - self.DEQUE_ATTRIBUTES - self.HIDDEN_ATTRIBUTES - self.CUSTOM_ATTRIBUTES
-    })
+    ignore_attributes = self.DEQUE_ATTRIBUTES | self.HIDDEN_ATTRIBUTES | self.CUSTOM_ATTRIBUTES
+    output = {key: getattr(self, key) for key in self.__dict__.keys() - ignore_attributes}
     for attr in self.DEQUE_ATTRIBUTES:
       output[attr] = list(getattr(self, attr))
 
@@ -233,7 +230,7 @@ class GameState(object):
         elif isinstance(top_event, events.MonsterSpawnChoice):
           output["choice"]["monsters"] = top_event.to_spawn
         else:
-          raise RuntimeError("Unknown choice type %s" % top_event.__class__.__name__)
+          raise RuntimeError(f"Unknown choice type {top_event.__class__.__name__}")
     if top_event and isinstance(top_event, events.SliderInput) and not top_event.is_resolved():
       if top_event.character == char:
         output["sliders"] = True
@@ -256,7 +253,7 @@ class GameState(object):
       return self.resolve_loop()
 
     if char_idx not in range(len(self.characters)):
-      raise InvalidPlayer("no such player %s" % char_idx)
+      raise InvalidPlayer(f"no such player {char_idx}")
     if data.get("type") == "set_slider":
       self.handle_slider(char_idx, data.get("name"), data.get("value"))
     elif data.get("type") == "give":
@@ -574,7 +571,7 @@ class GameState(object):
       else:
         self.event_stack.append(events.Upkeep(self.characters[self.turn_idx]))
       for place in self.places.values():
-        if getattr(place, 'closed_until', None) == self.turn_number:
+        if getattr(place, "closed_until", None) == self.turn_number:
           place.closed_until = None
       return
 

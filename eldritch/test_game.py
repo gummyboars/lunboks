@@ -139,7 +139,7 @@ class TradingTestBase(unittest.TestCase):
 class TradingTest(TradingTestBase):
 
   def setUp(self):
-    super(TradingTest, self).setUp()
+    super().setUp()
     for char in self.state.characters:
       char.place = self.state.places["Southside"]
     for _ in self.state.resolve_loop():
@@ -688,5 +688,5 @@ class PlayerJoinTest(unittest.TestCase):
     self.assertFalse(self.game.game.event_stack[-1].free)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
   unittest.main()

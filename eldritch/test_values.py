@@ -13,7 +13,7 @@ from eldritch.values import *
 
 
 # pylint: disable=attribute-defined-outside-init
-class Dummy(object):
+class Dummy:
 
   def __init__(self, **kwargs):
     for name, value in kwargs.items():
@@ -25,7 +25,7 @@ class DummyChar(Dummy):
   def __init__(self, **kwargs):
     self.possessions = []
     self.override = None
-    super(DummyChar, self).__init__(**kwargs)
+    super().__init__(**kwargs)
 
   def get_override(self, other, attribute):  # pylint: disable=unused-argument
     return self.override
@@ -43,7 +43,7 @@ class DummyState(Dummy):
 
   def __init__(self, **kwargs):
     self.common = []
-    super(DummyState, self).__init__(**kwargs)
+    super().__init__(**kwargs)
 
 
 class CalculationTest(unittest.TestCase):
@@ -138,5 +138,5 @@ class PrerequisiteTest(unittest.TestCase):
     self.assertEqual(prereq.value(state), 1)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
   unittest.main()

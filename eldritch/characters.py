@@ -2,7 +2,7 @@ from eldritch import abilities
 from eldritch import events
 
 
-class Character(object):
+class Character:
 
   def __init__(
       self, name, max_stamina, max_sanity, max_speed, max_sneak,
@@ -192,7 +192,7 @@ class Character(object):
 class Nun(Character):
 
   def __init__(self):
-    super(Nun, self).__init__("Nun", 3, 7, 4, 4, 3, 4, 4, 6, 1, "Church")
+    super().__init__("Nun", 3, 7, 4, 4, 3, 4, 4, 6, 1, "Church")
 
   def initial_attributes(self):
     return {"bless_curse": 1}
@@ -207,7 +207,7 @@ class Nun(Character):
 class Doctor(Character):
 
   def __init__(self):
-    super(Doctor, self).__init__("Doctor", 5, 5, 3, 5, 3, 4, 5, 4, 2, "Hospital")
+    super().__init__("Doctor", 5, 5, 3, 5, 3, 4, 5, 4, 2, "Hospital")
 
   def abilities(self):
     return [abilities.Medicine()]
@@ -225,7 +225,7 @@ class Doctor(Character):
 class Archaeologist(Character):
 
   def __init__(self):
-    super(Archaeologist, self).__init__("Archaeologist", 7, 3, 4, 3, 5, 3, 4, 5, 2, "Shop")
+    super().__init__("Archaeologist", 7, 3, 4, 3, 5, 3, 4, 5, 2, "Shop")
 
   def initial_attributes(self):
     return {"dollars": 7, "clues": 1}
@@ -240,7 +240,7 @@ class Archaeologist(Character):
 class Gangster(Character):
 
   def __init__(self):
-    super(Gangster, self).__init__("Gangster", 7, 3, 5, 4, 6, 4, 3, 3, 1, "House")
+    super().__init__("Gangster", 7, 3, 5, 4, 6, 4, 3, 3, 1, "House")
 
   def initial_attributes(self):
     return {"dollars": 8}

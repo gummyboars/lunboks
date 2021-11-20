@@ -1,7 +1,7 @@
 from eldritch import events
 
 
-class GlobalEffect(object):
+class GlobalEffect:
 
   # pylint: disable=unused-argument
 
@@ -52,13 +52,12 @@ class Environment(MythosCard):
 
   def __init__(
           self, name, gate_location, clue_location, white_dimensions, black_dimensions, env_type):
-    super(Environment, self).__init__(
-        name, gate_location, clue_location, white_dimensions, black_dimensions)
+    super().__init__(name, gate_location, clue_location, white_dimensions, black_dimensions)
     assert env_type in {"weather", "urban", "mystic"}
     self.environment_type = env_type
 
   def create_event(self, state):
-    seq = super(Environment, self).create_event(state)
+    seq = super().create_event(state)
     seq.events.append(events.ActivateEnvironment(self))
     return seq
 
@@ -66,11 +65,10 @@ class Environment(MythosCard):
 class Mythos1(Headline):
 
   def __init__(self):
-    super(Mythos1, self).__init__(
-        "Mythos1", "Woods", "Society", {"hex"}, {"slash", "triangle", "star"})
+    super().__init__("Mythos1", "Woods", "Society", {"hex"}, {"slash", "triangle", "star"})
 
   def create_event(self, state):
-    seq = super(Mythos1, self).create_event(state)
+    seq = super().create_event(state)
     for char in state.characters:
       check = events.Check(char, "luck", -1)
       bless = events.Bless(char)
@@ -81,8 +79,7 @@ class Mythos1(Headline):
 class Mythos2(Environment):
 
   def __init__(self):
-    super(Mythos2, self).__init__(
-        "Mythos2", "Isle", "Science", {"square", "diamond"}, {"circle"}, "urban")
+    super().__init__("Mythos2", "Isle", "Science", {"square", "diamond"}, {"circle"}, "urban")
 
   def get_modifier(self, thing, attribute):
     if thing.name == "Pinata" and attribute == "toughness":
@@ -103,8 +100,7 @@ class Mythos2(Environment):
 class Mythos3(Environment):
 
   def __init__(self):
-    super(Mythos3, self).__init__(
-        "Mythos3", "Square", "Unnamable", {"square", "diamond"}, {"circle"}, "mystic")
+    super().__init__("Mythos3", "Square", "Unnamable", {"square", "diamond"}, {"circle"}, "mystic")
 
   def get_interrupt(self, event, owner, state):
     return None  # TODO: prevent stamina gain
@@ -113,11 +109,10 @@ class Mythos3(Environment):
 class Mythos4(Headline):
 
   def __init__(self):
-    super(Mythos4, self).__init__(
-        "Mythos4", "Science", "Witch", {"hex"}, {"slash", "triangle", "star"})
+    super().__init__("Mythos4", "Science", "Witch", {"hex"}, {"slash", "triangle", "star"})
 
   def create_event(self, state):
-    seq = super(Mythos4, self).create_event(state)
+    seq = super().create_event(state)
     seq.events.append(events.ReturnToCup(names={"Furry Beast", "Dream Flier"}))
     # TODO: raise the terror level
     return seq
@@ -126,10 +121,10 @@ class Mythos4(Headline):
 class Mythos5(Headline):
 
   def __init__(self):
-    super(Mythos5, self).__init__("Mythos5", "Square", "Unnamable", {"moon"}, {"plus"})
+    super().__init__("Mythos5", "Square", "Unnamable", {"moon"}, {"plus"})
 
   def create_event(self, state):
-    seq = super(Mythos5, self).create_event(state)
+    seq = super().create_event(state)
     seq.events.append(events.ReturnToCup(from_places={"Sky", "Outskirts"}))
     return seq
 
@@ -137,7 +132,7 @@ class Mythos5(Headline):
 class Mythos6(Environment):
 
   def __init__(self):
-    super(Mythos6, self).__init__("Mythos6", "Graveyard", "Isle", {"plus"}, {"moon"}, "weather")
+    super().__init__("Mythos6", "Graveyard", "Isle", {"plus"}, {"moon"}, "weather")
 
   def get_modifier(self, thing, attribute):
     if attribute == "will":
@@ -155,11 +150,10 @@ class Mythos6(Environment):
 class Mythos11(Headline):
 
   def __init__(self):
-    super(Mythos11, self).__init__(
-        "Mythos11", "Cave", "Roadhouse", {"hex"}, {"slash", "triangle", "star"})
+    super().__init__("Mythos11", "Cave", "Roadhouse", {"hex"}, {"slash", "triangle", "star"})
 
   def create_event(self, state):
-    seq = super(Mythos11, self).create_event(state)
+    seq = super().create_event(state)
     seq.events.append(events.ReturnToCup(from_places={"Southside", "House", "Church", "Society"}))
     return seq
 
@@ -167,7 +161,7 @@ class Mythos11(Headline):
 class Mythos45(Environment):
 
   def __init__(self):
-    super(Mythos45, self).__init__(
+    super().__init__(
         "Mythos45", "Woods", "Society", {"slash", "triangle", "star"}, {"hex"}, "mystic")
 
   def get_modifier(self, thing, attribute):

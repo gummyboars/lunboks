@@ -10,7 +10,7 @@ class Item(Card):
 
   def __init__(self, name, deck, active_bonuses, passive_bonuses, hands, price, item_type=None):
     assert item_type in self.ITEM_TYPES
-    super(Item, self).__init__(name, deck, active_bonuses, passive_bonuses)
+    super().__init__(name, deck, active_bonuses, passive_bonuses)
     self.hands = hands
     self.price = price
     self.item_type = item_type
@@ -22,7 +22,7 @@ class Item(Card):
 class Weapon(Item):
 
   def __init__(self, name, deck, active_bonuses, passive_bonuses, hands, price):
-    super(Weapon, self).__init__(name, deck, active_bonuses, passive_bonuses, hands, price, "weapon")
+    super().__init__(name, deck, active_bonuses, passive_bonuses, hands, price, "weapon")
 
 
 class OneshotWeapon(Weapon):
@@ -38,7 +38,7 @@ class OneshotWeapon(Weapon):
 class Food(Item):
 
   def __init__(self):
-    super(Food, self).__init__("Food", "common", {}, {}, None, 1)
+    super().__init__("Food", "common", {}, {}, None, 1)
 
   def get_usable_interrupt(self, event, owner, state):
     if not isinstance(event, events.GainOrLoss) or owner != event.character:
@@ -57,7 +57,7 @@ class Food(Item):
 class Whiskey(Item):
 
   def __init__(self):
-    super(Whiskey, self).__init__("Whiskey", "common", {}, {}, None, 1)
+    super().__init__("Whiskey", "common", {}, {}, None, 1)
 
   def get_usable_interrupt(self, event, owner, state):
     if not isinstance(event, events.GainOrLoss) or owner != event.character:
@@ -76,7 +76,7 @@ class Whiskey(Item):
 class ResearchMaterials(Item):
 
   def __init__(self):
-    super(ResearchMaterials, self).__init__("Research Materials", "common", {}, {}, None, 1)
+    super().__init__("Research Materials", "common", {}, {}, None, 1)
 
   def get_usable_trigger(self, event, owner, state):
     return None  # TODO
@@ -85,7 +85,7 @@ class ResearchMaterials(Item):
 class Bullwhip(Weapon):
 
   def __init__(self):
-    super(Bullwhip, self).__init__("Bullwhip", "common", {"physical": 1}, {}, 1, 2)
+    super().__init__("Bullwhip", "common", {"physical": 1}, {}, 1, 2)
 
   def get_usable_trigger(self, event, owner, state):
     if not isinstance(event, events.Check) or owner != event.character:
@@ -98,10 +98,10 @@ class Bullwhip(Weapon):
 class Cross(Weapon):
 
   def __init__(self):
-    super(Cross, self).__init__("Cross", "common", {}, {"horror": 1}, 1, 3)
+    super().__init__("Cross", "common", {}, {"horror": 1}, 1, 3)
 
   def get_bonus(self, check_type, attributes):
-    bonus = super(Cross, self).get_bonus(check_type, attributes)
+    bonus = super().get_bonus(check_type, attributes)
     if self.active and check_type == "magical" and attributes and "undead" in attributes:
       bonus += 3
     return bonus
@@ -138,7 +138,7 @@ def TommyGun():
 class Spell(Item):
 
   def __init__(self, name, active_bonuses, hands, difficulty, sanity_cost):
-    super(Spell, self).__init__(name, "spells", active_bonuses, {}, hands, None)
+    super().__init__(name, "spells", active_bonuses, {}, hands, None)
     self.difficulty = difficulty
     self.sanity_cost = sanity_cost
     self.in_use = False
@@ -166,8 +166,9 @@ class CombatSpell(Spell):
     if isinstance(event, events.CombatChoice) and not event.is_resolved():
       return True
     # May cast even before making the decision to fight or evade. TODO: this is hacky/fragile.
-    if isinstance(event, events.MultipleChoice) and hasattr(event, "monster") and not event.is_resolved():
-      return True
+    if isinstance(event, events.MultipleChoice) and hasattr(event, "monster"):
+      if not event.is_resolved():
+        return True
     return False
 
   def get_usable_interrupt(self, event, owner, state):
@@ -215,13 +216,13 @@ def DreadCurse():
 class EnchantWeapon(CombatSpell):
 
   def __init__(self):
-    super(EnchantWeapon, self).__init__("Enchant Weapon", {}, 0, 0, 1)
+    super().__init__("Enchant Weapon", {}, 0, 0, 1)
     self.weapon = None
     self.active_change = 0
     self.passive_change = 0
 
   def get_usable_interrupt(self, event, owner, state):
-    interrupt = super(EnchantWeapon, self).get_usable_interrupt(event, owner, state)
+    interrupt = super().get_usable_interrupt(event, owner, state)
     if not isinstance(interrupt, events.CastSpell):
       return interrupt
 
@@ -262,10 +263,10 @@ class RedSign(CombatSpell):
   INVALID_ATTRIBUTES = {"magical immunity", "elusive", "mask", "spawn"}
 
   def __init__(self):
-    super(RedSign, self).__init__("Red Sign", {}, 1, -1, 1)
+    super().__init__("Red Sign", {}, 1, -1, 1)
 
   def get_usable_interrupt(self, event, owner, state):
-    interrupt = super(RedSign, self).get_usable_interrupt(event, owner, state)
+    interrupt = super().get_usable_interrupt(event, owner, state)
     if not isinstance(interrupt, events.CastSpell):
       return interrupt
 
@@ -289,7 +290,7 @@ class RedSign(CombatSpell):
 class Voice(Spell):
 
   def __init__(self):
-    super(Voice, self).__init__(
+    super().__init__(
         "Voice", {"speed": 1, "sneak": 1, "fight": 1, "will": 1, "lore": 1, "luck": 1}, 0, -1, 1)
 
   def get_usable_trigger(self, event, owner, state):
@@ -310,7 +311,7 @@ class Voice(Spell):
 class FindGate(Spell):
 
   def __init__(self):
-    super(FindGate, self).__init__("Find Gate", {}, 0, -1, 1)
+    super().__init__("Find Gate", {}, 0, -1, 1)
 
   def movement_in_other_world(self, owner, state):
     if state.turn_phase != "movement" or state.characters[state.turn_idx] != owner:

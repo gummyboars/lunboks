@@ -21,7 +21,7 @@ from eldritch.test_events import EventTest
 class DrawGateEncounter(EventTest):
 
   def setUp(self):
-    super(DrawGateEncounter, self).setUp()
+    super().setUp()
     self.state.gate_cards = deque([
         gate_encounters.GateCard("Gate1", {"blue"}, {"Other": lambda char: Nothing()}),
         gate_encounters.GateCard("Gate2", {"green"}, {"Other": lambda char: Nothing()}),
@@ -78,7 +78,7 @@ class DrawGateEncounter(EventTest):
 class GateEncounterTest(EventTest):
 
   def setUp(self):
-    super(GateEncounterTest, self).setUp()
+    super().setUp()
     self.char.speed_sneak_slider = 1
     self.char.fight_will_slider = 1
     self.char.lore_luck_slider = 1
@@ -210,5 +210,5 @@ class Gate29Test(GateEncounterTest):
     self.assertEqual(self.char.stamina, 4)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
   unittest.main()

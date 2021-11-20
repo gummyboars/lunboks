@@ -69,7 +69,7 @@ class Card(Asset):
   def __init__(self, name, deck, active_bonuses, passive_bonuses):
     assert deck in self.DECKS
     assert not (active_bonuses.keys() | passive_bonuses.keys()) - self.VALID_BONUS_TYPES
-    super(Card, self).__init__(name)
+    super().__init__(name)
     self.deck = deck
     self.active_bonuses = collections.defaultdict(int)
     self.active_bonuses.update(active_bonuses)
@@ -116,7 +116,7 @@ def Dog():
 class BraveGuy(Card):
 
   def __init__(self):
-    super(BraveGuy, self).__init__("Brave Guy", "allies", {}, {"speed": 2})
+    super().__init__("Brave Guy", "allies", {}, {"speed": 2})
 
   def get_override(self, other, attribute):
     if attribute == "nightmarish":
@@ -127,7 +127,7 @@ class BraveGuy(Card):
 class PoliceInspector(Card):
 
   def __init__(self):
-    super(PoliceInspector, self).__init__("Police Inspector", "allies", {}, {"will": 2})
+    super().__init__("Police Inspector", "allies", {}, {"will": 2})
 
   def get_override(self, other, attribute):
     if attribute == "endless":
@@ -138,7 +138,7 @@ class PoliceInspector(Card):
 class VisitingPainter(Card):
 
   def __init__(self):
-    super(VisitingPainter, self).__init__("Visiting Painter", "allies", {}, {"speed": 1, "luck": 1})
+    super().__init__("Visiting Painter", "allies", {}, {"speed": 1, "luck": 1})
 
   def get_override(self, other, attribute):
     if attribute == "physical resistance":
@@ -149,7 +149,7 @@ class VisitingPainter(Card):
 class OldProfessor(Card):
 
   def __init__(self):
-    super(OldProfessor, self).__init__("Old Professor", "allies", {}, {"lore": 2})
+    super().__init__("Old Professor", "allies", {}, {"lore": 2})
 
   def get_override(self, other, attribute):
     if attribute == "magical resistance":
@@ -160,7 +160,7 @@ class OldProfessor(Card):
 class ToughGuy(Card):
 
   def __init__(self):
-    super(ToughGuy, self).__init__("Tough Guy", "allies", {}, {"fight": 2})
+    super().__init__("Tough Guy", "allies", {}, {"fight": 2})
 
   def get_override(self, other, attribute):
     if attribute == "overwhelming":

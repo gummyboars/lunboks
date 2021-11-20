@@ -1,4 +1,4 @@
-class MonsterCup(object):
+class MonsterCup:
 
   def __init__(self):
     self.name = "cup"
@@ -7,7 +7,7 @@ class MonsterCup(object):
     return self.name
 
 
-class Monster(object):
+class Monster:
 
   MOVEMENTS = {"normal", "fast", "stationary", "flying", "stalker", "aquatic", "unique"}
   DIMENSIONS = {"circle", "triangle", "moon", "hex", "square", "diamond", "star", "slash", "plus"}
@@ -20,7 +20,8 @@ class Monster(object):
   ALL_ATTRIBUTES = ATTRIBUTES | {"nightmarish", "overwhelming"}
 
   def __init__(
-          self, name, movement, dimension, ratings, damages, toughness, attributes=None, bypass=None):
+      self, name, movement, dimension, ratings, damages, toughness, attributes=None, bypass=None,
+  ):
     if attributes is None:
       attributes = set()
     if bypass is None:
@@ -270,8 +271,9 @@ def Zombie():
 MONSTERS = {
     x().name: x for x in [
         GiantInsect, LandSquid, Cultist, TentacleTree, DimensionalShambler, GiantWorm, ElderThing,
-        FlameMatrix, SubterraneanFlier, FormlessSpawn, Ghost, Ghoul, FurryBeast, Haunter, HighPriest,
-        Hound, Maniac, Pinata, DreamFlier, GiantAmoeba, Octopoid, Vampire, Warlock, Witch, Zombie,
+        FlameMatrix, SubterraneanFlier, FormlessSpawn, Ghost, Ghoul, FurryBeast, Haunter,
+        HighPriest, Hound, Maniac, Pinata, DreamFlier, GiantAmoeba, Octopoid, Vampire, Warlock,
+        Witch, Zombie,
     ]
 }
 

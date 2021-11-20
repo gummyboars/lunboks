@@ -1,7 +1,7 @@
 from eldritch import events
 
 
-class GateCard(object):
+class GateCard:
 
   def __init__(self, name, colors, encounter_creators):
     assert "Other" in encounter_creators
