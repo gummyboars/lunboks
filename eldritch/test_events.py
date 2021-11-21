@@ -18,6 +18,7 @@ from eldritch import items
 from eldritch import mythos
 from eldritch import places
 from eldritch import values
+from eldritch import monsters
 
 
 class NoMythos(mythos.GlobalEffect):
@@ -250,34 +251,37 @@ class MovementTest(EventTest):
     self.assertEqual(self.char.movement_points, 3)
 
   def testMoveOneSpaceToMonster(self):
-    while self.state.turn_phase != "movement":
-      self.state.next_turn()
     maniac = next(monster for monster in self.state.monsters if monster.name == "Maniac")
+    self.char.place = self.state.places["Rivertown"]
     maniac.place = self.state.places["Easttown"]
-    movement = Movement(self.char, [self.state.places["Easttown"]])
-    self.assertFalse(movement.is_resolved())
+    self.advance_turn(self.state.turn_number, "movement")
+    movement = self.resolve_to_choice(CityMovement)
     self.assertEqual(self.char.movement_points, 4)
+    movement.resolve(self.state, "Easttown")
+    movement = self.resolve_to_choice(CityMovement)
+    movement.resolve(self.state, "Downtown")
 
-    self.state.event_stack.append(Sequence([movement, EndMovement(self.char)], self.char))
     choice = self.resolve_to_choice(MultipleChoice)
     self.assertEqual(choice.choices, ["Fight", "Evade"])
     choice.resolve(self.state, "Fight")
 
     next_choice = self.resolve_to_choice(MultipleChoice)
-    self.assertEqual(next_choice.choices, ["Fight", "Flee"])
+    self.assertEqual(next_choice.choices, ["Flee", "Fight"])
     next_choice.resolve(self.state, "Fight")
 
     third_choice = self.resolve_to_choice(CombatChoice)
-    self.assertIsNone(third_choice.choices)
+    self.assertFalse(third_choice.choices)
     third_choice.resolve(self.state, [])
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
-      self.resolve_until_done()
+      movement = self.resolve_to_choice(CityMovement)
+      self.assertFalse(movement.choices)
+      movement.resolve(self.state, movement.none_choice)
 
-    self.assertTrue(movement.is_resolved())
     self.assertEqual(self.char.place.name, "Easttown")
     self.assertEqual(self.char.movement_points, 0)
     # self.assertIn(cultist, self.char.possessions)
     # TODO: take the monster as a trophy
+    self.assertTrue(movement.is_resolved())
 
   def testMoveMultipleSpaces(self):
     movement = Sequence(
@@ -294,8 +298,10 @@ class MovementTest(EventTest):
 
   def testIllegalMoveMultipleSpaces(self):
     self.char.movement_points = 1
-    movement = Movement(
-        self.char, [self.state.places[name] for name in ["Easttown", "Rivertown", "Graveyard"]])
+    movement = Sequence(
+        [MoveOne(self.char, dest) for dest in ["Easttown", "Rivertown", "Graveyard"]],
+        self.char,
+    )
     self.assertFalse(movement.is_resolved())
     self.assertEqual(self.char.movement_points, 1)
 
@@ -306,67 +312,88 @@ class MovementTest(EventTest):
     self.assertEqual(self.char.place.name, "Easttown")
     self.assertEqual(self.char.movement_points, 0)
 
-  def testMoveMultipleThroughMonster(self):
-    while self.state.turn_phase != "movement":
-      self.state.next_turn()
+  def testMoveMultipleThroughMonsterFight(self):
     cultist = next(monster for monster in self.state.monsters if monster.name == "Cultist")
-    cultist.place = self.state.places["Easttown"]
-    movement = Movement(
-        self.char, [self.state.places[name] for name in ["Easttown", "Rivertown", "Graveyard"]])
+    cultist.place = self.state.places["Rivertown"]
+    self.char.place = self.state.places["Downtown"]
+
+    self.advance_turn(self.state.turn_number, "movement")
+    movement = self.resolve_to_choice(CityMovement)
     self.assertFalse(movement.is_resolved())
     self.assertEqual(self.char.movement_points, 4)
+    self.assertNotIn("Graveyard", movement.choices)
+    self.assertIn("Rivertown", movement.choices)
+    movement.resolve(self.state, "Rivertown")
 
-    self.state.event_stack.append(Sequence([movement, EndMovement(self.char)], self.char))
+    movement = self.resolve_to_choice(CityMovement)
+    self.assertIn("Graveyard", movement.choices)
+    movement.resolve(self.state, "Graveyard")
+
     choice = self.resolve_to_choice(MultipleChoice)
+
     self.assertEqual(choice.choices, ["Fight", "Evade"])
     choice.resolve(self.state, "Fight")
 
     next_choice = self.resolve_to_choice(MultipleChoice)
-    self.assertEqual(next_choice.choices, ["Fight", "Flee"])
+    self.assertEqual(sorted(next_choice.choices), ["Fight", "Flee"])
     next_choice.resolve(self.state, "Fight")
 
     third_choice = self.resolve_to_choice(CombatChoice)
-    self.assertIsNone(third_choice.choices)
+    self.assertFalse(third_choice.choices)
     third_choice.resolve(self.state, [])
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
-      self.resolve_until_done()
+      movement = self.resolve_to_choice(CityMovement)
+
+    self.assertFalse(movement.choices)
+    movement.resolve(self.state, movement.none_choice)
+    self.resolve_until_done()
 
     self.assertTrue(movement.is_resolved())
-    self.assertEqual(self.char.place.name, "Easttown")
+    self.assertEqual(self.char.place.name, "Rivertown")
     self.assertEqual(self.char.movement_points, 0)
     # self.assertIn(cultist, self.char.possessions)
     # TODO: take the monster as a trophy
 
   def testMoveMultipleThroughMonsterFailedEvade(self):
-    self.char.speed_sneak_slider = 2
-    while self.state.turn_phase != "movement":
-      self.state.next_turn()
-    self.assertEqual(self.char.stamina, 5)
-    self.assertEqual(self.char.sanity, 5)
-    maniac = next(monster for monster in self.state.monsters if monster.name == "Maniac")
-    maniac.place = self.state.places["Easttown"]
-    movement = Movement(
-        self.char, [self.state.places[name] for name in ["Easttown", "Rivertown", "Graveyard"]])
-    self.assertFalse(movement.is_resolved())
-    self.assertEqual(self.char.movement_points, 3)
+    zombie = monsters.Zombie()
+    self.state.monsters.append(zombie)
+    zombie.place = self.state.places["Rivertown"]
+    self.char.place = self.state.places["Downtown"]
 
-    self.state.event_stack.append(Sequence([movement, EndMovement(self.char)], self.char))
+    self.advance_turn(self.state.turn_number, "movement")
+    movement = self.resolve_to_choice(CityMovement)
+    self.assertFalse(movement.is_resolved())
+    self.assertEqual(self.char.movement_points, 4)
+    self.assertNotIn("Graveyard", movement.choices)
+    self.assertIn("Rivertown", movement.choices)
+    movement.resolve(self.state, "Rivertown")
+
+    movement = self.resolve_to_choice(CityMovement)
+    self.assertIn("Graveyard", movement.choices)
+    movement.resolve(self.state, "Graveyard")
+
     choice = self.resolve_to_choice(MultipleChoice)
+
     self.assertEqual(choice.choices, ["Fight", "Evade"])
-    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=4)):
-      choice.resolve(self.state, "Evade")
+    choice.resolve(self.state, "Evade")
+
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
       next_choice = self.resolve_to_choice(MultipleChoice)
-      self.assertEqual(next_choice.choices, ["Fight", "Flee"])
-      self.assertEqual(self.char.stamina, 4)
+    self.assertEqual(sorted(next_choice.choices), ["Fight", "Flee"])
     next_choice.resolve(self.state, "Flee")
+
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
-      self.resolve_until_done()
+      movement = self.resolve_to_choice(CityMovement)
+
+    self.assertFalse(movement.choices)
+    movement.resolve(self.state, movement.none_choice)
+    self.resolve_until_done()
 
     self.assertTrue(movement.is_resolved())
-    self.assertEqual(self.char.place.name, "Easttown")
-    self.assertEqual(self.char.stamina, 4)
-    self.assertEqual(self.char.sanity, 5)
+    self.assertEqual(self.char.place.name, "Rivertown")
     self.assertEqual(self.char.movement_points, 0)
+    # self.assertIn(zombie, self.char.possessions)
+    # TODO: take the monster as a trophy
 
   def testMoveMultipleThroughTwoMonstersFailedEvade(self):
     self.char.speed_sneak_slider = 1
