@@ -1,8 +1,26 @@
 // TODO
 assetPrefix = "eldritch";
-characterNames = ["Nun", "Doctor", "Archaeologist", "Gangster"];
+characterNames = [
+  "Student",
+  "Drifter",
+  "Salesman",
+  "Psychologist",
+  "Photographer",
+  "Magician",
+  "Author",
+  "Professor",
+  "Dilettante",
+  "Private Eye",
+  "Scientist",
+  "Researcher",
+  "Nun",
+  "Doctor",
+  "Archaeologist",
+  "Gangster",
+];
 commonNames = [
   ".38 Revolver",
+  ".45 Automatic",
   "Bullwhip",
   "Cross",
   "Dark Cloak",

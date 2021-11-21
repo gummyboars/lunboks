@@ -115,6 +115,10 @@ def Revolver38():
   return Weapon(".38 Revolver", "common", {"physical": 3}, {}, 1, 4)
 
 
+def Automatic45():
+  return Weapon(".45 Automatic", "common", {"physical": 4}, {}, 1, 5)
+
+
 def Dynamite():
   return OneshotWeapon("Dynamite", "common", {"physical": 8}, {}, 2, 4)
 
@@ -346,7 +350,10 @@ class FindGate(Spell):
 
 def CreateCommon():
   common = []
-  for item in [DarkCloak, Revolver38, Dynamite, TommyGun, Food, ResearchMaterials, Bullwhip, Cross]:
+  for item in [
+      Automatic45, DarkCloak, Revolver38, Dynamite,
+      TommyGun, Food, ResearchMaterials, Bullwhip, Cross,
+  ]:
     common.extend([item(), item()])
   return common
 
