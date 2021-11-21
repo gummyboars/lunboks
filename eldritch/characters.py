@@ -1,15 +1,13 @@
 from eldritch import abilities
 from eldritch import events
-from eldritch import items
-from eldritch import places
 
 
-class Character(object):
-  
+class Character:
+
   def __init__(
       self, name, max_stamina, max_sanity, max_speed, max_sneak,
       max_fight, max_will, max_lore, max_luck, focus, home,
-    ):
+  ):
     self.name = name
     self._max_stamina = max_stamina
     self._max_sanity = max_sanity
@@ -43,7 +41,7 @@ class Character(object):
     attrs = [
         "name", "max_stamina", "max_sanity", "stamina", "sanity", "focus",
         "movement_points", "focus_points",
-        "dollars", "clues", "possessions", # TODO: special cards
+        "dollars", "clues", "possessions",  # TODO: special cards
         "delayed_until", "lose_turn_until",
     ]
     data = {attr: getattr(self, attr) for attr in attrs}
@@ -136,8 +134,8 @@ class Character(object):
 
   def bonus(self, check_name, state, attributes=None):
     modifier = state.get_modifier(self, check_name)
-    for p in self.possessions:
-      bonus = p.get_bonus(check_name, attributes)
+    for pos in self.possessions:
+      bonus = pos.get_bonus(check_name, attributes)
       if attributes and check_name in {"magical", "physical"}:
         if check_name + " immunity" in attributes:
           bonus = 0
@@ -151,8 +149,8 @@ class Character(object):
 
   def get_override(self, other, attribute):
     override = None
-    for p in self.possessions:
-      val = p.get_override(other, attribute) # pylint: disable=assignment-from-none
+    for pos in self.possessions:
+      val = pos.get_override(other, attribute)  # pylint: disable=assignment-from-none
       if val is None:
         continue
       if override is None:
@@ -161,6 +159,7 @@ class Character(object):
     return override
 
   def count_successes(self, roll, check_type):
+    # pylint: disable=unused-argument
     threshold = 5 - self.bless_curse
     return len([result for result in roll if result >= threshold])
 
@@ -409,7 +408,7 @@ class Researcher(Character):
 class Nun(Character):
 
   def __init__(self):
-    super(Nun, self).__init__("Nun", 3, 7, 4, 4, 3, 4, 4, 6, 1, "Church")
+    super().__init__("Nun", 3, 7, 4, 4, 3, 4, 4, 6, 1, "Church")
 
   def initial_attributes(self):
     return {"bless_curse": 1}
@@ -424,7 +423,7 @@ class Nun(Character):
 class Doctor(Character):
 
   def __init__(self):
-    super(Doctor, self).__init__("Doctor", 5, 5, 3, 5, 3, 4, 5, 4, 2, "Hospital")
+    super().__init__("Doctor", 5, 5, 3, 5, 3, 4, 5, 4, 2, "Hospital")
 
   def abilities(self):
     return [abilities.Medicine()]
@@ -442,7 +441,7 @@ class Doctor(Character):
 class Archaeologist(Character):
 
   def __init__(self):
-    super(Archaeologist, self).__init__("Archaeologist", 7, 3, 4, 3, 5, 3, 4, 5, 2, "Shop")
+    super().__init__("Archaeologist", 7, 3, 4, 3, 5, 3, 4, 5, 2, "Shop")
 
   def abilities(self):
     return []  # TODO: Archaeology
@@ -460,7 +459,7 @@ class Archaeologist(Character):
 class Gangster(Character):
 
   def __init__(self):
-    super(Gangster, self).__init__("Gangster", 7, 3, 5, 4, 6, 4, 3, 3, 1, "House")
+    super().__init__("Gangster", 7, 3, 5, 4, 6, 4, 3, 3, 1, "House")
 
   def abilities(self):
     return []  # TODO: Body

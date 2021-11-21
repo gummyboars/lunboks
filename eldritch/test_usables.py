@@ -20,7 +20,7 @@ from eldritch.test_events import EventTest
 class ClueTokenTest(EventTest):
 
   def setUp(self):
-    super(ClueTokenTest, self).setUp()
+    super().setUp()
     self.check = Check(self.char, "combat", 0)
     self.state.event_stack.append(self.check)
 
@@ -44,7 +44,7 @@ class ClueTokenTest(EventTest):
     self.assertEqual(new_successes, old_successes+1)
     self.assertEqual(len(self.state.event_stack), 1)
     self.assertEqual(self.state.event_stack[-1], self.check)
-    
+
     self.state.done_using[0] = True
     self.resolve_loop()
 
@@ -89,7 +89,7 @@ class ClueTokenTest(EventTest):
 class RerollTest(EventTest):
 
   def setUp(self):
-    super(RerollTest, self).setUp()
+    super().setUp()
     self.char.possessions.append(abilities.Marksman())
     self.check = Check(self.char, "combat", 0)
     self.state.event_stack.append(self.check)
@@ -109,13 +109,13 @@ class RerollTest(EventTest):
     self.assertFalse(self.state.usables)
 
     new_roll = self.check.roll
-    self.assertNotEqual(old_roll, new_roll) # TODO: 1 / 1296 chance of failing.
+    self.assertNotEqual(old_roll, new_roll)  # TODO: 1 / 1296 chance of failing.
 
 
 class OneshotItemTest(EventTest):
 
   def setUp(self):
-    super(OneshotItemTest, self).setUp()
+    super().setUp()
     self.char.possessions.append(items.Dynamite())
     self.check = Check(self.char, "combat", 0)
     self.state.event_stack.append(self.check)
@@ -127,7 +127,7 @@ class OneshotItemTest(EventTest):
     self.assertEqual(len(self.check.roll), 4)
 
   def testUsedItems(self):
-    self.char.possessions[0]._active = True
+    self.char.possessions[0]._active = True  # pylint: disable=protected-access
     self.resolve_loop()
     self.assertTrue(self.check.is_resolved())
     self.assertEqual(len(self.state.event_stack), 0)
@@ -138,7 +138,7 @@ class OneshotItemTest(EventTest):
 class LossPreventionTest(EventTest):
 
   def setUp(self):
-    super(LossPreventionTest, self).setUp()
+    super().setUp()
     self.food = items.Food()
     self.char.possessions.append(self.food)
     self.loss = Loss(self.char, {"stamina": 1})
@@ -185,7 +185,7 @@ class LossPreventionTest(EventTest):
 class MedicineTest(EventTest):
 
   def setUp(self):
-    super(MedicineTest, self).setUp()
+    super().setUp()
     self.char.place = self.state.places["Uptown"]
     self.char.possessions.append(abilities.Medicine())
     self.char.stamina = 3
@@ -227,5 +227,5 @@ class MedicineTest(EventTest):
     self.assertTrue(self.char.possessions[0].exhausted)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
   unittest.main()

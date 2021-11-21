@@ -22,11 +22,17 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install pylint
+        pip install pylint autopep8
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+    - name: Check formatting with autopep8
+      run: |
+        autopep8 --diff --exit-code **/*.py
     - name: Analysing the code with pylint
       run: |
-        pylint -E `find . -name '*.py'`
+        pylint -E **/*.py
+    - name: Analysing code style with pylint
+      run: |
+        pylint eldritch/*.py
     - name: Test
       run: |
         python -m unittest

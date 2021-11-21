@@ -23,7 +23,7 @@ import game
 
 class NoMythos(mythos.GlobalEffect):
 
-  def create_event(self, state):
+  def create_event(self, state):  # pylint: disable=unused-argument
     return events.Nothing()
 
 
@@ -50,8 +50,8 @@ class GateTravelTest(unittest.TestCase):
       if not self.state.event_stack:
         break
     # Return all monsters to the cup so the character doesn't have to fight/evade.
-    for m in self.state.monsters:
-      m.place = self.state.monster_cup
+    for mon in self.state.monsters:
+      mon.place = self.state.monster_cup
     self.state.game_stage = "slumber"
     self.state.turn_phase = "upkeep"
     self.state.turn_number = 0
@@ -139,7 +139,7 @@ class TradingTestBase(unittest.TestCase):
 class TradingTest(TradingTestBase):
 
   def setUp(self):
-    super(TradingTest, self).setUp()
+    super().setUp()
     for char in self.state.characters:
       char.place = self.state.places["Southside"]
     for _ in self.state.resolve_loop():
@@ -521,7 +521,7 @@ class InsaneTest(unittest.TestCase):
     self.state.turn_idx = 0
     self.state.turn_phase = "otherworld"
     self.state.gate_cards.append(gate_encounters.GateCard(
-      "Gate29", {"red"}, {"Other": gate_encounters.Other29}))  # lose one stamina
+        "Gate29", {"red"}, {"Other": gate_encounters.Other29}))  # lose one stamina
     for _ in self.state.resolve_loop():
       if self.state.turn_phase != "otherworld":
         break
@@ -688,5 +688,5 @@ class PlayerJoinTest(unittest.TestCase):
     self.assertFalse(self.game.game.event_stack[-1].free)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
   unittest.main()
