@@ -192,7 +192,7 @@ class Character:
 class Student(Character):
 
   def __init__(self):
-    super(Student, self).__init__("Student", 5, 5, 4, 4, 4, 4, 4, 4, 3, "Bank")
+    super().__init__("Student", 5, 5, 4, 4, 4, 4, 4, 4, 3, "Bank")
 
   def abilities(self):
     return []  # TODO: Studious
@@ -210,7 +210,7 @@ class Student(Character):
 class Drifter(Character):
 
   def __init__(self):
-    super(Drifter, self).__init__("Drifter", 6, 4, 3, 6, 5, 5, 3, 3, 1, "Docks")
+    super().__init__("Drifter", 6, 4, 3, 6, 5, 5, 3, 3, 1, "Docks")
 
   def abilities(self):
     return []  # TODO: Scrounge
@@ -228,7 +228,7 @@ class Drifter(Character):
 class Salesman(Character):
 
   def __init__(self):
-    super(Salesman, self).__init__("Salesman", 6, 4, 5, 3, 4, 6, 3, 4, 1, "Store")
+    super().__init__("Salesman", 6, 4, 5, 3, 4, 6, 3, 4, 1, "Store")
 
   def abilities(self):
     return []  # TODO: Shrewd
@@ -246,7 +246,7 @@ class Salesman(Character):
 class Psychologist(Character):
 
   def __init__(self):
-    super(Psychologist, self).__init__("Psychologist", 4, 6, 3, 3, 4, 4, 5, 5, 2, "Asylum")
+    super().__init__("Psychologist", 4, 6, 3, 3, 4, 4, 5, 5, 2, "Asylum")
 
   def abilities(self):
     return []  # TODO: Psychology
@@ -264,7 +264,7 @@ class Psychologist(Character):
 class Photographer(Character):
 
   def __init__(self):
-    super(Photographer, self).__init__("Photographer", 6, 4, 5, 3, 5, 4, 3, 4, 2, "Newspaper")
+    super().__init__("Photographer", 6, 4, 5, 3, 5, 4, 3, 4, 2, "Newspaper")
 
   def abilities(self):
     return []  # TODO: Hometown
@@ -282,7 +282,7 @@ class Photographer(Character):
 class Magician(Character):
 
   def __init__(self):
-    super(Magician, self).__init__("Magician", 5, 5, 5, 4, 4, 3, 5, 3, 2, "Shoppe")
+    super().__init__("Magician", 5, 5, 5, 4, 4, 3, 5, 3, 2, "Shoppe")
 
   def abilities(self):
     return []  # TODO: Gift
@@ -300,7 +300,7 @@ class Magician(Character):
 class Author(Character):
 
   def __init__(self):
-    super(Author, self).__init__("Author", 4, 6, 4, 3, 3, 5, 4, 5, 2, "Diner")
+    super().__init__("Author", 4, 6, 4, 3, 3, 5, 4, 5, 2, "Diner")
 
   def abilities(self):
     return []  # TODO: Sensitivity
@@ -318,7 +318,7 @@ class Author(Character):
 class Professor(Character):
 
   def __init__(self):
-    super(Professor, self).__init__("Professor", 3, 7, 3, 5, 3, 3, 6, 4, 2, "Administration")
+    super().__init__("Professor", 3, 7, 3, 5, 3, 3, 6, 4, 2, "Administration")
 
   def abilities(self):
     return []  # TODO: Mind
@@ -336,7 +336,7 @@ class Professor(Character):
 class Dilettante(Character):
 
   def __init__(self):
-    super(Dilettante, self).__init__("Dilettante", 4, 6, 3, 4, 4, 5, 4, 5, 1, "Train")
+    super().__init__("Dilettante", 4, 6, 3, 4, 4, 5, 4, 5, 1, "Train")
 
   def abilities(self):
     return []  # TODO: Trust Fund
@@ -354,7 +354,7 @@ class Dilettante(Character):
 class PrivateEye(Character):
 
   def __init__(self):
-    super(PrivateEye, self).__init__("Private Eye", 6, 4, 6, 4, 5, 3, 3, 3, 3, "Police")
+    super().__init__("Private Eye", 6, 4, 6, 4, 5, 3, 3, 3, 3, "Police")
 
   def abilities(self):
     return []  # TODO: Hunches
@@ -372,12 +372,13 @@ class PrivateEye(Character):
 class Scientist(Character):
 
   def __init__(self):
-    super(Scientist, self).__init__("Scientist", 4, 6, 4, 5, 4, 3, 5, 4, 1, "Science")
+    super().__init__("Scientist", 4, 6, 4, 5, 4, 3, 5, 4, 1, "Science")
 
   def abilities(self):
     return []  # TODO: Flux Stabilizer
 
   def initial_attributes(self):
+    # TODO: don't place a clue on the science building to start the game
     return {"dollars": 7, "clues": 2}
 
   def fixed_possessions(self):
@@ -390,7 +391,7 @@ class Scientist(Character):
 class Researcher(Character):
 
   def __init__(self):
-    super(Researcher, self).__init__("Researcher", 5, 5, 4, 5, 3, 5, 4, 3, 2, "Libray")
+    super().__init__("Researcher", 5, 5, 4, 5, 3, 5, 4, 3, 2, "Libray")
 
   def abilities(self):
     return []  # TODO: Research
@@ -409,6 +410,9 @@ class Nun(Character):
 
   def __init__(self):
     super().__init__("Nun", 3, 7, 4, 4, 3, 4, 4, 6, 1, "Church")
+
+  def abilities(self):
+    return []  # TODO: Angel
 
   def initial_attributes(self):
     return {"bless_curse": 1}
