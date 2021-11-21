@@ -273,7 +273,7 @@ class LoseCombatTest(EventTest):
 class CombatWithItems(EventTest):
 
   def setUp(self):
-    super(CombatWithItems, self).setUp()
+    super().setUp()
     self.char.possessions.extend([items.TommyGun(), items.Wither(), items.Revolver38()])
     cultist = monsters.Cultist()
     self.combat = Combat(self.char, cultist)
@@ -912,7 +912,7 @@ class UndeadTest(EventTest):
 class CombatWithEnchantedWeapon(EventTest):
 
   def setUp(self):
-    super(CombatWithEnchantedWeapon, self).setUp()
+    super().setUp()
     self.char.possessions.extend([items.DarkCloak(), items.Revolver38(), items.EnchantWeapon()])
     spawn = monsters.FormlessSpawn()
     self.combat = Combat(self.char, spawn)
@@ -951,7 +951,7 @@ class CombatWithEnchantedWeapon(EventTest):
     self.assertTrue(self.char.possessions[2].active)
     self.assertEqual(self.char.hands_available(), 2)  # Enchant weapon is handless.
 
-    choose_weapons.resolve(self.state, [1])  # We already cast on the revolver, now choose to use it.
+    choose_weapons.resolve(self.state, [1])  # We already cast on the revolver, now choose to use it
 
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)) as rand:
       self.resolve_until_done()
@@ -1198,7 +1198,7 @@ class CombatWithEnchantedWeapon(EventTest):
 class CombatWithRedSignTest(EventTest):
 
   def setUp(self):
-    super(CombatWithRedSignTest, self).setUp()
+    super().setUp()
     self.char.possessions.extend([items.EnchantedKnife(), items.Revolver38(), items.RedSign()])
 
   def start(self, monster):
@@ -1602,5 +1602,5 @@ class CombatWithRedSignTest(EventTest):
     self.assertTrue(witch.has_attribute("magical resistance", self.state, self.char))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
   unittest.main()

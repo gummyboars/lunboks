@@ -1,4 +1,4 @@
-class Gate(object):
+class Gate:
 
   def __init__(self, info, difficulty):
     self.info = info

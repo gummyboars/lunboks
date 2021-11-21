@@ -22,7 +22,7 @@ from eldritch.test_events import EventTest
 class EncounterTest(EventTest):
 
   def setUp(self):
-    super(EncounterTest, self).setUp()
+    super().setUp()
     self.char.place = self.state.places["Diner"]
     self.char.speed_sneak_slider = 1
     self.char.fight_will_slider = 1
@@ -120,7 +120,7 @@ class DrawEncounterTest(EncounterTest):
 class DinerTest(EncounterTest):
 
   def setUp(self):
-    super(DinerTest, self).setUp()
+    super().setUp()
     self.char.place = self.state.places["Diner"]
 
   def testDiner1DontPay(self):
@@ -269,7 +269,7 @@ class DinerTest(EncounterTest):
 class RoadhouseTest(EncounterTest):
 
   def setUp(self):
-    super(RoadhouseTest, self).setUp()
+    super().setUp()
     self.char.place = self.state.places["Roadhouse"]
 
   def testRoadhouse1Clueless(self):
@@ -372,7 +372,7 @@ class RoadhouseTest(EncounterTest):
 class PoliceTest(EncounterTest):
 
   def setUp(self):
-    super(PoliceTest, self).setUp()
+    super().setUp()
     self.char.place = self.state.places["Police"]
 
   def testPolice1Pass(self):
@@ -465,7 +465,7 @@ class PoliceTest(EncounterTest):
 class LodgeTest(EncounterTest):
 
   def setUp(self):
-    super(LodgeTest, self).setUp()
+    super().setUp()
     self.char.place = self.state.places["Lodge"]
 
   def testLodge1Pass(self):
@@ -473,7 +473,7 @@ class LodgeTest(EncounterTest):
     self.state.spells.extend([items.Cross(), items.HolyWater()])
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       choice = self.resolve_to_choice(CardChoice)
-    self.assertEqual(choice.choices, ['Cross', 'Holy Water'])
+    self.assertEqual(choice.choices, ["Cross", "Holy Water"])
     choice.resolve(self.state, "Cross")
     self.resolve_until_done()
     self.assertEqual(len(self.char.possessions), 1)
@@ -805,7 +805,7 @@ class LodgeTest(EncounterTest):
 class WitchTest(EncounterTest):
 
   def setUp(self):
-    super(WitchTest, self).setUp()
+    super().setUp()
     self.char.place = self.state.places["Witch"]
 
   def testWitch1Fail(self):
@@ -948,7 +948,7 @@ class WitchTest(EncounterTest):
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       self.resolve_until_done()
     self.assertEqual(len(self.char.possessions), 1)
-    self.assertEqual(self.char.possessions[0].name, '.38 Revolver')
+    self.assertEqual(self.char.possessions[0].name, ".38 Revolver")
 
   def testWitch7Fail(self):
     self.state.event_stack.append(encounters.Witch7(self.char))
@@ -956,17 +956,17 @@ class WitchTest(EncounterTest):
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=4)):
       choice = self.resolve_to_choice(events.ItemChoice)  # pylint: disable=unused-variable
     # TODO: Learn how to use ItemCountChoice
-    # self.assertEqual(choice.choices, ['.38 Revolver', 'Tommy Gun'])
-    # choice.resolve('Tommy Gun')
+    # self.assertEqual(choice.choices, [".38 Revolver", "Tommy Gun"])
+    # choice.resolve("Tommy Gun")
     # self.resolve_until_done()
     # self.assertEqual(len(self.char.possessions), 1)
-    # self.assertEqual(self.char.possessions[0].name, '.38 Revolver')
+    # self.assertEqual(self.char.possessions[0].name, ".38 Revolver")
 
 
 class SocietyTest(EncounterTest):
 
   def setUp(self):
-    super(SocietyTest, self).setUp()
+    super().setUp()
     self.char.place = self.state.places["Society"]
     # I cast GUN!
     self.state.spells.extend([items.Revolver38(), items.TommyGun()])
@@ -984,8 +984,20 @@ class SocietyTest(EncounterTest):
     choice = self.resolve_to_choice(MultipleChoice)
     choice.resolve(self.state, "Yes")
     self.state.places["Uptown"].encounters = [
-        encounters.EncounterCard("Uptown1", {"Hospital": encounters.Hospital1, "Woods": encounters.Woods1, "Shoppe": encounters.Shoppe1}),
-        encounters.EncounterCard("Uptown2", {"Hospital": encounters.Hospital2, "Woods": encounters.Woods2, "Shoppe": encounters.Shoppe2}),
+        encounters.EncounterCard(
+            "Uptown1", {
+                "Hospital": encounters.Hospital1,
+                "Woods": encounters.Woods1,
+                "Shoppe": encounters.Shoppe1,
+            },
+        ),
+        encounters.EncounterCard(
+            "Uptown2", {
+                "Hospital": encounters.Hospital2,
+                "Woods": encounters.Woods2,
+                "Shoppe": encounters.Shoppe2,
+            },
+        ),
     ]
 
     choice2 = self.resolve_to_choice(CardChoice)
@@ -1177,8 +1189,20 @@ class SocietyTest(EncounterTest):
     choice.resolve(self.state, "Yes")
 
     self.state.places["Rivertown"].encounters = [
-        encounters.EncounterCard("Rivertown1",  {"Cave": encounters.Cave1, "Store": encounters.Store1, "Graveyard": encounters.Graveyard1}),
-        encounters.EncounterCard("Rivertown2", {"Cave": encounters.Cave2, "Store": encounters.Store2, "Graveyard": encounters.Graveyard2})
+        encounters.EncounterCard(
+            "Rivertown1",  {
+                "Cave": encounters.Cave1,
+                "Store": encounters.Store1,
+                "Graveyard": encounters.Graveyard1,
+            },
+        ),
+        encounters.EncounterCard(
+            "Rivertown2", {
+                "Cave": encounters.Cave2,
+                "Store": encounters.Store2,
+                "Graveyard": encounters.Graveyard2,
+            },
+        ),
     ]
 
     choice2 = self.resolve_to_choice(CardChoice)
@@ -1190,7 +1214,7 @@ class SocietyTest(EncounterTest):
 class HouseTest(EncounterTest):
 
   def setUp(self):
-    super(HouseTest, self).setUp()
+    super().setUp()
     self.char.place = self.state.places["House"]
     self.state.common.extend([items.Revolver38(), items.TommyGun()])
 
@@ -1211,7 +1235,9 @@ class HouseTest(EncounterTest):
     self.state.event_stack.append(encounters.House1(self.char))
     self.state.gate_cards.clear()
     self.state.gate_cards.append(gate_encounters.GateCard(
-        "Gate10", {"blue"}, {"Abyss": gate_encounters.Abyss10, "Other": gate_encounters.Dreamlands10}))
+        "Gate10", {"blue"},
+        {"Abyss": gate_encounters.Abyss10, "Other": gate_encounters.Dreamlands10},
+    ))
 
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=2)):
       self.resolve_until_done()
@@ -1232,8 +1258,14 @@ class HouseTest(EncounterTest):
     choice = self.resolve_to_choice(MultipleChoice)
     choice.resolve(self.state, "Yes")
     self.state.places["FrenchHill"].encounters = [
-        encounters.EncounterCard("FrenchHill1", {"Lodge": encounters.Lodge1, "Witch": encounters.Witch1, "Sanctum": encounters.Sanctum1}),
-        encounters.EncounterCard("FrenchHill2", {"Lodge": encounters.Lodge2, "Witch": encounters.Witch2, "Sanctum": encounters.Sanctum2}),
+        encounters.EncounterCard(
+            "FrenchHill1",
+            {"Lodge": encounters.Lodge1, "Witch": encounters.Witch1, "Sanctum": encounters.Sanctum1}
+        ),
+        encounters.EncounterCard(
+            "FrenchHill2",
+            {"Lodge": encounters.Lodge2, "Witch": encounters.Witch2, "Sanctum": encounters.Sanctum2}
+        ),
     ]
     choice2 = self.resolve_to_choice(CardChoice)
     self.assertEqual(choice2.choices[0][0:10], "FrenchHill")
@@ -1389,7 +1421,7 @@ class HouseTest(EncounterTest):
 class ChurchTest(EncounterTest):
 
   def setUp(self):
-    super(ChurchTest, self).setUp()
+    super().setUp()
     self.char.place = self.state.places["Church"]
     self.state.unique.extend([items.HolyWater(), items.Cross()])
 
@@ -1511,7 +1543,7 @@ class ChurchTest(EncounterTest):
 class AdministrationTest(EncounterTest):
 
   def setUp(self):
-    super(AdministrationTest, self).setUp()
+    super().setUp()
     self.char.place = self.state.places["Administration"]
 
   def testAdministration1Pass(self):
@@ -1624,7 +1656,7 @@ class AdministrationTest(EncounterTest):
 class LibraryTest(EncounterTest):
 
   def setUp(self):
-    super(LibraryTest, self).setUp()
+    super().setUp()
     self.char.place = self.state.places["Library"]
 
   def testLibrary1Fail(self):
@@ -1766,7 +1798,7 @@ class LibraryTest(EncounterTest):
 class ScienceTest(EncounterTest):
 
   def setUp(self):
-    super(ScienceTest, self).setUp()
+    super().setUp()
     self.char.place = self.state.places["Science"]
 
   def testScience1(self):
@@ -1921,7 +1953,7 @@ class ScienceTest(EncounterTest):
 class AsylumTest(EncounterTest):
 
   def setUp(self):
-    super(AsylumTest, self).setUp()
+    super().setUp()
     self.char.place = self.state.places["Asylum"]
 
   def testAsylum1Zero(self):
@@ -2048,7 +2080,7 @@ class AsylumTest(EncounterTest):
 class BankTest(EncounterTest):
 
   def setUp(self):
-    super(BankTest, self).setUp()
+    super().setUp()
     self.char.place = self.state.places["Bank"]
 
   def testBank1Move(self):
@@ -2215,7 +2247,7 @@ class BankTest(EncounterTest):
 class SquareTest(EncounterTest):
 
   def setUp(self):
-    super(SquareTest, self).setUp()
+    super().setUp()
     self.char.place = self.state.places["Square"]
 
   def testSquare1(self):
@@ -2317,7 +2349,7 @@ class SquareTest(EncounterTest):
 class ShopTest(EncounterTest):
 
   def setUp(self):
-    super(ShopTest, self).setUp()
+    super().setUp()
     self.char.place = self.state.places["Shop"]
 
   def testShop1Success2(self):
@@ -2370,7 +2402,7 @@ class ShopTest(EncounterTest):
 class NewspaperTest(EncounterTest):
 
   def setUp(self):
-    super(NewspaperTest, self).setUp()
+    super().setUp()
     self.char.place = self.state.places["Newspaper"]
 
   def testNewspaper1Move(self):
@@ -2442,7 +2474,7 @@ class NewspaperTest(EncounterTest):
 class TrainTest(EncounterTest):
 
   def setUp(self):
-    super(TrainTest, self).setUp()
+    super().setUp()
     self.char.place = self.state.places["Train"]
     self.state.unique.extend([items.Cross(), items.HolyWater()])
     # maybe they're magic guns? I cast bullet!
@@ -2620,7 +2652,7 @@ class TrainTest(EncounterTest):
 class DocksTest(EncounterTest):
 
   def setUp(self):
-    super(DocksTest, self).setUp()
+    super().setUp()
     self.char.place = self.state.places["Docks"]
 
   def testDocks1Pass(self):
@@ -2780,7 +2812,7 @@ class DocksTest(EncounterTest):
 class UnnamableTest(EncounterTest):
 
   def setUp(self):
-    super(UnnamableTest, self).setUp()
+    super().setUp()
     self.char.place = self.state.places["Unnamable"]
 
   def testUnnamable1No(self):
@@ -2944,7 +2976,7 @@ class UnnamableTest(EncounterTest):
 class IsleTest(EncounterTest):
 
   def setUp(self):
-    super(IsleTest, self).setUp()
+    super().setUp()
     self.char.place = self.state.places["Isle"]
 
   def testIsle1(self):
@@ -3201,7 +3233,7 @@ class HospitalTest(EncounterTest):
 class WoodsTest(EncounterTest):
 
   def setUp(self):
-    super(WoodsTest, self).setUp()
+    super().setUp()
     self.char.place = self.state.places["Woods"]
 
   def testWoods1Ignore(self):
@@ -3880,7 +3912,7 @@ class CaveTest(EncounterTest):
 
 class StoreTest(EncounterTest):
   def setUp(self):
-    super(StoreTest, self).setUp()
+    super().setUp()
     self.char.place = self.state.places["Store"]
 
   def testStore1(self):
@@ -3948,7 +3980,8 @@ class StoreTest(EncounterTest):
     # raise NotImplementedError("Salesman should get to draw an extra common card")
     # self.character = characters.Salesman()
     # self.char.lore_luck_slider = 2
-    # self.state.common.extend([items.Revolver38(), items.Cross(), items.TommyGun(), items.Dynamite()])
+    # self.state.common.extend([
+    #     items.Revolver38(), items.Cross(), items.TommyGun(), items.Dynamite()])
     # self.state.event_stack.append(encounters.Store5(self.char))
     # with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=2)):
     #   self.resolve_until_done()
@@ -4305,5 +4338,5 @@ class GraveyardTest(EncounterTest):
 #    raise NotImplementedError("Take a monster trophy")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
   unittest.main()

@@ -22,7 +22,7 @@ from eldritch.test_events import EventTest
 class OpenGateTest(EventTest):
 
   def setUp(self):
-    super(OpenGateTest, self).setUp()
+    super().setUp()
     self.state.gates.clear()
     self.info = places.OtherWorldInfo("Pluto", {"blue", "yellow"})
     self.gate = gates.Gate(self.info, -2)
@@ -97,7 +97,7 @@ class OpenGateTest(EventTest):
 class MonsterSurgeTest(EventTest):
 
   def setUp(self):
-    super(MonsterSurgeTest, self).setUp()
+    super().setUp()
     self.state.monsters.clear()
     self.state.monsters.extend([
         monsters.Cultist(), monsters.Ghost(), monsters.Maniac(), monsters.Vampire(),
@@ -231,7 +231,7 @@ class MonsterSurgeTest(EventTest):
       monster.place = self.state.places["Outskirts"]
     # Add 5 monsters to the board.
     board_monsters = [
-        monsters.Cultist(), monsters.Ghost(), monsters.Maniac(), monsters.Vampire(), monsters.Witch(),
+        monsters.Cultist(), monsters.Ghost(), monsters.Maniac(), monsters.Ghost(), monsters.Witch(),
     ]
     for monster in board_monsters:
       monster.place = self.state.places["Square"]
@@ -267,14 +267,14 @@ class MonsterSurgeTest(EventTest):
   def testAllToCup(self):
     # Add 5 monsters to the outskirts.
     outskirt_monsters = [
-        monsters.Cultist(), monsters.Maniac(), monsters.Vampire(), monsters.Witch(), monsters.Ghoul(),
+        monsters.Cultist(), monsters.Maniac(), monsters.Ghost(), monsters.Witch(), monsters.Ghoul(),
     ]
     self.state.monsters.extend(outskirt_monsters)
     for monster in outskirt_monsters:
       monster.place = self.state.places["Outskirts"]
     # Add 5 monsters to the board.
     board_monsters = [
-        monsters.Cultist(), monsters.Ghost(), monsters.Maniac(), monsters.Vampire(), monsters.Witch(),
+        monsters.Cultist(), monsters.Ghost(), monsters.Maniac(), monsters.Ghost(), monsters.Witch(),
     ]
     for monster in board_monsters:
       monster.place = self.state.places["Square"]
@@ -420,7 +420,7 @@ class MonsterSpawnCountTest(unittest.TestCase):
 class CloseGateTest(EventTest):
 
   def setUp(self):
-    super(CloseGateTest, self).setUp()
+    super().setUp()
     self.square = self.state.places["Square"]
     self.square.gate = self.state.gates.popleft()
     self.char.place = self.square
@@ -532,7 +532,7 @@ class CloseGateTest(EventTest):
 class SpawnClueTest(EventTest):
 
   def setUp(self):
-    super(SpawnClueTest, self).setUp()
+    super().setUp()
     self.square = self.state.places["Square"]
 
   def testSpawnClue(self):
@@ -639,7 +639,7 @@ class MoveMonsterTest(EventTest):
 class ReturnToCupTest(EventTest):
 
   def setUp(self):
-    super(ReturnToCupTest, self).setUp()
+    super().setUp()
     self.cultist = monsters.Cultist()
     self.maniac = monsters.Maniac()
     self.dream_flier = monsters.DreamFlier()
@@ -708,7 +708,7 @@ class ReturnToCupTest(EventTest):
 class GlobalModifierTest(EventTest):
 
   def setUp(self):
-    super(GlobalModifierTest, self).setUp()
+    super().setUp()
     more_monsters = [monsters.Cultist(), monsters.Maniac()]
     for monster in more_monsters:
       monster.place = self.state.monster_cup
@@ -738,5 +738,5 @@ class GlobalModifierTest(EventTest):
     self.assertEqual(self.state.environment, env)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
   unittest.main()

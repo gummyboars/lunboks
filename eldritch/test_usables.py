@@ -20,7 +20,7 @@ from eldritch.test_events import EventTest
 class ClueTokenTest(EventTest):
 
   def setUp(self):
-    super(ClueTokenTest, self).setUp()
+    super().setUp()
     self.check = Check(self.char, "combat", 0)
     self.state.event_stack.append(self.check)
 
@@ -89,7 +89,7 @@ class ClueTokenTest(EventTest):
 class RerollTest(EventTest):
 
   def setUp(self):
-    super(RerollTest, self).setUp()
+    super().setUp()
     self.char.possessions.append(abilities.Marksman())
     self.check = Check(self.char, "combat", 0)
     self.state.event_stack.append(self.check)
@@ -115,7 +115,7 @@ class RerollTest(EventTest):
 class OneshotItemTest(EventTest):
 
   def setUp(self):
-    super(OneshotItemTest, self).setUp()
+    super().setUp()
     self.char.possessions.append(items.Dynamite())
     self.check = Check(self.char, "combat", 0)
     self.state.event_stack.append(self.check)
@@ -138,7 +138,7 @@ class OneshotItemTest(EventTest):
 class LossPreventionTest(EventTest):
 
   def setUp(self):
-    super(LossPreventionTest, self).setUp()
+    super().setUp()
     self.food = items.Food()
     self.char.possessions.append(self.food)
     self.loss = Loss(self.char, {"stamina": 1})
@@ -185,7 +185,7 @@ class LossPreventionTest(EventTest):
 class MedicineTest(EventTest):
 
   def setUp(self):
-    super(MedicineTest, self).setUp()
+    super().setUp()
     self.char.place = self.state.places["Uptown"]
     self.char.possessions.append(abilities.Medicine())
     self.char.stamina = 3
@@ -227,5 +227,5 @@ class MedicineTest(EventTest):
     self.assertTrue(self.char.possessions[0].exhausted)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
   unittest.main()
