@@ -230,6 +230,7 @@ class Movement(Turn):
     self.done = False
 
   def resolve(self, state):
+    self.character.avoid_monsters = []
     if self.check_lose_turn():
       return True
     if self.character.delayed_until is not None:
@@ -495,6 +496,7 @@ class MoveOne(Event):
       self.character.place = state.places[self.dest]
       self.character.movement_points -= 1
       self.character.explored = False
+      self.character.avoid_monsters = []
     self.done = True
     self.moved = True
     return True
@@ -2270,8 +2272,12 @@ class EvadeOrFightAll(Sequence):
   def __init__(self, character, monsters):
    self.monsters = monsters
    self.character = character
-   super(EvadeOrFightAll, self).__init__([
-     EvadeOrCombat(character, monster) for monster in monsters], character)
+   super(EvadeOrFightAll, self).__init__(
+       [
+         EvadeOrCombat(character, monster)
+         for monster in monsters
+         if monster not in character.avoid_monsters
+       ], character)
 
   def start_str(self):
     return f"{self.character.name} must evade or fight all of: " \
@@ -2436,7 +2442,7 @@ class EvadeRound(Event):
       return False
     if self.check.successes >= 1:
       self.evaded = True
-      self.character.avoid_monsters = True
+      self.character.avoid_monsters.append(self.monster)
       return True
     self.damage = Loss(
         self.character, {"stamina": self.monster.damage("combat", state, self.character)})

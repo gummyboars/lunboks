@@ -397,42 +397,47 @@ class MovementTest(EventTest):
 
   def testMoveMultipleThroughTwoMonstersFailedEvade(self):
     self.char.speed_sneak_slider = 1
-    while self.state.turn_phase != "movement":
-      self.state.next_turn()
-    self.assertEqual(self.char.stamina, 5)
-    self.assertEqual(self.char.sanity, 5)
     monster1 = next(monster for monster in self.state.monsters if monster.name == "Maniac")
     monster1.place = self.state.places["Easttown"]
-    monster2 = next(monster for monster in self.state.monsters if monster.name == "Subterranean Flier")
+    monster2 = monsters.Zombie()
+    self.state.monsters.append(monster2)
     monster2.place = self.state.places["Easttown"]
 
-    movement = Movement(
-        self.char, [self.state.places[name] for name in ["Easttown", "Rivertown", "Graveyard"]])
-    self.assertFalse(movement.is_resolved())
+    self.advance_turn(self.state.turn_number, "movement")
+    self.assertEqual(self.char.stamina, 5)
+    self.assertEqual(self.char.sanity, 5)
+
+    movement = self.resolve_to_choice(CityMovement)
+    self.assertIn("Easttown", movement.choices)
+    movement.resolve(self.state, "Easttown")
     self.assertEqual(self.char.movement_points, 2)
 
-    self.state.event_stack.append(Sequence([movement, EndMovement(self.char)], self.char))
+    movement = self.resolve_to_choice(CityMovement)
+    self.assertIn("Rivertown", movement.choices)
+    movement.resolve(self.state, "Rivertown")
     choice = self.resolve_to_choice(MultipleChoice)
     #TODO: Choose which one to evade first
-    # For now, Subterranean Flier is the first
+    # For now, Zombie is the first
     self.assertEqual(choice.choices, ["Fight", "Evade"])
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=4)):
       choice.resolve(self.state, "Evade")
       next_choice = self.resolve_to_choice(MultipleChoice)
-      self.assertEqual(next_choice.choices, ["Fight", "Flee"])
-      self.assertEqual(self.char.stamina, 2)
-      self.assertEqual(self.char.sanity, 1)
+      self.assertEqual(sorted(next_choice.choices), ["Fight", "Flee"])
+      self.assertEqual(self.char.stamina, 4)
+      self.assertEqual(self.char.sanity, 5)
     next_choice.resolve(self.state, "Flee")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       maniac_choice = self.resolve_to_choice(MultipleChoice)
       self.assertEqual(maniac_choice.choices, ["Fight", "Evade"])
       maniac_choice.resolve(self.state, "Evade")
-      self.resolve_until_done()
+      movement = self.resolve_to_choice(CityMovement)
 
+    self.assertFalse(movement.choices)
+    movement.resolve(self.state, movement.none_choice)
     self.assertTrue(movement.is_resolved())
     self.assertEqual(self.char.place.name, "Easttown")
-    self.assertEqual(self.char.stamina, 2)
-    self.assertEqual(self.char.sanity, 1)
+    self.assertEqual(self.char.stamina, 4)
+    self.assertEqual(self.char.sanity, 5)
     self.assertEqual(self.char.movement_points, 0)
     # TODO: ^ should this pass?
 

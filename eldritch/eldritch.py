@@ -360,7 +360,11 @@ class GameState(object):
   def get_interrupts(self, event):
     interrupts = []
     if isinstance(event, events.MoveOne):
-      nearby_monsters = [mon for mon in self.monsters if mon.place == event.character.place]
+      nearby_monsters = [
+        mon
+        for mon in self.monsters
+        if mon.place == event.character.place and mon not in event.character.avoid_monsters
+      ]
       if nearby_monsters:
         interrupts.append(events.EvadeOrFightAll(event.character, nearby_monsters))
     interrupts += sum([char.get_interrupts(event, self) for char in self.characters], [])
