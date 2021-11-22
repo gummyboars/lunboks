@@ -298,10 +298,6 @@ class CityMovement(ChoiceEvent):
   def prompt(self):
     return "Move somewhere"
 
-  def resolve(self, state):
-      self.done = True
-      self.character.avoid_monsters = False
-
   @property
   def choices(self):
     return sorted(self.routes.keys())
@@ -509,9 +505,9 @@ class MoveOne(Event):
 
   def finish_str(self):
     if self.moved:
-      return f"{self.character.name} moved to {self.dest.name}"
+      return f"{self.character.name} moved to {self.dest}"
     else:
-      return f"{self.character.name} stayed in {self.character.place.name}"
+      return f"{self.character.name} stayed in {self.character.place}"
 
 
 class GainOrLoss(Event):
