@@ -2273,14 +2273,14 @@ class GateChoice(MapChoice):
 class EvadeOrFightAll(Sequence):
 
   def __init__(self, character, monsters):
-   self.monsters = monsters
-   self.character = character
-   super(EvadeOrFightAll, self).__init__(
-       [
-         EvadeOrCombat(character, monster)
-         for monster in monsters
-         if monster not in character.avoid_monsters
-       ], character)
+    self.monsters = monsters
+    self.character = character
+    super(EvadeOrFightAll, self).__init__(
+        [
+            EvadeOrCombat(character, monster)
+            for monster in monsters
+            if monster not in character.avoid_monsters
+        ], character)
 
   def start_str(self):
     return f"{self.character.name} must evade or fight all of: " \

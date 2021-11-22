@@ -416,7 +416,7 @@ class MovementTest(EventTest):
     self.assertIn("Rivertown", movement.choices)
     movement.resolve(self.state, "Rivertown")
     choice = self.resolve_to_choice(MultipleChoice)
-    #TODO: Choose which one to evade first
+    # TODO: Choose which one to evade first
     # For now, Zombie is the first
     self.assertEqual(choice.choices, ["Fight", "Evade"])
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=4)):
@@ -440,7 +440,6 @@ class MovementTest(EventTest):
     self.assertEqual(self.char.sanity, 5)
     self.assertEqual(self.char.movement_points, 0)
     # TODO: ^ should this pass?
-
 
   def testForceMovement(self):
     movement = ForceMovement(self.char, "Graveyard")

@@ -1,5 +1,6 @@
 from eldritch import assets
 
+
 class MonsterCup:
 
   def __init__(self):
