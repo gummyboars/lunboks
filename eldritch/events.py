@@ -510,8 +510,7 @@ class MoveOne(Event):
   def finish_str(self):
     if self.moved:
       return f"{self.character.name} moved to {self.dest}"
-    else:
-      return f"{self.character.name} stayed in {self.character.place}"
+    return f"{self.character.name} stayed in {self.character.place}"
 
 
 class GainOrLoss(Event):
@@ -2275,7 +2274,7 @@ class EvadeOrFightAll(Sequence):
   def __init__(self, character, monsters):
     self.monsters = monsters
     self.character = character
-    super(EvadeOrFightAll, self).__init__(
+    super().__init__(
         [
             EvadeOrCombat(character, monster)
             for monster in monsters
@@ -2460,7 +2459,8 @@ class EvadeRound(Event):
   def finish_str(self):
     if self.evaded:
       return f"{self.character.name} evaded a {self.monster.name}"
-    return f"{self.character.name} did not evade the {self.monster.name} and lost any remaining movement"
+    return (f"{self.character.name} did not evade the {self.monster.name}"
+            + "and lost any remaining movement")
 
 
 class CombatRound(Event):
