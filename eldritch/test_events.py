@@ -23,7 +23,7 @@ from eldritch import monsters
 
 class NoMythos(mythos.GlobalEffect):
 
-  def create_event(self, state):
+  def create_event(self, state):  # pylint: disable=unused-argument
     return events.Nothing()
 
 
@@ -39,10 +39,10 @@ class EventTest(unittest.TestCase):
 
   def resolve_loop(self):
     count = 0
-    for thing in self.state.resolve_loop():  # It's a generator, so you have to loop through it.
+    for _ in self.state.resolve_loop():  # It's a generator, so you have to loop through it.
       count += 1
       if count > 100:
-        self.fail("Exceeded maximum number of events: %s" % self.state.event_stack)
+        self.fail(f"Exceeded maximum number of events: {self.state.event_stack}")
 
   def resolve_until_done(self):
     self.resolve_loop()
@@ -81,8 +81,8 @@ class EventTest(unittest.TestCase):
         self.state.event_stack[-1].resolve(self.state, "done")
 
   def _formatMessage(self, msg, standardMsg):
-    ret = super(EventTest, self)._formatMessage(msg, standardMsg)
-    return ret + '\n\n\n' + '\n'.join(self.state.event_log)
+    ret = super()._formatMessage(msg, standardMsg)
+    return ret + "\n\n\n" + "\n".join(self.state.event_log)
 
 
 class DiceRollTest(EventTest):
@@ -138,7 +138,7 @@ class UpkeepTest(EventTest):
 class SliderTest(EventTest):
 
   def setUp(self):
-    super(SliderTest, self).setUp()
+    super().setUp()
     self.state.event_stack.append(Upkeep(self.char))
     self.sliders = self.resolve_to_choice(SliderInput)
     self.assertFalse(self.sliders.is_resolved())
@@ -195,7 +195,7 @@ class SliderTest(EventTest):
 class MovementPhaseTest(EventTest):
 
   def setUp(self):
-    super(MovementPhaseTest, self).setUp()
+    super().setUp()
     self.state.turn_phase = "movement"
     self.char.movement_points = 0
     self.movement = Movement(self.char)
@@ -503,7 +503,7 @@ class MovementTest(EventTest):
 class CityMovementTest(EventTest):
 
   def setUp(self):
-    super(CityMovementTest, self).setUp()
+    super().setUp()
     self.movement = CityMovement(self.char)
     self.state.event_stack.append(self.movement)
     self.resolve_to_choice(CityMovement)  # runs compute_choices
@@ -698,8 +698,8 @@ class InsaneUnconsciousTest(EventTest):
     self.char.clues = 0
     self.char.sanity = 1
     seq = Sequence([
-      Sequence([Loss(self.char, {"sanity": 1}), Gain(self.char, {"dollars": 1})], self.char),
-      Gain(self.char, {"clues": 1})
+        Sequence([Loss(self.char, {"sanity": 1}), Gain(self.char, {"dollars": 1})], self.char),
+        Gain(self.char, {"clues": 1})
     ], self.char)
 
     self.state.event_stack.append(seq)
@@ -938,7 +938,7 @@ class DrawRandomTest(EventTest):
     self.assertFalse(self.char.possessions)
     dynamite = items.Dynamite()
     self.state.common.extend([
-      items.Food(), dynamite, items.Revolver38(), items.TommyGun(), items.Bullwhip()])
+        items.Food(), dynamite, items.Revolver38(), items.TommyGun(), items.Bullwhip()])
 
     self.state.event_stack.append(draw)
     choice = self.resolve_to_choice(CardChoice)
@@ -1014,7 +1014,7 @@ class DiscardNamedTest(EventTest):
     self.resolve_until_done()
     self.assertTrue(discard.is_resolved())
     self.assertEqual(len(self.char.possessions), 1)
-    self.assertEqual(self.char.possessions[0].name, 'Tommy Gun')
+    self.assertEqual(self.char.possessions[0].name, "Tommy Gun")
     self.assertEqual(len(self.state.common), 1)
 
   def testDontHave(self):
@@ -1218,16 +1218,16 @@ class BinaryChoiceTest(EventTest):
 class PrereqChoiceTest(EventTest):
 
   def testMismatchedLengths(self):
-    p = values.AttributePrerequisite(self.char, "dollars", 2, "at least")
+    prereq = values.AttributePrerequisite(self.char, "dollars", 2, "at least")
     with self.assertRaises(AssertionError):
-      PrereqChoice(self.char, "choose", ["Yes", "No"], [p])
+      PrereqChoice(self.char, "choose", ["Yes", "No"], [prereq])
 
   def testInvalidChoices(self):
-    c = values.AttributePrerequisite(self.char, "clues", 1, "at least")
-    d = values.AttributePrerequisite(self.char, "sanity", 1, "at least")
-    s = values.AttributePrerequisite(self.char, "stamina", 2, "at most")
+    clues = values.AttributePrerequisite(self.char, "clues", 1, "at least")
+    sanity = values.AttributePrerequisite(self.char, "sanity", 1, "at least")
+    stamina = values.AttributePrerequisite(self.char, "stamina", 2, "at most")
     choices = ["Spend 1 clue", "Spend 1 sanity", "Gain stamina", "Do Nothing"]
-    choice = PrereqChoice(self.char, "choose", choices, [c, d, s, None])
+    choice = PrereqChoice(self.char, "choose", choices, [clues, sanity, stamina, None])
     self.state.event_stack.append(choice)
     choice = self.resolve_to_choice(PrereqChoice)
 
@@ -1244,7 +1244,7 @@ class PrereqChoiceTest(EventTest):
 class ItemChoiceTest(EventTest):
 
   def setUp(self):
-    super(ItemChoiceTest, self).setUp()
+    super().setUp()
     self.char.possessions.append(items.Revolver38())
     self.char.possessions.append(items.Food())
     self.char.possessions.append(items.HolyWater())
@@ -1354,6 +1354,7 @@ class RefreshItemsTest(EventTest):
 
   def testRefreshItems(self):
     self.char.possessions.extend([items.Wither(), items.Wither(), items.Bullwhip(), items.Cross()])
+    # pylint: disable=protected-access
     self.char.possessions[0]._exhausted = True
     self.char.possessions[2]._exhausted = True
 
@@ -1386,7 +1387,7 @@ class ActivateItemsTest(EventTest):
   def testDeactivateItem(self):
     gun = items.TommyGun()
     self.char.possessions.append(gun)
-    gun._active = True
+    gun._active = True  # pylint: disable=protected-access
     self.assertEqual(self.char.hands_available(), 0)
     self.assertEqual(self.char.combat(self.state, None), 10)
 
@@ -1418,6 +1419,7 @@ class ActivateItemsTest(EventTest):
 
   def testDeactivateItems(self):
     self.char.possessions.extend([items.Bullwhip(), items.TommyGun(), items.Revolver38()])
+    # pylint: disable=protected-access
     self.char.possessions[0]._active = True
     self.char.possessions[2]._active = True
     self.assertEqual(self.char.hands_available(), 0)
@@ -1667,12 +1669,9 @@ class PurchaseTest(EventTest):
     self.assertSequenceEqual(self.state.common, [cross, food])
 
 
-
-
-
 class SellTest(EventTest):
   def testSellOneAtList(self):
-    sell = Sell(self.char, {'common'}, 1)
+    sell = Sell(self.char, {"common"}, 1)
     self.char.dollars = 3
     self.assertFalse(sell.is_resolved())
     self.assertFalse(self.char.possessions)
@@ -1692,7 +1691,7 @@ class SellTest(EventTest):
     self.assertEqual(self.state.common[0].name, "Food")
 
   def testSellOneDecline(self):
-    sell = Sell(self.char, {'common'}, 1)
+    sell = Sell(self.char, {"common"}, 1)
     self.char.dollars = 3
     self.assertFalse(sell.is_resolved())
     self.assertFalse(self.char.possessions)
@@ -1712,7 +1711,7 @@ class SellTest(EventTest):
     self.assertEqual(self.char.possessions[0].name, "Food")
 
   def testSellOneDoublePrice(self):
-    buy = Sell(self.char, {'common'}, 1, discount_type='rate', discount=-1)
+    buy = Sell(self.char, {"common"}, 1, discount_type="rate", discount=-1)
     self.char.dollars = 3
     self.assertFalse(buy.is_resolved())
     self.assertFalse(self.char.possessions)
@@ -1733,7 +1732,7 @@ class SellTest(EventTest):
 
   def testInvalidSale(self):
     self.char.possessions = [items.Food(), items.HolyWater()]
-    sell = Sell(self.char, {'common'}, 1)
+    sell = Sell(self.char, {"common"}, 1)
     self.state.event_stack.append(sell)
     choice = self.resolve_to_choice(ItemChoice)
     with self.assertRaises(AssertionError):
@@ -1750,13 +1749,13 @@ class CloseLocationTest(EventTest):
     self.resolve_until_done()
     self.assertTrue(self.state.places[place_name].closed)
     self.assertEqual(self.char.place.name, "Uptown")
-    self.advance_turn(self.state.turn_number + 5, 'mythos')
+    self.advance_turn(self.state.turn_number + 5, "mythos")
     self.resolve_until_done()
     self.assertTrue(self.state.places[place_name].closed)
 
   def testCloseWithGateForOneTurn(self):
     place_name = "Woods"
-    self.advance_turn(self.state.turn_number, 'mythos')
+    self.advance_turn(self.state.turn_number, "mythos")
     self.resolve_until_done()
     place = self.state.places[place_name]
     place.gate = self.state.gates.popleft()
@@ -1782,7 +1781,7 @@ class CloseLocationTest(EventTest):
     self.assertEqual(monster.place.name, "Uptown")
     self.assertTrue(place.closed)
 
-    self.advance_turn(self.state.turn_number + 1, 'movement')
+    self.advance_turn(self.state.turn_number + 1, "movement")
     movement = self.resolve_to_choice(CityMovement)
     movement.resolve(self.state, movement.none_choice)
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
@@ -1797,7 +1796,7 @@ class CloseLocationTest(EventTest):
 
     self.assertEqual(place.closed_until, self.state.turn_number + 1)
 
-    self.advance_turn(self.state.turn_number + 1, 'movement')
+    self.advance_turn(self.state.turn_number + 1, "movement")
     self.assertFalse(place.closed)
 
   def testMoveToClosedLocation(self):
@@ -1806,7 +1805,7 @@ class CloseLocationTest(EventTest):
     self.resolve_until_done()
     self.char.place = self.state.places["Uptown"]
 
-    self.advance_turn(self.state.turn_number + 1, 'movement')
+    self.advance_turn(self.state.turn_number + 1, "movement")
     movement = self.resolve_to_choice(CityMovement)
     self.assertEqual(self.char.place.name, "Uptown")
     self.assertEqual(self.char.movement_points, 4)
@@ -1814,7 +1813,7 @@ class CloseLocationTest(EventTest):
     movement.resolve(self.state, movement.none_choice)
     self.resolve_until_done()
 
-    self.advance_turn(self.state.turn_number + 5, 'movement')
+    self.advance_turn(self.state.turn_number + 5, "movement")
     movement = self.resolve_to_choice(CityMovement)
     self.assertNotIn(place_name, movement.choices)
     self.assertTrue(self.state.places[place_name].closed)
@@ -1823,24 +1822,24 @@ class CloseLocationTest(EventTest):
     place_name = "Merchant"
     place = self.state.places[place_name]
     self.char.place = place
-    self.advance_turn(self.state.turn_number, 'mythos')
+    self.advance_turn(self.state.turn_number, "mythos")
     self.resolve_until_done()
     self.state.event_stack.append(CloseLocation(place_name, for_turns=1, evict=False))
     self.resolve_until_done()
     self.assertTrue(place.closed)
     self.assertEqual(self.char.place.name, place_name)
-    self.advance_turn(self.state.turn_number + 1, 'movement')
+    self.advance_turn(self.state.turn_number + 1, "movement")
     movement = self.resolve_to_choice(CityMovement)
     self.assertNotIn("Downtown", movement.choices)
     self.assertTrue(place.closed)
     movement.resolve(self.state, movement.none_choice)
     self.resolve_until_done()
 
-    self.advance_turn(self.state.turn_number + 1, 'movement')
+    self.advance_turn(self.state.turn_number + 1, "movement")
     movement = self.resolve_to_choice(CityMovement)
     self.assertIn("Downtown", movement.choices)
     self.assertFalse(place.closed)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
   unittest.main()

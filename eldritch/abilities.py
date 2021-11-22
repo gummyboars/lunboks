@@ -6,7 +6,7 @@ class BonusSkill(assets.Card):
 
   def __init__(self, name, check_type):
     assert check_type in assets.CHECK_TYPES
-    super(BonusSkill, self).__init__(name, "skills", {}, {check_type: 1})
+    super().__init__(name, "skills", {}, {check_type: 1})
     self.check_type = check_type
 
   def _check_matches(self, check_type):
@@ -24,7 +24,7 @@ class RerollSkill(assets.Card):
 
   def __init__(self, name, check_type):
     assert check_type in assets.SUB_CHECKS
-    super(RerollSkill, self).__init__(name, "skills", {}, {})
+    super().__init__(name, "skills", {}, {})
     self.check_type = check_type
 
   def get_usable_trigger(self, event, owner, state):
@@ -37,22 +37,40 @@ class RerollSkill(assets.Card):
 
 def Speed():
   return BonusSkill("Speed", "speed")
+
+
 def Sneak():
   return BonusSkill("Sneak", "sneak")
+
+
 def Fight():
   return BonusSkill("Fight", "fight")
+
+
 def Will():
   return BonusSkill("Will", "will")
+
+
 def Lore():
   return BonusSkill("Lore", "lore")
+
+
 def Luck():
   return BonusSkill("Luck", "luck")
+
+
 def Stealth():
   return RerollSkill("Stealth", "evade")
+
+
 def Marksman():
   return RerollSkill("Marksman", "combat")
+
+
 def Bravery():
   return RerollSkill("Bravery", "horror")
+
+
 def ExpertOccultist():
   return RerollSkill("Expert Occultist", "spell")
 
@@ -68,7 +86,7 @@ def CreateSkills():
 class Medicine(assets.Asset):
 
   def __init__(self):
-    super(Medicine, self).__init__("Medicine")
+    super().__init__("Medicine")
 
   def get_usable_trigger(self, event, owner, state):
     if not isinstance(event, events.UpkeepActions):

@@ -1,7 +1,7 @@
 from collections import namedtuple
 
 
-class Place(object):
+class Place:
   pass
 
 
@@ -39,7 +39,7 @@ class CityPlace(Place):
     self.closed_until = None
 
   def __eq__(self, other):
-    return type(self) == type(other) and self.name == other.name
+    return self.__class__ == other.__class__ and self.name == other.name
 
   def __hash__(self):
     return hash(self.name)
@@ -76,18 +76,18 @@ class CityPlace(Place):
 class Sky(CityPlace):
 
   def __init__(self):
-    super(Sky, self).__init__("Sky", "Sky")
+    super().__init__("Sky", "Sky")
 
 
 class Street(CityPlace):
 
   def __init__(self, name, long_name):
-    super(Street, self).__init__(name, long_name)
+    super().__init__(name, long_name)
     self.encounters = []
     self.neighborhood = self
 
   def _add_connections(self, *other_places):
-    super(Street, self)._add_connections(*other_places)
+    super()._add_connections(*other_places)
     for other in other_places:
       if other.neighborhood is None and isinstance(other, Location):
         other.neighborhood = self
@@ -95,7 +95,7 @@ class Street(CityPlace):
         other.movement["white"] = self
 
   def _add_monster_movement(self, color, destination):
-    super(Street, self)._add_monster_movement(color, destination)
+    super()._add_monster_movement(color, destination)
     if isinstance(destination, Street):
       destination.movement[self.MOVEMENT_OPPOSITES[color]] = self
 
@@ -103,7 +103,7 @@ class Street(CityPlace):
 class Location(CityPlace):
 
   def __init__(self, name, long_name, unstable, fixed_encounter=None):
-    super(Location, self).__init__(name, long_name)
+    super().__init__(name, long_name)
     self.unstable = unstable
     self.fixed_encounter = fixed_encounter
     self.clues = 0
@@ -111,7 +111,7 @@ class Location(CityPlace):
     self.sealed = False
 
   def _add_connections(self, *other_places):
-    super(Location, self)._add_connections(*other_places)
+    super()._add_connections(*other_places)
     for other in other_places:
       if self.neighborhood is None and isinstance(other, Street):
         self.neighborhood = other
@@ -119,16 +119,18 @@ class Location(CityPlace):
         self.movement["white"] = other
 
   def json_repr(self):
-    data = super(Location, self).json_repr()
+    data = super().json_repr()
     data.update({attr: getattr(self, attr) for attr in ["unstable", "clues", "gate", "sealed"]})
     return data
 
   @property
   def closed(self):
-    return super(Location, self).closed and self.gate is None
+    return super().closed and self.gate is None
 
 
 def CreatePlaces():
+  # pylint: disable=invalid-name
+  # pylint: disable=protected-access
   Newspaper = Location("Newspaper", "Newspaper", False)
   Train = Location("Train", "Train Station", False)
   Shop = Location("Shop", "Curiositie Shoppe", False, None)
@@ -194,16 +196,16 @@ def CreatePlaces():
 
   return {
       place.name: place for place in [
-        # Locations
-        Shop, Newspaper, Train, Bank, Asylum, Square,
-        Roadhouse, Diner, Police, Graveyard, Cave, Store,
-        Witch, Lodge, House, Church, Society, Woods, Shoppe, Hospital,
-        Library, Administration, Science, Unnamable, Docks, Isle,
-        # Streets
-        Northside, Downtown, Easttown, Rivertown,
-        FrenchHill, Southside, Uptown, University, Merchant,
-        # Other
-        Sky(), Outskirts(), LostInTimeAndSpace(),
+          # Locations
+          Shop, Newspaper, Train, Bank, Asylum, Square,
+          Roadhouse, Diner, Police, Graveyard, Cave, Store,
+          Witch, Lodge, House, Church, Society, Woods, Shoppe, Hospital,
+          Library, Administration, Science, Unnamable, Docks, Isle,
+          # Streets
+          Northside, Downtown, Easttown, Rivertown,
+          FrenchHill, Southside, Uptown, University, Merchant,
+          # Other
+          Sky(), Outskirts(), LostInTimeAndSpace(),
       ]
   }
 

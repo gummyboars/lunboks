@@ -78,11 +78,11 @@ class BaseGame(metaclass=abc.ABCMeta):
     return self.__class__.__name__ + " game"
 
   @abc.abstractmethod
-  def connect_user(self):
+  def connect_user(self, session):
     pass
 
   @abc.abstractmethod
-  def disconnect_user(self):
+  def disconnect_user(self, session):
     pass
 
   @abc.abstractmethod

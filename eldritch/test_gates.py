@@ -21,7 +21,7 @@ from eldritch.test_events import EventTest
 class DrawGateEncounter(EventTest):
 
   def setUp(self):
-    super(DrawGateEncounter, self).setUp()
+    super().setUp()
     self.state.gate_cards = deque([
         gate_encounters.GateCard("Gate1", {"blue"}, {"Other": lambda char: Nothing()}),
         gate_encounters.GateCard("Gate2", {"green"}, {"Other": lambda char: Nothing()}),
@@ -45,7 +45,7 @@ class DrawGateEncounter(EventTest):
     self.assertEqual(len(self.state.gate_cards), card_count)
     self.assertEqual(self.state.gate_cards[-1].name, "Gate2")
     self.assertEqual(self.state.gate_cards[-2].name, "Gate1")
-    self.assertFalse(any(["shuffled" in log for log in self.state.event_log]))
+    self.assertFalse(any("shuffled" in log for log in self.state.event_log))
 
   def testDrawMultipleColors(self):
     card_count = len(self.state.gate_cards)
@@ -54,7 +54,7 @@ class DrawGateEncounter(EventTest):
     self.resolve_until_done()
     self.assertEqual(len(self.state.gate_cards), card_count)
     self.assertEqual(self.state.gate_cards[-1].name, "Gate2")
-    self.assertFalse(any(["shuffled" in log for log in self.state.event_log]))
+    self.assertFalse(any("shuffled" in log for log in self.state.event_log))
 
   def testDrawAndShuffle(self):
     card_count = len(self.state.gate_cards)
@@ -63,7 +63,7 @@ class DrawGateEncounter(EventTest):
     self.resolve_until_done()
     self.assertEqual(len(self.state.gate_cards), card_count)
     self.assertEqual(self.state.gate_cards[-1].name, "Gate3")
-    self.assertTrue(any(["shuffled" in log for log in self.state.event_log]))
+    self.assertTrue(any("shuffled" in log for log in self.state.event_log))
 
   def testDrawMultipleColorsWithShuffle(self):
     card_count = len(self.state.gate_cards)
@@ -72,13 +72,13 @@ class DrawGateEncounter(EventTest):
     self.resolve_until_done()
     self.assertEqual(len(self.state.gate_cards), card_count)
     self.assertEqual(self.state.gate_cards[-1].name, "Gate3")
-    self.assertTrue(any(["shuffled" in log for log in self.state.event_log]))
+    self.assertTrue(any("shuffled" in log for log in self.state.event_log))
 
 
 class GateEncounterTest(EventTest):
 
   def setUp(self):
-    super(GateEncounterTest, self).setUp()
+    super().setUp()
     self.char.speed_sneak_slider = 1
     self.char.fight_will_slider = 1
     self.char.lore_luck_slider = 1
@@ -210,5 +210,5 @@ class Gate29Test(GateEncounterTest):
     self.assertEqual(self.char.stamina, 4)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
   unittest.main()
