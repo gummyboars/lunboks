@@ -112,8 +112,8 @@ class Monster:
     return attribute in self._attributes
 
   def get_movement(self, state):
-    ancient_modifier = state.ancient_one.get_modifier(self, 'movement')
-    weather_modifier = (state.environment and state.environment.get_modifier(self, 'movement'))
+    ancient_modifier = state.ancient_one.get_modifier(self, "movement")
+    weather_modifier = (state.environment and state.environment.get_modifier(self, "movement"))
     return weather_modifier or ancient_modifier or self.movement
 
 
@@ -131,8 +131,9 @@ def LandSquid():
   )
 
 
-def Cultist():
-  return Monster("Cultist", "normal", "moon", {"evade": -3, "combat": 1}, {"combat": 1}, 1)
+class Cultist(Monster):
+  def __init__(self):
+    super().__init__("Cultist", "normal", "moon", {"evade": -3, "combat": 1}, {"combat": 1}, 1)
 
 
 def TentacleTree():
@@ -227,8 +228,9 @@ def Hound():
   )
 
 
-def Maniac():  # TODO: custom class when we add globals
-  return Monster("Maniac", "normal", "moon", {"evade": -1, "combat": 1}, {"combat": 1}, 1)
+class Maniac(Monster):  # TODO: custom class when we add globals
+  def __init__(self):
+    super().__init__("Maniac", "normal", "moon", {"evade": -1, "combat": 1}, {"combat": 1}, 1)
 
 
 def Pinata():
