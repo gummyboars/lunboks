@@ -26,9 +26,11 @@ class AncientOne(metaclass=abc.ABCMeta):
   def attack(self, state):
     raise NotImplementedError
 
+
 class DummyAncient(AncientOne):
   def attack(self, state):
     pass
+
 
 class SquidFace(AncientOne):
   def __init__(self):
