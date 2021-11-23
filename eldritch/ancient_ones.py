@@ -4,6 +4,7 @@ from eldritch import events, places, characters, monsters, values
 
 
 class AncientOne(metclass=abc.ABCMeta):
+  # pylint: disable=unused-argument
   def __init__(self):
     self.doom = 0
     self.combat_difficulty = 0
