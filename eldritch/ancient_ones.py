@@ -3,7 +3,7 @@ import abc
 from eldritch import events, places, characters, monsters, values
 
 
-class AncientOne(metclass=abc.ABCMeta):
+class AncientOne(metaclass=abc.ABCMeta):
   # pylint: disable=unused-argument
   def __init__(self):
     self.doom = 0
@@ -16,6 +16,9 @@ class AncientOne(metclass=abc.ABCMeta):
   def get_modifier(self, thing, attribute):
     return 0
 
+  def get_override(self, other, attribute):
+    return None
+
   def awaken(self, state):
     pass
 
@@ -23,6 +26,9 @@ class AncientOne(metclass=abc.ABCMeta):
   def attack(self, state):
     raise NotImplementedError
 
+class DummyAncient(AncientOne):
+  def attack(self, state):
+    pass
 
 class SquidFace(AncientOne):
   def __init__(self):
