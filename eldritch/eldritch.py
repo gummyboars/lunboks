@@ -303,6 +303,7 @@ class GameState:
         return
       if not event.is_done():
         event.resolve(self)
+        self.validate_resolve(event)
       if not event.is_done():
         continue
       if self.finish_event(event):
@@ -318,6 +319,18 @@ class GameState:
       yield None
       if not self.event_stack and not self.test_mode:
         self.next_turn()
+
+  def validate_resolve(self, event):
+    if event.is_done():
+      return
+    if self.event_stack[-1] != event:
+      return
+    if isinstance(event, (events.ChoiceEvent, events.SliderInput)):
+      return
+    raise RuntimeError(
+        f"Event {event} returned from resolve() without (a) becoming resolved or "
+        "(b) becoming cancelled or (c) adding a new event to the stack"
+    )
 
   def start_event(self, event):
     # TODO: what about multiple events added to the stack at the same time? disallow?
