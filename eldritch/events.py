@@ -515,10 +515,8 @@ class GainOrLoss(Event):
     assert all(isinstance(val, (int, values.Value)) or math.isinf(val) for val in gains.values())
     assert all(isinstance(val, (int, values.Value)) or math.isinf(val) for val in losses.values())
     self.character = character
-    self.gains = collections.defaultdict(int)
-    self.gains.update(gains)
-    self.losses = collections.defaultdict(int)
-    self.losses.update(losses)
+    self.gains = gains
+    self.losses = losses
     self.final_adjustments = None
 
   def resolve(self, state):
@@ -538,10 +536,10 @@ class GainOrLoss(Event):
       old_val = getattr(self.character, attr)
       new_val = old_val + adjustment
       new_val = max(new_val, 0)
-      if attr == "stamina" and new_val > getattr(self.character, "max_stamina"):
-        new_val = getattr(self.character, "max_stamina")
-      if attr == "sanity" and new_val > getattr(self.character, "max_sanity"):
-        new_val = getattr(self.character, "max_sanity")
+      if attr == "stamina":
+        new_val = min(new_val, self.character.max_stamina)
+      if attr == "sanity":
+        new_val = min(new_val, self.character.max_sanity)
       self.final_adjustments[attr] = new_val - old_val
       setattr(self.character, attr, new_val)
     return True
@@ -1463,21 +1461,22 @@ class RefreshAssets(Event):
 
   def __init__(self, character):
     self.character = character
-    self.to_refresh = None
+    self.refreshes = None
     self.idx = 0
 
   def resolve(self, state):
-    if self.to_refresh is None:
-      self.to_refresh = [item for item in self.character.possessions if item.exhausted]
-    while self.idx < len(self.to_refresh):
-      if self.to_refresh[self.idx].exhausted:
-        state.event_stack.append(RefreshAsset(self.character, self.to_refresh[self.idx]))
+    if self.refreshes is None:
+      to_refresh = [asset for asset in self.character.possessions if asset.exhausted]
+      self.refreshes = [RefreshAsset(self.character, asset) for asset in to_refresh]
+    while self.idx < len(self.refreshes):
+      if not self.refreshes[self.idx].is_resolved():
+        state.event_stack.append(self.refreshes[self.idx])
         return False
       self.idx += 1
     return True
 
   def is_resolved(self):
-    return self.to_refresh is not None and self.idx == len(self.to_refresh)
+    return self.refreshes is not None and all(refresh.is_resolved() for refresh in self.refreshes)
 
   def start_str(self):
     return ""
@@ -1521,20 +1520,22 @@ class ActivateChosenItems(Event):
   def __init__(self, character, item_choice):
     self.character = character
     self.item_choice = item_choice
-    self.activated = 0
+    self.activations = None
+    self.idx = 0
 
   def resolve(self, state):
     assert self.item_choice.is_resolved()
-    self.activated = 0
-    for item in self.item_choice.chosen:
-      if not item.active:
-        state.event_stack.append(ActivateItem(self.character, item))
+    if self.activations is None:
+      self.activations = [ActivateItem(self.character, item) for item in self.item_choice.chosen]
+    while self.idx < len(self.activations):
+      if not self.activations[self.idx].is_resolved():
+        state.event_stack.append(self.activations[self.idx])
         return False
-      self.activated += 1
+      self.idx += 1
     return True
 
   def is_resolved(self):
-    return self.item_choice.is_resolved() and self.activated == len(self.item_choice.chosen)
+    return self.item_choice.is_resolved() and self.idx == len(self.item_choice.chosen)
 
   def start_str(self):
     return ""
@@ -1575,19 +1576,26 @@ class DeactivateItems(Event):
 
   def __init__(self, character):
     self.character = character
-    # TODO: this should be rewritten to deactivate each item exactly once
+    self.deactivations = None
+    self.idx = 0
 
   def resolve(self, state):
-    for item in self.character.possessions:
-      if getattr(item, "deck", None) in ("common", "unique") and item.active:
-        state.event_stack.append(DeactivateItem(self.character, item))
+    if self.deactivations is None:
+      self.deactivations = [
+          DeactivateItem(self.character, item) for item in self.character.possessions
+          if getattr(item, "deck", None) in {"common", "unique"} and item.active
+      ]
+
+    while self.idx < len(self.deactivations):
+      if not self.deactivations[self.idx].is_resolved():
+        state.event_stack.append(self.deactivations[self.idx])
         return False
+      self.idx += 1
     return True
 
   def is_resolved(self):
-    return not any(
-        item.active for item in self.character.possessions
-        if getattr(item, "deck", None) in ("common", "unique")
+    return self.deactivations is not None and all(
+        event.is_resolved() for event in self.deactivations
     )
 
   def start_str(self):
@@ -1722,19 +1730,25 @@ class DeactivateSpells(Event):
 
   def __init__(self, character):
     self.character = character
-    # TODO: this should be rewritten to deactivate each spell exactly once
+    self.deactivations = None
+    self.idx = 0
 
   def resolve(self, state):
-    for spell in self.character.possessions:
-      if getattr(spell, "deck", None) == "spells" and spell.in_use:
-        state.event_stack.append(DeactivateSpell(self.character, spell))
+    if self.deactivations is None:
+      self.deactivations = [
+          DeactivateSpell(self.character, spell) for spell in self.character.possessions
+          if getattr(spell, "deck", None) == "spells" and spell.in_use
+      ]
+    while self.idx < len(self.deactivations):
+      if not self.deactivations[self.idx].is_resolved():
+        state.event_stack.append(self.deactivations[self.idx])
         return False
+      self.idx += 1
     return True
 
   def is_resolved(self):
-    return not any(
-        spell.in_use for spell in self.character.possessions
-        if getattr(spell, "deck", None) == "spells"
+    return self.deactivations is not None and all(
+        event.is_resolved() for event in self.deactivations
     )
 
   def start_str(self):
