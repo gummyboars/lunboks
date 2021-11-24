@@ -699,6 +699,7 @@ class InsaneOrUnconscious(Event):
     self.stack_cleared = False
     self.lose_clues = None
     self.lose_items = None
+    self.lose_turn = None
     self.force_move = None
 
   def resolve(self, state):
@@ -734,6 +735,11 @@ class InsaneOrUnconscious(Event):
       state.event_stack.append(self.lose_items)
       return False
 
+    if not self.lose_turn:
+      self.lose_turn = DelayOrLoseTurn(self.character, "lose_turn", "this")
+      state.event_stack.append(self.lose_turn)
+      return False
+
     if not self.force_move:
       if isinstance(self.character.place, places.CityPlace):
         dest = "Asylum" if self.attribute == "sanity" else "Hospital"
@@ -746,7 +752,7 @@ class InsaneOrUnconscious(Event):
     return True
 
   def is_resolved(self):
-    steps = [self.lose_clues, self.lose_items, self.force_move]
+    steps = [self.lose_clues, self.lose_items, self.lose_turn, self.force_move]
     return all(steps) and all(step.is_resolved() for step in steps)
 
   def start_str(self):
@@ -768,15 +774,17 @@ def Unconscious(character):
 
 class DelayOrLoseTurn(Event):
 
-  def __init__(self, character, status):
+  def __init__(self, character, status, which="next"):
     assert status in {"delayed", "lose_turn"}
+    assert which in {"this", "next"}
     self.character = character
     self.attr = status + "_until"
+    self.num_turns = 2 if which == "next" else 1
     self.until = None
 
   def resolve(self, state):
     current = getattr(self.character, self.attr) or 0
-    self.until = max(current, state.turn_number + 2)
+    self.until = max(current, state.turn_number + self.num_turns)
     setattr(self.character, self.attr, self.until)
     return True
 
@@ -789,6 +797,8 @@ class DelayOrLoseTurn(Event):
   def finish_str(self):
     if self.attr == "delayed_until":
       return f"{self.character.name} is delayed"
+    if self.num_turns == 1:
+      return f"{self.character.name} loses the remainder of their turn"
     return f"{self.character.name} loses their next turn"
 
 

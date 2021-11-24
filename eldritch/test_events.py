@@ -480,7 +480,7 @@ class InsaneUnconsciousTest(EventTest):
     self.assertEqual(self.char.sanity, 1)
     self.assertEqual(self.char.place.name, "Asylum")
     self.assertEqual(self.char.clues, 2)
-    self.assertIsNone(self.char.lose_turn_until)
+    self.assertEqual(self.char.lose_turn_until, self.state.turn_number + 1)
 
   def testGoUnconscious(self):
     self.assertEqual(self.char.place.name, "Diner")
@@ -495,7 +495,7 @@ class InsaneUnconsciousTest(EventTest):
     self.assertEqual(self.char.stamina, 1)
     self.assertEqual(self.char.place.name, "Hospital")
     self.assertEqual(self.char.clues, 1)
-    self.assertIsNone(self.char.lose_turn_until)
+    self.assertEqual(self.char.lose_turn_until, self.state.turn_number + 1)
 
   def testInsaneInOtherWorld(self):
     self.char.place = self.state.places["Abyss1"]
@@ -510,7 +510,7 @@ class InsaneUnconsciousTest(EventTest):
     self.assertEqual(self.char.sanity, 1)
     self.assertEqual(self.char.place.name, "Lost")
     self.assertEqual(self.char.clues, 1)
-    self.assertEqual(self.char.lose_turn_until, self.state.turn_idx + 2)
+    self.assertEqual(self.char.lose_turn_until, self.state.turn_number + 2)
 
   @mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5))
   def testInsaneClearsEvents(self):
