@@ -9,10 +9,10 @@
     <div id="newgame">
       <form action="/new" method="post">
         <select id="gamechoice" style="display:inline-block" onchange="changeval(event)">
-          <option value="catan">Catan</option>
+          <option value="islanders">Islanders</option>
           <option value="eldritch">Eldritch</option>
         </select>
-        <input id="gametype" type="hidden" name="type" value="catan"></input>
+        <input id="gametype" type="hidden" name="type" value="islanders"></input>
         <input type="submit" style="display:inline-block" value="Create Game" onclick="document.getElementById('gametype').value = document.getElementById('gamechoice').value;"></input>
       </form>
     </div>

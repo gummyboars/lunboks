@@ -2,6 +2,7 @@ import collections
 from http import HTTPStatus
 import json
 from random import SystemRandom
+import os
 from unittest import mock
 
 from game import (
@@ -401,7 +402,7 @@ class Port(object):
     return str(self.json_repr())
 
 
-class CatanPlayer(object):
+class Player(object):
 
   def __init__(self, color, name):
     self.color = color
@@ -418,7 +419,7 @@ class CatanPlayer(object):
   @staticmethod
   def parse_json(value):
     defaultdict_attrs = ["cards", "trade_ratios", "unusable"]
-    p = CatanPlayer(None, None)
+    p = Player(None, None)
     for attr in defaultdict_attrs:
       getattr(p, attr).update(value[attr])
     for attr in set(p.__dict__.keys()) - set(defaultdict_attrs):
@@ -451,7 +452,7 @@ class CatanPlayer(object):
     return sum([self.cards[x] for x in PLAYABLE_DEV_CARDS + VICTORY_CARDS])
 
 
-class CatanState(object):
+class IslandersState(object):
 
   WANT = "want"
   GIVE = "give"
@@ -462,7 +463,7 @@ class CatanState(object):
   INDEXED_ATTRIBUTES = {"counter_offers", "discard_players"}
 
   def __init__(self):
-    # Player data is a sequential list of CatanPlayer objects; players are identified by index.
+    # Player data is a sequential list of Player objects; players are identified by index.
     self.player_data = []
     self.tiles = {}
     self.ports = {}
@@ -521,7 +522,7 @@ class CatanState(object):
 
     # Parse the players.
     for parsed_player in gamedata["player_data"]:
-      cstate.player_data.append(CatanPlayer.parse_json(parsed_player))
+      cstate.player_data.append(Player.parse_json(parsed_player))
 
     # Parse the event log.
     cstate.event_log.clear()
@@ -646,10 +647,10 @@ class CatanState(object):
 
   def game_status(self):
     # TODO: list the rulesets being used
-    return "catan game with %s" % ", ".join([p.name for p in self.player_data])
+    return "islanders game with %s" % ", ".join([p.name for p in self.player_data])
 
   def add_player(self, color, name):
-    self.player_data.append(CatanPlayer(color, name))
+    self.player_data.append(Player(color, name))
 
   def handle(self, player_idx, data):
     if not data.get("type"):
@@ -1637,7 +1638,7 @@ class CatanState(object):
     self.victory_points = int(options.get("Victory Points", 10))
 
   def load_file(self, filename):
-    with open(filename) as data:
+    with open(os.path.join(os.path.dirname(__file__), filename)) as data:
       json_data = json.load(data)
       self.parse_tiles(json_data["tiles"])
       self.parse_ports(json_data["ports"])
@@ -1645,7 +1646,7 @@ class CatanState(object):
     self._compute_ports()
 
 
-class RandomMap(CatanState):
+class RandomMap(IslandersState):
 
   def init(self, options):
     super(RandomMap, self).init(options)
@@ -1669,7 +1670,7 @@ class RandomMap(CatanState):
     self._init_dev_cards()
 
 
-class BeginnerMap(CatanState):
+class BeginnerMap(IslandersState):
 
   def init(self, options):
     super(BeginnerMap, self).init(options)
@@ -1694,7 +1695,7 @@ class BeginnerMap(CatanState):
     return options
 
 
-class TestMap(CatanState):
+class TestMap(IslandersState):
 
   def init(self, options):
     super(TestMap, self).init(options)
@@ -1742,7 +1743,7 @@ class DebugRulesMixin(object):
     super(DebugRulesMixin, self).handle_roll_dice()
 
 
-class Seafarers(CatanState):
+class Seafarers(IslandersState):
 
   def __init__(self, *args, **kwargs):
     super(Seafarers, self).__init__(*args, **kwargs)
@@ -2235,7 +2236,7 @@ class SeafarerFog(Seafarers):
   pass
 
 
-class ExtraPlayers(CatanState):
+class ExtraPlayers(IslandersState):
 
   EXTRA_BUILD_ACTIONS = ["settle", "city", "buy_dev", "road", "ship", "end_extra_build"]
 
@@ -2290,7 +2291,7 @@ class ExtraPlayers(CatanState):
     super(ExtraPlayers, self).end_turn()
 
 
-class MapMaker(CatanState):
+class MapMaker(IslandersState):
 
   def init(self, options):
     self.add_tile(Tile(4, 2, "space", False, None))
@@ -2363,7 +2364,7 @@ class MapMaker(CatanState):
         self.add_tile(Tile(location.x, location.y, "space", False, None))
 
 
-class CatanGame(BaseGame):
+class IslandersGame(BaseGame):
 
   # The order of this dictionary determines the method resolution order of the created class.
   SCENARIOS = collections.OrderedDict([
@@ -2389,16 +2390,16 @@ class CatanGame(BaseGame):
     self.choices = {}
     self.connected = set()
     self.host = None
-    # player_sessions starts as a map of session to CatanPlayer. once the game
+    # player_sessions starts as a map of session to Player. once the game
     # starts, it becomes a map of session to player_index. TODO: cleanup.
     self.player_sessions = collections.OrderedDict()
 
   def game_url(self, game_id):
-    return f"/catan.html?game_id={game_id}"
+    return f"/islanders/islanders.html?game_id={game_id}"
 
   def game_status(self):
     if self.game is None:
-      return "unstarted catan game (%s players)" % len(self.player_sessions)
+      return "unstarted islanders game (%s players)" % len(self.player_sessions)
     return self.game.game_status()
 
   def post_urls(self):
@@ -2428,7 +2429,7 @@ class CatanGame(BaseGame):
       http_handler.send_response(HTTPStatus.NO_CONTENT.value)
       http_handler.end_headers()
       return
-    super(CatanGame, self).handle_post(http_handler, path, args, data)
+    super(IslandersGame, self).handle_post(http_handler, path, args, data)
 
   @classmethod
   def parse_json(cls, json_str):
@@ -2557,7 +2558,7 @@ class CatanGame(BaseGame):
 
     # TODO: just use some arguments and stop creating fake players. This requires that we clean
     # up the javascript to know what to do with undefined values.
-    self.player_sessions[session] = CatanPlayer(list(unused_colors)[0], data["name"].strip())
+    self.player_sessions[session] = Player(list(unused_colors)[0], data["name"].strip())
     self.update_player_count()
 
   def handle_takeover(self, session, data):

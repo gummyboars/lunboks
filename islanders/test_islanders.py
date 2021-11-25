@@ -2,22 +2,28 @@
 
 import collections
 import json
+import os
+import sys
 import threading
 import unittest
 from unittest import mock
 
-import catan
+# Hack to allow the test to be run directly instead of invoking python from the base dir.
+if os.path.abspath(sys.path[0]) == os.path.dirname(os.path.abspath(__file__)):
+  sys.path[0] = os.path.dirname(sys.path[0])
+
+from islanders import islanders
 import game
 import server
 
-InvalidMove = catan.InvalidMove
-Road = catan.Road
+InvalidMove = islanders.InvalidMove
+Road = islanders.Road
 
 
 class TestInitBoard(unittest.TestCase):
 
   def testBeginner(self):
-    state = catan.BeginnerMap()
+    state = islanders.BeginnerMap()
     state.add_player("red", "player1")
     state.add_player("blue", "player2")
     state.init({})
@@ -27,7 +33,7 @@ class TestInitBoard(unittest.TestCase):
       self.assertEqual(loc, tile.location.json_repr(), "tiles mapped to location")
 
   def testRandomized(self):
-    state = catan.RandomMap()
+    state = islanders.RandomMap()
     state.add_player("red", "player1")
     state.add_player("blue", "player2")
     state.init({})
@@ -41,7 +47,7 @@ class TestInitBoard(unittest.TestCase):
     self.assertDictEqual(counts, expected)
 
   def testInitNumbers(self):
-    state = catan.RandomMap()
+    state = islanders.RandomMap()
     state.add_player("red", "player1")
     state.add_player("blue", "player2")
     state.init({})
@@ -54,14 +60,14 @@ class TestInitBoard(unittest.TestCase):
       self.assertEqual(len(desert), 1)
       state.tiles[desert[0][0]].tile_type = state.tiles[desert_spot].tile_type
       state.tiles[desert_spot].tile_type = "norsrc"
-      state._init_numbers((7, 1), catan.TILE_NUMBERS)
+      state._init_numbers((7, 1), islanders.TILE_NUMBERS)
       nums = [tile.number for tile in state.tiles.values() if tile.is_land]
-      self.assertCountEqual(nums, catan.TILE_NUMBERS + [None])  # None for the desert.
+      self.assertCountEqual(nums, islanders.TILE_NUMBERS + [None])  # None for the desert.
       self.assertIsNone(state.tiles[desert_spot].number)
 
   def testInitLarge(self):
 
-    class LargeMap(catan.ExtraPlayers, catan.RandomMap):
+    class LargeMap(islanders.ExtraPlayers, islanders.RandomMap):
       pass
 
     state = LargeMap()
@@ -85,9 +91,9 @@ class TestInitBoard(unittest.TestCase):
 class TestLoadState(unittest.TestCase):
 
   def testLoadState(self):
-    with open("beginner.json") as json_file:
+    with open(os.path.join(os.path.dirname(__file__), "beginner.json")) as json_file:
       json_data = json_file.read()
-    g = catan.CatanGame.parse_json(json_data)
+    g = islanders.IslandersGame.parse_json(json_data)
     c = g.game
     self.assertIsInstance(c.player_data, list)
     self.assertEqual(len(c.player_data), 1)
@@ -96,25 +102,25 @@ class TestLoadState(unittest.TestCase):
     # TODO: add some more assertions here
 
   def testLoadSeafarerState(self):
-    with open("ship_test.json") as json_file:
+    with open(os.path.join(os.path.dirname(__file__), "ship_test.json")) as json_file:
       json_data = json_file.read()
-    g = catan.CatanGame.parse_json(json_data)
+    g = islanders.IslandersGame.parse_json(json_data)
     c = g.game
-    self.assertIsInstance(c, catan.Seafarers)
+    self.assertIsInstance(c, islanders.Seafarers)
     self.assertTrue(hasattr(c, "built_this_turn"))
     self.assertTrue(hasattr(c, "ships_moved"))
     self.assertEqual(c.built_this_turn, [(2, 4, 3, 5)])
     self.assertEqual(c.ships_moved, 1)
     self.assertEqual(len(c.roads), 2)
     self.assertEqual(list(c.roads.values())[0].road_type, "ship")
-    self.assertIsInstance(list(c.roads.values())[0].source, catan.CornerLocation)
+    self.assertIsInstance(list(c.roads.values())[0].source, islanders.CornerLocation)
 
   def testDumpAndLoad(self):
     # TODO: test with different numbers of users
     scenarios = ["Random Map", "The Four Islands", "Through the Desert"]
     for scenario in scenarios:
       with self.subTest(scenario=scenario):
-        g = catan.CatanGame()
+        g = islanders.IslandersGame()
         g.connect_user("se0")
         g.connect_user("se1")
         g.connect_user("se2")
@@ -124,12 +130,12 @@ class TestLoadState(unittest.TestCase):
         g.handle_start("se0", {"options": {"Scenario": "Through the Desert", "5-6 Players": False}})
         c = g.game
         data = g.json_str()
-        d = catan.CatanGame.parse_json(data).game
+        d = islanders.IslandersGame.parse_json(data).game
 
         self.recursiveAssertEqual(c, d, "")
 
   def recursiveAssertEqual(self, obja, objb, path):
-    if not isinstance(obja, catan.CatanState):  # Dynamically generated classes are not equal.
+    if not isinstance(obja, islanders.IslandersState):  # Dynamically generated classes are not equal.
       self.assertEqual(type(obja), type(objb), path)
     if hasattr(obja, "__dict__"):  # Objects
       self.assertCountEqual(obja.__dict__.keys(), objb.__dict__.keys(), path)
@@ -163,7 +169,7 @@ class BreakpointTestMixin(unittest.TestCase):
   def breakpoint(self):
     t = threading.Thread(target=server.ws_main, args=(server.GLOBAL_LOOP,))
     t.start()
-    server.GAMES['test'] = game.GameHandler('test', catan.CatanGame)
+    server.GAMES['test'] = game.GameHandler('test', islanders.IslandersGame)
     server.GAMES['test'].game = self.g
     server.main(8001)
     t.join()
@@ -172,7 +178,7 @@ class BreakpointTestMixin(unittest.TestCase):
 class CornerComputationTest(unittest.TestCase):
 
   def testIslandCorners(self):
-    self.c = catan.SeafarerIslands()
+    self.c = islanders.SeafarerIslands()
     self.c.load_file("islands3.json")
     self.c._compute_contiguous_islands()
     self.assertIn((3, 1), self.c.corners_to_islands)
@@ -186,7 +192,7 @@ class CornerComputationTest(unittest.TestCase):
     self.assertNotEqual(self.c.corners_to_islands[(3, 1)], self.c.corners_to_islands[(12, 4)])
 
   def testShoreCorners(self):
-    self.c = catan.SeafarerShores()
+    self.c = islanders.SeafarerShores()
     self.c.load_file("shores4.json")
     self.c._compute_contiguous_islands()
     self.assertIn((3, 3), self.c.corners_to_islands)
@@ -206,7 +212,7 @@ class CornerComputationTest(unittest.TestCase):
     self.assertEqual(len(islands), len(set(islands)))
 
   def testDesertCorners(self):
-    self.c = catan.SeafarerDesert()
+    self.c = islanders.SeafarerDesert()
     self.c.load_file("desert3.json")
     self.c._compute_contiguous_islands()
     self.assertIn((3, 1), self.c.corners_to_islands)
@@ -230,23 +236,23 @@ class CornerComputationTest(unittest.TestCase):
 class PlacementRestrictionsTest(unittest.TestCase):
 
   def testSaveAndLoad(self):
-    self.c = catan.SeafarerDesert()
+    self.c = islanders.SeafarerDesert()
     self.c.add_player("red", "player1")
     self.c.add_player("blue", "player2")
     self.c.add_player("green", "player3")
     self.c.init({})
     self.assertCountEqual(self.c.placement_islands, [(-1, 3)])
-    self.g = catan.CatanGame()
+    self.g = islanders.IslandersGame()
     self.g.update_rulesets_and_choices({"Scenario": "The Four Islands", "5-6 Players": False})
     self.g.game = self.c
 
     dump = self.g.json_str()
-    loaded = catan.CatanGame.parse_json(dump)
+    loaded = islanders.IslandersGame.parse_json(dump)
     game = loaded.game
     self.assertCountEqual(game.placement_islands, [(-1, 3)])
 
   def testDesert3Placement(self):
-    self.c = catan.SeafarerDesert()
+    self.c = islanders.SeafarerDesert()
     self.c.add_player("red", "player1")
     self.c.add_player("blue", "player2")
     self.c.add_player("green", "player3")
@@ -269,7 +275,7 @@ class PlacementRestrictionsTest(unittest.TestCase):
     self.c.handle(1, {"type": "settle", "location": [3, 5]})
 
   def testDesert4Placement(self):
-    self.c = catan.SeafarerDesert()
+    self.c = islanders.SeafarerDesert()
     self.c.add_player("red", "player1")
     self.c.add_player("blue", "player2")
     self.c.add_player("green", "player3")
@@ -294,7 +300,7 @@ class PlacementRestrictionsTest(unittest.TestCase):
     self.c.handle(1, {"type": "settle", "location": [12, 8]})
 
   def testShores3Placement(self):
-    self.c = catan.SeafarerShores()
+    self.c = islanders.SeafarerShores()
     self.c.add_player("red", "player1")
     self.c.add_player("blue", "player2")
     self.c.add_player("green", "player3")
@@ -310,7 +316,7 @@ class PlacementRestrictionsTest(unittest.TestCase):
     self.c.handle(0, {"type": "settle", "location": [3, 3]})
 
   def testShores4Placement(self):
-    self.c = catan.SeafarerShores()
+    self.c = islanders.SeafarerShores()
     self.c.add_player("red", "player1")
     self.c.add_player("blue", "player2")
     self.c.add_player("green", "player3")
@@ -330,7 +336,7 @@ class PlacementRestrictionsTest(unittest.TestCase):
 class TestIslandCalculations(BreakpointTestMixin):
 
   def setUp(self):
-    self.c = catan.SeafarerIslands()
+    self.c = islanders.SeafarerIslands()
     self.c.add_player("red", "player1")
     self.c.add_player("blue", "player2")
     self.c.add_player("green", "player3")
@@ -348,7 +354,7 @@ class TestIslandCalculations(BreakpointTestMixin):
     self.c.game_phase = "main"
     self.c.turn_phase = "main"
     self.c.pirate = None
-    self.g = catan.CatanGame()
+    self.g = islanders.IslandersGame()
     self.g.update_rulesets_and_choices({"Scenario": "The Four Islands", "5-6 Players": False})
     self.g.game = self.c
 
@@ -358,13 +364,13 @@ class TestIslandCalculations(BreakpointTestMixin):
     self.assertCountEqual(self.c.home_corners[2], [(8, 8), (18, 8)])
 
   def settleForeignIslands(self):
-    for rsrc in catan.RESOURCES:
+    for rsrc in islanders.RESOURCES:
       self.c.player_data[2].cards[rsrc] += 2
     # Player1 settles a foreign island.
-    self.c.add_piece(catan.Piece(9, 3, "settlement", 0))
+    self.c.add_piece(islanders.Piece(9, 3, "settlement", 0))
     # Player2 settles two foreign islands.
-    self.c.add_piece(catan.Piece(12, 2, "settlement", 1))
-    self.c.add_piece(catan.Piece(5, 7, "settlement", 1))
+    self.c.add_piece(islanders.Piece(12, 2, "settlement", 1))
+    self.c.add_piece(islanders.Piece(5, 7, "settlement", 1))
     # Two settlements, but only one is on a foreign island.
     self.c.add_road(Road([8, 6, 9, 7], "ship", 2))
     self.c.add_road(Road([9, 7, 11, 7], "ship", 2))
@@ -384,7 +390,7 @@ class TestIslandCalculations(BreakpointTestMixin):
     self.assertCountEqual(self.c.foreign_landings[0], [(9, 3)])
     self.assertCountEqual(self.c.foreign_landings[1], [(12, 2), (5, 7)])
     # An extra settlement on a foreign island changes nothing.
-    self.c.add_piece(catan.Piece(2, 8, "settlement", 1))
+    self.c.add_piece(islanders.Piece(2, 8, "settlement", 1))
     self.assertCountEqual(self.c.foreign_landings[1], [(12, 2), (5, 7)])
     self.assertCountEqual(self.c.foreign_landings[2], [(8, 6)])
 
@@ -410,7 +416,7 @@ class TestIslandCalculations(BreakpointTestMixin):
   def testSaveAndLoad(self):
     self.settleForeignIslands()
     dump = self.g.json_str()
-    loaded = catan.CatanGame.parse_json(dump)
+    loaded = islanders.IslandersGame.parse_json(dump)
     game = loaded.game
     self.assertIsInstance(game.home_corners, collections.defaultdict)
     self.assertIsInstance(game.foreign_landings, collections.defaultdict)
@@ -428,11 +434,11 @@ class BaseInputHandlerTest(BreakpointTestMixin):
   EXTRA_RULES = []
 
   def setUp(self):
-    with open(self.TEST_FILE) as json_file:
+    with open(os.path.join(os.path.dirname(__file__), self.TEST_FILE)) as json_file:
       json_data = json.loads(json_file.read())
     if self.EXTRA_RULES:
       json_data["rules"].extend(self.EXTRA_RULES)
-    self.g = catan.CatanGame.parse_json(json.dumps(json_data))
+    self.g = islanders.IslandersGame.parse_json(json.dumps(json_data))
     self.c = self.g.game
 
 
@@ -498,26 +504,26 @@ class TestGetEdgeType(BaseInputHandlerTest):
     self.c._add_road(Road([2, 4, 3, 5], "road", 0))
     self.c._add_road(Road([2, 6, 3, 5], "ship", 0))
     self.c._add_road(Road([3, 5, 5, 5], "ship", 0))
-    self.c.add_tile(catan.Tile(-2, 4, "rsrc5", True, 4))
+    self.c.add_tile(islanders.Tile(-2, 4, "rsrc5", True, 4))
 
   def testEdgeTypeUnoccupied(self):
-    self.assertEqual(self.c._get_edge_type(catan.EdgeLocation(0, 4, 2, 4)), "road")
-    self.assertEqual(self.c._get_edge_type(catan.EdgeLocation(8, 6, 9, 5)), "coastup")
-    self.assertEqual(self.c._get_edge_type(catan.EdgeLocation(2, 4, 3, 3)), "coastdown")
-    self.assertEqual(self.c._get_edge_type(catan.EdgeLocation(5, 5, 6, 4)), "ship")
-    self.assertIsNone(self.c._get_edge_type(catan.EdgeLocation(0, 8, 2, 8)))
+    self.assertEqual(self.c._get_edge_type(islanders.EdgeLocation(0, 4, 2, 4)), "road")
+    self.assertEqual(self.c._get_edge_type(islanders.EdgeLocation(8, 6, 9, 5)), "coastup")
+    self.assertEqual(self.c._get_edge_type(islanders.EdgeLocation(2, 4, 3, 3)), "coastdown")
+    self.assertEqual(self.c._get_edge_type(islanders.EdgeLocation(5, 5, 6, 4)), "ship")
+    self.assertIsNone(self.c._get_edge_type(islanders.EdgeLocation(0, 8, 2, 8)))
 
   def testEdgeTypeOccupied(self):
-    self.assertEqual(self.c._get_edge_type(catan.EdgeLocation(2, 4, 3, 5)), "road")
-    self.assertEqual(self.c._get_edge_type(catan.EdgeLocation(3, 5, 5, 5)), "ship")
-    self.assertEqual(self.c._get_edge_type(catan.EdgeLocation(2, 6, 3, 5)), "ship")
+    self.assertEqual(self.c._get_edge_type(islanders.EdgeLocation(2, 4, 3, 5)), "road")
+    self.assertEqual(self.c._get_edge_type(islanders.EdgeLocation(3, 5, 5, 5)), "ship")
+    self.assertEqual(self.c._get_edge_type(islanders.EdgeLocation(2, 6, 3, 5)), "ship")
 
 
 class TestDistributeResources(BaseInputHandlerTest):
 
   def setUp(self):
     BaseInputHandlerTest.setUp(self)
-    self.c.add_piece(catan.Piece(5, 3, "city", 0))
+    self.c.add_piece(islanders.Piece(5, 3, "city", 0))
     self.c.pieces[(5, 5)].piece_type = "city"
     for rsrc in ["rsrc3", "rsrc4", "rsrc5"]:
       self.c.player_data[0].cards[rsrc] = 8
@@ -549,7 +555,7 @@ class TestDevCards(BaseInputHandlerTest):
 
   def setUp(self):
     BaseInputHandlerTest.setUp(self)
-    for card in catan.PLAYABLE_DEV_CARDS:
+    for card in islanders.PLAYABLE_DEV_CARDS:
       self.c.player_data[0].cards[card] = 1
     for p in self.c.player_data:
       p.cards["rsrc1"] = 0
@@ -572,7 +578,7 @@ class TestDevCards(BaseInputHandlerTest):
     self.c.handle_play_dev("yearofplenty", {"rsrc1": 1, "rsrc2": 1}, 0)
 
   def testYearOfPlentyEmptyBank(self):
-    for rsrc in catan.RESOURCES:
+    for rsrc in islanders.RESOURCES:
       self.c.player_data[1].cards[rsrc] = 19
       self.c.player_data[0].cards[rsrc] = 0
     # There are no cards left in the bank.
@@ -615,14 +621,14 @@ class TestCollectResources(BaseInputHandlerTest):
   def setUp(self):
     BaseInputHandlerTest.setUp(self)
     self.c.add_player("green", "Bob")
-    self.c.add_piece(catan.Piece(0, 4, "city", 1))
-    self.c.add_piece(catan.Piece(0, 6, "city", 2))
+    self.c.add_piece(islanders.Piece(0, 4, "city", 1))
+    self.c.add_piece(islanders.Piece(0, 6, "city", 2))
     self.c.tiles[(1, 3)].tile_type = "anyrsrc"
     self.c.tiles[(1, 5)].tile_type = "anyrsrc"
-    self.c.add_piece(catan.Piece(3, 7, "city", 1))
-    self.c.add_piece(catan.Piece(6, 8, "city", 2))
+    self.c.add_piece(islanders.Piece(3, 7, "city", 1))
+    self.c.add_piece(islanders.Piece(6, 8, "city", 2))
     self.c.tiles[(4, 8)].number = 5
-    self.c.add_piece(catan.Piece(9, 5, "settlement", 0))
+    self.c.add_piece(islanders.Piece(9, 5, "settlement", 0))
     self.c.tiles[(10, 6)].number = 9
     for p in self.c.player_data:
       p.cards.clear()
@@ -641,7 +647,7 @@ class TestCollectResources(BaseInputHandlerTest):
     # With only 2 resources being collected, no need to go in order.
     self.assertIsNone(self.c.collect_idx)
     # Player 1 cannot collect; they don't have any bonus tiles on a 9.
-    with self.assertRaisesRegex(catan.NotYourTurn, "not eligible"):
+    with self.assertRaisesRegex(islanders.NotYourTurn, "not eligible"):
       self.c.handle(0, {"type": "collect", "selection": {"rsrc3": 1}})
     # Player 2 should be able to collect even when it is not their turn.
     self.c.handle(1, {"type": "collect", "selection": {"rsrc3": 2}})
@@ -669,7 +675,7 @@ class TestCollectResources(BaseInputHandlerTest):
     # Players will collect 5 resources, but only 3 rsrc3 remain. They must take turns.
     # It is Player1's turn, so they should collect first.
     self.assertEqual(self.c.collect_idx, 0)
-    with self.assertRaisesRegex(catan.NotYourTurn, "Another player.*before you"):
+    with self.assertRaisesRegex(islanders.NotYourTurn, "Another player.*before you"):
       self.c.handle(1, {"type": "collect", "selection": {"rsrc3": 2}})
     self.c.handle(0, {"type": "collect", "selection": {"rsrc3": 1}})
     self.assertEqual(self.c.player_data[0].cards["rsrc3"], 5)
@@ -739,11 +745,11 @@ class TestCollectResources(BaseInputHandlerTest):
 
   def testNoRemainingResources(self):
     for idx, p in enumerate(self.c.player_data):
-      for rsrc in catan.RESOURCES:
+      for rsrc in islanders.RESOURCES:
         p.cards[rsrc] = 6
         if idx == 0:
           p.cards[rsrc] += 1
-    for rsrc in catan.RESOURCES:
+    for rsrc in islanders.RESOURCES:
       with self.subTest(rsrc=rsrc):
         self.assertEqual(self.c.remaining_resources(rsrc), 0)
     self.c.turn_phase = "dice"
@@ -756,7 +762,7 @@ class TestCollectResources(BaseInputHandlerTest):
 
   def testNoRemainingResourcesAfterDistribution(self):
     for idx, p in enumerate(self.c.player_data):
-      for rsrc in catan.RESOURCES:
+      for rsrc in islanders.RESOURCES:
         p.cards[rsrc] = 6
         if idx == 0:
           p.cards[rsrc] += 1
@@ -773,7 +779,7 @@ class TestCollectResources(BaseInputHandlerTest):
 
   def testCollectionConsumesAllResources(self):
     for idx, p in enumerate(self.c.player_data):
-      for rsrc in catan.RESOURCES:
+      for rsrc in islanders.RESOURCES:
         p.cards[rsrc] = 6
         if idx == 0:
           p.cards[rsrc] += 1
@@ -837,7 +843,7 @@ class TestRobberMovement(BaseInputHandlerTest):
 
   def testRobbingFromMoreThanTwoPoints(self):
     self.c.rob_at_two = False
-    self.c.add_piece(catan.Piece(6, 2, "city", 1))
+    self.c.add_piece(islanders.Piece(6, 2, "city", 1))
     self.c.handle_robber((4, 6), 0)
     self.assertEqual(self.c.event_log[-2].event_type, "robber")
     self.assertEqual(self.c.event_log[-1].event_type, "rob")
@@ -847,9 +853,9 @@ class TestRobberMovement(BaseInputHandlerTest):
 
   def testRobbingFromTwoPointsMixedPlayerRegex(self):
     self.c.rob_at_two = False
-    self.c.add_piece(catan.Piece(6, 2, "city", 1))
+    self.c.add_piece(islanders.Piece(6, 2, "city", 1))
     self.c.add_player("green", "Player3")
-    self.c.add_piece(catan.Piece(2, 6, "city", 2))
+    self.c.add_piece(islanders.Piece(2, 6, "city", 2))
     with self.assertRaisesRegex(InvalidMove, "Robbers refuse to rob such poor people."):
       self.c.handle_robber((4, 6), 0)
 
@@ -861,7 +867,7 @@ class TestRobberMovement(BaseInputHandlerTest):
 
   def testRobbingFromSelfAtTwoPoints(self):
     self.c.rob_at_two = False
-    self.c.add_piece(catan.Piece(6, 2, "city", 1))
+    self.c.add_piece(islanders.Piece(6, 2, "city", 1))
     self.c.handle_robber((7, 5), 0)
 
 
@@ -871,20 +877,20 @@ class TestPiratePlacement(BaseInputHandlerTest):
 
   def setUp(self):
     BaseInputHandlerTest.setUp(self)
-    self.c.add_piece(catan.Piece(5, 7, "settlement", 1))
-    self.c.add_piece(catan.Piece(8, 6, "settlement", 1))
+    self.c.add_piece(islanders.Piece(5, 7, "settlement", 1))
+    self.c.add_piece(islanders.Piece(8, 6, "settlement", 1))
     self.c.add_road(Road([6, 6, 8, 6], "ship", 1))
-    self.c.pirate = catan.TileLocation(4, 4)
+    self.c.pirate = islanders.TileLocation(4, 4)
     self.c.ships_moved = 0
     self.c.built_this_turn.clear()
     self.c.player_data[0].cards["rsrc1"] += 5
     self.c.player_data[0].cards["rsrc2"] += 5
 
   def testBuildNearPirate(self):
-    old_count = sum([self.c.player_data[0].cards[x] for x in catan.RESOURCES])
+    old_count = sum([self.c.player_data[0].cards[x] for x in islanders.RESOURCES])
     with self.assertRaisesRegex(InvalidMove, "next to the pirate"):
       self.c.handle_road([3, 5, 5, 5], 0, "ship", [("rsrc1", 1), ("rsrc2", 1)])
-    new_count = sum([self.c.player_data[0].cards[x] for x in catan.RESOURCES])
+    new_count = sum([self.c.player_data[0].cards[x] for x in islanders.RESOURCES])
     self.assertEqual(old_count, new_count)
     self.c.handle_road([5, 5, 6, 6], 1, "ship", [])
 
@@ -904,9 +910,9 @@ class TestPiratePlacement(BaseInputHandlerTest):
     self.c.add_player("green", "Bob")
     self.c.turn_idx = 2
     self.c.turn_phase = "robber"
-    old_count = sum([self.c.player_data[0].cards[x] for x in catan.RESOURCES])
+    old_count = sum([self.c.player_data[0].cards[x] for x in islanders.RESOURCES])
     self.c.handle_pirate(2, [4, 6])
-    new_count = sum([self.c.player_data[0].cards[x] for x in catan.RESOURCES])
+    new_count = sum([self.c.player_data[0].cards[x] for x in islanders.RESOURCES])
     self.assertEqual(new_count, old_count - 1)
     self.assertEqual(self.c.turn_phase, "main")
 
@@ -980,10 +986,10 @@ class TestHandleSettleInput(BaseInputHandlerTest):
       self.c.handle(0, {"type": "settle", "location": [2]})
 
   def testCannotBuildTooManySettlements(self):
-    self.c.add_piece(catan.Piece(2, 4, "settlement", 0))
-    self.c.add_piece(catan.Piece(2, 6, "settlement", 0))
-    self.c.add_piece(catan.Piece(8, 6, "settlement", 0))
-    self.c.add_piece(catan.Piece(8, 2, "settlement", 0))
+    self.c.add_piece(islanders.Piece(2, 4, "settlement", 0))
+    self.c.add_piece(islanders.Piece(2, 6, "settlement", 0))
+    self.c.add_piece(islanders.Piece(8, 6, "settlement", 0))
+    self.c.add_piece(islanders.Piece(8, 2, "settlement", 0))
     with self.assertRaisesRegex(InvalidMove, "settlements remaining"):
       self.c.handle(0, {"type": "settle", "location": [5, 3]})
 
@@ -1088,8 +1094,8 @@ class TestHandleShipInput(BaseInputHandlerTest):
 
   def setUp(self):
     BaseInputHandlerTest.setUp(self)
-    self.c.add_tile(catan.Tile(-2, 6, "space", False, None))
-    self.c.add_tile(catan.Tile(-2, 4, "rsrc5", True, 4))
+    self.c.add_tile(islanders.Tile(-2, 6, "space", False, None))
+    self.c.add_tile(islanders.Tile(-2, 4, "rsrc5", True, 4))
 
   def testShipsMustConnectToNetwork(self):
     with self.assertRaisesRegex(InvalidMove, "Ships.*must be connected.*ship network"):
@@ -1103,9 +1109,9 @@ class TestHandleShipInput(BaseInputHandlerTest):
     self.c.handle(0, {"type": "road", "location": [2, 4, 3, 3]})
 
   def testBuildShip(self):
-    old_counts = {x: self.c.player_data[0].cards[x] for x in catan.RESOURCES}
+    old_counts = {x: self.c.player_data[0].cards[x] for x in islanders.RESOURCES}
     self.c.handle(0, {"type": "ship", "location": [3, 5, 5, 5]})
-    new_counts = {x: self.c.player_data[0].cards[x] for x in catan.RESOURCES}
+    new_counts = {x: self.c.player_data[0].cards[x] for x in islanders.RESOURCES}
     self.assertEqual(new_counts.pop("rsrc1"), old_counts.pop("rsrc1") - 1)
     self.assertEqual(new_counts.pop("rsrc2"), old_counts.pop("rsrc2") - 1)
     # Validate that no other resources were deducted.
@@ -1161,7 +1167,7 @@ class TestHandleShipInput(BaseInputHandlerTest):
   def testCanBuildShipInPlacePhase(self):
     self.c.game_phase = "place2"
     self.c.turn_phase = "road"
-    self.c.add_piece(catan.Piece(5, 7, "settlement", 0))
+    self.c.add_piece(islanders.Piece(5, 7, "settlement", 0))
     self.c.handle(0, {"type": "ship", "location": [5, 7, 6, 6]})
     self.assertEqual(self.c.game_phase, "main")
 
@@ -1208,7 +1214,7 @@ class TestShipOpenClosedCalculation(BaseInputHandlerTest):
     self.assertTrue(self.c.roads[road2_loc].movable)
     self.assertFalse(self.c.roads[road1_loc].closed)
     self.assertFalse(self.c.roads[road2_loc].closed)
-    self.c.add_piece(catan.Piece(3, 7, "settlement", 0))
+    self.c.add_piece(islanders.Piece(3, 7, "settlement", 0))
     self.assertTrue(self.c.roads[road1_loc].closed)
     self.assertTrue(self.c.roads[road2_loc].closed)
     # We don't assert on movable here - once the shipping path is closed, movable is irrelevant.
@@ -1219,7 +1225,7 @@ class TestShipOpenClosedCalculation(BaseInputHandlerTest):
     road1_loc = (2, 6, 3, 5)
     road2_loc = (2, 6, 3, 7)
     self.c.add_road(Road(road1_loc, "ship", 0))
-    self.c.add_piece(catan.Piece(3, 7, "settlement", 0))
+    self.c.add_piece(islanders.Piece(3, 7, "settlement", 0))
     self.assertTrue(self.c.roads[road1_loc].movable)
     self.assertFalse(self.c.roads[road1_loc].closed)
     self.c.add_road(Road(road2_loc, "ship", 0))
@@ -1230,7 +1236,7 @@ class TestShipOpenClosedCalculation(BaseInputHandlerTest):
     # Test that movable does not consider other players' ships or settlements.
     road1_loc = (2, 6, 3, 5)
     road2_loc = (2, 6, 3, 7)
-    self.c.add_piece(catan.Piece(3, 7, "settlement", 1))
+    self.c.add_piece(islanders.Piece(3, 7, "settlement", 1))
     self.c.add_road(Road(road1_loc, "ship", 0))
     self.assertTrue(self.c.roads[road1_loc].movable)
     self.assertFalse(self.c.roads[road1_loc].closed)
@@ -1241,7 +1247,7 @@ class TestShipOpenClosedCalculation(BaseInputHandlerTest):
     self.assertFalse(self.c.roads[road2_loc].closed)
 
   def testBranchingOpenClosedPaths(self):
-    self.c.add_piece(catan.Piece(8, 6, "settlement", 0))
+    self.c.add_piece(islanders.Piece(8, 6, "settlement", 0))
     road1_loc = (3, 5, 5, 5)
     road3_loc = (6, 6, 8, 6)
     road2_loc = (5, 5, 6, 6)
@@ -1269,7 +1275,7 @@ class TestShipOpenClosedCalculation(BaseInputHandlerTest):
     self.assertEqual(self.c.roads[road4_loc].source.as_tuple(), (8, 6))
 
     # The settlement: after settling the third island, all roads should be closed.
-    self.c.add_piece(catan.Piece(5, 7, "settlement", 0))
+    self.c.add_piece(islanders.Piece(5, 7, "settlement", 0))
     self.assertTrue(self.c.roads[road4_loc].closed)
 
   def testCloseMiddleOfPath(self):
@@ -1283,7 +1289,7 @@ class TestShipOpenClosedCalculation(BaseInputHandlerTest):
       with self.subTest(loc=loc):
         self.assertEqual(self.c.roads[loc].source.as_tuple(), (3, 5))
 
-    self.c.add_piece(catan.Piece(3, 3, "settlement", 0))
+    self.c.add_piece(islanders.Piece(3, 3, "settlement", 0))
     for loc in locs[:-1]:
       with self.subTest(loc=loc):
         self.assertEqual(self.c.roads[loc].source.as_tuple(), (3, 5))
@@ -1313,7 +1319,7 @@ class TestShipOpenClosedCalculation(BaseInputHandlerTest):
         self.assertFalse(self.c.roads[loc].movable)
 
     # Just for fun, add a settlement at 5, 7 and make sure all roads are now marked as closed.
-    self.c.add_piece(catan.Piece(5, 7, "settlement", 0))
+    self.c.add_piece(islanders.Piece(5, 7, "settlement", 0))
     for loc in road_locs:
       with self.subTest(loc=loc):
         self.assertTrue(self.c.roads[loc].closed)
@@ -1393,14 +1399,14 @@ class TestShipOpenClosedCalculation(BaseInputHandlerTest):
 
     # Lastly, add a settlement on the far island. Since every ship in this triple loop is
     # on some path from one settlement to the other, all ships should be marked as closed.
-    self.c.add_piece(catan.Piece(9, 5, "settlement", 0))
+    self.c.add_piece(islanders.Piece(9, 5, "settlement", 0))
     for loc in road_locs + bonus_locs:
       with self.subTest(loc=loc):
         self.assertTrue(self.c.roads[loc].closed)
 
   def testRecomputeMovableAfterShipMoveToDifferentNetwork(self):
-    self.c.add_piece(catan.Piece(9, 5, "settlement", 0))
-    self.c.add_piece(catan.Piece(3, 7, "settlement", 0))
+    self.c.add_piece(islanders.Piece(9, 5, "settlement", 0))
+    self.c.add_piece(islanders.Piece(3, 7, "settlement", 0))
     roads = [(2, 6, 3, 5), (8, 4, 9, 5), (6, 4, 8, 4)]
     for road in roads:
       self.c.add_road(Road(road, "ship", 0))
@@ -1481,13 +1487,13 @@ class TestShipMovement(BaseInputHandlerTest):
       self.c.handle(0, {"type": "move_ship", "from": [2, 4, 3, 5], "to": [2, 6, 3, 5]})
 
   def testCannotMoveOtherPlayersShips(self):
-    self.c.add_piece(catan.Piece(9, 5, "settlement", 1))
+    self.c.add_piece(islanders.Piece(9, 5, "settlement", 1))
     self.c.add_road(Road([8, 4, 9, 5], "ship", 1))
     with self.assertRaisesRegex(InvalidMove, "only move your"):
       self.c.handle(0, {"type": "move_ship", "from": [8, 4, 9, 5], "to": [2, 4, 3, 5]})
 
   def testCannotMoveShipOnClosedRoute(self):
-    self.c.add_piece(catan.Piece(3, 7, "settlement", 0))
+    self.c.add_piece(islanders.Piece(3, 7, "settlement", 0))
     self.c.add_road(Road([2, 6, 3, 5], "ship", 0))
     self.c.add_road(Road([2, 6, 3, 7], "ship", 0))
     with self.assertRaisesRegex(InvalidMove, "that connects two"):
@@ -1520,7 +1526,7 @@ class TestShipMovementLongestRoute(BaseInputHandlerTest):
 
   def setUp(self):
     BaseInputHandlerTest.setUp(self)
-    self.c.add_piece(catan.Piece(9, 5, "settlement", 1))
+    self.c.add_piece(islanders.Piece(9, 5, "settlement", 1))
     p0_roads = [
         (2, 4, 3, 3), (3, 3, 5, 3),
     ]
@@ -1572,49 +1578,49 @@ class TestCalculateRobPlayers(BaseInputHandlerTest):
     self.c.dice_roll = (6, 1)
     self.c.turn_phase = "robber"
     moved_piece = self.c.pieces.pop((5, 5))
-    moved_piece.location = catan.CornerLocation(6, 6)
+    moved_piece.location = islanders.CornerLocation(6, 6)
     self.c.add_piece(moved_piece)
     # Give these players some dev cards to make sure we don't rob dev cards.
     self.c.player_data[0].cards["knight"] = 10
     self.c.player_data[1].cards["knight"] = 10
 
   def testRobNoAdjacentPieces(self):
-    p1_old_count = sum(self.c.player_data[0].cards[x] for x in catan.RESOURCES)
-    p2_old_count = sum(self.c.player_data[1].cards[x] for x in catan.RESOURCES)
+    p1_old_count = sum(self.c.player_data[0].cards[x] for x in islanders.RESOURCES)
+    p2_old_count = sum(self.c.player_data[1].cards[x] for x in islanders.RESOURCES)
     self.c.handle(2, {"type": "robber", "location": [4, 4]})
     self.assertEqual(self.c.turn_phase, "main")
-    p1_new_count = sum(self.c.player_data[0].cards[x] for x in catan.RESOURCES)
-    p2_new_count = sum(self.c.player_data[1].cards[x] for x in catan.RESOURCES)
+    p1_new_count = sum(self.c.player_data[0].cards[x] for x in islanders.RESOURCES)
+    p2_new_count = sum(self.c.player_data[1].cards[x] for x in islanders.RESOURCES)
     self.assertEqual(p1_new_count, p1_old_count)
     self.assertEqual(p2_new_count, p2_old_count)
 
   def testRobTwoAdjacentPlayers(self):
-    p1_old_count = sum(self.c.player_data[0].cards[x] for x in catan.RESOURCES)
-    p2_old_count = sum(self.c.player_data[1].cards[x] for x in catan.RESOURCES)
+    p1_old_count = sum(self.c.player_data[0].cards[x] for x in islanders.RESOURCES)
+    p2_old_count = sum(self.c.player_data[1].cards[x] for x in islanders.RESOURCES)
     self.c.handle(2, {"type": "robber", "location": [7, 5]})
     self.assertEqual(self.c.turn_phase, "rob")
     self.assertCountEqual(self.c.rob_players, [0, 1])
-    p1_new_count = sum(self.c.player_data[0].cards[x] for x in catan.RESOURCES)
-    p2_new_count = sum(self.c.player_data[1].cards[x] for x in catan.RESOURCES)
+    p1_new_count = sum(self.c.player_data[0].cards[x] for x in islanders.RESOURCES)
+    p2_new_count = sum(self.c.player_data[1].cards[x] for x in islanders.RESOURCES)
     self.assertEqual(p1_new_count, p1_old_count)
     self.assertEqual(p2_new_count, p2_old_count)
 
     self.c.handle(2, {"type": "rob", "player": 1})
-    p1_new_count = sum(self.c.player_data[0].cards[x] for x in catan.RESOURCES)
-    p2_new_count = sum(self.c.player_data[1].cards[x] for x in catan.RESOURCES)
-    p3_new_count = sum(self.c.player_data[2].cards[x] for x in catan.RESOURCES)
+    p1_new_count = sum(self.c.player_data[0].cards[x] for x in islanders.RESOURCES)
+    p2_new_count = sum(self.c.player_data[1].cards[x] for x in islanders.RESOURCES)
+    p3_new_count = sum(self.c.player_data[2].cards[x] for x in islanders.RESOURCES)
     self.assertEqual(p1_new_count, p1_old_count)
     self.assertEqual(p2_new_count, p2_old_count - 1)
     self.assertEqual(p3_new_count, 1)
 
   def testRobSingleAdjacentPlayer(self):
-    p1_old_count = sum(self.c.player_data[0].cards[x] for x in catan.RESOURCES)
-    p2_old_count = sum(self.c.player_data[1].cards[x] for x in catan.RESOURCES)
+    p1_old_count = sum(self.c.player_data[0].cards[x] for x in islanders.RESOURCES)
+    p2_old_count = sum(self.c.player_data[1].cards[x] for x in islanders.RESOURCES)
     self.c.handle(2, {"type": "robber", "location": [7, 3]})
     self.assertEqual(self.c.turn_phase, "main")
-    p1_new_count = sum(self.c.player_data[0].cards[x] for x in catan.RESOURCES)
-    p2_new_count = sum(self.c.player_data[1].cards[x] for x in catan.RESOURCES)
-    p3_new_count = sum(self.c.player_data[2].cards[x] for x in catan.RESOURCES)
+    p1_new_count = sum(self.c.player_data[0].cards[x] for x in islanders.RESOURCES)
+    p2_new_count = sum(self.c.player_data[1].cards[x] for x in islanders.RESOURCES)
+    p3_new_count = sum(self.c.player_data[2].cards[x] for x in islanders.RESOURCES)
     self.assertEqual(p1_new_count, p1_old_count - 1)
     self.assertEqual(p2_new_count, p2_old_count)
     self.assertEqual(p3_new_count, 1)
@@ -1623,53 +1629,53 @@ class TestCalculateRobPlayers(BaseInputHandlerTest):
     self.c.player_data[0].cards.clear()
     self.c.handle(2, {"type": "robber", "location": [7, 3]})
     self.assertEqual(self.c.turn_phase, "main")
-    p3_new_count = sum(self.c.player_data[2].cards[x] for x in catan.RESOURCES)
+    p3_new_count = sum(self.c.player_data[2].cards[x] for x in islanders.RESOURCES)
     self.assertEqual(p3_new_count, 0)
 
   def testRobTwoAdjacentPlayersOneWithoutCards(self):
-    p2_old_count = sum(self.c.player_data[1].cards[x] for x in catan.RESOURCES)
+    p2_old_count = sum(self.c.player_data[1].cards[x] for x in islanders.RESOURCES)
     self.c.player_data[0].cards.clear()
     self.c.handle(2, {"type": "robber", "location": [7, 5]})
     self.assertEqual(self.c.turn_phase, "main")
-    p2_new_count = sum(self.c.player_data[1].cards[x] for x in catan.RESOURCES)
-    p3_new_count = sum(self.c.player_data[2].cards[x] for x in catan.RESOURCES)
+    p2_new_count = sum(self.c.player_data[1].cards[x] for x in islanders.RESOURCES)
+    p3_new_count = sum(self.c.player_data[2].cards[x] for x in islanders.RESOURCES)
     self.assertEqual(p2_new_count, p2_old_count - 1)
     self.assertEqual(p3_new_count, 1)
 
   def testRobSelf(self):
-    self.c.add_piece(catan.Piece(6, 4, "settlement", 2))
+    self.c.add_piece(islanders.Piece(6, 4, "settlement", 2))
     self.c.player_data[2].cards["rsrc3"] = 1
-    p3_old_count = sum(self.c.player_data[2].cards[x] for x in catan.RESOURCES)
+    p3_old_count = sum(self.c.player_data[2].cards[x] for x in islanders.RESOURCES)
     self.c.handle(2, {"type": "robber", "location": [4, 4]})
     self.assertEqual(self.c.turn_phase, "main")
-    p3_new_count = sum(self.c.player_data[2].cards[x] for x in catan.RESOURCES)
+    p3_new_count = sum(self.c.player_data[2].cards[x] for x in islanders.RESOURCES)
     self.assertEqual(p3_old_count, p3_new_count)
 
   def testRobSelfAndOneMore(self):
-    self.c.add_piece(catan.Piece(6, 4, "settlement", 2))
+    self.c.add_piece(islanders.Piece(6, 4, "settlement", 2))
     self.c.player_data[2].cards["rsrc3"] = 1
-    p1_old_count = sum(self.c.player_data[0].cards[x] for x in catan.RESOURCES)
-    p2_old_count = sum(self.c.player_data[1].cards[x] for x in catan.RESOURCES)
+    p1_old_count = sum(self.c.player_data[0].cards[x] for x in islanders.RESOURCES)
+    p2_old_count = sum(self.c.player_data[1].cards[x] for x in islanders.RESOURCES)
     self.c.handle(2, {"type": "robber", "location": [7, 3]})
     self.assertEqual(self.c.turn_phase, "main")
-    p1_new_count = sum(self.c.player_data[0].cards[x] for x in catan.RESOURCES)
-    p2_new_count = sum(self.c.player_data[1].cards[x] for x in catan.RESOURCES)
-    p3_new_count = sum(self.c.player_data[2].cards[x] for x in catan.RESOURCES)
+    p1_new_count = sum(self.c.player_data[0].cards[x] for x in islanders.RESOURCES)
+    p2_new_count = sum(self.c.player_data[1].cards[x] for x in islanders.RESOURCES)
+    p3_new_count = sum(self.c.player_data[2].cards[x] for x in islanders.RESOURCES)
     self.assertEqual(p1_new_count, p1_old_count - 1)
     self.assertEqual(p2_new_count, p2_old_count)
     self.assertEqual(p3_new_count, 2)
 
   def testRobSelfAndTwoMore(self):
-    self.c.add_piece(catan.Piece(6, 4, "settlement", 2))
+    self.c.add_piece(islanders.Piece(6, 4, "settlement", 2))
     self.c.player_data[2].cards["rsrc3"] = 1
-    p1_old_count = sum(self.c.player_data[0].cards[x] for x in catan.RESOURCES)
-    p2_old_count = sum(self.c.player_data[1].cards[x] for x in catan.RESOURCES)
+    p1_old_count = sum(self.c.player_data[0].cards[x] for x in islanders.RESOURCES)
+    p2_old_count = sum(self.c.player_data[1].cards[x] for x in islanders.RESOURCES)
     self.c.handle(2, {"type": "robber", "location": [7, 5]})
     self.assertEqual(self.c.turn_phase, "rob")
     self.assertCountEqual(self.c.rob_players, [0, 1])
-    p1_new_count = sum(self.c.player_data[0].cards[x] for x in catan.RESOURCES)
-    p2_new_count = sum(self.c.player_data[1].cards[x] for x in catan.RESOURCES)
-    p3_new_count = sum(self.c.player_data[2].cards[x] for x in catan.RESOURCES)
+    p1_new_count = sum(self.c.player_data[0].cards[x] for x in islanders.RESOURCES)
+    p2_new_count = sum(self.c.player_data[1].cards[x] for x in islanders.RESOURCES)
+    p3_new_count = sum(self.c.player_data[2].cards[x] for x in islanders.RESOURCES)
     self.assertEqual(p1_new_count, p1_old_count)
     self.assertEqual(p2_new_count, p2_old_count)
     self.assertEqual(p3_new_count, 1)
@@ -1681,58 +1687,58 @@ class TestLongestRouteCalculation(BaseInputHandlerTest):
     BaseInputHandlerTest.setUp(self)
 
   def testSingleRoad(self):
-    val = self.c._dfs_depth(0, catan.CornerLocation(6, 4), set([]), None)
+    val = self.c._dfs_depth(0, islanders.CornerLocation(6, 4), set([]), None)
     self.assertEqual(val, 1)
 
   def testTwoRoads(self):
     self.c._add_road(Road([8, 4, 9, 5], "road", 0))
-    val = self.c._dfs_depth(0, catan.CornerLocation(6, 4), set([]), None)
+    val = self.c._dfs_depth(0, islanders.CornerLocation(6, 4), set([]), None)
     self.assertEqual(val, 2)
-    val = self.c._dfs_depth(0, catan.CornerLocation(9, 5), set([]), None)
+    val = self.c._dfs_depth(0, islanders.CornerLocation(9, 5), set([]), None)
     self.assertEqual(val, 2)
     # Starting from the middle should give a length of 1.
-    val = self.c._dfs_depth(0, catan.CornerLocation(8, 4), set([]), None)
+    val = self.c._dfs_depth(0, islanders.CornerLocation(8, 4), set([]), None)
     self.assertEqual(val, 1)
 
   def testThreeRoads(self):
     self.c._add_road(Road([8, 4, 9, 5], "road", 0))
     self.c._add_road(Road([8, 4, 9, 3], "road", 0))
     # Starting on any end of the network should still get you 2.
-    val = self.c._dfs_depth(0, catan.CornerLocation(6, 4), set([]), None)
+    val = self.c._dfs_depth(0, islanders.CornerLocation(6, 4), set([]), None)
     self.assertEqual(val, 2)
-    val = self.c._dfs_depth(0, catan.CornerLocation(9, 5), set([]), None)
+    val = self.c._dfs_depth(0, islanders.CornerLocation(9, 5), set([]), None)
     self.assertEqual(val, 2)
-    val = self.c._dfs_depth(0, catan.CornerLocation(9, 3), set([]), None)
+    val = self.c._dfs_depth(0, islanders.CornerLocation(9, 3), set([]), None)
     self.assertEqual(val, 2)
     # Starting from the middle should give a length of 1.
-    val = self.c._dfs_depth(0, catan.CornerLocation(8, 4), set([]), None)
+    val = self.c._dfs_depth(0, islanders.CornerLocation(8, 4), set([]), None)
     self.assertEqual(val, 1)
 
   def testRoadInterruption(self):
     self.c._add_road(Road([8, 4, 9, 5], "road", 0))
     self.c._add_road(Road([8, 6, 9, 5], "road", 0))
-    val = self.c._dfs_depth(0, catan.CornerLocation(6, 4), set([]), None)
+    val = self.c._dfs_depth(0, islanders.CornerLocation(6, 4), set([]), None)
     self.assertEqual(val, 3)
-    val = self.c._dfs_depth(0, catan.CornerLocation(8, 6), set([]), None)
+    val = self.c._dfs_depth(0, islanders.CornerLocation(8, 6), set([]), None)
     self.assertEqual(val, 3)
     # Add a piece for the other player to interrupt the road.
-    self.c.add_piece(catan.Piece(9, 5, "settlement", 1))
-    val = self.c._dfs_depth(0, catan.CornerLocation(6, 4), set([]), None)
+    self.c.add_piece(islanders.Piece(9, 5, "settlement", 1))
+    val = self.c._dfs_depth(0, islanders.CornerLocation(6, 4), set([]), None)
     self.assertEqual(val, 2)
-    val = self.c._dfs_depth(0, catan.CornerLocation(8, 6), set([]), None)
+    val = self.c._dfs_depth(0, islanders.CornerLocation(8, 6), set([]), None)
     self.assertEqual(val, 1)
 
   def testSandwichedRoad(self):
     # Test that you can still start a road at someone else's settlement.
-    self.c.add_piece(catan.Piece(8, 6, "settlement", 1))
+    self.c.add_piece(islanders.Piece(8, 6, "settlement", 1))
     self.c._add_road(Road([5, 5, 6, 4], "road", 0))
     self.c._add_road(Road([8, 4, 9, 5], "road", 0))
     self.c._add_road(Road([8, 6, 9, 5], "road", 0))
-    val = self.c._dfs_depth(0, catan.CornerLocation(6, 4), set([]), None)
+    val = self.c._dfs_depth(0, islanders.CornerLocation(6, 4), set([]), None)
     self.assertEqual(val, 3)
-    val = self.c._dfs_depth(0, catan.CornerLocation(5, 5), set([]), None)
+    val = self.c._dfs_depth(0, islanders.CornerLocation(5, 5), set([]), None)
     self.assertEqual(val, 4)
-    val = self.c._dfs_depth(0, catan.CornerLocation(8, 6), set([]), None)
+    val = self.c._dfs_depth(0, islanders.CornerLocation(8, 6), set([]), None)
     self.assertEqual(val, 4)
 
   def testCircularRoad(self):
@@ -1744,15 +1750,15 @@ class TestLongestRouteCalculation(BaseInputHandlerTest):
 
     # Start by testing a simple loop.
     for corner in [(5, 3), (6, 4), (8, 4), (9, 3), (8, 2), (6, 2)]:
-      val = self.c._dfs_depth(0, catan.CornerLocation(*corner), set([]), None)
+      val = self.c._dfs_depth(0, islanders.CornerLocation(*corner), set([]), None)
       self.assertEqual(val, 6, "loop length for corner %s" % (corner,))
 
     # Add two tips onto the end of the loop. Length from either end should be 7.
     self.c._add_road(Road([3, 3, 5, 3], "road", 0))
     self.c._add_road(Road([8, 4, 9, 5], "road", 0))
-    val = self.c._dfs_depth(0, catan.CornerLocation(3, 3), set([]), None)
+    val = self.c._dfs_depth(0, islanders.CornerLocation(3, 3), set([]), None)
     self.assertEqual(val, 7, "enter and loop around")
-    val = self.c._dfs_depth(0, catan.CornerLocation(9, 5), set([]), None)
+    val = self.c._dfs_depth(0, islanders.CornerLocation(9, 5), set([]), None)
     self.assertEqual(val, 7, "enter and loop around")
 
     # Make the road longer without using the loop than with the loop.
@@ -1760,9 +1766,9 @@ class TestLongestRouteCalculation(BaseInputHandlerTest):
     self.c._add_road(Road([2, 4, 3, 5], "road", 0))
     self.c._add_road(Road([8, 6, 9, 5], "road", 0))
     self.c._add_road(Road([6, 6, 8, 6], "road", 0))
-    val = self.c._dfs_depth(0, catan.CornerLocation(6, 6), set([]), None)
+    val = self.c._dfs_depth(0, islanders.CornerLocation(6, 6), set([]), None)
     self.assertEqual(val, 10, "take long route around loop")
-    val = self.c._dfs_depth(0, catan.CornerLocation(3, 5), set([]), None)
+    val = self.c._dfs_depth(0, islanders.CornerLocation(3, 5), set([]), None)
     self.assertEqual(val, 10, "take long route around loop")
 
   def testPortConnection(self):
@@ -1772,27 +1778,27 @@ class TestLongestRouteCalculation(BaseInputHandlerTest):
     self.c._add_road(Road([6, 2, 8, 2], "ship", 0))
     self.c._add_road(Road([8, 2, 9, 3], "road", 0))
     self.c._add_road(Road([8, 4, 9, 3], "road", 0))
-    val = self.c._dfs_depth(0, catan.CornerLocation(5, 3), set([]), None)
+    val = self.c._dfs_depth(0, islanders.CornerLocation(5, 3), set([]), None)
     self.assertEqual(val, 4, "no road -> ship connection")
-    val = self.c._dfs_depth(0, catan.CornerLocation(8, 2), set([]), None)
+    val = self.c._dfs_depth(0, islanders.CornerLocation(8, 2), set([]), None)
     self.assertEqual(val, 4, "no road -> ship connection")
-    val = self.c._dfs_depth(0, catan.CornerLocation(6, 2), set([]), None)
+    val = self.c._dfs_depth(0, islanders.CornerLocation(6, 2), set([]), None)
     self.assertEqual(val, 1, "single ship length in either direction")
-    val = self.c._dfs_depth(0, catan.CornerLocation(8, 4), set([]), None)
+    val = self.c._dfs_depth(0, islanders.CornerLocation(8, 4), set([]), None)
     self.assertEqual(val, 2, "two roads in either direction")
 
     # Add a connector piece.
-    self.c.add_piece(catan.Piece(5, 3, "settlement", 0))
-    val = self.c._dfs_depth(0, catan.CornerLocation(5, 3), set([]), None)
+    self.c.add_piece(islanders.Piece(5, 3, "settlement", 0))
+    val = self.c._dfs_depth(0, islanders.CornerLocation(5, 3), set([]), None)
     self.assertEqual(val, 4, "still cannot go road->ship in the middle")
-    val = self.c._dfs_depth(0, catan.CornerLocation(8, 2), set([]), None)
+    val = self.c._dfs_depth(0, islanders.CornerLocation(8, 2), set([]), None)
     self.assertEqual(val, 6, "but can go road->ship through a port")
 
     # Make sure somebody else's settlement doesn't count.
     self.c.pieces[(5, 3)].player = 1
-    val = self.c._dfs_depth(0, catan.CornerLocation(5, 3), set([]), None)
+    val = self.c._dfs_depth(0, islanders.CornerLocation(5, 3), set([]), None)
     self.assertEqual(val, 4, "cannot go through someone else's port")
-    val = self.c._dfs_depth(0, catan.CornerLocation(8, 2), set([]), None)
+    val = self.c._dfs_depth(0, islanders.CornerLocation(8, 2), set([]), None)
     self.assertEqual(val, 4, "cannot go through someone else's port")
 
 
@@ -1800,9 +1806,9 @@ class TestLongestRouteAssignment(BreakpointTestMixin):
 
   def setUp(self):
     # Be sure to call add_road on the last road for each player to recalculate longest road.
-    with open("beginner.json") as json_file:
+    with open(os.path.join(os.path.dirname(__file__), "beginner.json")) as json_file:
       json_data = json_file.read()
-    self.c = catan.CatanState.parse_json(json.loads(json_data))
+    self.c = islanders.IslandersState.parse_json(json.loads(json_data))
     self.c.add_player("blue", "PlayerA")
     self.c.add_player("green", "PlayerB")
     self.c._add_road(Road([6, 4, 8, 4], "road", 0))
@@ -1816,9 +1822,9 @@ class TestLongestRouteAssignment(BreakpointTestMixin):
     self.c._add_road(Road([6, 8, 8, 8], "road", 2))
     self.c._add_road(Road([8, 8, 9, 9], "road", 2))
     self.c.add_road(Road([9, 9, 11, 9], "road", 2))
-    for rsrc in catan.RESOURCES:
+    for rsrc in islanders.RESOURCES:
       self.c.player_data[2].cards[rsrc] += 1
-    self.g = catan.CatanGame()
+    self.g = islanders.IslandersGame()
     self.g.update_rulesets_and_choices({"Scenario": "Beginner's Map", "5-6 Players": False})
     self.g.game = self.c
 
@@ -1839,7 +1845,7 @@ class TestLongestRouteAssignment(BreakpointTestMixin):
     self.c.add_road(Road([9, 5, 11, 5], "road", 0))
     self.assertEqual(self.c.longest_route_player, 0)
     # Break first player's longest road with a piece from playerB.
-    self.c.add_piece(catan.Piece(8, 4, "settlement", 2))
+    self.c.add_piece(islanders.Piece(8, 4, "settlement", 2))
     # PlayerA should get longest road since first player's is broken.
     self.assertEqual(self.c.longest_route_player, 1)
     self.assertEqual(self.c.player_data[0].longest_route, 4)
@@ -1847,7 +1853,7 @@ class TestLongestRouteAssignment(BreakpointTestMixin):
   def testBreakLongestRoadNoEligiblePlayers(self):
     self.c.add_road(Road([9, 5, 11, 5], "road", 0))
     self.assertEqual(self.c.longest_route_player, 0)
-    self.c.add_piece(catan.Piece(8, 4, "settlement", 2))
+    self.c.add_piece(islanders.Piece(8, 4, "settlement", 2))
     self.assertIsNone(self.c.longest_route_player)
     self.assertEqual("{player0} loses longest route", self.c.event_log[-1].public_text)
 
@@ -1856,7 +1862,7 @@ class TestLongestRouteAssignment(BreakpointTestMixin):
     self.c.add_road(Road([11, 9, 12, 8], "road", 2))
     self.c.add_road(Road([9, 5, 11, 5], "road", 0))
     self.assertEqual(self.c.longest_route_player, 0)
-    self.c.add_piece(catan.Piece(8, 4, "settlement", 2))
+    self.c.add_piece(islanders.Piece(8, 4, "settlement", 2))
     # Now that first player's road is broken, nobody gets longest road because playerA
     # and playerB are tied.
     self.assertIsNone(self.c.longest_route_player)
@@ -1866,11 +1872,11 @@ class TestLongestRouteAssignment(BreakpointTestMixin):
     self.c.add_road(Road([9, 5, 11, 5], "road", 0))
     # Break playerB's road of 4 so that this scenario is distinguishable from the one
     # where multiple players are tied for next longest road.
-    self.c.add_piece(catan.Piece(8, 8, "settlement", 0))
+    self.c.add_piece(islanders.Piece(8, 8, "settlement", 0))
     self.assertEqual(self.c.player_data[2].longest_route, 2)
     self.assertEqual(self.c.longest_route_player, 0)
     # Break first player's longest road. Their longest road should now be 3.
-    self.c.add_piece(catan.Piece(9, 5, "settlement", 2))
+    self.c.add_piece(islanders.Piece(9, 5, "settlement", 2))
     self.assertEqual(self.c.player_data[0].longest_route, 3)
     self.assertEqual(self.c.player_data[1].longest_route, 4)
     self.assertIsNone(self.c.longest_route_player)
@@ -1901,7 +1907,7 @@ class TestLongestRouteAssignment(BreakpointTestMixin):
     self.assertEqual(self.c.longest_route_player, 0)
     self.assertEqual(self.c.player_data[0].longest_route, 6)
     # Break the circular road in the middle. The road length should stay the same.
-    self.c.add_piece(catan.Piece(9, 5, "settlement", 2))
+    self.c.add_piece(islanders.Piece(9, 5, "settlement", 2))
     self.assertEqual(self.c.player_data[0].longest_route, 6)
     self.assertEqual(self.c.longest_route_player, 0)
 
@@ -1934,7 +1940,7 @@ class TestLargestArmy(BaseInputHandlerTest):
     self.assertIn("{player1} took largest army from {player0}", self.c.event_log[-1].public_text)
 
 
-@mock.patch.object(catan.random, "randint", return_value=3.5)
+@mock.patch.object(islanders.random, "randint", return_value=3.5)
 class TestDiscard(BaseInputHandlerTest):
 
   def setUp(self):
@@ -2015,7 +2021,7 @@ class TestBuyDevCard(BaseInputHandlerTest):
 class TestExtraBuildPhase(BreakpointTestMixin):
 
   def setUp(self):
-    self.g = catan.CatanGame()
+    self.g = islanders.IslandersGame()
     self.g.connected = {"player1", "player2", "player3", "player4", "player5"}
     self.g.host = "player1"
     for u in self.g.connected:
@@ -2044,13 +2050,13 @@ class TestExtraBuildPhase(BreakpointTestMixin):
     self.c.game_phase = "main"
     self.c.turn_phase = "main"
     self.c.turn_idx = 4
-    self.c.add_piece(catan.Piece(3, 3, "settlement", 0))
+    self.c.add_piece(islanders.Piece(3, 3, "settlement", 0))
     self.c._add_road(Road([3, 3, 5, 3], "road", 0))
     self.c._add_road(Road([5, 3, 6, 4], "road", 0))
     self.c.player_data[0].cards.update({"rsrc1": 3, "rsrc2": 3, "rsrc3": 5, "rsrc4": 3, "rsrc5": 5})
     self.c.player_data[4].cards.update({"rsrc1": 3, "rsrc2": 3, "rsrc3": 5, "rsrc4": 3, "rsrc5": 5})
 
-    with self.assertRaises(catan.NotYourTurn):
+    with self.assertRaises(islanders.NotYourTurn):
       self.c.handle(0, {"type": "settle", "location": [6, 4]})
 
     self.c.handle(4, {"type": "end_turn"})
@@ -2062,16 +2068,16 @@ class TestExtraBuildPhase(BreakpointTestMixin):
     self.c.handle(0, {"type": "city", "location": [3, 3]})
     self.c.handle(0, {"type": "buy_dev"})
 
-    with self.assertRaises(catan.NotYourTurn):
+    with self.assertRaises(islanders.NotYourTurn):
       self.c.handle(0, {"type": "end_turn"})
-    with self.assertRaises(catan.NotYourTurn):
+    with self.assertRaises(islanders.NotYourTurn):
       self.c.handle(0, {"type": "play_dev", "card_type": "knight"})
     self.c.handle(0, {"type": "end_extra_build"})
     self.assertEqual(self.c.game_phase, "main")
     self.assertEqual(self.c.turn_phase, "extra_build")
     self.assertEqual(self.c.extra_build_idx, 1)
 
-    with self.assertRaises(catan.NotYourTurn):
+    with self.assertRaises(islanders.NotYourTurn):
       self.c.handle(4, {"type": "buy_dev"})
 
   def testLastExtraBuild(self):
@@ -2090,7 +2096,7 @@ class TestExtraBuildPhase(BreakpointTestMixin):
 class TestUnstartedGame(unittest.TestCase):
 
   def setUp(self):
-    self.c = catan.CatanGame()
+    self.c = islanders.IslandersGame()
 
   def testConnectAndDisconnect(self):
     self.c.connect_user("one")
@@ -2122,7 +2128,7 @@ class TestUnstartedGame(unittest.TestCase):
     self.c.handle_join("three", {"name": "player3"})
     self.assertCountEqual(self.c.player_sessions.keys(), ["one", "two", "three"])
     for key in ["one", "two", "three"]:
-      self.assertIsInstance(self.c.player_sessions[key], catan.CatanPlayer)
+      self.assertIsInstance(self.c.player_sessions[key], islanders.Player)
     self.assertEqual(self.c.host, "one")
     self.c.disconnect_user("two")
     self.assertCountEqual(self.c.player_sessions.keys(), ["one", "three"])
@@ -2158,7 +2164,7 @@ class TestUnstartedGame(unittest.TestCase):
 
     with self.assertRaisesRegex(InvalidMove, "already started"):
       self.c.handle_start("one", {"options": {"Scenario": "Random Map"}})
-    with self.assertRaisesRegex(catan.InvalidPlayer, "already started"):
+    with self.assertRaisesRegex(islanders.InvalidPlayer, "already started"):
       self.c.handle_join("one", {"name": "troll"})
 
   def testDiscardDisconnectedPlayers(self):
@@ -2187,14 +2193,14 @@ class TestUnstartedGame(unittest.TestCase):
 class TestGameOptions(unittest.TestCase):
 
   def setUp(self):
-    self.c = catan.CatanGame()
+    self.c = islanders.IslandersGame()
 
   def testInitialState(self):
     self.assertDictEqual(self.c.choices, {})
     self.assertSetEqual(self.c.rules, set())
     self.assertEqual(self.c.scenario, "Random Map")
-    self.assertTrue(issubclass(self.c.game_class, catan.RandomMap))
-    self.assertFalse(issubclass(self.c.game_class, catan.DebugRulesMixin))
+    self.assertTrue(issubclass(self.c.game_class, islanders.RandomMap))
+    self.assertFalse(issubclass(self.c.game_class, islanders.DebugRulesMixin))
 
   def testOptions(self):
     self.c.scenario = "Beginner's Map"
@@ -2261,8 +2267,8 @@ class TestGameOptions(unittest.TestCase):
     # Completely change the options before starting the game; make sure they're honored.
     self.c.handle_start(
         "one", {"options": {"Scenario": "The Four Islands", "Friendly Robber": True}})
-    self.assertIsInstance(self.c.game, catan.SeafarerIslands)
-    self.assertNotIsInstance(self.c.game, catan.DebugRulesMixin)
+    self.assertIsInstance(self.c.game, islanders.SeafarerIslands)
+    self.assertNotIsInstance(self.c.game, islanders.DebugRulesMixin)
     self.assertFalse(self.c.game.rob_at_two)
 
   def testStartWithFourPlayers(self):
@@ -2284,7 +2290,7 @@ class TestGameOptions(unittest.TestCase):
     self.assertNotIn("5-6 Players", self.c.rules)
 
     self.c.handle_start("one", {"options": {"Scenario": "Random Map"}})
-    self.assertNotIsInstance(self.c.game, catan.ExtraPlayers)
+    self.assertNotIsInstance(self.c.game, islanders.ExtraPlayers)
 
   def testStartWithFivePlayers(self):
     self.c.connect_user("one")
@@ -2304,7 +2310,7 @@ class TestGameOptions(unittest.TestCase):
     self.assertIn("5-6 Players", self.c.rules)
 
     self.c.handle_start("one", {"options": {"Scenario": "Random Map"}})
-    self.assertIsInstance(self.c.game, catan.ExtraPlayers)
+    self.assertIsInstance(self.c.game, islanders.ExtraPlayers)
 
 
 if __name__ == '__main__':
