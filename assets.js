@@ -17,6 +17,7 @@ eagerImages = 0;
 loadedImages = 0;
 errorImages = 0;
 imagePromises = [];
+resizeTimeout = null;
 
 function getAsset(assetName, variant) {
   let img = document.getElementById("canvas" + assetName + variant);
@@ -275,6 +276,16 @@ function createImage(idx) {
   return imagePromises[idx];
 }
 
+function rerenderAll() {
+  let toRerender = document.getElementsByClassName("cnvcontainer");
+  for (let div of toRerender) {
+    if (div.assetName == null) {
+      continue;
+    }
+    renderAssetToDiv(div, div.assetName, div.variant);
+  }
+}
+
 function incrementLoad() {
   loadedImages++;
   updateLoad();
@@ -517,3 +528,8 @@ function checkInitDone(resolver, rejecter, maxTries) {
   }
   resolver("loaded");
 }
+
+window.addEventListener("resize", function() {
+  clearTimeout(resizeTimeout);
+  resizeTimeout = setTimeout(rerenderAll, 250);
+});
