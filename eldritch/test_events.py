@@ -561,13 +561,13 @@ class MovementTest(EventTest):
   def testLoseExploredOnForceMovement(self):
     self.char.place = self.state.places["Graveyard"]
     self.char.explored = True
-    movement = ForceMovement(self.char, "Witch")
+    movement = ForceMovement(self.char, "WitchHouse")
 
     self.state.event_stack.append(movement)
     self.resolve_until_done()
 
     self.assertTrue(movement.is_resolved())
-    self.assertEqual(self.char.place.name, "Witch")
+    self.assertEqual(self.char.place.name, "WitchHouse")
     self.assertFalse(self.char.explored)
 
 
@@ -1786,8 +1786,9 @@ class GateChoiceTest(EventTest):
 
     self.state.places["Woods"].gate = self.state.gates.popleft()
     self.assertEqual(self.state.places["Square"].gate.name, self.state.places["Woods"].gate.name)
-    self.state.places["Witch"].gate = self.state.gates.popleft()
-    self.assertNotEqual(self.state.places["Witch"].gate.name, self.state.places["Woods"].gate.name)
+    self.state.places["WitchHouse"].gate = self.state.gates.popleft()
+    self.assertNotEqual(
+        self.state.places["WitchHouse"].gate.name, self.state.places["Woods"].gate.name)
 
     self.state.event_stack.append(choice)
     self.resolve_to_choice(GateChoice)
@@ -1798,7 +1799,7 @@ class GateChoiceTest(EventTest):
       choice.resolve(self.state, None)
 
     with self.assertRaises(AssertionError):
-      choice.resolve(self.state, "Witch")
+      choice.resolve(self.state, "WitchHouse")
 
     choice.resolve(self.state, "Woods")
     self.assertTrue(choice.is_resolved())

@@ -109,7 +109,7 @@ class Mythos3(Environment):
 class Mythos4(Headline):
 
   def __init__(self):
-    super().__init__("Mythos4", "Science", "Witch", {"hex"}, {"slash", "triangle", "star"})
+    super().__init__("Mythos4", "Science", "WitchHouse", {"hex"}, {"slash", "triangle", "star"})
 
   def create_event(self, state):
     seq = super().create_event(state)

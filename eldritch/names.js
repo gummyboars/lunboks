@@ -1,4 +1,15 @@
 assetPrefix = "eldritch";
+
+assetSet = new Set([]);
+function carefullyAdd(names) {
+  for (let name of names) {
+    if (assetSet.has(name)) {
+      throw "Duplicate name " + name;
+    }
+    assetSet.add(name);
+  }
+}
+
 characterNames = [
   "Student",
   "Drifter",
@@ -17,6 +28,7 @@ characterNames = [
   "Archaeologist",
   "Gangster",
 ];
+carefullyAdd(characterNames);
 commonNames = [
   ".38 Revolver",
   ".45 Automatic",
@@ -28,11 +40,13 @@ commonNames = [
   "Tommy Gun",
   "Research Materials",
 ];
+carefullyAdd(commonNames);
 uniqueNames = [
   "Enchanted Knife",
   "Holy Water",
   "Magic Lamp",
 ];
+carefullyAdd(uniqueNames);
 spellNames = [
   "Dread Curse",
   "Enchant Weapon",
@@ -42,6 +56,7 @@ spellNames = [
   "Voice",
   "Wither",
 ];
+carefullyAdd(spellNames);
 skillNames = [
   "Speed",
   "Sneak",
@@ -54,6 +69,7 @@ skillNames = [
   "Bravery",
   "Expert Occultist",
 ];
+carefullyAdd(skillNames);
 allyNames = [
   "Fortune Teller",
   "Traveling Salesman",
@@ -67,9 +83,11 @@ allyNames = [
   "Old Professor",
   "Dog",
 ];
+carefullyAdd(allyNames);
 abilityNames = [
   "Medicine",
 ];
+carefullyAdd(abilityNames);
 monsterNames = [
   "Giant Insect",
   "Land Squid",
@@ -97,7 +115,9 @@ monsterNames = [
   "Witch",
   "Zombie",
 ];
+carefullyAdd(monsterNames);
 monsterBacks = monsterNames.map(name => name + " back");
+carefullyAdd(monsterBacks);
 otherWorlds = [
   "Abyss",
   "Another Dimension",
@@ -108,24 +128,26 @@ otherWorlds = [
   "Dreamlands",
   "Pluto",
 ];
+carefullyAdd(otherWorlds);
 gateNames = otherWorlds.map(name => "Gate " + name);
+carefullyAdd(gateNames);
 extraNames = ["Lost", "Sky", "Outskirts"];
-assetNames = ["Clue", "board"].concat(characterNames).concat(commonNames).concat(uniqueNames).concat(spellNames).concat(skillNames).concat(allyNames).concat(abilityNames).concat(monsterNames).concat(monsterBacks).concat(otherWorlds).concat(gateNames).concat(extraNames);
+carefullyAdd(extraNames);
+assetNames = [...assetSet];
 serverNames = {};
 for (let name of assetNames) {
-  if (name == "board") {
-    continue;
-  }
   serverNames[name] = name;
 }
 gateCards = [];
 for (let i = 1; i <= 50; i++) {
   gateCards.push("gate" + i);
 }
+carefullyAdd(gateCards);
 mythosCards = [];
 for (let i = 1; i <= 67; i++) {
-  gateCards.push("mythos" + i);
+  mythosCards.push("mythos" + i);
 }
+carefullyAdd(mythosCards);
 neighborhoodNames = [
   "Northside",
   "Downtown",
@@ -137,10 +159,41 @@ neighborhoodNames = [
   "University",
   "Merchant",
 ];
+carefullyAdd(neighborhoodNames);
 encounterCardNames = [];
 for (let n of neighborhoodNames) {
   for (let i = 1; i <= 7; i++) {
     encounterCardNames.push(n + i);
   }
 }
-assetNames = assetNames.concat(encounterCardNames).concat(gateCards).concat(mythosCards);
+carefullyAdd(encounterCardNames);
+locationNames = [
+  "Shop",
+  "Newspaper",
+  "Train",
+  "Bank",
+  "Asylum",
+  "Square",
+  "Roadhouse",
+  "Diner",
+  "Police",
+  "Graveyard",
+  "Cave",
+  "Store",
+  "WitchHouse",
+  "Lodge",
+  "House",
+  "Church",
+  "Society",
+  "Woods",
+  "Shoppe",
+  "Hospital",
+  "Library",
+  "Administration",
+  "Science",
+  "Unnamable",
+  "Docks",
+  "Isle",
+];
+carefullyAdd(locationNames);
+assetNames = ["Clue", "board"].concat([...assetSet]);

@@ -151,10 +151,10 @@ def CreatePlaces():
   Store = Location("Store", "General Store", False, None)
   Rivertown = Street("Rivertown", "Rivertown")
   Rivertown._add_connections(Graveyard, Cave, Store)
-  Witch = Location("Witch", "Witch House", True)
+  WitchHouse = Location("WitchHouse", "Witch House", True)
   Lodge = Location("Lodge", "Silver Twilight Lodge", True)
   FrenchHill = Street("FrenchHill", "French Hill")
-  FrenchHill._add_connections(Witch, Lodge)
+  FrenchHill._add_connections(WitchHouse, Lodge)
   House = Location("House", "Ma's Boarding House", False, None)
   Church = Location("Church", "South Church", False, None)
   Society = Location("Society", "Historical Society", True)
@@ -199,7 +199,7 @@ def CreatePlaces():
           # Locations
           Shop, Newspaper, Train, Bank, Asylum, Square,
           Roadhouse, Diner, Police, Graveyard, Cave, Store,
-          Witch, Lodge, House, Church, Society, Woods, Shoppe, Hospital,
+          WitchHouse, Lodge, House, Church, Society, Woods, Shoppe, Hospital,
           Library, Administration, Science, Unnamable, Docks, Isle,
           # Streets
           Northside, Downtown, Easttown, Rivertown,

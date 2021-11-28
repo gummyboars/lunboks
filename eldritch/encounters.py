@@ -288,20 +288,20 @@ def Sanctum7(char):
       char, "Participate in a gating ceremony?", "Yes", "No", seq, nothing, prereq)
 
 
-def Witch1(char):
+def WitchHouse1(char):
   reward = events.Gain(char, {"clues": 2})
   ally = events.GainAllyOrReward(char,  "Police Detective", reward)
   check = events.Check(char, "lore", -1)
   return events.PassFail(char, check, ally, events.Nothing())
 
 
-def Witch2(char):
+def WitchHouse2(char):
   check = events.Check(char, "luck", -1)
   draw = events.Draw(char, "unique", 1)
   return events.PassFail(char, check, draw, events.Nothing())
 
 
-def Witch3(char):
+def WitchHouse3(char):
   check = events.Check(char, "luck", 0)
   cond = events.Conditional(
       char, check, "successes",
@@ -315,21 +315,21 @@ def Witch3(char):
   return events.Sequence([check, cond], char)
 
 
-def Witch4(char):
+def WitchHouse4(char):
   return events.Loss(char, {"sanity": 1})
 
 
-def Witch5(char):
-  return events.OpenGate("Witch")
+def WitchHouse5(char):
+  return events.OpenGate("WitchHouse")
 
 
-def Witch6(char):
+def WitchHouse6(char):
   die = events.DiceRoll(char, 1)
   gain = events.GainOrLoss(char, {"clues": values.Die(die)}, {"sanity": values.Die(die)})
   return events.Sequence([die, gain], char)
 
 
-def Witch7(char):
+def WitchHouse7(char):
   check = events.Check(char, "will", -2)
   spell = events.Draw(char, "spells", 1)
   n_items_to_lose = int(len(char.possessions)//2)
@@ -1465,13 +1465,27 @@ def CreateEncounterCards():
           EncounterCard("Easttown7", {"Diner": Diner7, "Roadhouse": Roadhouse7, "Police": Police7}),
       ],
       "FrenchHill": [
-          EncounterCard("FrenchHill1", {"Lodge": Lodge1, "Witch": Witch1, "Sanctum": Sanctum1}),
-          EncounterCard("FrenchHill2", {"Lodge": Lodge2, "Witch": Witch2, "Sanctum": Sanctum2}),
-          EncounterCard("FrenchHill3", {"Lodge": Lodge3, "Witch": Witch3, "Sanctum": Sanctum3}),
-          EncounterCard("FrenchHill4", {"Lodge": Lodge4, "Witch": Witch4, "Sanctum": Sanctum4}),
-          EncounterCard("FrenchHill5", {"Lodge": Lodge5, "Witch": Witch5, "Sanctum": Sanctum5}),
-          EncounterCard("FrenchHill6", {"Lodge": Lodge6, "Witch": Witch6, "Sanctum": Sanctum6}),
-          EncounterCard("FrenchHill7", {"Lodge": Lodge7, "Witch": Witch7, "Sanctum": Sanctum7}),
+          EncounterCard(
+              "FrenchHill1", {"Lodge": Lodge1, "WitchHouse": WitchHouse1, "Sanctum": Sanctum1},
+          ),
+          EncounterCard(
+              "FrenchHill2", {"Lodge": Lodge2, "WitchHouse": WitchHouse2, "Sanctum": Sanctum2},
+          ),
+          EncounterCard(
+              "FrenchHill3", {"Lodge": Lodge3, "WitchHouse": WitchHouse3, "Sanctum": Sanctum3},
+          ),
+          EncounterCard(
+              "FrenchHill4", {"Lodge": Lodge4, "WitchHouse": WitchHouse4, "Sanctum": Sanctum4},
+          ),
+          EncounterCard(
+              "FrenchHill5", {"Lodge": Lodge5, "WitchHouse": WitchHouse5, "Sanctum": Sanctum5},
+          ),
+          EncounterCard(
+              "FrenchHill6", {"Lodge": Lodge6, "WitchHouse": WitchHouse6, "Sanctum": Sanctum6},
+          ),
+          EncounterCard(
+              "FrenchHill7", {"Lodge": Lodge7, "WitchHouse": WitchHouse7, "Sanctum": Sanctum7},
+          ),
       ],
       "Merchant": [
           EncounterCard("Merchant1", {"Docks": Docks1, "Unnamable": Unnamable1, "Isle": Isle1}),
