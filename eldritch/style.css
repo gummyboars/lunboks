@@ -390,6 +390,16 @@ button {
   max-height: calc(min(80vw, 128vh) / 15);
   position: relative;
 }
+.placemiscbox {
+  width: 100%;
+  height: 100%;
+}
+.misccnv {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+}
 .monster {
   z-index: 10; /* TODO */
   position: relative;
@@ -587,14 +597,22 @@ button {
   height: calc(min(80vw, 128vh) * 2 / 29);
   width: calc(min(80vw, 128vh) * 2 / 29);
 }
-.placegatepresent {
-  max-width: calc(min(80vw, 128vh) * 2 / 29);
-  min-width: calc(min(80vw, 128vh) * 2 / 29); /* FIXME */
+.gatecontainer {
+  position: absolute;
+  top: 0;
+  height: calc(min(80vw, 128vh) * 2 / 29);
+  width: calc(min(80vw, 128vh) * 2 / 29);
 }
 .placeleft .placegate {
   left: 0;
 }
 .placeright .placegate {
+  right: 0;
+}
+.placeleft .gatecontainer {
+  left: 0;
+}
+.placeright .gatecontainer {
   right: 0;
 }
 .placebox:hover .placegatepresent {
