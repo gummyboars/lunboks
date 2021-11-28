@@ -19,16 +19,14 @@ function init() {
   }
   let gameId = params.get("game_id");
   initializeDefaults();
-  let promise = renderImages();
+  let promise = loadImages();
   promise.then(function() { continueInit(gameId); }, showError);
 }
 
 function continueInit(gameId) {
   ws = new WebSocket("ws://" + window.location.hostname + ":8081/" + gameId);
   ws.onmessage = onmsg;
-  document.getElementById("boardcanvas").width = document.getElementById("defaultboard").width;
-  document.getElementById("boardcanvas").height = document.getElementById("defaultboard").height;
-  renderAssetToCanvas(document.getElementById("boardcanvas"), "board", "");
+  renderAssetToDiv(document.getElementById("board"), "board");
   let width = document.getElementById("boardcanvas").width;
   let cont = document.getElementById("board");
   let heights = {"location": Math.floor(2*radiusRatio*width), "street": Math.floor(width*heightRatio)};
@@ -37,12 +35,11 @@ function continueInit(gameId) {
     for (let name in places) {
       let div = document.createElement("DIV");
       div.id = "place" + name;
-      div.style.width = widths[placeType] + "px";
-      div.style.height = heights[placeType] + "px";
       div.classList.add("place");
-      div.style.top = Math.round(places[name].y*width) + "px";
-      div.style.left = Math.round(places[name].x*width) + "px";
-      div.onmouseenter = bringToTop;
+      div.style.top = 170 * places[name].y + "%";
+      div.style.left = 100 * places[name].x + "%";
+      div.onmouseenter = bringTop;
+      div.onmouseleave = returnBottom;
       let box = document.createElement("DIV");
       box.id = "place" + name + "box";
       box.classList.add("placebox", "placeboxhover");  // FIXME
@@ -53,12 +50,10 @@ function continueInit(gameId) {
       let monstersDiv = document.createElement("DIV");
       monstersDiv.id = "place" + name + "monsters";
       monstersDiv.classList.add("placemonsters");
-      monstersDiv.style.height = div.style.height;
       monstersDiv.onclick = function(e) { showMonsters(monstersDiv, name); };
       let details = document.createElement("DIV");
       details.id = "place" + name + "details";
       details.classList.add("placedetails");
-      details.style.height = div.style.height;
       if (places[name].y < 0.3) {
         box.classList.add("placeupper");
         box.appendChild(details);
@@ -77,25 +72,17 @@ function continueInit(gameId) {
       let chars = document.createElement("DIV");
       chars.id = "place" + name + "chars";
       chars.classList.add("placechars");
-      chars.style.height = div.style.height;
-      chars.style.minWidth = div.style.width;
       details.appendChild(chars);
       let gateDiv = document.createElement("DIV");
       gateDiv.id = "place" + name + "gate";
-      gateDiv.classList.add("placegate");
-      gateDiv.style.height = div.style.height;
-      gateDiv.style.width = div.style.width;
+      gateDiv.classList.add("placegate", "cnvcontainer");
       details.appendChild(gateDiv);
       let gate = document.createElement("CANVAS");
       gate.classList.add("gate");
-      gate.width = Math.floor(2*radiusRatio*width);
-      gate.height = Math.floor(2*radiusRatio*width);
       gateDiv.appendChild(gate);
       let select = document.createElement("DIV");
       select.id = "place" + name + "select";
       select.classList.add("placeselect", placeType);
-      select.style.height = div.style.height;
-      select.style.width = div.style.width;
       select.onclick = function(e) { clickPlace(name); };
       details.appendChild(select);
       cont.appendChild(div);
@@ -116,13 +103,9 @@ function continueInit(gameId) {
     let div = document.createElement("DIV");
     div.id = "world" + name;
     div.classList.add("world");
-    div.style.width = Math.floor(width/8) + "px";
-    div.style.maxHeight = Math.floor(width/8) + "px";
     let worldbox = document.createElement("DIV");
     worldbox.id = "world" + name + "box";
     worldbox.classList.add("worldbox");
-    worldbox.style.width = Math.floor(width/8) + "px";
-    worldbox.style.height = Math.floor(width/8) + "px";
     for (let [i, side] of [[1, "left"], [2, "right"]]) {
       let world = document.createElement("DIV");
       world.id = "place" + name + i + "chars";
@@ -130,33 +113,19 @@ function continueInit(gameId) {
       worldbox.appendChild(world);
     }
     div.appendChild(worldbox);
+    let cnvContainer = document.createElement("DIV");
+    cnvContainer.classList.add("worldcnvcontainer", "cnvcontainer");
     let cnv = document.createElement("CANVAS");
     cnv.classList.add("worldcnv");
-    cnv.width = width / 8;
-    cnv.height = width / 8;
-    renderAssetToCanvas(cnv, name, "");
-    div.appendChild(cnv);
-    if (idx < otherWorlds.length / 2) {
-      document.getElementById("worldstop").appendChild(div);
-    } else {
-      document.getElementById("worldsbottom").appendChild(div);
-    }
+    cnvContainer.appendChild(cnv);
+    div.appendChild(cnvContainer);
+    document.getElementById("worlds").appendChild(div);
+    renderAssetToDiv(cnvContainer, name);
   }
-  let worlds = document.getElementById("worlds");
-  worlds.style.height = Math.floor(width/16) + "px";
-  worlds.style.maxHeight = Math.floor(width/16) + "px";
   for (let extra of ["Lost", "Sky", "Outskirts"]) {
-    let div = document.getElementById("place" + extra);
-    div.style.width = Math.floor(width/15) + "px";
-    div.style.height = Math.floor(width/15) + "px";
-    let box = document.getElementById("place" + extra + "box");
-    let cnv = document.createElement("CANVAS");
-    cnv.classList.add("worldcnv");
-    cnv.width = width / 15;
-    cnv.height = width / 15;
-    renderAssetToCanvas(cnv, extra, "");
-    box.appendChild(cnv);
+    renderAssetToDiv(document.getElementById("place" + extra), extra);
     if (extra != "Lost") {
+      let box = document.getElementById("place" + extra + "box");
       let monstersDiv = box.getElementsByClassName("placemonsters")[0];
       monstersDiv.onclick = function(e) { showMonsters(monstersDiv, extra); };
     }
@@ -165,15 +134,6 @@ function continueInit(gameId) {
   outskirtsBox.ondragenter = dragEnter;
   outskirtsBox.ondragover = dragOver;
   outskirtsBox.ondrop = drop;
-
-  let markerWidth = width * markerWidthRatio;
-  let markerHeight = width * markerHeightRatio;
-  let charChoice = document.getElementById("charchoice");
-  let cnv = document.getElementById("charchoicecnv");
-  charChoice.style.width = markerWidth + "px";
-  charChoice.style.height = markerHeight + "px";
-  cnv.width = markerWidth;
-  cnv.height = markerHeight;
 }
 
 // TODO: dedup
@@ -266,28 +226,15 @@ function spawnClue(e) {
   ws.send(JSON.stringify({"type": "clue", "place": place}));
 }
 
-function bringToTop(e) {
-  // It turns out that for siblings in the DOM, browsers give precedence to the sibling that
-  // comes later in the dom when calculating which element is being hovered. So once the user
-  // hovers over a box, we put that box last so that it gets priority over all the other boxes.
-  // This is a convoluted way of doing it - it turns out that if you move the dom element that
-  // you just moused over, firefox has trouble with applying the hover attributes. So instead
-  // of moving the element to the end, we move all OTHER elements before it, and this makes
-  // firefox happy.
-  let board = e.currentTarget.parentNode;
-  let divsToMove = [];
-  let found = false;
-  for (let i = 0; i < board.children.length; i++) {
-    if (found && board.children[i].classList.contains("place")) {
-      divsToMove.push(board.children[i]);
-    }
-    if (board.children[i] == e.currentTarget) {
-      found = true;
-    }
-  }
-  for (let other of divsToMove) {
-    board.insertBefore(other, e.currentTarget);
-  }
+function bringTop(e) {
+  let node = e.currentTarget;
+  node.origZ = node.style.zIndex;
+  node.style.zIndex = 5;
+}
+
+function returnBottom(e) {
+  let node = e.currentTarget;
+  node.style.zIndex = node.origZ || 0;
 }
 
 function makeChoice(val) {
@@ -534,6 +481,7 @@ function updateCharacters(newCharacters) {
     if (characters[character.name] == null) {
       characters[character.name] = createCharacterDiv(character.name);
       place.appendChild(characters[character.name]);
+      renderAssetToDiv(characters[character.name].getElementsByClassName("cnvcontainer")[0], character.name);
     } else {
       animateMovingDiv(characters[character.name], place);
     }
@@ -545,14 +493,18 @@ function showMonsters(placeDiv, name) {
   while (box.children.length) {
     box.removeChild(box.firstChild);
   }
-  for (let monsterDiv of placeDiv.getElementsByClassName("monster")) {
-    let container = document.createElement("DIV");
-    container.appendChild(createMonsterDiv(monsterDiv.monsterName, 2, ""));
-    container.appendChild(createMonsterDiv(monsterDiv.monsterName, 2, "back"));
-    box.appendChild(container);
-  }
   document.getElementById("monsterdetailsname").innerText = name;
   document.getElementById("monsterdetails").style.display = "flex";
+  for (let monsterDiv of placeDiv.getElementsByClassName("monster")) {
+    let container = document.createElement("DIV");
+    let frontDiv = createMonsterDiv(monsterDiv.monsterName, "big");
+    container.appendChild(frontDiv);
+    let backDiv = createMonsterDiv(monsterDiv.monsterName, "big");
+    container.appendChild(backDiv);
+    box.appendChild(container);
+    renderAssetToDiv(frontDiv, monsterDiv.monsterName);
+    renderAssetToDiv(backDiv, monsterDiv.monsterName + " back");
+  }
 }
 
 function hideMonsters(e) {
@@ -580,9 +532,10 @@ function updateMonsters(monster_list) {
       continue;
     }
     if (monsters[i] == null) {
-      monsters[i] = createMonsterDiv(monster.name, 1, "");
+      monsters[i] = createMonsterDiv(monster.name);
       monsters[i].monsterIdx = i;
       place.appendChild(monsters[i]);
+      renderAssetToDiv(monsters[i].getElementsByClassName("cnvcontainer")[0], monster.name);
     } else {
       animateMovingDiv(monsters[i], place);
     }
@@ -664,12 +617,13 @@ function updateMonsterChoices(choice, monsterList) {
   uimonsterchoice.style.display = "flex";
   for (let monsterIdx of choice.monsters) {
     if (monsters[monsterIdx] == null) {
-      monsters[monsterIdx] = createMonsterDiv(monsterList[monsterIdx].name, 1, "");
+      monsters[monsterIdx] = createMonsterDiv(monsterList[monsterIdx].name);
       monsters[monsterIdx].monsterIdx = monsterIdx;
       monsters[monsterIdx].draggable = true;
       monsters[monsterIdx].ondragstart = dragStart;
       monsters[monsterIdx].ondragend = dragEnd;
       choicesBox.appendChild(monsters[monsterIdx]);
+      renderAssetToDiv(monsters[monsterIdx].getElementsByClassName("cnvcontainer")[0], monsterList[monsterIdx].name);
     }
   }
 }
@@ -774,37 +728,29 @@ function updateUsables(usables, choice) {
   // TODO: make clues change apperance when usable
 }
 
-function createMonsterDiv(name, scale, side) {
-  let width = document.getElementById("boardcanvas").width;
-  let markerHeight = width * markerHeightRatio;
+function createMonsterDiv(name, classPrefix) {
+  classPrefix = classPrefix || "";
   let div = document.createElement("DIV");
-  div.style.width = + markerHeight * scale + "px";
-  div.style.height = markerHeight * scale + "px";
-  div.classList.add("monster");
+  div.classList.add(classPrefix + "monster");
+  let cnvContainer = document.createElement("DIV");
+  cnvContainer.classList.add(classPrefix + "monstercontainer", "cnvcontainer");
   let cnv = document.createElement("CANVAS");
   cnv.classList.add("monstercnv");
-  cnv.width = markerHeight * scale;
-  cnv.height = markerHeight * scale;
-  renderAssetToCanvas(cnv, name, side);
-  div.appendChild(cnv);
+  cnvContainer.appendChild(cnv);
+  div.appendChild(cnvContainer);
   div.monsterName = name;
   return div;
 }
 
 function createCharacterDiv(name) {
-  let width = document.getElementById("boardcanvas").width;
-  let markerWidth = width * markerWidthRatio;
-  let markerHeight = width * markerHeightRatio;
   let div = document.createElement("DIV");
-  div.style.width = + markerWidth + "px";
-  div.style.height = markerHeight + "px";
   div.classList.add("marker");
+  let cnvContainer = document.createElement("DIV");
+  cnvContainer.classList.add("markercontainer", "cnvcontainer");
   let cnv = document.createElement("CANVAS");
   cnv.classList.add("markercnv");
-  cnv.width = markerWidth;
-  cnv.height = markerHeight;
-  renderAssetToCanvas(cnv, name, "");
-  div.appendChild(cnv);
+  cnvContainer.appendChild(cnv);
+  div.appendChild(cnvContainer);
   return div;
 }
 
@@ -872,8 +818,6 @@ function updatePlaces(places) {
 }
 
 function updateClues(place) {
-  let boardWidth = document.getElementById("boardcanvas").width;
-  let size = Math.floor(radiusRatio * boardWidth * 3 / 4);
   // TODO: maybe put them somewhere else?
   let charsDiv = document.getElementById("place" + place.name + "chars");
   let numClues = charsDiv.getElementsByClassName("clue").length;
@@ -884,27 +828,24 @@ function updateClues(place) {
   while (numClues < place.clues) {
     let clueDiv = document.createElement("DIV");
     clueDiv.classList.add("clue");
-    clueDiv.style.height = size + "px";
-    clueDiv.style.width = size + "px";
+    let cnvContainer = document.createElement("DIV");
+    cnvContainer.classList.add("cluecontainer", "cnvcontainer");
     let cnv = document.createElement("CANVAS");
     cnv.classList.add("cluecnv");
-    cnv.width = size;
-    cnv.height = size;
-    renderAssetToCanvas(cnv, "Clue", "");
-    clueDiv.appendChild(cnv);
+    cnvContainer.appendChild(cnv);
+    clueDiv.appendChild(cnvContainer);
     charsDiv.appendChild(clueDiv);
+    renderAssetToDiv(cnvContainer, "Clue");
     numClues++;
   }
 }
 
 function updateGate(place, gateDiv) {
-  let gateCnv = gateDiv.getElementsByTagName("CANVAS")[0];
   if (place.gate) {  // TODO: sealed
-    renderAssetToCanvas(gateCnv, "Gate " + place.gate.name, "");
     gateDiv.classList.add("placegatepresent");
+    renderAssetToDiv(gateDiv, "Gate " + place.gate.name);
   } else {
-    let ctx = gateCnv.getContext("2d");
-    ctx.clearRect(0, 0, gateCnv.width, gateCnv.height);
+    clearAssetFromDiv(gateDiv);
     gateDiv.classList.remove("placegatepresent");
   }
 }
@@ -999,8 +940,7 @@ function updateCharacterSelect(characters, playerIdx, pendingName, pendingChars)
 }
 
 function drawChosenChar(name) {
-  let cnv = document.getElementById("charchoicecnv");
-  renderAssetToCanvas(cnv, name, "");
+  renderAssetToDiv(document.getElementById("charchoice"), name);
 }
 
 function updateCharacterSheets(characters, playerIdx, firstPlayer) {

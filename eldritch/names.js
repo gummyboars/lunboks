@@ -1,4 +1,3 @@
-// TODO
 assetPrefix = "eldritch";
 characterNames = [
   "Student",
@@ -98,6 +97,7 @@ monsterNames = [
   "Witch",
   "Zombie",
 ];
+monsterBacks = monsterNames.map(name => name + " back");
 otherWorlds = [
   "Abyss",
   "Another Dimension",
@@ -108,12 +108,9 @@ otherWorlds = [
   "Dreamlands",
   "Pluto",
 ];
-gateNames = [];
-for (let world of otherWorlds) {
-  gateNames.push("Gate " + world);
-}
-extraNames = ["Lost", "Sky", "Outskirts", "Clue"];
-assetNames = ["board"].concat(characterNames).concat(commonNames).concat(uniqueNames).concat(spellNames).concat(skillNames).concat(allyNames).concat(abilityNames).concat(monsterNames).concat(otherWorlds).concat(gateNames).concat(extraNames);
+gateNames = otherWorlds.map(name => "Gate " + name);
+extraNames = ["Lost", "Sky", "Outskirts"];
+assetNames = ["Clue", "board"].concat(characterNames).concat(commonNames).concat(uniqueNames).concat(spellNames).concat(skillNames).concat(allyNames).concat(abilityNames).concat(monsterNames).concat(monsterBacks).concat(otherWorlds).concat(gateNames).concat(extraNames);
 serverNames = {};
 for (let name of assetNames) {
   if (name == "board") {
