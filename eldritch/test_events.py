@@ -274,8 +274,8 @@ class MovementTest(EventTest):
     third_choice.resolve(self.state, [])
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       movement = self.resolve_to_choice(CityMovement)
-      self.assertFalse(movement.choices)
-      movement.resolve(self.state, movement.none_choice)
+    self.assertFalse(movement.choices)
+    movement.resolve(self.state, movement.none_choice)
 
     self.assertEqual(self.char.place.name, "Easttown")
     self.assertEqual(self.char.movement_points, 0)
@@ -311,6 +311,9 @@ class MovementTest(EventTest):
     self.assertTrue(movement.is_resolved())
     self.assertEqual(self.char.place.name, "Easttown")
     self.assertEqual(self.char.movement_points, 0)
+    self.assertTrue(movement.events[0].moved)
+    self.assertFalse(movement.events[1].moved)
+    self.assertFalse(movement.events[2].moved)
 
   def testMoveMultipleThroughMonsterFight(self):
     # Like testMoveOneSpaceToMonster but starts with a multiple space move

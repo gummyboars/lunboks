@@ -2444,9 +2444,9 @@ class EvadeRound(Event):
       self.evaded = True
       self.character.avoid_monsters.append(self.monster)
       return True
+    self.character.movement_points = 0
     self.damage = Loss(
         self.character, {"stamina": self.monster.damage("combat", state, self.character)})
-    self.character.movement_points = 0
     state.event_stack.append(self.damage)
     return False
 
@@ -2460,7 +2460,7 @@ class EvadeRound(Event):
     if self.evaded:
       return f"{self.character.name} evaded a {self.monster.name}"
     return (f"{self.character.name} did not evade the {self.monster.name}"
-            + "and lost any remaining movement")
+            + " and lost any remaining movement")
 
 
 class CombatRound(Event):
