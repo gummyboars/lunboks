@@ -53,6 +53,57 @@ streets = {
   Merchant: {name: "Merchant District", color: "green", x: 0.3966, y: 0.3575},
 };
 
+function renderDefaultToCanvas(cnv, width, height, assetName, variant) {
+  if (assetName == "board") {
+    return renderBoardToCanvas(cnv, width, height);
+  }
+  if (assetName == "Clue") {
+    return renderTextCircle(cnv, "🔍", "#47BA1F", "black", 0.65);
+  }
+  if (characterNames.includes(assetName)) {
+    return renderTextRectangle(cnv, assetName, "silver", "black");
+  }
+  if (monsterNames.includes(assetName)) {
+    return renderTextRectangle(cnv, assetName, "black", "white");
+  }
+  if (monsterBacks.includes(assetName)) {
+    return renderTextRectangle(cnv, assetName, "black", "white");
+  }
+  if (otherWorlds.includes(assetName)) {
+    return renderOtherWorld(cnv, assetName, width, height);
+  }
+  if (assetName.startsWith("Gate ")) {
+    return renderTextCircle(cnv, assetName.substring(5), "palegoldenrod", "black", 0.3);
+  }
+  if (extraNames.includes(assetName)) {
+    let bgColor = {"Outskirts": "purple", "Sky": "green", "Lost": "yellow"}[assetName];
+    return renderTextRectangle(cnv, assetName, bgColor, "black");
+  }
+  throw "unknown asset " + assetName;
+}
+
+function renderBoardToCanvas(cnv, width, height) {
+  ctx = cnv.getContext("2d");
+  ctx.fillStyle = "#D2A253";
+  ctx.fillRect(0, 0, width, height);
+  for (let conn in connections) {
+    for (let dest of connections[conn]) {
+      drawConnection(ctx, streets[conn], streets[dest], cnv.width);
+    }
+  }
+  for (let loc in locations) {
+    for (let street in streets) {
+      if (streets[street].color == locations[loc].color) {
+        drawConnection(ctx, streets[street], locations[loc], cnv.width);
+      }
+    }
+    drawLocation(ctx, locations[loc], cnv.width);
+  }
+  for (let street in streets) {
+    drawStreet(ctx, streets[street], cnv.width);
+  }
+}
+
 function initializeDefaults() {
   let assets = document.getElementById("defaultassets");
   let ctx;
@@ -224,6 +275,11 @@ function createTextSquare(name, bgColor, boardWidth, fgColor) {
   let cnv = document.createElement("CANVAS");
   cnv.width = boardWidth / 12;
   cnv.height = boardWidth / 12;
+  renderTextRectangle(cnv, name, bgColor, fgColor);
+  return cnv;
+}
+
+function renderTextRectangle(cnv, name, bgColor, fgColor) {
   let ctx = cnv.getContext("2d");
   ctx.save();
   ctx.fillStyle = bgColor;
@@ -239,7 +295,6 @@ function createTextSquare(name, bgColor, boardWidth, fgColor) {
   }
   ctx.fillText(name, cnv.width/2, cnv.height/2);
   ctx.restore();
-  return cnv;
 }
 
 function createTextCircle(name, bgColor, boardWidth, fgColor, heightFactor) {
@@ -247,23 +302,36 @@ function createTextCircle(name, bgColor, boardWidth, fgColor, heightFactor) {
   let radius = boardWidth * radiusRatio;
   cnv.width = 2 * radius;
   cnv.height = 2 * radius;
+  renderTextCircle(cnv, name, bgColor, fgColor, heightFactor);
+  return cnv;
+}
+
+function renderTextCircle(cnv, name, bgColor, fgColor, heightFactor) {
   let ctx = cnv.getContext("2d");
   ctx.save();
   ctx.fillStyle = bgColor;
   ctx.beginPath();
-  ctx.arc(radius, radius, radius, 0, 2 * Math.PI);
+  ctx.arc(cnv.width/2, cnv.width/2, cnv.width/2, 0, 2 * Math.PI);
   ctx.fill();
   let fontSize = getTextSize(ctx, name, cnv.width, heightFactor * cnv.height);
   ctx.font = fontSize + "px sans-serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   ctx.fillStyle = fgColor;
-  ctx.fillText(name, radius, radius);
+  ctx.fillText(name, cnv.width/2, cnv.width/2);
   ctx.restore();
-  return cnv;
 }
 
 function createOtherWorld(name, boardWidth) {
+  let cnv = document.createElement("CANVAS");
+  let worldSize = boardWidth / 8;
+  cnv.width = worldSize;
+  cnv.height = worldSize;
+  renderOtherWorld(cnv, name, cnv.width, cnv.height);
+  return cnv;
+}
+
+function renderOtherWorld(cnv, name, width, height) {
   let colors = {
     "Abyss": ["red", "blue"],
     "Another Dimension": ["blue", "green", "red", "gold"],
@@ -274,38 +342,33 @@ function createOtherWorld(name, boardWidth) {
     "Dreamlands": ["blue", "green", "red", "gold"],
     "Pluto": ["blue", "gold"],
   };
-  let cnv = document.createElement("CANVAS");
-  let worldSize = boardWidth / 8;
-  cnv.width = worldSize;
-  cnv.height = worldSize;
   let ctx = cnv.getContext("2d");
   ctx.save();
   ctx.fillStyle = "palegoldenrod";
-  ctx.fillRect(0, 0, worldSize, worldSize);
-  let fontSize = getTextSize(ctx, name, worldSize * 3 / 4, worldSize / 4);
+  ctx.fillRect(0, 0, width, height);
+  let fontSize = getTextSize(ctx, name, width * 3 / 4, height / 4);
   ctx.font = fontSize + "px sans-serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   ctx.fillStyle = "black";
-  ctx.fillText(name, worldSize / 2, worldSize / 8);
+  ctx.fillText(name, width / 2, height / 8);
   ctx.strokeStyle = "black";
-  ctx.moveTo(0, worldSize / 4);
-  ctx.lineTo(worldSize, worldSize / 4);
+  ctx.moveTo(0, height / 4);
+  ctx.lineTo(width, height / 4);
   ctx.stroke();
-  ctx.moveTo(worldSize / 2, worldSize / 4);
-  ctx.lineTo(worldSize / 2, worldSize);
+  ctx.moveTo(width / 2, height / 4);
+  ctx.lineTo(width / 2, height);
   ctx.stroke();
   for (let [idx, color] of colors[name].entries()) {
     let x, y;
     if (idx < 2) {
-      x = worldSize * 15 / 16;
+      x = width * 15 / 16;
     } else {
-      x = worldSize * 14 / 16;
+      x = width * 14 / 16;
     }
-    y = (idx % 2) * worldSize / 16;
+    y = (idx % 2) * height / 16;
     ctx.fillStyle = color;
-    ctx.fillRect(x, y, worldSize / 16, worldSize / 16);
+    ctx.fillRect(x, y, width / 16, height / 16);
   }
   ctx.restore();
-  return cnv;
 }

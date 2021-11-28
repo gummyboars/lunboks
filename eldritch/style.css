@@ -1,7 +1,9 @@
 body {
-  margin: 0px;
+  margin: auto;
   padding: 0px;
   overflow: hidden;
+  width: min(100vw, 160vh);
+  height: min(62.5vw, 100vh);
 }
 div {
   display: block;
@@ -85,6 +87,12 @@ button {
   flex-direction: row;
   justify-content: center;
   align-items: center;
+  min-width: min(10vw, 16vh);
+  width: min(10vw, 16vh);
+  max-width: min(10vw, 16vh);
+  min-height: min(14vw, 22.4vh);
+  height: min(14vw, 22.4vh);
+  max-height: min(14vw, 22.4vh);
 }
 .charchoicebutton {
   display: flex;
@@ -240,7 +248,7 @@ button {
   flex-direction: column;
   justify-content: flex-start;
   align-items: center;
-  max-height: 100vh;
+  max-height: min(62.5vw, 100vh);
 }
 #eventlog {
   min-height: 0;
@@ -252,7 +260,6 @@ button {
   align-items: flex-start;
   justify-content: flex-start;
   width: 100%;
-  border: 1px solid black;
   overflow-y: scroll;
 }
 .logevent {
@@ -266,59 +273,59 @@ button {
   width: 80%;
   max-width: 80%;
   height: 100%;
-  max-height: 100vh;
-  background: red;
+  max-height: min(62.5vw, 100vh);
+  background: #D2A253;
   display: flex;
   flex-direction: column;
 }
 #board {
   width: 100%;
   max-width: 100%;
-  background: green;
-}
-#boardcanvas {
-  width: 100%;
-  height: 100%;
+  height: 75%;
+  min-height: 75%;
+  max-height: 75%;
+  background: #D2A253;
+  position: relative;
 }
 #uibottom{
-  flex: 0 1 auto;
-  min-height: 0;
-  height: 100%;
-  max-height: 100%;
+  flex: 1 1 auto;
+  min-height: 22.4%;
+  height: 22.4%;
+  max-height: 22.4%;
   display: flex;
   flex-direction: row;
 }
 #worlds {
-  min-height: 0;
-  flex: 0 0 50%;
-}
-.worldsrow {
-  height: 50%;
-  width: 100%;
+  min-height: calc(min(62.5vw, 100vh) * 9 / 250);
+  height: calc(min(62.5vw, 100vh) * 9 / 250);
+  max-height: calc(min(62.5vw, 100vh) * 9 / 250);
+  width: min(80vw, 128vh);
   display: flex;
   flex-direction: row;
+  z-index: 1;
 }
 .world {
   position: relative;
   overflow: hidden;
   transition: all 0.5s;
-  height: 100%;
+  height: calc(min(62.5vw, 100vh) * 9 / 250);
+  width: min(10vw, 16vh);
 }
 .world:hover {
-  transform: translateY(-75%);
-  height: 400%;
+  height: calc(min(62.5vw, 100vh) * 4 / 25);
   transition-delay: 0.15s;
   color: black;
 }
 .world.shown {
-  transform: translateY(-75%);
-  height: 400%;
+  height: calc(min(62.5vw, 100vh) * 4 / 25);
   color: white;
 }
 .worldbox {
   position: absolute;
   top: 0;
   left: 0;
+  width: min(10vw, 16vh);
+  height: min(10vw, 16vh);
 }
 .worldchars {
   display: flex;
@@ -340,25 +347,78 @@ button {
   bottom: 0;
   right: 0;
 }
+.worldcnvcontainer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: min(10vw, 16vh);
+  height: min(10vw, 16vh);
+}
 .worldcnv {
   position: absolute;
   top: 0;
   left: 0;
 }
-#extra {
-  flex: 0 0 auto;
+#globals {
+  width: 25%;
+  min-width: 25%;
+  max-width: 25%;
   display: flex;
   flex-direction: row;
-  align-items: center;
+  align-items: flex-start;
+  justify-content: space-evenly;
+}
+.mythoscard {
+  width: 45%;
+  height: 100%;
+}
+#extra {
+  width: 25%;
+  min-width: 25%;
+  max-width: 25%;
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  justify-content: space-evenly;
 }
 .misc {
+  min-width: calc(min(80vw, 128vh) / 15);
+  width: calc(min(80vw, 128vh) / 15);
+  max-width: calc(min(80vw, 128vh) / 15);
+  min-height: calc(min(80vw, 128vh) / 15);
+  height: calc(min(80vw, 128vh) / 15);
+  max-height: calc(min(80vw, 128vh) / 15);
   position: relative;
 }
 .monster {
   z-index: 10; /* TODO */
   position: relative;
   min-width: 0;
+  width: calc(min(80vw, 128vh) * 3 / 58);
+  height: calc(min(80vw, 128vh) * 3 / 58);
   overflow: hidden;
+}
+.bigmonster {
+  z-index: 10; /* TODO */
+  position: relative;
+  min-width: 0;
+  width: calc(min(80vw, 128vh) * 3 / 29);
+  height: calc(min(80vw, 128vh) * 3 / 29);
+  overflow: hidden;
+}
+.monstercontainer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: calc(min(80vw, 128vh) * 3 / 58);
+  height: calc(min(80vw, 128vh) * 3 / 58);
+}
+.bigmonstercontainer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: calc(min(80vw, 128vh) * 3 / 29);
+  height: calc(min(80vw, 128vh) * 3 / 29);
 }
 .monstercnv {
   position: absolute;
@@ -368,6 +428,15 @@ button {
 .marker {
   z-index: 10; /* TODO */
   position: relative;
+  width: calc(min(80vw, 128vh) / 29);
+  height: calc(min(80vw, 128vh) * 3 / 58);
+}
+.markercontainer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: calc(min(80vw, 128vh) / 29);
+  height: calc(min(80vw, 128vh) * 3 / 58);
 }
 .markercnv {
   position: absolute;
@@ -385,6 +454,8 @@ button {
   display: flex;
   align-items: center;
   justify-content: center;
+  width: calc(min(80vw, 128vh) * 2 / 29);
+  height: calc(min(80vw, 128vh) * 2 / 29);
 }
 .placehover {
   position: absolute;
@@ -426,6 +497,7 @@ button {
 }
 .placemonsters {
   flex: 1 1 auto;
+  height: calc(min(80vw, 128vh) * 2 / 29);
   max-width: 100%;
   max-height: 100%;
   min-height: 0;
@@ -461,6 +533,7 @@ button {
   order: 3;
   position: absolute;
   max-width: 100%;
+  height: calc(min(80vw, 128vh) * 2 / 29);
   display: flex;
   transition: all 0.5s;
   justify-content: flex-end;
@@ -489,6 +562,8 @@ button {
   flex: 1 1 auto;
   order: 1;
   display: flex;
+  height: calc(min(80vw, 128vh) * 2 / 29);
+  min-width: calc(min(80vw, 128vh) * 2 / 29);
 }
 .placeleft .placechars {
   flex-direction: row;
@@ -509,6 +584,12 @@ button {
   top: 0;
   order: 3;
   transition: all 0.5s;
+  height: calc(min(80vw, 128vh) * 2 / 29);
+  width: calc(min(80vw, 128vh) * 2 / 29);
+}
+.placegatepresent {
+  max-width: calc(min(80vw, 128vh) * 2 / 29);
+  min-width: calc(min(80vw, 128vh) * 2 / 29); /* FIXME */
 }
 .placeleft .placegate {
   left: 0;
@@ -529,6 +610,8 @@ button {
   display: flex;
   justify-content: center;
   align-items: center;
+  height: calc(min(80vw, 128vh) * 2 / 29);
+  width: calc(min(80vw, 128vh) * 2 / 29);
 }
 .placebox:hover .placeselect {
   max-width: 100%;
@@ -557,6 +640,16 @@ button {
 .clue {
   align-self: center;
   position: relative;
+  width: calc(min(80vw, 128vh) * 3 / 118);
+  height: calc(min(80vw, 128vh) * 3 / 118);
+}
+.cluecontainer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: calc(min(80vw, 128vh) * 3 / 118);
+  height: calc(min(80vw, 128vh) * 3 / 118);
+  z-index: 6;
 }
 .cluecnv {
   position: absolute;
