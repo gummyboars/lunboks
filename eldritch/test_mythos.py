@@ -171,7 +171,7 @@ class MonsterSurgeTest(EventTest):
 
   def testInvalidInputFormat(self):
     self.state.places["Square"].gate = gates.Gate(self.info, -2)
-    self.state.places["Witch"].gate = gates.Gate(self.info, -2)
+    self.state.places["WitchHouse"].gate = gates.Gate(self.info, -2)
     self.state.event_stack.append(MonsterSurge("Woods"))
     with mock.patch.object(events.random, "sample", new=mock.MagicMock(return_value=[0, 1, 5])):
       surge = self.resolve_to_choice(MonsterSurge)
@@ -179,45 +179,45 @@ class MonsterSurgeTest(EventTest):
     with self.assertRaises(AssertionError):
       surge.resolve(self.state, 5)
     with self.assertRaises(AssertionError):
-      surge.resolve(self.state, {5: "Woods", 1: "Square", 0: "Witch"})
+      surge.resolve(self.state, {5: "Woods", 1: "Square", 0: "WitchHouse"})
     with self.assertRaises(AssertionError):
-      surge.resolve(self.state, {"Woods": 5, "Square": 1, "Witch": 0})
+      surge.resolve(self.state, {"Woods": 5, "Square": 1, "WitchHouse": 0})
     with self.assertRaises(AssertionError):
-      surge.resolve(self.state, {"Woods": ["5"], "Square": [1], "Witch": [0]})
+      surge.resolve(self.state, {"Woods": ["5"], "Square": [1], "WitchHouse": [0]})
     self.assertFalse(surge.is_resolved())
 
   def testInvalidInput(self):
     self.state.places["Square"].gate = gates.Gate(self.info, -2)
-    self.state.places["Witch"].gate = gates.Gate(self.info, -2)
+    self.state.places["WitchHouse"].gate = gates.Gate(self.info, -2)
     self.state.event_stack.append(MonsterSurge("Woods"))
     with mock.patch.object(events.random, "sample", new=mock.MagicMock(return_value=[0, 1, 5])):
       surge = self.resolve_to_choice(MonsterSurge)
 
     with self.assertRaises(AssertionError):
-      surge.resolve(self.state, {"Woods": [5, 1, 0], "Square": [1], "Witch": [0]})
+      surge.resolve(self.state, {"Woods": [5, 1, 0], "Square": [1], "WitchHouse": [0]})
     with self.assertRaises(AssertionError):
-      surge.resolve(self.state, {"Woods": [5], "Square": [1], "Witch": [6]})
+      surge.resolve(self.state, {"Woods": [5], "Square": [1], "WitchHouse": [6]})
     with self.assertRaises(AssertionError):
       surge.resolve(self.state, {"Woods": [0, 1, 5]})
 
   def testMoreGatesThanCharacters(self):
     self.state.places["Square"].gate = gates.Gate(self.info, -2)
-    self.state.places["Witch"].gate = gates.Gate(self.info, -2)
+    self.state.places["WitchHouse"].gate = gates.Gate(self.info, -2)
     self.state.event_stack.append(MonsterSurge("Woods"))
     with mock.patch.object(events.random, "sample", new=mock.MagicMock(return_value=[0, 1, 5])):
       surge = self.resolve_to_choice(MonsterSurge)
     self.assertEqual(len(surge.to_spawn), 3)  # Number of gates
-    self.assertCountEqual(surge.open_gates, ["Woods", "Witch", "Square"])
+    self.assertCountEqual(surge.open_gates, ["Woods", "WitchHouse", "Square"])
     self.assertEqual(surge.max_count, 1)
     self.assertEqual(surge.min_count, 1)
     self.assertEqual(surge.to_spawn, [0, 1, 5])
 
-    surge.resolve(self.state, {"Woods": [0], "Square": [1], "Witch": [5]})
+    surge.resolve(self.state, {"Woods": [0], "Square": [1], "WitchHouse": [5]})
     monster_counts = self.monstersByPlace()
     self.assertEqual(monster_counts["cup"], 4)
     self.assertEqual(self.state.monsters[0].place.name, "Woods")
     self.assertEqual(self.state.monsters[1].place.name, "Square")
-    self.assertEqual(self.state.monsters[5].place.name, "Witch")
+    self.assertEqual(self.state.monsters[5].place.name, "WitchHouse")
 
   def testNotEnoughGatesForAllMonsters(self):
     # Total of four open gates
@@ -254,26 +254,26 @@ class MonsterSurgeTest(EventTest):
     self.state.characters[-1].place = self.state.places["Square"]
 
     self.state.places["Isle"].gate = gates.Gate(self.info, -2)
-    self.state.places["Witch"].gate = gates.Gate(self.info, -2)
+    self.state.places["WitchHouse"].gate = gates.Gate(self.info, -2)
     self.state.event_stack.append(MonsterSurge("Woods"))
     surge = self.resolve_to_choice(MonsterSurge)
     self.assertEqual(len(surge.to_spawn), 4)
     surge.to_spawn = [0, 1, 5, 6]
 
     with self.assertRaises(AssertionError):
-      surge.resolve(self.state, {"Woods": [5, 1], "Witch": [0, 6]})
+      surge.resolve(self.state, {"Woods": [5, 1], "WitchHouse": [0, 6]})
     with self.assertRaises(AssertionError):
-      surge.resolve(self.state, {"Woods": [5], "Isle": [1], "Witch": [6, 0]})
+      surge.resolve(self.state, {"Woods": [5], "Isle": [1], "WitchHouse": [6, 0]})
     with self.assertRaises(AssertionError):
       surge.resolve(self.state, {"Woods": [0, 1, 5, 6]})
 
     self.assertFalse(surge.is_resolved())
-    surge.resolve(self.state, {"Woods": [5, 1], "Isle": [0], "Witch": [6]})
+    surge.resolve(self.state, {"Woods": [5, 1], "Isle": [0], "WitchHouse": [6]})
     self.assertTrue(surge.is_resolved())
     self.assertEqual(self.state.monsters[0].place.name, "Isle")
     self.assertEqual(self.state.monsters[1].place.name, "Woods")
     self.assertEqual(self.state.monsters[5].place.name, "Woods")
-    self.assertEqual(self.state.monsters[6].place.name, "Witch")
+    self.assertEqual(self.state.monsters[6].place.name, "WitchHouse")
 
   def testSendToOutskirts(self):
     # Add 4 monsters to the outskirts.
@@ -370,7 +370,7 @@ class MonsterSurgeTest(EventTest):
     # Put 7 monsters on the board
     for _ in range(7):
       self.state.monsters.append(monsters.Maniac())
-      self.state.monsters[-1].place = self.state.places["Witch"]
+      self.state.monsters[-1].place = self.state.places["WitchHouse"]
 
     self.state.event_stack.append(MonsterSurge("Woods"))
     surge = self.resolve_to_choice(MonsterSurge)
@@ -384,7 +384,7 @@ class MonsterSurgeTest(EventTest):
     surge.resolve(self.state, {"Woods": [3, 4], "Outskirts": [5, 6]})
     counts = self.monstersByPlace()
     self.assertEqual(counts["Outskirts"], 2)
-    self.assertEqual(counts["Witch"], 7)
+    self.assertEqual(counts["WitchHouse"], 7)
     self.assertEqual(counts["Woods"], 2)
     self.assertEqual(counts["cup"], 4)
 

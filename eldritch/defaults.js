@@ -25,7 +25,7 @@ locations = {
   Graveyard: {name: "Graveyard", color: "purple", x: 0.4310, y: 0.0543},
   Cave: {name: "Black Cave", color: "purple", x: 0.5233, y: 0.0543},
   Store: {name: "General Store", color: "purple", x: 0.5366, y: 0.1726},
-  Witch: {name: "The Witch House", color: "steelblue", x: 0.6672, y: 0.0521},
+  WitchHouse: {name: "The Witch House", color: "steelblue", x: 0.6672, y: 0.0521},
   Lodge: {name: "Silver Twilight Lodge", color: "steelblue", x: 0.7193, y: 0.1466},
   House: {name: "Ma's Boarding House", color: "saddlebrown", x: 0.8457, y: 0.0513},
   Church: {name: "South Church", color: "saddlebrown", x: 0.9479, y: 0.0900},
