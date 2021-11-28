@@ -497,8 +497,8 @@ class MoveOne(Event):
       self.character.movement_points -= 1
       self.character.explored = False
       self.character.avoid_monsters = []
+      self.moved = True
     self.done = True
-    self.moved = True
     return True
 
   def is_resolved(self):
@@ -510,7 +510,7 @@ class MoveOne(Event):
   def finish_str(self):
     if self.moved:
       return f"{self.character.name} moved to {self.dest}"
-    return f"{self.character.name} stayed in {self.character.place}"
+    return f"{self.character.name} stayed in {self.character.place.name}"
 
 
 class GainOrLoss(Event):
@@ -929,6 +929,7 @@ class ForceMovement(Event):
       self.location_name = self.location_name.choice
     self.character.place = state.places[self.location_name]
     self.character.explored = False
+    self.character.avoid_monsters = []
     self.done = True
     return True
 
@@ -2405,7 +2406,6 @@ class Combat(Event):
     if self.evade.evaded:
       return True
     if self.combat.defeated:
-      self.character.possessions.append(self.monster)
       return True
     self.choice = None
     return False
@@ -2502,6 +2502,7 @@ class CombatRound(Event):
       # TODO: take the monster as a trophy
       # Stand-in until we implement trophy code to allow MoveMultipleThroughMonster test to work
       self.monster.place = None
+      self.character.possessions.append(self.monster)
       self.defeated = True
       return True
     self.defeated = False

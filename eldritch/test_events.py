@@ -313,6 +313,7 @@ class MovementTest(EventTest):
     self.assertEqual(self.char.movement_points, 0)
 
   def testMoveMultipleThroughMonsterFight(self):
+    # Like testMoveOneSpaceToMonster but starts with a multiple space move
     cultist = next(monster for monster in self.state.monsters if monster.name == "Cultist")
     cultist.place = self.state.places["Rivertown"]
     self.char.place = self.state.places["Downtown"]
@@ -335,7 +336,7 @@ class MovementTest(EventTest):
     choice.resolve(self.state, "Fight")
 
     next_choice = self.resolve_to_choice(MultipleChoice)
-    self.assertEqual(sorted(next_choice.choices), ["Fight", "Flee"])
+    self.assertCountEqual(next_choice.choices, ["Fight", "Flee"])
     next_choice.resolve(self.state, "Fight")
 
     third_choice = self.resolve_to_choice(CombatChoice)
@@ -379,7 +380,7 @@ class MovementTest(EventTest):
 
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
       next_choice = self.resolve_to_choice(MultipleChoice)
-    self.assertEqual(sorted(next_choice.choices), ["Fight", "Flee"])
+    self.assertCountEqual(next_choice.choices, ["Fight", "Flee"])
     next_choice.resolve(self.state, "Flee")
 
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
@@ -387,6 +388,7 @@ class MovementTest(EventTest):
 
     self.assertFalse(movement.choices)
     movement.resolve(self.state, movement.none_choice)
+    # resolve_until_done tests that you don't have to re-evade the zombie
     self.resolve_until_done()
 
     self.assertTrue(movement.is_resolved())
@@ -422,9 +424,9 @@ class MovementTest(EventTest):
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=4)):
       choice.resolve(self.state, "Evade")
       next_choice = self.resolve_to_choice(MultipleChoice)
-      self.assertEqual(sorted(next_choice.choices), ["Fight", "Flee"])
-      self.assertEqual(self.char.stamina, 4)
-      self.assertEqual(self.char.sanity, 5)
+    self.assertCountEqual(next_choice.choices, ["Fight", "Flee"])
+    self.assertEqual(self.char.stamina, 4)
+    self.assertEqual(self.char.sanity, 5)
     next_choice.resolve(self.state, "Flee")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       maniac_choice = self.resolve_to_choice(MultipleChoice)
@@ -439,7 +441,9 @@ class MovementTest(EventTest):
     self.assertEqual(self.char.stamina, 4)
     self.assertEqual(self.char.sanity, 5)
     self.assertEqual(self.char.movement_points, 0)
-    # TODO: ^ should this pass?
+
+  # TODO: If you have a motorcycle, should not be able to exhaust for move movement.
+  # TODO: Fight a dream flier, get sucked through a gate, cast find gate, and return.
 
   def testForceMovement(self):
     movement = ForceMovement(self.char, "Graveyard")

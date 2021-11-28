@@ -54,6 +54,8 @@ class Monster(assets.Asset):
     self.place = None
 
   def __repr__(self):
+    if self.place is None:
+      return f"<Monster: {self.name} {id(self)} at nowhere>"
     return f"<Monster: {self.name} {id(self)} at {self.place}>"
 
   def json_repr(self):
