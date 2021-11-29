@@ -14,7 +14,7 @@ from eldritch import characters
 from eldritch import events
 from eldritch.events import *
 from eldritch import items
-from eldritch.test_events import EventTest
+from eldritch.test_events import EventTest, Canceller
 
 
 class ClueTokenTest(EventTest):
@@ -47,6 +47,27 @@ class ClueTokenTest(EventTest):
 
     self.state.done_using[0] = True
     self.resolve_loop()
+
+  def testSpendClueCancelledDie(self):
+    self.char.clues = 3
+    self.resolve_to_usable(0, "clues", SpendClue)
+    self.char.possessions.append(Canceller(DiceRoll))
+    self.assertTrue(self.check.is_resolved())
+    self.assertEqual(len(self.state.event_stack), 1)
+    self.assertEqual(self.state.event_stack[-1], self.check)
+    self.assertEqual(len(self.state.usables), 1)
+    old_successes = self.check.successes
+    old_roll = self.check.roll[:]
+
+    use_clue = self.state.usables[0]["clues"]
+    self.state.event_stack.append(use_clue)
+    self.resolve_to_usable(0, "clues", SpendClue)
+
+    self.assertFalse(use_clue.is_resolved())
+    self.assertTrue(use_clue.is_cancelled())
+    self.assertEqual(self.check.roll, old_roll)
+    self.assertEqual(self.check.successes, old_successes)
+    self.assertEqual(self.char.clues, 3)
 
   def testNoCluesLeft(self):
     self.char.clues = 1
@@ -110,6 +131,28 @@ class RerollTest(EventTest):
 
     new_roll = self.check.roll
     self.assertNotEqual(old_roll, new_roll)  # TODO: 1 / 1296 chance of failing.
+
+  def testRerollDiceCancelled(self):
+    self.resolve_to_usable(0, 0, Sequence)
+    self.assertTrue(self.check.is_resolved())
+    self.assertEqual(len(self.state.event_stack), 1)
+    self.assertEqual(self.state.event_stack[-1], self.check)
+    self.assertEqual(len(self.state.usables), 1)
+    self.char.possessions.append(Canceller(DiceRoll))
+    old_roll = self.check.roll[:]
+    old_successes = self.check.successes
+
+    reroll = self.state.usables[0][0]
+    self.state.event_stack.append(reroll)
+    self.resolve_loop()
+
+    self.assertTrue(self.check.is_resolved())
+    self.assertFalse(self.state.usables)
+
+    self.assertFalse(reroll.events[1].is_resolved())
+    self.assertTrue(reroll.events[1].is_cancelled())
+    self.assertEqual(self.check.roll, old_roll)
+    self.assertEqual(self.check.successes, old_successes)
 
 
 class OneshotItemTest(EventTest):

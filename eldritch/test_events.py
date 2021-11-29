@@ -10,10 +10,13 @@ if os.path.abspath(sys.path[0]) == os.path.dirname(os.path.abspath(__file__)):
   sys.path[0] = os.path.dirname(sys.path[0])
 
 from eldritch import abilities
+from eldritch import assets
 from eldritch import characters
 from eldritch import eldritch
+from eldritch import encounters
 from eldritch import events
 from eldritch.events import *
+from eldritch import gate_encounters
 from eldritch import items
 from eldritch import mythos
 from eldritch import places
@@ -25,6 +28,24 @@ class NoMythos(mythos.GlobalEffect):
 
   def create_event(self, state):  # pylint: disable=unused-argument
     return events.Nothing()
+
+
+class Canceller(assets.Asset):
+
+  def __init__(self, event_type, count=0):
+    super().__init__("canceller")
+    self.event_type = event_type
+    self.count = count
+    self.seen = []
+
+  def get_interrupt(self, event, owner, state):
+    if not isinstance(event, self.event_type):
+      return None
+    if id(event) not in self.seen:
+      self.seen.append(id(event))
+    if self.seen.index(id(event)) == self.count:
+      return CancelEvent(event)
+    return None
 
 
 class EventTest(unittest.TestCase):
@@ -83,6 +104,31 @@ class EventTest(unittest.TestCase):
   def _formatMessage(self, msg, standardMsg):
     ret = super()._formatMessage(msg, standardMsg)
     return ret + "\n\n\n" + "\n".join(self.state.event_log)
+
+
+class SequenceTest(EventTest):
+
+  def testSequence(self):
+    seq = Sequence([DiceRoll(self.char, 1), Delayed(self.char), Gain(self.char, {"dollars": 1})])
+    self.state.event_stack.append(seq)
+    self.resolve_until_done()
+    self.assertTrue(seq.is_resolved())
+    self.assertFalse(seq.is_cancelled())
+    self.assertTrue(seq.events[0].is_resolved())
+    self.assertTrue(seq.events[1].is_resolved())
+    self.assertTrue(seq.events[2].is_resolved())
+
+  def testSequenceWithCancelledEvent(self):
+    self.char.possessions.append(Canceller(DelayOrLoseTurn))
+    seq = Sequence([DiceRoll(self.char, 1), Delayed(self.char), Gain(self.char, {"dollars": 1})])
+    self.state.event_stack.append(seq)
+    self.resolve_until_done()
+    self.assertTrue(seq.is_resolved())
+    self.assertFalse(seq.is_cancelled())
+    self.assertTrue(seq.events[0].is_resolved())
+    self.assertFalse(seq.events[1].is_resolved())
+    self.assertTrue(seq.events[1].is_cancelled())
+    self.assertTrue(seq.events[2].is_resolved())
 
 
 class DiceRollTest(EventTest):
@@ -229,6 +275,23 @@ class MovementPhaseTest(EventTest):
     self.char.place = self.state.places["Dreamlands1"]
     self.resolve_until_done()
     self.assertEqual(self.char.place.name, "Dreamlands2")
+
+  def testCancelledMovement(self):
+    self.char.possessions.append(Canceller(CityMovement))
+    self.resolve_until_done()
+    self.assertFalse(self.movement.move.is_resolved())
+    self.assertTrue(self.movement.move.is_cancelled())
+    self.assertTrue(self.movement.is_resolved())
+    self.assertEqual(self.char.place.name, "Diner")
+
+  def testCancelledOtherWorld(self):
+    self.char.place = self.state.places["Dreamlands1"]
+    self.char.possessions.append(Canceller(ForceMovement))
+    self.resolve_until_done()
+    self.assertFalse(self.movement.move.is_resolved())
+    self.assertTrue(self.movement.move.is_cancelled())
+    self.assertTrue(self.movement.is_resolved())
+    self.assertEqual(self.char.place.name, "Dreamlands1")
 
   def testLost(self):
     self.char.place = self.state.places["Lost"]
@@ -555,6 +618,139 @@ class CityMovementTest(EventTest):
       self.movement.resolve(self.state, "Southside")
 
 
+class EncounterPhaseTest(EventTest):
+
+  def setUp(self):
+    super().setUp()
+    self.state.turn_phase = "encounter"
+    self.encounter = EncounterPhase(self.char)
+    self.state.event_stack.append(self.encounter)
+
+  def testEncounterInLocation(self):
+    self.char.place = self.state.places["Cave"]
+    self.state.places["Rivertown"].encounters = [
+        encounters.EncounterCard("Rivertown7", {"Cave": encounters.Cave7}),
+    ]
+    choice = self.resolve_to_choice(MultipleChoice)
+    self.assertEqual(choice.choices, ["Yes", "No"])
+
+  def testEncounterInStreet(self):
+    self.char.place = self.state.places["Rivertown"]
+    self.resolve_until_done()
+    self.assertIsNone(self.encounter.action)
+
+  def testEncounterInOtherWorld(self):
+    self.char.place = self.state.places["Dreamlands1"]
+    self.resolve_until_done()
+    self.assertIsNone(self.encounter.action)
+
+  def testEncounterWithGate(self):
+    self.char.place = self.state.places["Cave"]
+    self.state.places["Cave"].gate = self.state.gates.popleft()
+    self.resolve_until_done()
+    self.assertEqual(self.char.place.name, self.state.places["Cave"].gate.name + "1")
+
+  def testEncounterExploredGate(self):
+    self.char.place = self.state.places["Cave"]
+    self.char.explored = True
+    self.state.places["Cave"].gate = self.state.gates.popleft()
+    choice = self.resolve_to_choice(MultipleChoice)
+    self.assertIn("Don't close", choice.choices)
+
+  def testCancelledEncounter(self):
+    self.char.place = self.state.places["Cave"]
+    self.char.possessions.append(Canceller(Encounter))
+    self.state.places["Rivertown"].encounters = [
+        encounters.EncounterCard("Rivertown7", {"Cave": encounters.Cave7}),
+    ]
+    self.resolve_until_done()
+    self.assertTrue(self.encounter.action.is_cancelled())
+
+  def testCancelledDraw(self):
+    self.char.place = self.state.places["Cave"]
+    self.char.possessions.append(Canceller(DrawEncounter))
+    self.state.places["Rivertown"].encounters = [
+        encounters.EncounterCard("Rivertown7", {"Cave": encounters.Cave7}),
+    ]
+    self.resolve_until_done()
+    self.assertTrue(self.encounter.action.is_cancelled())
+
+  def testCancelledEvent(self):
+    self.char.place = self.state.places["Store"]
+    self.char.possessions.append(Canceller(GainOrLoss))
+    self.state.places["Rivertown"].encounters = [
+        encounters.EncounterCard("Rivertown1", {"Store": encounters.Store1}),
+    ]
+    self.resolve_until_done()
+    self.assertFalse(self.encounter.action.is_cancelled())
+    self.assertTrue(self.encounter.action.encounter.is_cancelled())
+
+  def testCancelledTravel(self):
+    self.char.place = self.state.places["Cave"]
+    self.state.places["Cave"].gate = self.state.gates.popleft()
+    self.char.possessions.append(Canceller(Travel))
+    self.resolve_until_done()
+    self.assertTrue(self.encounter.action.is_cancelled())
+
+  def testCancelledCloseAttempt(self):
+    self.char.place = self.state.places["Cave"]
+    self.state.places["Cave"].gate = self.state.gates.popleft()
+    self.char.explored = True
+    self.char.possessions.append(Canceller(GateCloseAttempt))
+    self.resolve_until_done()
+    self.assertTrue(self.encounter.action.is_cancelled())
+
+
+class OtherWoldPhaseTest(EventTest):
+
+  def setUp(self):
+    super().setUp()
+    self.other_world = OtherWorldPhase(self.char)
+    self.state.event_stack.append(self.other_world)
+    self.state.gate_cards.append(
+        gate_encounters.GateCard("Gate29", {"red"}, {"Other": gate_encounters.Other29}),
+    )
+
+  def testNotInOtherWorld(self):
+    self.resolve_until_done()
+    self.assertIsNone(self.other_world.action)
+
+  def testOtherWorldEncounter(self):
+    self.assertEqual(self.char.stamina, 5)
+    self.char.place = self.state.places["Abyss1"]
+    self.resolve_until_done()
+    self.assertEqual(self.char.stamina, 4)
+
+  def testCancelOtherWorldEncounter(self):
+    self.char.possessions.append(Canceller(GateEncounter))
+    self.char.place = self.state.places["Abyss1"]
+    self.resolve_until_done()
+    self.assertTrue(self.other_world.is_resolved())
+    self.assertFalse(self.other_world.action.is_resolved())
+    self.assertTrue(self.other_world.action.is_cancelled())
+
+  def testCancelDrawEncounter(self):
+    num_cards = len(self.state.gate_cards)
+    self.char.possessions.append(Canceller(DrawGateCard))
+    self.char.place = self.state.places["Abyss1"]
+    self.resolve_until_done()
+    self.assertTrue(self.other_world.is_resolved())
+    self.assertFalse(self.other_world.action.is_resolved())
+    self.assertTrue(self.other_world.action.is_cancelled())
+    self.assertEqual(len(self.state.gate_cards), num_cards)
+
+  def testCancelOtherWorldEvent(self):
+    num_cards = len(self.state.gate_cards)
+    self.char.possessions.append(Canceller(GainOrLoss))
+    self.char.place = self.state.places["Abyss1"]
+    self.resolve_until_done()
+    self.assertTrue(self.other_world.is_resolved())
+    self.assertTrue(self.other_world.action.is_resolved())
+    self.assertFalse(self.other_world.action.encounter.is_resolved())
+    self.assertTrue(self.other_world.action.encounter.is_cancelled())
+    self.assertEqual(len(self.state.gate_cards), num_cards)
+
+
 class GainLossTest(EventTest):
 
   def testGain(self):
@@ -649,6 +845,18 @@ class CollectCluesTest(EventTest):
     self.assertEqual(collect.picked_up, 2)
     self.assertEqual(self.state.places["Diner"].clues, 0)
     self.assertEqual(self.char.clues, 2)
+
+  def testCancelCollection(self):
+    collect = CollectClues(self.char, "Diner")
+    self.state.event_stack.append(collect)
+    self.state.places["Diner"].clues = 2
+    self.char.possessions.append(Canceller(GainOrLoss))
+    self.resolve_until_done()
+    self.assertFalse(collect.is_resolved())
+    self.assertTrue(collect.is_cancelled())
+    self.assertIsNone(collect.picked_up)
+    self.assertEqual(self.state.places["Diner"].clues, 2)
+    self.assertEqual(self.char.clues, 0)
 
 
 class InsaneUnconsciousTest(EventTest):
@@ -771,6 +979,34 @@ class SplitGainTest(EventTest):
 
     self.assertEqual(self.char.stamina, 4)
     self.assertEqual(self.char.sanity, 2)
+
+  def testCancelledChoice(self):
+    self.char.stamina = 1
+    self.char.sanity = 1
+    split_gain = SplitGain(self.char, "stamina", "sanity", 3)
+    self.state.event_stack.append(split_gain)
+    self.char.possessions.append(Canceller(MultipleChoice))
+    self.resolve_until_done()
+    self.assertFalse(split_gain.is_resolved())
+    self.assertTrue(split_gain.is_cancelled())
+    self.assertEqual(self.char.stamina, 1)
+    self.assertEqual(self.char.sanity, 1)
+
+  def testCancelledGain(self):
+    self.char.stamina = 1
+    self.char.sanity = 1
+    split_gain = SplitGain(self.char, "stamina", "sanity", 3)
+    self.state.event_stack.append(split_gain)
+    self.char.possessions.append(Canceller(GainOrLoss))
+    choice = self.resolve_to_choice(MultipleChoice)
+    choice.resolve(self.state, 2)
+    self.resolve_until_done()
+    self.assertTrue(split_gain.is_resolved())
+    self.assertFalse(split_gain.is_cancelled())
+    self.assertFalse(split_gain.gain.is_resolved())
+    self.assertTrue(split_gain.gain.is_cancelled())
+    self.assertEqual(self.char.stamina, 1)
+    self.assertEqual(self.char.sanity, 1)
 
 
 class StatusChangeTest(EventTest):
@@ -1009,6 +1245,64 @@ class DrawRandomTest(EventTest):
     self.assertEqual(self.char.possessions, [])
     self.assertEqual([item.name for item in self.state.common], ["Food", "Tommy Gun", "Dynamite", ])
 
+  def testDrawCancelled(self):
+    draw = Draw(self.char, "common", 2)
+    self.assertFalse(draw.is_resolved())
+    self.assertFalse(self.char.possessions)
+    self.char.possessions.append(Canceller(DrawItems))
+    self.state.common.extend([items.Food(), items.Dynamite(), items.Revolver38()])
+    self.assertEqual(len(self.state.common), 3)
+
+    self.state.event_stack.append(draw)
+    self.resolve_until_done()
+    self.resolve_until_done()
+
+    self.assertTrue(draw.is_resolved())
+    self.assertFalse(draw.events[0].is_resolved())
+    self.assertTrue(draw.events[0].is_cancelled())
+    self.assertEqual(len(self.char.possessions), 1)
+    self.assertIsInstance(self.char.possessions[0], Canceller)
+    self.assertEqual(len(self.state.common), 3)
+
+  def testChoiceCancelled(self):
+    draw = Draw(self.char, "common", 2)
+    self.assertFalse(draw.is_resolved())
+    self.assertFalse(self.char.possessions)
+    self.char.possessions.append(Canceller(CardChoice))
+    self.state.common.extend([items.Food(), items.Dynamite(), items.Revolver38()])
+    self.assertEqual(len(self.state.common), 3)
+
+    self.state.event_stack.append(draw)
+    self.resolve_until_done()
+
+    self.assertTrue(draw.is_resolved())
+    self.assertTrue(draw.events[0].is_resolved())
+    self.assertFalse(draw.events[1].choice.is_resolved())
+    self.assertTrue(draw.events[1].choice.is_cancelled())
+    self.assertTrue(draw.events[1].is_cancelled())
+    self.assertEqual(len(self.char.possessions), 1)
+    self.assertIsInstance(self.char.possessions[0], Canceller)
+    self.assertEqual(len(self.state.common), 3)
+
+  def testKeepCancelled(self):
+    draw = Draw(self.char, "common", 2)
+    self.assertFalse(draw.is_resolved())
+    self.assertFalse(self.char.possessions)
+    self.char.possessions.append(Canceller(KeepDrawn))
+    self.state.common.extend([items.Food(), items.Dynamite(), items.Revolver38()])
+    self.assertEqual(len(self.state.common), 3)
+
+    self.state.event_stack.append(draw)
+    self.resolve_until_done()
+
+    self.assertTrue(draw.is_resolved())
+    self.assertTrue(draw.events[0].is_resolved())
+    self.assertFalse(draw.events[1].is_resolved())
+    self.assertTrue(draw.events[1].is_cancelled())
+    self.assertEqual(len(self.char.possessions), 1)
+    self.assertIsInstance(self.char.possessions[0], Canceller)
+    # self.assertEqual(len(self.state.common), 3)  TODO
+
 
 class DiscardNamedTest(EventTest):
   def testDiscardNamed(self):
@@ -1091,6 +1385,18 @@ class CheckTest(EventTest):
     self.assertIsNotNone(check.dice)
     self.assertListEqual(check.roll, [2, 4])
 
+  def testCancelledRoll(self):
+    check = Check(self.char, "fight", 0)
+    self.char.possessions.append(Canceller(DiceRoll))
+
+    self.state.event_stack.append(check)
+    self.resolve_until_done()
+
+    self.assertFalse(check.is_resolved())
+    self.assertTrue(check.is_cancelled())
+    self.assertIsNotNone(check.dice)
+    self.assertIsNone(check.roll)
+
 
 class ConditionalTest(EventTest):
 
@@ -1141,6 +1447,46 @@ class ConditionalTest(EventTest):
     self.assertEqual(self.char.clues, 0)
     self.assertTrue(cond.result_map[0].is_resolved())
     self.assertFalse(cond.result_map[1].is_resolved())
+
+  def testCancelledCondition(self):
+    seq = self.createConditional()
+    check, cond = seq.events
+    self.char.possessions.append(Canceller(Check))
+    self.assertEqual(self.char.clues, 0)
+    self.assertEqual(self.char.sanity, 5)
+
+    self.state.event_stack.append(seq)
+    self.resolve_until_done()
+
+    self.assertTrue(seq.is_resolved())
+    self.assertFalse(check.is_resolved())
+    self.assertTrue(check.is_cancelled())
+    self.assertFalse(cond.is_resolved())
+    self.assertTrue(cond.is_cancelled())
+    self.assertEqual(self.char.clues, 0)
+    self.assertEqual(self.char.sanity, 5)
+    self.assertFalse(cond.result_map[0].is_done())
+    self.assertFalse(cond.result_map[1].is_done())
+
+  @mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3))
+  def testCancelledResult(self):
+    seq = self.createConditional()
+    cond = seq.events[1]
+    self.char.possessions.append(Canceller(GainOrLoss))
+    self.assertFalse(seq.is_resolved())
+    self.assertEqual(self.char.clues, 0)
+    self.assertEqual(self.char.sanity, 5)
+
+    self.state.event_stack.append(seq)
+    self.resolve_until_done()
+
+    self.assertTrue(seq.is_resolved())
+    self.assertTrue(cond.is_resolved())
+    self.assertFalse(cond.result_map[0].is_resolved())
+    self.assertTrue(cond.result_map[0].is_cancelled())
+    self.assertFalse(cond.result_map[1].is_done())
+    self.assertEqual(self.char.clues, 0)
+    self.assertEqual(self.char.sanity, 5)
 
   def testPassValue(self):
     cond = self.createValueConditional()
@@ -1374,6 +1720,25 @@ class RefreshItemsTest(EventTest):
     self.state.event_stack.append(RefreshAssets(self.char))
     self.resolve_until_done()
 
+  def testOneItemRefreshCancelled(self):
+    self.char.possessions.extend([items.Wither(), items.Wither(), items.Bullwhip(), items.Cross()])
+    # pylint: disable=protected-access
+    self.char.possessions[0]._exhausted = True
+    self.char.possessions[1]._exhausted = True
+    self.char.possessions[2]._exhausted = True
+
+    refresh = RefreshAssets(self.char)
+    self.state.event_stack.append(refresh)
+    self.char.possessions.append(Canceller(RefreshAsset, 1))
+    self.resolve_until_done()
+
+    self.assertTrue(refresh.is_resolved())
+    self.assertFalse(refresh.refreshes[1].is_resolved())
+    self.assertTrue(refresh.refreshes[1].is_cancelled())
+    self.assertFalse(self.char.possessions[0].exhausted)
+    self.assertTrue(self.char.possessions[1].exhausted)
+    self.assertFalse(self.char.possessions[2].exhausted)
+
 
 class ActivateItemsTest(EventTest):
 
@@ -1423,6 +1788,44 @@ class ActivateItemsTest(EventTest):
     self.assertFalse(self.char.possessions[1].active)
     self.assertTrue(self.char.possessions[2].active)
 
+  def testOneItemActivationCancelled(self):
+    self.char.possessions.extend([items.Bullwhip(), items.TommyGun(), items.Revolver38()])
+    item_choice = CombatChoice(self.char, "choose stuff")
+    activate = ActivateChosenItems(self.char, item_choice)
+    self.char.possessions.append(Canceller(ActivateItem))
+
+    self.state.event_stack.append(item_choice)
+    self.resolve_to_choice(CombatChoice)
+    item_choice.resolve(self.state, [0, 2])
+    self.state.event_stack.append(activate)
+    self.resolve_until_done()
+
+    self.assertTrue(activate.is_resolved())
+    self.assertFalse(activate.activations[0].is_resolved())
+    self.assertTrue(activate.activations[0].is_cancelled())
+
+    self.assertEqual(self.char.hands_available(), 1)
+    self.assertFalse(self.char.possessions[0].active)
+    self.assertFalse(self.char.possessions[1].active)
+    self.assertTrue(self.char.possessions[2].active)
+
+  def testActivationChoiceCancelled(self):
+    self.char.possessions.extend([items.Bullwhip(), items.TommyGun(), items.Revolver38()])
+    item_choice = CombatChoice(self.char, "choose stuff")
+    activate = ActivateChosenItems(self.char, item_choice)
+    self.char.possessions.append(Canceller(CombatChoice))
+
+    self.state.event_stack.append(Sequence([item_choice, activate], self.char))
+    self.resolve_until_done()
+
+    self.assertFalse(activate.is_resolved())
+    self.assertTrue(activate.is_cancelled())
+
+    self.assertEqual(self.char.hands_available(), 2)
+    self.assertFalse(self.char.possessions[0].active)
+    self.assertFalse(self.char.possessions[1].active)
+    self.assertFalse(self.char.possessions[2].active)
+
   def testDeactivateItems(self):
     self.char.possessions.extend([items.Bullwhip(), items.TommyGun(), items.Revolver38()])
     # pylint: disable=protected-access
@@ -1436,6 +1839,27 @@ class ActivateItemsTest(EventTest):
 
     self.assertEqual(self.char.hands_available(), 2)
     self.assertFalse(self.char.possessions[0].active)
+    self.assertFalse(self.char.possessions[1].active)
+    self.assertFalse(self.char.possessions[2].active)
+
+  def testOneDeactivationCancelled(self):
+    self.char.possessions.extend([items.Bullwhip(), items.TommyGun(), items.Revolver38()])
+    # pylint: disable=protected-access
+    self.char.possessions[0]._active = True
+    self.char.possessions[2]._active = True
+    self.assertEqual(self.char.hands_available(), 0)
+    self.char.possessions.append(Canceller(DeactivateItem))
+
+    deactivate = DeactivateItems(self.char)
+    self.state.event_stack.append(deactivate)
+    self.resolve_until_done()
+
+    self.assertTrue(deactivate.is_resolved())
+    self.assertFalse(deactivate.deactivations[0].is_resolved())
+    self.assertTrue(deactivate.deactivations[0].is_cancelled())
+    self.assertTrue(deactivate.deactivations[1].is_resolved())
+    self.assertEqual(self.char.hands_available(), 1)
+    self.assertTrue(self.char.possessions[0].active)
     self.assertFalse(self.char.possessions[1].active)
     self.assertFalse(self.char.possessions[2].active)
 
@@ -1471,6 +1895,58 @@ class CastSpellTest(EventTest):
     self.assertFalse(shrivelling.active)
     self.assertEqual(self.char.sanity, 4)
     self.assertEqual(self.char.hands_available(), 1)
+
+  def testCancelledSpellCheck(self):
+    shrivelling = items.Shrivelling()
+    self.char.possessions.append(shrivelling)
+    self.char.possessions.append(Canceller(Check))
+    self.assertEqual(self.char.sanity, 5)
+    self.assertEqual(self.char.hands_available(), 2)
+
+    self.state.event_stack.append(CastSpell(self.char, shrivelling))
+    self.resolve_until_done()
+
+    self.assertTrue(shrivelling.in_use)
+    self.assertFalse(shrivelling.active)
+    self.assertEqual(self.char.sanity, 4)
+    self.assertEqual(self.char.hands_available(), 1)
+
+  def testCancelledSpellCost(self):
+    shrivelling = items.Shrivelling()
+    self.char.possessions.append(shrivelling)
+    self.char.possessions.append(Canceller(GainOrLoss))
+    self.assertEqual(self.char.sanity, 5)
+    self.assertEqual(self.char.hands_available(), 2)
+
+    cast = CastSpell(self.char, shrivelling)
+    self.state.event_stack.append(cast)
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+
+    self.assertTrue(shrivelling.in_use)
+    self.assertTrue(shrivelling.active)
+    self.assertEqual(self.char.sanity, 5)
+    self.assertEqual(self.char.hands_available(), 1)
+    self.assertTrue(cast.is_resolved())
+
+  def testCancelledActivation(self):
+    shrivelling = items.Shrivelling()
+    self.char.possessions.append(shrivelling)
+    self.char.possessions.append(Canceller(ActivateItem))
+    self.assertEqual(self.char.sanity, 5)
+    self.assertEqual(self.char.hands_available(), 2)
+
+    cast = CastSpell(self.char, shrivelling)
+    self.state.event_stack.append(cast)
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+
+    self.assertTrue(shrivelling.in_use)
+    self.assertFalse(shrivelling.active)
+    self.assertEqual(self.char.sanity, 4)
+    self.assertEqual(self.char.hands_available(), 1)
+    self.assertTrue(cast.is_resolved())
+    self.assertTrue(cast.activation.is_cancelled())
 
   def testCastAndGoInsane(self):
     pass  # TODO: a spell that has a non-combat effect.
@@ -1674,6 +2150,67 @@ class PurchaseTest(EventTest):
     self.assertEqual(len(self.state.common), 2)
     self.assertSequenceEqual(self.state.common, [cross, food])
 
+  def testCancelledDraw(self):
+    buy = Purchase(self.char, "common", 2, keep_count=1)
+    self.char.dollars = 8
+    self.assertFalse(buy.is_resolved())
+    self.assertFalse(self.char.possessions)
+    self.char.possessions.append(Canceller(DrawItems))
+    self.state.common.extend([items.Food(), items.TommyGun(), items.Cross()])
+    self.assertEqual(len(self.state.common), 3)
+
+    self.state.event_stack.append(buy)
+    self.resolve_until_done()
+
+    self.assertTrue(buy.is_resolved())
+    self.assertFalse(buy.events[0].is_resolved())
+    self.assertTrue(buy.events[0].is_cancelled())
+    self.assertFalse(buy.events[1].is_resolved())
+    self.assertTrue(buy.events[1].is_cancelled())
+    self.assertEqual(self.char.dollars, 8)
+    self.assertEqual(len(self.char.possessions), 1)
+    self.assertEqual(len(self.state.common), 3)
+
+  def testCancelledChoice(self):
+    buy = Purchase(self.char, "common", 2, keep_count=1)
+    self.char.dollars = 8
+    self.assertFalse(buy.is_resolved())
+    self.assertFalse(self.char.possessions)
+    self.char.possessions.append(Canceller(CardChoice))
+    self.state.common.extend([items.Food(), items.TommyGun(), items.Cross()])
+    self.assertEqual(len(self.state.common), 3)
+
+    self.state.event_stack.append(buy)
+    self.resolve_until_done()
+
+    self.assertTrue(buy.is_resolved())
+    self.assertTrue(buy.events[0].is_resolved())
+    self.assertFalse(buy.events[1].is_resolved())
+    self.assertTrue(buy.events[1].is_cancelled())
+    self.assertEqual(self.char.dollars, 8)
+    self.assertEqual(len(self.char.possessions), 1)
+    self.assertEqual(len(self.state.common), 3)
+
+  def testCancelledPurchase(self):
+    buy = Purchase(self.char, "common", 2, keep_count=1)
+    self.char.dollars = 8
+    self.assertFalse(buy.is_resolved())
+    self.assertFalse(self.char.possessions)
+    self.char.possessions.append(Canceller(PurchaseDrawn))
+    self.state.common.extend([items.Food(), items.TommyGun(), items.Cross()])
+    self.assertEqual(len(self.state.common), 3)
+
+    self.state.event_stack.append(buy)
+    self.resolve_until_done()
+
+    self.assertTrue(buy.is_resolved())
+    self.assertTrue(buy.events[0].is_resolved())
+    self.assertFalse(buy.events[1].is_resolved())
+    self.assertTrue(buy.events[1].is_cancelled())
+    self.assertEqual(self.char.dollars, 8)
+    self.assertEqual(len(self.char.possessions), 1)
+    # self.assertEqual(len(self.state.common), 3)  TODO
+
 
 class SellTest(EventTest):
   def testSellOneAtList(self):
@@ -1744,6 +2281,25 @@ class SellTest(EventTest):
     with self.assertRaises(AssertionError):
       choice.resolve(self.state, [1])
       self.resolve_until_done()
+
+  def testSellChoiceCancelled(self):
+    sell = Sell(self.char, {"common"}, 1)
+    self.char.dollars = 3
+    self.assertFalse(sell.is_resolved())
+    self.assertFalse(self.char.possessions)
+    food = items.Food()
+    self.char.possessions.append(food)
+    self.char.possessions.append(Canceller(ItemChoice))
+
+    self.state.event_stack.append(sell)
+    self.resolve_until_done()
+
+    self.assertTrue(sell.is_resolved())
+    self.assertFalse(sell.events[1].is_resolved())
+    self.assertTrue(sell.events[1].is_cancelled())
+    self.assertEqual(self.char.dollars, 3)
+    self.assertEqual(len(self.char.possessions), 2)
+    self.assertFalse(self.state.common)
 
 
 class CloseLocationTest(EventTest):
