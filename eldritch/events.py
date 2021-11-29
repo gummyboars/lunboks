@@ -17,9 +17,28 @@ random = SystemRandom()
 
 
 class Event(metaclass=abc.ABCMeta):
+  """An Event represents an Event that is resolved by the event loop.
+
+  An Event must implement two methods: resolve(self, state) and is_resolved(self)
+
+  resolve(self, state) must do the work of the actual event. The event loop may call resolve()
+  multiple times. Each time it is called, resolve() must do one of the following
+    (a) change the state and its internal state so that is_resolved() returns True
+    (b) set self.cancelled to True so that is_cancelled() returns True
+    (c) append one (and only one) new event to the stack
+  ChoiceEvents are exempt from this requirement (see below).
+
+  It is guaranteed that when an Event's resolve() method is called, then that Event is
+  currently at the top of the event stack.
+  If a parent Event has added a child Event onto the stack, the parent may assume that the child
+  Event has been resolved or cancelled before the parent Event's resolve() is called again.
+
+  An Event's is_resolved() method must use information from the Event's internal state to
+  decide whether to return True or False; it should not use references to game objects.
+  """
 
   @abc.abstractmethod
-  def resolve(self, state):
+  def resolve(self, state) -> NoReturn:
     # resolve should return True if the event was resolved, False otherwise.
     # For example, an event that requires a check to be made should add that check to the end
     # of the event stack, and then return False. It will be called again when the check is
@@ -48,7 +67,7 @@ class Event(metaclass=abc.ABCMeta):
 class ChoiceEvent(Event):
 
   @abc.abstractmethod
-  def resolve(self, state, choice=None):  # pylint: disable=arguments-differ
+  def resolve(self, state, choice=None) -> NoReturn:  # pylint: disable=arguments-differ
     raise NotImplementedError
 
   @abc.abstractmethod
@@ -69,7 +88,6 @@ class Nothing(Event):
 
   def resolve(self, state):
     self.done = True
-    return True
 
   def is_resolved(self):
     return self.done
@@ -89,13 +107,11 @@ class Sequence(Event):
     self.character = character
 
   def resolve(self, state):
+    while self.idx < len(self.events) and self.events[self.idx].is_done():
+      self.idx += 1
     if self.idx == len(self.events):
-      return True
-    if not self.events[self.idx].is_done():
-      state.event_stack.append(self.events[self.idx])
-      return False
-    self.idx += 1
-    return self.idx == len(self.events)
+      return
+    state.event_stack.append(self.events[self.idx])
 
   def is_resolved(self):
     return self.idx == len(self.events)
@@ -114,7 +130,6 @@ class CancelEvent(Event):
 
   def resolve(self, state):
     self.to_cancel.cancelled = True
-    return True
 
   def is_resolved(self):
     return self.to_cancel.is_cancelled()
@@ -152,24 +167,23 @@ class Upkeep(Turn):
 
   def resolve(self, state):
     if self.check_lose_turn():
-      return True
+      return
     if not self.focus_given:
       self.character.focus_points = self.character.focus
       self.focus_given = True
     if self.refresh is None:
       self.refresh = RefreshAssets(self.character)
       state.event_stack.append(self.refresh)
-      return False
+      return
     if self.actions is None:
       self.actions = UpkeepActions(self.character)
       state.event_stack.append(self.actions)
-      return False
+      return
     if self.sliders is None:
       self.sliders = SliderInput(self.character)
       state.event_stack.append(self.sliders)
-      return False
+      return
     self.done = True
-    return True
 
   def is_resolved(self):
     return self.done
@@ -208,10 +222,10 @@ class SliderInput(Event):
       for slider_name, slider_value in self.pending.items():
         setattr(self.character, slider_name + "_slider", slider_value)
       self.done = True
-      return True
+      return
     if name == "reset":
       self.pending = self.character.sliders()
-      return False
+      return
 
     assert isinstance(value, int), "invalid slider value"
     assert value >= 0, f"invalid slider value {value}"
@@ -222,7 +236,6 @@ class SliderInput(Event):
       if self.character.focus_cost(pending) > self.character.focus_points:
         raise AssertionError("You do not have enough focus.")
     self.pending = pending
-    return False
 
   def is_resolved(self):
     return self.done
@@ -244,13 +257,13 @@ class Movement(Turn):
   def resolve(self, state):
     self.character.avoid_monsters = []
     if self.check_lose_turn():
-      return True
+      return
     if self.character.delayed_until is not None:
       if self.character.delayed_until <= state.turn_number:
         self.character.delayed_until = None
       else:
         self.done = True
-        return True
+        return
 
     if self.move is None:
       if isinstance(self.character.place, places.OtherWorld):
@@ -265,11 +278,10 @@ class Movement(Turn):
       else:
         self.move = Nothing()  # TODO: handle lost in time and space?
       state.event_stack.append(self.move)
-      return False
+      return
 
     assert self.move.is_done()
     self.done = True
-    return True
 
   def is_resolved(self):
     return self.done
@@ -292,11 +304,10 @@ class CityMovement(ChoiceEvent):
   def resolve(self, state, choice=None):
     if choice == self.none_choice:
       self.done = True
-      return True
+      return
     assert choice in self.routes
     state.event_stack.append(
         Sequence([MoveOne(self.character, dest) for dest in self.routes[choice]], self.character))
-    return False
 
   def is_resolved(self):
     return self.done
@@ -364,11 +375,11 @@ class EncounterPhase(Turn):
 
   def resolve(self, state):
     if self.check_lose_turn():
-      return True
+      return
     if self.action is None:
       if not isinstance(self.character.place, places.Location):
         self.done = True
-        return True
+        return
       if self.character.place.gate and self.character.explored:
         self.action = GateCloseAttempt(self.character, self.character.place.name)
       elif self.character.place.gate:
@@ -379,11 +390,10 @@ class EncounterPhase(Turn):
       else:
         self.action = Nothing()
       state.event_stack.append(self.action)
-      return False
+      return
 
     assert self.action.is_done()
     self.done = True
-    return True
 
   def is_resolved(self):
     return self.done
@@ -404,19 +414,18 @@ class OtherWorldPhase(Turn):
 
   def resolve(self, state):
     if self.check_lose_turn():
-      return True
+      return
     if self.action is None:
       if not isinstance(self.character.place, places.OtherWorld):
         self.done = True
-        return True
+        return
       self.action = GateEncounter(
           self.character, self.character.place.info.name, self.character.place.info.colors)
       state.event_stack.append(self.action)
-      return False
+      return
 
     assert self.action.is_done()
     self.done = True
-    return True
 
   def is_resolved(self):
     return self.done
@@ -442,11 +451,10 @@ class Mythos(Turn):
       state.mythos.append(chosen)
       self.action = chosen.create_event(state)
       state.event_stack.append(self.action)
-      return False
+      return
 
     assert self.action.is_done()
     self.done = True
-    return True
 
   def is_resolved(self):
     return self.done
@@ -472,7 +480,6 @@ class DiceRoll(Event):
     self.sum = sum(self.roll)
     # Some encounters have: "Roll a die for each X. On a success..."
     self.successes = self.character.count_successes(self.roll, None)
-    return True
 
   def is_resolved(self):
     return self.roll is not None
@@ -499,7 +506,7 @@ class MoveOne(Event):
     if self.character.movement_points <= 0:
       self.done = True
       self.moved = False
-      return True
+      return
     assert self.dest in [conn.name for conn in self.character.place.connections]
     if not (self.character.place.closed or state.places[self.dest].closed):
       self.character.place = state.places[self.dest]
@@ -508,7 +515,6 @@ class MoveOne(Event):
       self.character.avoid_monsters = []
       self.moved = True
     self.done = True
-    return True
 
   def is_resolved(self):
     return self.done
@@ -558,7 +564,6 @@ class GainOrLoss(Event):
         new_val = min(new_val, self.character.max_sanity)
       self.final_adjustments[attr] = new_val - old_val
       setattr(self.character, attr, new_val)
-    return True
 
   def is_resolved(self):
     return self.final_adjustments is not None
@@ -602,7 +607,7 @@ class SplitGain(Event):
   def resolve(self, state):
     if self.gain is not None:
       assert self.gain.is_done()
-      return True
+      return
 
     amount = self.amount.value(state) if isinstance(self.amount, values.Value) else self.amount
 
@@ -610,17 +615,16 @@ class SplitGain(Event):
       assert self.choice.is_done()
       if self.choice.is_cancelled():
         self.cancelled = True
-        return True
+        return
       attr1_amount = self.choice.choice
       self.gain = GainOrLoss(
           self.character, {self.attr1: attr1_amount, self.attr2: amount - attr1_amount}, {})
       state.event_stack.append(self.gain)
-      return False
+      return
 
     prompt = f"How much of the {amount} do you want to go to {self.attr1}?"
     self.choice = MultipleChoice(self.character, prompt, list(range(0, amount+1)))
     state.event_stack.append(self.choice)
-    return False
 
   def is_resolved(self):
     return self.gain is not None and self.gain.is_done()
@@ -651,7 +655,6 @@ class LossPrevention(Event):
     self.prevented = self.amount
     if isinstance(self.amount, values.Value):
       self.prevented = self.amount.value(state)
-    return True
 
   def is_resolved(self):
     return self.prevented is not None
@@ -678,25 +681,25 @@ class CollectClues(Event):
     if self.picked_up is None:
       if self.character.place.name != self.place:
         self.done = True
-        return True
+        return
       self.picked_up = state.places[self.place].clues
 
     if not self.picked_up:
       self.done = True
-      return True
+      return
 
     if self.gain is None:
       self.gain = Gain(self.character, {"clues": self.picked_up})
       state.event_stack.append(self.gain)
-      return False
+      return
 
     if self.gain.is_cancelled():
       self.picked_up = None
       self.cancelled = True
-      return True
+      return
     state.places[self.place].clues -= self.picked_up
     self.done = True
-    return True
+    return
 
   def is_resolved(self):
     return self.done
@@ -751,17 +754,17 @@ class InsaneOrUnconscious(Event):
     if not self.lose_clues:
       self.lose_clues = Loss(self.character, {"clues": self.character.clues // 2})
       state.event_stack.append(self.lose_clues)
-      return False
+      return
 
     if not self.lose_items:
       self.lose_items = Nothing()  # TODO: choosing items to lose
       state.event_stack.append(self.lose_items)
-      return False
+      return
 
     if not self.lose_turn:
       self.lose_turn = DelayOrLoseTurn(self.character, "lose_turn", "this")
       state.event_stack.append(self.lose_turn)
-      return False
+      return
 
     if not self.force_move:
       if isinstance(self.character.place, places.CityPlace):
@@ -770,9 +773,6 @@ class InsaneOrUnconscious(Event):
       else:
         self.force_move = LostInTimeAndSpace(self.character)
       state.event_stack.append(self.force_move)
-      return False
-
-    return True
 
   def is_resolved(self):
     steps = [self.lose_clues, self.lose_items, self.lose_turn, self.force_move]
@@ -809,7 +809,6 @@ class DelayOrLoseTurn(Event):
     current = getattr(self.character, self.attr) or 0
     self.until = max(current, state.turn_number + self.num_turns)
     setattr(self.character, self.attr, self.until)
-    return True
 
   def is_resolved(self):
     return self.until is not None
@@ -855,7 +854,6 @@ class BlessCurse(Event):
       self.character.bless_curse_start = state.turn_number + 2
     else:
       self.character.bless_curse_start = None
-    return True
 
   def is_resolved(self):
     return self.change is not None
@@ -890,7 +888,6 @@ class MembershipChange(Event):
     old_status = self.character.lodge_membership
     self.character.lodge_membership = self.positive
     self.change = int(self.character.lodge_membership) - int(old_status)
-    return True
 
   def is_resolved(self):
     return self.change is not None
@@ -920,7 +917,6 @@ class StatusChange(Event):
     new_status = (state.turn_number + 2) if self.positive else None
     setattr(self.character, self.attr, new_status)
     self.change = int(new_status is not None) - int(old_status is not None)
-    return True
 
   def is_resolved(self):
     return self.change is not None
@@ -951,13 +947,12 @@ class ForceMovement(Event):
       if self.location_name.choice is None:
         # No need to reset explored, since the character did not move.
         self.done = True
-        return True
+        return
       self.location_name = self.location_name.choice
     self.character.place = state.places[self.location_name]
     self.character.explored = False
     self.character.avoid_monsters = []
     self.done = True
-    return True
 
   def is_resolved(self):
     return self.done
@@ -1001,8 +996,6 @@ class DrawItems(Event):
       # TODO: is there a scenario when the player can go insane/unconscious before they
       # successfully pick a card?
 
-    return True
-
   def is_resolved(self):
     return self.drawn is not None
 
@@ -1031,7 +1024,7 @@ class KeepDrawn(Event):
       self.kept = []
       if self.draw.drawn is not None:
         getattr(state, self.draw.deck).extend(self.drawn)
-      return True
+      return
 
     if self.drawn is None:
       assert self.draw.is_resolved()
@@ -1039,14 +1032,14 @@ class KeepDrawn(Event):
 
     if self.is_resolved():
       # This should never happen??
-      return True
+      return
 
     if self.choice is not None:
       assert self.choice.is_done()
       if self.choice.is_cancelled():
         self.cancelled = True
         getattr(state, self.draw.deck).extend(self.drawn)
-        return True
+        return
       kept_cards = [self.drawn[self.choice.choice_index]]
       discarded_cards = [
           card for idx, card in enumerate(self.drawn) if idx != self.choice.choice_index]
@@ -1054,16 +1047,15 @@ class KeepDrawn(Event):
       self.character.possessions.extend(kept_cards)
       for card in discarded_cards:
         getattr(state, self.draw.deck).append(card)
-      return True
+      return
 
     if self.keep_count < len(self.drawn):
       self.choice = CardChoice(self.character, self.prompt, [card.name for card in self.drawn])
       state.event_stack.append(self.choice)
-      return False
+      return
 
     self.character.possessions.extend(self.drawn)
     self.kept = [card.name for card in self.drawn]
-    return True
 
   def is_resolved(self):
     return self.kept is not None
@@ -1102,10 +1094,10 @@ class SellChosen(Event):
   def resolve(self, state):
     if self.choice.is_cancelled():
       self.cancelled = True
-      return True
+      return
     if self.resolved:
       # This should never happen??
-      return True
+      return
     self.prices = [self.discounted_price(card) for card in self.choice.chosen]
     self.character.dollars += sum(self.prices)  # TODO: this should be a Gain(dollars) event
     for card in self.choice.chosen:
@@ -1113,7 +1105,6 @@ class SellChosen(Event):
       getattr(state, card.deck).append(card)
     self.resolved = True
     self.sold = [card.name for card in self.choice.chosen]
-    return True
 
   def is_resolved(self):
     return self.resolved
@@ -1161,13 +1152,13 @@ class PurchaseDrawn(Event):
   def resolve(self, state):
     if self.resolved:
       # This should never happen??
-      return True
+      return
     if self.drawn is None:
       if self.draw.is_cancelled():
         self.cancelled = True
         if self.draw.drawn is not None:
           getattr(state, self.draw.deck).extend(self.draw.drawn)
-        return True
+        return
       assert self.draw.is_resolved()
       self.drawn = self.draw.drawn
 
@@ -1175,11 +1166,11 @@ class PurchaseDrawn(Event):
       if self.choice.is_cancelled():
         self.cancelled = True
         getattr(state, self.draw.deck).extend(self.drawn)
-        return True
+        return
       if self.choice.choice == "Nothing":
         self.resolved = True
         getattr(state, self.draw.deck).extend(self.drawn)
-        return True
+        return
       # Note that by now, we should have returned the unavailable cards to the deck
       kept_card = self.drawn.pop(self.choice.choice_index)
       cost = self.prices.pop(self.choice.choice_index)
@@ -1192,7 +1183,7 @@ class PurchaseDrawn(Event):
     if self.keep_count == 0:
       getattr(state, self.draw.deck).extend(self.drawn)
       self.resolved = True
-      return True
+      return
 
     # self.keep_count > 0
     choices = []
@@ -1221,9 +1212,8 @@ class PurchaseDrawn(Event):
       self.choice = CardChoice(
           self.character, self.prompt + could_not_afford, choices, [f"${p}" for p in self.prices])
       state.event_stack.append(self.choice)
-      return False
+      return
     self.resolved = True
-    return True
 
   def is_resolved(self):
     return self.resolved
@@ -1270,7 +1260,7 @@ class Encounter(Event):
         name = self.location_name.choice
       if name is None or not isinstance(state.places[name], places.Location):
         self.cancelled = True
-        return True
+        return
       self.location_name = name
 
     if self.character.lodge_membership and self.location_name == "Lodge":
@@ -1285,19 +1275,19 @@ class Encounter(Event):
 
     if not self.draw.is_done():
       state.event_stack.append(self.draw)
-      return False
+      return
 
     if self.draw.is_cancelled():
       self.cancelled = True
-      return True
+      return
 
     if self.encounter and self.encounter.is_done():
-      return True
+      return
 
     if len(self.draw.cards) == 1:
       self.encounter = self.draw.cards[0].encounter_event(self.character, self.location_name)
       state.event_stack.append(self.encounter)
-      return False
+      return
 
     encounters = [
         card.encounter_event(self.character, self.location_name) for card in self.draw.cards]
@@ -1307,7 +1297,6 @@ class Encounter(Event):
     cond = Conditional(self.character, choice, "choice_index", dict(enumerate(encounters)))
     self.encounter = Sequence([choice, cond], self.character)
     state.event_stack.append(self.encounter)
-    return False
 
   def is_resolved(self):
     return self.encounter and self.encounter.is_done()
@@ -1332,7 +1321,6 @@ class DrawEncounter(Event):
     encounters = self.neighborhood.encounters
     assert len(encounters) >= self.count
     self.cards.extend(random.sample(encounters, self.count))
-    return True
 
   def is_resolved(self):
     return len(self.cards) == self.count
@@ -1360,7 +1348,7 @@ class GateEncounter(Event):
       assert self.encounter.is_done()
       state.gate_cards.extend(self.cards)
       self.cards = []
-      return True
+      return
 
     if self.draw is not None:
       assert self.draw.is_done()
@@ -1368,26 +1356,25 @@ class GateEncounter(Event):
         state.gate_cards.extend(self.cards)
         self.cards = []
         self.cancelled = True
-        return True
+        return
       self.cards.append(self.draw.card)
       self.draw = None
 
     if len(self.cards) < self.draw_count:
       self.draw = DrawGateCard(self.character, self.colors)
       state.event_stack.append(self.draw)
-      return False
+      return
 
     if len(self.cards) == 1:
       self.encounter = self.cards[0].encounter_event(self.character, self.world_name)
       state.event_stack.append(self.encounter)
-      return False
+      return
 
     encounters = [card.encounter_event(self.character, self.world_name) for card in self.cards]
     choice = CardChoice(self.character, "Choose an Encounter", [card.name for card in self.cards])
     cond = Conditional(self.character, choice, "choice_index", dict(enumerate(encounters)))
     self.encounter = Sequence([choice, cond], self.character)
     state.event_stack.append(self.encounter)
-    return False
 
   def is_resolved(self):
     return self.encounter is not None and self.encounter.is_done() and not self.cards
@@ -1450,7 +1437,6 @@ class DrawSpecific(Event):
         break
     else:
       self.received = False
-    return True
 
   def is_resolved(self):
     return self.received is not None
@@ -1475,10 +1461,9 @@ class ExhaustAsset(Event):
   def resolve(self, state):
     if self.item not in self.character.possessions:
       self.exhausted = False
-      return True
+      return
     self.item._exhausted = True  # pylint: disable=protected-access
     self.exhausted = True
-    return True
 
   def is_resolved(self):
     return self.exhausted is not None
@@ -1503,10 +1488,9 @@ class RefreshAsset(Event):
   def resolve(self, state):
     if self.item not in self.character.possessions:
       self.refreshed = False
-      return True
+      return
     self.item._exhausted = False  # pylint: disable=protected-access
     self.refreshed = True
-    return True
 
   def is_resolved(self):
     return self.refreshed is not None
@@ -1534,9 +1518,8 @@ class RefreshAssets(Event):
     while self.idx < len(self.refreshes):
       if not self.refreshes[self.idx].is_done():
         state.event_stack.append(self.refreshes[self.idx])
-        return False
+        return
       self.idx += 1
-    return True
 
   def is_resolved(self):
     return self.refreshes is not None and all(refresh.is_done() for refresh in self.refreshes)
@@ -1559,12 +1542,11 @@ class ActivateItem(Event):
   def resolve(self, state):
     if self.item not in self.character.possessions:
       self.activated = False
-      return True
+      return
     self.item._active = True  # pylint: disable=protected-access
     if hasattr(self.item, "activate"):
       self.item.activate()
     self.activated = True
-    return True
 
   def is_resolved(self):
     return self.activated is not None
@@ -1590,16 +1572,15 @@ class ActivateChosenItems(Event):
     assert self.item_choice.is_done()
     if self.item_choice.is_cancelled():
       self.cancelled = True
-      return True
+      return
 
     if self.activations is None:
       self.activations = [ActivateItem(self.character, item) for item in self.item_choice.chosen]
     while self.idx < len(self.activations):
       if not self.activations[self.idx].is_done():
         state.event_stack.append(self.activations[self.idx])
-        return False
+        return
       self.idx += 1
-    return True
 
   def is_resolved(self):
     return self.item_choice.is_resolved() and self.idx == len(self.item_choice.chosen)
@@ -1622,12 +1603,11 @@ class DeactivateItem(Event):
   def resolve(self, state):
     if self.item not in self.character.possessions:
       self.deactivated = False
-      return True
+      return
     self.item._active = False  # pylint: disable=protected-access
     if hasattr(self.item, "deactivate"):
       self.item.deactivate()
     self.deactivated = True
-    return True
 
   def is_resolved(self):
     return self.deactivated is not None
@@ -1656,9 +1636,8 @@ class DeactivateItems(Event):
     while self.idx < len(self.deactivations):
       if not self.deactivations[self.idx].is_done():
         state.event_stack.append(self.deactivations[self.idx])
-        return False
+        return
       self.idx += 1
-    return True
 
   def is_resolved(self):
     return self.deactivations is not None and all(event.is_done() for event in self.deactivations)
@@ -1690,7 +1669,7 @@ class CastSpell(Event):
   def resolve(self, state):
     if self.spell not in self.character.possessions:
       self.success = False
-      return True
+      return
 
     self.spell.in_use = True
     self.spell.deactivatable = False
@@ -1700,35 +1679,34 @@ class CastSpell(Event):
     if not self.check:
       self.check = Check(self.character, "spell", self.spell.get_difficulty(state))
       state.event_stack.append(self.check)
-      return False
+      return
     assert self.check.is_done()
 
     if not self.action.is_done():
       state.event_stack.append(self.action)
-      return False
+      return
 
     if (self.check.successes or 0) < self.spell.get_required_successes(state):
       self.success = False
       if not self.cost:
         self.cost = Loss(self.character, {"sanity": self.spell.sanity_cost})
         state.event_stack.append(self.cost)
-        return False
+        return
       assert self.cost.is_done()
-      return True
+      return
 
     self.success = True
     if not self.activation:
       self.activation = self.spell.get_cast_event(self.character, state)
       state.event_stack.append(self.activation)
-      return False
+      return
     assert self.activation.is_done()
 
     if not self.cost:
       self.cost = Loss(self.character, {"sanity": self.spell.sanity_cost})
       state.event_stack.append(self.cost)
-      return False
+      return
     assert self.cost.is_done()
-    return True
 
   def is_resolved(self):
     return self.cost is not None and self.cost.is_done()
@@ -1779,7 +1757,6 @@ class DeactivateSpell(Event):
     if hasattr(self.spell, "deactivate"):
       self.spell.deactivate()
     self.done = True
-    return True
 
   def is_resolved(self):
     return self.done
@@ -1807,9 +1784,8 @@ class DeactivateSpells(Event):
     while self.idx < len(self.deactivations):
       if not self.deactivations[self.idx].is_done():
         state.event_stack.append(self.deactivations[self.idx])
-        return False
+        return
       self.idx += 1
-    return True
 
   def is_resolved(self):
     return self.deactivations is not None and all(event.is_done() for event in self.deactivations)
@@ -1832,12 +1808,11 @@ class DiscardSpecific(Event):
   def resolve(self, state):
     if self.item not in self.character.possessions:
       self.discarded = False
-      return True
+      return
     self.character.possessions.remove(self.item)
     deck = getattr(state, self.item.deck)
     deck.append(self.item)
     self.discarded = True
-    return True
 
   def is_resolved(self):
     return self.discarded is not None
@@ -1865,9 +1840,8 @@ class DiscardNamed(Event):
         deck = getattr(state, item.deck)
         deck.append(item)
         self.discarded = True
-        return True
+        return
     self.discarded = False
-    return True
 
   def is_resolved(self):
     return self.discarded is not None
@@ -1901,15 +1875,14 @@ class Check(Event):
         num_dice = getattr(self.character, self.check_type)(state) + self.modifier
       self.dice = DiceRoll(self.character, num_dice)
       state.event_stack.append(self.dice)
-      return False
+      return
 
     if self.dice.is_cancelled():
       self.cancelled = True
-      return True
+      return
 
     self.roll = self.dice.roll[:]
     self.count_successes()
-    return True
 
   def count_successes(self):
     self.successes = self.character.count_successes(self.roll, self.check_type)
@@ -1942,18 +1915,17 @@ class SpendClue(Event):
     if not self.dice.is_done():
       assert self.character.clues > 0
       state.event_stack.append(self.dice)
-      return False
+      return
 
     if self.dice.is_cancelled():
       self.cancelled = True
-      return True
+      return
 
     self.character.clues -= 1
     old_successes = self.check.successes
     self.check.roll.extend(self.dice.roll)
     self.check.count_successes()
     self.extra_successes = self.check.successes - old_successes
-    return True
 
   def is_resolved(self):
     return self.extra_successes is not None
@@ -1977,7 +1949,6 @@ class AddExtraDie(Event):
     assert not self.dice.is_done()
     self.dice.count += 1
     self.done = True
-    return True
 
   def is_resolved(self):
     return self.done
@@ -2003,16 +1974,15 @@ class RerollCheck(Event):
     if self.dice is None:
       self.dice = DiceRoll(self.character, len(self.check.roll))
       state.event_stack.append(self.dice)
-      return False
+      return
 
     if self.dice.is_cancelled():
       self.cancelled = True
-      return True
+      return
 
     self.check.roll = self.dice.roll[:]
     self.check.count_successes()
     self.done = True
-    return True
 
   def is_resolved(self):
     return self.done
@@ -2040,13 +2010,13 @@ class Conditional(Event):
     assert isinstance(self.condition, values.Value) or self.condition.is_done()
     if not isinstance(self.condition, values.Value) and self.condition.is_cancelled():
       self.cancelled = True
-      return True
+      return
 
     if self.result is not None:
       if not self.result.is_done():  # NOTE: this should never happen
         state.event_stack.append(self.result)
-        return False
-      return True
+        return
+      return
 
     if isinstance(self.condition, values.Value):
       value = self.condition.value(state)
@@ -2057,7 +2027,7 @@ class Conditional(Event):
       if value >= min_result:
         self.result = self.result_map[min_result]
         state.event_stack.append(self.result)
-        return False
+        return
     raise RuntimeError(f"result map without result for {value}: {self.result_map}")
 
   def is_resolved(self):
@@ -2099,7 +2069,6 @@ class MultipleChoice(ChoiceEvent):
     assert not self.is_resolved()
     self.validate_choice(choice)
     self.choice = choice
-    return True
 
   def validate_choice(self, choice):
     assert choice in self.choices
@@ -2172,10 +2141,9 @@ class ItemChoice(ChoiceEvent):
 
   def resolve(self, state, choice=None):
     if self.is_resolved():
-      return True
+      return
     assert all(0 <= idx < len(self.character.possessions) for idx in choice)
     self.resolve_internal(choice)
-    return True
 
   def resolve_internal(self, choices):
     assert all(idx in self.choices for idx in choices)
@@ -2262,10 +2230,9 @@ class MapChoice(ChoiceEvent, metaclass=abc.ABCMeta):
   def resolve(self, state, choice=None):
     if choice is not None and choice == self.none_choice:
       self.choices = []  # Hack, mark as resolved without setting self.choice.
-      return True
+      return
     assert choice in self.choices
     self.choice = choice
-    return True
 
   def is_resolved(self):
     # It is possible to have no choices (e.g. with "gate" when there are no gates on the board).
@@ -2423,13 +2390,12 @@ class EvadeOrCombat(Event):
   def resolve(self, state):
     if not self.choice.is_done():
       state.event_stack.append(self.choice)
-      return False
+      return
     if self.evade.is_resolved() and self.evade.evaded:
-      return True
+      return
     if not self.combat.is_done():
       state.event_stack.append(self.combat)
-      return False
-    return True
+      return
 
   def is_resolved(self):
     return self.combat.is_done() or (self.evade.is_resolved() and self.evade.evaded)
@@ -2463,39 +2429,29 @@ class Combat(Event):
     if self.horror is not None:
       if not self.horror.is_done():
         state.event_stack.append(self.horror)
-        return False
+        return
       if not self.sanity_loss.is_done():
         # Failed horror check
         if (self.horror.successes or 0) < 1:
           state.event_stack.append(self.sanity_loss)
-          return False
+          return
         # Nightmarish for successful horror check
         nightmarish = self.monster.has_attribute("nightmarish", state, self.character)
         if self.horror.successes >= 1 and nightmarish:
           self.sanity_loss = Loss(
               self.character, {"sanity": self.monster.bypass_damage("horror", state)})
           state.event_stack.append(self.sanity_loss)
-          return False
+          return
 
     # Combat or flee choice.
-    if self.choice is None:
-      self.combat = CombatRound(self.character, self.monster)
-      self.evade = EvadeRound(self.character, self.monster)
-      no_ambush = values.NoAmbushPrerequisite(self.monster, self.character)
-      prompt = f"Fight the {self.monster.name} or flee from it?"
-      self.choice = BinaryChoice(
-          self.character, prompt, "Flee", "Fight", self.evade, self.combat, no_ambush)
-      self.choice.events[0].monster = self.monster  # TODO: this is hacky
-      state.event_stack.append(self.choice)
-      return False
-
-    assert self.choice.is_done()
-    if self.evade.evaded:
-      return True
-    if self.combat.defeated:
-      return True
-    self.choice = None
-    return False
+    self.combat = CombatRound(self.character, self.monster)
+    self.evade = EvadeRound(self.character, self.monster)
+    no_ambush = values.NoAmbushPrerequisite(self.monster, self.character)
+    prompt = f"Fight the {self.monster.name} or flee from it?"
+    self.choice = BinaryChoice(
+        self.character, prompt, "Flee", "Fight", self.evade, self.combat, no_ambush)
+    self.choice.events[0].monster = self.monster  # TODO: this is hacky
+    state.event_stack.append(self.choice)
 
   def is_resolved(self):
     if self.evade is None or self.combat is None:
@@ -2520,23 +2476,22 @@ class EvadeRound(Event):
 
   def resolve(self, state):
     if self.evaded is not None:
-      return True
+      return
     if self.check is None:
       self.check = Check(
           self.character, "evade", self.monster.difficulty("evade", state, self.character))
     if not self.check.is_done():
       state.event_stack.append(self.check)
-      return False
+      return
     if not self.check.is_cancelled() and self.check.successes >= 1:
       self.evaded = True
       self.character.avoid_monsters.append(self.monster)
-      return True
+      return
     self.character.movement_points = 0
     self.evaded = False
     self.damage = Loss(
         self.character, {"stamina": self.monster.damage("combat", state, self.character)})
     state.event_stack.append(self.damage)
-    return False
 
   def is_resolved(self):
     return self.evaded or (self.damage is not None and self.damage.is_done())
@@ -2566,14 +2521,14 @@ class CombatRound(Event):
   def resolve(self, state):
     self.character.movement_points = 0
     if self.defeated is not None:
-      return True
+      return
     if not self.choice.is_done():
       state.event_stack.append(self.choice)
-      return False
+      return
     if len(self.choice.choices or []) > 0 and self.activate is None:
       self.activate = ActivateChosenItems(self.character, self.choice)
       state.event_stack.append(self.activate)
-      return False
+      return
 
     if self.check is None:
       attrs = self.monster.attributes(state, self.character)
@@ -2581,25 +2536,24 @@ class CombatRound(Event):
           self.character, "combat", self.monster.difficulty("combat", state, self.character), attrs)
     if not self.check.is_done():
       state.event_stack.append(self.check)
-      return False
+      return
 
     if (self.check.successes or 0) >= self.monster.toughness(state, self.character):
       if self.monster.has_attribute("overwhelming", state, self.character) and self.damage is None:
         self.damage = Loss(
             self.character, {"stamina": self.monster.bypass_damage("combat", state)})
         state.event_stack.append(self.damage)
-        return False
+        return
       # TODO: take the monster as a trophy
       # Stand-in until we implement trophy code to allow MoveMultipleThroughMonster test to work
       self.monster.place = None
       self.character.possessions.append(self.monster)
       self.defeated = True
-      return True
+      return
     self.defeated = False
     self.damage = Loss(
         self.character, {"stamina": self.monster.damage("combat", state, self.character)})
     state.event_stack.append(self.damage)
-    return False
 
   def is_resolved(self):
     if self.defeated is None:
@@ -2650,16 +2604,15 @@ class Return(Event):
       self.return_choice = GateChoice(
           self.character, "Choose a gate to return to", self.world_name, annotation="Return")
       state.event_stack.append(self.return_choice)
-      return False
+      return
     assert self.return_choice.is_done()
 
     if self.return_choice.is_cancelled() or self.return_choice.choice is None:  # Unable to return
       self.returned = False  # TODO: lost in time and space
-      return True
+      return
     self.character.place = state.places[self.return_choice.choice]
     self.character.explored = True
     self.returned = True
-    return True
 
   def is_resolved(self):
     return self.returned is not None
@@ -2702,26 +2655,26 @@ class GateCloseAttempt(Event):
       self.choice = MultipleChoice(
           self.character, "Close the gate?", ["Close with fight", "Close with lore", "Don't close"])
       state.event_stack.append(self.choice)
-      return False
+      return
 
     assert self.choice.is_done()
     if self.choice.is_cancelled() or self.choice.choice == "Don't close":
       self.closed = False
       self.sealed = False
-      return True
+      return
 
     if self.check is None:
       difficulty = state.places[self.location_name].gate.difficulty(state)
       attribute = "lore" if self.choice.choice == "Close with lore" else "fight"
       self.check = Check(self.character, attribute, difficulty)
       state.event_stack.append(self.check)
-      return False
+      return
 
     assert self.check.is_done()
     if self.check.is_cancelled() or not self.check.successes:
       self.closed = False
       self.sealed = False
-      return True
+      return
 
     if not self.closed:
       self.closed = True
@@ -2732,26 +2685,25 @@ class GateCloseAttempt(Event):
         state.event_stack.append(
             CloseLocation(self.location_name, closed_until - state.turn_number - 1)
         )
-        return False
+        return
 
     if self.seal_choice is None:
       if self.character.clues < 5:  # TODO: this can also have modifiers
         self.sealed = False
-        return True
+        return
       self.seal_choice = MultipleChoice(
           self.character, "Seal the gate with 5 clue tokens?", ["Yes", "No"])
       state.event_stack.append(self.seal_choice)
-      return False
+      return
 
     assert self.seal_choice.is_done()
     if self.seal_choice.is_cancelled() or self.seal_choice.choice == "No":
       self.sealed = False
-      return True
+      return
 
     self.character.clues -= 5  # TODO: spending clues in other ways
     state.places[self.location_name].sealed = True
     self.sealed = True
-    return True
 
   def is_resolved(self):
     return self.closed is not None and self.sealed is not None
@@ -2779,16 +2731,16 @@ class OpenGate(Event):
   def resolve(self, state):
     if self.spawn is not None:
       assert self.spawn.is_done()
-      return True
+      return
 
     if state.places[self.location_name].sealed:
       self.opened = False
-      return True
+      return
     if state.places[self.location_name].gate is not None:
       self.opened = False
       self.spawn = MonsterSurge(self.location_name)
       state.event_stack.append(self.spawn)
-      return False
+      return
 
     # TODO: if there are no gates tokens left, the ancient one awakens
     self.opened = state.gates.popleft()
@@ -2796,7 +2748,6 @@ class OpenGate(Event):
     state.places[self.location_name].clues = 0  # TODO: this should be its own event
     self.spawn = SpawnGateMonster(self.location_name)
     state.event_stack.append(self.spawn)
-    return False
 
   def is_resolved(self):
     if self.spawn is not None:
@@ -2963,17 +2914,17 @@ class SpawnClue(Event):
 
   def resolve(self, state):
     if self.spawned is not None:
-      return True
+      return
 
     if self.choice is not None:
       assert self.choice.is_done()
       self.eligible[self.choice.choice_index or 0].clues += 1
       self.spawned = True
-      return True
+      return
 
     if state.places[self.location_name].gate is not None:
       self.spawned = False
-      return True
+      return
 
     self.eligible = [
         char for char in state.characters if char.place == state.places[self.location_name]]
@@ -2981,18 +2932,17 @@ class SpawnClue(Event):
     if len(self.eligible) == 0:
       state.places[self.location_name].clues += 1
       self.spawned = True
-      return True
+      return
     if len(self.eligible) == 1:
       self.eligible[0].clues += 1
       self.spawned = True
-      return True
+      return
     self.choice = MultipleChoice(
         state.characters[state.first_player],
         f"Choose an investigator to receive the clue token at {self.location_name}",
         [char.name for char in self.eligible],
     )
     state.event_stack.append(self.choice)
-    return False
 
   def is_resolved(self):
     return self.spawned is not None
@@ -3040,8 +2990,7 @@ class MoveMonsters(Event):
 
     if not self.moves.is_done():
       state.event_stack.append(self.moves)
-      return False
-    return True
+      return
 
   def is_resolved(self):
     return self.moves is not None and self.moves.is_done()
@@ -3067,16 +3016,15 @@ class MoveMonster(Event):
 
     if self.monster.place is None or not hasattr(self.monster.place, "movement"):
       self.destination = False
-      return True
+      return
 
     if self.color not in self.monster.place.movement:
       self.destination = False
-      return True
+      return
 
     self.destination = self.monster.place.movement[self.color]
     self.monster.place = self.destination
     # TODO: other movement types (flying, unique, stalker, aquatic)
-    return True
 
   def is_resolved(self):
     return self.destination is not None
@@ -3101,7 +3049,7 @@ class ReturnToCup(Event):
 
   def resolve(self, state):
     if self.returned is not None:
-      return True
+      return
 
     count = 0
     if self.places:
@@ -3128,7 +3076,6 @@ class ReturnToCup(Event):
           monster.place = state.monster_cup
           count += 1
     self.returned = count
-    return True
 
   def is_resolved(self):
     return self.returned is not None
@@ -3167,10 +3114,9 @@ class CloseLocation(Event):
         monster.place = to_place
       state.event_stack.append(Sequence(evictions))
       self.evict = False  # So we don't keep looping
-      return False
+      return
 
     self.resolved = True
-    return True
 
   def is_resolved(self):
     return self.resolved
@@ -3191,7 +3137,6 @@ class ActivateEnvironment(Event):
   def resolve(self, state):
     state.environment = self.env
     self.done = True
-    return True
 
   def is_resolved(self):
     return self.done
