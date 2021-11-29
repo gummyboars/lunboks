@@ -141,16 +141,18 @@ function initializeDefaults() {
 
 function getTextSize(ctx, text, maxWidth, maxHeight) {
   ctx.font = "72px sans-serif";
-  let measurements = ctx.measureText(text);
+  let alphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  let widthMeasure = ctx.measureText(text);
+  let heightMeasure = ctx.measureText(alphabet);
   let textHeight;
-  if (measurements.emHeightAscent) {
-    textHeight = measurements.emHeightAscent + measurements.emHeightDescent;
-  } else if (measurements.fontBoundingBoxAscent) {
-    textHeight = measurements.fontBoundingBoxAscent + measurements.fontBoundingBoxDescent;
+  if (heightMeasure.emHeightAscent) {
+    textHeight = heightMeasure.emHeightAscent + heightMeasure.emHeightDescent;
+  } else if (heightMeasure.fontBoundingBoxAscent) {
+    textHeight = heightMeasure.fontBoundingBoxAscent + heightMeasure.fontBoundingBoxDescent;
   } else {
-    textHeight = measurements.actualBoundingBoxAscent + measurements.actualBoundingBoxDescent;
+    textHeight = heightMeasure.actualBoundingBoxAscent + heightMeasure.actualBoundingBoxDescent;
   }
-  let shrinkRatio = Math.min(maxWidth / measurements.width, maxHeight / textHeight);
+  let shrinkRatio = Math.min(maxWidth / widthMeasure.width, maxHeight / textHeight);
   return Math.floor(72 * shrinkRatio);
 }
 
