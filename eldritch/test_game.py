@@ -1599,6 +1599,18 @@ class PlayerTest(unittest.TestCase):
     self.game = eldritch.EldritchGame()
     self.game.game.ancient_one = ancient_ones.DummyAncient()
 
+    orig_spells = items.CreateSpells
+
+    def spells():
+      orig = orig_spells()
+      # Remove these two spells from the pool of random spells. Otherwise, they can interrupt
+      # the normal turn flow by asking the user if they wish to cast the spell during upkeep.
+      return [spell for spell in orig if spell.name not in ("Voice", "Heal")]
+
+    patcher = mock.patch("eldritch.items.CreateSpells", new=spells)
+    patcher.start()
+    self.addCleanup(patcher.stop)
+
   def handle(self, session, data):
     res = self.game.handle(session, data)
     if res is None:

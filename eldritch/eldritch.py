@@ -667,7 +667,7 @@ class GameState:
 
     # Spells deactivate at the end of an entire combat.
     if isinstance(event, (events.Combat, events.InvestigatorAttack, events.InsaneOrUnconscious)):
-      triggers.append(events.DeactivateSpells(event.character))
+      triggers.append(events.DeactivateCombatSpells(event.character))
 
     triggers.extend(sum(
         [char.get_triggers(event, self) for char in self.characters if not char.gone], [],
