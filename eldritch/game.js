@@ -309,18 +309,18 @@ function doneUsing(e) {
   ws.send(JSON.stringify({"type": "done_using"}));
 }
 
-function clickAsset(assetDiv, assetIdx) {
+function clickAsset(assetDiv, assetHandle) {
   // TODO: we should change ItemChoice to choose items one by one.
   if (assetDiv.classList.contains("usable")) {
-    useAsset(assetIdx);
+    useAsset(assetHandle);
     return;
   }
-  let choiceIdx = itemChoice.indexOf(assetIdx);
+  let choiceIdx = itemChoice.indexOf(assetHandle);
   if (choiceIdx >= 0) {
     itemChoice.splice(choiceIdx, 1);
     assetDiv.classList.remove("chosen");
   } else {
-    itemChoice.push(assetIdx);
+    itemChoice.push(assetHandle);
     assetDiv.classList.add("chosen");
   }
 }
@@ -345,8 +345,8 @@ function resetMonsterChoice(e) {
   monsterChoice = {};
 }
 
-function useAsset(idx) {
-  ws.send(JSON.stringify({"type": "use", "idx": idx}));
+function useAsset(handle) {
+  ws.send(JSON.stringify({"type": "use", "handle": handle}));
 }
 
 function dragStart(e) {
@@ -406,8 +406,8 @@ function dropMonster(e) {
 }
 
 function dropPossession(e) {
-  if (dragged.idx == null) {
-    console.log("dragged elem did not have an index");
+  if (dragged.handle == null) {
+    console.log("dragged elem did not have a handle");
     return;
   }
   if (!e.currentTarget.classList.contains("playertop")) {
@@ -419,7 +419,7 @@ function dropPossession(e) {
     return;
   }
   e.preventDefault();
-  ws.send(JSON.stringify({"type": "give", "recipient": e.currentTarget.idx, "idx": dragged.idx}));
+  ws.send(JSON.stringify({"type": "give", "recipient": e.currentTarget.idx, "handle": dragged.handle}));
 }
 
 function dropDollars(dragged, e) {
@@ -743,14 +743,14 @@ function updateUsables(usables, choice) {
   }
   pDiv.classList.add("use");
   let posList = pDiv.getElementsByClassName("possession");
-  for (let i = 0; i < posList.length; i++) {
-    if (usables.includes(i)) {
-      posList[i].classList.add("usable");
-      posList[i].classList.remove("unusable");
+  for (let pos of posList) {
+    if (usables.includes(pos.handle)) {
+      pos.classList.add("usable");
+      pos.classList.remove("unusable");
     } else {
-      posList[i].classList.remove("usable");
+      pos.classList.remove("usable");
       if (choice == null) {  // TODO: this is hacky.
-        posList[i].classList.add("unusable");
+        pos.classList.add("unusable");
       }
     }
   }
@@ -1211,12 +1211,12 @@ function updatePossessions(sheet, character, isPlayer) {
   while (pDiv.firstChild) {
     pDiv.removeChild(pDiv.firstChild);
   }
-  for (let i = 0; i < character.possessions.length; i++) {
-    pDiv.appendChild(createPossession(character.possessions[i], i, isPlayer));
+  for (let pos of character.possessions) {
+    pDiv.appendChild(createPossession(pos, isPlayer));
   }
 }
 
-function createPossession(info, idx, isPlayer) {
+function createPossession(info, isPlayer) {
   let width = document.getElementById("boardcanvas").width;
   let posWidth = 3 * width * markerWidthRatio / 2;
   let posHeight = 3 * width * markerHeightRatio / 2;
@@ -1225,7 +1225,7 @@ function createPossession(info, idx, isPlayer) {
   if (info.active) {
     div.classList.add("active");
   }
-  div.idx = idx;
+  div.handle = info.handle;
   let cnv = document.createElement("CANVAS");
   div.style.width = posWidth + "px";
   div.style.height = posHeight + "px";
@@ -1249,11 +1249,12 @@ function createPossession(info, idx, isPlayer) {
     div.appendChild(highlightDiv);
   }
   // TODO: show some information about bonuses that aren't active right now
+  let handle = info.handle;
   if (isPlayer) {
-    if (itemChoice.includes(idx)) {
+    if (itemChoice.includes(handle)) {
       div.classList.add("chosen");
     }
-    div.onclick = function(e) { clickAsset(div, idx); };
+    div.onclick = function(e) { clickAsset(div, handle); };
     div.draggable = true;
     div.ondragstart = dragStart;
     div.ondragend = dragEnd;

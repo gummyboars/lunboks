@@ -144,7 +144,7 @@ class Gate10Test(GateEncounterTest):
 class Gate16Test(GateEncounterTest):
 
   def testGreatHall16Pass(self):
-    self.state.skills.append(abilities.Stealth())
+    self.state.skills.append(abilities.Stealth(0))
     self.state.event_stack.append(gate_encounters.GreatHall16(self.char))
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       self.resolve_until_done()
@@ -152,7 +152,7 @@ class Gate16Test(GateEncounterTest):
     self.assertEqual(self.char.possessions[0].deck, "skills")
 
   def testGreatHall16Fail(self):
-    self.state.skills.append(abilities.Stealth())
+    self.state.skills.append(abilities.Stealth(0))
     self.state.event_stack.append(gate_encounters.GreatHall16(self.char))
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
       self.resolve_until_done()

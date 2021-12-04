@@ -111,6 +111,10 @@ class GameState:
     self.spells.extend(items.CreateSpells())
     self.skills.extend(abilities.CreateSkills())
     self.allies.extend(assets.CreateAllies())
+    handles = [
+        card.handle for card in self.common + self.unique + self.spells + self.skills + self.allies
+    ]
+    assert len(handles) == len(set(handles))
 
     self.mythos.extend(mythos.CreateMythos())
 
@@ -257,7 +261,7 @@ class GameState:
     if data.get("type") == "set_slider":
       self.handle_slider(char_idx, data.get("name"), data.get("value"))
     elif data.get("type") == "give":
-      self.handle_give(char_idx, data.get("recipient"), data.get("idx"), data.get("amount"))
+      self.handle_give(char_idx, data.get("recipient"), data.get("handle"), data.get("amount"))
     elif data.get("type") == "check":  # TODO: remove
       self.handle_check(char_idx, data.get("check_type"), data.get("modifier"))
     elif data.get("type") == "monster":  # TODO: remove
@@ -269,7 +273,7 @@ class GameState:
     elif data.get("type") == "choice":
       self.handle_choice(char_idx, data.get("choice"))
     elif data.get("type") == "use":
-      self.handle_use(char_idx, data.get("idx"))
+      self.handle_use(char_idx, data.get("handle"))
     elif data.get("type") == "done_using":
       self.handle_done_using(char_idx)
     else:
@@ -383,7 +387,7 @@ class GameState:
     if isinstance(event, events.ForceMovement) and self.turn_phase == "movement":
       if len([char for char in self.characters if char.place == event.character.place]) > 1:
         i[self.characters.index(event.character)]["trade"] = events.Nothing()
-    return {char_idx: interrupt_list for char_idx, interrupt_list in i.items() if interrupt_list}
+    return {char_idx: interrupts for char_idx, interrupts in i.items() if interrupts}
 
   def get_triggers(self, event):
     triggers = []
@@ -423,7 +427,7 @@ class GameState:
     if isinstance(event, (events.ForceMovement, events.Return)) and self.turn_phase == "movement":
       if len([char for char in self.characters if char.place == event.character.place]) > 1:
         trgs[self.characters.index(event.character)]["trade"] = events.Nothing()
-    return {char_idx: trigger_list for char_idx, trigger_list in trgs.items() if trigger_list}
+    return {char_idx: triggers for char_idx, triggers in trgs.items() if triggers}
 
   def handle_start(self):
     assert self.game_stage == "setup"
@@ -456,11 +460,11 @@ class GameState:
       self.pending_chars.remove(old_name)
     self.pending_chars.append(char_name)
 
-  def handle_use(self, char_idx, possession_idx):
+  def handle_use(self, char_idx, handle):
     assert char_idx in self.usables
-    assert possession_idx in self.usables[char_idx]
-    assert possession_idx != "trade"  # "trade" is just a placeholder
-    self.event_stack.append(self.usables[char_idx].pop(possession_idx))
+    assert handle in self.usables[char_idx]
+    assert handle != "trade"  # "trade" is just a placeholder
+    self.event_stack.append(self.usables[char_idx].pop(handle))
 
   def handle_done_using(self, char_idx):
     assert char_idx in self.usables
@@ -515,7 +519,7 @@ class GameState:
       raise NotYourTurn("It is not your turn to set sliders.")
     event.resolve(self, name, value)
 
-  def handle_give(self, char_idx, recipient_idx, idx, amount):
+  def handle_give(self, char_idx, recipient_idx, handle, amount):
     if not isinstance(recipient_idx, int):
       raise InvalidPlayer("Invalid recipient")
     if recipient_idx < 0 or recipient_idx >= len(self.characters):
@@ -530,7 +534,7 @@ class GameState:
     if donor.place != recipient.place:
       raise InvalidMove("You must be in the same place to trade.")
 
-    if idx == "dollars":
+    if handle == "dollars":
       if not isinstance(amount, int):
         raise InvalidMove("Invalid quantity")
       if amount < 0 or amount > donor.dollars:
@@ -539,16 +543,19 @@ class GameState:
       donor.dollars -= amount
       return
 
-    if not isinstance(idx, int):
-      raise InvalidMove("Invalid possession index")
-    if idx < 0 or idx >= len(donor.possessions):
-      raise InvalidMove("Invalid possession index")
+    if not isinstance(handle, str):
+      raise InvalidMove("Invalid possession")
+    donations = [pos for pos in donor.possessions if pos.handle == handle]
+    if len(donations) != 1:
+      raise InvalidMove("Invalid possession")
+    donation = donations[0]
     # TODO: trading the deputy's revolver and patrol wagon
-    if getattr(donor.possessions[idx], "deck", None) not in {"common", "unique", "spells"}:
+    if getattr(donation, "deck", None) not in {"common", "unique", "spells"}:
       raise InvalidMove("You can only trade items")
 
     # TODO: turn this into an event.
-    recipient.possessions.append(donor.possessions.pop(idx))
+    donor.possessions.remove(donation)
+    recipient.possessions.append(donation)
 
   def can_trade(self):
     if self.turn_phase != "movement":  # TODO: trading during the final battle

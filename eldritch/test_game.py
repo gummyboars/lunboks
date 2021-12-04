@@ -127,8 +127,8 @@ class TradingTestBase(unittest.TestCase):
       self.state.characters.append(self.state.all_characters[name])
     self.nun = self.state.characters[0]
     self.gangster = self.state.characters[1]
-    self.nun.possessions.extend([items.Cross(), abilities.Bravery()])
-    self.gangster.possessions.extend([items.TommyGun(), abilities.Marksman()])
+    self.nun.possessions.extend([items.Cross(0), abilities.Bravery(0)])
+    self.gangster.possessions.extend([items.TommyGun(0), abilities.Marksman(0)])
     self.state.game_stage = "slumber"
     self.state.turn_phase = "movement"
     self.state.turn_number = 0
@@ -148,7 +148,7 @@ class TradingTest(TradingTestBase):
   def testGiveItem(self):
     self.assertEqual(len(self.nun.possessions), 2)
     self.assertEqual(len(self.gangster.possessions), 2)
-    self.state.handle_give(0, 1, 0, None)
+    self.state.handle_give(0, 1, "Cross0", None)
     self.assertEqual([pos.name for pos in self.nun.possessions], ["Bravery"])
     self.assertEqual(
         [pos.name for pos in self.gangster.possessions], ["Tommy Gun", "Marksman", "Cross"])
@@ -178,25 +178,25 @@ class TradingTest(TradingTestBase):
 
   def testGiveInvalidItem(self):
     with self.assertRaises(game.InvalidMove):
-      self.state.handle_give(0, 1, 1, None)
+      self.state.handle_give(0, 1, "Bravery0", None)
     with self.assertRaises(game.InvalidMove):
-      self.state.handle_give(0, 1, -1, None)
+      self.state.handle_give(0, 1, "clues", 1)
     with self.assertRaises(game.InvalidMove):
-      self.state.handle_give(0, 1, 2, None)
+      self.state.handle_give(0, 1, "nonsense", None)
     with self.assertRaises(game.InvalidMove):
-      self.state.handle_give(0, 1, "Cross", None)
+      self.state.handle_give(0, 1, 0, None)
     self.assertEqual([pos.name for pos in self.nun.possessions], ["Cross", "Bravery"])
     self.assertEqual([pos.name for pos in self.gangster.possessions], ["Tommy Gun", "Marksman"])
 
   def testGiveInvalidRecipient(self):
     with self.assertRaises(game.InvalidMove):
-      self.state.handle_give(0, 0, 0, None)
+      self.state.handle_give(0, 0, "Cross0", None)
     with self.assertRaises(game.InvalidPlayer):
-      self.state.handle_give(0, 2, 0, None)
+      self.state.handle_give(0, 2, "Cross0", None)
     with self.assertRaises(game.InvalidPlayer):
-      self.state.handle_give(0, -1, 0, None)
+      self.state.handle_give(0, -1, "Cross0", None)
     with self.assertRaises(game.InvalidPlayer):
-      self.state.handle_give(0, "Gangster", 0, None)
+      self.state.handle_give(0, "Gangster", "Cross0", None)
     self.assertEqual([pos.name for pos in self.nun.possessions], ["Cross", "Bravery"])
     self.assertEqual([pos.name for pos in self.gangster.possessions], ["Tommy Gun", "Marksman"])
 
@@ -212,12 +212,12 @@ class TradingTest(TradingTestBase):
     self.assertIsInstance(self.state.event_stack[-1], events.MultipleChoice)
     # Cannot trade items during combat.
     with self.assertRaises(game.InvalidMove):
-      self.state.handle_give(0, 1, 0, None)
+      self.state.handle_give(0, 1, "Cross0", None)
 
   def testGiveOtherLocation(self):
     self.nun.place = self.state.places["Church"]
     with self.assertRaises(game.InvalidMove):
-      self.state.handle_give(0, 1, 0, None)
+      self.state.handle_give(0, 1, "Cross0", None)
 
 
 class OtherWorldTradingTest(TradingTestBase):
@@ -231,7 +231,7 @@ class OtherWorldTradingTest(TradingTestBase):
     self.assertTrue(self.state.usables)
     self.assertIn(0, self.state.usables)
     self.assertIn("trade", self.state.usables[0])
-    self.state.handle_give(1, 0, 0, None)
+    self.state.handle_give(1, 0, "Tommy Gun0", None)
     self.assertEqual(len(self.nun.possessions), 3)
     self.assertEqual(len(self.gangster.possessions), 1)
 
@@ -258,7 +258,7 @@ class OtherWorldTradingTest(TradingTestBase):
     for _ in self.state.resolve_loop():
       pass
     self.assertIsInstance(self.state.event_stack[-1], events.GateChoice)
-    self.state.handle_give(0, 1, 0, None)
+    self.state.handle_give(0, 1, "Cross0", None)
     self.assertEqual([pos.name for pos in self.nun.possessions], ["Bravery"])
     self.assertEqual(
         [pos.name for pos in self.gangster.possessions], ["Tommy Gun", "Marksman", "Cross"])

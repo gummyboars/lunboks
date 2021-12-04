@@ -4,9 +4,9 @@ from eldritch import events
 
 class BonusSkill(assets.Card):
 
-  def __init__(self, name, check_type):
+  def __init__(self, name, idx, check_type):
     assert check_type in assets.CHECK_TYPES
-    super().__init__(name, "skills", {}, {check_type: 1})
+    super().__init__(name, idx, "skills", {}, {check_type: 1})
     self.check_type = check_type
 
   def _check_matches(self, check_type):
@@ -22,9 +22,9 @@ class BonusSkill(assets.Card):
 
 class RerollSkill(assets.Card):
 
-  def __init__(self, name, check_type):
+  def __init__(self, name, idx, check_type):
     assert check_type in assets.SUB_CHECKS
-    super().__init__(name, "skills", {}, {})
+    super().__init__(name, idx, "skills", {}, {})
     self.check_type = check_type
 
   def get_usable_trigger(self, event, owner, state):
@@ -35,51 +35,51 @@ class RerollSkill(assets.Card):
     return events.Sequence([events.ExhaustAsset(owner, self), events.RerollCheck(owner, event)])
 
 
-def Speed():
-  return BonusSkill("Speed", "speed")
+def Speed(idx):
+  return BonusSkill("Speed", idx, "speed")
 
 
-def Sneak():
-  return BonusSkill("Sneak", "sneak")
+def Sneak(idx):
+  return BonusSkill("Sneak", idx, "sneak")
 
 
-def Fight():
-  return BonusSkill("Fight", "fight")
+def Fight(idx):
+  return BonusSkill("Fight", idx, "fight")
 
 
-def Will():
-  return BonusSkill("Will", "will")
+def Will(idx):
+  return BonusSkill("Will", idx, "will")
 
 
-def Lore():
-  return BonusSkill("Lore", "lore")
+def Lore(idx):
+  return BonusSkill("Lore", idx, "lore")
 
 
-def Luck():
-  return BonusSkill("Luck", "luck")
+def Luck(idx):
+  return BonusSkill("Luck", idx, "luck")
 
 
-def Stealth():
-  return RerollSkill("Stealth", "evade")
+def Stealth(idx):
+  return RerollSkill("Stealth", idx, "evade")
 
 
-def Marksman():
-  return RerollSkill("Marksman", "combat")
+def Marksman(idx):
+  return RerollSkill("Marksman", idx, "combat")
 
 
-def Bravery():
-  return RerollSkill("Bravery", "horror")
+def Bravery(idx):
+  return RerollSkill("Bravery", idx, "horror")
 
 
-def ExpertOccultist():
-  return RerollSkill("Expert Occultist", "spell")
+def ExpertOccultist(idx):
+  return RerollSkill("Expert Occultist", idx, "spell")
 
 
 def CreateSkills():
   skills = []
   skill_list = [Speed, Sneak, Fight, Will, Lore, Luck, Stealth, Marksman, Bravery, ExpertOccultist]
   for skill in skill_list:
-    skills.extend([skill(), skill()])
+    skills.extend([skill(0), skill(1)])
   return skills
 
 

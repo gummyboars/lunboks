@@ -2129,16 +2129,15 @@ class ItemChoice(ChoiceEvent):
   def resolve(self, state, choice=None):
     if self.is_resolved():
       return
-    assert all(0 <= idx < len(self.character.possessions) for idx in choice)
     self.resolve_internal(choice)
 
   def resolve_internal(self, choices):
-    assert all(idx in self.choices for idx in choices)
-    self.chosen = [self.character.possessions[idx] for idx in choices]
+    assert all(handle in self.choices for handle in choices)
+    self.chosen = [pos for pos in self.character.possessions if pos.handle in choices]
 
   def compute_choices(self, state):
     self.choices = [
-        idx for idx, pos in enumerate(self.character.possessions)
+        pos.handle for pos in self.character.possessions
         if (getattr(pos, "deck", None) in self.decks)
         and (self.item_type is None or getattr(pos, "item_type") == self.item_type)
     ]
@@ -2163,11 +2162,12 @@ class ItemChoice(ChoiceEvent):
 class CombatChoice(ItemChoice):
 
   def resolve_internal(self, choices):
-    for idx in choices:
-      assert getattr(self.character.possessions[idx], "item_type", None) == "weapon"
-      assert getattr(self.character.possessions[idx], "hands", None) is not None
-      assert getattr(self.character.possessions[idx], "deck", None) != "spells"
-    hands_used = sum([self.character.possessions[idx].hands for idx in choices])
+    chosen = [pos for pos in self.character.possessions if pos.handle in choices]
+    for pos in chosen:
+      assert getattr(pos, "item_type", None) == "weapon"
+      assert getattr(pos, "hands", None) is not None
+      assert getattr(pos, "deck", None) != "spells"
+    hands_used = sum([pos.hands for pos in chosen])
     assert hands_used <= self.character.hands_available()
     super().resolve_internal(choices)
 
@@ -2190,7 +2190,7 @@ class SinglePhysicalWeaponChoice(ItemCountChoice):
 
   def compute_choices(self, state):
     self.choices = [
-        idx for idx, pos in enumerate(self.character.possessions)
+        pos.handle for pos in self.character.possessions
         if (getattr(pos, "deck", None) in self.decks)
         and getattr(pos, "item_type", None) == "weapon"
         and (pos.active_bonuses["physical"] or pos.passive_bonuses["physical"])

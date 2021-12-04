@@ -8,9 +8,11 @@ class Item(Card):
 
   ITEM_TYPES = {"weapon", "tome", None}
 
-  def __init__(self, name, deck, active_bonuses, passive_bonuses, hands, price, item_type=None):
+  def __init__(
+      self, name, idx, deck, active_bonuses, passive_bonuses, hands, price, item_type=None,
+  ):
     assert item_type in self.ITEM_TYPES
-    super().__init__(name, deck, active_bonuses, passive_bonuses)
+    super().__init__(name, idx, deck, active_bonuses, passive_bonuses)
     self.hands = hands
     self.price = price
     self.item_type = item_type
@@ -21,8 +23,8 @@ class Item(Card):
 
 class Weapon(Item):
 
-  def __init__(self, name, deck, active_bonuses, passive_bonuses, hands, price):
-    super().__init__(name, deck, active_bonuses, passive_bonuses, hands, price, "weapon")
+  def __init__(self, name, idx, deck, active_bonuses, passive_bonuses, hands, price):
+    super().__init__(name, idx, deck, active_bonuses, passive_bonuses, hands, price, "weapon")
 
 
 class OneshotWeapon(Weapon):
@@ -37,8 +39,8 @@ class OneshotWeapon(Weapon):
 
 class Food(Item):
 
-  def __init__(self):
-    super().__init__("Food", "common", {}, {}, None, 1)
+  def __init__(self, idx):
+    super().__init__("Food", idx, "common", {}, {}, None, 1)
 
   def get_usable_interrupt(self, event, owner, state):
     if not isinstance(event, events.GainOrLoss) or owner != event.character:
@@ -56,8 +58,8 @@ class Food(Item):
 
 class Whiskey(Item):
 
-  def __init__(self):
-    super().__init__("Whiskey", "common", {}, {}, None, 1)
+  def __init__(self, idx):
+    super().__init__("Whiskey", idx, "common", {}, {}, None, 1)
 
   def get_usable_interrupt(self, event, owner, state):
     if not isinstance(event, events.GainOrLoss) or owner != event.character:
@@ -75,8 +77,8 @@ class Whiskey(Item):
 
 class ResearchMaterials(Item):
 
-  def __init__(self):
-    super().__init__("Research Materials", "common", {}, {}, None, 1)
+  def __init__(self, idx):
+    super().__init__("Research Materials", idx, "common", {}, {}, None, 1)
 
   def get_usable_trigger(self, event, owner, state):
     return None  # TODO
@@ -84,8 +86,8 @@ class ResearchMaterials(Item):
 
 class Bullwhip(Weapon):
 
-  def __init__(self):
-    super().__init__("Bullwhip", "common", {"physical": 1}, {}, 1, 2)
+  def __init__(self, idx):
+    super().__init__("Bullwhip", idx, "common", {"physical": 1}, {}, 1, 2)
 
   def get_usable_trigger(self, event, owner, state):
     if not isinstance(event, events.Check) or owner != event.character:
@@ -97,8 +99,8 @@ class Bullwhip(Weapon):
 
 class Cross(Weapon):
 
-  def __init__(self):
-    super().__init__("Cross", "common", {}, {"horror": 1}, 1, 3)
+  def __init__(self, idx):
+    super().__init__("Cross", idx, "common", {}, {"horror": 1}, 1, 3)
 
   def get_bonus(self, check_type, attributes):
     bonus = super().get_bonus(check_type, attributes)
@@ -107,42 +109,42 @@ class Cross(Weapon):
     return bonus
 
 
-def DarkCloak():
-  return Item("Dark Cloak", "common", {}, {"evade": 1}, None, 2)
+def DarkCloak(idx):
+  return Item("Dark Cloak", idx, "common", {}, {"evade": 1}, None, 2)
 
 
-def Revolver38():
-  return Weapon(".38 Revolver", "common", {"physical": 3}, {}, 1, 4)
+def Revolver38(idx):
+  return Weapon(".38 Revolver", idx, "common", {"physical": 3}, {}, 1, 4)
 
 
-def Automatic45():
-  return Weapon(".45 Automatic", "common", {"physical": 4}, {}, 1, 5)
+def Automatic45(idx):
+  return Weapon(".45 Automatic", idx, "common", {"physical": 4}, {}, 1, 5)
 
 
-def Dynamite():
-  return OneshotWeapon("Dynamite", "common", {"physical": 8}, {}, 2, 4)
+def Dynamite(idx):
+  return OneshotWeapon("Dynamite", idx, "common", {"physical": 8}, {}, 2, 4)
 
 
-def HolyWater():
-  return OneshotWeapon("Holy Water", "unique", {"magical": 6}, {}, 2, 4)
+def HolyWater(idx):
+  return OneshotWeapon("Holy Water", idx, "unique", {"magical": 6}, {}, 2, 4)
 
 
-def EnchantedKnife():
-  return Weapon("Enchanted Knife", "unique", {"magical": 3}, {}, 1, 5)
+def EnchantedKnife(idx):
+  return Weapon("Enchanted Knife", idx, "unique", {"magical": 3}, {}, 1, 5)
 
 
-def MagicLamp():
-  return Weapon("Magic Lamp", "unique", {"magical": 5}, {}, 2, 7)
+def MagicLamp(idx):
+  return Weapon("Magic Lamp", idx, "unique", {"magical": 5}, {}, 2, 7)
 
 
-def TommyGun():
-  return Weapon("Tommy Gun", "common", {"physical": 6}, {}, 2, 7)
+def TommyGun(idx):
+  return Weapon("Tommy Gun", idx, "common", {"physical": 6}, {}, 2, 7)
 
 
 class Spell(Item):
 
-  def __init__(self, name, active_bonuses, hands, difficulty, sanity_cost):
-    super().__init__(name, "spells", active_bonuses, {}, hands, None)
+  def __init__(self, name, idx, active_bonuses, hands, difficulty, sanity_cost):
+    super().__init__(name, idx, "spells", active_bonuses, {}, hands, None)
     self.difficulty = difficulty
     self.sanity_cost = sanity_cost
     self.in_use = False
@@ -205,22 +207,22 @@ class CombatSpell(Spell):
     pass
 
 
-def Wither():
-  return CombatSpell("Wither", {"magical": 3}, 1, 0, 0)
+def Wither(idx):
+  return CombatSpell("Wither", idx, {"magical": 3}, 1, 0, 0)
 
 
-def Shrivelling():
-  return CombatSpell("Shrivelling", {"magical": 6}, 1, -1, 1)
+def Shrivelling(idx):
+  return CombatSpell("Shrivelling", idx, {"magical": 6}, 1, -1, 1)
 
 
-def DreadCurse():
-  return CombatSpell("Dread Curse", {"magical": 9}, 2, -2, 2)
+def DreadCurse(idx):
+  return CombatSpell("Dread Curse", idx, {"magical": 9}, 2, -2, 2)
 
 
 class EnchantWeapon(CombatSpell):
 
-  def __init__(self):
-    super().__init__("Enchant Weapon", {}, 0, 0, 1)
+  def __init__(self, idx):
+    super().__init__("Enchant Weapon", idx, {}, 0, 0, 1)
     self.weapon = None
     self.active_change = 0
     self.passive_change = 0
@@ -266,8 +268,8 @@ class RedSign(CombatSpell):
 
   INVALID_ATTRIBUTES = {"magical immunity", "elusive", "mask", "spawn"}
 
-  def __init__(self):
-    super().__init__("Red Sign", {}, 1, -1, 1)
+  def __init__(self, idx):
+    super().__init__("Red Sign", idx, {}, 1, -1, 1)
 
   def get_usable_interrupt(self, event, owner, state):
     interrupt = super().get_usable_interrupt(event, owner, state)
@@ -293,9 +295,11 @@ class RedSign(CombatSpell):
 
 class Voice(Spell):
 
-  def __init__(self):
+  def __init__(self, idx):
     super().__init__(
-        "Voice", {"speed": 1, "sneak": 1, "fight": 1, "will": 1, "lore": 1, "luck": 1}, 0, -1, 1)
+        "Voice", idx, {"speed": 1, "sneak": 1, "fight": 1, "will": 1, "lore": 1, "luck": 1},
+        0, -1, 1,
+    )
 
   def get_usable_trigger(self, event, owner, state):
     return None
@@ -314,8 +318,8 @@ class Voice(Spell):
 
 class FindGate(Spell):
 
-  def __init__(self):
-    super().__init__("Find Gate", {}, 0, -1, 1)
+  def __init__(self, idx):
+    super().__init__("Find Gate", idx, {}, 0, -1, 1)
 
   def movement_in_other_world(self, owner, state):
     if state.turn_phase != "movement" or state.characters[state.turn_idx] != owner:
@@ -354,7 +358,7 @@ def CreateCommon():
       Automatic45, DarkCloak, Revolver38, Dynamite,
       TommyGun, Food, ResearchMaterials, Bullwhip, Cross,
   ]:
-    common.extend([item(), item()])
+    common.extend([item(0), item(1)])
   return common
 
 
@@ -366,7 +370,7 @@ def CreateUnique():
   }
   uniques = []
   for item, count in counts.items():
-    uniques.extend([item() for _ in range(count)])
+    uniques.extend([item(idx) for idx in range(count)])
   return uniques
 
 
@@ -382,5 +386,5 @@ def CreateSpells():
   }
   spells = []
   for item, count in counts.items():
-    spells.extend([item() for _ in range(count)])
+    spells.extend([item(idx) for idx in range(count)])
   return spells

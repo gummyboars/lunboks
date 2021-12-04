@@ -180,7 +180,7 @@ class DinerTest(EncounterTest):
     self.assertEqual(self.char.dollars, 0)
 
   def testDiner2Draw(self):
-    self.state.common.append(items.Food())
+    self.state.common.append(items.Food(0))
     self.state.event_stack.append(encounters.Diner2(self.char))
     self.resolve_until_done()
     self.assertEqual(len(self.char.possessions), 1)
@@ -306,7 +306,7 @@ class RoadhouseTest(EncounterTest):
 
   def testRoadhouse1Reward(self):
     self.char.clues = 3
-    self.state.common.extend([items.Revolver38(), items.Food()])
+    self.state.common.extend([items.Revolver38(0), items.Food(0)])
     self.state.event_stack.append(encounters.Roadhouse1(self.char))
     choice = self.resolve_to_choice(MultipleChoice)
     choice.resolve(self.state, "Yes")
@@ -416,7 +416,7 @@ class PoliceTest(EncounterTest):
     self.assertEqual(self.char.clues, 0)
 
   def testPolice4Pass(self):
-    self.state.common.append(items.Revolver38())
+    self.state.common.append(items.Revolver38(0))
     self.state.event_stack.append(encounters.Police4(self.char))
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       self.resolve_until_done()
@@ -431,7 +431,7 @@ class PoliceTest(EncounterTest):
     self.assertEqual(len(self.char.possessions), 0)
 
   def testPolice4Fail(self):
-    self.state.common.append(items.Revolver38())
+    self.state.common.append(items.Revolver38(0))
     self.state.event_stack.append(encounters.Police4(self.char))
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
       self.resolve_until_done()
@@ -439,7 +439,7 @@ class PoliceTest(EncounterTest):
     self.assertEqual(len(self.char.possessions), 0)
 
   def testPolice7Pass(self):
-    self.state.common.append(items.ResearchMaterials())
+    self.state.common.append(items.ResearchMaterials(0))
     self.state.event_stack.append(encounters.Police7(self.char))
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       self.resolve_until_done()
@@ -454,7 +454,7 @@ class PoliceTest(EncounterTest):
     self.assertEqual(len(self.char.possessions), 0)
 
   def testPolice7Fail(self):
-    self.state.common.append(items.ResearchMaterials())
+    self.state.common.append(items.ResearchMaterials(0))
     self.state.event_stack.append(encounters.Police7(self.char))
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
       self.resolve_until_done()
@@ -470,7 +470,7 @@ class LodgeTest(EncounterTest):
 
   def testLodge1Pass(self):
     self.state.event_stack.append(encounters.Lodge1(self.char))
-    self.state.spells.extend([items.Cross(), items.HolyWater()])
+    self.state.spells.extend([items.Cross(0), items.HolyWater(0)])
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       choice = self.resolve_to_choice(CardChoice)
     self.assertEqual(choice.choices, ["Cross", "Holy Water"])
@@ -494,7 +494,7 @@ class LodgeTest(EncounterTest):
 
   def testLodge2PassReward(self):
     self.state.event_stack.append(encounters.Lodge2(self.char))
-    self.state.unique.append(items.HolyWater())
+    self.state.unique.append(items.HolyWater(0))
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       self.resolve_until_done()
     self.assertEqual(len(self.char.possessions), 1)
@@ -502,7 +502,7 @@ class LodgeTest(EncounterTest):
 
   def testLodge2Fail(self):
     self.state.event_stack.append(encounters.Lodge2(self.char))
-    self.state.unique.append(items.HolyWater())
+    self.state.unique.append(items.HolyWater(0))
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
       self.resolve_until_done()
     self.assertEqual(len(self.char.possessions), 0)
@@ -591,8 +591,8 @@ class LodgeTest(EncounterTest):
 
   def testLodge7Fail(self):
     self.state.event_stack.append(encounters.Lodge7(self.char))
-    self.state.common.extend([items.Revolver38(), items.TommyGun()])
-    self.state.unique.extend([items.Cross(), items.HolyWater()])
+    self.state.common.extend([items.Revolver38(0), items.TommyGun(0)])
+    self.state.unique.extend([items.Cross(0), items.HolyWater(0)])
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
       self.resolve_until_done()
     self.assertEqual(len(self.char.possessions), 0)
@@ -601,8 +601,8 @@ class LodgeTest(EncounterTest):
 
   def testLodge7PassCC(self):
     self.state.event_stack.append(encounters.Lodge7(self.char))
-    self.state.common.extend([items.Revolver38(), items.TommyGun()])
-    self.state.unique.extend([items.Cross(), items.HolyWater()])
+    self.state.common.extend([items.Revolver38(0), items.TommyGun(0)])
+    self.state.unique.extend([items.Cross(0), items.HolyWater(0)])
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=[5, 3, 3])):
       self.resolve_until_done()
     self.assertEqual(len(self.char.possessions), 2)
@@ -611,8 +611,8 @@ class LodgeTest(EncounterTest):
 
   def testLodge7PassCU(self):
     self.state.event_stack.append(encounters.Lodge7(self.char))
-    self.state.common.extend([items.Revolver38(), items.TommyGun()])
-    self.state.unique.extend([items.Cross(), items.HolyWater()])
+    self.state.common.extend([items.Revolver38(0), items.TommyGun(0)])
+    self.state.unique.extend([items.Cross(0), items.HolyWater(0)])
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=[5, 3, 5])):
       self.resolve_until_done()
     self.assertEqual(len(self.char.possessions), 2)
@@ -621,8 +621,8 @@ class LodgeTest(EncounterTest):
 
   def testLodge7PassUU(self):
     self.state.event_stack.append(encounters.Lodge7(self.char))
-    self.state.common.extend([items.Revolver38(), items.TommyGun()])
-    self.state.unique.extend([items.Cross(), items.HolyWater()])
+    self.state.common.extend([items.Revolver38(0), items.TommyGun(0)])
+    self.state.unique.extend([items.Cross(0), items.HolyWater(0)])
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=[5, 5, 5])):
       self.resolve_until_done()
     self.assertEqual(len(self.char.possessions), 2)
@@ -632,7 +632,7 @@ class LodgeTest(EncounterTest):
   def testSanctum1Pass(self):
     self.state.event_stack.append(encounters.Sanctum1(self.char))
     self.char.lore_luck_slider = 0
-    self.state.unique.extend([items.Cross(), items.HolyWater(), items.TommyGun()])
+    self.state.unique.extend([items.Cross(0), items.HolyWater(0), items.TommyGun(0)])
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       choice = self.resolve_to_choice(CardChoice)
     self.assertEqual(choice.choices, ["Cross", "Holy Water", "Tommy Gun"])
@@ -644,7 +644,7 @@ class LodgeTest(EncounterTest):
   def testSanctum1Fail(self):
     self.state.event_stack.append(encounters.Sanctum1(self.char))
     self.char.lore_luck_slider = 0
-    self.state.unique.extend([items.Cross(), items.HolyWater(), items.TommyGun()])
+    self.state.unique.extend([items.Cross(0), items.HolyWater(0), items.TommyGun(0)])
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=4)):
       self.resolve_until_done()
     self.assertEqual(len(self.char.possessions), 0)
@@ -834,7 +834,7 @@ class WitchTest(EncounterTest):
 
   def testWitch2Pass(self):
     self.state.event_stack.append(encounters.Witch2(self.char))
-    self.state.unique.extend([items.Cross(), items.HolyWater()])
+    self.state.unique.extend([items.Cross(0), items.HolyWater(0)])
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       self.resolve_until_done()
     self.assertEqual(len(self.char.possessions), 1)
@@ -848,7 +848,7 @@ class WitchTest(EncounterTest):
 
   def testWitch2Fail(self):
     self.state.event_stack.append(encounters.Witch2(self.char))
-    self.state.unique.extend([items.Cross(), items.HolyWater()])
+    self.state.unique.extend([items.Cross(0), items.HolyWater(0)])
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
       self.resolve_until_done()
     self.assertEqual(len(self.char.possessions), 0)
@@ -944,7 +944,7 @@ class WitchTest(EncounterTest):
 
   def testWitch7Pass(self):
     self.state.event_stack.append(encounters.Witch7(self.char))
-    self.state.spells.extend([items.Revolver38(), items.TommyGun()])
+    self.state.spells.extend([items.Revolver38(0), items.TommyGun(0)])
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       self.resolve_until_done()
     self.assertEqual(len(self.char.possessions), 1)
@@ -952,7 +952,7 @@ class WitchTest(EncounterTest):
 
   def testWitch7Fail(self):
     self.state.event_stack.append(encounters.Witch7(self.char))
-    self.char.possessions.extend([items.Revolver38(), items.TommyGun()])
+    self.char.possessions.extend([items.Revolver38(0), items.TommyGun(0)])
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=4)):
       choice = self.resolve_to_choice(events.ItemChoice)  # pylint: disable=unused-variable
     # TODO: Learn how to use ItemCountChoice
@@ -969,8 +969,8 @@ class SocietyTest(EncounterTest):
     super().setUp()
     self.char.place = self.state.places["Society"]
     # I cast GUN!
-    self.state.spells.extend([items.Revolver38(), items.TommyGun()])
-    self.state.unique.extend([items.HolyWater(), items.Cross()])
+    self.state.spells.extend([items.Revolver38(0), items.TommyGun(0)])
+    self.state.unique.extend([items.HolyWater(0), items.Cross(0)])
 
   def testSociety1No(self):
     self.state.event_stack.append(encounters.Society1(self.char))
@@ -1098,7 +1098,7 @@ class SocietyTest(EncounterTest):
 
   def testSociety4Pass(self):
     self.state.event_stack.append(encounters.Society4(self.char))
-    self.state.skills.extend([abilities.Marksman(), abilities.Fight()])
+    self.state.skills.extend([abilities.Marksman(0), abilities.Fight(0)])
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       self.resolve_until_done()
     self.assertEqual(len(self.char.possessions), 1)
@@ -1108,7 +1108,7 @@ class SocietyTest(EncounterTest):
 
   def testSociety4Fail(self):
     self.state.event_stack.append(encounters.Society4(self.char))
-    self.state.skills.extend([abilities.Marksman(), abilities.Fight()])
+    self.state.skills.extend([abilities.Marksman(0), abilities.Fight(0)])
     self.char.lore_luck_slider = 2
     self.assertEqual(self.char.luck(self.state), 2)
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
@@ -1216,7 +1216,7 @@ class HouseTest(EncounterTest):
   def setUp(self):
     super().setUp()
     self.char.place = self.state.places["House"]
-    self.state.common.extend([items.Revolver38(), items.TommyGun()])
+    self.state.common.extend([items.Revolver38(0), items.TommyGun(0)])
 
   def testHouse1Pass(self):
     self.state.event_stack.append(encounters.House1(self.char))
@@ -1423,7 +1423,7 @@ class ChurchTest(EncounterTest):
   def setUp(self):
     super().setUp()
     self.char.place = self.state.places["Church"]
-    self.state.unique.extend([items.HolyWater(), items.Cross()])
+    self.state.unique.extend([items.HolyWater(0), items.Cross(0)])
 
   def testChurch1(self):
     self.state.event_stack.append(encounters.Church1(self.char))
@@ -1578,7 +1578,7 @@ class AdministrationTest(EncounterTest):
   def testAdminiatration4NoHelp(self):
     self.state.event_stack.append(encounters.Administration4(self.char))
     # Is that what a spell is?
-    self.state.spells.extend([items.Revolver38(), items.TommyGun()])
+    self.state.spells.extend([items.Revolver38(0), items.TommyGun(0)])
     choice = self.resolve_to_choice(MultipleChoice)
     choice.resolve(self.state, "No")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
@@ -1591,7 +1591,7 @@ class AdministrationTest(EncounterTest):
     self.state.event_stack.append(encounters.Administration4(self.char))
     self.char.lore_luck_slider = 3
     # Is that what a spell is?
-    self.state.spells.extend([items.Revolver38(), items.TommyGun()])
+    self.state.spells.extend([items.Revolver38(0), items.TommyGun(0)])
     choice = self.resolve_to_choice(MultipleChoice)
     choice.resolve(self.state, "Yes")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
@@ -1604,7 +1604,7 @@ class AdministrationTest(EncounterTest):
   def testAdministration4Fail(self):
     self.state.event_stack.append(encounters.Administration4(self.char))
     # Is that what a spell is?
-    self.state.spells.extend([items.Revolver38(), items.TommyGun()])
+    self.state.spells.extend([items.Revolver38(0), items.TommyGun(0)])
     choice = self.resolve_to_choice(MultipleChoice)
     choice.resolve(self.state, "Yes")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=2)):
@@ -1661,7 +1661,7 @@ class LibraryTest(EncounterTest):
 
   def testLibrary1Fail(self):
     self.state.event_stack.append(encounters.Library1(self.char))
-    self.state.unique.extend([items.HolyWater(), items.Cross()])
+    self.state.unique.extend([items.HolyWater(0), items.Cross(0)])
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
       self.resolve_until_done()
     self.assertEqual(self.char.place.name, "University")
@@ -1670,8 +1670,8 @@ class LibraryTest(EncounterTest):
 
   def testLibrary2Fail(self):
     self.state.event_stack.append(encounters.Library2(self.char))
-    self.state.unique.extend([items.HolyWater(), items.Cross()])
-    self.state.spells.extend([items.HolyWater(), items.Cross()])
+    self.state.unique.extend([items.HolyWater(0), items.Cross(0)])
+    self.state.spells.extend([items.HolyWater(1), items.Cross(1)])
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
       self.resolve_until_done()
     self.assertEqual(self.char.place.name, "University")
@@ -1681,8 +1681,8 @@ class LibraryTest(EncounterTest):
 
   def testLibrary2Pass2(self):
     self.state.event_stack.append(encounters.Library2(self.char))
-    self.state.unique.extend([items.HolyWater(), items.Cross()])
-    self.state.spells.extend([items.HolyWater(), items.Cross()])
+    self.state.unique.extend([items.HolyWater(0), items.Cross(0)])
+    self.state.spells.extend([items.HolyWater(1), items.Cross(1)])
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       self.resolve_until_done()
     self.assertEqual(self.char.place.name, "Library")
@@ -1694,9 +1694,9 @@ class LibraryTest(EncounterTest):
   def testLibrary2Pass1(self):
     self.state.event_stack.append(encounters.Library2(self.char))
     self.char.fight_will_slider = 3
-    self.state.unique.extend([items.HolyWater(), items.Cross()])
+    self.state.unique.extend([items.HolyWater(0), items.Cross(0)])
     # give me spells and I'll use them!
-    self.state.spells.extend([items.Revolver38(), items.TommyGun()])
+    self.state.spells.extend([items.Revolver38(0), items.TommyGun(0)])
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       choice = self.resolve_to_choice(CardChoice)
     choice.resolve(self.state, ".38 Revolver")
@@ -1711,9 +1711,9 @@ class LibraryTest(EncounterTest):
   def testLibrary2Pass1b(self):
     self.state.event_stack.append(encounters.Library2(self.char))
     self.char.fight_will_slider = 3
-    self.state.unique.extend([items.HolyWater(), items.Cross()])
+    self.state.unique.extend([items.HolyWater(0), items.Cross(0)])
     # Yeah, yeah, these aren't spells
-    self.state.spells.extend([items.Revolver38(), items.TommyGun()])
+    self.state.spells.extend([items.Revolver38(0), items.TommyGun(0)])
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       choice = self.resolve_to_choice(CardChoice)
     choice.resolve(self.state, "Tommy Gun")
@@ -1820,7 +1820,7 @@ class ScienceTest(EncounterTest):
 
   def testScience2Pass(self):
     self.state.event_stack.append(encounters.Science2(self.char))
-    self.state.spells.extend([items.Wither(), items.Shrivelling()])
+    self.state.spells.extend([items.Wither(0), items.Shrivelling(0)])
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       self.resolve_until_done()
     self.assertEqual(len(self.state.spells), 1)
@@ -1829,8 +1829,8 @@ class ScienceTest(EncounterTest):
 
   def testScience3WithSpells(self):
     self.state.event_stack.append(encounters.Science3(self.char))
-    self.char.possessions.extend([items.Wither(), items.Wither(), items.Shrivelling()])
-    self.state.unique.append(items.HolyWater())
+    self.char.possessions.extend([items.Wither(0), items.Wither(1), items.Shrivelling(0)])
+    self.state.unique.append(items.HolyWater(0))
     self.resolve_until_done()
     self.assertEqual(len(self.state.unique), 1)
     self.assertEqual(len(self.char.possessions), 3)
@@ -1838,8 +1838,8 @@ class ScienceTest(EncounterTest):
 
   def testScience3WithOtherItems(self):
     self.state.event_stack.append(encounters.Science3(self.char))
-    self.char.possessions.extend([items.Wither(), items.Revolver38(), items.TommyGun()])
-    self.state.unique.append(items.HolyWater())
+    self.char.possessions.extend([items.Wither(0), items.Revolver38(0), items.TommyGun(0)])
+    self.state.unique.append(items.HolyWater(0))
     self.resolve_until_done()
     self.assertFalse(self.state.unique)
     self.assertEqual(len(self.char.possessions), 4)
@@ -1848,8 +1848,8 @@ class ScienceTest(EncounterTest):
 
   def testScience3WithoutSpells(self):
     self.state.event_stack.append(encounters.Science3(self.char))
-    self.char.possessions.extend([items.Wither(), items.Shrivelling()])
-    self.state.unique.append(items.HolyWater())
+    self.char.possessions.extend([items.Wither(0), items.Shrivelling(0)])
+    self.state.unique.append(items.HolyWater(0))
     self.resolve_until_done()
     self.assertFalse(self.state.unique)
     self.assertEqual(len(self.char.possessions), 3)
@@ -1980,7 +1980,7 @@ class AsylumTest(EncounterTest):
 
   def testAsylum2Pass(self):
     self.state.event_stack.append(encounters.Asylum2(self.char))
-    self.state.unique.extend([items.Cross(), items.HolyWater()])
+    self.state.unique.extend([items.Cross(0), items.HolyWater(0)])
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       self.resolve_until_done()
     self.assertEqual(len(self.char.possessions), 1)
@@ -1989,7 +1989,7 @@ class AsylumTest(EncounterTest):
 
   def testAsylum2Fail(self):
     self.state.event_stack.append(encounters.Asylum2(self.char))
-    self.state.unique.extend([items.Cross(), items.HolyWater()])
+    self.state.unique.extend([items.Cross(0), items.HolyWater(0)])
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=2)):
       self.resolve_until_done()
     self.assertEqual(self.char.place.name, "Downtown")
@@ -2014,7 +2014,7 @@ class AsylumTest(EncounterTest):
   def testAsylum4Pass(self):
     self.state.event_stack.append(encounters.Asylum4(self.char))
     # we know these aren't actually spells
-    self.state.spells.extend([items.Cross(), items.HolyWater()])
+    self.state.spells.extend([items.Cross(0), items.HolyWater(0)])
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       self.resolve_until_done()
     self.assertEqual(len(self.char.possessions), 1)
@@ -2024,7 +2024,7 @@ class AsylumTest(EncounterTest):
   def testAsylum4Fail(self):
     self.state.event_stack.append(encounters.Asylum4(self.char))
     # we know these aren't actually spells
-    self.state.spells.extend([items.Cross(), items.HolyWater()])
+    self.state.spells.extend([items.Cross(0), items.HolyWater(0)])
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=2)):
       self.resolve_until_done()
     self.assertEqual(len(self.char.possessions), 0)
@@ -2123,8 +2123,8 @@ class BankTest(EncounterTest):
 
   def testBank2PayPass(self):
     self.state.event_stack.append(encounters.Bank2(self.char))
-    self.state.unique.extend([items.Cross(), items.HolyWater()])
-    self.state.common.extend([items.Revolver38(), items.TommyGun()])
+    self.state.unique.extend([items.Cross(0), items.HolyWater(0)])
+    self.state.common.extend([items.Revolver38(0), items.TommyGun(0)])
     choice = self.resolve_to_choice(MultipleChoice)
     choice.resolve(self.state, "Pay $2")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
@@ -2135,8 +2135,8 @@ class BankTest(EncounterTest):
 
   def testBank2PayFail(self):
     self.state.event_stack.append(encounters.Bank2(self.char))
-    self.state.unique.extend([items.Cross(), items.HolyWater()])
-    self.state.common.extend([items.Revolver38(), items.TommyGun()])
+    self.state.unique.extend([items.Cross(0), items.HolyWater(0)])
+    self.state.common.extend([items.Revolver38(0), items.TommyGun(0)])
     choice = self.resolve_to_choice(MultipleChoice)
     choice.resolve(self.state, "Pay $2")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=2)):
@@ -2165,11 +2165,11 @@ class BankTest(EncounterTest):
 
   def testBank3RevolverPass(self):
     self.char.fight_will_slider = 0
-    self.char.possessions.append(items.Revolver38())
+    self.char.possessions.append(items.Revolver38(0))
     self.state.event_stack.append(encounters.Bank3(self.char))
     choose_weapons = self.resolve_to_choice(CombatChoice)
     # choose to use the revolver
-    choose_weapons.resolve(self.state, [0])
+    choose_weapons.resolve(self.state, [".38 Revolver0"])
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       self.resolve_until_done()
     self.assertEqual(self.char.dollars, 3)
@@ -2184,12 +2184,12 @@ class BankTest(EncounterTest):
     self.assertEqual(self.char.dollars, 3)
 
   def testBank3Spell(self):
-    self.char.possessions.append(items.Wither())
+    self.char.possessions.append(items.Wither(0))
     self.state.event_stack.append(encounters.Bank3(self.char))
     choose_weapons = self.resolve_to_choice(CombatChoice)
     self.assertIn(0, self.state.usables)
-    self.assertIn(0, self.state.usables[0])
-    self.state.event_stack.append(self.state.usables[0][0])
+    self.assertIn("Wither0", self.state.usables[0])
+    self.state.event_stack.append(self.state.usables[0]["Wither0"])
 
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       choose_weapons = self.resolve_to_choice(CombatChoice)
@@ -2324,7 +2324,7 @@ class SquareTest(EncounterTest):
   def testSquare7Pass(self):
     self.state.event_stack.append(encounters.Square7(self.char))
     # we know these aren't actually spells
-    self.state.spells.extend([items.Cross(), items.HolyWater()])
+    self.state.spells.extend([items.Cross(0), items.HolyWater(0)])
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       self.resolve_until_done()
     self.assertEqual(self.char.stamina, 2)
@@ -2476,10 +2476,10 @@ class TrainTest(EncounterTest):
   def setUp(self):
     super().setUp()
     self.char.place = self.state.places["Train"]
-    self.state.unique.extend([items.Cross(), items.HolyWater()])
+    self.state.unique.extend([items.Cross(0), items.HolyWater(0)])
     # maybe they're magic guns? I cast bullet!
-    self.state.spells.extend([items.TommyGun(), items.Revolver38()])
-    self.state.common.extend([items.Dynamite(), items.Revolver38()])
+    self.state.spells.extend([items.TommyGun(0), items.Revolver38(0)])
+    self.state.common.extend([items.Dynamite(0), items.Revolver38(1)])
 
   def testTrain1Pass(self):
     self.state.event_stack.append(encounters.Train1(self.char))
@@ -2658,7 +2658,7 @@ class DocksTest(EncounterTest):
   def testDocks1Pass(self):
     self.state.event_stack.append(encounters.Docks1(self.char))
     # we know these aren't actually spells
-    self.state.spells.extend([items.Cross(), items.HolyWater()])
+    self.state.spells.extend([items.Cross(0), items.HolyWater(0)])
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       self.resolve_until_done()
     self.assertEqual(len(self.char.possessions), 1)
@@ -2668,7 +2668,7 @@ class DocksTest(EncounterTest):
   def testDocks1Fail(self):
     self.state.event_stack.append(encounters.Docks1(self.char))
     # we know these aren't actually spells
-    self.state.spells.extend([items.Cross(), items.HolyWater()])
+    self.state.spells.extend([items.Cross(0), items.HolyWater(0)])
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=2)):
       self.resolve_until_done()
     self.assertEqual(len(self.char.possessions), 0)
@@ -2676,7 +2676,7 @@ class DocksTest(EncounterTest):
 
   def testDocks2Pass(self):
     self.state.event_stack.append(encounters.Docks2(self.char))
-    self.state.common.extend([items.Revolver38(), items.TommyGun(), items.Dynamite()])
+    self.state.common.extend([items.Revolver38(0), items.TommyGun(0), items.Dynamite(0)])
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       self.resolve_until_done()
     self.assertEqual(len(self.char.possessions), 2)
@@ -2689,7 +2689,7 @@ class DocksTest(EncounterTest):
 
   def testDocks2Fail(self):
     self.state.event_stack.append(encounters.Docks2(self.char))
-    self.state.common.extend([items.Revolver38(), items.TommyGun(), items.Dynamite()])
+    self.state.common.extend([items.Revolver38(0), items.TommyGun(0), items.Dynamite(0)])
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=2)):
       self.resolve_until_done()
     self.assertEqual(len(self.char.possessions), 2)
@@ -2720,7 +2720,7 @@ class DocksTest(EncounterTest):
 
   def testDocks4PassSane(self):
     self.state.event_stack.append(encounters.Docks4(self.char))
-    self.state.unique.extend([items.Cross(), items.HolyWater()])
+    self.state.unique.extend([items.Cross(0), items.HolyWater(0)])
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       self.resolve_until_done()
     self.assertEqual(len(self.state.unique), 1)
@@ -2731,7 +2731,7 @@ class DocksTest(EncounterTest):
 
   def testDocks4FailSane(self):
     self.state.event_stack.append(encounters.Docks4(self.char))
-    self.state.unique.extend([items.Cross(), items.HolyWater()])
+    self.state.unique.extend([items.Cross(0), items.HolyWater(0)])
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=2)):
       self.resolve_until_done()
     self.assertEqual(len(self.state.unique), 1)
@@ -2743,7 +2743,7 @@ class DocksTest(EncounterTest):
   def testDocks4PassInsane(self):
     self.state.event_stack.append(encounters.Docks4(self.char))
     self.char.sanity = 1
-    self.state.unique.extend([items.Cross(), items.HolyWater()])
+    self.state.unique.extend([items.Cross(0), items.HolyWater(0)])
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       self.resolve_until_done()
     self.assertEqual(len(self.state.unique), 2)
@@ -2754,7 +2754,7 @@ class DocksTest(EncounterTest):
   def testDocks4FailInsane(self):
     self.state.event_stack.append(encounters.Docks4(self.char))
     self.char.sanity = 2
-    self.state.unique.extend([items.Cross(), items.HolyWater()])
+    self.state.unique.extend([items.Cross(0), items.HolyWater(0)])
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=2)):
       self.resolve_until_done()
     self.assertEqual(len(self.state.unique), 2)
@@ -2788,7 +2788,7 @@ class DocksTest(EncounterTest):
 
   def testDock7Pass(self):
     self.state.event_stack.append(encounters.Docks7(self.char))
-    self.state.common.extend([items.Revolver38(), items.TommyGun()])
+    self.state.common.extend([items.Revolver38(0), items.TommyGun(0)])
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       self.resolve_until_done()
     self.assertEqual(len(self.state.common), 1)
@@ -2800,7 +2800,7 @@ class DocksTest(EncounterTest):
   def testDock7Fail(self):
     self.state.event_stack.append(encounters.Docks7(self.char))
     self.char.stamina = 4
-    self.state.common.extend([items.Revolver38(), items.TommyGun()])
+    self.state.common.extend([items.Revolver38(0), items.TommyGun(0)])
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=2)):
       self.resolve_until_done()
     self.assertEqual(len(self.state.common), 2)
@@ -2861,7 +2861,7 @@ class UnnamableTest(EncounterTest):
   def testUnnamable2YesPass(self):
     self.state.event_stack.append(encounters.Unnamable2(self.char))
     # we know these aren't actually spells
-    self.state.spells.extend([items.Cross(), items.HolyWater()])
+    self.state.spells.extend([items.Cross(0), items.HolyWater(0)])
     choice = self.resolve_to_choice(MultipleChoice)
     choice.resolve(self.state, "Yes")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
@@ -2875,7 +2875,7 @@ class UnnamableTest(EncounterTest):
   def testUnnamable2YesFail(self):
     self.state.event_stack.append(encounters.Unnamable2(self.char))
     # we know these aren't actually spells
-    self.state.spells.extend([items.Cross(), items.HolyWater()])
+    self.state.spells.extend([items.Cross(0), items.HolyWater(0)])
     choice = self.resolve_to_choice(MultipleChoice)
     choice.resolve(self.state, "Yes")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=2)):
@@ -2888,7 +2888,7 @@ class UnnamableTest(EncounterTest):
   def testUnnamable2No(self):
     self.state.event_stack.append(encounters.Unnamable2(self.char))
     # we know these aren't actually spells
-    self.state.spells.extend([items.Cross(), items.HolyWater()])
+    self.state.spells.extend([items.Cross(0), items.HolyWater(0)])
     choice = self.resolve_to_choice(MultipleChoice)
     choice.resolve(self.state, "No")
     self.resolve_until_done()
@@ -2924,7 +2924,7 @@ class UnnamableTest(EncounterTest):
 
   def testUnnamable5Pass(self):
     self.state.event_stack.append(encounters.Unnamable5(self.char))
-    self.state.unique.extend([items.Cross(), items.HolyWater()])
+    self.state.unique.extend([items.Cross(0), items.HolyWater(0)])
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       self.resolve_until_done()
     self.assertEqual(self.char.stamina, 3)
@@ -2935,7 +2935,7 @@ class UnnamableTest(EncounterTest):
 
   def testUnnamable5Fail(self):
     self.state.event_stack.append(encounters.Unnamable5(self.char))
-    self.state.unique.extend([items.Cross(), items.HolyWater()])
+    self.state.unique.extend([items.Cross(0), items.HolyWater(0)])
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=2)):
       self.resolve_until_done()
     self.assertEqual(self.char.stamina, 1)
@@ -2957,7 +2957,7 @@ class UnnamableTest(EncounterTest):
 
   def testUnnamable7Pass(self):
     self.state.event_stack.append(encounters.Unnamable7(self.char))
-    self.state.unique.extend([items.Cross(), items.HolyWater()])
+    self.state.unique.extend([items.Cross(0), items.HolyWater(0)])
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       self.resolve_until_done()
     self.assertEqual(len(self.char.possessions), 1)
@@ -2966,7 +2966,7 @@ class UnnamableTest(EncounterTest):
 
   def testUnnamable7Fail(self):
     self.state.event_stack.append(encounters.Unnamable7(self.char))
-    self.state.unique.extend([items.Cross(), items.HolyWater()])
+    self.state.unique.extend([items.Cross(0), items.HolyWater(0)])
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=2)):
       self.resolve_until_done()
     self.assertEqual(len(self.char.possessions), 0)
@@ -2982,7 +2982,7 @@ class IsleTest(EncounterTest):
   def testIsle1(self):
     self.state.event_stack.append(encounters.Isle1(self.char))
     # we know these aren't actually spells
-    self.state.spells.extend([items.Cross(), items.HolyWater()])
+    self.state.spells.extend([items.Cross(0), items.HolyWater(0)])
     self.resolve_until_done()
     self.assertEqual(self.char.sanity, 2)
     self.assertEqual(len(self.char.possessions), 1)
@@ -3091,7 +3091,7 @@ class HospitalTest(EncounterTest):
   def testHospital2Insane(self):
     self.state.event_stack.append(encounters.Hospital2(self.char))
     self.char.sanity = 1
-    self.state.unique.extend([items.Cross(), items.HolyWater()])
+    self.state.unique.extend([items.Cross(0), items.HolyWater(0)])
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       self.resolve_until_done()
     self.assertEqual(len(self.state.unique), 2)
@@ -3170,7 +3170,7 @@ class HospitalTest(EncounterTest):
 
   def testHospital5Pass(self):
     # we know these aren't actually spells
-    self.state.spells.extend([items.Cross(), items.HolyWater()])
+    self.state.spells.extend([items.Cross(0), items.HolyWater(0)])
     self.state.event_stack.append(encounters.Hospital5(self.char))
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       self.resolve_until_done()
@@ -3186,7 +3186,7 @@ class HospitalTest(EncounterTest):
 
   def testHospital6Pass(self):
     # we know these aren't actually unique items
-    self.state.unique.extend([items.Cross(), items.HolyWater()])
+    self.state.unique.extend([items.Cross(0), items.HolyWater(0)])
     self.state.event_stack.append(encounters.Hospital6(self.char))
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       self.resolve_until_done()
@@ -3196,7 +3196,7 @@ class HospitalTest(EncounterTest):
 
   def testHospital6Fail(self):
     # we know these aren't actually unique items
-    self.state.unique.extend([items.Cross(), items.HolyWater()])
+    self.state.unique.extend([items.Cross(0), items.HolyWater(0)])
     self.state.event_stack.append(encounters.Hospital6(self.char))
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=4)):
       self.resolve_until_done()
@@ -3208,7 +3208,7 @@ class HospitalTest(EncounterTest):
   def testHospital6FailInsane(self):
     # we know these aren't actually unique items
     self.char.sanity = 1
-    self.state.unique.extend([items.Cross(), items.HolyWater()])
+    self.state.unique.extend([items.Cross(0), items.HolyWater(0)])
     self.state.event_stack.append(encounters.Hospital6(self.char))
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=4)):
       self.resolve_until_done()
@@ -3268,8 +3268,8 @@ class WoodsTest(EncounterTest):
 
   def testWoods1One(self):
     self.char.lore_luck_slider = 3
-    self.state.common.append(items.Food())
-    self.state.unique.append(items.Cross())
+    self.state.common.append(items.Food(0))
+    self.state.unique.append(items.Cross(0))
     self.state.event_stack.append(encounters.Woods1(self.char))
     choice = self.resolve_to_choice(MultipleChoice)
     choice.resolve(self.state, "Yes")
@@ -3284,8 +3284,8 @@ class WoodsTest(EncounterTest):
 
   def testWoods1Two(self):
     self.char.lore_luck_slider = 2
-    self.state.common.append(items.Food())
-    self.state.unique.append(items.Cross())
+    self.state.common.append(items.Food(0))
+    self.state.unique.append(items.Cross(0))
     self.state.event_stack.append(encounters.Woods1(self.char))
     choice = self.resolve_to_choice(MultipleChoice)
     choice.resolve(self.state, "Yes")
@@ -3300,8 +3300,8 @@ class WoodsTest(EncounterTest):
 
   def testWoods1Three(self):
     self.char.lore_luck_slider = 1
-    self.state.common.append(items.Food())
-    self.state.unique.append(items.Cross())
+    self.state.common.append(items.Food(0))
+    self.state.unique.append(items.Cross(0))
     self.state.event_stack.append(encounters.Woods1(self.char))
     choice = self.resolve_to_choice(MultipleChoice)
     choice.resolve(self.state, "Yes")
@@ -3336,7 +3336,7 @@ class WoodsTest(EncounterTest):
   def testWoods3Pass(self):
     self.state.event_stack.append(encounters.Woods3(self.char))
     # TODO: implement shotgun
-    # self.state.common.append((items.Shotgun()))
+    # self.state.common.append((items.Shotgun(0)))
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       self.resolve_until_done()
     # self.assertEqual(len(self.state.common), 0)
@@ -3359,7 +3359,7 @@ class WoodsTest(EncounterTest):
 
 # TODO: Check these tests
 #  def testWoods4Pass(self):
-#    self.char.possessions.extend([items.HolyWater(), items.Revolver38()])
+#    self.char.possessions.extend([items.HolyWater(0), items.Revolver38(0)])
 #    self.state.event_stack.append(encounters.Woods4(self.char))
 #    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
 #      self.resolve_until_done()
@@ -3367,7 +3367,7 @@ class WoodsTest(EncounterTest):
 #    self.assertEqual(self.char.stamina, 3)
 #
 #  def testWoods4FailThreePlus(self):
-#    self.char.possessions.extend([items.HolyWater(), items.Revolver38(), items.TommyGun()])
+#    self.char.possessions.extend([items.HolyWater(0), items.Revolver38(0), items.TommyGun(0)])
 #    self.state.event_stack.append(encounters.Woods4(self.char))
 #    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=4)):
 #      self.resolve_to_choice(ItemChoice)
@@ -3375,7 +3375,7 @@ class WoodsTest(EncounterTest):
 #    self.assertEqual(self.char.stamina, 1)
 #
 #  def testWoods4FailTwoItem(self):
-#    self.char.possessions.extend([items.HolyWater(), items.Revolver38()])
+#    self.char.possessions.extend([items.HolyWater(0), items.Revolver38(0)])
 #    self.state.event_stack.append(encounters.Woods4(self.char))
 #    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=4)):
 #      self.resolve_until_done()
@@ -3383,7 +3383,7 @@ class WoodsTest(EncounterTest):
 #    self.assertEqual(self.char.stamina, 1)
 #
 #  def testWoods4FailOneItem(self):
-#    self.char.possessions.extend([items.HolyWater()])
+#    self.char.possessions.extend([items.HolyWater(0)])
 #    self.state.event_stack.append(encounters.Woods4(self.char))
 #    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=4)):
 #      self.resolve_until_done()
@@ -3398,7 +3398,7 @@ class WoodsTest(EncounterTest):
 #    self.assertEqual(self.char.stamina, 1)
 #
 #  def testWoods4FailKO(self):
-#    self.char.possessions.extend([items.HolyWater(), items.Revolver38()])
+#    self.char.possessions.extend([items.HolyWater(0), items.Revolver38(0)])
 #    self.char.stamina = 2
 #    self.state.event_stack.append(encounters.Woods4(self.char))
 #    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=4)):
@@ -3409,7 +3409,7 @@ class WoodsTest(EncounterTest):
 
   def testWoods5FoodAlly(self):
     self.char.speed_sneak_slider = 2
-    self.char.possessions.append(items.Food())
+    self.char.possessions.append(items.Food(0))
     self.state.allies.append(assets.Dog())
     self.state.event_stack.append(encounters.Woods5(self.char))
     choice = self.resolve_to_choice(MultipleChoice)
@@ -3420,7 +3420,7 @@ class WoodsTest(EncounterTest):
 
   def testWoods5FoodReward(self):
     self.char.speed_sneak_slider = 2
-    self.char.possessions.append(items.Food())
+    self.char.possessions.append(items.Food(0))
     self.state.event_stack.append(encounters.Woods5(self.char))
     choice = self.resolve_to_choice(MultipleChoice)
     choice.resolve(self.state, "Yes")
@@ -3430,7 +3430,7 @@ class WoodsTest(EncounterTest):
 
   def testWoods5ChooseLuckAlly(self):
     self.char.speed_sneak_slider = 2
-    self.char.possessions.append(items.Food())
+    self.char.possessions.append(items.Food(0))
     self.state.allies.append(assets.Dog())
     self.state.event_stack.append(encounters.Woods5(self.char))
     choice = self.resolve_to_choice(MultipleChoice)
@@ -3443,7 +3443,7 @@ class WoodsTest(EncounterTest):
 
   def testWoods5ChooseLuckReward(self):
     self.char.speed_sneak_slider = 2
-    self.char.possessions.append(items.Food())
+    self.char.possessions.append(items.Food(0))
     self.state.event_stack.append(encounters.Woods5(self.char))
     choice = self.resolve_to_choice(MultipleChoice)
     choice.resolve(self.state, "No")
@@ -3455,7 +3455,7 @@ class WoodsTest(EncounterTest):
 
   def testWoods5ChooseLuckFail(self):
     self.char.speed_sneak_slider = 2
-    self.char.possessions.append(items.Food())
+    self.char.possessions.append(items.Food(0))
     self.state.event_stack.append(encounters.Woods5(self.char))
     choice = self.resolve_to_choice(MultipleChoice)
     choice.resolve(self.state, "No")
@@ -3515,9 +3515,9 @@ class WoodsTest(EncounterTest):
 
   def testWoods7Decline(self):
     self.state.event_stack.append(encounters.Woods7(self.char))
-    self.state.skills.extend([abilities.Marksman(), abilities.Fight()])
+    self.state.skills.extend([abilities.Marksman(0), abilities.Fight(0)])
     # We know these aren't spells
-    self.state.spells.extend([items.Cross(), items.HolyWater()])
+    self.state.spells.extend([items.Cross(0), items.HolyWater(0)])
     choice = self.resolve_to_choice(MultipleChoice)
     self.assertEqual(choice.choices, ["Yes", "No"])
     choice.resolve(self.state, "No")
@@ -3528,9 +3528,9 @@ class WoodsTest(EncounterTest):
 
   def testWoods7AcceptFail(self):
     self.state.event_stack.append(encounters.Woods7(self.char))
-    self.state.skills.extend([abilities.Marksman(), abilities.Fight()])
+    self.state.skills.extend([abilities.Marksman(0), abilities.Fight(0)])
     # We know these aren't spells
-    self.state.spells.extend([items.Cross(), items.HolyWater()])
+    self.state.spells.extend([items.Cross(0), items.HolyWater(0)])
     choice = self.resolve_to_choice(MultipleChoice)
     self.assertEqual(choice.choices, ["Yes", "No"])
     choice.resolve(self.state, "Yes")
@@ -3543,9 +3543,9 @@ class WoodsTest(EncounterTest):
   def testWoods7AcceptPassSkill(self):
     self.char.lore_luck_slider = 2
     self.state.event_stack.append(encounters.Woods7(self.char))
-    self.state.skills.extend([abilities.Marksman(), abilities.Fight()])
+    self.state.skills.extend([abilities.Marksman(0), abilities.Fight(0)])
     # We know these aren't spells
-    self.state.spells.extend([items.Cross(), items.HolyWater()])
+    self.state.spells.extend([items.Cross(0), items.HolyWater(0)])
     choice = self.resolve_to_choice(MultipleChoice)
     self.assertEqual(choice.choices, ["Yes", "No"])
     choice.resolve(self.state, "Yes")
@@ -3562,9 +3562,9 @@ class WoodsTest(EncounterTest):
   #  def testWoods7AcceptPassSpells(self):
   #    self.char.lore_luck_slider = 2
   #    self.state.event_stack.append(encounters.Woods7(self.char))
-  #    self.state.skills.extend([abilities.Marksman(), abilities.Fight()])
+  #    self.state.skills.extend([abilities.Marksman(0), abilities.Fight(0)])
   #    # We know these aren't spells
-  #    self.state.spells.extend([items.Cross(), items.HolyWater()])
+  #    self.state.spells.extend([items.Cross(0), items.HolyWater(0)])
   #    choice = self.resolve_to_choice(MultipleChoice)
   #    self.assertEqual(choice.choices, ["Yes", "No"])
   #    choice.resolve(self.state, "Yes")
@@ -3582,9 +3582,9 @@ class WoodsTest(EncounterTest):
   def testWoods7AcceptPassClues(self):
     self.char.lore_luck_slider = 2
     self.state.event_stack.append(encounters.Woods7(self.char))
-    self.state.skills.extend([abilities.Marksman(), abilities.Fight()])
+    self.state.skills.extend([abilities.Marksman(0), abilities.Fight(0)])
     # We know these aren't spells
-    self.state.spells.extend([items.Cross(), items.HolyWater()])
+    self.state.spells.extend([items.Cross(0), items.HolyWater(0)])
     choice = self.resolve_to_choice(MultipleChoice)
     self.assertEqual(choice.choices, ["Yes", "No"])
     choice.resolve(self.state, "Yes")
@@ -3603,7 +3603,7 @@ class CaveTest(EncounterTest):
   # TODO: a monster appears
   #  def testCave1Zero(self):
   #    self.char.lore_luck_slider = 3
-  #    self.state.common.append(items.Food())
+  #    self.state.common.append(items.Food(0))
   #    self.state.event_stack.append(encounters.Cave1(self.char))
   #    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=2)):
   #      raise NotImplementedError("A monster appears")
@@ -3614,7 +3614,7 @@ class CaveTest(EncounterTest):
   def testCave1ZeroInsane(self):
     self.char.lore_luck_slider = 3
     self.char.sanity = 1
-    self.state.common.append(items.Food())
+    self.state.common.append(items.Food(0))
     self.state.event_stack.append(encounters.Cave1(self.char))
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=2)):
       self.resolve_until_done()
@@ -3624,7 +3624,7 @@ class CaveTest(EncounterTest):
 
   def testCave1One(self):
     self.char.lore_luck_slider = 3
-    self.state.common.append(items.Food())
+    self.state.common.append(items.Food(0))
     self.state.event_stack.append(encounters.Cave1(self.char))
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       self.resolve_until_done()
@@ -3634,7 +3634,7 @@ class CaveTest(EncounterTest):
   def testCave1OneInsane(self):
     self.char.lore_luck_slider = 3
     self.char.sanity = 1
-    self.state.common.append(items.Food())
+    self.state.common.append(items.Food(0))
     self.state.event_stack.append(encounters.Cave1(self.char))
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       self.resolve_until_done()
@@ -3644,7 +3644,7 @@ class CaveTest(EncounterTest):
 
   def testCave1Two(self):
     self.char.lore_luck_slider = 2
-    self.state.common.append(items.Food())
+    self.state.common.append(items.Food(0))
     self.state.event_stack.append(encounters.Cave1(self.char))
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       self.resolve_until_done()
@@ -3721,9 +3721,9 @@ class CaveTest(EncounterTest):
     self.assertEqual(self.char.place.name, "Hospital")
 
   def testCave6WhiskeyAlly(self):
-    self.char.possessions.append(items.Whiskey())
+    self.char.possessions.append(items.Whiskey(0))
     self.state.allies.append(assets.ToughGuy())
-    self.state.common.extend([items.Food(), items.Revolver38()])
+    self.state.common.extend([items.Food(0), items.Revolver38(0)])
     self.state.event_stack.append(encounters.Cave6(self.char))
     choice = self.resolve_to_choice(MultipleChoice)
     self.assertEqual(choice.choices, ["Yes", "No"])
@@ -3733,8 +3733,8 @@ class CaveTest(EncounterTest):
     self.assertEqual(self.char.possessions[0].name, "Tough Guy")
 
   def testCave6WhiskeyReward(self):
-    self.char.possessions.append(items.Whiskey())
-    self.state.common.extend([items.Food(), items.Revolver38()])
+    self.char.possessions.append(items.Whiskey(0))
+    self.state.common.extend([items.Food(0), items.Revolver38(0)])
     self.state.event_stack.append(encounters.Cave6(self.char))
     choice = self.resolve_to_choice(MultipleChoice)
     self.assertEqual(choice.choices, ["Yes", "No"])
@@ -3744,9 +3744,9 @@ class CaveTest(EncounterTest):
     self.assertEqual(self.char.possessions[0].name, ".38 Revolver")
 
   def testCave6DeclineAlly(self):
-    self.char.possessions.append(items.Whiskey())
+    self.char.possessions.append(items.Whiskey(0))
     self.state.allies.append(assets.ToughGuy())
-    self.state.common.extend([items.Food(), items.Revolver38()])
+    self.state.common.extend([items.Food(0), items.Revolver38(0)])
     self.state.event_stack.append(encounters.Cave6(self.char))
     choice = self.resolve_to_choice(MultipleChoice)
     self.assertEqual(choice.choices, ["Yes", "No"])
@@ -3758,8 +3758,8 @@ class CaveTest(EncounterTest):
     self.assertEqual(self.char.possessions[1].name, "Tough Guy")
 
   def testCave6DeclineReward(self):
-    self.char.possessions.append(items.Whiskey())
-    self.state.common.extend([items.Food(), items.Revolver38()])
+    self.char.possessions.append(items.Whiskey(0))
+    self.state.common.extend([items.Food(0), items.Revolver38(0)])
     self.state.event_stack.append(encounters.Cave6(self.char))
     choice = self.resolve_to_choice(MultipleChoice)
     self.assertEqual(choice.choices, ["Yes", "No"])
@@ -3771,8 +3771,8 @@ class CaveTest(EncounterTest):
     self.assertEqual(self.char.possessions[1].name, ".38 Revolver")
 
   def testCave6DeclineFail(self):
-    self.char.possessions.append(items.Whiskey())
-    self.state.common.extend([items.Food(), items.Revolver38()])
+    self.char.possessions.append(items.Whiskey(0))
+    self.state.common.extend([items.Food(0), items.Revolver38(0)])
     self.state.event_stack.append(encounters.Cave6(self.char))
     choice = self.resolve_to_choice(MultipleChoice)
     self.assertEqual(choice.choices, ["Yes", "No"])
@@ -3784,7 +3784,7 @@ class CaveTest(EncounterTest):
 
   def testCave6NoWhiskeyAlly(self):
     self.state.allies.append(assets.ToughGuy())
-    self.state.common.extend([items.Food(), items.Revolver38()])
+    self.state.common.extend([items.Food(0), items.Revolver38(0)])
     self.state.event_stack.append(encounters.Cave6(self.char))
     choice = self.resolve_to_choice(MultipleChoice)
     with self.assertRaises(AssertionError):
@@ -3796,7 +3796,7 @@ class CaveTest(EncounterTest):
     self.assertEqual(self.char.possessions[0].name, "Tough Guy")
 
   def testCave6NoWhiskeyReward(self):
-    self.state.common.extend([items.Food(), items.Revolver38()])
+    self.state.common.extend([items.Food(0), items.Revolver38(0)])
     self.state.event_stack.append(encounters.Cave6(self.char))
     choice = self.resolve_to_choice(MultipleChoice)
     with self.assertRaises(AssertionError):
@@ -3808,7 +3808,7 @@ class CaveTest(EncounterTest):
     self.assertEqual(self.char.possessions[0].name, ".38 Revolver")
 
   def testCave6NoWhiskeyFail(self):
-    self.state.common.extend([items.Food(), items.Revolver38()])
+    self.state.common.extend([items.Food(0), items.Revolver38(0)])
     self.state.event_stack.append(encounters.Cave6(self.char))
     choice = self.resolve_to_choice(MultipleChoice)
     with self.assertRaises(AssertionError):
@@ -3927,22 +3927,22 @@ class StoreTest(EncounterTest):
 
   def testStore3(self):
     self.state.event_stack.append(encounters.Store3(self.char))
-    self.char.possessions.append(items.Food())
+    self.char.possessions.append(items.Food(0))
     choice = self.resolve_to_choice(ItemChoice)
-    self.assertEqual(choice.choices, [0])
-    choice.resolve(self.state, [0])
+    self.assertEqual(choice.choices, ["Food0"])
+    choice.resolve(self.state, ["Food0"])
     self.resolve_until_done()
     self.assertFalse(self.char.possessions)
     self.assertEqual(self.char.dollars, 5)
 
   def testStore3IllegalSale(self):
     self.state.event_stack.append(encounters.Store3(self.char))
-    self.char.possessions.append(items.Food())
-    self.char.possessions.append(items.Food())
+    self.char.possessions.append(items.Food(0))
+    self.char.possessions.append(items.Food(1))
     choice = self.resolve_to_choice(ItemChoice)
-    self.assertEqual(choice.choices, [0, 1])
+    self.assertEqual(choice.choices, ["Food0", "Food1"])
     with self.assertRaises(AssertionError):
-      choice.resolve(self.state, [0, 1])
+      choice.resolve(self.state, ["Food0", "Food1"])
 
   def testStore4(self):
     self.state.event_stack.append(encounters.Store4(self.char))
@@ -3958,7 +3958,7 @@ class StoreTest(EncounterTest):
 
   def testStore5Pass(self):
     self.state.event_stack.append(encounters.Store5(self.char))
-    self.state.common.extend([items.Dynamite(), items.TommyGun(), items.Food()])
+    self.state.common.extend([items.Dynamite(0), items.TommyGun(0), items.Food(0)])
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       choice = self.resolve_to_choice(CardChoice)
     choice.resolve(self.state, "Food")
@@ -3969,7 +3969,7 @@ class StoreTest(EncounterTest):
 
   def testStore5Fail(self):
     self.state.event_stack.append(encounters.Store5(self.char))
-    self.state.common.extend([items.Dynamite(), items.TommyGun(), items.Food()])
+    self.state.common.extend([items.Dynamite(0), items.TommyGun(0), items.Food(0)])
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
       self.resolve_until_done()
     self.assertEqual(len(self.char.possessions), 0)
@@ -3981,7 +3981,7 @@ class StoreTest(EncounterTest):
     # self.character = characters.Salesman()
     # self.char.lore_luck_slider = 2
     # self.state.common.extend([
-    #     items.Revolver38(), items.Cross(), items.TommyGun(), items.Dynamite()])
+    #     items.Revolver38(0), items.Cross(0), items.TommyGun(0), items.Dynamite(0)])
     # self.state.event_stack.append(encounters.Store5(self.char))
     # with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=2)):
     #   self.resolve_until_done()
@@ -4032,7 +4032,7 @@ class StoreTest(EncounterTest):
     self.assertEqual(self.char.dollars, 0)
 
   def testStore7(self):
-    self.state.common.append(items.Dynamite())
+    self.state.common.append(items.Dynamite(0))
     # Why does a young child have dynamite?
     self.state.event_stack.append(encounters.Store7(self.char))
     self.resolve_until_done()
@@ -4086,7 +4086,7 @@ class ShoppeTest(EncounterTest):
 
   def testShoppe3Empty(self):
     self.char.dollars = 5
-    self.state.unique.extend([items.Cross(), items.HolyWater()])
+    self.state.unique.extend([items.Cross(0), items.HolyWater(0)])
     self.state.event_stack.append(encounters.Shoppe3(self.char))
     buy = self.resolve_to_choice(MultipleChoice)
     self.assertEqual(buy.choices, ["Yes", "No"])
@@ -4099,7 +4099,7 @@ class ShoppeTest(EncounterTest):
   def testShoppe3Gold(self):
     self.char.dollars = 5
     self.char.lore_luck_slider = 3
-    self.state.unique.extend([items.Cross(), items.HolyWater()])
+    self.state.unique.extend([items.Cross(0), items.HolyWater(0)])
     self.state.event_stack.append(encounters.Shoppe3(self.char))
     buy = self.resolve_to_choice(MultipleChoice)
     self.assertEqual(buy.choices, ["Yes", "No"])
@@ -4113,7 +4113,7 @@ class ShoppeTest(EncounterTest):
     # TODO: Drawing multiple items
     # self.char.dollars = 5
     # self.char.lore_luck_slider = 1
-    # self.state.unique.extend([items.Cross(), items.HolyWater()])
+    # self.state.unique.extend([items.Cross(0), items.HolyWater(0)])
     # self.state.event_stack.append(encounters.Shoppe3(self.char))
     # buy = self.resolve_to_choice(MultipleChoice)
     # self.assertEqual(buy.choices, ["Yes", "No"])
@@ -4147,7 +4147,7 @@ class ShoppeTest(EncounterTest):
       self.resolve_until_done()
 
   def testShoppe6PassDecline(self):
-    # self.state.unique.append(items.Cross()) # Costs 3
+    # self.state.unique.append(items.Cross(0)) # Costs 3
     # self.state.event_stack.append(encounters.Shoppe6(self.char))
     # with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
     #   buy = self.resolve_to_choice(MultipleChoice)
@@ -4157,7 +4157,7 @@ class ShoppeTest(EncounterTest):
     pass
 
   def testShoppe6PassAccept(self):
-    # self.state.unique.append(items.Cross()) # Costs 3
+    # self.state.unique.append(items.Cross(0)) # Costs 3
     # self.state.event_stack.append(encounters.Shoppe6(self.char))
     # with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
     #   buy = self.resolve_to_choice(MultipleChoice)
@@ -4221,7 +4221,7 @@ class GraveyardTest(EncounterTest):
 
   def testGraveyard3Pass(self):
     self.char.fight_will_slider = 2
-    self.state.unique.append(items.HolyWater())
+    self.state.unique.append(items.HolyWater(0))
     self.state.event_stack.append(encounters.Graveyard3(self.char))
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       self.resolve_until_done()
@@ -4232,7 +4232,7 @@ class GraveyardTest(EncounterTest):
   def testGraveyard3FailOne(self):
     self.char.fight_will_slider = 2
     self.char.stamina = 4
-    self.state.unique.append(items.HolyWater())
+    self.state.unique.append(items.HolyWater(0))
     self.state.event_stack.append(encounters.Graveyard3(self.char))
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=1)):
       self.resolve_until_done()
@@ -4241,7 +4241,7 @@ class GraveyardTest(EncounterTest):
   def testGraveyard3FailTwo(self):
     self.char.fight_will_slider = 2
     self.char.stamina = 4
-    self.state.unique.append(items.HolyWater())
+    self.state.unique.append(items.HolyWater(0))
     self.state.event_stack.append(encounters.Graveyard3(self.char))
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=2)):
       self.resolve_until_done()
@@ -4250,7 +4250,7 @@ class GraveyardTest(EncounterTest):
   def testGraveyard3FailThree(self):
     self.char.fight_will_slider = 2
     self.char.stamina = 4
-    self.state.unique.append(items.HolyWater())
+    self.state.unique.append(items.HolyWater(0))
     self.state.event_stack.append(encounters.Graveyard3(self.char))
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
       self.resolve_until_done()
@@ -4259,7 +4259,7 @@ class GraveyardTest(EncounterTest):
   def testGraveyard3FailFour(self):
     self.char.fight_will_slider = 2
     self.char.stamina = 5
-    self.state.unique.append(items.HolyWater())
+    self.state.unique.append(items.HolyWater(0))
     self.state.event_stack.append(encounters.Graveyard3(self.char))
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=4)):
       self.resolve_until_done()
@@ -4268,7 +4268,7 @@ class GraveyardTest(EncounterTest):
   def testGraveyard3FailKO(self):
     self.char.fight_will_slider = 2
     self.char.stamina = 4
-    self.state.unique.append(items.HolyWater())
+    self.state.unique.append(items.HolyWater(0))
     self.state.event_stack.append(encounters.Graveyard3(self.char))
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=4)):
       self.resolve_until_done()

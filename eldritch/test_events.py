@@ -33,7 +33,7 @@ class NoMythos(mythos.GlobalEffect):
 class Canceller(assets.Asset):
 
   def __init__(self, event_type, count=0):
-    super().__init__("canceller")
+    super().__init__("canceller", None)
     self.event_type = event_type
     self.count = count
     self.seen = []
@@ -75,13 +75,13 @@ class EventTest(unittest.TestCase):
     self.assertIsInstance(self.state.event_stack[-1], event_class)
     return self.state.event_stack[-1]
 
-  def resolve_to_usable(self, char_idx, item_idx, event_class):
+  def resolve_to_usable(self, char_idx, handle, event_class):
     self.resolve_loop()
     self.assertTrue(self.state.event_stack)
     self.assertIn(char_idx, self.state.usables)
-    self.assertIn(item_idx, self.state.usables[char_idx])
-    self.assertIsInstance(self.state.usables[char_idx][item_idx], event_class)
-    return self.state.usables[char_idx][item_idx]
+    self.assertIn(handle, self.state.usables[char_idx])
+    self.assertIsInstance(self.state.usables[char_idx][handle], event_class)
+    return self.state.usables[char_idx][handle]
 
   def advance_turn(self, target_turn, target_phase):
     self.state.mythos.extend([NoMythos()] * (target_turn - self.state.turn_number + 1))
@@ -1122,7 +1122,7 @@ class DrawTest(EventTest):
     draw = DrawSpecific(self.char, "common", "Food")
     self.assertFalse(draw.is_resolved())
     self.assertFalse(self.char.possessions)
-    self.state.common.append(items.Food())
+    self.state.common.append(items.Food(0))
 
     self.state.event_stack.append(draw)
     self.resolve_until_done()
@@ -1147,8 +1147,8 @@ class DrawTest(EventTest):
     draw = DrawSpecific(self.char, "common", "Food")
     self.assertFalse(draw.is_resolved())
     self.assertFalse(self.char.possessions)
-    self.state.common.append(items.Food())
-    self.state.common.append(items.Food())
+    self.state.common.append(items.Food(0))
+    self.state.common.append(items.Food(1))
 
     self.state.event_stack.append(draw)
     self.resolve_until_done()
@@ -1165,7 +1165,7 @@ class DrawRandomTest(EventTest):
     draw = Draw(self.char, "common", 1)
     self.assertFalse(draw.is_resolved())
     self.assertFalse(self.char.possessions)
-    food = items.Food()
+    food = items.Food(0)
     self.state.common.append(food)
 
     # When you only draw one card, you do not get a choice.
@@ -1180,9 +1180,9 @@ class DrawRandomTest(EventTest):
     draw = Draw(self.char, "common", 2)
     self.assertFalse(draw.is_resolved())
     self.assertFalse(self.char.possessions)
-    dynamite = items.Dynamite()
+    dynamite = items.Dynamite(0)
     self.state.common.extend([
-        items.Food(), dynamite, items.Revolver38(), items.TommyGun(), items.Bullwhip()])
+        items.Food(0), dynamite, items.Revolver38(0), items.TommyGun(0), items.Bullwhip(0)])
 
     self.state.event_stack.append(draw)
     choice = self.resolve_to_choice(CardChoice)
@@ -1203,7 +1203,7 @@ class DrawRandomTest(EventTest):
     draw = Draw(self.char, "common", 2)
     self.assertFalse(draw.is_resolved())
     self.assertFalse(self.char.possessions)
-    food = items.Food()
+    food = items.Food(0)
     self.state.common.append(food)
 
     # Should be handled gracefully if you are instructed to draw more cards than are in the deck.
@@ -1216,8 +1216,8 @@ class DrawRandomTest(EventTest):
 
   def testDrawSpecificTypeTop(self):
     draw = Draw(self.char, "common", 1, target_type=items.Weapon)
-    tommygun = items.TommyGun()
-    self.state.common.extend([tommygun, items.Food(), ])
+    tommygun = items.TommyGun(0)
+    self.state.common.extend([tommygun, items.Food(0)])
     self.assertFalse(draw.is_resolved())
     self.assertFalse(self.char.possessions)
     self.state.event_stack.append(draw)
@@ -1227,8 +1227,8 @@ class DrawRandomTest(EventTest):
 
   def testDrawSpecificTypeMiddle(self):
     draw = Draw(self.char, "common", 1, target_type=items.Weapon)
-    tommygun = items.TommyGun()
-    self.state.common.extend([items.Food(), tommygun, items.Dynamite(), ])
+    tommygun = items.TommyGun(0)
+    self.state.common.extend([items.Food(0), tommygun, items.Dynamite(0)])
     self.assertFalse(draw.is_resolved())
     self.assertFalse(self.char.possessions)
     self.state.event_stack.append(draw)
@@ -1238,8 +1238,8 @@ class DrawRandomTest(EventTest):
 
   def testDrawSpecificTypeNone(self):
     draw = Draw(self.char, "common", 1, target_type=items.ResearchMaterials)
-    tommygun = items.TommyGun()
-    self.state.common.extend([items.Food(), tommygun, items.Dynamite(), ])
+    tommygun = items.TommyGun(0)
+    self.state.common.extend([items.Food(0), tommygun, items.Dynamite(0)])
     self.assertFalse(draw.is_resolved())
     self.assertFalse(self.char.possessions)
     self.state.event_stack.append(draw)
@@ -1252,7 +1252,7 @@ class DrawRandomTest(EventTest):
     self.assertFalse(draw.is_resolved())
     self.assertFalse(self.char.possessions)
     self.char.possessions.append(Canceller(DrawItems))
-    self.state.common.extend([items.Food(), items.Dynamite(), items.Revolver38()])
+    self.state.common.extend([items.Food(0), items.Dynamite(0), items.Revolver38(0)])
     self.assertEqual(len(self.state.common), 3)
 
     self.state.event_stack.append(draw)
@@ -1271,7 +1271,7 @@ class DrawRandomTest(EventTest):
     self.assertFalse(draw.is_resolved())
     self.assertFalse(self.char.possessions)
     self.char.possessions.append(Canceller(CardChoice))
-    self.state.common.extend([items.Food(), items.Dynamite(), items.Revolver38()])
+    self.state.common.extend([items.Food(0), items.Dynamite(0), items.Revolver38(0)])
     self.assertEqual(len(self.state.common), 3)
 
     self.state.event_stack.append(draw)
@@ -1291,7 +1291,7 @@ class DrawRandomTest(EventTest):
     self.assertFalse(draw.is_resolved())
     self.assertFalse(self.char.possessions)
     self.char.possessions.append(Canceller(KeepDrawn))
-    self.state.common.extend([items.Food(), items.Dynamite(), items.Revolver38()])
+    self.state.common.extend([items.Food(0), items.Dynamite(0), items.Revolver38(0)])
     self.assertEqual(len(self.state.common), 3)
 
     self.state.event_stack.append(draw)
@@ -1308,8 +1308,8 @@ class DrawRandomTest(EventTest):
 
 class DiscardNamedTest(EventTest):
   def testDiscardNamed(self):
-    self.char.possessions.append(items.Food())
-    self.char.possessions.append(items.TommyGun())
+    self.char.possessions.append(items.Food(0))
+    self.char.possessions.append(items.TommyGun(0))
     discard = DiscardNamed(self.char, "Food")
     self.assertFalse(discard.is_resolved())
     self.state.event_stack.append(discard)
@@ -1320,7 +1320,7 @@ class DiscardNamedTest(EventTest):
     self.assertEqual(len(self.state.common), 1)
 
   def testDontHave(self):
-    self.char.possessions.append(items.TommyGun())
+    self.char.possessions.append(items.TommyGun(0))
     discard = DiscardNamed(self.char, "Food")
     self.assertFalse(discard.is_resolved())
     self.state.event_stack.append(discard)
@@ -1376,7 +1376,7 @@ class CheckTest(EventTest):
   @mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=[2, 4]))
   def testSubCheck(self):
     check = Check(self.char, "horror", 0)
-    self.char.possessions.append(abilities.Will())
+    self.char.possessions.append(abilities.Will(0))
     self.assertEqual(self.char.will(self.state), 2)
     self.assertFalse(check.is_resolved())
 
@@ -1599,9 +1599,9 @@ class ItemChoiceTest(EventTest):
 
   def setUp(self):
     super().setUp()
-    self.char.possessions.append(items.Revolver38())
-    self.char.possessions.append(items.Food())
-    self.char.possessions.append(items.HolyWater())
+    self.char.possessions.append(items.Revolver38(0))
+    self.char.possessions.append(items.Food(0))
+    self.char.possessions.append(items.HolyWater(0))
 
   def testCountChoice(self):
     choice = ItemCountChoice(self.char, "choose 2", 2)
@@ -1610,10 +1610,10 @@ class ItemChoiceTest(EventTest):
     self.resolve_to_choice(ItemCountChoice)
 
     with self.assertRaises(AssertionError):
-      choice.resolve(self.state, [2])
+      choice.resolve(self.state, ["Holy Water0"])
     with self.assertRaises(AssertionError):
-      choice.resolve(self.state, [0, 1, 2])
-    choice.resolve(self.state, [0, 1])
+      choice.resolve(self.state, [".38 Revolver0", "Food0", "Holy Water0"])
+    choice.resolve(self.state, [".38 Revolver0", "Food0"])
     self.assertListEqual(choice.chosen, self.char.possessions[:2])
     self.assertEqual(choice.choice_count, 2)
 
@@ -1626,13 +1626,13 @@ class ItemChoiceTest(EventTest):
 
     # Cannot use Food in combat.
     with self.assertRaises(AssertionError):
-      choice.resolve(self.state, [0, 1])
+      choice.resolve(self.state, [".38 Revolver0", "Food0"])
 
     # Cannot use three hands in combat.
     with self.assertRaises(AssertionError):
-      choice.resolve(self.state, [0, 2])
+      choice.resolve(self.state, [".38 Revolver0", "Holy Water0"])
 
-    choice.resolve(self.state, [2])
+    choice.resolve(self.state, ["Holy Water0"])
     self.resolve_until_done()
     self.assertEqual(choice.choice_count, 1)
 
@@ -1709,7 +1709,9 @@ class GateChoiceTest(EventTest):
 class RefreshItemsTest(EventTest):
 
   def testRefreshItems(self):
-    self.char.possessions.extend([items.Wither(), items.Wither(), items.Bullwhip(), items.Cross()])
+    self.char.possessions.extend([
+        items.Wither(0), items.Wither(1), items.Bullwhip(0), items.Cross(0),
+    ])
     # pylint: disable=protected-access
     self.char.possessions[0]._exhausted = True
     self.char.possessions[2]._exhausted = True
@@ -1725,7 +1727,9 @@ class RefreshItemsTest(EventTest):
     self.resolve_until_done()
 
   def testOneItemRefreshCancelled(self):
-    self.char.possessions.extend([items.Wither(), items.Wither(), items.Bullwhip(), items.Cross()])
+    self.char.possessions.extend([
+        items.Wither(0), items.Wither(1), items.Bullwhip(0), items.Cross(0),
+    ])
     # pylint: disable=protected-access
     self.char.possessions[0]._exhausted = True
     self.char.possessions[1]._exhausted = True
@@ -1747,7 +1751,7 @@ class RefreshItemsTest(EventTest):
 class ActivateItemsTest(EventTest):
 
   def testActivateItem(self):
-    gun = items.TommyGun()
+    gun = items.TommyGun(0)
     self.char.possessions.append(gun)
     self.assertEqual(self.char.hands_available(), 2)
     self.assertEqual(self.char.combat(self.state, None), 4)
@@ -1760,7 +1764,7 @@ class ActivateItemsTest(EventTest):
     self.assertEqual(self.char.combat(self.state, None), 10)
 
   def testDeactivateItem(self):
-    gun = items.TommyGun()
+    gun = items.TommyGun(0)
     self.char.possessions.append(gun)
     gun._active = True  # pylint: disable=protected-access
     self.assertEqual(self.char.hands_available(), 0)
@@ -1774,7 +1778,7 @@ class ActivateItemsTest(EventTest):
     self.assertEqual(self.char.combat(self.state, None), 4)
 
   def testActivateChosenItems(self):
-    self.char.possessions.extend([items.Bullwhip(), items.TommyGun(), items.Revolver38()])
+    self.char.possessions.extend([items.Bullwhip(0), items.TommyGun(0), items.Revolver38(0)])
     self.assertEqual(self.char.hands_available(), 2)
     self.assertEqual(self.char.combat(self.state, None), 4)
 
@@ -1783,7 +1787,7 @@ class ActivateItemsTest(EventTest):
 
     self.state.event_stack.append(item_choice)
     self.resolve_to_choice(CombatChoice)
-    item_choice.resolve(self.state, [0, 2])
+    item_choice.resolve(self.state, ["Bullwhip0", ".38 Revolver0"])
     self.state.event_stack.append(activate)
     self.resolve_until_done()
 
@@ -1793,14 +1797,14 @@ class ActivateItemsTest(EventTest):
     self.assertTrue(self.char.possessions[2].active)
 
   def testOneItemActivationCancelled(self):
-    self.char.possessions.extend([items.Bullwhip(), items.TommyGun(), items.Revolver38()])
+    self.char.possessions.extend([items.Bullwhip(0), items.TommyGun(0), items.Revolver38(0)])
     item_choice = CombatChoice(self.char, "choose stuff")
     activate = ActivateChosenItems(self.char, item_choice)
     self.char.possessions.append(Canceller(ActivateItem))
 
     self.state.event_stack.append(item_choice)
     self.resolve_to_choice(CombatChoice)
-    item_choice.resolve(self.state, [0, 2])
+    item_choice.resolve(self.state, ["Bullwhip0", ".38 Revolver0"])
     self.state.event_stack.append(activate)
     self.resolve_until_done()
 
@@ -1814,7 +1818,7 @@ class ActivateItemsTest(EventTest):
     self.assertTrue(self.char.possessions[2].active)
 
   def testActivationChoiceCancelled(self):
-    self.char.possessions.extend([items.Bullwhip(), items.TommyGun(), items.Revolver38()])
+    self.char.possessions.extend([items.Bullwhip(0), items.TommyGun(0), items.Revolver38(0)])
     item_choice = CombatChoice(self.char, "choose stuff")
     activate = ActivateChosenItems(self.char, item_choice)
     self.char.possessions.append(Canceller(CombatChoice))
@@ -1831,7 +1835,7 @@ class ActivateItemsTest(EventTest):
     self.assertFalse(self.char.possessions[2].active)
 
   def testDeactivateItems(self):
-    self.char.possessions.extend([items.Bullwhip(), items.TommyGun(), items.Revolver38()])
+    self.char.possessions.extend([items.Bullwhip(0), items.TommyGun(0), items.Revolver38(0)])
     # pylint: disable=protected-access
     self.char.possessions[0]._active = True
     self.char.possessions[2]._active = True
@@ -1847,7 +1851,7 @@ class ActivateItemsTest(EventTest):
     self.assertFalse(self.char.possessions[2].active)
 
   def testOneDeactivationCancelled(self):
-    self.char.possessions.extend([items.Bullwhip(), items.TommyGun(), items.Revolver38()])
+    self.char.possessions.extend([items.Bullwhip(0), items.TommyGun(0), items.Revolver38(0)])
     # pylint: disable=protected-access
     self.char.possessions[0]._active = True
     self.char.possessions[2]._active = True
@@ -1871,7 +1875,7 @@ class ActivateItemsTest(EventTest):
 class CastSpellTest(EventTest):
 
   def testCastSpell(self):
-    shrivelling = items.Shrivelling()
+    shrivelling = items.Shrivelling(0)
     self.char.possessions.append(shrivelling)
     self.assertEqual(self.char.sanity, 5)
     self.assertEqual(self.char.hands_available(), 2)
@@ -1886,7 +1890,7 @@ class CastSpellTest(EventTest):
     self.assertEqual(self.char.hands_available(), 1)
 
   def testFailToCastSpell(self):
-    shrivelling = items.Shrivelling()
+    shrivelling = items.Shrivelling(0)
     self.char.possessions.append(shrivelling)
     self.assertEqual(self.char.sanity, 5)
     self.assertEqual(self.char.hands_available(), 2)
@@ -1901,7 +1905,7 @@ class CastSpellTest(EventTest):
     self.assertEqual(self.char.hands_available(), 1)
 
   def testCancelledSpellCheck(self):
-    shrivelling = items.Shrivelling()
+    shrivelling = items.Shrivelling(0)
     self.char.possessions.append(shrivelling)
     self.char.possessions.append(Canceller(Check))
     self.assertEqual(self.char.sanity, 5)
@@ -1916,7 +1920,7 @@ class CastSpellTest(EventTest):
     self.assertEqual(self.char.hands_available(), 1)
 
   def testCancelledSpellCost(self):
-    shrivelling = items.Shrivelling()
+    shrivelling = items.Shrivelling(0)
     self.char.possessions.append(shrivelling)
     self.char.possessions.append(Canceller(GainOrLoss))
     self.assertEqual(self.char.sanity, 5)
@@ -1934,7 +1938,7 @@ class CastSpellTest(EventTest):
     self.assertTrue(cast.is_resolved())
 
   def testCancelledActivation(self):
-    shrivelling = items.Shrivelling()
+    shrivelling = items.Shrivelling(0)
     self.char.possessions.append(shrivelling)
     self.char.possessions.append(Canceller(ActivateItem))
     self.assertEqual(self.char.sanity, 5)
@@ -1965,7 +1969,7 @@ class PurchaseTest(EventTest):
     self.char.dollars = 3
     self.assertFalse(buy.is_resolved())
     self.assertFalse(self.char.possessions)
-    food = items.Food()
+    food = items.Food(0)
     self.state.common.append(food)
 
     self.state.event_stack.append(buy)
@@ -1985,7 +1989,7 @@ class PurchaseTest(EventTest):
     self.char.dollars = 3
     self.assertFalse(buy.is_resolved())
     self.assertFalse(self.char.possessions)
-    food = items.Food()
+    food = items.Food(0)
     self.state.common.append(food)
 
     self.state.event_stack.append(buy)
@@ -2005,7 +2009,7 @@ class PurchaseTest(EventTest):
     self.char.dollars = 0
     self.assertFalse(buy.is_resolved())
     self.assertFalse(self.char.possessions)
-    food = items.Food()
+    food = items.Food(0)
     self.state.common.append(food)
 
     # When you are too poor to buy the item, you do not get a choice.
@@ -2022,8 +2026,8 @@ class PurchaseTest(EventTest):
     self.char.dollars = 3
     self.assertFalse(buy.is_resolved())
     self.assertFalse(self.char.possessions)
-    food = items.Food()
-    gun = items.TommyGun()
+    food = items.Food(0)
+    gun = items.TommyGun(0)
     self.state.common.extend([gun, food])
 
     self.state.event_stack.append(buy)
@@ -2043,8 +2047,8 @@ class PurchaseTest(EventTest):
     self.char.dollars = 8
     self.assertFalse(buy.is_resolved())
     self.assertFalse(self.char.possessions)
-    food = items.Food()
-    gun = items.TommyGun()
+    food = items.Food(0)
+    gun = items.TommyGun(0)
     self.state.common.extend([food, gun])
 
     self.state.event_stack.append(buy)
@@ -2067,8 +2071,8 @@ class PurchaseTest(EventTest):
     self.char.dollars = 6
     self.assertFalse(buy.is_resolved())
     self.assertFalse(self.char.possessions)
-    food = items.Food()
-    gun = items.TommyGun()
+    food = items.Food(0)
+    gun = items.TommyGun(0)
     self.state.common.extend([food, gun])
 
     self.state.event_stack.append(buy)
@@ -2091,8 +2095,8 @@ class PurchaseTest(EventTest):
     self.char.dollars = 8
     self.assertFalse(buy.is_resolved())
     self.assertFalse(self.char.possessions)
-    food = items.Food()
-    gun = items.TommyGun()
+    food = items.Food(0)
+    gun = items.TommyGun(0)
     self.state.common.extend([food, gun])
 
     self.state.event_stack.append(buy)
@@ -2115,8 +2119,8 @@ class PurchaseTest(EventTest):
     self.char.dollars = 8
     self.assertFalse(buy.is_resolved())
     self.assertFalse(self.char.possessions)
-    food = items.Food()
-    gun = items.TommyGun()
+    food = items.Food(0)
+    gun = items.TommyGun(0)
     self.state.common.extend([food, gun])
 
     self.state.event_stack.append(buy)
@@ -2137,9 +2141,9 @@ class PurchaseTest(EventTest):
     self.char.dollars = 8
     self.assertFalse(buy.is_resolved())
     self.assertFalse(self.char.possessions)
-    food = items.Food()
-    gun = items.TommyGun()
-    cross = items.Cross()
+    food = items.Food(0)
+    gun = items.TommyGun(0)
+    cross = items.Cross(0)
     self.state.common.extend([food, gun, cross])
 
     self.state.event_stack.append(buy)
@@ -2160,7 +2164,7 @@ class PurchaseTest(EventTest):
     self.assertFalse(buy.is_resolved())
     self.assertFalse(self.char.possessions)
     self.char.possessions.append(Canceller(DrawItems))
-    self.state.common.extend([items.Food(), items.TommyGun(), items.Cross()])
+    self.state.common.extend([items.Food(0), items.TommyGun(0), items.Cross(0)])
     self.assertEqual(len(self.state.common), 3)
 
     self.state.event_stack.append(buy)
@@ -2181,7 +2185,7 @@ class PurchaseTest(EventTest):
     self.assertFalse(buy.is_resolved())
     self.assertFalse(self.char.possessions)
     self.char.possessions.append(Canceller(CardChoice))
-    self.state.common.extend([items.Food(), items.TommyGun(), items.Cross()])
+    self.state.common.extend([items.Food(0), items.TommyGun(0), items.Cross(0)])
     self.assertEqual(len(self.state.common), 3)
 
     self.state.event_stack.append(buy)
@@ -2201,7 +2205,7 @@ class PurchaseTest(EventTest):
     self.assertFalse(buy.is_resolved())
     self.assertFalse(self.char.possessions)
     self.char.possessions.append(Canceller(PurchaseDrawn))
-    self.state.common.extend([items.Food(), items.TommyGun(), items.Cross()])
+    self.state.common.extend([items.Food(0), items.TommyGun(0), items.Cross(0)])
     self.assertEqual(len(self.state.common), 3)
 
     self.state.event_stack.append(buy)
@@ -2222,13 +2226,13 @@ class SellTest(EventTest):
     self.char.dollars = 3
     self.assertFalse(sell.is_resolved())
     self.assertFalse(self.char.possessions)
-    food = items.Food()
+    food = items.Food(0)
     self.char.possessions.append(food)
 
     self.state.event_stack.append(sell)
     choice = self.resolve_to_choice(ItemChoice)
-    self.assertEqual(choice.choices, [0])
-    choice.resolve(self.state, [0])
+    self.assertEqual(choice.choices, ["Food0"])
+    choice.resolve(self.state, ["Food0"])
     self.resolve_until_done()
 
     self.assertTrue(sell.is_resolved())
@@ -2242,12 +2246,12 @@ class SellTest(EventTest):
     self.char.dollars = 3
     self.assertFalse(sell.is_resolved())
     self.assertFalse(self.char.possessions)
-    food = items.Food()
+    food = items.Food(0)
     self.char.possessions.append(food)
 
     self.state.event_stack.append(sell)
     choice = self.resolve_to_choice(ItemChoice)
-    self.assertEqual(choice.choices, [0])
+    self.assertEqual(choice.choices, ["Food0"])
     choice.resolve(self.state, [])
     self.resolve_until_done()
 
@@ -2262,13 +2266,13 @@ class SellTest(EventTest):
     self.char.dollars = 3
     self.assertFalse(buy.is_resolved())
     self.assertFalse(self.char.possessions)
-    food = items.Food()
+    food = items.Food(0)
     self.char.possessions.append(food)
 
     self.state.event_stack.append(buy)
     choice = self.resolve_to_choice(ItemChoice)
-    self.assertEqual(choice.choices, [0])
-    choice.resolve(self.state, [0])
+    self.assertEqual(choice.choices, ["Food0"])
+    choice.resolve(self.state, ["Food0"])
     self.resolve_until_done()
 
     self.assertTrue(buy.is_resolved())
@@ -2278,12 +2282,12 @@ class SellTest(EventTest):
     self.assertEqual(self.state.common[0].name, "Food")
 
   def testInvalidSale(self):
-    self.char.possessions = [items.Food(), items.HolyWater()]
+    self.char.possessions = [items.Food(0), items.HolyWater(0)]
     sell = Sell(self.char, {"common"}, 1)
     self.state.event_stack.append(sell)
     choice = self.resolve_to_choice(ItemChoice)
     with self.assertRaises(AssertionError):
-      choice.resolve(self.state, [1])
+      choice.resolve(self.state, ["Holy Water0"])
       self.resolve_until_done()
 
   def testSellChoiceCancelled(self):
@@ -2291,7 +2295,7 @@ class SellTest(EventTest):
     self.char.dollars = 3
     self.assertFalse(sell.is_resolved())
     self.assertFalse(self.char.possessions)
-    food = items.Food()
+    food = items.Food(0)
     self.char.possessions.append(food)
     self.char.possessions.append(Canceller(ItemChoice))
 

@@ -114,8 +114,8 @@ class Character:
 
   def get_usable_interrupts(self, event, state):
     return {
-        idx: p.get_usable_interrupt(event, self, state) for idx, p in enumerate(self.possessions)
-        if p.get_usable_interrupt(event, self, state)
+        pos.handle: pos.get_usable_interrupt(event, self, state)
+        for pos in self.possessions if pos.get_usable_interrupt(event, self, state)
     }
 
   def get_triggers(self, event, state):
@@ -126,8 +126,8 @@ class Character:
 
   def get_usable_triggers(self, event, state):
     triggers = {
-        idx: p.get_usable_trigger(event, self, state) for idx, p in enumerate(self.possessions)
-        if p.get_usable_trigger(event, self, state)
+        pos.handle: pos.get_usable_trigger(event, self, state)
+        for pos in self.possessions if pos.get_usable_trigger(event, self, state)
     }
     if self.clues > 0 and isinstance(event, events.Check) and event.character == self:
       triggers["clues"] = events.SpendClue(self, event)
