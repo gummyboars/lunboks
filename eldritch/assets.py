@@ -11,15 +11,22 @@ class Asset(metaclass=abc.ABCMeta):
 
   # pylint: disable=unused-argument
 
-  JSON_ATTRS = {"name", "active", "exhausted", "hands", "bonuses"}
+  JSON_ATTRS = {"name", "handle", "active", "exhausted", "hands", "bonuses"}
 
-  def __init__(self, name):
+  def __init__(self, name, idx=None):
     self._name = name
+    self._idx = idx
     self._exhausted = False
 
   @property
   def name(self):
     return self._name
+
+  @property
+  def handle(self):
+    if self._idx is None:
+      return self._name
+    return f"{self._name}{self._idx}"
 
   @property
   def exhausted(self):
@@ -66,10 +73,10 @@ class Card(Asset):
   DECKS = {"common", "unique", "spells", "skills", "allies"}
   VALID_BONUS_TYPES = CHECK_TYPES | SUB_CHECKS.keys() | COMBAT_SUBTYPES
 
-  def __init__(self, name, deck, active_bonuses, passive_bonuses):
+  def __init__(self, name, idx, deck, active_bonuses, passive_bonuses):
     assert deck in self.DECKS
     assert not (active_bonuses.keys() | passive_bonuses.keys()) - self.VALID_BONUS_TYPES
-    super().__init__(name)
+    super().__init__(name, idx)
     self.deck = deck
     self.active_bonuses = collections.defaultdict(int)
     self.active_bonuses.update(active_bonuses)
@@ -90,33 +97,33 @@ class Card(Asset):
 
 # TODO: drawing things when these allies join you
 def FortuneTeller():
-  return Card("Fortune Teller", "allies", {}, {"luck": 2})
+  return Card("Fortune Teller", None, "allies", {}, {"luck": 2})
 
 
 def TravelingSalesman():
-  return Card("Traveling Salesman", "allies", {}, {"sneak": 1, "will": 1})
+  return Card("Traveling Salesman", None, "allies", {}, {"sneak": 1, "will": 1})
 
 
 def PoliceDetective():
-  return Card("Police Detective", "allies", {}, {"fight": 1, "lore": 1})
+  return Card("Police Detective", None, "allies", {}, {"fight": 1, "lore": 1})
 
 
 def Thief():
-  return Card("Thief", "allies", {}, {"sneak": 2})
+  return Card("Thief", None, "allies", {}, {"sneak": 2})
 
 
 def ArmWrestler():
-  return Card("Arm Wrestler", "allies", {}, {})  # TODO: maximum stamina
+  return Card("Arm Wrestler", None, "allies", {}, {})  # TODO: maximum stamina
 
 
 def Dog():
-  return Card("Dog", "allies", {}, {})  # TODO: maximum sanity
+  return Card("Dog", None, "allies", {}, {})  # TODO: maximum sanity
 
 
 class BraveGuy(Card):
 
   def __init__(self):
-    super().__init__("Brave Guy", "allies", {}, {"speed": 2})
+    super().__init__("Brave Guy", None, "allies", {}, {"speed": 2})
 
   def get_override(self, other, attribute):
     if attribute == "nightmarish":
@@ -127,7 +134,7 @@ class BraveGuy(Card):
 class PoliceInspector(Card):
 
   def __init__(self):
-    super().__init__("Police Inspector", "allies", {}, {"will": 2})
+    super().__init__("Police Inspector", None, "allies", {}, {"will": 2})
 
   def get_override(self, other, attribute):
     if attribute == "endless":
@@ -138,7 +145,7 @@ class PoliceInspector(Card):
 class VisitingPainter(Card):
 
   def __init__(self):
-    super().__init__("Visiting Painter", "allies", {}, {"speed": 1, "luck": 1})
+    super().__init__("Visiting Painter", None, "allies", {}, {"speed": 1, "luck": 1})
 
   def get_override(self, other, attribute):
     if attribute == "physical resistance":
@@ -149,7 +156,7 @@ class VisitingPainter(Card):
 class OldProfessor(Card):
 
   def __init__(self):
-    super().__init__("Old Professor", "allies", {}, {"lore": 2})
+    super().__init__("Old Professor", None, "allies", {}, {"lore": 2})
 
   def get_override(self, other, attribute):
     if attribute == "magical resistance":
@@ -160,7 +167,7 @@ class OldProfessor(Card):
 class ToughGuy(Card):
 
   def __init__(self):
-    super().__init__("Tough Guy", "allies", {}, {"fight": 2})
+    super().__init__("Tough Guy", None, "allies", {}, {"fight": 2})
 
   def get_override(self, other, attribute):
     if attribute == "overwhelming":

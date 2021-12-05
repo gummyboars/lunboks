@@ -84,7 +84,7 @@ class ClueTokenTest(EventTest):
 
   def testBonusDieFromSkill(self):
     self.char.clues = 2
-    self.char.possessions.append(abilities.Fight())
+    self.char.possessions.append(abilities.Fight(None))
     self.resolve_to_usable(0, "clues", SpendClue)
     self.assertTrue(self.check.is_resolved())
     self.assertEqual(len(self.state.event_stack), 1)
@@ -111,19 +111,19 @@ class RerollTest(EventTest):
 
   def setUp(self):
     super().setUp()
-    self.char.possessions.append(abilities.Marksman())
+    self.char.possessions.append(abilities.Marksman(0))
     self.check = Check(self.char, "combat", 0)
     self.state.event_stack.append(self.check)
 
   def testReroll(self):
-    self.resolve_to_usable(0, 0, Sequence)
+    self.resolve_to_usable(0, "Marksman0", Sequence)
     self.assertTrue(self.check.is_resolved())
     self.assertEqual(len(self.state.event_stack), 1)
     self.assertEqual(self.state.event_stack[-1], self.check)
     self.assertEqual(len(self.state.usables), 1)
     old_roll = self.check.roll[:]
 
-    self.state.event_stack.append(self.state.usables[0][0])
+    self.state.event_stack.append(self.state.usables[0]["Marksman0"])
     self.resolve_loop()
 
     self.assertTrue(self.check.is_resolved())
@@ -133,7 +133,7 @@ class RerollTest(EventTest):
     self.assertNotEqual(old_roll, new_roll)  # TODO: 1 / 1296 chance of failing.
 
   def testRerollDiceCancelled(self):
-    self.resolve_to_usable(0, 0, Sequence)
+    self.resolve_to_usable(0, "Marksman0", Sequence)
     self.assertTrue(self.check.is_resolved())
     self.assertEqual(len(self.state.event_stack), 1)
     self.assertEqual(self.state.event_stack[-1], self.check)
@@ -142,7 +142,7 @@ class RerollTest(EventTest):
     old_roll = self.check.roll[:]
     old_successes = self.check.successes
 
-    reroll = self.state.usables[0][0]
+    reroll = self.state.usables[0]["Marksman0"]
     self.state.event_stack.append(reroll)
     self.resolve_loop()
 
@@ -159,7 +159,7 @@ class OneshotItemTest(EventTest):
 
   def setUp(self):
     super().setUp()
-    self.char.possessions.append(items.Dynamite())
+    self.char.possessions.append(items.Dynamite(0))
     self.check = Check(self.char, "combat", 0)
     self.state.event_stack.append(self.check)
 
@@ -182,7 +182,7 @@ class LossPreventionTest(EventTest):
 
   def setUp(self):
     super().setUp()
-    self.food = items.Food()
+    self.food = items.Food(0)
     self.char.possessions.append(self.food)
     self.loss = Loss(self.char, {"stamina": 1})
     self.state.event_stack.append(self.loss)
@@ -190,7 +190,7 @@ class LossPreventionTest(EventTest):
   def testIsUsable(self):
     self.assertEqual(self.char.stamina, 5)
 
-    self.resolve_to_usable(0, 0, Sequence)
+    self.resolve_to_usable(0, "Food0", Sequence)
     self.assertFalse(self.loss.is_resolved())
     self.assertCountEqual([0], self.state.usables.keys())
 
@@ -203,10 +203,10 @@ class LossPreventionTest(EventTest):
     self.assertEqual(self.char.stamina, 5)
     self.assertEqual(len(self.state.common), 0)
 
-    self.resolve_to_usable(0, 0, Sequence)
+    self.resolve_to_usable(0, "Food0", Sequence)
     self.assertFalse(self.loss.is_resolved())
 
-    self.state.event_stack.append(self.state.usables[0][0])
+    self.state.event_stack.append(self.state.usables[0]["Food0"])
     self.resolve_loop()
     self.assertTrue(self.loss.is_resolved())
     self.assertEqual(self.char.stamina, 5)
@@ -216,10 +216,10 @@ class LossPreventionTest(EventTest):
     self.assertEqual(self.char.stamina, 5)
     self.loss.losses["stamina"] = 2
 
-    self.resolve_to_usable(0, 0, Sequence)
+    self.resolve_to_usable(0, "Food0", Sequence)
     self.assertFalse(self.loss.is_resolved())
 
-    self.state.event_stack.append(self.state.usables[0][0])
+    self.state.event_stack.append(self.state.usables[0]["Food0"])
     self.resolve_loop()
     self.assertTrue(self.loss.is_resolved())
     self.assertEqual(self.char.stamina, 4)
@@ -237,9 +237,9 @@ class MedicineTest(EventTest):
   def testMedicine(self):
     upkeep = events.UpkeepActions(self.char)
     self.state.event_stack.append(upkeep)
-    self.resolve_to_usable(0, 0, Sequence)
+    self.resolve_to_usable(0, "Medicine", Sequence)
 
-    self.state.event_stack.append(self.state.usables[0][0])
+    self.state.event_stack.append(self.state.usables[0]["Medicine"])
     choice = self.resolve_to_choice(MultipleChoice)
     self.assertEqual(choice.choices, ["Dummy", "nobody"])
     choice.resolve(self.state, "Dummy")
@@ -257,9 +257,9 @@ class MedicineTest(EventTest):
 
     upkeep = events.UpkeepActions(self.char)
     self.state.event_stack.append(upkeep)
-    self.resolve_to_usable(0, 0, Sequence)
+    self.resolve_to_usable(0, "Medicine", Sequence)
 
-    self.state.event_stack.append(self.state.usables[0][0])
+    self.state.event_stack.append(self.state.usables[0]["Medicine"])
     choice = self.resolve_to_choice(MultipleChoice)
     self.assertEqual(choice.choices, ["Dummy", "Nun", "nobody"])
     choice.resolve(self.state, "Nun")
