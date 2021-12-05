@@ -465,6 +465,8 @@ class MovementTest(EventTest):
 
   def testMoveMultipleThroughTwoMonstersFailedEvade(self):
     self.char.speed_sneak_slider = 1
+    cultist = next(monster for monster in self.state.monsters if monster.name == "Cultist")
+    cultist.place = None  # Take one cultist as a trophy to test CityMovement's get_routes.
     monster1 = next(monster for monster in self.state.monsters if monster.name == "Maniac")
     monster1.place = self.state.places["Easttown"]
     monster2 = monsters.Zombie()
@@ -1301,7 +1303,7 @@ class DrawRandomTest(EventTest):
     self.assertTrue(draw.events[1].is_cancelled())
     self.assertEqual(len(self.char.possessions), 1)
     self.assertIsInstance(self.char.possessions[0], Canceller)
-    # self.assertEqual(len(self.state.common), 3)  TODO
+    self.assertEqual(len(self.state.common), 3)
 
 
 class DiscardNamedTest(EventTest):
@@ -1613,6 +1615,7 @@ class ItemChoiceTest(EventTest):
       choice.resolve(self.state, [0, 1, 2])
     choice.resolve(self.state, [0, 1])
     self.assertListEqual(choice.chosen, self.char.possessions[:2])
+    self.assertEqual(choice.choice_count, 2)
 
     self.resolve_until_done()
 
@@ -1631,6 +1634,7 @@ class ItemChoiceTest(EventTest):
 
     choice.resolve(self.state, [2])
     self.resolve_until_done()
+    self.assertEqual(choice.choice_count, 1)
 
 
 class PlaceChoiceTest(EventTest):
@@ -2209,7 +2213,7 @@ class PurchaseTest(EventTest):
     self.assertTrue(buy.events[1].is_cancelled())
     self.assertEqual(self.char.dollars, 8)
     self.assertEqual(len(self.char.possessions), 1)
-    # self.assertEqual(len(self.state.common), 3)  TODO
+    self.assertEqual(len(self.state.common), 3)
 
 
 class SellTest(EventTest):
