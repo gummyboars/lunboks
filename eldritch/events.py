@@ -344,7 +344,8 @@ class CityMovement(ChoiceEvent):
 
     monster_counts = collections.defaultdict(int)
     for monster in state.monsters:
-      monster_counts[monster.place.name] += 1
+      if monster.place is not None:
+        monster_counts[monster.place.name] += 1
 
     queue = collections.deque()
     for place in self.character.place.connections:
@@ -993,8 +994,7 @@ class DrawItems(Event):
 
         if i >= decksize:
           break
-      # TODO: is there a scenario when the player can go insane/unconscious before they
-      # successfully pick a card?
+      deck.extend(self.drawn)
 
   def is_resolved(self):
     return self.drawn is not None
@@ -1022,31 +1022,22 @@ class KeepDrawn(Event):
   def resolve(self, state):
     if self.draw.is_cancelled():
       self.kept = []
-      if self.draw.drawn is not None:
-        getattr(state, self.draw.deck).extend(self.drawn)
       return
 
     if self.drawn is None:
       assert self.draw.is_resolved()
       self.drawn = self.draw.drawn
 
-    if self.is_resolved():
-      # This should never happen??
-      return
-
     if self.choice is not None:
       assert self.choice.is_done()
       if self.choice.is_cancelled():
         self.cancelled = True
-        getattr(state, self.draw.deck).extend(self.drawn)
         return
       kept_cards = [self.drawn[self.choice.choice_index]]
-      discarded_cards = [
-          card for idx, card in enumerate(self.drawn) if idx != self.choice.choice_index]
       self.kept = [card.name for card in kept_cards]
+      for card in kept_cards:
+        getattr(state, self.draw.deck).remove(card)
       self.character.possessions.extend(kept_cards)
-      for card in discarded_cards:
-        getattr(state, self.draw.deck).append(card)
       return
 
     if self.keep_count < len(self.drawn):
@@ -1054,8 +1045,10 @@ class KeepDrawn(Event):
       state.event_stack.append(self.choice)
       return
 
-    self.character.possessions.extend(self.drawn)
     self.kept = [card.name for card in self.drawn]
+    for card in self.drawn:
+      getattr(state, self.draw.deck).remove(card)
+    self.character.possessions.extend(self.drawn)
 
   def is_resolved(self):
     return self.kept is not None
@@ -1156,8 +1149,6 @@ class PurchaseDrawn(Event):
     if self.drawn is None:
       if self.draw.is_cancelled():
         self.cancelled = True
-        if self.draw.drawn is not None:
-          getattr(state, self.draw.deck).extend(self.draw.drawn)
         return
       assert self.draw.is_resolved()
       self.drawn = self.draw.drawn
@@ -1165,23 +1156,20 @@ class PurchaseDrawn(Event):
     if self.choice is not None:
       if self.choice.is_cancelled():
         self.cancelled = True
-        getattr(state, self.draw.deck).extend(self.drawn)
         return
       if self.choice.choice == "Nothing":
         self.resolved = True
-        getattr(state, self.draw.deck).extend(self.drawn)
         return
-      # Note that by now, we should have returned the unavailable cards to the deck
       kept_card = self.drawn.pop(self.choice.choice_index)
       cost = self.prices.pop(self.choice.choice_index)
       self.kept.append(self.choice.choice)
-      assert cost <= self.character.dollars
+      assert cost <= self.character.dollars  # TODO: write a test for this?
       self.character.dollars -= cost  # TODO: this should be a spend event
+      getattr(state, self.draw.deck).remove(kept_card)
       self.character.possessions.append(kept_card)
       self.keep_count -= 1
 
     if self.keep_count == 0:
-      getattr(state, self.draw.deck).extend(self.drawn)
       self.resolved = True
       return
 
@@ -1197,7 +1185,6 @@ class PurchaseDrawn(Event):
         self.prices.append(price)
         choices.append(card.name)
       else:
-        getattr(state, self.draw.deck).append(card)
         unavailable.append(card.name)
     self.drawn = available
     choices.append("Nothing")
@@ -2843,7 +2830,7 @@ class MonsterSpawnChoice(ChoiceEvent):
     assert not set(sum(choice.values(), [])) - set(self.to_spawn)
     assert len(sum(choice.values(), [])) == self.spawn_count + self.outskirts_count
     assert len(choice.get("Outskirts") or []) == self.outskirts_count
-    city_choices = [val for key, val in choice.items() if key != "Outskirts"]
+    city_choices = [choice.get(key, []) for key in self.open_gates]
     if self.max_count > 0:
       assert len(sum(city_choices, [])) > 0
       assert max(len(indexes) for indexes in city_choices) == self.max_count
