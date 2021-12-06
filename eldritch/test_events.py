@@ -1688,6 +1688,35 @@ class ItemChoiceTest(EventTest):
 
     self.resolve_until_done()
 
+  def testCountChoiceWithValues(self):
+    choice = ItemCountChoice(self.char, "", values.ItemDeckCount(self.char, {"common"}))
+    self.state.event_stack.append(choice)
+    choice = self.resolve_to_choice(ItemCountChoice)
+
+    # Simulate discarding an item after getting to this choice.
+    self.char.possessions.remove(self.char.possessions[0])
+
+    with self.assertRaises(AssertionError):
+      choice.resolve(self.state, ["Food0", "Holy Water0"])
+    with self.assertRaises(AssertionError):
+      choice.resolve(self.state, [])
+    choice.resolve(self.state, ["Holy Water0"])
+    self.assertListEqual(choice.chosen, self.char.possessions[1:])
+    self.assertEqual(choice.choice_count, 1)
+
+  def testNonItemsInPossessions(self):
+    self.char.possessions.extend([assets.Dog(), abilities.Marksman(0)])
+    choice = ItemChoice(self.char, "", None, "tome")
+    self.state.event_stack.append(choice)
+
+    choice = self.resolve_to_choice(ItemChoice)
+    with self.assertRaises(AssertionError):
+      choice.resolve(self.state, ["Holy Water0"])
+    with self.assertRaises(AssertionError):
+      choice.resolve(self.state, ["Marksman0"])
+    choice.resolve(self.state, [])
+    self.resolve_until_done()
+
   def testCombatChoice(self):
     choice = CombatChoice(self.char, "choose combat items")
     self.state.event_stack.append(choice)
