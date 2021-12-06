@@ -1343,22 +1343,14 @@ def Woods3(char):
 
 def Woods4(char):
   check = events.Check(char, "luck", -1)
-#  bushwhack1a = events.ItemChoice(char, "Choose first item to lose")
-#  bushwhack1b = events.DiscardSpecific(char, bushwhack1a)
-#  bushwhack1c = events.ItemChoice(char, "Choose second item to lose")
-#  bushwhack1d = events.DiscardSpecific(char, bushwhack1c)
+  # TODO: this should actually be an item count, not a possession count.
+  # count = values.Calculation(values.Calculation(char, "possessions", len), None, min, 2)
   n_items = min(len(char.possessions), 2)
   item_choice = events.ItemCountChoice(char, f"Choose {n_items} to discard", n_items)
   bushwhack2 = events.Loss(char, {"stamina": 2})
-  bushwhack = events.Sequence([
-      #    bushwhack1a,
-      #    bushwhack1b,
-      #    bushwhack1c,
-      #    bushwhack1d,
-      item_choice,
-      events.DiscardSpecific(char, item_choice),
-      bushwhack2,
-  ], char)
+  bushwhack = events.Sequence(
+      [item_choice, events.DiscardSpecific(char, item_choice), bushwhack2], char,
+  )
   return events.PassFail(char, check, events.Nothing(), bushwhack)
 
 

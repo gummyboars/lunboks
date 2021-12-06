@@ -1306,6 +1306,75 @@ class DrawRandomTest(EventTest):
     self.assertEqual(len(self.state.common), 3)
 
 
+class DiscardSpecificTest(EventTest):
+
+  def testDiscardSpecific(self):
+    self.char.possessions.extend([items.Food(0), items.TommyGun(0)])
+    discard = DiscardSpecific(self.char, [self.char.possessions[0]])
+    self.assertFalse(discard.is_resolved())
+    self.state.event_stack.append(discard)
+    self.resolve_until_done()
+    self.assertTrue(discard.is_resolved())
+    self.assertEqual(len(self.char.possessions), 1)
+    self.assertEqual(self.char.possessions[0].name, "Tommy Gun")
+    self.assertEqual(len(self.state.common), 1)
+    self.assertEqual(self.state.common[0].name, "Food")
+    self.assertEqual(discard.discarded, ["Food"])
+
+  def testDiscardSpecificDuplicateName(self):
+    self.char.possessions.extend([items.Food(0), items.Food(1)])
+    discard = DiscardSpecific(self.char, [self.char.possessions[1]])
+    self.assertFalse(discard.is_resolved())
+    self.state.event_stack.append(discard)
+    self.resolve_until_done()
+    self.assertTrue(discard.is_resolved())
+    self.assertEqual(len(self.char.possessions), 1)
+    self.assertEqual(self.char.possessions[0].handle, "Food0")
+    self.assertEqual(len(self.state.common), 1)
+    self.assertEqual(self.state.common[0].handle, "Food1")
+    self.assertEqual(discard.discarded, ["Food"])
+
+  def testDiscardNotPresent(self):
+    self.char.possessions.extend([items.Food(0), items.Food(1)])
+    self.state.common.append(items.Food(2))
+    discard = DiscardSpecific(self.char, [self.state.common[0]])
+    self.assertFalse(discard.is_resolved())
+    self.state.event_stack.append(discard)
+    self.resolve_until_done()
+    self.assertTrue(discard.is_resolved())
+    self.assertEqual(len(self.char.possessions), 2)
+    self.assertEqual(len(self.state.common), 1)
+    self.assertEqual(self.state.common[0].handle, "Food2")
+    self.assertEqual(discard.discarded, [])
+
+  def testDiscardFromChoice(self):
+    self.char.possessions.extend([items.Food(0), items.Food(1)])
+    choice = ItemChoice(self.char, "")
+    discard = DiscardSpecific(self.char, choice)
+    self.assertFalse(discard.is_resolved())
+    self.state.event_stack.append(Sequence([choice, discard], self.char))
+    choice = self.resolve_to_choice(ItemChoice)
+    choice.resolve(self.state, ["Food0"])
+    self.resolve_until_done()
+    self.assertTrue(discard.is_resolved())
+    self.assertEqual(len(self.char.possessions), 1)
+    self.assertEqual(len(self.state.common), 1)
+    self.assertEqual(self.state.common[0].handle, "Food0")
+    self.assertEqual(discard.discarded, ["Food"])
+
+  def testDiscardFromCancelledChoice(self):
+    self.char.possessions.extend([items.Food(0), items.Food(1), Canceller(ItemChoice)])
+    choice = ItemChoice(self.char, "")
+    discard = DiscardSpecific(self.char, choice)
+    self.assertFalse(discard.is_resolved())
+    self.state.event_stack.append(Sequence([choice, discard], self.char))
+    self.resolve_until_done()
+    self.assertFalse(discard.is_resolved())
+    self.assertTrue(discard.is_cancelled())
+    self.assertEqual(len(self.char.possessions), 3)
+    self.assertEqual(len(self.state.common), 0)
+
+
 class DiscardNamedTest(EventTest):
   def testDiscardNamed(self):
     self.char.possessions.append(items.Food(0))
