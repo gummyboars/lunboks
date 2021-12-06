@@ -2137,17 +2137,17 @@ class ItemChoice(ChoiceEvent):
   def resolve(self, state, choice=None):
     if self.is_resolved():
       return
-    self.resolve_internal(choice)
+    self.validate_choice(state, choice)
+    self.chosen = [pos for pos in self.character.possessions if pos.handle in choice]
 
-  def resolve_internal(self, choices):
+  def validate_choice(self, state, choices):  # pylint: disable=unused-argument
     assert all(handle in self.choices for handle in choices)
-    self.chosen = [pos for pos in self.character.possessions if pos.handle in choices]
 
   def compute_choices(self, state):
     self.choices = [
         pos.handle for pos in self.character.possessions
         if (getattr(pos, "deck", None) in self.decks)
-        and (self.item_type is None or getattr(pos, "item_type") == self.item_type)
+        and (self.item_type is None or getattr(pos, "item_type", None) == self.item_type)
     ]
 
   def is_resolved(self):
@@ -2169,38 +2169,47 @@ class ItemChoice(ChoiceEvent):
 
 class CombatChoice(ItemChoice):
 
-  def resolve_internal(self, choices):
+  def __init__(self, character, prompt):
+    super().__init__(character, prompt, decks=None, item_type="weapon")
+
+  def validate_choice(self, state, choices):
+    super().validate_choice(state, choices)
     chosen = [pos for pos in self.character.possessions if pos.handle in choices]
     for pos in chosen:
-      assert getattr(pos, "item_type", None) == "weapon"
       assert getattr(pos, "hands", None) is not None
       assert getattr(pos, "deck", None) != "spells"
     hands_used = sum([pos.hands for pos in chosen])
     assert hands_used <= self.character.hands_available()
-    super().resolve_internal(choices)
 
 
 class ItemCountChoice(ItemChoice):
 
-  def __init__(self, character, prompt, count, min_count=None, decks=None):
-    super().__init__(character, prompt, decks=decks)
+  def __init__(self, character, prompt, count, min_count=None, decks=None, item_type=None):
+    super().__init__(character, prompt, decks=decks, item_type=item_type)
     self.count = count
     self.min_count = count if min_count is None else min_count
 
-  def resolve_internal(self, choices):
-    assert self.min_count <= len(choices) <= self.count
-    super().resolve_internal(choices)
+  def validate_choice(self, state, choices):
+    super().validate_choice(state, choices)
+    min_count = self.min_count
+    if isinstance(self.min_count, values.Value):
+      min_count = self.min_count.value(state)
+    max_count = self.count
+    if isinstance(self.count, values.Value):
+      max_count = self.count.value(state)
+    assert min_count <= len(choices) <= max_count
 
 
 class SinglePhysicalWeaponChoice(ItemCountChoice):
-  def __init__(self, char, prompt):
-    super().__init__(char, prompt, 1, min_count=0)
+
+  def __init__(self, character, prompt):
+    super().__init__(character, prompt, 1, min_count=0, item_type="weapon")
 
   def compute_choices(self, state):
+    super().compute_choices(state)
     self.choices = [
         pos.handle for pos in self.character.possessions
-        if (getattr(pos, "deck", None) in self.decks)
-        and getattr(pos, "item_type", None) == "weapon"
+        if pos.handle in self.choices
         and (pos.active_bonuses["physical"] or pos.passive_bonuses["physical"])
     ]
 
