@@ -3357,55 +3357,64 @@ class WoodsTest(EncounterTest):
       self.resolve_until_done()
     self.assertEqual(self.char.place.name, "Hospital")
 
-# TODO: Check these tests
-#  def testWoods4Pass(self):
-#    self.char.possessions.extend([items.HolyWater(0), items.Revolver38(0)])
-#    self.state.event_stack.append(encounters.Woods4(self.char))
-#    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
-#      self.resolve_until_done()
-#    self.assertEqual(len(self.char.possessions), 2)
-#    self.assertEqual(self.char.stamina, 3)
-#
-#  def testWoods4FailThreePlus(self):
-#    self.char.possessions.extend([items.HolyWater(0), items.Revolver38(0), items.TommyGun(0)])
-#    self.state.event_stack.append(encounters.Woods4(self.char))
-#    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=4)):
-#      self.resolve_to_choice(ItemChoice)
-#    self.assertEqual(len(self.char.possessions), 1)
-#    self.assertEqual(self.char.stamina, 1)
-#
-#  def testWoods4FailTwoItem(self):
-#    self.char.possessions.extend([items.HolyWater(0), items.Revolver38(0)])
-#    self.state.event_stack.append(encounters.Woods4(self.char))
-#    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=4)):
-#      self.resolve_until_done()
-#    self.assertEqual(len(self.char.possessions), 0)
-#    self.assertEqual(self.char.stamina, 1)
-#
-#  def testWoods4FailOneItem(self):
-#    self.char.possessions.extend([items.HolyWater(0)])
-#    self.state.event_stack.append(encounters.Woods4(self.char))
-#    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=4)):
-#      self.resolve_until_done()
-#    self.assertEqual(len(self.char.possessions), 0)
-#    self.assertEqual(self.char.stamina, 1)
-#
-#  def testWoods4FailZeroItem(self):
-#    self.state.event_stack.append(encounters.Woods4(self.char))
-#    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=4)):
-#      self.resolve_until_done()
-#    self.assertEqual(len(self.char.possessions), 0)
-#    self.assertEqual(self.char.stamina, 1)
-#
-#  def testWoods4FailKO(self):
-#    self.char.possessions.extend([items.HolyWater(0), items.Revolver38(0)])
-#    self.char.stamina = 2
-#    self.state.event_stack.append(encounters.Woods4(self.char))
-#    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=4)):
-#      self.resolve_until_done()
-#    self.assertEqual(len(self.char.possessions), 0)
-#    self.assertEqual(self.char.stamina, 1)
-#    self.assertEqual(self.char.place.name, "Hospital")
+  def testWoods4Pass(self):
+    self.char.possessions.extend([items.HolyWater(0), items.Revolver38(0)])
+    self.state.event_stack.append(encounters.Woods4(self.char))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+    self.assertEqual(len(self.char.possessions), 2)
+    self.assertEqual(self.char.stamina, 3)
+
+  def testWoods4FailThreePlus(self):
+    self.char.possessions.extend([items.HolyWater(0), items.Revolver38(0), items.TommyGun(0)])
+    self.state.event_stack.append(encounters.Woods4(self.char))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=4)):
+      loss_choice = self.resolve_to_choice(ItemChoice)
+    loss_choice.resolve(self.state, ["Holy Water0", "Tommy Gun0"])
+    self.resolve_until_done()
+    self.assertEqual(len(self.char.possessions), 1)
+    self.assertEqual(self.char.stamina, 1)
+
+  def testWoods4FailTwoItem(self):
+    self.char.possessions.extend([items.HolyWater(0), items.Revolver38(0)])
+    self.state.event_stack.append(encounters.Woods4(self.char))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=4)):
+      loss_choice = self.resolve_to_choice(ItemChoice)
+    loss_choice.resolve(self.state, ["Holy Water0", ".38 Revolver0"])
+    self.resolve_until_done()
+    self.assertEqual(len(self.char.possessions), 0)
+    self.assertEqual(self.char.stamina, 1)
+
+  def testWoods4FailOneItem(self):
+    self.char.possessions.extend([items.HolyWater(0)])
+    self.state.event_stack.append(encounters.Woods4(self.char))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=4)):
+      loss_choice = self.resolve_to_choice(ItemChoice)
+    loss_choice.resolve(self.state, ["Holy Water0"])
+    self.resolve_until_done()
+    self.assertEqual(len(self.char.possessions), 0)
+    self.assertEqual(self.char.stamina, 1)
+
+  def testWoods4FailZeroItem(self):
+    self.state.event_stack.append(encounters.Woods4(self.char))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=4)):
+      loss_choice = self.resolve_to_choice(ItemChoice)
+    loss_choice.resolve(self.state, [])
+    self.resolve_until_done()
+    self.assertEqual(len(self.char.possessions), 0)
+    self.assertEqual(self.char.stamina, 1)
+
+  def testWoods4FailKO(self):
+    self.char.possessions.extend([items.HolyWater(0), items.Revolver38(0)])
+    self.char.stamina = 2
+    self.state.event_stack.append(encounters.Woods4(self.char))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=4)):
+      loss_choice = self.resolve_to_choice(ItemChoice)
+    loss_choice.resolve(self.state, ["Holy Water0", ".38 Revolver0"])
+    self.resolve_until_done()
+    self.assertEqual(len(self.char.possessions), 0)
+    self.assertEqual(self.char.stamina, 1)
+    self.assertEqual(self.char.place.name, "Hospital")
 
   def testWoods5FoodAlly(self):
     self.char.speed_sneak_slider = 2

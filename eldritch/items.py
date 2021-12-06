@@ -34,7 +34,7 @@ class OneshotWeapon(Weapon):
       return None
     if event.character != owner or not self.active:
       return None
-    return events.DiscardSpecific(event.character, self)
+    return events.DiscardSpecific(event.character, [self])
 
 
 class Food(Item):
@@ -51,7 +51,7 @@ class Food(Item):
     elif event.losses.get("stamina", 0) < 1:
       return None
 
-    discard = events.DiscardSpecific(event.character, self)
+    discard = events.DiscardSpecific(event.character, [self])
     prevent = events.LossPrevention(self, event, "stamina", 1)
     return events.Sequence([discard, prevent], owner)
 
@@ -70,7 +70,7 @@ class Whiskey(Item):
     elif event.losses.get("sanity", 0) < 1:
       return None
 
-    discard = events.DiscardSpecific(event.character, self)
+    discard = events.DiscardSpecific(event.character, [self])
     prevent = events.LossPrevention(self, event, "sanity", 1)
     return events.Sequence([discard, prevent], owner)
 

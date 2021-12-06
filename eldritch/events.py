@@ -1649,7 +1649,7 @@ class CastSpell(Event):
     self.success = None
     self.choice: Optional[ChoiceEvent] = choice
     if action == "discard":
-      self.action = DiscardSpecific(character, spell)
+      self.action = DiscardSpecific(character, [spell])
     else:
       self.action = ExhaustAsset(character, spell)
 
@@ -1786,31 +1786,39 @@ class DeactivateSpells(Event):
 
 class DiscardSpecific(Event):
 
-  def __init__(self, character, item):
-    assert item in character.possessions
+  def __init__(self, character, items):
     self.character = character
-    self.item = item
+    self.items = items
     self.discarded = None
 
   def resolve(self, state):
-    if self.item not in self.character.possessions:
-      self.discarded = False
-      return
-    self.character.possessions.remove(self.item)
-    deck = getattr(state, self.item.deck)
-    deck.append(self.item)
-    self.discarded = True
+    if isinstance(self.items, ItemChoice):
+      assert self.items.is_done()
+      if self.items.is_cancelled():
+        self.cancelled = True
+        return
+      self.items = self.items.chosen
+
+    self.discarded = []
+    for item in self.items:
+      if item not in self.character.possessions:
+        continue
+      self.character.possessions.remove(item)
+      getattr(state, item.deck).append(item)
+      self.discarded.append(item.name)
 
   def is_resolved(self):
     return self.discarded is not None
 
   def start_str(self):
-    return f"{self.character.name} will discard a {self.item.name}"
+    if isinstance(self.items, ItemChoice):
+      return f"{self.character.name} will discard the chosen items"
+    return f"{self.character.name} will discard " + ", ".join(item.name for item in self.items)
 
   def finish_str(self):
     if not self.discarded:
-      return f"{self.character.name} did not have a {self.item.name} to discard"
-    return f"{self.character.name} discarded their {self.item.name}"
+      return f"{self.character.name} did not have items to discard"
+    return f"{self.character.name} discarded " + ", ".join(self.discarded)
 
 
 class DiscardNamed(Event):
