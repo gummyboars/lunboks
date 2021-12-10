@@ -182,6 +182,35 @@ function renderMaskedImage(cnv, imgData) {
   ctx.restore();
 }
 
+function setDivXYPercent(div, baseAsset, relativeAsset, fromBottom) {
+  if (imageInfo[baseAsset] == null || imageInfo[relativeAsset] == null) {
+    return false;
+  }
+  let xoff = imageInfo[relativeAsset].xoff - imageInfo[baseAsset].xoff;
+  let yoff = imageInfo[relativeAsset].yoff - imageInfo[baseAsset].yoff;
+  let angle = Math.PI * imageInfo[baseAsset].rotation / 180;
+  let xdiff = Math.cos(angle) * xoff - Math.sin(angle) * yoff;
+  let ydiff = Math.sin(angle) * xoff + Math.cos(angle) * yoff;
+  // TODO: scale
+  let baseImg;
+  if (imageInfo[baseAsset].filternum != null) {
+    baseImg = document.getElementById("img" + imageInfo[baseAsset].filternum);
+  } else {
+    baseImg = document.getElementById("img" + imageInfo[baseAsset].srcnum);
+  }
+  let width = baseImg.naturalWidth || baseImg.width;
+  let height = baseImg.naturalHeight || baseImg.height;
+  let xpct = (width / 2 + xdiff) / width;
+  let ypct = (height / 2 + ydiff) / height;
+  if (fromBottom) {
+    div.style.bottom = 100 * (1-ypct) + "%";
+  } else {
+    div.style.top = 100 * ypct + "%";
+  }
+  div.style.left = 100 * xpct + "%";
+  return true;
+}
+
 function loadImages() {
   let prefix = assetPrefix || "";
   // Parse data and set globals.

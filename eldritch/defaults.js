@@ -60,8 +60,14 @@ function renderDefaultToCanvas(cnv, width, height, assetName, variant) {
   if (assetName == "Clue") {
     return renderTextCircle(cnv, "🔍", "#47BA1F", "black", 0.65);
   }
+  if (assetName == "Slider") {
+    return renderSlider(cnv, width, height);
+  }
   if (characterNames.includes(assetName)) {
     return renderTextRectangle(cnv, assetName, "silver", "black");
+  }
+  if (assetName.endsWith("sliders")) {
+    return renderSliders(cnv, assetName.substring(0, assetName.length - 8));
   }
   if (monsterNames.includes(assetName)) {
     return renderTextRectangle(cnv, assetName, "black", "white");
@@ -101,6 +107,59 @@ function renderBoardToCanvas(cnv, width, height) {
   }
   for (let street in streets) {
     drawStreet(ctx, streets[street], cnv.width);
+  }
+}
+
+function renderSlider(cnv, width, height) {
+  let border = 2;
+  let ctx = cnv.getContext("2d");
+  ctx.lineWidth = border;
+  ctx.beginPath();
+  ctx.moveTo(width - border, height/2);
+  ctx.lineTo(width - border, width/2);
+  ctx.arc(width/2, width/2, width/2 - border, 0, Math.PI, true);
+  ctx.lineTo(border, height/2);
+  ctx.strokeStyle = "blue";
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(border, height/2);
+  ctx.lineTo(border, height - width/2);
+  ctx.arc(width/2, height - width/2, width/2 - border, Math.PI, 2*Math.PI, true);
+  ctx.lineTo(width - border, height/2);
+  ctx.strokeStyle = "red";
+  ctx.stroke();
+}
+
+function renderSliders(cnv, charName) {
+  let ctx = cnv.getContext("2d");
+  ctx.fillStyle = "wheat";
+  ctx.fillRect(0, 0, cnv.width, cnv.height);
+  for (let [idx, name] of ["SPEED", "SNEAK", "FIGHT", "WILL", "LORE", "LUCK"].entries()) {
+    let fontSize = getTextSize(ctx, "SPEED", 2 * cnv.width / 11, cnv.height / 8);
+    ctx.font = fontSize + "px sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = "black";
+
+    let numSpacesAbove = 1 + ((idx - idx % 2) / 2) * 0.5;
+    let textY = (numSpacesAbove + idx) * cnv.height / 8;
+    let textX = 1.25 * cnv.width / 11;
+    ctx.fillText(name, textX, textY);
+
+    let sliderValue = characterSliders[charName][idx];
+    let sliderIncrement = (idx % 2 == 0) ? 1 : -1;
+    let xoff = (idx % 4 == 2 || idx % 4 == 3) ? 2 : 1;
+    for (let j = 1; j < 5; j++) {
+      if (idx % 2 == 0) {
+        ctx.fillStyle = "blue";
+      } else {
+        ctx.fillStyle = "red";
+      }
+      ctx.font = "bold " + fontSize + "px sans-serif";
+      textX = (2 * j + xoff) * cnv.width / 11;
+      ctx.fillText(sliderValue, textX, textY);
+      sliderValue += sliderIncrement;
+    }
   }
 }
 

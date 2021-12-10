@@ -1,3 +1,5 @@
+from collections import OrderedDict
+
 from eldritch import abilities
 from eldritch import events
 
@@ -11,6 +13,7 @@ class Character:
     self.name = name
     self._max_stamina = max_stamina
     self._max_sanity = max_sanity
+    self._slider_names = ["speed_sneak", "fight_will", "lore_luck"]
     self._speed_sneak = [(max_speed - 3 + i, max_sneak - i) for i in range(4)]
     self._fight_will = [(max_fight - 3 + i, max_will - i) for i in range(4)]
     self._lore_luck = [(max_lore - 3 + i, max_luck - i) for i in range(4)]
@@ -46,8 +49,8 @@ class Character:
         "delayed_until", "lose_turn_until",
     ]
     data = {attr: getattr(self, attr) for attr in attrs}
-    data["sliders"] = {}
-    for slider in self.sliders():
+    data["sliders"] = OrderedDict()
+    for slider in self._slider_names:
       data["sliders"][slider] = {
           "pairs": getattr(self, "_" + slider),
           "selection": getattr(self, slider + "_slider"),
@@ -168,11 +171,7 @@ class Character:
     return 2 - sum([pos.hands_used() for pos in self.possessions if hasattr(pos, "hands_used")])
 
   def sliders(self):
-    sliders = {}
-    for key, val in self.__dict__.items():
-      if key.endswith("_slider"):
-        sliders[key[:-7]] = val
-    return sliders
+    return {slider: getattr(self, slider + "_slider") for slider in self._slider_names}
 
   def focus_cost(self, pending_sliders):
     return sum([abs(orig - pending_sliders[name]) for name, orig in self.sliders().items()])

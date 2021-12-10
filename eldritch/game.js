@@ -948,7 +948,7 @@ function updateCharacterSheets(characters, playerIdx, firstPlayer) {
   for (let [idx, character] of characters.entries()) {
     let sheet;
     if (rightUI.getElementsByClassName("player").length <= idx) {
-      sheet = createCharacterSheet(idx, character, rightUI);
+      sheet = createCharacterSheet(idx, character, rightUI, playerIdx == idx);
     } else {
       sheet = rightUI.getElementsByClassName("player")[idx];
     }
@@ -970,7 +970,7 @@ function updateCharacterSheets(characters, playerIdx, firstPlayer) {
   }
 }
 
-function createCharacterSheet(idx, character, rightUI) {
+function createCharacterSheet(idx, character, rightUI, isPlayer) {
   let div = document.createElement("DIV");
   div.classList.add("player");
   div.classList.add("collapsed");
@@ -1001,20 +1001,43 @@ function createCharacterSheet(idx, character, rightUI) {
   charTop.appendChild(charInfo);
   div.appendChild(charTop);
 
+  let sliderCont = document.createElement("DIV");
+  sliderCont.classList.add("slidercont");
   let sliders = document.createElement("DIV");
-  sliders.classList.add("sliders");
-  let spacer = document.createElement("DIV");
-  spacer.classList.add("sliderspacer");
-  sliders.appendChild(spacer);
-  div.appendChild(sliders);
+  sliders.classList.add("sliders", "cnvcontainer");
+  sliderCont.appendChild(sliders);
+  div.appendChild(sliderCont);
+  let slidersCnv = document.createElement("CANVAS");
+  slidersCnv.classList.add("worldcnv");  // TODO
+  sliders.appendChild(slidersCnv);
+  for (let i = 0; i < 3; i++) {  // TODO: fourth slider
+    for (let j = 0; j < 4; j++) {
+      let sliderDiv = document.createElement("DIV");
+      sliderDiv.classList.add("slider", "slider" + i + "" + j, "cnvcontainer");
+      let sliderCnv = document.createElement("CANVAS");
+      sliderCnv.classList.add("worldcnv");
+      sliderDiv.appendChild(sliderCnv);
+      sliders.appendChild(sliderDiv);
+      if (isPlayer) {
+        let sliderName = Object.entries(character.sliders)[i][0];
+        sliderDiv.onclick = function(e) { setSlider(sliderName, j); };
+      }
+      if (!setDivXYPercent(sliderDiv, "Nun sliders", "Slider " + i + " " + j, true)) {
+        let xoff = (i % 2 == 0) ? 1 : 2;
+        let xpct = (2 * (j+1) + xoff) * 9.09 + "%";
+        sliderDiv.style.left = xpct;
+        sliderDiv.style.bottom = (3 + 5 * (2-i)) * 100 / 16 + "%";
+      }
+    }
+  }
   let possessions = document.createElement("DIV");
   possessions.classList.add("possessions");
   div.appendChild(possessions);
-  let spacer2 = document.createElement("DIV");
-  spacer2.classList.add("sliderspacer");
-  div.appendChild(spacer2);
 
   rightUI.appendChild(div);
+  for (let sliderDiv of sliders.getElementsByClassName("slider")) {
+    renderAssetToDiv(sliderDiv, "Slider");
+  }
   return div;
 }
 
@@ -1081,69 +1104,15 @@ function updateCharacterSheet(sheet, character, order, isPlayer) {
 }
 
 function updateSliders(sheet, character, isPlayer) {
-  for (let sliderName in character.sliders) {
-    let sliderDiv = sheet.getElementsByClassName("slider_" + sliderName)[0];
-    if (sliderDiv == null) {
-      sliderDiv = createSlider(sliderName, character.sliders[sliderName], isPlayer);
-      sheet.getElementsByClassName("sliders")[0].appendChild(sliderDiv);
-      let spacerDiv = document.createElement("DIV");
-      spacerDiv.classList.add("sliderspacer");
-      sheet.getElementsByClassName("sliders")[0].appendChild(spacerDiv);
-    }
-    let selection = character.sliders[sliderName].selection;
-    let pairs = sliderDiv.getElementsByClassName("slidervaluepair");
-    for (let idx = 0; idx < pairs.length; idx++) {
-      let sliderPair = pairs[idx];
-      if (idx == selection) {
-        sliderPair.classList.add("sliderselected");
-        sliderPair.classList.remove("sliderdeselected");
-      } else {
-        sliderPair.classList.remove("sliderselected");
-        sliderPair.classList.add("sliderdeselected");
-      }
-    }
+  let sliders = sheet.getElementsByClassName("sliders")[0];
+  renderAssetToDiv(sliders, character.name + " sliders");
+  for (let slider of sliders.getElementsByClassName("slider")) {
+    slider.classList.remove("chosen");
   }
-}
-
-function createSlider(sliderName, sliderInfo, isPlayer) {
-  let firstName = sliderName.split("_")[0];
-  let secondName = sliderName.split("_")[1];
-  let sliderDiv = document.createElement("DIV");
-  sliderDiv.classList.add("slider");
-  sliderDiv.classList.add("slider_" + sliderName);
-  let nameDiv = document.createElement("DIV");
-  nameDiv.classList.add("sliderpair");
-  nameDiv.classList.add("slidernames");
-  let firstNameDiv = document.createElement("DIV");
-  firstNameDiv.classList.add("slidername");
-  firstNameDiv.innerText = firstName;
-  let secondNameDiv = document.createElement("DIV");
-  secondNameDiv.classList.add("slidername");
-  secondNameDiv.innerText = secondName;
-  nameDiv.appendChild(firstNameDiv);
-  nameDiv.appendChild(secondNameDiv);
-  sliderDiv.appendChild(nameDiv);
-  for (let idx = 0; idx < sliderInfo.pairs.length; idx++) {
-    let pair = sliderInfo.pairs[idx];
-    let pairDiv = document.createElement("DIV");
-    pairDiv.classList.add("sliderpair");
-    pairDiv.classList.add("slidervaluepair");
-    let firstDiv = document.createElement("DIV");
-    firstDiv.classList.add("slidervalue");
-    firstDiv.classList.add("slidertop");
-    firstDiv.innerText = pair[0];
-    let secondDiv = document.createElement("DIV");
-    secondDiv.classList.add("slidervalue");
-    secondDiv.classList.add("sliderbottom");
-    secondDiv.innerText = pair[1];
-    pairDiv.appendChild(firstDiv);
-    pairDiv.appendChild(secondDiv);
-    if (isPlayer) {
-      pairDiv.onclick = function(e) { setSlider(sliderName, idx); };
-    }
-    sliderDiv.appendChild(pairDiv);
+  for (let [idx, [sliderName, sliderInfo]] of Object.entries(character.sliders).entries()) {
+    let chosen = sheet.getElementsByClassName("slider" + idx + "" + sliderInfo.selection)[0];
+    chosen.classList.add("chosen");
   }
-  return sliderDiv;
 }
 
 function updatePossessions(sheet, character, isPlayer) {
