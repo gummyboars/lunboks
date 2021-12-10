@@ -25,7 +25,18 @@
     </div>
     <div style="display: flex; flex-direction: row; margin-top: 10px;">
       Image source:<input type="text" id="imgSrc" onchange="loadimg()">
+      Filter type:<select id="filterType" onchange="changeFilter(event)">
+        <option value="none">none</option>
+        <option value="rectangle">rectangle</option>
+        <option value="circle">circle</option>
+        <!--<option value="roundrect">rounded rectangle</option>-->
+        <!--<option value="hexagon">hexagon</option>-->
+        <option value="image">image</option>
+      </select>
       Filter source:<input type="text" id="filterSrc" value="/hex.png" onchange="loadfilter()">
+      Filter width:<input type="text" id="filterWidth" value="200" onchange="update(null)">
+      Filter height:<input type="text" id="filterHeight" value="200" onchange="update(null)">
+      Filter radius:<input type="text" id="filterRadius" value="100" onchange="update(null)">
     </div>
     <input type="button" value="Save Image" onclick="saveimg()"></input>
     <div id="names" style="margin-top: 20px;"></div>
