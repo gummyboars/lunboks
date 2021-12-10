@@ -252,7 +252,7 @@ class GameState:
           raise RuntimeError(f"Unknown choice type {top_event.__class__.__name__}")
     if top_event and isinstance(top_event, events.SliderInput) and not top_event.is_done():
       if top_event.character == char:
-        output["sliders"] = True
+        output["sliders"] = {"prompt": top_event.prompt()}
         # TODO: distinguish between pending/current sliders, pending/current focus.
         for name, value in top_event.pending.items():
           output["characters"][char_idx]["sliders"][name]["selection"] = value

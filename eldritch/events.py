@@ -237,6 +237,12 @@ class SliderInput(Event):
         raise AssertionError("You do not have enough focus.")
     self.pending = pending
 
+  def prompt(self):
+    if self.free:
+      return f"{self.character.name} to set sliders anywhere"
+    remaining_focus = self.character.focus_points - self.character.focus_cost(self.pending)
+    return f"{self.character.name} to set sliders ({remaining_focus} focus remaining)"
+
   def is_resolved(self):
     return self.done
 
@@ -319,7 +325,7 @@ class CityMovement(ChoiceEvent):
     return ""
 
   def prompt(self):
-    return "Move somewhere"
+    return f"{self.character.name} to move ({self.character.movement_points} move remaining)"
 
   @property
   def choices(self):
