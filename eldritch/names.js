@@ -10,25 +10,35 @@ function carefullyAdd(names) {
   }
 }
 
-characterNames = [
-  "Student",
-  "Drifter",
-  "Salesman",
-  "Psychologist",
-  "Photographer",
-  "Magician",
-  "Author",
-  "Professor",
-  "Dilettante",
-  "Private Eye",
-  "Scientist",
-  "Researcher",
-  "Nun",
-  "Doctor",
-  "Archaeologist",
-  "Gangster",
-];
+characterSliders = {
+  "Student": [1, 4, 1, 4, 1, 4],
+  "Drifter": [0, 6, 2, 5, 0, 3],
+  "Salesman": [2, 3, 1, 6, 0, 4],
+  "Psychologist": [0, 3, 1, 4, 2, 5],
+  "Photographer": [2, 3, 2, 4, 0, 4],
+  "Magician": [2, 4, 1, 3, 2, 3],
+  "Author": [1, 3, 0, 5, 1, 5],
+  "Professor": [0, 5, 0, 3, 3, 4],
+  "Dilettante": [0, 4, 1, 5, 1, 5],
+  "Private Eye": [3, 4, 2, 3, 0, 3],
+  "Scientist": [1, 5, 1, 3, 2, 4],
+  "Researcher": [1, 5, 0, 5, 1, 3],
+  "Nun": [1, 4, 0, 4, 1, 6],
+  "Doctor": [0, 5, 0, 4, 2, 4],
+  "Archaeologist": [1, 3, 2, 3, 1, 5],
+  "Gangster": [2, 4, 3, 4, 0, 3],
+};
+characterNames = Object.keys(characterSliders);
 carefullyAdd(characterNames);
+characterSliderNames = characterNames.map(name => name + " sliders");
+carefullyAdd(characterSliderNames);
+sliderLocations = [];
+for (let i = 0; i < 4; i++) {
+  for (let j = 0; j < 4; j++) {
+    sliderLocations.push("Slider " + i + " " + j);
+  }
+}
+carefullyAdd(sliderLocations);
 commonNames = [
   ".38 Revolver",
   ".45 Automatic",
@@ -196,4 +206,4 @@ locationNames = [
   "Isle",
 ];
 carefullyAdd(locationNames);
-assetNames = ["Clue", "board"].concat([...assetSet]);
+assetNames = ["Clue", "Slider", "board"].concat([...assetSet]);
