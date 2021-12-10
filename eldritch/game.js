@@ -10,6 +10,7 @@ monsterChoice = {};
 charChoice = null;
 runningAnim = [];
 messageQueue = [];
+statTimeout = null;
 
 function init() {
   let params = new URLSearchParams(window.location.search);
@@ -136,6 +137,10 @@ function continueInit(gameId) {
   outskirtsBox.ondragenter = dragEnter;
   outskirtsBox.ondragover = dragOver;
   outskirtsBox.ondrop = drop;
+  window.addEventListener("resize", function() {
+    clearTimeout(statTimeout);
+    statTimeout = setTimeout(updateStats, 255);
+  });
 }
 
 function placeLocations() {
@@ -197,6 +202,8 @@ function finishAnim() {
   runningAnim.shift();
   if (messageQueue.length && !runningAnim.length) {
     handleData(messageQueue.shift());
+  } else {
+    updateStats();  // TODO: this is hacky
   }
 }
 function handleData(data) {
@@ -215,6 +222,8 @@ function handleData(data) {
   updateEventLog(data.event_log);
   if (messageQueue.length && !runningAnim.length) {
     handleData(messageQueue.shift());
+  } else {
+    updateStats();  // TODO: this is hacky
   }
 }
 
@@ -398,9 +407,7 @@ function dropDollars(dragged, e) {
     console.log("dragged to a player without an id");
     return;
   }
-  let colonIdx = dragged.innerText.indexOf(":");
-  let valueText = dragged.innerText.substring(colonIdx+1).trim();
-  let maxAmount = parseInt(valueText, 10);
+  let maxAmount = parseInt(dragged.statValue, 10);
   if (isNaN(maxAmount)) {
     console.log("dragged a non-integer number of dollars");
     return;
@@ -560,6 +567,7 @@ function updateMonsters(monster_list) {
 
 function updateSliderButton(sliders) {
   if (sliders) {
+    document.getElementById("uiprompt").innerText = sliders.prompt;
     document.getElementById("donesliders").style.display = "inline-block";
   } else {
     document.getElementById("donesliders").style.display = "none";
@@ -934,7 +942,7 @@ function updateDice(numDice, roll, yours) {
   } else {
     btn.style.display = "none";
   }
-  while (diceDiv.getElementsByClassName("die").length > numDice) {
+  while (diceDiv.getElementsByClassName("die").length > Math.max(numDice, 0)) {
     diceDiv.removeChild(diceDiv.getElementsByClassName("die")[0])
   }
   while (diceDiv.getElementsByClassName("die").length < numDice) {
@@ -1042,6 +1050,9 @@ function createCharacterSheet(idx, character, rightUI, isPlayer) {
   let div = document.createElement("DIV");
   div.classList.add("player");
   div.classList.add("collapsed");
+  if (isPlayer) {
+    div.classList.add("you");
+  }
 
   let charTop = document.createElement("DIV");
   charTop.classList.add("playertop");
@@ -1050,24 +1061,45 @@ function createCharacterSheet(idx, character, rightUI, isPlayer) {
   charTop.ondragenter = dragEnter;
   charTop.ondragover = dragOver;
   let charPic = document.createElement("DIV");
-  charPic.classList.add("playerpicouter");
+  charPic.classList.add("picture", "cnvcontainer");
   charPic.onclick = function(e) { expandSheet(div) };
   let cnv = document.createElement("CANVAS");
-  cnv.classList.add("playerpiccanvas");
+  cnv.classList.add("markercnv");
   charPic.appendChild(cnv);
   charTop.appendChild(charPic);
 
-  let charInfo = document.createElement("DIV");
-  charInfo.classList.add("playerinfo");
   let charName = document.createElement("DIV");
-  charName.classList.add("playername");
-  charName.onclick = function(e) { expandSheet(div) };
-  charInfo.appendChild(charName);
+  charName.classList.add("playername", "cnvcontainer");
+  cnv = document.createElement("CANVAS");
+  charName.appendChild(cnv);
+  charTop.appendChild(charName);
+  div.appendChild(charTop);
+
   let charStats = document.createElement("DIV");
   charStats.classList.add("playerstats");
-  charInfo.appendChild(charStats);
-  charTop.appendChild(charInfo);
-  div.appendChild(charTop);
+  let statsBg = document.createElement("DIV");
+  statsBg.classList.add("statsbg", "cnvcontainer");
+  let bgcnv = document.createElement("CANVAS");
+  bgcnv.classList.add("markercnv");
+  statsBg.appendChild(bgcnv);
+  charStats.appendChild(statsBg);
+  for (let stat of ["stamina", "sanity", "clues", "dollars"]) {
+    let statDiv = document.createElement("DIV");
+    statDiv.classList.add("stats", stat);  // intentionally omit cnvcontainer; see updateStats()
+    let cnv = document.createElement("CANVAS");
+    statDiv.appendChild(cnv);
+    charStats.appendChild(statDiv);
+    if (isPlayer && stat == "clues") {
+      statDiv.classList.add("clue");
+      statDiv.onclick = function(e) { useAsset("clues") };
+    }
+    if (isPlayer && stat == "dollars") {
+      statDiv.draggable = true;
+      statDiv.ondragstart = dragStart;
+      statDiv.ondragend = dragEnd;
+    }
+  }
+  charTop.appendChild(charStats);
 
   let sliderCont = document.createElement("DIV");
   sliderCont.classList.add("slidercont");
@@ -1103,6 +1135,7 @@ function createCharacterSheet(idx, character, rightUI, isPlayer) {
   div.appendChild(possessions);
 
   rightUI.appendChild(div);
+  renderAssetToDiv(statsBg, "statsbg");
   for (let sliderDiv of sliders.getElementsByClassName("slider")) {
     renderAssetToDiv(sliderDiv, "Slider");
   }
@@ -1120,55 +1153,51 @@ function expandSheet(sheetDiv) {
 }
 
 function updateCharacterSheet(sheet, character, order, isPlayer) {
-  let width = document.getElementById("boardcanvas").width;
-  let markerWidth = width * markerWidthRatio;
-  let markerHeight = width * markerHeightRatio;
-  let picDiv = sheet.getElementsByClassName("playerpicouter")[0];
-  let cnv = sheet.getElementsByClassName("playerpiccanvas")[0];
-  picDiv.style.width = markerWidth + "px";
-  picDiv.style.height = markerHeight + "px";
-  cnv.width = markerWidth;
-  cnv.height = markerHeight;
-  renderAssetToCanvas(cnv, character.name, "");
-  if (isPlayer) {
-    sheet.classList.add("you");
-  } else {
-    sheet.classList.remove("you");
-  }
+  let charMarker = sheet.getElementsByClassName("picture")[0];
+  renderAssetToDiv(charMarker, character.name + " picture");
+  let charName = sheet.getElementsByClassName("playername")[0];
+  renderAssetToDiv(charName, character.name + " title");
   sheet.style.order = order;
-  sheet.getElementsByClassName("playername")[0].innerText = character.name;
   let stats = sheet.getElementsByClassName("playerstats")[0];
-  while (stats.firstChild) {
-    stats.removeChild(stats.firstChild);
-  }
-  let cfgs = [  // TODO: speed is not the correct cap for movement points
-    ["stamina", "stamina", "max_stamina"], ["sanity", "sanity", "max_sanity"],
-    ["movement", "movement_points", "speed"], ["focus", "focus_points", "focus"],
-    ["clues", "clues"], ["dollars", "dollars"],
+  let cfgs = [
+    ["Stamina", "stamina", "white", "max_stamina"], ["Sanity", "sanity", "white", "max_sanity"],
+    ["Clue", "clues", "white"], ["Dollar", "dollars", "black"],
   ];
   for (let cfg of cfgs) {
-    let text = cfg[0] + ": " + character[cfg[1]];
-    if (cfg.length > 2) {
-      text += " / " + character[cfg[2]];
+    let statDiv = sheet.getElementsByClassName(cfg[1])[0];
+    renderAssetToDiv(statDiv, cfg[0]);
+    statDiv.statValue = character[cfg[1]];
+    statDiv.textColor = cfg[2];
+    if (cfg.length > 3) {
+      statDiv.maxValue = character[cfg[3]];
+    } else {
+      statDiv.maxValue = null;
     }
-    let statDiv = document.createElement("DIV");
-    statDiv.classList.add("stat");
-    statDiv.innerText = text;
-    // TODO: make this nicer
-    if (isPlayer && cfg[0] == "clues") {
-      statDiv.classList.add("clue");
-      statDiv.onclick = function(e) { useAsset("clues") };
-    }
-    if (isPlayer && cfg[0] == "dollars") {
-      statDiv.classList.add("dollars");
-      statDiv.draggable = true;
-      statDiv.ondragstart = dragStart;
-      statDiv.ondragend = dragEnd;
-    }
-    stats.appendChild(statDiv);
   }
   updateSliders(sheet, character, isPlayer);
   updatePossessions(sheet, character, isPlayer);
+}
+
+function updateStats() {
+  for (let elem of document.getElementsByClassName("stats")) {
+    if (elem.assetName == null) {
+      continue;
+    }
+    renderAssetToDiv(elem, elem.assetName, elem.variant).then(function() {
+      let cnv = elem.getElementsByTagName("CANVAS")[0];
+      if (elem.maxValue != null) {
+        let pct = (elem.maxValue - elem.statValue) / elem.maxValue;
+        let ctx = cnv.getContext("2d");
+        ctx.save();
+        ctx.globalAlpha = 0.7;
+        ctx.globalCompositeOperation = "source-atop";
+        ctx.fillStyle = "white";
+        ctx.fillRect(0, 0, cnv.width, cnv.height * pct);
+        ctx.restore();
+      }
+      renderTextCircle(cnv, elem.statValue, "rgba(0, 0, 0, 0)", elem.textColor, 0.7);
+    });
+  }
 }
 
 function updateSliders(sheet, character, isPlayer) {

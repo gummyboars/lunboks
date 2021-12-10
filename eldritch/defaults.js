@@ -60,14 +60,37 @@ function renderDefaultToCanvas(cnv, width, height, assetName, variant) {
   if (assetName == "Clue") {
     return renderTextCircle(cnv, "🔍", "#47BA1F", "black", 0.65);
   }
+  if (assetName == "Dollar") {
+    return renderTextRectangle(cnv, "💵", "rgba(0, 0, 0, 0)", "black");
+  }
+  if (assetName == "Stamina") {
+    return renderTextRectangle(cnv, "❤️", "rgba(0, 0, 0, 0)", "black");
+  }
+  if (assetName == "Sanity") {
+    let ctx = cnv.getContext("2d");
+    ctx.save();
+    ctx.filter = "hue-rotate(225deg)";
+    renderTextRectangle(cnv, "🧠", "rgba(0, 0, 0, 0)", "black");
+    ctx.restore();
+    return;
+  }
   if (assetName == "Slider") {
     return renderSlider(cnv, width, height);
+  }
+  if (assetName == "statsbg") {
+    return renderTextRectangle(cnv, "", "silver", "black");
   }
   if (characterNames.includes(assetName)) {
     return renderTextRectangle(cnv, assetName, "silver", "black");
   }
   if (assetName.endsWith(" sliders")) {
     return renderSliders(cnv, assetName.substring(0, assetName.length - 8));
+  }
+  if (assetName.endsWith(" title")) {
+    return renderTextRectangle(cnv, assetName.substring(0, assetName.length - 5), "silver", "black");
+  }
+  if (assetName.endsWith(" picture")) {
+    return renderTextRectangle(cnv, assetName.substring(0, assetName.length - 8), "silver", "black");
   }
   if (monsterNames.includes(assetName)) {
     return renderTextRectangle(cnv, assetName, "black", "white");

@@ -30,6 +30,10 @@ characterSliders = {
 };
 characterNames = Object.keys(characterSliders);
 carefullyAdd(characterNames);
+characterTitles = characterNames.map(name => name + " title");
+carefullyAdd(characterTitles);
+characterPictures = characterNames.map(name => name + " picture");
+carefullyAdd(characterPictures);
 characterSliderNames = characterNames.map(name => name + " sliders");
 carefullyAdd(characterSliderNames);
 sliderLocations = [];
@@ -206,4 +210,4 @@ locationNames = [
   "Isle",
 ];
 carefullyAdd(locationNames);
-assetNames = ["Clue", "Slider", "board"].concat([...assetSet]);
+assetNames = ["Dollar", "Clue", "Sanity", "Stamina", "Slider", "statsbg", "board"].concat([...assetSet]);

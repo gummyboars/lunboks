@@ -65,21 +65,19 @@ function renderAssetToDiv(div, assetName, variant) {
   let imgData = imageInfo[assetName + variant] || imageInfo[assetName];
   if (imgData == null) {
     renderDefaultToCanvas(cnv, cnv.width, cnv.height, assetName, variant);
-    return;
+    return new Promise((resolve, reject) => {resolve(true);});
   }
   // If this asset is specified but the source is not, this skin does not want to render this asset.
   if (imgData.srcnum == null) {
-    return;
+    return new Promise((resolve, reject) => {resolve(true);});
   }
 
   let prom = createImage(imgData.srcnum);
-  prom.catch(function() { renderDefaultToCanvas(cnv, cnv.width, cnv.height, assetName, variant); });
+  let handleDefault = function() { renderDefaultToCanvas(cnv, cnv.width, cnv.height, assetName, variant); };
   if (imgData.filternum == null) {
-    prom.then(function() { renderImage(cnv, imgData.srcnum); });
-    return;
+    return prom.then(function() { renderImage(cnv, imgData.srcnum); }, handleDefault);
   }
-  prom.then(function() { renderMaskedImage(cnv, imgData); });
-  return prom;
+  return prom.then(function() { renderMaskedImage(cnv, imgData); }, handleDefault);
 }
 
 function clearAssetFromDiv(div) {

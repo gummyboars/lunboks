@@ -4,6 +4,7 @@ body {
   overflow: hidden;
   width: min(100vw, 160vh);
   height: min(62.5vw, 100vh);
+  color: black;
 }
 div {
   display: block;
@@ -636,6 +637,7 @@ button {
   align-items: center;
   height: calc(min(80vw, 128vh) * 2 / 29);
   width: calc(min(80vw, 128vh) * 2 / 29);
+  font-size: calc(min(1vw, 1.6vh));
 }
 .placebox:hover .placeselect {
   max-width: 100%;
@@ -740,8 +742,8 @@ button {
   flex-direction: column;
   justify-content: space-between;
   align-items: center;
-  background: silver;
-  border-top: 1px solid black;
+  background: cornsilk;
+  border-bottom: 1px solid black;
 }
 .playertop {
   width: 100%;
@@ -750,31 +752,39 @@ button {
   justify-content: space-around;
   align-items: center;
 }
-.playerpicouter {
-  flex: 1 1 auto;
-  display: flex;
-  flex-direction: row;
-  justify-content: center;
-  align-items: center;
+.picture {
+  position: relative;
+  width: calc(min(20vw, 32vh) * 2 / 7);
+  height: calc(min(20vw, 32vh) * 2 / 7);
 }
-.playerinfo {
-  width: 70%;
-  flex: 0 1 auto;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  align-items: center;
+.playername {
+  position: relative;
+  width: calc(min(20vw, 32vh) * 3 / 7);
+  height: calc(min(20vw, 32vh) * 2 / 7);
 }
 .playerstats {
+  position: relative;
+  width: calc(min(20vw, 32vh) * 2 / 7);
+  height: calc(min(20vw, 32vh) * 2 / 7);
   display: flex;
   flex-wrap: wrap;
-  flex-direction: row;
+  flex-direction: column;
+  justify-content: space-around;
+  align-items: center;
 }
-.stat {
-  width: 50%;
-  text-transform: capitalize;
+.statsbg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: calc(min(20vw, 32vh) * 2 / 7);
+  height: calc(min(20vw, 32vh) * 2 / 7);
 }
-.stat.clue {
+.stats {
+  width: calc(min(20vw, 32vh) / 8);
+  height: calc(min(20vw, 32vh) / 8);
+  z-index: 1;
+}
+.you .stats.clues {
   cursor: pointer;
 }
 .slidercont {
