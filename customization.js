@@ -67,17 +67,42 @@ function update(e) {
   scale = parseFloat(document.getElementById("scale").value);
   draw(e);
 }
+function changeFilter(e) {
+  let filterType = document.getElementById("filterType").value;
+  document.getElementById("filterSrc").disabled = true;
+  document.getElementById("filterWidth").disabled = true;
+  document.getElementById("filterHeight").disabled = true;
+  document.getElementById("filterRadius").disabled = true;
+  if (filterType == "image") {
+    document.getElementById("filterSrc").disabled = false;
+  } else if (filterType == "rectangle") {
+    document.getElementById("filterWidth").disabled = false;
+    document.getElementById("filterHeight").disabled = false;
+  } else if (filterType == "circle") {
+    document.getElementById("filterRadius").disabled = false;
+  }
+  update(e);
+}
 function draw(e) {
   let filter = document.getElementById("filter");
   let newImg = document.getElementById("sourceimg");
   let imgWidth = document.getElementById('sourceimg').width;
   let imgHeight = document.getElementById('sourceimg').height;
-  if (document.getElementById("filterSrc").value) {
-    document.getElementById("myCanvas").width = filter.width;
-    document.getElementById("myCanvas").height = filter.height;
+  let filterType = document.getElementById("filterType").value;
+  let myCanvas = document.getElementById("myCanvas");
+  if (filterType == "image" && document.getElementById("filterSrc").value) {
+    myCanvas.width = filter.width;
+    myCanvas.height = filter.height;
+  } else if (filterType == "rectangle") {
+    myCanvas.width = document.getElementById("filterWidth").value;
+    myCanvas.height = document.getElementById("filterHeight").value;
+  } else if (filterType == "circle") {
+    let rad = parseFloat(document.getElementById("filterRadius").value);
+    myCanvas.width = 2 * rad;
+    myCanvas.height = 2 * rad;
   } else {
-    document.getElementById("myCanvas").width = imgWidth;
-    document.getElementById("myCanvas").height = imgHeight;
+    myCanvas.width = imgWidth;
+    myCanvas.height = imgHeight;
   }
   let orig = document.getElementById('orig');
   orig.width = imgWidth;
@@ -90,12 +115,19 @@ function draw(e) {
   var context = orig.getContext('2d');
   context.save();
   context.drawImage(newImg, 0, 0);
-  if (document.getElementById("filterSrc").value) {
+  if (filterType != "none") {
     context.translate(xoff, yoff);
     context.rotate(-Math.PI * rotation / 180);
     context.scale(1/scale, 1/scale);
     context.globalAlpha = 0.3;
-    context.drawImage(filter, -filter.width/2, -filter.height/2);
+    if (filterType == "image" && document.getElementById("filterSrc").value) {
+      context.drawImage(filter, -filter.width/2, -filter.height/2);
+    } else if (filterType == "rectangle") {
+      context.fillRect(-myCanvas.width/2, -myCanvas.height/2, myCanvas.width, myCanvas.height);
+    } else if (filterType == "circle") {
+      context.arc(0, 0, myCanvas.width/2, 0, 2 * Math.PI);
+      context.fill();
+    }
   }
   context.restore();
 
@@ -103,10 +135,17 @@ function draw(e) {
 
   var context = canvas.getContext('2d');
   context.clearRect(0, 0, canvas.width, canvas.height);
-  if (document.getElementById("filterSrc").value) {
+  if (filterType != "none") {
     context.save();
-    context.translate(filter.width/2, filter.height/2);
-    context.drawImage(filter, -filter.width/2, -filter.height/2);
+    context.translate(canvas.width/2, canvas.height/2);
+    if (filterType == "image" && document.getElementById("filterSrc").value) {
+      context.drawImage(filter, -filter.width/2, -filter.height/2);
+    } else if (filterType == "rectangle") {
+      context.fillRect(-canvas.width/2, -canvas.height/2, canvas.width, canvas.height);
+    } else if (filterType == "circle") {
+      context.arc(0, 0, canvas.width/2, 0, 2 * Math.PI);
+      context.fill();
+    }
     context.rotate(Math.PI * rotation / 180);
     context.scale(scale, scale);
     context.globalCompositeOperation = "source-in";
@@ -129,11 +168,33 @@ function choosenew(e) {
   let sources = JSON.parse(localStorage.getItem(assetPrefix + "customsources") || "[]");
   if (!imageData) {
     imageData = {};
+    document.getElementById("imgSrc").value = "";
+    loadimg();
+    loadfilter();
+    update(null);
+    return;
   }
   let src = sources[imageData.srcnum];
-  let filter = null;
+  let filterType = "none";
+  let filterSrc = null;
+  let filterWidth = null;
+  let filterHeight = null;
+  let filterRadius = null;
   if (imageData.filternum != null) {
-    filter = sources[imageData.filternum];
+    let filter = sources[imageData.filternum];
+    if (typeof(filter) == "object") {
+      if (filter.shape == "rect") {
+        filterType = "rectangle";
+        filterWidth = filter.width;
+        filterHeight = filter.height;
+      } else if (filter.shape == "circle") {
+        filterType = "circle";
+        filterRadius = filter.radius;
+      }
+    } else {
+      filterType = "image";
+      filterSrc = filter;
+    }
   }
   let xoff = imageData.xoff || 0;
   let yoff = imageData.yoff || 0;
@@ -141,13 +202,17 @@ function choosenew(e) {
   let scale = imageData.scale || 1;
   document.getElementById("imgSrc").value = src;
   loadimg();
-  document.getElementById("filterSrc").value = filter;
+  document.getElementById("filterType").value = filterType;
+  document.getElementById("filterSrc").value = filterSrc;
+  document.getElementById("filterWidth").value = filterWidth;
+  document.getElementById("filterHeight").value = filterHeight;
+  document.getElementById("filterRadius").value = filterRadius;
   loadfilter();
   document.getElementById("xoff").value = xoff;
   document.getElementById("yoff").value = yoff;
   document.getElementById("rotation").value = rotation;
   document.getElementById("scale").value = scale;
-  update(null);
+  changeFilter(null);
 }
 function updatevariants(variants) {
   let dlist = document.getElementById("variantchoice");
@@ -172,19 +237,51 @@ function saveimg() {
   let imgName = document.getElementById("imgname").value;
   let imgVariant = document.getElementById("imgvariant").value;
   let imgSrc = document.getElementById("imgSrc").value;
+  let filterType = document.getElementById("filterType").value;
   let filterSrc = null;
-  if (document.getElementById("filterSrc").value) {
-    filterSrc = document.getElementById("filterSrc").value;
+  if (filterType != "none") {
+    if (filterType == "image" && document.getElementById("filterSrc").value) {
+      filterSrc = document.getElementById("filterSrc").value;
+    } else if (filterType == "rectangle") {
+      filterSrc = {
+        "shape": "rect",
+        "width": parseFloat(document.getElementById("filterWidth").value),
+        "height": parseFloat(document.getElementById("filterHeight").value),
+      };
+    } else if (filterType == "circle") {
+      filterSrc = {
+        "shape": "circle",
+        "radius": parseFloat(document.getElementById("filterRadius").value),
+      };
+    }
   }
   let currentSources = JSON.parse(localStorage.getItem(assetPrefix + "customsources") || "[]");
-  let imgIdx = currentSources.indexOf(imgSrc);
+  let imgSrcEquality = function(elem) {
+    if (elem == imgSrc) {
+      return true;
+    }
+    if (typeof(elem) != "object" || typeof(imgSrc) != "object") {
+      return false;
+    }
+    return elem.shape == imgSrc.shape && elem.width == imgSrc.width && elem.height == imgSrc.height && elem.radius == imgSrc.radius;
+  };
+  let imgIdx = currentSources.findIndex(imgSrcEquality);
   if (imgIdx < 0) {
     imgIdx = currentSources.length;
     currentSources.push(imgSrc);
   }
   let filterIdx = null;
   if (filterSrc != null) {
-    filterIdx = currentSources.indexOf(filterSrc);
+    let filterSrcEquality = function(elem) {
+      if (elem == filterSrc) {
+        return true;
+      }
+      if (typeof(elem) != "object" || typeof(filterSrc) != "object") {
+        return false;
+      }
+      return elem.shape == filterSrc.shape && elem.width == filterSrc.width && elem.height == filterSrc.height && elem.radius == filterSrc.radius;
+    };
+    filterIdx = currentSources.findIndex(filterSrcEquality);
     if (filterIdx < 0) {
       filterIdx = currentSources.length;
       currentSources.push(filterSrc);

@@ -382,6 +382,9 @@ function createShape(specs) {
   if (specs.shape == "rect") {
     cnv.width = specs.width;
     cnv.height = specs.height;
+  } else if (specs.shape == "circle") {
+    cnv.width = specs.radius * 2;
+    cnv.height = specs.radius * 2;
   }
   let ctx = cnv.getContext("2d");
   if (specs.style) {
@@ -389,6 +392,9 @@ function createShape(specs) {
   }
   if (specs.shape == "rect") {
     ctx.fillRect(0, 0, specs.width, specs.height);
+  } else if (specs.shape == "circle") {
+    ctx.arc(specs.radius, specs.radius, specs.radius, 0, 2 * Math.PI);
+    ctx.fill();
   }
   return cnv;
 }
