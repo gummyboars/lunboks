@@ -36,13 +36,11 @@ function continueInit(gameId) {
       let div = document.createElement("DIV");
       div.id = "place" + name;
       div.classList.add("place");
-      div.style.top = 170 * places[name].y + "%";
-      div.style.left = 100 * places[name].x + "%";
       div.onmouseenter = bringTop;
       div.onmouseleave = returnBottom;
       let box = document.createElement("DIV");
       box.id = "place" + name + "box";
-      box.classList.add("placebox", "placeboxhover");  // FIXME
+      box.classList.add("placebox");
       box.ondrop = drop;
       box.ondragenter = dragEnter;
       box.ondragover = dragOver;
@@ -54,7 +52,7 @@ function continueInit(gameId) {
       let details = document.createElement("DIV");
       details.id = "place" + name + "details";
       details.classList.add("placedetails");
-      if (places[name].y < 0.3) {
+      if (places[name].y < 0.5) {
         box.classList.add("placeupper");
         box.appendChild(details);
         box.appendChild(monstersDiv);
@@ -75,11 +73,14 @@ function continueInit(gameId) {
       details.appendChild(chars);
       let gateDiv = document.createElement("DIV");
       gateDiv.id = "place" + name + "gate";
-      gateDiv.classList.add("placegate", "cnvcontainer");
+      gateDiv.classList.add("placegate");
       details.appendChild(gateDiv);
+      let gateCont = document.createElement("DIV");
+      gateCont.classList.add("gatecontainer", "cnvcontainer");
+      gateDiv.appendChild(gateCont);
       let gate = document.createElement("CANVAS");
       gate.classList.add("gate");
-      gateDiv.appendChild(gate);
+      gateCont.appendChild(gate);
       let select = document.createElement("DIV");
       select.id = "place" + name + "select";
       select.classList.add("placeselect", placeType);
@@ -93,6 +94,7 @@ function continueInit(gameId) {
       document.getElementById("placechoice").appendChild(opt);
     }
   }
+  placeLocations();
   for (let name of monsterNames) {
     let opt = document.createElement("OPTION");
     opt.value = name;
@@ -134,6 +136,18 @@ function continueInit(gameId) {
   outskirtsBox.ondragenter = dragEnter;
   outskirtsBox.ondragover = dragOver;
   outskirtsBox.ondrop = drop;
+}
+
+function placeLocations() {
+  for (let [placeType, places] of [["location", locations], ["street", streets]]) {
+    for (let name in places) {
+      let div = document.getElementById("place" + name);
+      if (!setDivXYPercent(div, "board", name)) {
+        div.style.top = 100 * places[name].y + "%";
+        div.style.left = 100 * places[name].x + "%";
+      }
+    }
+  }
 }
 
 // TODO: dedup
@@ -419,7 +433,7 @@ function finishGive(e) {
   let msg = {
     "type": "give",
     "recipient": document.getElementById("giveselect").idx,
-    "idx": "dollars",
+    "handle": "dollars",
     "amount": parseInt(document.getElementById("giveslider").value, 10),
   };
   ws.send(JSON.stringify(msg));
@@ -841,11 +855,12 @@ function updateClues(place) {
 }
 
 function updateGate(place, gateDiv) {
+  let gateCont = gateDiv.getElementsByClassName("gatecontainer")[0];
   if (place.gate) {  // TODO: sealed
     gateDiv.classList.add("placegatepresent");
-    renderAssetToDiv(gateDiv, "Gate " + place.gate.name);
+    renderAssetToDiv(gateCont, "Gate " + place.gate.name);
   } else {
-    clearAssetFromDiv(gateDiv);
+    clearAssetFromDiv(gateCont);
     gateDiv.classList.remove("placegatepresent");
   }
 }
