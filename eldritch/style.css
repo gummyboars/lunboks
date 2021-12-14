@@ -11,6 +11,7 @@ div {
 }
 button {
   display: inline-block;
+  font-size: calc(min(1.25vw, 2vh));
 }
 /* TODO: dedup all of this */
 #errorText {
@@ -26,10 +27,6 @@ button {
   z-index: 40; /* error should be shown over everything else */
 }
 #giveselect {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
   z-index: 20;
   display: none;
   flex-direction: column;
@@ -37,8 +34,9 @@ button {
   align-items: center;
   background: sienna;
   color: black;
-  font-size: 3em;
+  font-size: calc(min(2.5vw, 4vh));
   border: 1px solid black;
+  pointer-events: auto;
 }
 #givetext {
   width: 100%;
@@ -62,19 +60,13 @@ button {
   align-items: center;
 }
 #charselect {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
   z-index: 20;
   display: none;
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  background: sienna;
   color: black;
-  font-size: 3em;
-  border: 1px solid black;
+  pointer-events: auto;
 }
 #charchoices {
   display: flex;
@@ -99,6 +91,8 @@ button {
   flex-direction: column;
   justify-content: center;
   align-items: center;
+  font-size: calc(min(1.25vw, 2vh));
+  cursor: pointer;
 }
 #charselectbuttons {
   display: flex;
@@ -106,20 +100,27 @@ button {
   justify-content: center;
   align-items: space-between;
 }
+#bottomcenter {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: center;
+  font-size: calc(min(2vw, 3.2vh));
+}
+#uiprompt {
+  width: 100%;
+  flex: 0 0 auto;
+  text-align: center;
+}
 #uichoice {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  z-index: 10;
   display: none;
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  max-width: 40%;
   background: sienna;
   color: black;
-  font-size: 3em;
+  font-size: calc(min(2vw, 3.2vh));
   border: 1px solid black;
 }
 #uicardchoice {
@@ -129,10 +130,8 @@ button {
   flex-direction: row;
   justify-content: center;
   align-items: flex-start;
-}
-#uiprompt {
-  width: 100%;
-  flex: 1 1 auto;
+  pointer-events: auto;
+  z-index: 20;
 }
 .cardholder {
   display: flex;
@@ -150,6 +149,9 @@ button {
   flex: 1 1 auto;
   border-top: 1px solid black;
 }
+.choice:first-child {
+  border-top: none;
+}
 .choice.choosable {
   cursor: pointer;
 }
@@ -162,18 +164,12 @@ button {
   text-decoration: line-through;
 }
 #uimonsterchoice {
-  position: absolute;
-  top: 10%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  z-index: 10;
   display: none;
   flex-direction: column;
   justify-content: center;
   align-items: center;
   background: sienna;
   color: black;
-  font-size: 3em;
   border: 1px solid black;
 }
 #monsterchoices {
@@ -182,27 +178,19 @@ button {
   justify-content: center;
   align-items: center;
 }
-#uicenter {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  z-index: 10;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  background: sienna;
-  color: black;
-  font-size: 2.5em;
+#monsterchoicebuttons button {
+  font-size: calc(min(1vw, 1.6vh));
 }
 #uiuse {
   display: none;
   flex-direction: row;
-  justify-content: space-around;
+  justify-content: center;
   align-items: center;
   width: 100%;
-  border: 1px solid black;
+}
+.spacer {
+  flex: 0 1 1em;
+  width: 1em;
 }
 #uiload {
   position: absolute;
@@ -282,6 +270,19 @@ button {
   background: #D2A253;
   display: flex;
   flex-direction: column;
+  position: relative;
+}
+#centerizer {
+  z-index: 20;
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
 }
 #board {
   width: 100%;
@@ -680,8 +681,14 @@ button {
   left: 0;
   z-index: 6;
 }
-#dice {
+#uidice {
   display: none;
+  flex-direction: column;
+  justify-content: flex-start:
+  align-items: center;
+}
+#dice {
+  display: flex;
   flex-direction: row;
   justify-content: space-around;
   align-items: center;
@@ -690,13 +697,16 @@ button {
   width: 1.25em;
   height: 1.25em;
   text-align: center;
+  background: sienna;
+  border: 1px solid black;
 }
 #roll {
-  position: absolute;
-  bottom: 0;
-  left: 50%;
-  transform: translate(-50%, 100%);
-  font-size: initial;
+  font-size: calc(min(1.25vw, 2vh));
+}
+.buttonholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 #monsterdetails {
   position: absolute;
@@ -710,8 +720,9 @@ button {
   align-items: center;
   background: sienna;
   color: black;
-  font-size: 3em;
+  font-size: calc(min(2.5vw, 4vh));
   border: 1px solid black;
+  pointer-events: auto;
 }
 #monsterdetailsname {
 }

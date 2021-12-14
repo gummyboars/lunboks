@@ -66,7 +66,7 @@ function renderDefaultToCanvas(cnv, width, height, assetName, variant) {
   if (characterNames.includes(assetName)) {
     return renderTextRectangle(cnv, assetName, "silver", "black");
   }
-  if (assetName.endsWith("sliders")) {
+  if (assetName.endsWith(" sliders")) {
     return renderSliders(cnv, assetName.substring(0, assetName.length - 8));
   }
   if (monsterNames.includes(assetName)) {
@@ -132,7 +132,7 @@ function renderSlider(cnv, width, height) {
 
 function renderSliders(cnv, charName) {
   let ctx = cnv.getContext("2d");
-  ctx.fillStyle = "wheat";
+  ctx.fillStyle = "cornsilk";
   ctx.fillRect(0, 0, cnv.width, cnv.height);
   for (let [idx, name] of ["SPEED", "SNEAK", "FIGHT", "WILL", "LORE", "LUCK"].entries()) {
     let fontSize = getTextSize(ctx, "SPEED", 2 * cnv.width / 11, cnv.height / 8);

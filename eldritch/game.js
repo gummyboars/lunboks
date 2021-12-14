@@ -203,9 +203,10 @@ function handleData(data) {
   allCharacters = data.all_characters;
   updateCharacterSelect(data.characters, data.player_idx, data.pending_name, data.pending_chars);
   updateCharacterSheets(data.characters, data.player_idx, data.first_player);
-  updateDone(data.game_stage, data.sliders);
+  updateBottomText(data.game_stage, data.turn_phase, data.characters, data.turn_idx, data.player_idx);
   updatePlaces(data.places);
   updateCharacters(data.characters);
+  updateSliderButton(data.sliders);
   updateChoices(data.choice);
   updateMonsters(data.monsters);
   updateMonsterChoices(data.choice, data.monsters);
@@ -257,10 +258,10 @@ function returnBottom(e) {
 }
 
 function makeChoice(val) {
-  if (itemsToChoose == null) {
-    ws.send(JSON.stringify({"type": "choice", "choice": val}));
-    return;
-  }
+  ws.send(JSON.stringify({"type": "choice", "choice": val}));
+}
+
+function chooseItems(e) {
   if (itemsToChoose > 0 && itemChoice.length != itemsToChoose) {
     document.getElementById("errorText").holdSeconds = 3;
     document.getElementById("errorText").style.opacity = 1.0;
@@ -481,10 +482,6 @@ function start(e) {
   ws.send(JSON.stringify({"type": "start"}));
 }
 
-function done(e) {
-  ws.send(JSON.stringify({"type": "choice", "choice": "done"}));
-}
-
 function doneSliders(e) {
   ws.send(JSON.stringify({"type": "set_slider", "name": "done"}));
 }
@@ -561,7 +558,16 @@ function updateMonsters(monster_list) {
   }
 }
 
+function updateSliderButton(sliders) {
+  if (sliders) {
+    document.getElementById("donesliders").style.display = "inline-block";
+  } else {
+    document.getElementById("donesliders").style.display = "none";
+  }
+}
+
 function updateChoices(choice) {
+  let btn = document.getElementById("doneitems");
   let uichoice = document.getElementById("uichoice");
   let uicardchoice = document.getElementById("uicardchoice");
   let pDiv;
@@ -575,19 +581,20 @@ function updateChoices(choice) {
     place.classList.remove("unselectable");
     place.innerText = "";
   }
+  uichoice.style.display = "none";
+  uicardchoice.style.display = "none";
+  btn.style.display = "none";
   if (choice == null || choice.monsters != null) {
-    uichoice.style.display = "none";
     itemsToChoose = null;
     itemChoice = [];
     pDiv.classList.remove("choose");
     return;
   }
   // Set display style for uichoice div.
-  uichoice.style.display = "flex";
   if (choice.cards != null) {
-    uichoice.style.maxWidth = "100%";
-  } else {
-    uichoice.style.maxWidth = "40%";
+    uicardchoice.style.display = "flex";
+  } else if (choice.items == null) {
+    uichoice.style.display = "flex";
   }
   // Clean out any old choices it may have.
   while (uichoice.getElementsByClassName("choice").length) {
@@ -601,7 +608,7 @@ function updateChoices(choice) {
   if (choice.items != null) {
     itemsToChoose = choice.items;
     pDiv.classList.add("choose");
-    addChoices(uichoice, ["Done Choosing Items"]);
+    btn.style.display = "inline-block";
   } else {
     itemsToChoose = null;
     itemChoice = [];
@@ -618,6 +625,7 @@ function updateChoices(choice) {
 
 function updateMonsterChoices(choice, monsterList) {
   // TODO: indicate how many monsters each location should receive.
+  let uiprompt = document.getElementById("uiprompt");
   let uimonsterchoice = document.getElementById("uimonsterchoice");
   let choicesBox = document.getElementById("monsterchoices");
   if (choice == null || choice.monsters == null) {
@@ -633,6 +641,7 @@ function updateMonsterChoices(choice, monsterList) {
     monsterChoice = {};
     return;
   }
+  uiprompt.innerText = "Drag Monsters to Gates";
   uimonsterchoice.style.display = "flex";
   for (let monsterIdx of choice.monsters) {
     if (monsters[monsterIdx] == null) {
@@ -897,32 +906,33 @@ function updatePlaceChoices(uichoice, places, annotations) {
   }
 }
 
-function updateDone(gameStage, sliders) {
-  let btn = document.getElementById("done").firstChild;
+function updateBottomText(gameStage, turnPhase, characters, turnIdx, playerIdx) {
+  let uiprompt = document.getElementById("uiprompt");
+  let btn = document.getElementById("start");
+  uiprompt.innerText = "";
   if (gameStage == "setup") {
-    btn.innerText = "Start";
-    btn.onclick = start;
+    btn.style.display = "inline-block";
     return;
   }
-  btn.innerText = "Done";
-  if (sliders) {
-    btn.onclick = doneSliders;
-  } else {
-    btn.onclick = done;
+  btn.style.display = "none";
+  if (turnIdx != null) {
+    uiprompt.innerText = characters[turnIdx].name + "'s " + turnPhase + " phase";
   }
 }
 
 function updateDice(numDice, roll, yours) {
+  let uidice = document.getElementById("uidice");
   let diceDiv = document.getElementById("dice");
+  let btn = document.getElementById("dicebutton");
   if (numDice == null) {
-    diceDiv.style.display = "none";
+    uidice.style.display = "none";
     return;
   }
-  diceDiv.style.display = "flex";
-  if (yours) {
-    document.getElementById("roll").getElementsByTagName("button")[0].style.display = "block";
+  uidice.style.display = "flex";
+  if (yours && (roll == null || roll.length < numDice)) {
+    btn.style.display = "inline-block";
   } else {
-    document.getElementById("roll").getElementsByTagName("button")[0].style.display = "none";
+    btn.style.display = "none";
   }
   while (diceDiv.getElementsByClassName("die").length > numDice) {
     diceDiv.removeChild(diceDiv.getElementsByClassName("die")[0])
