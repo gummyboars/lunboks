@@ -379,6 +379,8 @@ class GameState:
       if nearby_monsters:
         interrupts.append(events.EvadeOrFightAll(event.character, nearby_monsters))
     interrupts += sum([char.get_interrupts(event, self) for char in self.characters], [])
+    global_interrupts = [glob.get_interrupt(event, self) for glob in self.globals() if glob]
+    interrupts += [interrupt for interrupt in global_interrupts if interrupt]
     return interrupts
 
   def get_usable_interrupts(self, event):
@@ -419,6 +421,8 @@ class GameState:
     if isinstance(event, (events.Combat, events.InsaneOrUnconscious)):
       triggers.append(events.DeactivateSpells(event.character))
     triggers.extend(sum([char.get_triggers(event, self) for char in self.characters], []))
+    global_triggers = [glob.get_trigger(event, self) for glob in self.globals() if glob]
+    triggers += [trigger for trigger in global_triggers if trigger]
     return triggers
 
   def get_usable_triggers(self, event):
