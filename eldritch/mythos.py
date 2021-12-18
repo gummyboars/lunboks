@@ -11,16 +11,16 @@ class GlobalEffect:
   def get_override(self, thing, attribute):
     return None
 
-  def get_interrupt(self, event, owner, state):
+  def get_interrupt(self, event, state):
     return None
 
-  def get_usable_interrupt(self, event, owner, state):
+  def get_usable_interrupt(self, event, state):
     return None
 
-  def get_trigger(self, event, owner, state):
+  def get_trigger(self, event, state):
     return None
 
-  def get_usable_trigger(self, event, owner, state):
+  def get_usable_trigger(self, event, state):
     return None
 
 
@@ -86,7 +86,7 @@ class Mythos2(Environment):
       return 2
     return 0
 
-  def get_interrupt(self, event, owner, state):
+  def get_interrupt(self, event, state):
     if not isinstance(event, events.DrawItems) or event.deck != "unique":
       return None
     if len(state.event_stack) < 2:
@@ -102,7 +102,7 @@ class Mythos3(Environment):
   def __init__(self):
     super().__init__("Mythos3", "Square", "Unnamable", {"square", "diamond"}, {"circle"}, "mystic")
 
-  def get_interrupt(self, event, owner, state):
+  def get_interrupt(self, event, state):
     return None  # TODO: prevent stamina gain
 
 
@@ -141,7 +141,7 @@ class Mythos6(Environment):
       return 1
     return 0
 
-  def get_interrupt(self, event, owner, state):
+  def get_interrupt(self, event, state):
     if isinstance(event, events.MoveMonster) and event.monster.movement == "flying":
       return None  # TODO: prevent movement
     return None
