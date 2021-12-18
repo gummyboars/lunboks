@@ -365,12 +365,18 @@ class FindGate(Spell):
       return None
     # Note: you can travel into another world during the movement phase by failing a combat check
     # against certain types of monsters.
-    if not isinstance(event, events.Travel):
+    if not isinstance(event, (events.Travel, events.ForceMovement)):
       return None
+    # Food for thought: should we have a SpendMixin for GateChoice so that you only get one choice?
     return events.CastSpell(owner, self)
 
   def get_cast_event(self, owner, state):
-    return events.Return(owner, owner.place.info.name)  # TODO: cancel the ForceMovement if any.
+    if len(state.event_stack) > 1 and isinstance(state.event_stack[-2], events.ForceMovement):
+      return events.Sequence(
+          [events.Return(owner, owner.place.info.name), events.CancelEvent(state.event_stack[-2])],
+          owner,
+      )
+    return events.Return(owner, owner.place.info.name)
 
 
 def CreateCommon():

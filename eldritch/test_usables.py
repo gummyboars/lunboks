@@ -13,6 +13,7 @@ from eldritch import abilities
 from eldritch import characters
 from eldritch import events
 from eldritch.events import *
+from eldritch import gates
 from eldritch import items
 from eldritch.test_events import EventTest, Canceller
 
@@ -235,6 +236,88 @@ class LossPreventionTest(EventTest):
     self.resolve_loop()
     self.assertTrue(self.loss.is_resolved())
     self.assertEqual(self.char.stamina, 4)
+
+
+class FindGateTest(EventTest):
+
+  def setUp(self):
+    super().setUp()
+    self.char.possessions.append(items.FindGate(0))
+    self.info = places.OtherWorldInfo("Pluto", {"blue", "yellow"})
+    self.gate = gates.Gate("Pluto", 0, -2, "circle")
+    self.state.places["Woods"].gate = self.gate
+    self.state.turn_phase = "movement"
+
+  def testCastBeforeMovement(self):
+    self.char.place = self.state.places["Pluto1"]
+    self.state.event_stack.append(Movement(self.char))
+    self.resolve_to_usable(0, "Find Gate0", CastSpell)
+
+    self.assertEqual(self.char.place.name, "Pluto1")
+
+    self.state.event_stack.append(self.state.usables[0]["Find Gate0"])
+    spend_choice = self.resolve_to_choice(SpendMixin)
+    self.spend("sanity", 1, spend_choice)
+    spend_choice.resolve(self.state, "Cast")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      choice = self.resolve_to_choice(GateChoice)
+    choice.resolve(self.state, "Woods")
+    self.resolve_until_done()
+
+    self.assertEqual(self.char.place.name, "Woods")
+    self.assertTrue(self.char.explored)
+
+  def testCastAfterMovement(self):
+    self.char.place = self.state.places["Pluto1"]
+    self.state.event_stack.append(Movement(self.char))
+    self.resolve_to_usable(0, "Find Gate0", CastSpell)
+
+    self.assertEqual(self.char.place.name, "Pluto1")
+    self.state.done_using[0] = True
+    self.resolve_to_usable(0, "Find Gate0", CastSpell)
+
+    self.state.event_stack.append(self.state.usables[0]["Find Gate0"])
+    spend_choice = self.resolve_to_choice(SpendMixin)
+    self.spend("sanity", 1, spend_choice)
+    spend_choice.resolve(self.state, "Cast")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      choice = self.resolve_to_choice(GateChoice)
+    choice.resolve(self.state, "Woods")
+    self.resolve_until_done()
+
+    self.assertEqual(self.char.place.name, "Woods")
+    self.assertTrue(self.char.explored)
+
+  def testFailToCast(self):
+    self.char.place = self.state.places["Pluto1"]
+    self.state.event_stack.append(Movement(self.char))
+    self.resolve_to_usable(0, "Find Gate0", CastSpell)
+
+    self.assertEqual(self.char.place.name, "Pluto1")
+
+    self.state.event_stack.append(self.state.usables[0]["Find Gate0"])
+    spend_choice = self.resolve_to_choice(SpendMixin)
+    self.spend("sanity", 1, spend_choice)
+    spend_choice.resolve(self.state, "Cast")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
+      self.resolve_until_done()
+
+    self.assertEqual(self.char.place.name, "Pluto2")
+
+  def testCannotBeCastOutsideOtherworldMovement(self):
+    self.char.place = self.state.places["Woods"]
+    self.state.event_stack.append(Movement(self.char))
+    choice = self.resolve_to_choice(CityMovement)
+    self.assertNotIn(0, self.state.usables)
+    choice.resolve(self.state, "done")
+    self.resolve_until_done()
+
+    self.assertEqual(self.char.place.name, "Woods")
+    self.state.next_turn()
+    self.resolve_until_done()
+    self.assertEqual(self.char.place.name, "Pluto1")
+
+  # TODO: a test covering the ability to cast after travelling during the movement phase
 
 
 class MedicineTest(EventTest):
