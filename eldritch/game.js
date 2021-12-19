@@ -19,7 +19,6 @@ function init() {
     return;
   }
   let gameId = params.get("game_id");
-  initializeDefaults();
   let promise = loadImages();
   promise.then(function() { continueInit(gameId); }, showError);
 }
@@ -30,8 +29,6 @@ function continueInit(gameId) {
   renderAssetToDiv(document.getElementById("board"), "board");
   let width = document.getElementById("boardcanvas").width;
   let cont = document.getElementById("board");
-  let heights = {"location": Math.floor(2*radiusRatio*width), "street": Math.floor(width*heightRatio)};
-  let widths = {"location": Math.floor(2*radiusRatio*width), "street": Math.floor(width*widthRatio)};
   for (let [placeType, places] of [["location", locations], ["street", streets]]) {
     for (let name in places) {
       let div = document.createElement("DIV");
@@ -671,33 +668,25 @@ function addCardChoices(cardChoice, cards, invalidChoices, annotations) {
   for (let [idx, card] of cards.entries()) {
     let holder = document.createElement("DIV");
     holder.classList.add("cardholder");
+    if (invalidChoices != null && invalidChoices.includes(idx)) {
+      holder.classList.add("unchoosable");
+    }
     let div = document.createElement("DIV");
-    div.classList.add("cardchoice");
+    div.classList.add("cardchoice", "cnvcontainer");
     div.onclick = function(e) { makeChoice(card); };
-    let asset = getAsset(card, "");
-    let elemWidth = asset.naturalWidth || asset.width;
-    let elemHeight = asset.naturalHeight || asset.height;
-    div.style.width = elemWidth + "px";
-    div.style.height = elemHeight + "px";
     let cnv = document.createElement("CANVAS");
-    cnv.width = elemWidth;
-    cnv.height = elemHeight;
     cnv.classList.add("markercnv");  // TODO: use a better class name for this
-    renderAssetToCanvas(cnv, card, "");
     div.appendChild(cnv);
     holder.appendChild(div);
     let desc = document.createElement("DIV");
+    desc.classList.add("desc");
     if (annotations != null && annotations.length > idx) {
       desc.innerText = annotations[idx];
     }
     holder.appendChild(desc);
     cardChoice.appendChild(holder);
-    let spacer = document.createElement("DIV");
-    spacer.style.height = "100%";
-    spacer.style.width = 0.1 * elemWidth + "px";
-    cardChoice.appendChild(spacer);
+    renderAssetToDiv(div, card);
   }
-  cardChoice.removeChild(cardChoice.lastChild);
 }
 
 function addChoices(uichoice, choices, invalidChoices) {
@@ -1240,27 +1229,22 @@ function updatePossessions(sheet, character, isPlayer) {
     pDiv.removeChild(pDiv.firstChild);
   }
   for (let pos of character.possessions) {
-    pDiv.appendChild(createPossession(pos, isPlayer));
+    createPossession(pos, isPlayer, pDiv);
   }
 }
 
-function createPossession(info, isPlayer) {
-  let width = document.getElementById("boardcanvas").width;
-  let posWidth = 3 * width * markerWidthRatio / 2;
-  let posHeight = 3 * width * markerHeightRatio / 2;
+function createPossession(info, isPlayer, sheet) {
   let div = document.createElement("DIV");
-  div.classList.add("possession");
+  div.classList.add("possession", "cnvcontainer");
   if (info.active) {
     div.classList.add("active");
   }
   div.handle = info.handle;
+  if (abilityNames.includes(info.handle)) {
+    div.classList.add("big");
+  }
   let cnv = document.createElement("CANVAS");
-  div.style.width = posWidth + "px";
-  div.style.height = posHeight + "px";
-  cnv.width = posWidth;
-  cnv.height = posHeight;
-  cnv.classList.add("markercnv");  // TODO: maybe these should be a different size/class.
-  renderAssetToCanvas(cnv, info.name, "");
+  cnv.classList.add("markercnv");
   div.appendChild(cnv);
   let cascade = {"sneak": "evade", "fight": "combat", "will": "horror", "lore": "spell"};
   for (let attr in info.bonuses) {
@@ -1268,14 +1252,17 @@ function createPossession(info, isPlayer) {
       continue;
     }
     let highlightDiv = document.createElement("DIV");
-    highlightDiv.classList.add("bonus");
-    highlightDiv.classList.add("bonus" + attr);
+    highlightDiv.classList.add("bonus", "bonus" + attr);
     highlightDiv.innerText = (info.bonuses[attr] >= 0 ? "+" : "") + info.bonuses[attr];
     if (cascade[attr]) {
       highlightDiv.classList.add("bonus" + cascade[attr]);
     }
     div.appendChild(highlightDiv);
   }
+  let chosenDiv = document.createElement("DIV");
+  chosenDiv.classList.add("chosencheck");
+  chosenDiv.innerText = "✔️";
+  div.appendChild(chosenDiv);
   // TODO: show some information about bonuses that aren't active right now
   let handle = info.handle;
   if (isPlayer) {
@@ -1287,7 +1274,8 @@ function createPossession(info, isPlayer) {
     div.ondragstart = dragStart;
     div.ondragend = dragEnd;
   }
-  return div;
+  sheet.appendChild(div);
+  renderAssetToDiv(div, info.name);
 }
 
 function highlightCheck(e) {

@@ -1,8 +1,6 @@
 radiusRatio = 1 / 29;
 widthRatio = 2 / 39;
 heightRatio = 1 / 6;
-markerWidthRatio = radiusRatio;
-markerHeightRatio = radiusRatio * 3 / 2;
 
 connections = {
   Easttown: ["Downtown", "Rivertown"],
@@ -120,11 +118,43 @@ function renderDefaultToCanvas(cnv, width, height, assetName, variant) {
   if (assetName.startsWith("Gate ")) {
     return renderTextCircle(cnv, assetName.substring(5), "palegoldenrod", "black", 0.3);
   }
+  if (commonNames.includes(assetName)) {
+    return renderTextRectangle(cnv, assetName, "darkkhaki", "black");
+  }
+  if (uniqueNames.includes(assetName)) {
+    return renderTextRectangle(cnv, assetName, "indianred", "black");
+  }
+  if (spellNames.includes(assetName)) {
+    return renderTextRectangle(cnv, assetName, "mediumpurple", "black");
+  }
+  if (skillNames.includes(assetName)) {
+    return renderTextRectangle(cnv, assetName, "gold", "black");
+  }
+  if (allyNames.includes(assetName)) {
+    return renderTextRectangle(cnv, assetName, "darkorange", "black");
+  }
+  if (abilityNames.includes(assetName)) {
+    return renderTextRectangle(cnv, assetName, "wheat", "black");
+  }
+  if (gateCards.includes(assetName)) {
+    return renderTextRectangle(cnv, assetName, "white", "black");
+  }
+  if (mythosCards.includes(assetName)) {
+    return renderTextRectangle(cnv, assetName, "white", "black");
+  }
+  if (encounterCardNames.includes(assetName)) {
+    for (let neighborhood of neighborhoodNames) {
+      if (assetName.startsWith(neighborhood)) {
+        return renderTextRectangle(cnv, assetName, streets[neighborhood].color, "black");
+      }
+    }
+    throw new Error("unknown neighborhood for " + assetName);
+  }
   if (extraNames.includes(assetName)) {
     let bgColor = {"Outskirts": "purple", "Sky": "green", "Lost": "yellow"}[assetName];
     return renderTextRectangle(cnv, assetName, bgColor, "black");
   }
-  throw "unknown asset " + assetName;
+  throw new Error("unknown asset " + assetName);
 }
 
 function renderBoardToCanvas(cnv, width, height) {
@@ -202,92 +232,6 @@ function renderSliders(cnv, charName) {
   }
 }
 
-function initializeDefaults() {
-  let assets = document.getElementById("defaultassets");
-  let ctx;
-  let aspectRatio = 1.7;
-  // let w = window.innerWidth;
-  // let h = aspectRatio * window.innerHeight;
-  let desiredWidth = document.documentElement.clientWidth * 0.8;
-  let desiredHeight = document.documentElement.clientHeight * 0.9;
-  let width, height;
-  if (desiredHeight * aspectRatio > desiredWidth) {
-    width = desiredWidth;
-    height = desiredWidth / aspectRatio;
-  } else {
-    height = desiredHeight;
-    width = desiredHeight * aspectRatio;
-  }
-  let board = document.createElement("CANVAS");
-  board.width = width;
-  board.height = height;
-  ctx = board.getContext("2d");
-  ctx.fillStyle = "#D2A253";
-  ctx.fillRect(0, 0, width, height);
-  for (let conn in connections) {
-    for (let dest of connections[conn]) {
-      drawConnection(ctx, streets[conn], streets[dest], board.width, board.width / aspectRatio);
-    }
-  }
-  for (let loc in locations) {
-    for (let street in streets) {
-      if (streets[street].color == locations[loc].color) {
-        drawConnection(ctx, streets[street], locations[loc], board.width, board.width / aspectRatio);
-      }
-    }
-    drawLocation(ctx, locations[loc], board.width, board.width / aspectRatio);
-  }
-  for (let street in streets) {
-    drawStreet(ctx, streets[street], board.width, board.width / aspectRatio);
-  }
-  board.id = "defaultboard";
-  assets.appendChild(board);
-  let cfgs = [
-    {names: characterNames, color: "silver"},
-    {names: commonNames, color: "darkkhaki"},
-    {names: uniqueNames, color: "indianred"},
-    {names: spellNames, color: "mediumpurple"},
-    {names: skillNames, color: "gold"},
-    {names: allyNames, color: "darkorange"},
-    {names: abilityNames, color: "sienna"},
-  ];
-  for (let cfg of cfgs) {
-    for (let name of cfg.names) {
-      let asset = createTextRectangle(name, cfg.color, board.width, cfg.fgColor);
-      asset.id = "default" + name;
-      assets.appendChild(asset);
-    }
-  }
-  for (let name of monsterNames) {
-    let asset = createTextSquare(name, "black", board.width, "white");
-    asset.id = "default" + name;
-    assets.appendChild(asset);
-    asset = createTextSquare(name + " back", "black", board.width, "white");
-    asset.id = "default" + name + "back";
-    assets.appendChild(asset);
-  }
-  for (let world of otherWorlds) {
-    let asset = createTextCircle(world, "palegoldenrod", board.width, "black", 0.3);
-    asset.id = "default" + "Gate " + world;
-    assets.appendChild(asset);
-    asset = createOtherWorld(world, board.width);
-    asset.id = "default" + world;
-    assets.appendChild(asset);
-  }
-  let clue = createTextCircle("🔍", "#47BA1F", board.width, "black", 0.65);
-  clue.id = "defaultClue";
-  assets.appendChild(clue);
-  let outskirts = createTextSquare("Outskirts", "purple", board.width, "black");
-  outskirts.id = "defaultOutskirts";
-  assets.appendChild(outskirts);
-  let sky = createTextSquare("Sky", "green", board.width, "black");
-  sky.id = "defaultSky";
-  assets.appendChild(sky);
-  let lost = createTextSquare("Lost", "yellow", board.width, "black");
-  lost.id = "defaultLost";
-  assets.appendChild(lost);
-}
-
 function getTextSize(ctx, text, maxWidth, maxHeight) {
   ctx.font = "72px sans-serif";
   let alphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -347,36 +291,6 @@ function drawStreet(ctx, data, boardWidth, boardHeight) {
   ctx.restore();
 }
 
-function createTextRectangle(name, bgColor, boardWidth, fgColor) {
-  let cnv = document.createElement("CANVAS");
-  cnv.width = 3 * boardWidth * markerWidthRatio;
-  cnv.height = 3 * boardWidth * markerHeightRatio;
-  let ctx = cnv.getContext("2d");
-  ctx.save();
-  ctx.fillStyle = bgColor;
-  ctx.fillRect(0, 0, cnv.width, cnv.height);
-  let fontSize = getTextSize(ctx, name, cnv.width, cnv.height);
-  ctx.font = fontSize + "px sans-serif";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  if (fgColor != null) {
-    ctx.fillStyle = fgColor;
-  } else {
-    ctx.fillStyle = "black";
-  }
-  ctx.fillText(name, cnv.width/2, cnv.height/2);
-  ctx.restore();
-  return cnv;
-}
-
-function createTextSquare(name, bgColor, boardWidth, fgColor) {
-  let cnv = document.createElement("CANVAS");
-  cnv.width = boardWidth / 12;
-  cnv.height = boardWidth / 12;
-  renderTextRectangle(cnv, name, bgColor, fgColor);
-  return cnv;
-}
-
 function renderTextRectangle(cnv, name, bgColor, fgColor) {
   let ctx = cnv.getContext("2d");
   ctx.save();
@@ -395,15 +309,6 @@ function renderTextRectangle(cnv, name, bgColor, fgColor) {
   ctx.restore();
 }
 
-function createTextCircle(name, bgColor, boardWidth, fgColor, heightFactor) {
-  let cnv = document.createElement("CANVAS");
-  let radius = boardWidth * radiusRatio;
-  cnv.width = 2 * radius;
-  cnv.height = 2 * radius;
-  renderTextCircle(cnv, name, bgColor, fgColor, heightFactor);
-  return cnv;
-}
-
 function renderTextCircle(cnv, name, bgColor, fgColor, heightFactor) {
   let ctx = cnv.getContext("2d");
   ctx.save();
@@ -418,15 +323,6 @@ function renderTextCircle(cnv, name, bgColor, fgColor, heightFactor) {
   ctx.fillStyle = fgColor;
   ctx.fillText(name, cnv.width/2, cnv.width/2);
   ctx.restore();
-}
-
-function createOtherWorld(name, boardWidth) {
-  let cnv = document.createElement("CANVAS");
-  let worldSize = boardWidth / 8;
-  cnv.width = worldSize;
-  cnv.height = worldSize;
-  renderOtherWorld(cnv, name, cnv.width, cnv.height);
-  return cnv;
 }
 
 function renderOtherWorld(cnv, name, width, height) {

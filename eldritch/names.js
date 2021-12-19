@@ -154,12 +154,12 @@ for (let name of assetNames) {
 }
 gateCards = [];
 for (let i = 1; i <= 50; i++) {
-  gateCards.push("gate" + i);
+  gateCards.push("Gate" + i);
 }
 carefullyAdd(gateCards);
 mythosCards = [];
 for (let i = 1; i <= 67; i++) {
-  mythosCards.push("mythos" + i);
+  mythosCards.push("Mythos" + i);
 }
 carefullyAdd(mythosCards);
 neighborhoodNames = [
