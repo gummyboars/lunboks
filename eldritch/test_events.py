@@ -105,9 +105,9 @@ class EventTest(unittest.TestCase):
     self.state.mythos.extend([NoMythos()] * (target_turn - self.state.turn_number + 1))
     while True:
       for _ in self.state.resolve_loop():
-        if self.state.turn_number == target_turn and self.state.turn_phase == target_phase:
+        if self.state.turn_number >= target_turn and self.state.turn_phase == target_phase:
           break
-      if self.state.turn_number == target_turn and self.state.turn_phase == target_phase:
+      if self.state.turn_number >= target_turn and self.state.turn_phase == target_phase:
         break
       if not self.state.event_stack:
         self.state.next_turn()

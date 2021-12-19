@@ -1,26 +1,25 @@
 import abc
 
-from eldritch import events, places, characters, monsters, values
+from eldritch import events, places, characters, monsters, values, mythos
+from eldritch.events import AncientOneAttack, AncientOneAwaken
 
 
-class AncientOne(metaclass=abc.ABCMeta):
+class AncientOne(mythos.GlobalEffect, metaclass=abc.ABCMeta):
   # pylint: disable=unused-argument
-  def __init__(self):
+  def __init__(self, name, max_doom, attributes, combat_rating):
+    self.name = name
+    self.max_doom = max_doom
     self.doom = 0
-    self.combat_difficulty = 0
-    self.attributes = []
-
-  def get_interrupts(self, owner, state):
-    return []
+    self.combat_rating = combat_rating
+    self.attributes = attributes
 
   def get_modifier(self, thing, attribute):
+    if thing is self:
+      return self.combat_rating
     return 0
 
-  def get_override(self, other, attribute):
-    return None
-
   def awaken(self, state):
-    pass
+    return AncientOneAwaken([])
 
   @abc.abstractmethod
   def attack(self, state):
@@ -28,47 +27,46 @@ class AncientOne(metaclass=abc.ABCMeta):
 
 
 class DummyAncient(AncientOne):
+  def __init__(self):
+    super().__init__("Dummy", 10, [], 0)
+
   def attack(self, state):
-    pass
+    return AncientOneAttack([])
 
 
 class SquidFace(AncientOne):
   def __init__(self):
-    super().__init__()
-    self.name = "SquidFace"
-    self.max_doom = 13
-    self.combat_difficulty = -6
+    super().__init__("SquidFace", 13, [], -6)
 
   def get_modifier(self, thing, attribute):
     if isinstance(thing, monsters.Cultist):
       return {"horror": -2, "horror_damage": 2}.get(attribute, 0)
     if isinstance(thing, characters.Character):
-      return {"maximum_sanity": -1, "maximum_stamina": -1}
-    return 0
+      return {"max_sanity": -1, "max_stamina": -1}.get(attribute, 0)
+    return super().get_modifier(thing, attribute)
 
   def attack(self, state):
     self.doom = min(self.doom + 1, self.max_doom)
-    # TODO: Each character lowers max sanity or stamina
+    return AncientOneAttack([
+      # TODO: Each character lowers max sanity or stamina
+    ])
 
 
 class YellowKing(AncientOne):
   def __init__(self):
-    super().__init__()
-    self.name = "The Yellow King"
-    self.attributes = ["physical resistance"]
-    self.combat_difficulty = None
+    super().__init__("The Yellow King", 13, ["physical resistance"], None)
     self.luck_modifier = 1
-    self.max_doom = 13
 
   def awaken(self, state):
     self.combat_difficulty = state.terror
+    return AncientOneAwaken([])
 
   def get_modifier(self, thing, attribute):
     if isinstance(thing, monsters.Cultist):
       return {"combat_difficulty": -2, "movement": "flying"}.get(attribute, 0)
-    if isinstance(thing, events.GateCloseAttempt):
+    if isinstance(thing, events.GateCloseAttempt) and attribute == "difficulty":
       return 3
-    return 0
+    return super().get_modifier(thing, attribute)
 
   def attack(self, state):
     checks = []
@@ -77,93 +75,100 @@ class YellowKing(AncientOne):
       checks.append(
           events.PassFail(char, check, events.Nothing(), events.Loss(char, {"sanity": 2}))
       )
-    state.event_stack.append(events.Sequence(checks))
     self.luck_modifier -= 1
+    return AncientOneAttack(checks)
 
 
 class ChaosGod(AncientOne):
   def __init__(self):
-    super().__init__()
-    self.name = "God of Chaos"
-    self.max_doom = 14
+    super().__init__("God of Chaos", 14, [], float("-inf"))
 
   def awaken(self, state):
     state.game_stage = "defeat"
+    return AncientOneAwaken([])
 
   def attack(self, state):
-    pass
+    return AncientOneAttack([])
 
   def get_modifier(self, thing, attribute):
     if isinstance(thing, monsters.Maniac):
       return {"toughness": 1}.get(attribute, 0)
-    return 0
+    return super().get_modifier(thing, attribute)
 
 
 class Wendigo(AncientOne):
   def __init__(self):
-    super().__init__()
-    self.name = "Wendigo"
-    self.max_doom = 11
-    self.combat_difficulty = -3
+    super().__init__("Wendigo", 11, [], -3)
     self.fight_modifier = 1
 
-  def get_interrupts(self, owner, state):
-    if (
-        isinstance(owner, events.CityMovement)
-        and owner.is_resolved()
-        and isinstance(owner.character.place, places.Street)
-    ):
-      return [events.Loss(owner.character, {"stamina": 1})]
+  def get_interrupt(self, event, state):
     # TODO: Discard weather cards
-    return []
+    if isinstance(event, events.ActivateEnvironment):
+      return [events.CancelEvent(event)]
+    return None
+
+  def get_trigger(self, event, state):
+    losses = []
+    if isinstance(event, events.Mythos):
+      for char in state.characters:
+        if isinstance(char.place, places.Street):
+          losses.append(events.Loss(char, {"stamina": 1}))
+      return events.Sequence(losses)
 
   def get_modifier(self, thing, attribute):
     if isinstance(thing, monsters.Cultist):
       return {"toughness": 2}.get(attribute, 0)
-    return 0
+    return super().get_modifier(thing, attribute)
 
   def awaken(self, state):
     # TODO: Roll a die for each item, discard on a failure
-    pass
+    return AncientOneAwaken([])
 
   def attack(self, state):
+    checks = []
     for char in state.characters:
       check = events.Check(char, "fight", self.fight_modifier)
-      state.event_stack.append(
+      checks.append(
           events.PassFail(char, check, events.Nothing(), events.Loss(char, {"stamina": 2}))
       )
     self.fight_modifier -= 1
+    return AncientOneAttack(checks)
 
 
 class BlackPharaoh(AncientOne):
   def __init__(self):
-    super().__init__()
-    self.max_doom = 11
-    self.attributes = ["magical resistance"]
-    self.combat_difficulty = -4
+    super().__init__("The Thousand Masks", 11, ["magical resistance"], -4)
     self.lore_modifier = 1
+    # TODO: Add masks to monster cup
 
   def get_modifier(self, thing, attribute):
     if isinstance(thing, monsters.Cultist):
       return {"attribute": "endless"}.get(attribute, 0)
-    return 0
+    return super().get_modifier(thing, attribute)
 
   def awaken(self, state):
+    checks = []
     for char in state.characters:
-      if char.clues == 0:
-        pass
-        # state.event_stack.append(events.Devoured(char))
+      has_clues = values.AttributePrerequisite(char, "clues", "at least", 1)
+      checks.append(
+        events.PassFail(
+          char, has_clues, events.Nothing(), events.Nothing()
+        ) #TODO: Devoured if no clue tokens
+      )
+    return AncientOneAwaken(checks)
 
   def attack(self, state):
+    checks = []
     for char in state.characters:
       check = events.Check(char, "lore", self.lore_modifier)
       has_clues = values.AttributePrerequisite(char, "clues", "at least", 1)
-      state.event_stack.append(
+      checks.append(
           events.Sequence([
-              events.PassFail(char, check, events.Nothing(), events.Loss(char, {"stamina": 2})),
+              events.PassFail(char, check, events.Nothing(), events.Loss(char, {"clues": 1})),
               events.PassFail(char, has_clues, events.Nothing(), events.Nothing())
               # TODO: Devoured if no clue tokens
           ], char)
 
       )
     self.lore_modifier -= 1
+    return AncientOneAttack(checks)
