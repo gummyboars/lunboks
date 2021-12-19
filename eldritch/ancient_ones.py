@@ -28,7 +28,7 @@ class AncientOne(mythos.GlobalEffect, metaclass=abc.ABCMeta):
 
 class DummyAncient(AncientOne):
   def __init__(self):
-    super().__init__("Dummy", 10, [], 0)
+    super().__init__("Dummy", 10, set(), 0)
 
   def attack(self, state):
     return AncientOneAttack([])
@@ -36,7 +36,7 @@ class DummyAncient(AncientOne):
 
 class SquidFace(AncientOne):
   def __init__(self):
-    super().__init__("SquidFace", 13, [], -6)
+    super().__init__("SquidFace", 13, set(), -6)
 
   def get_modifier(self, thing, attribute):
     if isinstance(thing, monsters.Cultist):
@@ -47,6 +47,7 @@ class SquidFace(AncientOne):
 
   def attack(self, state):
     self.doom = min(self.doom + 1, self.max_doom)
+    # TODO: make an AddDoom item
     return AncientOneAttack([
         # TODO: Each character lowers max sanity or stamina
     ])
@@ -54,7 +55,7 @@ class SquidFace(AncientOne):
 
 class YellowKing(AncientOne):
   def __init__(self):
-    super().__init__("The Yellow King", 13, ["physical resistance"], None)
+    super().__init__("The Yellow King", 13, {"physical resistance"}, None)
     self.luck_modifier = 1
 
   def awaken(self, state):
@@ -86,7 +87,7 @@ class YellowKing(AncientOne):
 
 class ChaosGod(AncientOne):
   def __init__(self):
-    super().__init__("God of Chaos", 14, [], float("-inf"))
+    super().__init__("God of Chaos", 14, set(), float("-inf"))
 
   def awaken(self, state):
     state.game_stage = "defeat"
@@ -103,7 +104,7 @@ class ChaosGod(AncientOne):
 
 class Wendigo(AncientOne):
   def __init__(self):
-    super().__init__("Wendigo", 11, [], -3)
+    super().__init__("Wendigo", 11, set(), -3)
     self.fight_modifier = 1
 
   def get_interrupt(self, event, state):
@@ -143,7 +144,7 @@ class Wendigo(AncientOne):
 
 class BlackPharaoh(AncientOne):
   def __init__(self):
-    super().__init__("The Thousand Masks", 11, ["magical resistance"], -4)
+    super().__init__("The Thousand Masks", 11, {"magical resistance"}, -4)
     self.lore_modifier = 1
     # TODO: Add masks to monster cup
 

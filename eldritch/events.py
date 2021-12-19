@@ -3020,6 +3020,7 @@ class OpenGate(Event):
     self.opened = state.gates.popleft()
     state.places[self.location_name].gate = self.opened
     state.places[self.location_name].clues = 0  # TODO: this should be its own event
+    # TODO: AddDoom event
     self.spawn = SpawnGateMonster(self.location_name)
     state.event_stack.append(self.spawn)
 
@@ -3254,9 +3255,9 @@ class MoveMonsters(Event):
 
         move_color = "white" if monster.dimension in self.white_dimensions else "black"
         num_moves = 1
-        if monster.get_movement(state) == "stationary":
+        if monster.has_attribute("stationary", state, None):
           num_moves = 0
-        elif monster.get_movement(state) == "fast":
+        elif monster.has_attribute("fast", state, None):
           num_moves = 2
         for _ in range(num_moves):
           moves.append(MoveMonster(monster, move_color))

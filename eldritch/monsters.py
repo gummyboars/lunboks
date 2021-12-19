@@ -103,13 +103,13 @@ class Monster:
 
   def has_attribute(self, attribute, state, char):
     state_override = state.get_override(self, attribute)
-    char_override = char.get_override(self, attribute)
+    char_override = char.get_override(self, attribute) if char else None
     # Prefer specific overrides (at the item level) over general ones (environment, ancient one).
     if char_override is not None:
       return char_override
     if state_override is not None:
       return state_override
-    return attribute in self._attributes
+    return attribute in self._attributes or attribute == self.movement
 
 
 def GiantInsect():
