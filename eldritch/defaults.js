@@ -80,6 +80,22 @@ function renderDefaultToCanvas(cnv, width, height, assetName, variant) {
   if (assetName == "statsbg") {
     return renderTextRectangle(cnv, "", "silver", "black");
   }
+  if (assetName == "Doom") {
+    return renderTextCircle(cnv, "👁️", "royalblue", "black", 0.8);
+  }
+  if (assetName == "Seal") {
+    renderTextCircle(cnv, "", "royalblue", "black");
+    let ctx = cnv.getContext("2d");
+    ctx.save();
+    ctx.globalCompositeOperation = "destination-out";
+    renderTextCircle(cnv, "⭐", "rgba(0, 0, 0, 0)", "black", 0.65);
+    ctx.globalCompositeOperation = "destination-over";
+    renderTextCircle(cnv, "", "silver", "black");
+    ctx.globalCompositeOperation = "source-over";
+    renderTextCircle(cnv, "👁️", "rgba(0, 0, 0, 0)", "black", 0.35);
+    ctx.restore();
+    return;
+  }
   if (characterNames.includes(assetName)) {
     return renderTextRectangle(cnv, assetName, "silver", "black");
   }

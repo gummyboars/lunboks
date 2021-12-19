@@ -210,4 +210,6 @@ locationNames = [
   "Isle",
 ];
 carefullyAdd(locationNames);
-assetNames = ["Dollar", "Clue", "Sanity", "Stamina", "Slider", "statsbg", "board"].concat([...assetSet]);
+tokens = ["Dollar", "Clue", "Sanity", "Stamina", "Slider", "Seal", "Doom"];
+carefullyAdd(tokens);
+assetNames = ["statsbg", "board"].concat([...assetSet]);

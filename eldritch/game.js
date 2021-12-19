@@ -847,6 +847,9 @@ function updatePlaces(places) {
     if (gateDiv != null) {  // Some places cannot have gates.
       updateGate(place, gateDiv);
     }
+    if (place.sealed != null) {
+      updateSeal(place);
+    }
     if (place.clues != null) {
       updateClues(place);
     }
@@ -873,6 +876,25 @@ function updateClues(place) {
     charsDiv.appendChild(clueDiv);
     renderAssetToDiv(cnvContainer, "Clue");
     numClues++;
+  }
+}
+
+function updateSeal(place) {
+  let charsDiv = document.getElementById("place" + place.name + "chars");
+  let hasSeal = charsDiv.getElementsByClassName("seal").length;
+  if (!place.sealed && hasSeal) {
+    charsDiv.removeChild(charsDiv.getElementsByClassName("seal")[0]);
+  } else if (place.sealed && !hasSeal) {
+    let sealDiv = document.createElement("DIV");
+    sealDiv.classList.add("seal");
+    let cnvContainer = document.createElement("DIV");
+    cnvContainer.classList.add("cluecontainer", "cnvcontainer");
+    let cnv = document.createElement("CANVAS");
+    cnv.classList.add("cluecnv");
+    cnvContainer.appendChild(cnv);
+    sealDiv.appendChild(cnvContainer);
+    charsDiv.appendChild(sealDiv);
+    renderAssetToDiv(cnvContainer, "Seal");
   }
 }
 
