@@ -48,7 +48,7 @@ class SquidFace(AncientOne):
   def attack(self, state):
     self.doom = min(self.doom + 1, self.max_doom)
     return AncientOneAttack([
-      # TODO: Each character lowers max sanity or stamina
+        # TODO: Each character lowers max sanity or stamina
     ])
 
 
@@ -58,7 +58,7 @@ class YellowKing(AncientOne):
     self.luck_modifier = 1
 
   def awaken(self, state):
-    self.combat_difficulty = state.terror
+    self.combat_rating = state.terror
     return AncientOneAwaken([])
 
   def get_modifier(self, thing, attribute):
@@ -114,6 +114,7 @@ class Wendigo(AncientOne):
         if isinstance(char.place, places.Street):
           losses.append(events.Loss(char, {"stamina": 1}))
       return events.Sequence(losses)
+    return None
 
   def get_modifier(self, thing, attribute):
     if isinstance(thing, monsters.Cultist):
@@ -151,9 +152,9 @@ class BlackPharaoh(AncientOne):
     for char in state.characters:
       has_clues = values.AttributePrerequisite(char, "clues", "at least", 1)
       checks.append(
-        events.PassFail(
-          char, has_clues, events.Nothing(), events.Nothing()
-        ) #TODO: Devoured if no clue tokens
+          events.PassFail(
+              char, has_clues, events.Nothing(), events.Nothing()
+          )  # TODO: Devoured if no clue tokens
       )
     return AncientOneAwaken(checks)
 

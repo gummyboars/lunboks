@@ -21,7 +21,7 @@ class TestAncientOnes(EventTest):
     movement.resolve(self.state, movement.none_choice)
     stamina = self.char.stamina
     self.advance_turn(self.state.turn_number+1, "upkeep")
-    self.assertEqual(self.char.stamina, stamina -1)
+    self.assertEqual(self.char.stamina, stamina - 1)
 
   def testWendigoLocation(self):
     self.state.ancient_one = ancient_ones.Wendigo()
@@ -36,23 +36,23 @@ class TestAncientOnes(EventTest):
   def testSquidFaceMaxSanStam(self):
     self.char.stamina = 5
     self.char.sanity = 5
-    self.state.event_stack.append(events.Gain(self.char, {'sanity': 5, 'stamina': 5}))
+    self.state.event_stack.append(events.Gain(self.char, {"sanity": 5, "stamina": 5}))
     self.resolve_until_done()
     self.assertEqual(self.char.sanity, 5)
     self.assertEqual(self.char.stamina, 5)
     self.state.ancient_one = ancient_ones.SquidFace()
     self.char.stamina = 3
     self.char.sanity = 3
-    self.state.event_stack.append(events.Gain(self.char, {'sanity': 5, 'stamina': 5}))
+    self.state.event_stack.append(events.Gain(self.char, {"sanity": 5, "stamina": 5}))
     self.resolve_until_done()
     self.assertEqual(self.char.stamina, 4)
     self.assertEqual(self.char.sanity, 4)
 
   def testSquidFaceMonsters(self):
-    self.assertEqual(self.state.get_modifier(monsters.Cultist(), 'horror_damage'), 0)
+    self.assertEqual(self.state.get_modifier(monsters.Cultist(), "horror_damage"), 0)
     self.state.ancient_one = ancient_ones.SquidFace()
-    self.assertEqual(self.state.get_modifier(monsters.Cultist(), 'horror'), -2)
-    self.assertEqual(self.state.get_modifier(monsters.Cultist(), 'horror_damage'), 2)
+    self.assertEqual(self.state.get_modifier(monsters.Cultist(), "horror"), -2)
+    self.assertEqual(self.state.get_modifier(monsters.Cultist(), "horror_damage"), 2)
 
 
 if __name__ == "__main__":

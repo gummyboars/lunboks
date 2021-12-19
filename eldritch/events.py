@@ -589,13 +589,13 @@ class GainOrLoss(Event):
       new_val = max(new_val, 0)
       if attr == "stamina":
         new_val = min(
-          new_val,
-          self.character.max_stamina + state.get_modifier(self.character, "max_stamina")
+            new_val,
+            self.character.max_stamina + state.get_modifier(self.character, "max_stamina")
         )
       if attr == "sanity":
         new_val = min(
-          new_val,
-          self.character.max_sanity + state.get_modifier(self.character, "max_sanity")
+            new_val,
+            self.character.max_sanity + state.get_modifier(self.character, "max_sanity")
         )
       self.final_adjustments[attr] = new_val - old_val
       setattr(self.character, attr, new_val)
@@ -3421,8 +3421,10 @@ class ActivateEnvironment(Event):
   def finish_str(self):
     return f"{self.env.name} is the new environment"
 
+
 class AncientOneAttack(Sequence):
   pass
+
 
 class AncientOneAwaken(Sequence):
   pass
