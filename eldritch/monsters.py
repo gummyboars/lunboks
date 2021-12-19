@@ -223,7 +223,7 @@ def Hound():
   )
 
 
-class Maniac(Monster):  # TODO: custom class when we add globals
+class Maniac(Monster):
   def __init__(self):
     super().__init__("Maniac", "normal", "moon", {"evade": -1, "combat": 1}, {"combat": 1}, 1)
 
