@@ -14,7 +14,7 @@ class AncientOne(mythos.GlobalEffect, metaclass=abc.ABCMeta):
     self.attributes = attributes
 
   def get_modifier(self, thing, attribute):
-    if thing is self:
+    if thing is self and attribute == "combat_rating":
       return self.combat_rating
     return 0
 
@@ -63,10 +63,15 @@ class YellowKing(AncientOne):
 
   def get_modifier(self, thing, attribute):
     if isinstance(thing, monsters.Cultist):
-      return {"combat_difficulty": -2, "movement": "flying"}.get(attribute, 0)
-    if isinstance(thing, events.GateCloseAttempt) and attribute == "difficulty":
+      return {"combat_difficulty": -2}.get(attribute, 0)
+    if isinstance(thing, events.GateCloseAttempt) and attribute == "seal_clues":
       return 3
     return super().get_modifier(thing, attribute)
+
+  def get_override(self, thing, attribute):
+    if isinstance(thing, monsters.Cultist) and attribute == "flying":
+      return True
+    return super().get_override(thing, attribute)
 
   def attack(self, state):
     checks = []
@@ -142,10 +147,10 @@ class BlackPharaoh(AncientOne):
     self.lore_modifier = 1
     # TODO: Add masks to monster cup
 
-  def get_modifier(self, thing, attribute):
-    if isinstance(thing, monsters.Cultist):
-      return {"attribute": "endless"}.get(attribute, 0)
-    return super().get_modifier(thing, attribute)
+  def get_override(self, thing, attribute):
+    if attribute == "endless":
+      return True
+    return super().get_override(thing, attribute)
 
   def awaken(self, state):
     checks = []

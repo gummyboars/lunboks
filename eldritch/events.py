@@ -2933,9 +2933,9 @@ class GateCloseAttempt(Event):
         return
 
     if self.seal_choice is None:
-      difficulty = 5
-      difficulty += state.get_modifier(self, 'difficulty')
-      spend = values.ExactSpendPrerequisite({"clues": difficulty})
+      seal_clues = 5
+      seal_clues += state.get_modifier(self, "seal_clues")
+      spend = values.ExactSpendPrerequisite({"clues": seal_clues})
       self.seal_choice = SpendChoice(
           self.character, "Spend clues to seal the gate?", ["Yes", "No"], spends=[spend, None],
       )

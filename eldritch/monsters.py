@@ -111,11 +111,6 @@ class Monster:
       return state_override
     return attribute in self._attributes
 
-  def get_movement(self, state):
-    ancient_modifier = state.ancient_one.get_modifier(self, "movement")
-    weather_modifier = (state.environment and state.environment.get_modifier(self, "movement"))
-    return weather_modifier or ancient_modifier or self.movement
-
 
 def GiantInsect():
   return Monster(

@@ -54,6 +54,13 @@ class TestAncientOnes(EventTest):
     self.assertEqual(self.state.get_modifier(monsters.Cultist(), "horror"), -2)
     self.assertEqual(self.state.get_modifier(monsters.Cultist(), "horror_damage"), 2)
 
+  def testYellowKingMonsters(self):
+    self.state.ancient_one = ancient_ones.YellowKing()
+    cultist = next(
+        monster for monster in self.state.monsters if isinstance(monster, monsters.Cultist)
+    )
+    self.assertTrue(cultist.has_attribute("flying", self.state, self.char))
+
 
 if __name__ == "__main__":
   unittest.main()
