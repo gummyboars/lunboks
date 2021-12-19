@@ -447,6 +447,7 @@ button {
   position: relative;
   width: calc(min(80vw, 128vh) / 29);
   height: calc(min(80vw, 128vh) * 3 / 58);
+  order: 2;
 }
 .markercontainer {
   position: absolute;
@@ -663,11 +664,17 @@ button {
 .placeleft .gate {
   left: 0;
 }
-.clue {
+.clue, .seal {
   align-self: center;
   position: relative;
   width: calc(min(80vw, 128vh) * 3 / 118);
   height: calc(min(80vw, 128vh) * 3 / 118);
+}
+.clue {
+  order: 3;
+}
+.seal {
+  order: 1;
 }
 .cluecontainer {
   position: absolute;
