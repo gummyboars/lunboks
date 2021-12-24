@@ -54,8 +54,9 @@ function renderAssetToDiv(div, assetName, variant) {
   div.variant = variant;
   // Resize the canvas to match the size of its container.
   let cnv = div.getElementsByTagName("CANVAS")[0];
-  cnv.width = div.offsetWidth;
-  cnv.height = div.offsetHeight;
+  let cnvScale = div.cnvScale || 1;
+  cnv.width = div.offsetWidth * cnvScale;
+  cnv.height = div.offsetHeight * cnvScale;
 
   // Clear the canvas.
   let ctx = cnv.getContext("2d");

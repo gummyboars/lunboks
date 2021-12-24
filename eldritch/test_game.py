@@ -23,15 +23,11 @@ import game
 
 class NoMythos(mythos.GlobalEffect):
 
+  def __init__(self):
+    self.name = "NoMythos"
+
   def create_event(self, state):  # pylint: disable=unused-argument
     return events.Nothing()
-
-
-class PauseMythos(mythos.GlobalEffect):
-
-  def create_event(self, state):
-    return events.BinaryChoice(
-        state.characters[state.first_player], "", "A", "B", events.Nothing(), events.Nothing())
 
 
 class GateTravelTest(unittest.TestCase):
@@ -525,6 +521,11 @@ class InsaneTest(unittest.TestCase):
     for _ in self.state.resolve_loop():
       if self.state.turn_phase != "otherworld":
         break
+    self.assertIsInstance(self.state.event_stack[-1], events.CardChoice)
+    self.state.event_stack[-1].resolve(self.state, "Gate29")
+    for _ in self.state.resolve_loop():
+      if self.state.turn_phase != "otherworld":
+        break
     self.assertIsInstance(self.state.event_stack[0], events.Mythos)
     self.assertEqual(self.state.turn_idx, 0)
     self.assertEqual(self.state.turn_phase, "mythos")
@@ -539,6 +540,10 @@ class InsaneTest(unittest.TestCase):
     self.state.turn_phase = "mythos"
     self.state.mythos.append(mythos.Mythos1())
     self.state.event_stack.append(events.Mythos(self.state.characters[0]))
+    for _ in self.state.resolve_loop():
+      pass
+    self.assertIsInstance(self.state.event_stack[-1], events.CardChoice)
+    self.state.event_stack[-1].resolve(self.state, "Mythos1")
     for _ in self.state.resolve_loop():
       pass
     self.assertEqual(self.state.turn_idx, 0)
@@ -625,12 +630,13 @@ class PlayerJoinTest(unittest.TestCase):
     self.handle("B", {"type": "join", "char": "Nun"})
     self.assertIn("B", self.game.pending_sessions)
 
-  @mock.patch.object(mythos, "CreateMythos", return_value=[NoMythos(), PauseMythos()])
+  @mock.patch.object(mythos, "CreateMythos", return_value=[NoMythos(), NoMythos()])
   def testJoinMidGame(self, _):
     self.game.connect_user("A")
     self.handle("A", {"type": "join", "char": "Nun"})
     self.handle("A", {"type": "start"})
     self.handle("A", {"type": "set_slider", "name": "done"})
+    self.handle("A", {"type": "choice", "choice": "NoMythos"})
     self.assertEqual(len(self.game.game.characters), 1)
     self.assertEqual(self.game.game.characters[0].name, "Nun")
     self.assertEqual(self.game.game.characters[0].place.name, "Church")
@@ -648,7 +654,7 @@ class PlayerJoinTest(unittest.TestCase):
     self.handle("A", {"type": "choice", "choice": "Southside"})
     self.handle("A", {"type": "choice", "choice": "done"})
 
-    # Should now be in the pause mythos, with A needing to make a choice. No new characters yet.
+    # Should now be in the mythos choice, with A needing to make a choice. No new characters yet.
     self.assertEqual(self.game.game.turn_phase, "mythos")
     self.assertEqual(len(self.game.game.characters), 1)
 
@@ -656,7 +662,7 @@ class PlayerJoinTest(unittest.TestCase):
     self.handle("C", {"type": "join", "char": "Gangster"})
     self.assertEqual(len(self.game.game.characters), 1)
 
-    self.handle("A", {"type": "choice", "choice": "A"})
+    self.handle("A", {"type": "choice", "choice": "NoMythos"})
     self.assertEqual(self.game.game.turn_phase, "upkeep")
 
     self.assertEqual(len(self.game.game.characters), 3)

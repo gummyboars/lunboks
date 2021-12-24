@@ -447,16 +447,24 @@ class OtherWorldPhase(Turn):
 class Mythos(Turn):
 
   def __init__(self, _):
+    self.draw: Optional[Event] = None
     self.action: Optional[Event] = None
     self.done = False
 
   def resolve(self, state):
+    first_player = state.characters[state.first_player]
+
+    if self.draw is None:
+      self.draw = DrawMythosCard(first_player)
+      state.event_stack.append(self.draw)
+      return
+
     if self.action is None:
-      # TODO: drawing the mythos card needs to be its own event
-      # TODO: account for the shuffle card
-      chosen = state.mythos.popleft()
-      state.mythos.append(chosen)
-      self.action = chosen.create_event(state)
+      self.action = self.draw.card.create_event(state)
+      if not state.test_mode:
+        choice = CardChoice(first_player, "Choose a Mythos Card", [self.draw.card.name])
+        cond = Conditional(first_player, choice, "choice_index", {0: self.action})
+        self.action = Sequence([choice, cond])
       state.event_stack.append(self.action)
       return
 
@@ -1277,7 +1285,7 @@ class Encounter(Event):
     if self.encounter and self.encounter.is_done():
       return
 
-    if len(self.draw.cards) == 1:
+    if len(self.draw.cards) == 1 and state.test_mode:  # TODO: test this
       self.encounter = self.draw.cards[0].encounter_event(self.character, self.location_name)
       state.event_stack.append(self.encounter)
       return
@@ -1358,7 +1366,7 @@ class GateEncounter(Event):
       state.event_stack.append(self.draw)
       return
 
-    if len(self.cards) == 1:
+    if len(self.cards) == 1 and state.test_mode:  # TODO: test this
       self.encounter = self.cards[0].encounter_event(self.character, self.world_name)
       state.event_stack.append(self.encounter)
       return
@@ -1393,7 +1401,7 @@ class DrawGateCard(Event):
       if card.colors & self.colors:
         break
       state.gate_cards.append(card)
-      if card.name == "Shuffle":
+      if card.name == "ShuffleGate":
         random.shuffle(state.gate_cards)
         self.shuffled = True
     self.card = card
@@ -2737,6 +2745,35 @@ class GateCloseAttempt(Event):
     if not self.sealed == 1:
       return f"{self.character.name} closed the gate at {self.location_name} but did not seal it"
     return f"{self.character.name} closed and sealed the gate at {self.location_name}"
+
+
+class DrawMythosCard(Event):
+
+  def __init__(self, character):
+    self.character = character
+    self.shuffled = False
+    self.card = None
+
+  def resolve(self, state):
+    while True:
+      card = state.mythos.popleft()
+      state.mythos.append(card)
+      if card.name != "ShuffleMythos":
+        break
+      random.shuffle(state.gate_cards)
+      self.shuffled = True
+    self.card = card
+
+  def is_resolved(self):
+    return self.card is not None
+
+  def start_str(self):
+    return f"{self.character.name} draws a mythos card"
+
+  def finish_str(self):
+    if self.shuffled:
+      return f"{self.character.name} shuffled the deck and then drew {self.card.name}"
+    return f"{self.character.name} drew {self.card.name}"
 
 
 class OpenGate(Event):

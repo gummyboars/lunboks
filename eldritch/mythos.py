@@ -172,5 +172,14 @@ class Mythos45(Environment):
     return 0
 
 
+class ShuffleMythos(MythosCard):
+
+  def __init__(self):  # pylint: disable=super-init-not-called
+    self.name = "ShuffleMythos"
+
+
 def CreateMythos():
-  return [Mythos1(), Mythos2(), Mythos3(), Mythos4(), Mythos5(), Mythos6(), Mythos11(), Mythos45()]
+  return [
+      Mythos1(), Mythos2(), Mythos3(), Mythos4(), Mythos5(), Mythos6(), Mythos11(), Mythos45(),
+      ShuffleMythos(),
+  ]

@@ -119,7 +119,7 @@ class GameState:
     self.mythos.extend(mythos.CreateMythos())
 
     # Shuffle the decks.
-    for deck in assets.Card.DECKS:
+    for deck in assets.Card.DECKS | {"gate_cards", "mythos"}:
       random.shuffle(getattr(self, deck))
     # Place initial clues. TODO: some characters may change location stability.
     for place in self.places.values():
@@ -242,10 +242,14 @@ class GameState:
         elif isinstance(top_event, events.MultipleChoice):
           output["choice"]["choices"] = top_event.choices
           output["choice"]["invalid_choices"] = getattr(top_event, "invalid_choices", [])
-        elif isinstance(top_event, events.CombatChoice):
-          output["choice"]["items"] = 0
         elif isinstance(top_event, events.ItemCountChoice):
-          output["choice"]["items"] = top_event.count
+          output["choice"]["max_items"] = top_event.count
+          output["choice"]["min_items"] = top_event.min_count
+          output["choice"]["items"] = True
+        elif isinstance(top_event, events.ItemChoice):
+          output["choice"]["max_items"] = None
+          output["choice"]["min_items"] = None
+          output["choice"]["items"] = True
         elif isinstance(top_event, events.MonsterSpawnChoice):
           output["choice"]["monsters"] = top_event.to_spawn
         else:

@@ -82,5 +82,5 @@ def CreateGateCards():
           "Gate16", {"green"}, {"Plateau": Plateau16, "Great Hall": GreatHall16, "Other": Other16}),
       GateCard(
           "Gate29", {"red"}, {"Plateau": Plateau29, "Dreamlands": Dreamlands29, "Other": Other29}),
-      GateCard("Shuffle", set(), {"Other": lambda char: events.Nothing()}),
+      GateCard("ShuffleGate", set(), {"Other": lambda char: events.Nothing()}),
   ]

@@ -116,13 +116,14 @@ button {
 }
 #uichoice {
   display: none;
-  flex-direction: column;
-  justify-content: center;
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: space-evenly;
   align-items: center;
-  background: sienna;
   color: black;
   font-size: calc(min(2vw, 3.2vh));
-  border: 1px solid black;
+  column-gap: 1em;
+  row-gap: 0.5em;
 }
 #uicardchoice {
   width: 100%;
@@ -160,12 +161,12 @@ button {
   font-size: calc(min(2vw, 3.2vh));
 }
 .choice {
-  width: 100%;
-  flex: 1 1 auto;
-  border-top: 1px solid black;
-}
-.choice:first-child {
-  border-top: none;
+  flex: 0 0 auto;
+  border: 1px solid black;
+  background: sienna;
+  padding-left: 0.25em;
+  padding-right: 0.25em;
+  text-align: center;
 }
 .choice.choosable {
   cursor: pointer;
@@ -390,8 +391,21 @@ button {
   justify-content: space-evenly;
 }
 .mythoscard {
+  position: relative;
   width: 45%;
   height: 100%;
+  transition: all 0.3s;
+  transform-origin: center;
+}
+.mythoscard:hover {
+  transform: scale(2);
+  transition-delay: 0.5s;
+}
+.mythoscnv {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0.5);
 }
 #extra {
   width: 25%;
@@ -856,6 +870,18 @@ button {
   position: relative;
   width: calc(min(4.5vw, 7.2vh));
   height: calc(min(4.5vw, 7.2vh) * 25 / 16);
+  transition: all 0.3s;
+  transform-origin: center;
+}
+.possession:hover {
+  transform: scale(2.5);
+  transition-delay: 0.5s;
+}
+.poscnv {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0.4);
 }
 .possession.big {
   width: calc(min(9.5vw, 15.2vh));

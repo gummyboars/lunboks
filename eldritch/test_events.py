@@ -26,6 +26,9 @@ from eldritch import monsters
 
 class NoMythos(mythos.GlobalEffect):
 
+  def __init__(self):
+    self.name = "NoMythos"
+
   def create_event(self, state):  # pylint: disable=unused-argument
     return events.Nothing()
 
