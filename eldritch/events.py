@@ -4900,7 +4900,7 @@ class MonsterSpawnChoice(ChoiceEvent):
     self.terrors = []
     self.character = None
     self.to_spawn = None
-    self.pending = collections.defaultdict(list)
+    self.pending = collections.defaultdict(int)
 
   @staticmethod
   def spawn_counts(to_spawn, on_board, in_outskirts, monster_limit, outskirts_limit):
@@ -4950,14 +4950,28 @@ class MonsterSpawnChoice(ChoiceEvent):
     self.max_count = (self.spawn_count + open_count - 1) // open_count
     self.character = state.characters[state.first_player]
 
-    # Don't ask the user for a choice in the case of one gate with no outskirts, or all outskirts.
-    if self.steps_remaining == 0:
-      if len(self.open_gates) == 1 and self.outskirts_count == 0:
-        self.pending[self.open_gates[0]] = self.to_spawn
-        self.confirm(state)
-      elif self.spawn_count == 0:
-        self.pending["Outskirts"] = self.to_spawn
-        self.confirm(state)
+    if not self.pending:  # Pre-seed the choice with reasonable defaults.
+      self.reset()
+
+    if self.max_count == self.min_count:  # Guaranteed to cover the case of only 1 gate.
+      for gate in self.open_gates:
+        self.pending[gate] = self.max_count
+      self.confirm(state)
+      return
+    rem_count = self.spawn_count - self.max_count
+    if self.location_name is not None and rem_count % (open_count-1) == 0:
+      for gate in self.open_gates:
+        self.pending[gate] = rem_count // (open_count-1)
+      self.pending[self.location_name] = self.max_count
+      self.confirm(state)
+      return
+
+  def reset(self):
+    self.pending.clear()
+    for gate in self.open_gates:
+      self.pending[gate] = self.min_count
+    if self.location_name is not None:
+      self.pending[self.location_name] = self.max_count
 
   def resolve(self, state, choice=None):
     if choice == "confirm":
@@ -4965,81 +4979,63 @@ class MonsterSpawnChoice(ChoiceEvent):
       return
 
     if choice == "reset":
-      self.pending.clear()
+      self.reset()
       return
 
     if not isinstance(choice, dict):
       raise InvalidInput(f"{choice} must be a map")
     if len(choice) != 1:
       raise InvalidInput(f"{choice} must be a map with one entry")
-    place = list(choice.keys())[0]
-    monster_idx = list(choice.values())[0]
-    if not isinstance(monster_idx, int):
-      raise InvalidInput(f"{choice} must be a map of string -> monster id (integer)")
-    if monster_idx not in self.to_spawn:
-      raise InvalidMove(f"Invalid monster id: {monster_idx}")
-    if place not in set(self.open_gates) | {"Outskirts", "cup"}:
+    place, incr = choice.popitem()
+    if incr not in (1, -1):
+      raise InvalidInput(f"{choice} must be a map of string -> ±1")
+    if place not in self.open_gates:
       raise InvalidMove(f"Invalid monster placement: {place}")
+    if self.pending[place] + incr > self.max_count:
+      raise InvalidMove(f"You may place a maximum of {self.max_count} monsters in a single area")
+    if self.pending[place] + incr < self.min_count:
+      raise InvalidMove(f"Each area must have a minimum of {self.min_count} monsters on it")
 
-    for monster_list in self.pending.values():
-      if monster_idx in monster_list:
-        monster_list.remove(monster_idx)
-        break
-    if place != "cup":
-      self.pending[place].append(monster_idx)
+    self.pending[place] += incr
 
   def confirm(self, state):
     choice = self.pending
     # Type validation.
     if not isinstance(choice, dict):
       raise InvalidInput(f"{choice} must be a map")
-    if not all(isinstance(val, list) for val in choice.values()):
-      raise InvalidInput(f"{choice} must be a map of string -> list of monster ids (integers)")
-    bad_indexes = [str(idx) for idx in sum(choice.values(), []) if not isinstance(idx, int)]
-    if bad_indexes:
-      raise InvalidInput(f"{choice} must be a map of string -> list of monster ids (integers)")
+    if not all(isinstance(val, int) and val >= 0 for val in choice.values()):
+      raise InvalidInput(f"{choice} must be a map of string -> count")
 
     # Gate/outskirts placement validation.
-    invalid_places = set(choice.keys()) - set(self.open_gates) - {"Outskirts"}
+    invalid_places = choice.keys() - set(self.open_gates)
     if invalid_places:
       raise InvalidMove(f"Invalid monster placement: {', '.join(invalid_places)}")
 
-    # Validate that monster indexes have no duplicates and are a subset of the spawn indexes.
-    monster_indexes = sum(choice.values(), [])
-    duplicate_ids = collections.Counter(monster_indexes) - collections.Counter(set(monster_indexes))
-    if duplicate_ids:
-      raise InvalidMove(f"Duplicate ids: {', '.join(str(idx) for idx in duplicate_ids.keys())}")
-    unknown_monsters = [str(idx) for idx in set(monster_indexes) - set(self.to_spawn)]
-    if unknown_monsters:
-      raise InvalidMove(f"Invalid monster ids: {', '.join(unknown_monsters)}")
-
-    # Validate the total number of monsters should equal the board count + the outskirts count.
-    cerr = f"Place {self.spawn_count} monsters on gates and {self.outskirts_count} in the outskirts"
-    if len(monster_indexes) != self.spawn_count + self.outskirts_count:
-      raise InvalidMove(cerr)
-    # Validate that the monsters are correctly distributed between the board and the outskirts.
-    outskirts_count = len(choice.get("Outskirts") or [])
-    if outskirts_count != self.outskirts_count:
-      raise InvalidMove(cerr)
+    # Validate the total number of monsters should equal the board count.
+    if sum(choice.values()) != self.spawn_count:
+      raise InvalidMove(f"Place a total of {self.spawn_count} monsters on gates")
 
     # We have already validated that the board has received the correct number of monsters. Now,
     # we must validate that they are distributed evenly amongst the gates.
-    city_choices = [choice.get(key, []) for key in self.open_gates]
+    city_choices = [choice[gate] for gate in self.open_gates]
     if self.max_count > 0:
-      if max(len(indexes) for indexes in city_choices) != self.max_count:
+      if max(city_choices) != self.max_count:
         raise InvalidMove(f"You may place a maximum of {self.max_count} monsters in a single area")
-      if min(len(indexes) for indexes in city_choices) != self.min_count:
+      if min(city_choices) != self.min_count:
         raise InvalidMove(f"Each area must have a minimum of {self.min_count} monsters on it")
       if self.location_name:
-        if len(choice.get(self.location_name, [])) != self.max_count:
+        if choice[self.location_name] != self.max_count:
           raise InvalidMove(f"You must place {self.max_count} monsters on [{self.location_name}]")
 
     # Validation complete. Distribute the monsters.
-    to_remove = set()
-    for location_name, monster_indexes in choice.items():
-      for monster_idx in monster_indexes:
-        state.monsters[monster_idx].place = state.places[location_name]
-      to_remove |= set(monster_indexes)
+    idx = 0
+    for location_name, count in choice.items():
+      for _ in range(count):
+        state.monsters[self.to_spawn[idx]].place = state.places[location_name]
+        idx += 1
+    for _ in range(self.outskirts_count):
+      state.monsters[self.to_spawn[idx]].place = state.places["Outskirts"]
+      idx += 1
 
     # Clear the outskirts if necessary.
     in_outskirts = len([m for m in state.monsters if isinstance(m.place, places.Outskirts)])
@@ -5052,7 +5048,7 @@ class MonsterSpawnChoice(ChoiceEvent):
       state.event_stack.append(self.terrors[-1])
 
     # Update the list of monsters to be spawned and clear the pending list.
-    self.to_spawn = list(set(self.to_spawn) - to_remove)
+    self.to_spawn = self.to_spawn[idx:]
     self.pending.clear()
 
   def is_resolved(self):

@@ -242,6 +242,26 @@ function continueInit(gameId) {
       innerSelect.classList.add("placeinnerselect", placeType);
       innerSelect.onclick = function(e) { clickPlace(name); };
       box.appendChild(innerSelect);
+      let monsterCount = document.createElement("DIV");
+      monsterCount.classList.add("monstercount");
+      let minus = document.createElement("DIV");
+      minus.classList.add("minus");
+      minus.onclick = function(e) { changeMonsterCount(name, false); };
+      let minusText = document.createElement("DIV");
+      minusText.innerText = "➖";
+      minus.appendChild(minusText);
+      let plus = document.createElement("DIV");
+      plus.classList.add("plus");
+      plus.onclick = function(e) { changeMonsterCount(name, true); };
+      let plusText = document.createElement("DIV");
+      plusText.innerText = "➕";
+      plus.appendChild(plusText);
+      let monsterCountText = document.createElement("DIV");
+      monsterCountText.classList.add("monstercounttext");
+      monsterCount.appendChild(minus);
+      monsterCount.appendChild(plus);
+      monsterCount.appendChild(monsterCountText);
+      box.appendChild(monsterCount);
       cont.appendChild(div);
 
       addOptionToSelect("placechoice", name);
@@ -490,6 +510,12 @@ function rightClickPlace(event, place) {
   }
   event.preventDefault();
   clickPlace(place);
+}
+
+function changeMonsterCount(place, plus) {
+  let choice = {};
+  choice[place] = (plus ? 1 : -1);
+  ws.send(JSON.stringify({"type": "choice", "choice": choice}));
 }
 
 function setSlider(sliderName, sliderValue) {
@@ -1076,11 +1102,6 @@ function updateMonsters(choice, monster_list) {
   for (let i = 0; i < monster_list.length; i++) {
     let monster = monster_list[i];
     let monsterPlace = null;
-    if (choice != null && choice.to_spawn != null && choice.to_spawn.includes(i)) {
-      if (monster != null && monster.place == "cup") {
-        monsterPlace = "cup";
-      }
-    }
     if (monsterPlace == null && monster != null && monster.place && monster.place != "cup") {
       monsterPlace = monster.place;
     }
@@ -1274,56 +1295,42 @@ function updateChoices(choice, current, isMyChoice, chooser, autoChoose) {
 }
 
 function updateMonsterChoices(choice, monsterList, isMyChoice, chooser) {
-  // TODO: indicate how many monsters each location should receive.
   let uiprompt = document.getElementById("uiprompt");
   let uimonsterchoice = document.getElementById("uimonsterchoice");
   let choicesBox = document.getElementById("monsterchoices");
+  for (let monsterCount of document.getElementsByClassName("monstercount")) {
+    monsterCount.classList.remove("choosable");
+  }
   if (choice == null || choice.to_spawn == null) {
     uimonsterchoice.style.display = "none";
-    for (let monsterIdx in monsters) {
-      if (monsters[monsterIdx] == null) {
-        continue;
-      }
-      monsters[monsterIdx].draggable = false;
-      monsters[monsterIdx].ondragstart = null;
-      monsters[monsterIdx].ondragend = null;
-    }
     return;
+  }
+  let total = 0;
+  for (let name of choice.open_gates) {
+    let monsterCount = document.getElementById("place" + name).getElementsByClassName("monstercount")[0];
+    monsterCount.classList.add("choosable");
+    let plus = monsterCount.getElementsByClassName("plus")[0];
+    let minus = monsterCount.getElementsByClassName("minus")[0];
+    let textBox = monsterCount.getElementsByClassName("monstercounttext")[0];
+    let count = choice.pending[name] ?? 0;
+    total += count;
+    textBox.innerText = count;
+    plus.classList.toggle("choosable", isMyChoice && count != choice.max_count);
+    minus.classList.toggle("choosable", isMyChoice && count != choice.min_count);
+    if (name == choice.location) {
+      minus.classList.remove("choosable");
+    }
   }
   let text;
   if (isMyChoice) {
-    text = "Drag ";
+    text = "Distribute ";
   } else {
     let chooserName = serverNames[chooser.name] ?? chooser.name;
-    text = chooserName + " must drag ";
+    text = chooserName + " must distribute ";
   }
-  if (choice.board) {
-    text += choice.board + " monsters to board";
-  }
-  if (choice.outskirts) {
-    if (choice.board) {
-      text += ", ";
-    }
-    text += choice.outskirts + " to outskirts";
-  }
-  if (choice.steps) {
-    text += " (" + choice.steps + " rounds remaining)";
-  }
+  text += (choice.board - total) + " monsters to the board";
   uiprompt.innerText = text;
   uimonsterchoice.style.display = "flex";
-  for (let monsterIdx of choice.to_spawn) {
-    if (monsters[monsterIdx] == null) {
-      monsters[monsterIdx] = createMonsterDiv(monsterList[monsterIdx]);
-      monsters[monsterIdx].monsterIdx = monsterIdx;
-      choicesBox.appendChild(monsters[monsterIdx]);
-    }
-    renderAssetToDiv(monsters[monsterIdx].getElementsByClassName("cnvcontainer")[0], monsterList[monsterIdx].name);
-    if (isMyChoice) {
-      monsters[monsterIdx].draggable = true;
-      monsters[monsterIdx].ondragstart = dragStart;
-      monsters[monsterIdx].ondragend = dragEnd;
-    }
-  }
   for (let btn of uimonsterchoice.getElementsByTagName("BUTTON")) {
     btn.disabled = !isMyChoice;
   }
