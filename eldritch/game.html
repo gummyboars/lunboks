@@ -59,14 +59,15 @@
         </div>
         <div id="uibottom">
           <div id="globals">
-            <div id="environment" class="mythoscard"></div>
-            <div id="rumor" class="mythoscard"></div>
+            <div id="environment" class="mythoscard cnvcontainer"><canvas class="mythoscnv"></canvas></div>
+            <div id="rumor" class="mythoscard cnvcontainer"><canvas class="mythoscnv"></canvas></div>
           </div>
           <div id="bottomcenter">
             <div id="uiprompt"></div>
             <button id="start" onclick="start(event)">Start</button>
             <button id="doneitems" onclick="chooseItems(event)">Done Choosing Items</button>
             <button id="donesliders" onclick="doneSliders(event)">Accept Sliders</button>
+            <button id="togglecards" onclick="toggleCards(event)">Show Choices</button>
             <div id="uidice">
               <div id="dice"></div>
               <div class="buttonholder"><button id="dicebutton" onclick="roll(event)">Roll</button></div>

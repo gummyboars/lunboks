@@ -25,7 +25,7 @@ class DrawGateEncounter(EventTest):
     self.state.gate_cards = deque([
         gate_encounters.GateCard("Gate1", {"blue"}, {"Other": lambda char: Nothing()}),
         gate_encounters.GateCard("Gate2", {"green"}, {"Other": lambda char: Nothing()}),
-        gate_encounters.GateCard("Shuffle", set(), {"Other": lambda char: Nothing()}),
+        gate_encounters.GateCard("ShuffleGate", set(), {"Other": lambda char: Nothing()}),
         gate_encounters.GateCard("Gate3", {"yellow"}, {"Other": lambda char: Nothing()}),
     ])
 

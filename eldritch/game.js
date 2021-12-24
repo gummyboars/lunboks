@@ -4,13 +4,15 @@ characters = {};
 monsters = {};
 allCharacters = {};
 scale = 1;
-itemsToChoose = null;
+minItemsToChoose = null;
+maxItemsToChoose = null;
 itemChoice = [];
 monsterChoice = {};
 charChoice = null;
 runningAnim = [];
 messageQueue = [];
 statTimeout = null;
+cardsStyle = "flex";
 
 function init() {
   let params = new URLSearchParams(window.location.search);
@@ -208,6 +210,7 @@ function handleData(data) {
   updateCharacterSelect(data.characters, data.player_idx, data.pending_name, data.pending_chars);
   updateCharacterSheets(data.characters, data.player_idx, data.first_player);
   updateBottomText(data.game_stage, data.turn_phase, data.characters, data.turn_idx, data.player_idx);
+  updateGlobals(data.environment, data.rumor);
   updatePlaces(data.places);
   updateCharacters(data.characters);
   updateSliderButton(data.sliders);
@@ -268,10 +271,12 @@ function makeChoice(val) {
 }
 
 function chooseItems(e) {
-  if (itemsToChoose > 0 && itemChoice.length != itemsToChoose) {
+  if ((minItemsToChoose != null && itemChoice.length < minItemsToChoose) ||
+      (maxItemsToChoose != null && itemChoice.length > maxItemsToChoose)) {
     document.getElementById("errorText").holdSeconds = 3;
     document.getElementById("errorText").style.opacity = 1.0;
-    document.getElementById("errorText").innerText = "Expected " + itemsToChoose + " items.";
+    let errmsg = "Expected between " + minItemsToChoose + " and " + maxItemsToChoose + " items.";
+    document.getElementById("errorText").innerText = errmsg;
     setTimeout(clearError, 100);
     return;
   }
@@ -571,10 +576,29 @@ function updateSliderButton(sliders) {
   }
 }
 
+function toggleCards(e) {
+  if (cardsStyle == "flex") {
+    cardsStyle = "none";
+  } else {
+    cardsStyle = "flex";
+  }
+  document.getElementById("uicardchoice").style.display = cardsStyle;
+  setCardButtonText();
+}
+
+function setCardButtonText() {
+  if (cardsStyle == "flex") {
+    document.getElementById("togglecards").innerText = "Hide Cards";
+  } else {
+    document.getElementById("togglecards").innerText = "Show Cards";
+  }
+}
+
 function updateChoices(choice) {
   let btn = document.getElementById("doneitems");
   let uichoice = document.getElementById("uichoice");
   let uicardchoice = document.getElementById("uicardchoice");
+  let cardtoggle = document.getElementById("togglecards");
   let pDiv;
   if (!document.getElementsByClassName("you").length) {
     pDiv = document.createElement("DIV");  // Dummy div.
@@ -589,16 +613,20 @@ function updateChoices(choice) {
   uichoice.style.display = "none";
   uicardchoice.style.display = "none";
   btn.style.display = "none";
+  cardtoggle.style.display = "none";
   if (choice == null || choice.monsters != null) {
-    itemsToChoose = null;
+    minItemsToChoose = null;
+    maxItemsToChoose = null;
     itemChoice = [];
     pDiv.classList.remove("choose");
     return;
   }
   // Set display style for uichoice div.
   if (choice.cards != null) {
-    uicardchoice.style.display = "flex";
-  } else if (choice.items == null) {
+    uicardchoice.style.display = cardsStyle;
+    cardtoggle.style.display = "inline-block";
+    setCardButtonText();
+  } else if (!choice.items) {
     uichoice.style.display = "flex";
   }
   // Clean out any old choices it may have.
@@ -610,12 +638,14 @@ function updateChoices(choice) {
   }
   // Set prompt.
   document.getElementById("uiprompt").innerText = choice.prompt;
-  if (choice.items != null) {
-    itemsToChoose = choice.items;
+  if (choice.items) {
+    minItemsToChoose = choice.min_items;
+    maxItemsToChoose = choice.max_items;
     pDiv.classList.add("choose");
     btn.style.display = "inline-block";
   } else {
-    itemsToChoose = null;
+    minItemsToChoose = null;
+    maxItemsToChoose = null;
     itemChoice = [];
     pDiv.classList.remove("choose");
     if (choice.places != null) {
@@ -939,6 +969,23 @@ function updateBottomText(gameStage, turnPhase, characters, turnIdx, playerIdx) 
   }
 }
 
+function updateGlobals(env, rumor) {
+  let envDiv = document.getElementById("environment");
+  let rumorDiv = document.getElementById("rumor");
+  envDiv.cnvScale = 2;
+  rumorDiv.cnvScale = 2;
+  if (env == null) {
+    clearAssetFromDiv(envDiv);
+  } else {
+    renderAssetToDiv(envDiv, env);
+  }
+  if (rumor == null) {
+    clearAssetFromDiv(rumorDiv);
+  } else {
+    renderAssetToDiv(rumorDiv, rumor);
+  }
+}
+
 function updateDice(numDice, roll, yours) {
   let uidice = document.getElementById("uidice");
   let diceDiv = document.getElementById("dice");
@@ -1101,7 +1148,6 @@ function createCharacterSheet(idx, character, rightUI, isPlayer) {
     statDiv.appendChild(cnv);
     charStats.appendChild(statDiv);
     if (isPlayer && stat == "clues") {
-      statDiv.classList.add("clue");
       statDiv.onclick = function(e) { useAsset("clues") };
     }
     if (isPlayer && stat == "dollars") {
@@ -1236,6 +1282,7 @@ function updatePossessions(sheet, character, isPlayer) {
 function createPossession(info, isPlayer, sheet) {
   let div = document.createElement("DIV");
   div.classList.add("possession", "cnvcontainer");
+  div.cnvScale = 2.5;
   if (info.active) {
     div.classList.add("active");
   }
@@ -1244,7 +1291,7 @@ function createPossession(info, isPlayer, sheet) {
     div.classList.add("big");
   }
   let cnv = document.createElement("CANVAS");
-  cnv.classList.add("markercnv");
+  cnv.classList.add("poscnv");
   div.appendChild(cnv);
   let cascade = {"sneak": "evade", "fight": "combat", "will": "horror", "lore": "spell"};
   for (let attr in info.bonuses) {
@@ -1265,6 +1312,8 @@ function createPossession(info, isPlayer, sheet) {
   div.appendChild(chosenDiv);
   // TODO: show some information about bonuses that aren't active right now
   let handle = info.handle;
+  div.onmouseenter = bringTop;
+  div.onmouseleave = returnBottom;
   if (isPlayer) {
     if (itemChoice.includes(handle)) {
       div.classList.add("chosen");
