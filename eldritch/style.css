@@ -349,6 +349,42 @@ button {
   width: min(10vw, 16vh);
   height: min(10vw, 16vh);
 }
+.portrait {
+  width: calc(min(62.5vw, 100vh) * 9 / 250);
+  height: calc(min(62.5vw, 100vh) * 9 / 250);
+  border-radius: 50%;
+  overflow: hidden;
+  z-index: 5;
+  position: relative;
+  transition: opacity 0.5s;
+}
+.world:hover .portrait {
+  opacity: 0;
+  transition-delay: 0.15s;
+}
+.world.shown .portrait {
+  opacity: 0;
+}
+.portraitleft {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 22.5%;
+  width: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+}
+.portraitright {
+  position: absolute;
+  top: 0;
+  right: 0;
+  height: 22.5%;
+  width: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
 .worldchars {
   display: flex;
   flex-direction: row;
