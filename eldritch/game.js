@@ -1,6 +1,7 @@
 ws = null;
 dragged = null;
 characters = {};
+portraits = {};
 monsters = {};
 allCharacters = {};
 scale = 1;
@@ -101,7 +102,7 @@ function continueInit(gameId) {
     opt.text = name;
     document.getElementById("monsterchoice").appendChild(opt);
   }
-  for (let [idx, name] of otherWorlds.entries()) {
+  for (let name of otherWorlds) {
     let div = document.createElement("DIV");
     div.id = "world" + name;
     div.classList.add("world");
@@ -113,6 +114,10 @@ function continueInit(gameId) {
       world.id = "place" + name + i + "chars";
       world.classList.add("world" + side, "worldchars");
       worldbox.appendChild(world);
+      let portrait = document.createElement("DIV");
+      portrait.id = "place" + name + i + "portraits";
+      portrait.classList.add("portrait" + side);
+      worldbox.appendChild(portrait);
     }
     div.appendChild(worldbox);
     let cnvContainer = document.createElement("DIV");
@@ -503,6 +508,7 @@ function updateCharacters(newCharacters) {
       console.log("Unknown place " + character.place);
       continue;
     }
+    updatePortraitDiv(character.name, character.place);
     if (characters[character.name] == null) {
       characters[character.name] = createCharacterDiv(character.name);
       place.appendChild(characters[character.name]);
@@ -807,6 +813,32 @@ function createCharacterDiv(name) {
   cnvContainer.appendChild(cnv);
   div.appendChild(cnvContainer);
   return div;
+}
+
+function createCharacterPortrait(name) {
+  let div = document.createElement("DIV");
+  div.classList.add("portrait", "cnvcontainer");
+  let cnv = document.createElement("CANVAS");
+  cnv.classList.add("markercnv");
+  div.appendChild(cnv);
+  return div;
+}
+
+function updatePortraitDiv(charName, destName) {
+  let charsDiv = document.getElementById("place" + destName + "chars");
+  if (charsDiv.classList.contains("worldchars")) {
+    if (portraits[charName] == null) {
+      portraits[charName] = createCharacterPortrait(charName);
+    }
+    let dest = document.getElementById("place" + destName + "portraits");
+    dest.appendChild(portraits[charName]);
+    renderAssetToDiv(portraits[charName], charName + " picture");
+  } else {
+    if (portraits[charName] != null) {
+      portraits[charName].parentNode.removeChild(portraits[charName]);
+      portraits[charName] = null;
+    }
+  }
 }
 
 function animateMovingDiv(div, destParent) {
