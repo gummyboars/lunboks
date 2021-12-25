@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import collections
 import operator
 import os
 import sys
@@ -136,6 +137,111 @@ class PrerequisiteTest(unittest.TestCase):
     self.assertEqual(prereq.value(state), 0)
     char.override = False
     self.assertEqual(prereq.value(state), 1)
+
+
+class SpendTest(unittest.TestCase):
+
+  def testFixedValuePrerequisite(self):
+    state = DummyState()
+    spend = SpendPrerequisite("dollars", 1)
+    # Prerequisite starts unsatisfied.
+    self.assertEqual(spend.value(state), 0)
+    # Spend one dollar, the prereq is satisfied.
+    spend.spend_map["dollars"]["dollars"] = 1
+    self.assertEqual(spend.value(state), 1)
+    # If for some reason you decided to spend clues and then changed your mind, still satisfied.
+    spend.spend_map["clues"]["clues"] = 0
+    self.assertEqual(spend.value(state), 1)
+    # Spend an extra dollar, now no longer satisfied.
+    spend.spend_map["dollars"]["dollars"] = 2
+    self.assertEqual(spend.value(state), 0)
+
+  def testRangePrerequisite(self):
+    state = DummyState()
+    spend = SpendPrerequisite("dollars", 1, 6)
+    self.assertEqual(spend.value(state), 0)
+
+    spend.spend_map["dollars"]["dollars"] = 1
+    self.assertEqual(spend.value(state), 1)
+    spend.spend_map["dollars"]["dollars"] = 6
+    self.assertEqual(spend.value(state), 1)
+    spend.spend_map["dollars"]["dollars"] = 7
+    self.assertEqual(spend.value(state), 0)
+
+  def testDynamicRange(self):
+    state = DummyState()
+    char = DummyChar(sanity=3)
+    spend = SpendPrerequisite("sanity", 1, Calculation(char, "sanity"))
+
+    self.assertEqual(spend.value(state), 0)
+    spend.spend_map["sanity"]["sanity"] = 1
+    self.assertEqual(spend.value(state), 1)
+    spend.spend_map["sanity"]["sanity"] = 3
+    self.assertEqual(spend.value(state), 1)
+    char.sanity = 2
+    self.assertEqual(spend.value(state), 0)
+
+  def testSpendMultipleTypes(self):
+    state = DummyState()
+    spend = SpendPrerequisite("clues", 2)
+    self.assertEqual(spend.value(state), 0)
+
+    spend.spend_map["clues"]["clues"] = 1
+    self.assertEqual(spend.value(state), 0)
+    spend.spend_map["clues"]["Research Materials0"] = 1
+    self.assertEqual(spend.value(state), 1)
+    spend.spend_map["clues"]["clues"] = 2
+    self.assertEqual(spend.value(state), 0)
+
+  def testMultiPrerequisite(self):
+    state = DummyState()
+    spend = MultiSpendPrerequisite({"dollars": 1, "clues": 2})
+    self.assertEqual(spend.value(state), 0)
+
+    spend.spend_map["dollars"]["dollars"] = 1
+    self.assertEqual(spend.value(state), 0)
+    spend.spend_map["clues"]["clues"] = 2
+    self.assertEqual(spend.value(state), 1)
+    spend.spend_map["clues"]["Research Materials0"] = 1
+    self.assertEqual(spend.value(state), 0)
+    spend.spend_map["clues"]["clues"] = 1
+    self.assertEqual(spend.value(state), 1)
+    spend.spend_map["stamina"]["stamina"] = 1
+    self.assertEqual(spend.value(state), 0)
+
+
+class SpendCountTest(unittest.TestCase):
+
+  def testSpendCountValue(self):
+    spend_choice = Dummy()
+    spend_choice.spend_map = collections.defaultdict(dict)
+    spend_choice.is_done = lambda: True
+    spend_choice.is_cancelled = lambda: False
+    state = DummyState()
+
+    stam = SpendCount(spend_choice, "stamina")
+    san = SpendCount(spend_choice, "sanity")
+
+    spend_choice.spend_map["stamina"] = {"stamina": 3, "Some Item": 1}
+    spend_choice.spend_map["sanity"] = {"Some Item": 2}
+
+    self.assertEqual(stam.value(state), 4)
+    self.assertEqual(san.value(state), 2)
+
+  def testSpendCountCancelled(self):
+    spend_choice = Dummy(spend_map=collections.defaultdict(dict))
+    spend_choice.is_done = lambda: True
+    spend_choice.is_cancelled = lambda: True
+    state = DummyState()
+
+    stam = SpendCount(spend_choice, "stamina")
+    san = SpendCount(spend_choice, "sanity")
+
+    spend_choice.spend_map["stamina"] = {"stamina": 3, "Some Item": 1}
+    spend_choice.spend_map["sanity"] = {"Some Item": 2}
+
+    self.assertEqual(stam.value(state), 0)
+    self.assertEqual(san.value(state), 0)
 
 
 if __name__ == "__main__":

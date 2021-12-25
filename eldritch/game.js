@@ -14,6 +14,7 @@ runningAnim = [];
 messageQueue = [];
 statTimeout = null;
 cardsStyle = "flex";
+statNames = {"stamina": "Stamina", "sanity": "Sanity", "clues": "Clue", "dollars": "Dollar"};
 
 function init() {
   let params = new URLSearchParams(window.location.search);
@@ -223,6 +224,7 @@ function handleData(data) {
   updateMonsters(data.monsters);
   updateMonsterChoices(data.choice, data.monsters);
   updateUsables(data.usables, data.choice);
+  updateSpending(data.choice);
   updateDice(data.dice, data.roll, data.roller == data.player_idx);
   updateEventLog(data.event_log);
   if (messageQueue.length && !runningAnim.length) {
@@ -326,6 +328,14 @@ function resetMonsterChoice(e) {
     }
   }
   monsterChoice = {};
+}
+
+function spend(spendType) {
+  ws.send(JSON.stringify({"type": "spend", "spend_type": spendType}));
+}
+
+function unspend(spendType) {
+  ws.send(JSON.stringify({"type": "unspend", "spend_type": spendType}));
 }
 
 function useAsset(handle) {
@@ -628,12 +638,13 @@ function updateChoices(choice) {
     return;
   }
   // Set display style for uichoice div.
+  if (!choice.items) {
+    uichoice.style.display = "flex";
+  }
   if (choice.cards != null) {
     uicardchoice.style.display = cardsStyle;
     cardtoggle.style.display = "inline-block";
     setCardButtonText();
-  } else if (!choice.items) {
-    uichoice.style.display = "flex";
   }
   // Clean out any old choices it may have.
   while (uichoice.getElementsByClassName("choice").length) {
@@ -657,7 +668,7 @@ function updateChoices(choice) {
     if (choice.places != null) {
       updatePlaceChoices(uichoice, choice.places, choice.annotations);
     } else if (choice.cards != null) {
-      addCardChoices(uicardchoice, choice.cards, choice.invalid_choices, choice.annotations);
+      addCardChoices(uichoice, uicardchoice, choice.cards, choice.invalid_choices, choice.annotations);
     } else {
       addChoices(uichoice, choice.choices, choice.invalid_choices);
     }
@@ -697,11 +708,16 @@ function updateMonsterChoices(choice, monsterList) {
   }
 }
 
-function addCardChoices(cardChoice, cards, invalidChoices, annotations) {
+function addCardChoices(uichoice, cardChoice, cards, invalidChoices, annotations) {
   if (!cards) {
     return;
   }
+  let notFound = [];
   for (let [idx, card] of cards.entries()) {
+    if (!assetNames.includes(card)) {
+      notFound.push(card);
+      continue;
+    }
     let holder = document.createElement("DIV");
     holder.classList.add("cardholder");
     if (invalidChoices != null && invalidChoices.includes(idx)) {
@@ -723,6 +739,7 @@ function addCardChoices(cardChoice, cards, invalidChoices, annotations) {
     cardChoice.appendChild(holder);
     renderAssetToDiv(div, card);
   }
+  addChoices(uichoice, notFound, []);  // TODO: fix up invalid choices
 }
 
 function addChoices(uichoice, choices, invalidChoices) {
@@ -787,6 +804,69 @@ function updateUsables(usables, choice) {
     }
   }
   // TODO: make clues change apperance when usable
+}
+
+function updateSpending(choice) {
+  let spendable = null;
+  let spent = {};
+  if (choice != null) {
+    spendable = choice.spendable;
+    for (let key in choice.spent) {
+      for (let handle in choice.spent[key]) {
+        spent[handle] = choice.spent[key][handle];
+      }
+    }
+  }
+  updateSpendList(spendable, spent);
+  updateStatSpending(spendable);
+}
+
+function updateSpendList(spendable, spent) {
+  let spendDiv = document.getElementById("uispend");
+  if (spendable == null) {
+    spendDiv.style.display = "none";
+    return;
+  }
+  spendDiv.style.display = "flex";
+  for (let stat in statNames) {
+    let count = spent[stat] || 0;
+    while (spendDiv.getElementsByClassName(stat).length > count) {
+      spendDiv.removeChild(spendDiv.getElementsByClassName(stat)[0]);
+    }
+    while (spendDiv.getElementsByClassName(stat).length < count) {
+      let statDiv = document.createElement("DIV");
+      statDiv.classList.add("stats", "cnvcontainer", stat, "spendable");
+      let cnv = document.createElement("CANVAS");
+      cnv.classList.add("cluecnv");
+      statDiv.appendChild(cnv);
+      spendDiv.appendChild(statDiv);
+      renderAssetToDiv(statDiv, statNames[stat]);
+      statDiv.onclick = function(e) { unspend(stat); };
+    }
+  }
+}
+
+function updateStatSpending(spendable) {
+  let yourSheets = document.getElementsByClassName("you");
+  if (!yourSheets.length) {
+    return;
+  }
+  let yourSheet = yourSheets[0];
+  if (spendable == null) {
+    for (let div of yourSheet.getElementsByClassName("stats")) {
+      div.classList.remove("spendable");
+    }
+    return;
+  }
+  for (let stat in statNames) {
+    for (let div of yourSheet.getElementsByClassName(stat)) {
+      if (spendable.includes(stat)) {
+        div.classList.add("spendable");
+      } else {
+        div.classList.remove("spendable");
+      }
+    }
+  }
 }
 
 function createMonsterDiv(name, classPrefix) {
@@ -1173,14 +1253,14 @@ function createCharacterSheet(idx, character, rightUI, isPlayer) {
   bgcnv.classList.add("markercnv");
   statsBg.appendChild(bgcnv);
   charStats.appendChild(statsBg);
-  for (let stat of ["stamina", "sanity", "clues", "dollars"]) {
+  for (let stat in statNames) {
     let statDiv = document.createElement("DIV");
     statDiv.classList.add("stats", stat);  // intentionally omit cnvcontainer; see updateStats()
     let cnv = document.createElement("CANVAS");
     statDiv.appendChild(cnv);
     charStats.appendChild(statDiv);
-    if (isPlayer && stat == "clues") {
-      statDiv.onclick = function(e) { useAsset("clues") };
+    if (isPlayer) {
+      statDiv.onclick = function(e) { spend(stat); };
     }
     if (isPlayer && stat == "dollars") {
       statDiv.draggable = true;

@@ -1153,7 +1153,6 @@ class PurchaseDrawn(Event):
     self.drawn = None
     self.choice: Optional[ChoiceEvent] = None
     self.kept: List[str] = []
-    self.prices = None
     self.resolved = False
 
   def resolve(self, state):
@@ -1175,46 +1174,25 @@ class PurchaseDrawn(Event):
         self.resolved = True
         return
       kept_card = self.drawn.pop(self.choice.choice_index)
-      cost = self.prices.pop(self.choice.choice_index)
       self.kept.append(self.choice.choice)
-      assert cost <= self.character.dollars  # TODO: write a test for this?
-      self.character.dollars -= cost  # TODO: this should be a spend event
       getattr(state, self.draw.deck).remove(kept_card)
-      self.character.possessions.append(kept_card)
+      self.character.possessions.append(kept_card)  # TODO: should be KeepDrawn
       self.keep_count -= 1
 
-    if self.keep_count == 0:
+    if self.keep_count == 0 or len(self.drawn) == 0:
       self.resolved = True
       return
 
     # self.keep_count > 0
-    choices = []
-    available = []
-    unavailable = []
-    self.prices = []
-    for card in self.drawn:
-      price = self.discounted_price(card)
-      if price <= self.character.dollars:
-        available.append(card)
-        self.prices.append(price)
-        choices.append(card.name)
-      else:
-        unavailable.append(card.name)
-    self.drawn = available
-    choices.append("Nothing")
+    choices = [card.name for card in self.drawn] + ["Nothing"]
+    prices = [self.discounted_price(card) for card in self.drawn]
+    prereqs = [values.SpendPrerequisite("dollars", price) for price in prices] + [None]
     # TODO: In some circumstances, you must purchase at least
     # one card if able (e.g. General Store)
 
-    if unavailable:
-      could_not_afford = f" (Could not afford {','.join(unavailable)})"
-    else:
-      could_not_afford = ""
-    if available:
-      self.choice = CardChoice(
-          self.character, self.prompt + could_not_afford, choices, [f"${p}" for p in self.prices])
-      state.event_stack.append(self.choice)
-      return
-    self.resolved = True
+    self.choice = CardSpendChoice(
+        self.character, self.prompt, choices, prereqs, [f"${p}" for p in prices])
+    state.event_stack.append(self.choice)
 
   def is_resolved(self):
     return self.resolved
@@ -2075,12 +2053,25 @@ class Arrested(Sequence):
 
 class MultipleChoice(ChoiceEvent):
 
-  def __init__(self, character, prompt, choices, annotations=None):
+  def __init__(self, character, prompt, choices, prereqs=None, annotations=None):
+    if prereqs is None:
+      prereqs = [None] * len(choices)
+    assert len(choices) == len(prereqs)
+    assert all(prereq is None or isinstance(prereq, values.Value) for prereq in prereqs)
     self.character = character
     self._prompt = prompt
     self.choices = choices
-    self.choice = None
+    self.prereqs: List[Optional[values.Value]] = prereqs
     self._annotations = annotations
+    self.invalid_choices = []
+    self.choice = None
+
+  def compute_choices(self, state):
+    # Any unsatisfied prerequisite means that choice is invalid.
+    self.invalid_choices.clear()
+    for idx in range(len(self.choices)):
+      if self.prereqs[idx] is not None and self.prereqs[idx].value(state) < 1:
+        self.invalid_choices.append(idx)
 
   def resolve(self, state, choice=None):
     assert not self.is_resolved()
@@ -2089,6 +2080,7 @@ class MultipleChoice(ChoiceEvent):
 
   def validate_choice(self, choice):
     assert choice in self.choices
+    assert self.choices.index(choice) not in self.invalid_choices
 
   def is_resolved(self):
     return self.choice is not None
@@ -2112,32 +2104,54 @@ class MultipleChoice(ChoiceEvent):
     return self.choices.index(self.choice)
 
 
-class PrereqChoice(MultipleChoice):
+class SpendChoice(MultipleChoice):
 
   def __init__(self, character, prompt, choices, prereqs, annotations=None):
-    assert len(choices) == len(prereqs)
-    assert all(prereq is None or isinstance(prereq, values.Value) for prereq in prereqs)
-    super().__init__(character, prompt, choices, annotations)
-    self.prereqs: List[Optional[values.Value]] = prereqs
-    self.invalid_choices = []
+    super().__init__(character, prompt, choices, prereqs, annotations)
+    self.spend_map = collections.defaultdict(dict)
 
   def compute_choices(self, state):
-    self.invalid_choices.clear()
-    for idx in range(len(self.choices)):
-      if self.prereqs[idx] is not None and self.prereqs[idx].value(state) < 1:
+    # Let each spend prerequisite know how much has been earmarked for spending.
+    for prereq in self.prereqs:
+      if isinstance(prereq, values.SpendValue):
+        prereq.spend_map = self.spend_map
+    super().compute_choices(state)
+    # If the user intends to spend anything, invalidate any choices that don't require spending.
+    any_spent = bool(sum(sum(val.values()) for val in self.spend_map.values()))
+    for idx, prereq in enumerate(self.prereqs):
+      if any_spent and not isinstance(prereq, values.SpendValue):
         self.invalid_choices.append(idx)
 
-  def validate_choice(self, choice):
-    super().validate_choice(choice)
-    assert self.choices.index(choice) not in self.invalid_choices
+  def resolve(self, state, choice=None):
+    super().resolve(state, choice)
+    for spend_map in self.spend_map.values():
+      for handle, count in spend_map.items():
+        if handle in {"stamina", "sanity", "dollars", "clues"}:
+          setattr(self.character, handle, getattr(self.character, handle) - count)
+
+  def spendable(self):
+    spend_types = set()
+    for spend in self.prereqs:
+      if isinstance(spend, values.SpendValue):
+        spend_types |= spend.spend_types
+    return spend_types
+
+  def spend(self, spend_type):
+    assert spend_type in self.spendable() & {"stamina", "sanity", "dollars", "clues"}
+    already_spent = self.spend_map[spend_type].get(spend_type, 0)
+    assert getattr(self.character, spend_type) - already_spent > 0
+    self.spend_map[spend_type][spend_type] = already_spent + 1
+
+  def unspend(self, spend_type):
+    assert spend_type in self.spend_map.keys() & {"stamina", "sanity", "dollars", "clues"}
+    already_spent = self.spend_map[spend_type].get(spend_type, 0)
+    assert already_spent >= 1
+    self.spend_map[spend_type][spend_type] -= 1
 
 
 def BinaryChoice(
         character, prompt, first_choice, second_choice, first_event, second_event, prereq=None):
-  if prereq is not None:
-    choice = PrereqChoice(character, prompt, [first_choice, second_choice], [prereq, None])
-  else:
-    choice = MultipleChoice(character, prompt, [first_choice, second_choice])
+  choice = MultipleChoice(character, prompt, [first_choice, second_choice], [prereq, None])
   sequence = [
       choice, Conditional(character, choice, "choice_index", {0: first_event, 1: second_event})]
   return Sequence(sequence, character)
@@ -2237,6 +2251,10 @@ class SinglePhysicalWeaponChoice(ItemCountChoice):
 
 
 class CardChoice(MultipleChoice):
+  pass
+
+
+class CardSpendChoice(SpendChoice):
   pass
 
 

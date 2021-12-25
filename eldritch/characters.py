@@ -176,6 +176,20 @@ class Character:
   def focus_cost(self, pending_sliders):
     return sum([abs(orig - pending_sliders[name]) for name, orig in self.sliders().items()])
 
+  # def get_spendables(self, event, spend_type, already_spent):
+  #   spendables = {}
+  #   for pos in self.possessions:
+  #     if pos.handle in already_spent:
+  #       continue
+  #     spend_amount = pos.get_spend_amount(event, spend_type)
+  #     if spend_amount is not None:
+  #       spendables[pos.handle] = spend_amount
+  #   if spend_type in ["stamina", "sanity", "dollars", "clues"]:
+  #     if getattr(self, spend_type) - already_spent.get(spend_type, 0) > 0:
+  #       spendables[spend_type] = 1  # This is the spend increment, not the max.
+  #   # TODO: trophies
+  #   return spendables
+
   def abilities(self):
     return []
 

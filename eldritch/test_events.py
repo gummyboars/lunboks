@@ -78,6 +78,15 @@ class EventTest(unittest.TestCase):
     self.assertIsInstance(self.state.event_stack[-1], event_class)
     return self.state.event_stack[-1]
 
+  def spend(self, spend_type, count, choice_event):
+    self.assertIsInstance(choice_event, SpendChoice)
+    for _ in range(count):
+      choice_event.spend(spend_type)
+    for _ in range(-count):
+      choice_event.unspend(spend_type)
+    # Go through the event loop one more time to make sure compute_choices updates invalid_choices.
+    self.resolve_to_choice(SpendChoice)
+
   def resolve_to_usable(self, char_idx, handle, event_class):
     self.resolve_loop()
     self.assertTrue(self.state.event_stack)
@@ -1646,16 +1655,16 @@ class PrereqChoiceTest(EventTest):
   def testMismatchedLengths(self):
     prereq = values.AttributePrerequisite(self.char, "dollars", 2, "at least")
     with self.assertRaises(AssertionError):
-      PrereqChoice(self.char, "choose", ["Yes", "No"], [prereq])
+      MultipleChoice(self.char, "choose", ["Yes", "No"], [prereq])
 
   def testInvalidChoices(self):
     clues = values.AttributePrerequisite(self.char, "clues", 1, "at least")
     sanity = values.AttributePrerequisite(self.char, "sanity", 1, "at least")
     stamina = values.AttributePrerequisite(self.char, "stamina", 2, "at most")
     choices = ["Spend 1 clue", "Spend 1 sanity", "Gain stamina", "Do Nothing"]
-    choice = PrereqChoice(self.char, "choose", choices, [clues, sanity, stamina, None])
+    choice = MultipleChoice(self.char, "choose", choices, [clues, sanity, stamina, None])
     self.state.event_stack.append(choice)
-    choice = self.resolve_to_choice(PrereqChoice)
+    choice = self.resolve_to_choice(MultipleChoice)
 
     self.assertEqual(choice.choices, choices)
     self.assertEqual(choice.invalid_choices, [0, 2])
@@ -1665,6 +1674,92 @@ class PrereqChoiceTest(EventTest):
 
     choice.resolve(self.state, "Spend 1 sanity")
     self.assertEqual(choice.choice_index, 1)
+
+
+class SpendChoiceTest(EventTest):
+
+  def setUp(self):
+    super().setUp()
+    self.char.dollars = 5
+
+  def testBasicSpending(self):
+    spend = values.SpendPrerequisite("dollars", 1)
+    choice = SpendChoice(self.char, "choose", ["Food", "Nothing"], [spend, None])
+    self.state.event_stack.append(choice)
+    self.resolve_to_choice(SpendChoice)
+
+    with self.assertRaises(AssertionError):
+      choice.resolve(self.state, "Food")
+    self.spend("dollars", 1, choice)
+    choice.resolve(self.state, "Food")
+    self.resolve_until_done()
+    self.assertEqual(self.char.dollars, 4)
+
+  def testIncorrectSpendAmount(self):
+    spend = values.SpendPrerequisite("dollars", 1)
+    choice = SpendChoice(self.char, "choose", ["Food", "Nothing"], [spend, None])
+    self.state.event_stack.append(choice)
+    self.resolve_to_choice(SpendChoice)
+
+    with self.assertRaises(AssertionError):
+      choice.resolve(self.state, "Food")
+    self.spend("dollars", 2, choice)
+    with self.assertRaises(AssertionError):
+      choice.resolve(self.state, "Food")
+    self.spend("dollars", -1, choice)
+    with self.assertRaises(AssertionError):  # Cannot choose something else if you've spent.
+      choice.resolve(self.state, "Nothing")
+    self.spend("dollars", -1, choice)
+    choice.resolve(self.state, "Nothing")
+    self.resolve_until_done()
+    self.assertEqual(self.char.dollars, 5)
+
+  def testCannotOverOrUnderSpend(self):
+    self.char.dollars = 1
+    spend = values.SpendPrerequisite("dollars", 3)
+    choice = SpendChoice(self.char, "choose", ["Lantern", "Nothing"], [spend, None])
+    self.state.event_stack.append(choice)
+    self.resolve_to_choice(SpendChoice)
+
+    self.spend("dollars", 1, choice)
+    with self.assertRaises(AssertionError):
+      self.spend("dollars", 1, choice)  # Cannot spend more dollars than you have.
+    self.assertEqual(choice.spend_map["dollars"]["dollars"], 1)
+    self.spend("dollars", -1, choice)
+    with self.assertRaises(AssertionError):
+      self.spend("dollars", -1, choice)  # Cannot unspend something you did not spend.
+    self.assertEqual(choice.spend_map["dollars"].get("dollars", 0), 0)
+
+  def testMultiSpend(self):
+    prereq = values.MultiSpendPrerequisite({"stamina": 1, "sanity": 1})
+    choice = SpendChoice(self.char, "choose", ["Sign", "Nevermind"], [prereq, None])
+    self.state.event_stack.append(choice)
+    self.resolve_to_choice(SpendChoice)
+    with self.assertRaises(AssertionError):
+      choice.resolve(self.state, "Sign")
+    self.spend("stamina", 1, choice)
+    with self.assertRaises(AssertionError):
+      choice.resolve(self.state, "Sign")
+    self.spend("sanity", 1, choice)
+    choice.resolve(self.state, "Sign")
+    self.resolve_until_done()
+    self.assertEqual(self.char.sanity, 4)
+    self.assertEqual(self.char.stamina, 4)
+
+  def testMultilpeSpendInvalidatesSingle(self):
+    stam = values.SpendPrerequisite("stamina", 1)
+    san = values.SpendPrerequisite("sanity", 1)
+    choice = SpendChoice(self.char, "choose", ["A", "B", "C"], [stam, san, None])
+    self.state.event_stack.append(choice)
+    self.resolve_to_choice(SpendChoice)
+
+    choice.spend("stamina")
+    choice.spend("sanity")
+    self.resolve_to_choice(SpendChoice)
+    self.assertCountEqual(choice.invalid_choices, [0, 1, 2])
+    choice.unspend("stamina")
+    self.resolve_to_choice(SpendChoice)
+    self.assertCountEqual(choice.invalid_choices, [0, 2])
 
 
 class ItemChoiceTest(EventTest):
@@ -2075,9 +2170,12 @@ class PurchaseTest(EventTest):
     self.state.common.append(food)
 
     self.state.event_stack.append(buy)
-    choice = self.resolve_to_choice(CardChoice)
+    choice = self.resolve_to_choice(CardSpendChoice)
     self.assertEqual(choice.choices, ["Food", "Nothing"])
     self.assertEqual(choice.annotations(), ["$1"])
+    with self.assertRaises(AssertionError):
+      choice.resolve(self.state, "Food")
+    self.spend("dollars", 1, choice)
     choice.resolve(self.state, "Food")
     self.resolve_until_done()
 
@@ -2095,7 +2193,7 @@ class PurchaseTest(EventTest):
     self.state.common.append(food)
 
     self.state.event_stack.append(buy)
-    choice = self.resolve_to_choice(CardChoice)
+    choice = self.resolve_to_choice(CardSpendChoice)
     self.assertEqual(choice.choices, ["Food", "Nothing"])
     choice.resolve(self.state, "Nothing")
     self.resolve_until_done()
@@ -2114,11 +2212,21 @@ class PurchaseTest(EventTest):
     food = items.Food(0)
     self.state.common.append(food)
 
-    # When you are too poor to buy the item, you do not get a choice.
     self.state.event_stack.append(buy)
+    choice = self.resolve_to_choice(CardSpendChoice)
+    self.assertEqual(choice.choices, ["Food", "Nothing"])
+    with self.assertRaises(AssertionError):
+      choice.resolve(self.state, "Food")
+    with self.assertRaises(AssertionError):
+      choice.spend("dollars")
+    with self.assertRaises(AssertionError):
+      choice.resolve(self.state, "Food")  # Just making extra sure we didn't actually spend money.
+    self.resolve_to_choice(CardSpendChoice)
+    choice.resolve(self.state, "Nothing")
     self.resolve_until_done()
 
     self.assertTrue(buy.is_resolved())
+    self.assertEqual(self.char.dollars, 0)
     self.assertEqual(len(self.state.common), 1)
     self.assertEqual(self.state.common[0], food)
     self.assertFalse(self.char.possessions)
@@ -2133,9 +2241,16 @@ class PurchaseTest(EventTest):
     self.state.common.extend([gun, food])
 
     self.state.event_stack.append(buy)
-    choice = self.resolve_to_choice(CardChoice)
-    self.assertEqual(choice.choices, ["Food", "Nothing"])
+    choice = self.resolve_to_choice(CardSpendChoice)
+    self.assertEqual(choice.choices, ["Tommy Gun", "Food", "Nothing"])
+    self.spend("dollars", 1, choice)
+    self.assertCountEqual(choice.invalid_choices, [0, 2])
     choice.resolve(self.state, "Food")
+
+    choice = self.resolve_to_choice(CardSpendChoice)
+    self.assertEqual(choice.choices, ["Tommy Gun", "Nothing"])
+    self.assertCountEqual(choice.invalid_choices, [0])
+    choice.resolve(self.state, "Nothing")
     self.resolve_until_done()
 
     self.assertTrue(buy.is_resolved())
@@ -2154,12 +2269,15 @@ class PurchaseTest(EventTest):
     self.state.common.extend([food, gun])
 
     self.state.event_stack.append(buy)
-    choice = self.resolve_to_choice(CardChoice)
+    choice = self.resolve_to_choice(CardSpendChoice)
     self.assertEqual(choice.choices, ["Food", "Tommy Gun", "Nothing"])
     self.assertEqual(choice.annotations(), ["$1", "$7"])
+    self.spend("dollars", 7, choice)
+    self.assertCountEqual(choice.invalid_choices, [0, 2])
     choice.resolve(self.state, "Tommy Gun")
-    choice = self.resolve_to_choice(CardChoice)
+    choice = self.resolve_to_choice(CardSpendChoice)
     self.assertEqual(choice.choices, ["Food", "Nothing"])
+    self.spend("dollars", 1, choice)
     choice.resolve(self.state, "Food")
     self.resolve_until_done()
 
@@ -2178,11 +2296,12 @@ class PurchaseTest(EventTest):
     self.state.common.extend([food, gun])
 
     self.state.event_stack.append(buy)
-    choice = self.resolve_to_choice(CardChoice)
+    choice = self.resolve_to_choice(CardSpendChoice)
     self.assertEqual(choice.choices, ["Food", "Tommy Gun", "Nothing"])
     self.assertEqual(choice.annotations(), ["$0", "$6"])
+    self.spend("dollars", 6, choice)
     choice.resolve(self.state, "Tommy Gun")
-    choice = self.resolve_to_choice(CardChoice)
+    choice = self.resolve_to_choice(CardSpendChoice)
     self.assertEqual(choice.choices, ["Food", "Nothing"])
     choice.resolve(self.state, "Food")
     self.resolve_until_done()
@@ -2202,12 +2321,14 @@ class PurchaseTest(EventTest):
     self.state.common.extend([food, gun])
 
     self.state.event_stack.append(buy)
-    choice = self.resolve_to_choice(CardChoice)
+    choice = self.resolve_to_choice(CardSpendChoice)
     self.assertEqual(choice.choices, ["Food", "Tommy Gun", "Nothing"])
     self.assertEqual(choice.annotations(), ["$1", "$4"])
+    self.spend("dollars", 4, choice)
     choice.resolve(self.state, "Tommy Gun")
-    choice = self.resolve_to_choice(CardChoice)
+    choice = self.resolve_to_choice(CardSpendChoice)
     self.assertEqual(choice.choices, ["Food", "Nothing"])
+    self.spend("dollars", 1, choice)
     choice.resolve(self.state, "Food")
     self.resolve_until_done()
 
@@ -2226,10 +2347,13 @@ class PurchaseTest(EventTest):
     self.state.common.extend([food, gun])
 
     self.state.event_stack.append(buy)
-    choice = self.resolve_to_choice(CardChoice)
+    choice = self.resolve_to_choice(CardSpendChoice)
     self.assertEqual(choice.choices, ["Food", "Tommy Gun", "Nothing"])
     self.assertEqual(choice.annotations(), ["$2", "$8"])
+    self.spend("dollars", 8, choice)
     choice.resolve(self.state, "Tommy Gun")
+    choice = self.resolve_to_choice(CardSpendChoice)
+    choice.resolve(self.state, "Nothing")
     self.resolve_until_done()
 
     self.assertTrue(buy.is_resolved())
@@ -2249,8 +2373,9 @@ class PurchaseTest(EventTest):
     self.state.common.extend([food, gun, cross])
 
     self.state.event_stack.append(buy)
-    choice = self.resolve_to_choice(CardChoice)
+    choice = self.resolve_to_choice(CardSpendChoice)
     self.assertEqual(choice.choices, ["Food", "Tommy Gun", "Nothing"])
+    self.spend("dollars", 7, choice)
     choice.resolve(self.state, "Tommy Gun")
     self.resolve_until_done()
 
@@ -2286,7 +2411,7 @@ class PurchaseTest(EventTest):
     self.char.dollars = 8
     self.assertFalse(buy.is_resolved())
     self.assertFalse(self.char.possessions)
-    self.char.possessions.append(Canceller(CardChoice))
+    self.char.possessions.append(Canceller(CardSpendChoice))
     self.state.common.extend([items.Food(0), items.TommyGun(0), items.Cross(0)])
     self.assertEqual(len(self.state.common), 3)
 
