@@ -125,25 +125,24 @@ class DinerTest(EncounterTest):
 
   def testDiner1DontPay(self):
     self.state.event_stack.append(encounters.Diner1(self.char))
-    spend_choice = self.resolve_to_choice(MultipleChoice)
-    self.assertEqual(spend_choice.choices, [0, 1, 2, 3])
-    spend_choice.resolve(self.state, 0)
+    spend_choice = self.resolve_to_choice(SpendChoice)
+    self.assertEqual(spend_choice.choices, ["Spend", "No Thanks"])
+    spend_choice.resolve(self.state, "No Thanks")
 
-    stamina_choice = self.resolve_to_choice(MultipleChoice)
-    # TODO: this is not ideal, but it will work.
-    self.assertEqual(stamina_choice.choices, [0])
-    stamina_choice.resolve(self.state, 0)
     self.resolve_until_done()
 
     self.assertEqual(self.char.stamina, 3)
     self.assertEqual(self.char.sanity, 3)
     self.assertEqual(self.char.dollars, 3)
 
-  def testDiner13Dollars(self):
+  def testDiner1ThreeDollars(self):
     self.state.event_stack.append(encounters.Diner1(self.char))
-    spend_choice = self.resolve_to_choice(MultipleChoice)
-    self.assertEqual(spend_choice.choices, [0, 1, 2, 3])
-    spend_choice.resolve(self.state, 3)
+    spend_choice = self.resolve_to_choice(SpendChoice)
+    self.assertEqual(spend_choice.choices, ["Spend", "No Thanks"])
+    self.spend("dollars", 3, spend_choice)
+    with self.assertRaises(AssertionError):
+      spend_choice.spend("dollars")
+    spend_choice.resolve(self.state, "Spend")
 
     stamina_choice = self.resolve_to_choice(MultipleChoice)
     self.assertEqual(stamina_choice.choices, [0, 1, 2, 3])
@@ -157,9 +156,13 @@ class DinerTest(EncounterTest):
   def testDiner1Rich(self):
     self.char.dollars = 15
     self.state.event_stack.append(encounters.Diner1(self.char))
-    spend_choice = self.resolve_to_choice(MultipleChoice)
-    self.assertEqual(spend_choice.choices, [0, 1, 2, 3, 4, 5, 6])
-    spend_choice.resolve(self.state, 4)
+    spend_choice = self.resolve_to_choice(SpendChoice)
+    self.assertEqual(spend_choice.choices, ["Spend", "No Thanks"])
+    self.spend("dollars", 7, spend_choice)
+    with self.assertRaises(AssertionError):  # You cannot choose to spend seven dollars.
+      spend_choice.resolve(self.state, "Spend")
+    self.spend("dollars", -3, spend_choice)
+    spend_choice.resolve(self.state, "Spend")
 
     stamina_choice = self.resolve_to_choice(MultipleChoice)
     self.assertEqual(stamina_choice.choices, [0, 1, 2, 3, 4])
@@ -173,6 +176,11 @@ class DinerTest(EncounterTest):
   def testDiner1Poor(self):
     self.char.dollars = 0
     self.state.event_stack.append(encounters.Diner1(self.char))
+    spend_choice = self.resolve_to_choice(SpendChoice)
+    self.assertEqual(spend_choice.choices, ["Spend", "No Thanks"])
+    with self.assertRaises(AssertionError):
+      spend_choice.spend("dollars")
+    spend_choice.resolve(self.state, "No Thanks")
     self.resolve_until_done()
 
     self.assertEqual(self.char.stamina, 3)
@@ -195,7 +203,7 @@ class DinerTest(EncounterTest):
   def testDiner3Poor(self):
     self.char.dollars = 0
     self.state.event_stack.append(encounters.Diner3(self.char))
-    choice = self.resolve_to_choice(MultipleChoice)
+    choice = self.resolve_to_choice(SpendChoice)
     with self.assertRaises(AssertionError):
       choice.resolve(self.state, "Pay $1")
     choice.resolve(self.state, "Go Hungry")
@@ -203,14 +211,15 @@ class DinerTest(EncounterTest):
 
   def testDiner3DontPay(self):
     self.state.event_stack.append(encounters.Diner3(self.char))
-    choice = self.resolve_to_choice(MultipleChoice)
+    choice = self.resolve_to_choice(SpendChoice)
     choice.resolve(self.state, "Go Hungry")
     self.resolve_until_done()
     self.assertEqual(self.char.stamina, 3)
 
   def testDiner3Pay(self):
     self.state.event_stack.append(encounters.Diner3(self.char))
-    choice = self.resolve_to_choice(MultipleChoice)
+    choice = self.resolve_to_choice(SpendChoice)
+    self.spend("dollars", 1, choice)
     choice.resolve(self.state, "Pay $1")
     self.resolve_until_done()
     self.assertEqual(self.char.stamina, 5)
@@ -274,7 +283,7 @@ class RoadhouseTest(EncounterTest):
 
   def testRoadhouse1Clueless(self):
     self.state.event_stack.append(encounters.Roadhouse1(self.char))
-    choice = self.resolve_to_choice(MultipleChoice)
+    choice = self.resolve_to_choice(SpendChoice)
     with self.assertRaises(AssertionError):
       choice.resolve(self.state, "Yes")
     choice.resolve(self.state, "No")
@@ -285,7 +294,7 @@ class RoadhouseTest(EncounterTest):
     self.char.clues = 3
     self.state.allies.append(assets.TravelingSalesman())
     self.state.event_stack.append(encounters.Roadhouse1(self.char))
-    choice = self.resolve_to_choice(MultipleChoice)
+    choice = self.resolve_to_choice(SpendChoice)
     choice.resolve(self.state, "No")
     self.resolve_until_done()
     self.assertEqual(self.char.clues, 3)
@@ -296,7 +305,8 @@ class RoadhouseTest(EncounterTest):
     self.char.clues = 3
     self.state.allies.append(assets.TravelingSalesman())
     self.state.event_stack.append(encounters.Roadhouse1(self.char))
-    choice = self.resolve_to_choice(MultipleChoice)
+    choice = self.resolve_to_choice(SpendChoice)
+    self.spend("clues", 3, choice)
     choice.resolve(self.state, "Yes")
     self.resolve_until_done()
     self.assertEqual(self.char.clues, 0)
@@ -308,7 +318,8 @@ class RoadhouseTest(EncounterTest):
     self.char.clues = 3
     self.state.common.extend([items.Revolver38(0), items.Food(0)])
     self.state.event_stack.append(encounters.Roadhouse1(self.char))
-    choice = self.resolve_to_choice(MultipleChoice)
+    choice = self.resolve_to_choice(SpendChoice)
+    self.spend("clues", 3, choice)
     choice.resolve(self.state, "Yes")
     self.resolve_until_done()
     self.assertEqual(self.char.clues, 0)
@@ -522,8 +533,9 @@ class LodgeTest(EncounterTest):
   def testLodge4Join(self):
     self.state.event_stack.append(encounters.Lodge4(self.char))
     self.char.dollars = 3
-    choice = self.resolve_to_choice(MultipleChoice)
+    choice = self.resolve_to_choice(SpendChoice)
     self.assertEqual(choice.choices, ["Yes", "No"])
+    self.spend("dollars", 3, choice)
     choice.resolve(self.state, "Yes")
     self.resolve_until_done()
     self.assertEqual(self.char.dollars, 0)
@@ -531,7 +543,7 @@ class LodgeTest(EncounterTest):
   def testLodge4DeclinePass(self):
     self.state.event_stack.append(encounters.Lodge4(self.char))
     self.char.dollars = 3
-    choice = self.resolve_to_choice(MultipleChoice)
+    choice = self.resolve_to_choice(SpendChoice)
     self.assertEqual(choice.choices, ["Yes", "No"])
     choice.resolve(self.state, "No")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
@@ -541,7 +553,7 @@ class LodgeTest(EncounterTest):
     self.state.event_stack.append(encounters.Lodge4(self.char))
     self.char.stamina = 4
     self.char.dollars = 3
-    choice = self.resolve_to_choice(MultipleChoice)
+    choice = self.resolve_to_choice(SpendChoice)
     self.assertEqual(choice.choices, ["Yes", "No"])
     choice.resolve(self.state, "No")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=4)):
@@ -553,7 +565,7 @@ class LodgeTest(EncounterTest):
     self.state.event_stack.append(encounters.Lodge4(self.char))
     self.char.dollars = 3
     self.char.stamina = 3
-    choice = self.resolve_to_choice(MultipleChoice)
+    choice = self.resolve_to_choice(SpendChoice)
     self.assertEqual(choice.choices, ["Yes", "No"])
     choice.resolve(self.state, "No")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=4)):
@@ -583,7 +595,8 @@ class LodgeTest(EncounterTest):
   def testLodge6Join(self):
     self.state.event_stack.append(encounters.Lodge6(self.char))
     self.char.dollars = 3
-    choice = self.resolve_to_choice(MultipleChoice)
+    choice = self.resolve_to_choice(SpendChoice)
+    self.spend("dollars", 3, choice)
     self.assertEqual(choice.choices, ["Yes", "No"])
     choice.resolve(self.state, "Yes")
     self.resolve_until_done()
@@ -651,13 +664,14 @@ class LodgeTest(EncounterTest):
 
   def testSanctum2Decline(self):
     self.state.event_stack.append(encounters.Sanctum2(self.char))
-    choice = self.resolve_to_choice(MultipleChoice)
+    choice = self.resolve_to_choice(SpendChoice)
     choice.resolve(self.state, "No")
     self.assertEqual(self.char.sanity, 3)
 
   def testSanctum2Pass(self):
     self.state.event_stack.append(encounters.Sanctum2(self.char))
-    choice = self.resolve_to_choice(MultipleChoice)
+    choice = self.resolve_to_choice(SpendChoice)
+    self.spend("sanity", 1, choice)
     choice.resolve(self.state, "Yes")
     # TODO: Choose monster on the board as a trophy
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
@@ -666,7 +680,8 @@ class LodgeTest(EncounterTest):
 
   def testSanctum2Fail(self):
     self.state.event_stack.append(encounters.Sanctum2(self.char))
-    choice = self.resolve_to_choice(MultipleChoice)
+    choice = self.resolve_to_choice(SpendChoice)
+    self.spend("sanity", 1, choice)
     choice.resolve(self.state, "Yes")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=4)):
       self.resolve_until_done()
@@ -718,7 +733,10 @@ class LodgeTest(EncounterTest):
     self.char.lodge_membership = True
     self.char.dollars = 2
     self.state.event_stack.append(encounters.Sanctum4(self.char))
-    choice = self.resolve_to_choice(MultipleChoice)
+    choice = self.resolve_to_choice(SpendChoice)
+    with self.assertRaises(AssertionError):
+      self.spend("dollars", 3, choice)
+    self.spend("dollars", -2, choice)
     with self.assertRaises(AssertionError):
       choice.resolve(self.state, "Spend $3")
     choice.resolve(self.state, "Decline")
@@ -730,7 +748,7 @@ class LodgeTest(EncounterTest):
     self.char.lodge_membership = True
     self.char.dollars = 3
     self.state.event_stack.append(encounters.Sanctum4(self.char))
-    choice = self.resolve_to_choice(MultipleChoice)
+    choice = self.resolve_to_choice(SpendChoice)
     choice.resolve(self.state, "Decline")
     self.resolve_until_done()
     self.assertFalse(self.char.lodge_membership)
@@ -740,7 +758,8 @@ class LodgeTest(EncounterTest):
     self.char.lodge_membership = True
     self.char.dollars = 3
     self.state.event_stack.append(encounters.Sanctum4(self.char))
-    choice = self.resolve_to_choice(MultipleChoice)
+    choice = self.resolve_to_choice(SpendChoice)
+    self.spend("dollars", 3, choice)
     choice.resolve(self.state, "Spend $3")
     self.resolve_until_done()
     self.assertTrue(self.char.lodge_membership)
@@ -769,7 +788,9 @@ class LodgeTest(EncounterTest):
 
   def testSanctum7Poor(self):
     self.state.event_stack.append(encounters.Sanctum7(self.char))
-    choice = self.resolve_to_choice(MultipleChoice)
+    choice = self.resolve_to_choice(SpendChoice)
+    with self.assertRaises(AssertionError):
+      self.spend("clues", 1, choice)
     with self.assertRaises(AssertionError):
       choice.resolve(self.state, "Yes")
     choice.resolve(self.state, "No")
@@ -778,14 +799,16 @@ class LodgeTest(EncounterTest):
   def testSanctum7Decline(self):
     self.state.event_stack.append(encounters.Sanctum7(self.char))
     self.char.clues = 2
-    choice = self.resolve_to_choice(MultipleChoice)
+    choice = self.resolve_to_choice(SpendChoice)
     choice.resolve(self.state, "No")
     self.resolve_until_done()
 
   def testSanctum7Fail(self):
     self.state.event_stack.append(encounters.Sanctum7(self.char))
     self.char.clues = 2
-    choice = self.resolve_to_choice(MultipleChoice)
+    choice = self.resolve_to_choice(SpendChoice)
+    self.spend("clues", 2, choice)
+    self.spend("sanity", 1, choice)
     choice.resolve(self.state, "Yes")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=4)):
       self.resolve_until_done()
@@ -795,7 +818,9 @@ class LodgeTest(EncounterTest):
   def testSanctum7Pass(self):
     self.state.event_stack.append(encounters.Sanctum7(self.char))
     self.char.clues = 2
-    choice = self.resolve_to_choice(MultipleChoice)
+    choice = self.resolve_to_choice(SpendChoice)
+    self.spend("clues", 2, choice)
+    self.spend("sanity", 1, choice)
     choice.resolve(self.state, "Yes")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       # TODO: Choose gate to close
@@ -1008,9 +1033,12 @@ class SocietyTest(EncounterTest):
   def testSociety2Broke(self):
     self.state.event_stack.append(encounters.Society2(self.char))
     self.char.dollars = 2
-    choice = self.resolve_to_choice(MultipleChoice)
+    choice = self.resolve_to_choice(SpendChoice)
+    with self.assertRaises(AssertionError):
+      self.spend("dollars", 3, choice)
     with self.assertRaises(AssertionError):
       choice.resolve(self.state, "Yes")
+    self.spend("dollars", -2, choice)
     choice.resolve(self.state, "No")
     self.resolve_until_done()
     self.assertEqual(self.char.dollars, 2)
@@ -1021,7 +1049,7 @@ class SocietyTest(EncounterTest):
   def testSociety2No(self):
     self.state.event_stack.append(encounters.Society2(self.char))
     self.char.dollars = 5
-    choice = self.resolve_to_choice(MultipleChoice)
+    choice = self.resolve_to_choice(SpendChoice)
     choice.resolve(self.state, "No")
     self.resolve_until_done()
     self.assertEqual(self.char.dollars, 5)
@@ -1032,7 +1060,8 @@ class SocietyTest(EncounterTest):
   def testSociety2YesPass(self):
     self.state.event_stack.append(encounters.Society2(self.char))
     self.char.dollars = 5
-    choice = self.resolve_to_choice(MultipleChoice)
+    choice = self.resolve_to_choice(SpendChoice)
+    self.spend("dollars", 3, choice)
     choice.resolve(self.state, "Yes")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       self.resolve_until_done()
@@ -1048,7 +1077,8 @@ class SocietyTest(EncounterTest):
     self.state.gate_cards.append(gate_encounters.GateCard(
         "Gate10", {"blue"}, {"Other": gate_encounters.Dreamlands10}))
     self.char.dollars = 5
-    choice = self.resolve_to_choice(MultipleChoice)
+    choice = self.resolve_to_choice(SpendChoice)
+    self.spend("dollars", 3, choice)
     choice.resolve(self.state, "Yes")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=2)):
       self.resolve_until_done()
@@ -1334,7 +1364,7 @@ class HouseTest(EncounterTest):
   def testHouse7Poor(self):
     self.state.event_stack.append(encounters.House7(self.char))
     self.char.dollars = 2
-    choice = self.resolve_to_choice(MultipleChoice)
+    choice = self.resolve_to_choice(SpendChoice)
     with self.assertRaises(AssertionError):
       choice.resolve(self.state, "Yes")
     choice.resolve(self.state, "No")
@@ -1346,7 +1376,7 @@ class HouseTest(EncounterTest):
   def testHouse7No(self):
     self.state.event_stack.append(encounters.House7(self.char))
     self.char.dollars = 5
-    choice = self.resolve_to_choice(MultipleChoice)
+    choice = self.resolve_to_choice(SpendChoice)
     choice.resolve(self.state, "No")
     self.resolve_until_done()
     self.assertEqual(self.char.dollars, 5)
@@ -1358,7 +1388,8 @@ class HouseTest(EncounterTest):
     self.char.dollars = 5
     self.char.sanity = 1
     self.char.stamina = 1
-    choice = self.resolve_to_choice(MultipleChoice)
+    choice = self.resolve_to_choice(SpendChoice)
+    self.spend("dollars", 3, choice)
     choice.resolve(self.state, "Yes")
     choice2 = self.resolve_to_choice(MultipleChoice)
     choice2.resolve(self.state, 0)
@@ -1372,7 +1403,8 @@ class HouseTest(EncounterTest):
     self.char.dollars = 5
     self.char.sanity = 1
     self.char.stamina = 1
-    choice = self.resolve_to_choice(MultipleChoice)
+    choice = self.resolve_to_choice(SpendChoice)
+    self.spend("dollars", 3, choice)
     choice.resolve(self.state, "Yes")
     choice2 = self.resolve_to_choice(MultipleChoice)
     choice2.resolve(self.state, 1)
@@ -1386,7 +1418,8 @@ class HouseTest(EncounterTest):
     self.char.dollars = 5
     self.char.sanity = 1
     self.char.stamina = 1
-    choice = self.resolve_to_choice(MultipleChoice)
+    choice = self.resolve_to_choice(SpendChoice)
+    self.spend("dollars", 3, choice)
     choice.resolve(self.state, "Yes")
     choice2 = self.resolve_to_choice(MultipleChoice)
     choice2.resolve(self.state, 2)
@@ -1400,7 +1433,8 @@ class HouseTest(EncounterTest):
     self.char.dollars = 5
     self.char.sanity = 1
     self.char.stamina = 1
-    choice = self.resolve_to_choice(MultipleChoice)
+    choice = self.resolve_to_choice(SpendChoice)
+    self.spend("dollars", 3, choice)
     choice.resolve(self.state, "Yes")
     choice2 = self.resolve_to_choice(MultipleChoice)
     choice2.resolve(self.state, 3)
@@ -1414,7 +1448,8 @@ class HouseTest(EncounterTest):
     self.char.dollars = 5
     self.char.sanity = 1
     self.char.stamina = 1
-    choice = self.resolve_to_choice(MultipleChoice)
+    choice = self.resolve_to_choice(SpendChoice)
+    self.spend("dollars", 3, choice)
     choice.resolve(self.state, "Yes")
     choice2 = self.resolve_to_choice(MultipleChoice)
     choice2.resolve(self.state, 4)
@@ -1505,7 +1540,9 @@ class ChurchTest(EncounterTest):
   def testChurch6NoClues(self):
     self.state.event_stack.append(encounters.Church6(self.char))
     self.assertEqual(self.char.clues, 0)
-    choice = self.resolve_to_choice(MultipleChoice)
+    choice = self.resolve_to_choice(SpendChoice)
+    with self.assertRaises(AssertionError):
+      self.spend("clues", 1, choice)
     with self.assertRaises(AssertionError):
       choice.resolve(self.state, "Yes")
     choice.resolve(self.state, "No")
@@ -1516,7 +1553,7 @@ class ChurchTest(EncounterTest):
     self.state.event_stack.append(encounters.Church6(self.char))
     self.char.clues = 2
     self.assertEqual(self.char.clues, 2)
-    choice = self.resolve_to_choice(MultipleChoice)
+    choice = self.resolve_to_choice(SpendChoice)
     choice.resolve(self.state, "No")
     self.resolve_until_done()
     self.assertEqual(self.char.clues, 2)
@@ -1526,7 +1563,8 @@ class ChurchTest(EncounterTest):
     self.state.event_stack.append(encounters.Church6(self.char))
     self.char.clues = 2
     self.assertEqual(self.char.clues, 2)
-    choice = self.resolve_to_choice(MultipleChoice)
+    choice = self.resolve_to_choice(SpendChoice)
+    self.spend("clues", 1, choice)
     choice.resolve(self.state, "Yes")
     self.resolve_until_done()
     self.assertEqual(self.char.clues, 1)
@@ -1778,12 +1816,20 @@ class LibraryTest(EncounterTest):
   def testLibrary6Pass(self):
     self.char.dollars = 8
     self.state.event_stack.append(encounters.Library6(self.char))
+    choice = self.resolve_to_choice(SpendChoice)
+    self.spend("dollars", 4, choice)
+    choice.resolve(self.state, "Pay $4")
     self.resolve_until_done()
     self.assertEqual(self.char.dollars, 4)
     self.assertEqual(self.char.place.name, "Library")
 
   def testLibrary6Fail(self):
     self.state.event_stack.append(encounters.Library6(self.char))
+    choice = self.resolve_to_choice(SpendChoice)
+    with self.assertRaises(AssertionError):
+      self.spend("dollars", 4, choice)
+    self.spend("dollars", -3, choice)
+    choice.resolve(self.state, "Oops")
     self.resolve_until_done()
     self.assertEqual(self.char.dollars, 3)
     self.assertEqual(self.char.place.name, "University")
@@ -2111,9 +2157,12 @@ class BankTest(EncounterTest):
   def testBank2NoMoney(self):
     self.state.event_stack.append(encounters.Bank2(self.char))
     self.char.dollars = 1
-    choice = self.resolve_to_choice(MultipleChoice)
+    choice = self.resolve_to_choice(SpendChoice)
+    with self.assertRaises(AssertionError):
+      self.spend("dollars", 2, choice)
     with self.assertRaises(AssertionError):
       choice.resolve(self.state, "Pay $2")
+    self.spend("dollars", -1, choice)
     choice.resolve(self.state, "Let man and his family go hungry")
     self.resolve_until_done()
     self.assertEqual(self.char.dollars, 1)
@@ -2121,7 +2170,7 @@ class BankTest(EncounterTest):
 
   def testBank2NoPay(self):
     self.state.event_stack.append(encounters.Bank2(self.char))
-    choice = self.resolve_to_choice(MultipleChoice)
+    choice = self.resolve_to_choice(SpendChoice)
     choice.resolve(self.state, "Let man and his family go hungry")
     self.resolve_until_done()
     self.assertEqual(self.char.dollars, 3)
@@ -2131,7 +2180,8 @@ class BankTest(EncounterTest):
     self.state.event_stack.append(encounters.Bank2(self.char))
     self.state.unique.extend([items.Cross(0), items.HolyWater(0)])
     self.state.common.extend([items.Revolver38(0), items.TommyGun(0)])
-    choice = self.resolve_to_choice(MultipleChoice)
+    choice = self.resolve_to_choice(SpendChoice)
+    self.spend("dollars", 2, choice)
     choice.resolve(self.state, "Pay $2")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       self.resolve_until_done()
@@ -2143,7 +2193,8 @@ class BankTest(EncounterTest):
     self.state.event_stack.append(encounters.Bank2(self.char))
     self.state.unique.extend([items.Cross(0), items.HolyWater(0)])
     self.state.common.extend([items.Revolver38(0), items.TommyGun(0)])
-    choice = self.resolve_to_choice(MultipleChoice)
+    choice = self.resolve_to_choice(SpendChoice)
+    self.spend("dollars", 2, choice)
     choice.resolve(self.state, "Pay $2")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=2)):
       self.resolve_until_done()
@@ -2578,9 +2629,12 @@ class TrainTest(EncounterTest):
   def testTrain6NoMoney(self):
     self.state.event_stack.append(encounters.Train6(self.char))
     self.char.dollars = 2
-    choice = self.resolve_to_choice(MultipleChoice)
+    choice = self.resolve_to_choice(SpendChoice)
+    with self.assertRaises(AssertionError):
+      self.spend("dollars", 3, choice)
     with self.assertRaises(AssertionError):
       choice.resolve(self.state, "Yes")
+    self.spend("dollars", -2, choice)
     choice.resolve(self.state, "No")
     self.resolve_until_done()
     self.assertEqual(self.char.dollars, 2)
@@ -2591,7 +2645,7 @@ class TrainTest(EncounterTest):
   def testTrain6MoneyRefuse(self):
     self.state.event_stack.append(encounters.Train6(self.char))
     self.char.dollars = 4
-    choice = self.resolve_to_choice(MultipleChoice)
+    choice = self.resolve_to_choice(SpendChoice)
     self.assertEqual(choice.choices, ["Yes", "No"])
     choice.resolve(self.state, "No")
     self.resolve_until_done()
@@ -2603,8 +2657,9 @@ class TrainTest(EncounterTest):
   def testTrain6MoneyAcceptPass(self):
     self.state.event_stack.append(encounters.Train6(self.char))
     self.char.dollars = 4
-    choice = self.resolve_to_choice(MultipleChoice)
+    choice = self.resolve_to_choice(SpendChoice)
     self.assertEqual(choice.choices, ["Yes", "No"])
+    self.spend("dollars", 3, choice)
     choice.resolve(self.state, "Yes")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       self.resolve_until_done()
@@ -2617,8 +2672,9 @@ class TrainTest(EncounterTest):
   def testTrain6MoneyAcceptFail(self):
     self.state.event_stack.append(encounters.Train6(self.char))
     self.char.dollars = 4
-    choice = self.resolve_to_choice(MultipleChoice)
+    choice = self.resolve_to_choice(SpendChoice)
     self.assertEqual(choice.choices, ["Yes", "No"])
+    self.spend("dollars", 3, choice)
     choice.resolve(self.state, "Yes")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=2)):
       self.resolve_until_done()
@@ -4005,7 +4061,7 @@ class StoreTest(EncounterTest):
   def testStore6Decline(self):
     self.char.lore_luck_slider = 2
     self.state.event_stack.append(encounters.Store6(self.char))
-    choice = self.resolve_to_choice(MultipleChoice)
+    choice = self.resolve_to_choice(SpendChoice)
     self.assertEqual(choice.choices, ["Yes", "No"])
     choice.resolve(self.state, "No")
     self.resolve_until_done()
@@ -4017,7 +4073,9 @@ class StoreTest(EncounterTest):
     self.char.lore_luck_slider = 2
     self.char.dollars = 0
     self.state.event_stack.append(encounters.Store6(self.char))
-    choice = self.resolve_to_choice(MultipleChoice)
+    choice = self.resolve_to_choice(SpendChoice)
+    with self.assertRaises(AssertionError):
+      self.spend("dollars", 1, choice)
     with self.assertRaises(AssertionError):
       choice.resolve(self.state, "Yes")
     choice.resolve(self.state, "No")
@@ -4028,8 +4086,9 @@ class StoreTest(EncounterTest):
     self.char.lore_luck_slider = 2
     self.char.dollars = 1
     self.state.event_stack.append(encounters.Store6(self.char))
-    choice = self.resolve_to_choice(MultipleChoice)
+    choice = self.resolve_to_choice(SpendChoice)
     self.assertEqual(choice.choices, ["Yes", "No"])
+    self.spend("dollars", 1, choice)
     choice.resolve(self.state, "Yes")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       self.resolve_until_done()
@@ -4039,8 +4098,9 @@ class StoreTest(EncounterTest):
     self.char.lore_luck_slider = 2
     self.char.dollars = 1
     self.state.event_stack.append(encounters.Store6(self.char))
-    choice = self.resolve_to_choice(MultipleChoice)
+    choice = self.resolve_to_choice(SpendChoice)
     self.assertEqual(choice.choices, ["Yes", "No"])
+    self.spend("dollars", 1, choice)
     choice.resolve(self.state, "Yes")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=2)):
       self.resolve_until_done()
@@ -4085,16 +4145,19 @@ class ShoppeTest(EncounterTest):
 
   def testShoppe3Poor(self):
     self.state.event_stack.append(encounters.Shoppe3(self.char))
-    choice = self.resolve_to_choice(MultipleChoice)
+    choice = self.resolve_to_choice(SpendChoice)
+    with self.assertRaises(AssertionError):
+      self.spend("dollars", 5, choice)
     with self.assertRaises(AssertionError):
       choice.resolve(self.state, "Yes")
+    self.spend("dollars", -3, choice)
     choice.resolve(self.state, "No")
     self.resolve_until_done()
 
   def testShoppe3Decline(self):
     self.char.dollars = 5
     self.state.event_stack.append(encounters.Shoppe3(self.char))
-    buy = self.resolve_to_choice(MultipleChoice)
+    buy = self.resolve_to_choice(SpendChoice)
     self.assertEqual(buy.choices, ["Yes", "No"])
     buy.resolve(self.state, "No")
     self.resolve_until_done()
@@ -4103,8 +4166,9 @@ class ShoppeTest(EncounterTest):
     self.char.dollars = 5
     self.state.unique.extend([items.Cross(0), items.HolyWater(0)])
     self.state.event_stack.append(encounters.Shoppe3(self.char))
-    buy = self.resolve_to_choice(MultipleChoice)
+    buy = self.resolve_to_choice(SpendChoice)
     self.assertEqual(buy.choices, ["Yes", "No"])
+    self.spend("dollars", 5, buy)
     buy.resolve(self.state, "Yes")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=4)):
       self.resolve_until_done()
@@ -4116,7 +4180,8 @@ class ShoppeTest(EncounterTest):
     self.char.lore_luck_slider = 3
     self.state.unique.extend([items.Cross(0), items.HolyWater(0)])
     self.state.event_stack.append(encounters.Shoppe3(self.char))
-    buy = self.resolve_to_choice(MultipleChoice)
+    buy = self.resolve_to_choice(SpendChoice)
+    self.spend("dollars", 5, buy)
     self.assertEqual(buy.choices, ["Yes", "No"])
     buy.resolve(self.state, "Yes")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
@@ -4132,6 +4197,7 @@ class ShoppeTest(EncounterTest):
     # self.state.event_stack.append(encounters.Shoppe3(self.char))
     # buy = self.resolve_to_choice(MultipleChoice)
     # self.assertEqual(buy.choices, ["Yes", "No"])
+    # self.spend("dollars", 5, choice)
     # buy.resolve(self.state, "Yes")
     # with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
     #   self.resolve_until_done()

@@ -25,13 +25,12 @@ class EncounterCard:
 
 
 def Diner1(char):
-  prereq = values.AttributePrerequisite(char, "dollars", 1, "at least")
-  dollar_choice = events.MultipleChoice(
-      char, "How many dollars do you want to pay?", list(range(0, min(char.dollars+1, 7))))
-  spend = events.Loss(char, {"dollars": values.Calculation(dollar_choice, "choice")})
-  gain = events.SplitGain(char, "stamina", "sanity", values.Calculation(dollar_choice, "choice"))
-  spend_and_gain = events.Sequence([dollar_choice, spend, gain], char)
-  return events.PassFail(char, prereq, spend_and_gain, events.Nothing())
+  spend = values.SpendPrerequisite("dollars", 1, 6)
+  dollar_choice = events.SpendChoice(
+      char, "Spend money to restore stamina and/or sanity?", ["Spend", "No Thanks"], [spend, None])
+  gain = events.SplitGain(char, "stamina", "sanity", values.SpendCount(dollar_choice, "dollars"))
+  cond = events.Conditional(char, dollar_choice, "choice_index", {0: gain, 1: events.Nothing()})
+  return events.Sequence([dollar_choice, cond], char)
 
 
 def Diner2(char):
@@ -39,10 +38,8 @@ def Diner2(char):
 
 
 def Diner3(char):
-  prereq = values.AttributePrerequisite(char, "dollars", 1, "at least")
-  adj = events.GainOrLoss(char, {"stamina": 2}, {"dollars": 1})
-  return events.BinaryChoice(
-      char, "Pay $1 for pie?", "Pay $1", "Go Hungry", adj, events.Nothing(), prereq)
+  gain = events.Gain(char, {"stamina": 2})
+  return events.BinarySpend(char, "dollars", 1, "Pay $1 for pie?", "Pay $1", "Go Hungry", gain)
 
 
 def Diner4(char):
@@ -75,13 +72,9 @@ def Diner7(char):
 def Roadhouse1(char):
   # TODO: this prerequisite should account for characters that can spend clues in other ways, such
   # as by discarding a research materials, or by using the violinist's clues, etc.
-  prereq = values.AttributePrerequisite(char, "clues", 3, "at least")
-  spend = events.Loss(char, {"clues": 3})
   draw2 = events.Sequence([events.Draw(char, "common", 1), events.Draw(char, "common", 1)], char)
   draw = events.GainAllyOrReward(char, "Traveling Salesman", draw2)
-  take = events.Sequence([spend, draw], char)
-  nothing = events.Nothing()
-  return events.BinaryChoice(char, "Spend 3 clues for an ally?", "Yes", "No", take, nothing, prereq)
+  return events.BinarySpend(char, "clues", 3, "Spend 3 clues for an ally?", "Yes", "No", draw)
 
 
 def Roadhouse2(char):
@@ -185,15 +178,14 @@ def Lodge3(char):
 
 
 def Lodge4(char):
-  prereq = values.AttributePrerequisite(char, "dollars", 3, "at least")
-  pay = events.Loss(char, {"dollars": 3})
   check = events.Check(char, "will", -1)
   damage = events.Loss(char, {"stamina": 3})
   membership = events.MembershipChange(char, True)
   move = events.ForceMovement(char, "FrenchHill")
   resist = events.PassFail(char, check, move, events.Sequence([damage, move], char))
-  join = events.Sequence([pay, membership], char)
-  return events.BinaryChoice(char, "Pay $3 to join the Lodge?", "Yes", "No", join, resist, prereq)
+  return events.BinarySpend(
+      char, "dollars", 3, "Pay $3 to join the Lodge?", "Yes", "No", membership, resist,
+  )
 
 
 def Lodge5(char):
@@ -233,18 +225,15 @@ def Sanctum1(char):
 
 def Sanctum2(char):
   check = events.Check(char, "luck", -1)
-  spend = events.Loss(char, {"sanity": 1})
   success = events.Nothing()  # TODO: claim a monster on the board as a trophy
   nothing = events.Nothing()
-  seq = events.Sequence([
-      events.PassFail(char, check, success, nothing), spend,
-  ])
+  seq = events.PassFail(char, check, success, nothing)
   # TODO: Reach consensus on whether this is may or must spend 1 sanity
-  choice = events.BinaryChoice(char, "Cast a banishment spell?", "Yes", "No", seq, nothing)
-  return choice
+  return events.BinarySpend(char, "sanity", 1, "Cast a banishment spell?", "Yes", "No", seq)
 
 
 def Sanctum3(char):
+  # NOTE: this card does not say "spend"; it specifically says lose.
   choice = events.MultipleChoice(
       char, "How many sanity do you want to trade for clues?", list(range(min(char.sanity, 3)+1))
   )
@@ -257,12 +246,12 @@ def Sanctum3(char):
 
 
 def Sanctum4(char):
-  prereq = values.AttributePrerequisite(char, "dollars", 3, "at least")
-  dues = events.Loss(char, {"dollars": 3})
   dreams = events.Loss(char, {"sanity": 2})
   membership = events.MembershipChange(char, False)
   decline = events.Sequence([membership, dreams], char)
-  return events.BinaryChoice(char, "Pay your dues?", "Spend $3", "Decline", dues, decline, prereq)
+  return events.BinarySpend(
+      char, "dollars", 3, "Pay your dues?", "Spend $3", "Decline", events.Nothing(), decline,
+  )
 
 
 def Sanctum5(char):
@@ -277,15 +266,15 @@ def Sanctum6(char):
 
 def Sanctum7(char):
   # TODO: there has to actually be a gate open for you to do this.
-  prereq = values.AttributePrerequisite(char, "clues", 2, "at least")
+  spend = values.MultiSpendPrerequisite({"clues": 2, "sanity": 1})
   check = events.Check(char, "lore", -2)
   close = events.Nothing()  # TODO: Close a gate
-  nothing = events.Nothing()
-  cost = events.Loss(char, {"clues": 2, "sanity": 1})
-  ceremony = events.PassFail(char, check, close, nothing)
-  seq = events.Sequence([cost, ceremony], char)
-  return events.BinaryChoice(
-      char, "Participate in a gating ceremony?", "Yes", "No", seq, nothing, prereq)
+  ceremony = events.PassFail(char, check, close, events.Nothing())
+  choice = events.SpendChoice(
+      char, "Participate in a gating ceremony?", ["Yes", "No"], [spend, None],
+  )
+  cond = events.Conditional(char, choice, "choice_index", {0: ceremony, 1: events.Nothing()})
+  return events.Sequence([choice, cond], char)
 
 
 def WitchHouse1(char):
@@ -428,14 +417,10 @@ def Store5(char):
 
 
 def Store6(char):
-  prereq = values.AttributePrerequisite(char, "dollars", 1, "at least")
   check = events.Check(char, "lore", -2)
-  pay = events.Loss(char, {"dollars": 1})
   guess = events.PassFail(char, check, events.Gain(char, {"dollars": 5}), events.Nothing())
-  do_guess = events.Sequence([pay, guess], char)
-  return events.BinaryChoice(
-      char, "Pay $1 to guess how many beans the jar contains?", "Yes", "No", do_guess,
-      events.Nothing(), prereq,
+  return events.BinarySpend(
+      char, "dollars", 1, "Pay $1 to guess how many beans the jar contains?", "Yes", "No", guess,
   )
 
 
@@ -486,7 +471,7 @@ def Graveyard6(char):
 
 
 def Graveyard7(char):
-  return events.Nothing()
+  return events.Nothing()  # TODO: take a monster trophy from the cup
 
 
 def Society1(char):
@@ -497,7 +482,6 @@ def Society1(char):
 
 
 def Society2(char):
-  prereq = values.AttributePrerequisite(char, "dollars", 3, "at least")
   move = events.ForceMovement(char, "Southside")
   luck = events.Check(char, "luck", -1)
   move_dream = events.ForceMovement(char, "Dreamlands1")
@@ -506,11 +490,9 @@ def Society2(char):
   ret = events.ForceMovement(char, "Society")
   dreamlands = events.Sequence([move_dream, enc, ret], char)
   spell = events.Draw(char, "spells", 1)
-  pay = events.Loss(char, {"dollars": 3})
   searchstacks = events.PassFail(char, luck, spell, dreamlands)
-  library = events.Sequence([pay, searchstacks], char)
-  return events.BinaryChoice(
-      char, "Pay $3 to access the private library", "Yes", "No", library, move, prereq=prereq,
+  return events.BinarySpend(
+      char, "dollars", 3, "Pay $3 to access the private library", "Yes", "No", searchstacks, move,
   )
 
 
@@ -608,13 +590,8 @@ def House6(char):
 
 
 def House7(char):
-  prereq = values.AttributePrerequisite(char, "dollars", 3, "at least")
-  pay = events.Loss(char, {"dollars": 3})
   gain = events.SplitGain(char, "sanity", "stamina", 4)
-  stay = events.Sequence([pay, gain], char)
-  return events.BinaryChoice(
-      char, "Spend $3 to spend the night?", "Yes", "No", stay, events.Nothing(), prereq
-  )
+  return events.BinarySpend(char, "dollars", 3, "Spend $3 to spend the night?", "Yes", "No", gain)
 
 
 def Church1(char):
@@ -651,14 +628,12 @@ def Church5(char):
 
 def Church6(char):
   # TODO: remove a counter from the doomtrack
-  prereq = values.AttributePrerequisite(char, "clues", 1, "at least")
-  clue = events.Loss(char, {"clues": 1})
   roll = events.Nothing()  # TODO: roll for a success
   doom = events.Nothing()  # TODO: remove a doom token
-  chance = events.Sequence([clue, roll, doom], char)
-  return events.BinaryChoice(
-      char, "Spend a clue token for a chance to remove a Doom Token?",
-      "Yes", "No", chance, events.Nothing(), prereq,
+  chance = events.Sequence([roll, doom], char)
+  return events.BinarySpend(
+      char, "clues", 1, "Spend a clue token for a chance to remove a Doom Token?",
+      "Yes", "No", chance,
   )
 
 
@@ -751,10 +726,9 @@ def Library5(char):
 
 
 def Library6(char):
-  prereq = values.AttributePrerequisite(char, "dollars", 4, "at least")
-  pay = events.Loss(char, {"dollars": 4})
+  # TODO: is spending here optional?
   move = events.ForceMovement(char, "University")
-  return events.PassFail(char, prereq, pay, move)
+  return events.BinarySpend(char, "dollars", 4, "Pay up!", "Pay $4", "Oops", events.Nothing(), move)
 
 
 def Library7(char):
@@ -939,15 +913,12 @@ def Train5(char):
 
 
 def Train6(char):
-  prereq = values.AttributePrerequisite(char, "dollars", 3, "at least")
-  pay = events.Loss(char, {"dollars": 3})
   check = events.Check(char, "luck", -2)
   common = events.Draw(char, "common", 1)
   unique = events.Draw(char, "unique", 1)
   item = events.PassFail(char, check, unique, common)
-  return events.BinaryChoice(
-      char, "Claim item left at lost and found for $3?", "Yes", "No",
-      events.Sequence([pay, item], char), events.Nothing(), prereq,
+  return events.BinarySpend(
+      char, "dollars", 3, "Claim item left at lost and found for $3?", "Yes", "No", item,
   )
 
 
@@ -1023,15 +994,11 @@ def Bank1(char):
 
 def Bank2(char):
   check = events.Check(char, "luck", -1)
-  spend = events.Loss(char, {"dollars": 2})
   common = events.Draw(char, "common", 1)
   unique = events.Draw(char, "unique", 1)
-  cond = events.Conditional(char, check, "successes", {0: common, 1: unique})
-  prereq = values.AttributePrerequisite(char, "dollars", 2, "at least")
-  nothing = events.Nothing()
-  return events.BinaryChoice(
-      char, "Pay $2 for man's last possession?", "Pay $2", "Let man and his family go hungry",
-      events.Sequence([spend, check, cond], char), nothing, prereq,
+  return events.BinarySpend(
+      char, "dollars", 2, "Pay $2 for man's last possession?", "Pay $2",
+      "Let man and his family go hungry", events.PassFail(char, check, unique, common),
   )
 
 
@@ -1261,11 +1228,11 @@ def Isle7(char):
 
 
 def Hospital1(char):
-  prereq = values.AttributePrerequisite(char, "clues", 1, "at least")
-  return events.PassFail(char, prereq, events.Loss(char, {"clues": 1}), events.Nothing())
+  return events.Loss(char, {"clues": 1})
 
 
 def Hospital2(char):
+  # TODO: this sequence is missing activation and deactivation steps
   sanity = events.Loss(char, {"sanity": 1})
   prep = events.CombatChoice(char, "Choose weapons to fight the corpse")
   check = events.Check(char, "combat", -1)
@@ -1409,16 +1376,14 @@ def Shoppe2(char):
 
 
 def Shoppe3(char):
-  prereq = values.AttributePrerequisite(char, "dollars", 5, "at least")
   luck = events.Check(char, "luck", 0)
   dice = events.DiceRoll(char, 2)
   coins = events.Sequence([dice, events.Gain(char, {"dollars": values.Die(dice)})], char)
   # TODO: add a keep counter
   jackpot = events.Draw(char, "unique", 2)
   cond = events.Conditional(char, luck, "successes", {0: events.Nothing(), 1: coins, 2: jackpot})
-  buy = events.Sequence([events.Loss(char, {"dollars": 5}), luck, cond], char)
-  nothing = events.Nothing()
-  return events.BinaryChoice(char, "Buy the locked trunk?", "Yes", "No", buy, nothing, prereq)
+  buy = events.Sequence([luck, cond], char)
+  return events.BinarySpend(char, "dollars", 5, "Buy the locked trunk?", "Yes", "No", buy)
 
 
 def Shoppe4(char):
