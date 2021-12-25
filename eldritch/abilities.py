@@ -13,11 +13,13 @@ class BonusSkill(assets.Card):
     return check_type == self.check_type or assets.SUB_CHECKS.get(check_type) == self.check_type
 
   def get_interrupt(self, event, owner, state):
-    if not isinstance(event, events.SpendClue) or not isinstance(event.check, events.Check):
+    if not isinstance(event, events.BonusDiceRoll):
       return None
-    if event.character != owner or not self._check_matches(event.check.check_type):
+    if len(state.event_stack) < 2 or not isinstance(state.event_stack[-2], events.Check):
       return None
-    return events.AddExtraDie(owner, event.dice)
+    if event.character != owner or not self._check_matches(state.event_stack[-2].check_type):
+      return None
+    return events.AddExtraDie(owner, event)
 
 
 class RerollSkill(assets.Card):
@@ -27,12 +29,16 @@ class RerollSkill(assets.Card):
     super().__init__(name, idx, "skills", {}, {})
     self.check_type = check_type
 
-  def get_usable_trigger(self, event, owner, state):
-    if not isinstance(event, events.Check) or event.character != owner:
+  def get_usable_interrupt(self, event, owner, state):
+    if not isinstance(event, events.SpendChoice) or event.character != owner or event.is_done():
       return None
-    if self.exhausted or event.check_type != self.check_type:
+    if len(state.event_stack) < 2 or not isinstance(state.event_stack[-2], events.Check):
       return None
-    return events.Sequence([events.ExhaustAsset(owner, self), events.RerollCheck(owner, event)])
+    if self.exhausted or state.event_stack[-2].check_type != self.check_type:
+      return None
+    return events.Sequence(
+        [events.ExhaustAsset(owner, self), events.RerollCheck(owner, state.event_stack[-2])], owner,
+    )
 
 
 def Speed(idx):

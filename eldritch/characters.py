@@ -1,7 +1,6 @@
 from collections import OrderedDict
 
 from eldritch import abilities
-from eldritch import events
 
 
 class Character:
@@ -128,13 +127,10 @@ class Character:
     ]
 
   def get_usable_triggers(self, event, state):
-    triggers = {
+    return {
         pos.handle: pos.get_usable_trigger(event, self, state)
         for pos in self.possessions if pos.get_usable_trigger(event, self, state)
     }
-    if self.clues > 0 and isinstance(event, events.Check) and event.character == self:
-      triggers["clues"] = events.SpendClue(self, event)
-    return triggers
 
   def bonus(self, check_name, state, attributes=None):
     modifier = state.get_modifier(self, check_name)

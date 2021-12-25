@@ -509,6 +509,10 @@ class DiceRoll(Event):
     return "%s rolled %s" % (self.character.name, " ".join([str(x) for x in self.roll]))
 
 
+class BonusDiceRoll(DiceRoll):
+  pass
+
+
 class MoveOne(Event):
 
   def __init__(self, character, dest):
@@ -1853,6 +1857,9 @@ class Check(Event):
     self.dice: Optional[Event] = None
     self.roll = None
     self.successes = None
+    self.spend: Optional[SpendChoice] = None
+    self.bonus_dice: Optional[Event] = None
+    self.done = False
 
   def resolve(self, state):
     if self.dice is None:
@@ -1868,8 +1875,33 @@ class Check(Event):
       self.cancelled = True
       return
 
-    self.roll = self.dice.roll[:]
-    self.count_successes()
+    if self.roll is None:
+      self.roll = self.dice.roll[:]
+      self.count_successes()
+
+    if self.bonus_dice is not None:
+      if not self.bonus_dice.is_cancelled():
+        self.roll.extend(self.bonus_dice.roll[:])
+        self.count_successes()
+      self.bonus_dice = None
+
+    if self.spend is None:
+      if state.test_mode and self.character.clues == 0:
+        self.done = True
+        return
+      spend = values.SpendPrerequisite("clues", 1)
+      self.spend = SpendChoice(self.character, "Spend Clues?", ["Spend", "Done"], [spend, None])
+      state.event_stack.append(self.spend)
+      return
+
+    if self.spend.is_cancelled() or self.spend.choice == "Done":
+      self.done = True
+      return
+
+    # self.spend finished, and self.bonus_dice is None
+    self.spend = None
+    self.bonus_dice = BonusDiceRoll(self.character, 1)
+    state.event_stack.append(self.bonus_dice)
 
   @property
   def count(self):
@@ -1883,7 +1915,7 @@ class Check(Event):
     self.successes = self.character.count_successes(self.roll, self.check_type)
 
   def is_resolved(self):
-    return self.successes is not None
+    return self.done
 
   def check_str(self):
     return f"{self.check_type} {self.modifier:+d} check"
@@ -1897,47 +1929,12 @@ class Check(Event):
     return f"{self.character.name} had {self.successes} successes on a {self.check_str()}"
 
 
-class SpendClue(Event):
-
-  def __init__(self, character, check):
-    self.character = character
-    self.check: Check = check
-    self.dice: DiceRoll = DiceRoll(character, 1)
-    self.extra_successes = None
-
-  def resolve(self, state):
-    assert self.check.is_resolved()
-    if not self.dice.is_done():
-      assert self.character.clues > 0
-      state.event_stack.append(self.dice)
-      return
-
-    if self.dice.is_cancelled():
-      self.cancelled = True
-      return
-
-    self.character.clues -= 1
-    old_successes = self.check.successes
-    self.check.roll.extend(self.dice.roll)
-    self.check.count_successes()
-    self.extra_successes = self.check.successes - old_successes
-
-  def is_resolved(self):
-    return self.extra_successes is not None
-
-  def start_str(self):
-    return f"{self.character.name} spent a clue token"
-
-  def finish_str(self):
-    return f"{self.character.name} got {self.extra_successes} extra successes"
-
-
 class AddExtraDie(Event):
 
   def __init__(self, character, event):
-    assert isinstance(event, DiceRoll)
+    assert isinstance(event, BonusDiceRoll)
     self.character = character
-    self.dice: DiceRoll = event
+    self.dice: BonusDiceRoll = event
     self.done = False
 
   def resolve(self, state):
@@ -1949,7 +1946,7 @@ class AddExtraDie(Event):
     return self.done
 
   def start_str(self):
-    return f"{self.character.name} gets an extra die just because"  # TODO
+    return f"{self.character.name} gets an extra die from their skill"
 
   def finish_str(self):
     return ""
@@ -1965,7 +1962,6 @@ class RerollCheck(Event):
     self.done = False
 
   def resolve(self, state):
-    assert self.check.is_resolved()
     if self.dice is None:
       self.dice = DiceRoll(self.character, len(self.check.roll))
       state.event_stack.append(self.dice)
@@ -2742,11 +2738,10 @@ class GateCloseAttempt(Event):
         return
 
     if self.seal_choice is None:
-      if self.character.clues < 5:  # TODO: this can also have modifiers
-        self.sealed = False
-        return
-      self.seal_choice = MultipleChoice(
-          self.character, "Seal the gate with 5 clue tokens?", ["Yes", "No"])
+      spend = values.SpendPrerequisite("clues", 5)
+      self.seal_choice = SpendChoice(
+          self.character, "Spend clue tokens to seal the gate?", ["Yes", "No"], [spend, None],
+      )
       state.event_stack.append(self.seal_choice)
       return
 
@@ -2755,7 +2750,6 @@ class GateCloseAttempt(Event):
       self.sealed = False
       return
 
-    self.character.clues -= 5  # TODO: spending clues in other ways
     state.places[self.location_name].sealed = True
     self.sealed = True
 

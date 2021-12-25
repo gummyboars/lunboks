@@ -26,117 +26,130 @@ class ClueTokenTest(EventTest):
 
   def testSpendClues(self):
     self.char.clues = 3
-    self.resolve_to_usable(0, "clues", SpendClue)
-    self.assertTrue(self.check.is_resolved())
-    self.assertEqual(len(self.state.event_stack), 1)
-    self.assertEqual(self.state.event_stack[-1], self.check)
-    self.assertEqual(len(self.state.usables), 1)
+    choice = self.resolve_to_choice(SpendChoice)
+    self.assertFalse(self.check.is_resolved())
+    self.assertEqual(len(self.state.event_stack), 2)
+    self.assertEqual(self.state.event_stack[-1], self.check.spend)
     old_successes = self.check.successes
     old_roll = self.check.roll[:]
 
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
-      self.state.event_stack.append(self.state.usables[0]["clues"])
-      self.resolve_to_usable(0, "clues", SpendClue)
+      self.spend("clues", 1, choice)
+      choice.resolve(self.state, "Spend")
+      choice = self.resolve_to_choice(SpendChoice)
 
     new_successes = self.check.successes
     new_roll = self.check.roll
     self.assertEqual(len(new_roll), 1+len(old_roll))
     self.assertEqual(new_successes, old_successes+1)
-    self.assertEqual(len(self.state.event_stack), 1)
-    self.assertEqual(self.state.event_stack[-1], self.check)
+    self.assertEqual(len(self.state.event_stack), 2)
+    self.assertEqual(self.state.event_stack[-1], self.check.spend)
 
-    self.state.done_using[0] = True
-    self.resolve_loop()
+    choice.resolve(self.state, "Done")
+    self.resolve_until_done()
 
   def testSpendClueCancelledDie(self):
     self.char.clues = 3
-    self.resolve_to_usable(0, "clues", SpendClue)
+    choice = self.resolve_to_choice(SpendChoice)
     self.char.possessions.append(Canceller(DiceRoll))
-    self.assertTrue(self.check.is_resolved())
-    self.assertEqual(len(self.state.event_stack), 1)
-    self.assertEqual(self.state.event_stack[-1], self.check)
-    self.assertEqual(len(self.state.usables), 1)
+    self.assertFalse(self.check.is_resolved())
+    self.assertEqual(len(self.state.event_stack), 2)
+    self.assertEqual(self.state.event_stack[-1], self.check.spend)
     old_successes = self.check.successes
     old_roll = self.check.roll[:]
 
-    use_clue = self.state.usables[0]["clues"]
-    self.state.event_stack.append(use_clue)
-    self.resolve_to_usable(0, "clues", SpendClue)
+    self.spend("clues", 1, choice)
+    choice.resolve(self.state, "Spend")
+    choice = self.resolve_to_choice(SpendChoice)
 
-    self.assertFalse(use_clue.is_resolved())
-    self.assertTrue(use_clue.is_cancelled())
     self.assertEqual(self.check.roll, old_roll)
     self.assertEqual(self.check.successes, old_successes)
-    self.assertEqual(self.char.clues, 3)
+    self.assertEqual(self.char.clues, 2)
 
   def testNoCluesLeft(self):
     self.char.clues = 1
-    self.resolve_to_usable(0, "clues", SpendClue)
-    self.assertTrue(self.check.is_resolved())
-    self.assertEqual(len(self.state.event_stack), 1)
-    self.assertEqual(self.state.event_stack[-1], self.check)
-    self.assertEqual(len(self.state.usables), 1)
+    choice = self.resolve_to_choice(SpendChoice)
+    self.assertFalse(self.check.is_resolved())
+    self.assertEqual(len(self.state.event_stack), 2)
+    self.assertEqual(self.state.event_stack[-1], self.check.spend)
 
-    self.state.event_stack.append(self.state.usables[0]["clues"])
-    self.resolve_loop()
-
-    self.assertFalse(self.state.usables)
+    self.spend("clues", 1, choice)
+    choice.resolve(self.state, "Spend")
+    with self.assertRaises(AssertionError):
+      self.spend("clues", 1, choice)
+    self.resolve_until_done()
 
   def testBonusDieFromSkill(self):
     self.char.clues = 2
     self.char.possessions.append(abilities.Fight(None))
-    self.resolve_to_usable(0, "clues", SpendClue)
-    self.assertTrue(self.check.is_resolved())
-    self.assertEqual(len(self.state.event_stack), 1)
-    self.assertEqual(self.state.event_stack[-1], self.check)
-    self.assertEqual(len(self.state.usables), 1)
+    choice = self.resolve_to_choice(SpendChoice)
+    self.assertFalse(self.check.is_resolved())
+    self.assertEqual(len(self.state.event_stack), 2)
+    self.assertEqual(self.state.event_stack[-1], self.check.spend)
     old_roll = self.check.roll[:]
 
-    self.state.event_stack.append(self.state.usables[0]["clues"])
-    self.resolve_to_usable(0, "clues", SpendClue)
+    self.spend("clues", 1, choice)
+    choice.resolve(self.state, "Spend")
+    choice = self.resolve_to_choice(SpendChoice)
 
     new_roll = self.check.roll[:]
     self.assertEqual(len(new_roll), 2+len(old_roll))
 
-    self.assertEqual(len(self.state.event_stack), 1)
-    self.state.event_stack.append(self.state.usables[0]["clues"])
-    self.resolve_loop()
+    self.assertEqual(len(self.state.event_stack), 2)
+    self.spend("clues", 1, choice)
+    choice.resolve(self.state, "Spend")
+    self.resolve_until_done()
 
     last_roll = self.check.roll[:]
     self.assertEqual(len(last_roll), 2+len(new_roll))
-    self.assertFalse(self.state.event_stack)
 
 
 class RerollTest(EventTest):
 
   def setUp(self):
     super().setUp()
+    self.char.clues = 2
     self.char.possessions.append(abilities.Marksman(0))
     self.check = Check(self.char, "combat", 0)
     self.state.event_stack.append(self.check)
 
   def testReroll(self):
     self.resolve_to_usable(0, "Marksman0", Sequence)
-    self.assertTrue(self.check.is_resolved())
-    self.assertEqual(len(self.state.event_stack), 1)
-    self.assertEqual(self.state.event_stack[-1], self.check)
+    self.assertFalse(self.check.is_resolved())
+    self.assertEqual(len(self.state.event_stack), 2)
+    self.assertEqual(self.state.event_stack[-1], self.check.spend)
     self.assertEqual(len(self.state.usables), 1)
     old_roll = self.check.roll[:]
 
     self.state.event_stack.append(self.state.usables[0]["Marksman0"])
-    self.resolve_loop()
+    self.resolve_to_choice(SpendChoice)
 
-    self.assertTrue(self.check.is_resolved())
     self.assertFalse(self.state.usables)
 
     new_roll = self.check.roll
     self.assertNotEqual(old_roll, new_roll)  # TODO: 1 / 1296 chance of failing.
 
+  def testSpendClueThenReroll(self):
+    choice = self.resolve_to_choice(SpendChoice)
+    self.spend("clues", 1, choice)
+    choice.resolve(self.state, "Spend")
+    choice = self.resolve_to_choice(SpendChoice)
+    old_roll = self.check.roll[:]
+
+    self.state.event_stack.append(self.state.usables[0]["Marksman0"])
+    choice = self.resolve_to_choice(SpendChoice)
+
+    self.assertFalse(self.state.usables)
+
+    new_roll = self.check.roll
+    self.assertEqual(len(new_roll), len(old_roll))
+    self.assertNotEqual(old_roll, new_roll)  # TODO: 1 / 1296 chance of failing.
+
   def testRerollDiceCancelled(self):
     self.resolve_to_usable(0, "Marksman0", Sequence)
-    self.assertTrue(self.check.is_resolved())
-    self.assertEqual(len(self.state.event_stack), 1)
-    self.assertEqual(self.state.event_stack[-1], self.check)
+    self.assertFalse(self.check.is_resolved())
+    self.assertEqual(len(self.state.event_stack), 2)
+    self.assertEqual(self.state.event_stack[-1], self.check.spend)
     self.assertEqual(len(self.state.usables), 1)
     self.char.possessions.append(Canceller(DiceRoll))
     old_roll = self.check.roll[:]
@@ -144,9 +157,8 @@ class RerollTest(EventTest):
 
     reroll = self.state.usables[0]["Marksman0"]
     self.state.event_stack.append(reroll)
-    self.resolve_loop()
+    self.resolve_to_choice(SpendChoice)
 
-    self.assertTrue(self.check.is_resolved())
     self.assertFalse(self.state.usables)
 
     self.assertFalse(reroll.events[1].is_resolved())
