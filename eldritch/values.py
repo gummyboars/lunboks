@@ -1,4 +1,5 @@
 import abc
+import collections
 import operator
 
 
@@ -113,3 +114,76 @@ class MonsterAttributePrerequisite(Value):
 def NoAmbushPrerequisite(monster, character):
   return Calculation(
       1, None, operator.sub, MonsterAttributePrerequisite(monster, "ambush", character))
+
+
+class SpendValue(Value):
+
+  SPEND_TYPES = {"stamina", "sanity", "dollars", "clues", "toughness", "gates"}
+
+  def __init__(self):
+    self.spend_map = collections.defaultdict(dict)
+
+  @property
+  @abc.abstractmethod
+  def spend_types(self):
+    raise NotImplementedError
+
+
+class SpendPrerequisite(SpendValue):
+  """SpendPrerequisite represents spending between spend_amount and spend_max of spend_type."""
+
+  def __init__(self, spend_type, spend_min, spend_max=None):
+    assert spend_type in self.SPEND_TYPES
+    # TODO: focus and movement points, maybe?
+    super().__init__()
+    self.spend_type = spend_type
+    self.spend_min = spend_min
+    self.spend_max = spend_max or spend_min
+
+  def value(self, state):
+    spend_min = self.spend_min.value(state) if isinstance(self.spend_min, Value) else self.spend_min
+    spend_max = self.spend_max.value(state) if isinstance(self.spend_max, Value) else self.spend_max
+    if sum(sum(spend.values()) for spend in self.spend_map.values()) != self.spent:
+      return 0
+    return int(self.spent >= spend_min and self.spent <= spend_max)
+
+  @property
+  def spend_types(self):
+    return {self.spend_type}
+
+  @property
+  def spent(self):
+    return sum(self.spend_map[self.spend_type].values())
+
+
+class MultiSpendPrerequisite(SpendValue):
+  """MultiSpendPrerequisite represents spending an exact amount of multiple different types."""
+
+  def __init__(self, spend_amounts):
+    assert not spend_amounts.keys() - self.SPEND_TYPES
+    assert all(isinstance(val, int) for val in spend_amounts.values())
+    super().__init__()
+    self.spend_amounts = spend_amounts
+
+  def value(self, state):
+    spent_map = {key: sum(val.values()) for key, val in self.spend_map.items() if sum(val.values())}
+    if spent_map.keys() ^ self.spend_amounts.keys():
+      return 0
+    return int(all(spent_map[key] == self.spend_amounts[key] for key in self.spend_amounts))
+
+  @property
+  def spend_types(self):
+    return set(self.spend_amounts.keys())
+
+
+class SpendCount(Value):
+
+  def __init__(self, spend_choice, spend_type):
+    self.spend_choice = spend_choice
+    self.spend_type = spend_type
+
+  def value(self, state):
+    assert self.spend_choice.is_done()
+    if self.spend_choice.is_cancelled():
+      return 0
+    return sum(self.spend_choice.spend_map[self.spend_type].values())

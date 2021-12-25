@@ -227,14 +227,19 @@ class GameState:
       output["dice"] = roller.count + bonus if roller.count is not None else None
       output["roll"] = roller.roll
       output["roller"] = self.characters.index(roller.character)
+
     output["choice"] = None
     if top_event and isinstance(top_event, events.ChoiceEvent) and not top_event.is_done():
       if top_event.character == char:
         output["choice"] = {"prompt": top_event.prompt()}
         output["choice"]["annotations"] = top_event.annotations()
-        if isinstance(top_event, events.CardChoice):
+        output["choice"]["invalid_choices"] = getattr(top_event, "invalid_choices", [])
+        if isinstance(top_event, events.SpendChoice):
+          output["choice"]["spendable"] = list(top_event.spendable())
+          output["choice"]["spent"] = top_event.spend_map
+
+        if isinstance(top_event, (events.CardChoice, events.CardSpendChoice)):
           output["choice"]["cards"] = top_event.choices
-          output["choice"]["invalid_choices"] = getattr(top_event, "invalid_choices", [])
         elif isinstance(top_event, (events.MapChoice, events.CityMovement)):
           if top_event.choices is not None:
             extra_choices = [top_event.none_choice] if top_event.none_choice is not None else []
@@ -242,18 +247,15 @@ class GameState:
         elif isinstance(top_event, events.MultipleChoice):
           output["choice"]["choices"] = top_event.choices
           output["choice"]["invalid_choices"] = getattr(top_event, "invalid_choices", [])
-        elif isinstance(top_event, events.ItemCountChoice):
-          output["choice"]["max_items"] = top_event.count
-          output["choice"]["min_items"] = top_event.min_count
-          output["choice"]["items"] = True
         elif isinstance(top_event, events.ItemChoice):
-          output["choice"]["max_items"] = None
-          output["choice"]["min_items"] = None
+          output["choice"]["max_items"] = getattr(top_event, "count", None)
+          output["choice"]["min_items"] = getattr(top_event, "min_count", None)
           output["choice"]["items"] = True
         elif isinstance(top_event, events.MonsterSpawnChoice):
           output["choice"]["monsters"] = top_event.to_spawn
         else:
           raise RuntimeError(f"Unknown choice type {top_event.__class__.__name__}")
+
     if top_event and isinstance(top_event, events.SliderInput) and not top_event.is_done():
       if top_event.character == char:
         output["sliders"] = {"prompt": top_event.prompt()}
@@ -291,6 +293,10 @@ class GameState:
       self.handle_spawn_clue(data.get("place"))
     elif data.get("type") == "choice":
       self.handle_choice(char_idx, data.get("choice"))
+    elif data.get("type") == "spend":
+      self.handle_spend(char_idx, data.get("spend_type"))
+    elif data.get("type") == "unspend":
+      self.handle_unspend(char_idx, data.get("spend_type"))
     elif data.get("type") == "roll":
       self.handle_roll(char_idx)
     elif data.get("type") == "use":
@@ -504,6 +510,20 @@ class GameState:
     assert isinstance(event, events.ChoiceEvent)
     assert event.character == self.characters[char_idx]
     event.resolve(self, choice)
+
+  def handle_spend(self, char_idx, spend_type):
+    assert self.event_stack
+    event = self.event_stack[-1]
+    assert isinstance(event, events.SpendChoice)
+    assert event.character == self.characters[char_idx]
+    event.spend(spend_type)
+
+  def handle_unspend(self, char_idx, spend_type):
+    assert self.event_stack
+    event = self.event_stack[-1]
+    assert isinstance(event, events.SpendChoice)
+    assert event.character == self.characters[char_idx]
+    event.unspend(spend_type)
 
   def handle_roll(self, char_idx):
     assert self.event_stack

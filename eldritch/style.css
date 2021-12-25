@@ -208,6 +208,13 @@ button {
   flex: 0 1 1em;
   width: 1em;
 }
+#uispend {
+  display: none;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+}
 #uiload {
   position: absolute;
   top: 50%;
@@ -851,12 +858,25 @@ button {
   height: calc(min(20vw, 32vh) * 2 / 7);
 }
 .stats {
+  position: relative;
   width: calc(min(20vw, 32vh) / 8);
   height: calc(min(20vw, 32vh) / 8);
   z-index: 1;
 }
-.you .stats.clues {
+.stats.spendable {
   cursor: pointer;
+}
+.stamina {
+  order: 1;
+}
+.sanity {
+  order: 2;
+}
+.clues {
+  order: 3;
+}
+.dollars {
+  order: 4;
 }
 .slidercont {
   width: calc(min(20vw, 32vh));
