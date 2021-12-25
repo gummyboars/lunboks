@@ -2571,6 +2571,8 @@ class CloseLocationTest(EventTest):
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       fight_lore = self.resolve_to_choice(MultipleChoice)
       fight_lore.resolve(self.state, fight_lore.choices[0])
+      seal_choice = self.resolve_to_choice(SpendChoice)
+      seal_choice.resolve(self.state, "No")
       self.resolve_until_done()
 
     self.assertEqual(place.closed_until, self.state.turn_number + 2)

@@ -520,7 +520,9 @@ class CloseGateTest(EventTest):
     self.assertEqual(choice.choices[0], "Close with fight")
     choice.resolve(self.state, "Close with fight")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
-      self.resolve_until_done()
+      seal_choice = self.resolve_to_choice(SpendChoice)
+    seal_choice.resolve(self.state, "No")
+    self.resolve_until_done()
 
     self.assertTrue(close.is_resolved())
     self.assertFalse(self.square.gate)
@@ -535,7 +537,9 @@ class CloseGateTest(EventTest):
     self.assertEqual(choice.choices[1], "Close with lore")
     choice.resolve(self.state, "Close with lore")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
-      self.resolve_until_done()
+      seal_choice = self.resolve_to_choice(SpendChoice)
+    seal_choice.resolve(self.state, "No")
+    self.resolve_until_done()
 
     self.assertTrue(close.is_resolved())
     self.assertFalse(self.square.gate)
@@ -550,9 +554,9 @@ class CloseGateTest(EventTest):
     choice = self.resolve_to_choice(MultipleChoice)
     choice.resolve(self.state, "Close with lore")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
-      self.resolve_to_usable(0, "clues", SpendClue)
-    self.state.done_using[0] = True
-    seal_choice = self.resolve_to_choice(MultipleChoice)
+      choice = self.resolve_to_choice(SpendChoice)
+      choice.resolve(self.state, "Done")
+    seal_choice = self.resolve_to_choice(SpendChoice)
     self.assertEqual(seal_choice.choices[1], "No")
     seal_choice.resolve(self.state, "No")
     self.resolve_until_done()
@@ -570,9 +574,10 @@ class CloseGateTest(EventTest):
     choice = self.resolve_to_choice(MultipleChoice)
     choice.resolve(self.state, "Close with lore")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
-      self.resolve_to_usable(0, "clues", SpendClue)
-    self.state.done_using[0] = True
-    seal_choice = self.resolve_to_choice(MultipleChoice)
+      choice = self.resolve_to_choice(SpendChoice)
+      choice.resolve(self.state, "Done")
+    seal_choice = self.resolve_to_choice(SpendChoice)
+    self.spend("clues", 5, seal_choice)
     self.assertEqual(seal_choice.choices[0], "Yes")
     seal_choice.resolve(self.state, "Yes")
     self.resolve_until_done()
@@ -618,13 +623,13 @@ class CloseGateTest(EventTest):
     self.char.clues = 6
     close = GateCloseAttempt(self.char, "Square")
     self.state.event_stack.append(close)
-    self.char.possessions.append(Canceller(MultipleChoice, 1))
+    self.char.possessions.append(Canceller(SpendChoice, 1))
 
     choice = self.resolve_to_choice(MultipleChoice)
     choice.resolve(self.state, "Close with lore")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
-      self.resolve_to_usable(0, "clues", SpendClue)
-    self.state.done_using[0] = True
+      choice = self.resolve_to_choice(SpendChoice)
+    choice.resolve(self.state, "Done")
     self.resolve_until_done()
 
     self.assertTrue(close.is_resolved())

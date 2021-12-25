@@ -586,8 +586,8 @@ class LodgeTest(EncounterTest):
     self.char.clues = 8
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
       # They get the opportunity to spend clue tokens on this failed check, but don't.
-      self.resolve_to_usable(0, "clues", SpendClue)
-    self.state.done_using[0] = True
+      choice = self.resolve_to_choice(SpendChoice)
+    choice.resolve(self.state, "Done")
     self.resolve_until_done()
     self.assertEqual(self.char.clues, 0)
     self.assertEqual(self.char.place.name, "FrenchHill")

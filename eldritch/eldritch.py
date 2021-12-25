@@ -212,18 +212,24 @@ class GameState:
       char = self.characters[char_idx]
 
     top_event = self.event_stack[-1] if self.event_stack else None
-    if top_event and isinstance(top_event, (events.Check, events.DiceRoll, events.SpendClue)):
+
+    roll_events = (events.Check, events.DiceRoll, events.AddExtraDie, events.RerollCheck)
+    is_roll = isinstance(top_event, roll_events)
+    if len(self.event_stack) > 1 and isinstance(self.event_stack[-2], events.Check):
+      if isinstance(top_event, events.SpendChoice):
+        is_roll = True
+    if top_event and is_roll:
       roller = top_event
       bonus = 0
       for event in reversed(self.event_stack):
-        if not isinstance(event, (events.Check, events.DiceRoll, events.SpendClue)):
+        if not isinstance(event, roll_events + (events.SpendChoice,)):
           break
-        if isinstance(event, events.SpendClue):
-          bonus += 1
+        if isinstance(event, events.BonusDiceRoll):
+          bonus += event.count
         if isinstance(event, events.Check):
           roller = event
           break
-      assert not isinstance(roller, events.SpendClue)  # This should never happen.
+      assert isinstance(roller, (events.Check, events.DiceRoll))
       output["dice"] = roller.count + bonus if roller.count is not None else None
       output["roll"] = roller.roll
       output["roller"] = self.characters.index(roller.character)
