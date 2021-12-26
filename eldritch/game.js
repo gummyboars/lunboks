@@ -713,8 +713,12 @@ function addCardChoices(uichoice, cardChoice, cards, invalidChoices, annotations
     return;
   }
   let notFound = [];
+  let newInvalid = [];
   for (let [idx, card] of cards.entries()) {
     if (!assetNames.includes(card)) {
+      if (invalidChoices != null && invalidChoices.includes(idx)) {
+        newInvalid.push(notFound.length);
+      }
       notFound.push(card);
       continue;
     }
@@ -739,7 +743,7 @@ function addCardChoices(uichoice, cardChoice, cards, invalidChoices, annotations
     cardChoice.appendChild(holder);
     renderAssetToDiv(div, card);
   }
-  addChoices(uichoice, notFound, []);  // TODO: fix up invalid choices
+  addChoices(uichoice, notFound, newInvalid);
 }
 
 function addChoices(uichoice, choices, invalidChoices) {

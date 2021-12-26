@@ -102,10 +102,10 @@ class Street(CityPlace):
 
 class Location(CityPlace):
 
-  def __init__(self, name, long_name, unstable, fixed_encounter=None):
+  def __init__(self, name, long_name, unstable):
     super().__init__(name, long_name)
     self.unstable = unstable
-    self.fixed_encounter = fixed_encounter
+    self.fixed_encounters = []
     self.clues = 0
     self.gate = None
     self.sealed = False
@@ -133,46 +133,46 @@ def CreatePlaces():
   # pylint: disable=protected-access
   Newspaper = Location("Newspaper", "Newspaper", False)
   Train = Location("Train", "Train Station", False)
-  Shop = Location("Shop", "Curiositie Shoppe", False, None)
+  Shop = Location("Shop", "Curiositie Shoppe", False)
   Northside = Street("Northside", "Northside")
   Northside._add_connections(Newspaper, Train, Shop)
-  Bank = Location("Bank", "Bank", False, None)
-  Asylum = Location("Asylum", "Asylum", False, None)
+  Bank = Location("Bank", "Bank", False)
+  Asylum = Location("Asylum", "Asylum", False)
   Square = Location("Square", "Independence Square", True)
   Downtown = Street("Downtown", "Downtown")
   Downtown._add_connections(Bank, Asylum, Square)
   Roadhouse = Location("Roadhouse", "Hibb's Roadhouse", True)
   Diner = Location("Diner", "Velma's Diner", False)
-  Police = Location("Police", "Police Station", False, None)  # TODO: jail?
+  Police = Location("Police", "Police Station", False)  # TODO: jail?
   Easttown = Street("Easttown", "Easttown")
   Easttown._add_connections(Roadhouse, Diner, Police)
   Graveyard = Location("Graveyard", "Graveyard", True)
   Cave = Location("Cave", "Black Cave", True)
-  Store = Location("Store", "General Store", False, None)
+  Store = Location("Store", "General Store", False)
   Rivertown = Street("Rivertown", "Rivertown")
   Rivertown._add_connections(Graveyard, Cave, Store)
   WitchHouse = Location("WitchHouse", "Witch House", True)
   Lodge = Location("Lodge", "Silver Twilight Lodge", True)
   FrenchHill = Street("FrenchHill", "French Hill")
   FrenchHill._add_connections(WitchHouse, Lodge)
-  House = Location("House", "Ma's Boarding House", False, None)
-  Church = Location("Church", "South Church", False, None)
+  House = Location("House", "Ma's Boarding House", False)
+  Church = Location("Church", "South Church", False)
   Society = Location("Society", "Historical Society", True)
   Southside = Street("Southside", "Southside")
   Southside._add_connections(House, Church, Society)
   Woods = Location("Woods", "Woods", True)
-  Shoppe = Location("Shoppe", "Þe Old Magick Shoppe", False, None)
-  Hospital = Location("Hospital", "St. Mary's Hospital", False, None)
+  Shoppe = Location("Shoppe", "Þe Old Magick Shoppe", False)
+  Hospital = Location("Hospital", "St. Mary's Hospital", False)
   Uptown = Street("Uptown", "Uptown")
   Uptown._add_connections(Woods, Shoppe, Hospital)
   Library = Location("Library", "Library", False)
-  Administration = Location("Administration", "Administration", False, None)
-  Science = Location("Science", "Science Building", True, None)
+  Administration = Location("Administration", "Administration", False)
+  Science = Location("Science", "Science Building", True)
   University = Street("University", "Miskatonic University")
   University._add_connections(Library, Administration, Science)
   Unnamable = Location("Unnamable", "The Unnamable", True)
-  Docks = Location("Docks", "River Docks", False, None)
-  Isle = Location("Isle", "The Unvisited Isle", True, None)
+  Docks = Location("Docks", "River Docks", False)
+  Isle = Location("Isle", "The Unvisited Isle", True)
   Merchant = Street("Merchant", "Merchant District")
   Merchant._add_connections(Unnamable, Docks, Isle)
 

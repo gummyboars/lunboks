@@ -2552,7 +2552,9 @@ class CloseLocationTest(EventTest):
 
   def testCloseWithGateForOneTurn(self):
     place_name = "Woods"
+    self.char.place = self.state.places["Uptown"]  # Avoid encounters while advancing the turn.
     self.advance_turn(self.state.turn_number, "mythos")
+    self.char.place = self.state.places[place_name]
     self.resolve_until_done()
     place = self.state.places[place_name]
     place.gate = self.state.gates.popleft()

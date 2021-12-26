@@ -5,6 +5,7 @@ from random import SystemRandom
 from eldritch import places
 from eldritch import mythos
 from eldritch import monsters
+from eldritch import location_specials
 from eldritch import items
 from eldritch import gate_encounters
 from eldritch import gates
@@ -93,10 +94,13 @@ class GameState:
     self.places = places.CreatePlaces()
     infos, other_worlds = places.CreateOtherWorlds()
     self.places.update(other_worlds)
+    specials = location_specials.CreateFixedEncounters()
     encounter_cards = encounters.CreateEncounterCards()
     self.gate_cards.extend(gate_encounters.CreateGateCards())
     for neighborhood_name, cards in encounter_cards.items():
       self.places[neighborhood_name].encounters.extend(cards)
+    for location_name, fixed_encounters in specials.items():
+      self.places[location_name].fixed_encounters.extend(fixed_encounters)
 
     gate_markers = gates.CreateGates(infos)
     random.shuffle(gate_markers)
