@@ -2605,7 +2605,7 @@ class CombatRound(Event):
       # TODO: take the monster as a trophy
       # Stand-in until we implement trophy code to allow MoveMultipleThroughMonster test to work
       self.monster.place = None
-      self.character.possessions.append(self.monster)
+      self.character.trophies.append(self.monster)
       self.defeated = True
       return
     self.defeated = False
@@ -2736,7 +2736,8 @@ class GateCloseAttempt(Event):
 
     if not self.closed:
       self.closed = True
-      state.gates.append(state.places[self.location_name].gate)  # TODO: take a gate trophy
+      # TODO: event for taking a gate trophy
+      self.character.trophies.append(state.places[self.location_name].gate)
       state.places[self.location_name].gate = None
       closed_until = state.places[self.location_name].closed_until or -1
       if closed_until > state.turn_number:

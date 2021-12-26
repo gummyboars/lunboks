@@ -10,7 +10,7 @@ class MonsterCup:
     return self.name
 
 
-class Monster(assets.Asset):
+class Monster:
 
   MOVEMENTS = {"normal", "fast", "stationary", "flying", "stalker", "aquatic", "unique"}
   DIMENSIONS = {"circle", "triangle", "moon", "hex", "square", "diamond", "star", "slash", "plus"}
@@ -39,7 +39,7 @@ class Monster(assets.Asset):
     assert not bypass.keys() - damages.keys()
     assert len(attributes & {"magical resistance", "magical immunity"}) < 2
     assert len(attributes & {"physical resistance", "physical immunity"}) < 2
-    super().__init__(name)
+    self.name = name
     self.movement = movement
     self.dimension = dimension
     self.difficulties = ratings

@@ -543,8 +543,8 @@ function showMonsters(placeDiv, name) {
     let backDiv = createMonsterDiv(monsterDiv.monsterName, "big");
     container.appendChild(backDiv);
     box.appendChild(container);
-    renderAssetToDiv(frontDiv, monsterDiv.monsterName);
-    renderAssetToDiv(backDiv, monsterDiv.monsterName + " back");
+    renderAssetToDiv(frontDiv.getElementsByClassName("cnvcontainer")[0], monsterDiv.monsterName);
+    renderAssetToDiv(backDiv.getElementsByClassName("cnvcontainer")[0], monsterDiv.monsterName + " back");
   }
 }
 
@@ -1303,9 +1303,29 @@ function createCharacterSheet(idx, character, rightUI, isPlayer) {
       }
     }
   }
+
+  let bag = document.createElement("DIV");
+  bag.classList.add("bag");
+  let bagTabs = document.createElement("DIV");
+  bagTabs.classList.add("bagtabs");
+  let posTab = document.createElement("DIV");
+  posTab.classList.add("bagtab");
+  posTab.innerText = "POSSESSIONS";
+  posTab.onclick = function(e) { showPossessions(bag); };
+  let trophyTab = document.createElement("DIV");
+  trophyTab.classList.add("bagtab", "inactive");
+  trophyTab.innerText = "TROPHIES";
+  trophyTab.onclick = function(e) { showTrophies(bag); };
+  bagTabs.appendChild(posTab);
+  bagTabs.appendChild(trophyTab);
+  bag.appendChild(bagTabs);
   let possessions = document.createElement("DIV");
   possessions.classList.add("possessions");
-  div.appendChild(possessions);
+  bag.appendChild(possessions);
+  let trophies = document.createElement("DIV");
+  trophies.classList.add("possessions", "hidden");
+  bag.appendChild(trophies);
+  div.appendChild(bag);
 
   rightUI.appendChild(div);
   renderAssetToDiv(statsBg, "statsbg");
@@ -1323,6 +1343,28 @@ function expandSheet(sheetDiv) {
       sheet.classList.add("collapsed");
     }
   }
+}
+
+function showPossessions(bag) {
+  let possessions = bag.getElementsByClassName("possessions")[0];
+  let trophies = bag.getElementsByClassName("possessions")[1];
+  let posTab = bag.getElementsByClassName("bagtab")[0];
+  let trophyTab = bag.getElementsByClassName("bagtab")[1];
+  possessions.classList.remove("hidden");
+  trophies.classList.add("hidden");
+  posTab.classList.remove("inactive");
+  trophyTab.classList.add("inactive");
+}
+
+function showTrophies(bag) {
+  let possessions = bag.getElementsByClassName("possessions")[0];
+  let trophies = bag.getElementsByClassName("possessions")[1];
+  let posTab = bag.getElementsByClassName("bagtab")[0];
+  let trophyTab = bag.getElementsByClassName("bagtab")[1];
+  possessions.classList.add("hidden");
+  trophies.classList.remove("hidden");
+  posTab.classList.add("inactive");
+  trophyTab.classList.remove("inactive");
 }
 
 function updateCharacterSheet(sheet, character, order, isPlayer) {
@@ -1349,6 +1391,7 @@ function updateCharacterSheet(sheet, character, order, isPlayer) {
   }
   updateSliders(sheet, character, isPlayer);
   updatePossessions(sheet, character, isPlayer);
+  updateTrophies(sheet, character, isPlayer);
 }
 
 function updateStats() {
@@ -1441,6 +1484,35 @@ function createPossession(info, isPlayer, sheet) {
   }
   sheet.appendChild(div);
   renderAssetToDiv(div, info.name);
+}
+
+function updateTrophies(sheet, character, isPlayer) {
+  let tDiv = sheet.getElementsByClassName("possessions")[1];
+  while (tDiv.firstChild) {
+    tDiv.removeChild(tDiv.firstChild);
+  }
+  for (let trophy of character.trophies) {
+    createTrophy(trophy, isPlayer, tDiv);
+  }
+}
+
+function createTrophy(info, isPlayer, tDiv) {
+  let div = document.createElement("DIV");
+  div.classList.add("trophy", "cnvcontainer");
+  div.cnvScale = 2.5;
+  let cnv = document.createElement("CANVAS");
+  cnv.classList.add("poscnv");
+  div.appendChild(cnv);
+  div.onmouseenter = bringTop;
+  div.onmouseleave = returnBottom;
+  tDiv.appendChild(div);
+  let assetName = info.name;
+  if (monsterNames.includes(assetName)) {
+    assetName += " back";
+  } else if (otherWorlds.includes(assetName)) {
+    assetName = "Gate " + assetName;
+  }
+  renderAssetToDiv(div, assetName);
 }
 
 function highlightCheck(e) {
