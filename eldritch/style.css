@@ -490,8 +490,8 @@ button {
   z-index: 10; /* TODO */
   position: relative;
   min-width: 0;
-  width: calc(min(80vw, 128vh) * 3 / 29);
-  height: calc(min(80vw, 128vh) * 3 / 29);
+  width: calc(min(10vw, 16vh));
+  height: calc(min(10vw, 16vh));
   overflow: hidden;
 }
 .monstercontainer {
@@ -505,8 +505,8 @@ button {
   position: absolute;
   top: 0;
   left: 0;
-  width: calc(min(80vw, 128vh) * 3 / 29);
-  height: calc(min(80vw, 128vh) * 3 / 29);
+  width: calc(min(10vw, 16vh));
+  height: calc(min(10vw, 16vh));
 }
 .monstercnv {
   position: absolute;
@@ -907,6 +907,33 @@ button {
 .you .slider {
   cursor: pointer;
 }
+.bag {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+.bagtabs {
+  width: 100%;
+  display: flex;
+  flex-direction: row;
+  background-color: wheat;
+  justify-content: space-evenly;
+}
+.collapsed .bagtabs {
+  max-height: 0;
+  overflow-y: hidden;
+}
+.bagtab {
+  width: 45%;
+  font-size: calc(min(1vw, 1.6vh));
+  text-align: center;
+  cursor: pointer;
+  background-color: cornsilk;
+  border-radius: 0.5em 0.5em 0 0;
+}
+.bagtab.inactive {
+  background-color: wheat;
+}
 .possessions {
   width: 100%;
   display: flex;
@@ -915,10 +942,18 @@ button {
   align-items: flex-start;
   align-content: flex-start;
   row-gap: calc(min(0.5vw, 0.8vh));
+  margin-top: calc(min(0.5vw, 0.8vh));
   margin-bottom: calc(min(0.5vw, 0.8vh));
 }
 .collapsed .possessions {
   max-height: 0;
+  margin-top: 0;
+  margin-bottom: 0;
+  overflow-y: hidden;
+}
+.possessions.hidden {
+  max-height: 0;
+  margin-top: 0;
   margin-bottom: 0;
   overflow-y: hidden;
 }
@@ -970,6 +1005,17 @@ button {
 }
 .possessions.choose .possession.chosen .chosencheck {
   color: black;
+}
+.trophy {
+  position: relative;
+  width: calc(min(4.5vw, 7.2vh));
+  height: calc(min(4.5vw, 7.2vh));
+  transition: all 0.3s;
+  transform-origin: center;
+}
+.trophy:hover {
+  transform: scale(2.5);
+  transition-delay: 0.5s;
 }
 .bonus.shown {
   color: rgba(0, 0, 0, 1);

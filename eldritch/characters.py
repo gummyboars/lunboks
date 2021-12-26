@@ -25,6 +25,7 @@ class Character:
     self.dollars = 0
     self.clues = 0
     self.possessions = []  # includes special abilities, skills, and allies
+    self.trophies = []
     # TODO: maybe the blessings, retainers, bank loans, and lodge memberships should be possessions.
     self.bless_curse = 0  # -1 for curse, +1 for blessed
     self.bless_curse_start = None
@@ -44,7 +45,7 @@ class Character:
     attrs = [
         "name", "max_stamina", "max_sanity", "stamina", "sanity", "focus",
         "movement_points", "focus_points",
-        "dollars", "clues", "possessions",  # TODO: special cards
+        "dollars", "clues", "possessions", "trophies",  # TODO: special cards
         "delayed_until", "lose_turn_until",
     ]
     data = {attr: getattr(self, attr) for attr in attrs}
