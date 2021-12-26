@@ -391,11 +391,19 @@ class EncounterPhase(Turn):
         self.action = GateCloseAttempt(self.character, self.character.place.name)
       elif self.character.place.gate:
         self.action = Travel(self.character, self.character.place.gate.name)
-      elif self.character.place.neighborhood.encounters:
-        # TODO: fixed encounters
-        self.action = Encounter(self.character, self.character.place.name)
+      elif self.character.place.fixed_encounters:
+        choices = [self.character.place.neighborhood.name + " Card"]
+        prereqs = [None]
+        results = {0: Encounter(self.character, self.character.place.name)}
+        for idx, fixed in enumerate(self.character.place.fixed_encounters):
+          choices.append(fixed.name)
+          prereqs.append(fixed.prereq(self.character))
+          results[idx+1] = fixed.encounter(self.character)
+        choice = CardSpendChoice(self.character, "Encounter?", choices, prereqs)
+        cond = Conditional(self.character, choice, "choice_index", results)
+        self.action = Sequence([choice, cond], self.character)
       else:
-        self.action = Nothing()
+        self.action = Encounter(self.character, self.character.place.name)
       state.event_stack.append(self.action)
       return
 

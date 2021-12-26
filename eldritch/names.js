@@ -174,7 +174,7 @@ neighborhoodNames = [
   "Merchant",
 ];
 carefullyAdd(neighborhoodNames);
-encounterCardNames = [];
+encounterCardNames = neighborhoodNames.map(name => name + " Card");
 for (let n of neighborhoodNames) {
   for (let i = 1; i <= 7; i++) {
     encounterCardNames.push(n + i);
@@ -212,4 +212,6 @@ locationNames = [
 carefullyAdd(locationNames);
 tokens = ["Dollar", "Clue", "Sanity", "Stamina", "Slider", "Seal", "Doom"];
 carefullyAdd(tokens);
+deckNames = ["common", "unique", "spells", "skills", "allies"];
+carefullyAdd(deckNames);
 assetNames = ["statsbg", "board"].concat([...assetSet]);

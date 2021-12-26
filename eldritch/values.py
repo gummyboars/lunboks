@@ -51,6 +51,19 @@ def AttributePrerequisite(character, attribute, threshold, operand):
   return Calculation(character, attribute, oper, threshold)
 
 
+class AttributeNotMaxedPrerequisite(Value):
+
+  def __init__(self, character, attribute):
+    assert attribute in {"sanity", "stamina"}
+    self.character = character
+    self.attribute = attribute
+
+  def value(self, state):
+    char_max = getattr(self.character, "max_" + self.attribute)
+    current = getattr(self.character, self.attribute)
+    return int(current < char_max)
+
+
 class ItemDeckCount(Value):
 
   def __init__(self, character, decks):

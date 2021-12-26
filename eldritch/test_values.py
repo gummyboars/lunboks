@@ -111,6 +111,13 @@ class PrerequisiteTest(unittest.TestCase):
     char.clues = 2
     self.assertEqual(prereq.value(None), 1)
 
+  def testAttributeNotMaxedPrereq(self):
+    char = DummyChar(sanity=5, max_sanity=5)
+    prereq = AttributeNotMaxedPrerequisite(char, "sanity")
+    self.assertEqual(prereq.value(None), 0)
+    char.sanity = 3
+    self.assertEqual(prereq.value(None), 1)
+
   def testItemPrereq(self):
     char = DummyChar()
     prereq = ItemPrerequisite(char, "bar")

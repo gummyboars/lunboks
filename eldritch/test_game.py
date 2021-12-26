@@ -13,9 +13,11 @@ if os.path.abspath(sys.path[0]) == os.path.dirname(os.path.abspath(__file__)):
 from eldritch import abilities
 from eldritch import characters
 from eldritch import eldritch
+from eldritch import encounters
 from eldritch import events
 from eldritch import gate_encounters
 from eldritch import items
+from eldritch import location_specials
 from eldritch import monsters
 from eldritch import mythos
 import game
@@ -28,6 +30,171 @@ class NoMythos(mythos.GlobalEffect):
 
   def create_event(self, state):  # pylint: disable=unused-argument
     return events.Nothing()
+
+
+class FixedEncounterBaseTest(unittest.TestCase):
+
+  def setUp(self):
+    self.state = eldritch.GameState()
+    self.state.initialize_for_tests()
+    self.state.all_characters.update({"Nun": characters.Nun()})
+    self.state.characters = [self.state.all_characters["Nun"]]
+    self.char = self.state.characters[0]
+    specials = location_specials.CreateFixedEncounters()
+    for location_name, fixed_encounters in specials.items():
+      self.state.places[location_name].fixed_encounters.extend(fixed_encounters)
+    self.state.game_stage = "slumber"
+    self.state.turn_phase = "encounter"
+    self.state.turn_number = 0
+
+
+class RestorationFixedEncounterTest(FixedEncounterBaseTest):
+
+  def testRegainStamina(self):
+    self.char.stamina = 3
+    self.char.dollars = 2
+    self.char.place = self.state.places["Hospital"]
+    self.state.event_stack.append(events.EncounterPhase(self.char))
+    for _ in self.state.resolve_loop():
+      pass
+    self.assertTrue(self.state.event_stack)
+    event = self.state.event_stack[-1]
+    self.assertIsInstance(event, events.CardSpendChoice)
+    self.assertEqual(event.choices, ["Uptown Card", "Restore 1 Stamina", "Restore All Stamina"])
+    self.assertCountEqual(event.invalid_choices, [1, 2])
+    self.char.stamina = 1
+    for _ in self.state.resolve_loop():
+      pass
+    self.assertCountEqual(event.invalid_choices, [2])
+    event.resolve(self.state, "Restore 1 Stamina")
+    for _ in self.state.resolve_loop():
+      pass
+    self.assertFalse(self.state.event_stack)
+    self.assertEqual(self.char.stamina, 2)
+    self.assertEqual(self.char.dollars, 2)
+
+  def testRegainAllStamina(self):
+    self.char.stamina = 1
+    self.char.dollars = 2
+    self.char.place = self.state.places["Hospital"]
+    self.state.event_stack.append(events.EncounterPhase(self.char))
+    for _ in self.state.resolve_loop():
+      pass
+    self.assertTrue(self.state.event_stack)
+    event = self.state.event_stack[-1]
+    self.assertIsInstance(event, events.CardSpendChoice)
+    self.assertEqual(event.choices, ["Uptown Card", "Restore 1 Stamina", "Restore All Stamina"])
+    self.assertCountEqual(event.invalid_choices, [2])
+    for _ in range(2):
+      event.spend("dollars")
+    for _ in self.state.resolve_loop():
+      pass
+    event.resolve(self.state, "Restore All Stamina")
+    for _ in self.state.resolve_loop():
+      pass
+    self.assertFalse(self.state.event_stack)
+    self.assertEqual(self.char.stamina, 3)
+    self.assertEqual(self.char.dollars, 0)
+
+  def testIgnoreFixedEncounters(self):
+    self.char.stamina = 1
+    self.char.dollars = 2
+    self.char.place = self.state.places["Hospital"]
+    self.state.places["Uptown"].encounters.append(
+        encounters.EncounterCard("Uptown5", {"Hospital": encounters.Shoppe5}),
+    )
+    self.state.event_stack.append(events.EncounterPhase(self.char))
+    for _ in self.state.resolve_loop():
+      pass
+    self.assertTrue(self.state.event_stack)
+    event = self.state.event_stack[-1]
+    self.assertIsInstance(event, events.CardSpendChoice)
+    self.assertEqual(event.choices, ["Uptown Card", "Restore 1 Stamina", "Restore All Stamina"])
+    event.resolve(self.state, "Uptown Card")
+    for _ in self.state.resolve_loop():
+      pass
+    self.assertFalse(self.state.event_stack)
+    self.assertEqual(self.char.stamina, 1)
+    self.assertEqual(self.char.dollars, 2)
+    self.assertEqual(self.char.clues, 1)
+
+
+class DrawCardsFixedEncounterTest(FixedEncounterBaseTest):
+
+  def setUp(self):
+    super().setUp()
+    self.state.common.extend([items.Cross(0), items.Food(0), items.DarkCloak(0), items.TommyGun(0)])
+    self.state.unique.extend([items.HolyWater(0), items.EnchantedKnife(0), items.MagicLamp(0)])
+
+  def testDrawUniqueEncounter(self):
+    self.char.dollars = 1
+    self.char.place = self.state.places["Shop"]
+    self.state.event_stack.append(events.EncounterPhase(self.char))
+    for _ in self.state.resolve_loop():
+      pass
+    self.assertTrue(self.state.event_stack)
+    event = self.state.event_stack[-1]
+    self.assertIsInstance(event, events.CardSpendChoice)
+    self.assertEqual(event.choices, ["Northside Card", "unique"])
+    self.assertFalse(event.invalid_choices)
+    event.resolve(self.state, "unique")
+    for _ in self.state.resolve_loop():
+      pass
+    self.assertTrue(self.state.event_stack)
+    event = self.state.event_stack[-1]
+    self.assertIsInstance(event, events.CardSpendChoice)
+    # TODO: make sure that nothing is not allowed unless the user cannot afford anything else.
+    self.assertEqual(event.choices, ["Holy Water", "Enchanted Knife", "Magic Lamp", "Nothing"])
+
+  def testDrawCommonEncounter(self):
+    self.char.dollars = 1
+    self.char.place = self.state.places["Store"]
+    self.state.event_stack.append(events.EncounterPhase(self.char))
+    for _ in self.state.resolve_loop():
+      pass
+    self.assertTrue(self.state.event_stack)
+    event = self.state.event_stack[-1]
+    self.assertIsInstance(event, events.CardSpendChoice)
+    self.assertEqual(event.choices, ["Rivertown Card", "common"])
+    event.resolve(self.state, "common")
+    for _ in self.state.resolve_loop():
+      pass
+    self.assertTrue(self.state.event_stack)
+    event = self.state.event_stack[-1]
+    self.assertIsInstance(event, events.CardSpendChoice)
+    # TODO: make sure that nothing is not allowed unless the user cannot afford anything else.
+    self.assertEqual(event.choices, ["Cross", "Food", "Dark Cloak", "Nothing"])
+
+  def testIgnoreDrawEncounter(self):
+    self.char.dollars = 1
+    self.char.place = self.state.places["Store"]
+    self.state.places["Rivertown"].encounters.append(
+        encounters.EncounterCard("Rivertown1", {"Store": encounters.Store1}),
+    )
+    self.state.event_stack.append(events.EncounterPhase(self.char))
+    for _ in self.state.resolve_loop():
+      pass
+    self.assertTrue(self.state.event_stack)
+    event = self.state.event_stack[-1]
+    self.assertIsInstance(event, events.CardSpendChoice)
+    self.assertEqual(event.choices, ["Rivertown Card", "common"])
+    event.resolve(self.state, "Rivertown Card")
+    for _ in self.state.resolve_loop():
+      pass
+    self.assertFalse(self.state.event_stack)
+    self.assertEqual(self.char.dollars, 2)
+
+  def testDrawEncounterInvalidWithoutMoney(self):
+    self.char.dollars = 0
+    self.char.place = self.state.places["Store"]
+    self.state.event_stack.append(events.EncounterPhase(self.char))
+    for _ in self.state.resolve_loop():
+      pass
+    self.assertTrue(self.state.event_stack)
+    event = self.state.event_stack[-1]
+    self.assertIsInstance(event, events.CardSpendChoice)
+    self.assertEqual(event.choices, ["Rivertown Card", "common"])
+    self.assertCountEqual(event.invalid_choices, [1])
 
 
 class GateTravelTest(unittest.TestCase):

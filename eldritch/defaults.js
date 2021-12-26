@@ -118,19 +118,19 @@ function renderDefaultToCanvas(cnv, width, height, assetName, variant) {
   if (assetName.startsWith("Gate ")) {
     return renderTextCircle(cnv, assetName.substring(5), "palegoldenrod", "black", 0.3);
   }
-  if (commonNames.includes(assetName)) {
+  if (commonNames.includes(assetName) || assetName == "common") {
     return renderTextRectangle(cnv, assetName, "darkkhaki", "black");
   }
-  if (uniqueNames.includes(assetName)) {
+  if (uniqueNames.includes(assetName) || assetName == "unique") {
     return renderTextRectangle(cnv, assetName, "indianred", "black");
   }
-  if (spellNames.includes(assetName)) {
+  if (spellNames.includes(assetName) || assetName == "spells") {
     return renderTextRectangle(cnv, assetName, "mediumpurple", "black");
   }
-  if (skillNames.includes(assetName)) {
+  if (skillNames.includes(assetName) || assetName == "skills") {
     return renderTextRectangle(cnv, assetName, "gold", "black");
   }
-  if (allyNames.includes(assetName)) {
+  if (allyNames.includes(assetName) || assetName == "allies") {
     return renderTextRectangle(cnv, assetName, "darkorange", "black");
   }
   if (abilityNames.includes(assetName)) {
