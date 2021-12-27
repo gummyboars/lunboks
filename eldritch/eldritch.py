@@ -218,23 +218,17 @@ class GameState:
 
     top_event = self.event_stack[-1] if self.event_stack else None
 
-    roll_events = (events.Check, events.DiceRoll, events.AddExtraDie, events.RerollCheck)
-    is_roll = isinstance(top_event, roll_events)
-    if len(self.event_stack) > 1 and isinstance(self.event_stack[-2], events.Check):
-      if isinstance(top_event, events.SpendMixin):
-        is_roll = True
-    if top_event and is_roll:
-      roller = top_event
-      bonus = 0
-      for event in reversed(self.event_stack):
-        if not isinstance(event, roll_events + (events.SpendMixin,)):
-          break
-        if isinstance(event, events.BonusDiceRoll):
-          bonus += event.count
-        if isinstance(event, events.Check):
-          roller = event
-          break
-      assert isinstance(roller, (events.Check, events.DiceRoll))
+    roller = None
+    bonus = 0
+    for event in reversed(self.event_stack):
+      if isinstance(event, events.BonusDiceRoll):
+        bonus += event.count
+      if isinstance(event, events.DiceRoll):
+        roller = event
+      if isinstance(event, events.Check):
+        roller = event
+        break
+    if roller is not None:
       output["dice"] = roller.count + bonus if roller.count is not None else None
       output["roll"] = roller.roll
       output["roller"] = self.characters.index(roller.character)
@@ -253,12 +247,10 @@ class GameState:
         if isinstance(top_event, events.CardChoice):
           output["choice"]["cards"] = top_event.choices
         elif isinstance(top_event, (events.MapChoice, events.CityMovement)):
-          if top_event.choices is not None:
-            extra_choices = [top_event.none_choice] if top_event.none_choice is not None else []
-            output["choice"]["places"] = top_event.choices + extra_choices
+          extra_choices = [top_event.none_choice] if top_event.none_choice is not None else []
+          output["choice"]["places"] = (top_event.choices or []) + extra_choices
         elif isinstance(top_event, events.MultipleChoice):
           output["choice"]["choices"] = top_event.choices
-          output["choice"]["invalid_choices"] = getattr(top_event, "invalid_choices", [])
         elif isinstance(top_event, events.ItemChoice):
           output["choice"]["chosen"] = [item.handle for item in top_event.chosen]
           output["choice"]["items"] = True
