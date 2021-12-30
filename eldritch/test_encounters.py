@@ -16,6 +16,7 @@ from eldritch import events
 from eldritch import gate_encounters
 from eldritch.events import *
 from eldritch import items
+from eldritch import monsters
 from eldritch.test_events import EventTest
 
 
@@ -4353,16 +4354,45 @@ class GraveyardTest(EncounterTest):
     self.assertEqual(self.char.place.name, "Hospital")
     self.assertEqual(self.char.stamina, 1)
 
-# Todo: Trophies
-#  def testGraveyard4NoTrophies(self):
-#    raise NotImplementedError("Count monster trophies")
-#
-#  def testGraveyardAlly(self):
-#    raise NotImplementedError("Spend monster trophies")
-#
-#  def testGraveyardReward(self):
-#    raise NotImplementedError("Spend monster trophies")
-#    raise NotImplementedError("Ally not available")
+  def testGraveyard4NoTrophies(self):
+    self.state.event_stack.append(encounters.Graveyard4(self.char))
+    choice = self.resolve_to_choice(SpendChoice)
+    self.assertNotIn(0, self.state.usables)
+    self.assertEqual(choice.invalid_choices, [0])
+    choice.resolve(self.state, "No")
+    self.resolve_until_done()
+    self.assertFalse(self.char.possessions)
+    self.assertFalse(self.char.trophies)
+
+  def testGraveyard4Ally(self):
+    self.char.trophies.extend([monsters.Octopoid(), monsters.Vampire()])
+    self.state.allies.append(assets.VisitingPainter())
+    self.state.event_stack.append(encounters.Graveyard4(self.char))
+    choice = self.resolve_to_choice(SpendChoice)
+    self.assertEqual(choice.invalid_choices, [0])
+    self.use_handle(0, self.char.trophies[0].handle)
+    self.use_handle(0, self.char.trophies[1].handle)
+    self.assertEqual(choice.invalid_choices, [1])
+    choice.resolve(self.state, "Yes")
+    self.resolve_until_done()
+
+    self.assertEqual([pos.handle for pos in self.char.possessions], ["Visiting Painter"])
+    self.assertFalse(self.char.trophies)
+    self.assertFalse(self.state.allies)
+
+  def testGraveyard4Reward(self):
+    self.char.trophies.extend([monsters.Octopoid(), monsters.Vampire()])
+    self.state.spells.append(items.Wither(0))
+    self.state.event_stack.append(encounters.Graveyard4(self.char))
+    choice = self.resolve_to_choice(SpendChoice)
+    self.use_handle(0, self.char.trophies[0].handle)
+    self.use_handle(0, self.char.trophies[1].handle)
+    choice.resolve(self.state, "Yes")
+    self.resolve_until_done()
+
+    self.assertEqual([pos.handle for pos in self.char.possessions], ["Wither0"])
+    self.assertFalse(self.char.trophies)
+    self.assertFalse(self.state.spells)
 
   def testGraveyard5Fail(self):
     self.state.event_stack.append(encounters.Graveyard5(self.char))

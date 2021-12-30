@@ -449,8 +449,9 @@ def Graveyard3(char):
 
 
 def Graveyard4(char):
-  # TODO: Trade monster trophies for Painter
-  return events.Nothing()
+  reward = events.Draw(char, "spells", 1)
+  ally = events.GainAllyOrReward(char, "Visiting Painter", reward)
+  return events.BinarySpend(char, "toughness", 5, "Spend monster trophies?", "Yes", "No", ally)
 
 
 def Graveyard5(char):
