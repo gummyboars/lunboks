@@ -80,8 +80,17 @@ class ResearchMaterials(Item):
   def __init__(self, idx):
     super().__init__("Research Materials", idx, "common", {}, {}, None, 1)
 
-  def get_usable_trigger(self, event, owner, state):
-    return None  # TODO
+  def get_usable_interrupt(self, event, owner, state):
+    if not isinstance(event, events.SpendChoice) or event.is_done():
+      return None
+    if event.character != owner or "clues" not in event.spendable():
+      return None
+    if self.handle in event.spent_handles():
+      return events.Unspend(owner, event, self.handle)
+    return events.Spend(owner, event, self.handle, {"clues": 1})
+
+  def get_spend_event(self, owner):
+    return events.DiscardSpecific(owner, [self])
 
 
 class Bullwhip(Weapon):

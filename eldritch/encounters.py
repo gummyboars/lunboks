@@ -25,7 +25,7 @@ class EncounterCard:
 
 
 def Diner1(char):
-  spend = values.SpendPrerequisite("dollars", 1, 6)
+  spend = values.RangeSpendPrerequisite("dollars", 1, 6)
   dollar_choice = events.SpendChoice(
       char, "Spend money to restore stamina and/or sanity?", ["Spend", "No Thanks"], [spend, None])
   gain = events.SplitGain(char, "stamina", "sanity", values.SpendCount(dollar_choice, "dollars"))
@@ -266,7 +266,7 @@ def Sanctum6(char):
 
 def Sanctum7(char):
   # TODO: there has to actually be a gate open for you to do this.
-  spend = values.MultiSpendPrerequisite({"clues": 2, "sanity": 1})
+  spend = values.ExactSpendPrerequisite({"clues": 2, "sanity": 1})
   check = events.Check(char, "lore", -2)
   close = events.Nothing()  # TODO: Close a gate
   ceremony = events.PassFail(char, check, close, events.Nothing())
@@ -517,14 +517,9 @@ def Society5(char):
 
 
 def Society6(char):
-  # TODO: spend gate trophy
-  prereq = values.AttributePrerequisite(char, "dollars", 1, "at least")  # TODO: > 1 gate trophy
   reward = events.Draw(char, "unique", 1)
   ally = events.GainAllyOrReward(char, "Old Professor", reward)
-  spend = events.Loss(char, {"dollars": 1})  # TODO: if only gate trophies were this cheap
-  take = events.Sequence([spend, ally], char)
-  nothing = events.Nothing()
-  return events.BinaryChoice(char, "Spend a Gate Trophy?", "Yes", "No", take, nothing, prereq)
+  return events.BinarySpend(char, "gates", 1, "Spend a Gate Trophy?", "Yes", "No", ally)
 
 
 def Society7(char):

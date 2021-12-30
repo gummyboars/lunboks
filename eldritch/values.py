@@ -131,62 +131,77 @@ def NoAmbushPrerequisite(monster, character):
 
 class SpendValue(Value):
 
-  SPEND_TYPES = {"stamina", "sanity", "dollars", "clues", "toughness", "gates"}
+  SPEND_TYPES = {
+      "stamina": "stamina", "sanity": "sanity", "dollars": "dollars", "clues": "clues",
+      "monsters": "monsters", "gates": "gates",
+  }
+  # TODO: focus and movement points, maybe?
 
   def __init__(self):
     self.spend_map = collections.defaultdict(dict)
 
-  @property
   @abc.abstractmethod
   def spend_types(self):
     raise NotImplementedError
 
-
-class SpendPrerequisite(SpendValue):
-  """SpendPrerequisite represents spending between spend_amount and spend_max of spend_type."""
-
-  def __init__(self, spend_type, spend_min, spend_max=None):
-    assert spend_type in self.SPEND_TYPES
-    # TODO: focus and movement points, maybe?
-    super().__init__()
-    self.spend_type = spend_type
-    self.spend_min = spend_min
-    self.spend_max = spend_max or spend_min
-
-  def value(self, state):
-    spend_min = self.spend_min.value(state) if isinstance(self.spend_min, Value) else self.spend_min
-    spend_max = self.spend_max.value(state) if isinstance(self.spend_max, Value) else self.spend_max
-    if sum(sum(spend.values()) for spend in self.spend_map.values()) != self.spent:
-      return 0
-    return int(self.spent >= spend_min and self.spent <= spend_max)
-
-  @property
-  def spend_types(self):
-    return {self.spend_type}
-
-  @property
-  def spent(self):
-    return sum(self.spend_map[self.spend_type].values())
+  @abc.abstractmethod
+  def annotation(self, state):
+    raise NotImplementedError
 
 
-class MultiSpendPrerequisite(SpendValue):
+class ExactSpendPrerequisite(SpendValue):
   """MultiSpendPrerequisite represents spending an exact amount of multiple different types."""
 
   def __init__(self, spend_amounts):
-    assert not spend_amounts.keys() - self.SPEND_TYPES
+    assert not spend_amounts.keys() - self.SPEND_TYPES.keys()
     assert all(isinstance(val, int) for val in spend_amounts.values())
     super().__init__()
     self.spend_amounts = spend_amounts
 
   def value(self, state):
-    spent_map = {key: sum(val.values()) for key, val in self.spend_map.items() if sum(val.values())}
-    if spent_map.keys() ^ self.spend_amounts.keys():
-      return 0
-    return int(all(spent_map[key] == self.spend_amounts[key] for key in self.spend_amounts))
+    spent_map = {key: sum(spend_count.values()) for key, spend_count in self.spend_map.items()}
+    for spend_type in spent_map.keys() | self.spend_amounts.keys():
+      if spent_map.get(spend_type, 0) != self.spend_amounts.get(spend_type, 0):
+        return 0
+    return 1
 
-  @property
   def spend_types(self):
     return set(self.spend_amounts.keys())
+
+  def annotation(self, state):
+    parts = []
+    for spend_type in sorted(self.spend_amounts):
+      parts.append(str(self.spend_amounts[spend_type]) + " " + self.SPEND_TYPES[spend_type])
+    return ", ".join(parts)
+
+
+class RangeSpendPrerequisite(SpendValue):
+  """SpendPrerequisite represents spending between spend_amount and spend_max of spend_type."""
+
+  def __init__(self, spend_type, spend_min, spend_max):
+    assert spend_type in self.SPEND_TYPES
+    super().__init__()
+    self.spend_type = spend_type
+    self.spend_min = spend_min
+    self.spend_max = spend_max
+
+  def value(self, state):
+    spend_min = self.spend_min.value(state) if isinstance(self.spend_min, Value) else self.spend_min
+    spend_max = self.spend_max.value(state) if isinstance(self.spend_max, Value) else self.spend_max
+    if sum(sum(spend_count.values()) for spend_count in self.spend_map.values()) != self.spent():
+      return 0
+    return int(self.spent() >= spend_min and self.spent() <= spend_max)
+
+  def spend_types(self):
+    return {self.spend_type}
+
+  def annotation(self, state):
+    spend_min = self.spend_min.value(state) if isinstance(self.spend_min, Value) else self.spend_min
+    spend_max = self.spend_max.value(state) if isinstance(self.spend_max, Value) else self.spend_max
+    return f"{spend_min}-{spend_max} self.SPEND_TYPES[self.spend_type]"
+
+  def spent(self):
+    return sum(self.spend_map[self.spend_type].values())
 
 
 class SpendCount(Value):

@@ -1,6 +1,8 @@
 import abc
 import collections
 
+from eldritch import events
+
 
 CHECK_TYPES = {"speed", "sneak", "fight", "will", "lore", "luck"}
 SUB_CHECKS = {"evade": "sneak", "combat": "fight", "horror": "will", "spell": "lore"}
@@ -59,6 +61,9 @@ class Asset(metaclass=abc.ABCMeta):
 
   def get_usable_trigger(self, event, owner, state):
     return None
+
+  def get_spend_event(self, owner):
+    return events.Nothing()
 
   def json_repr(self):
     return {attr: getattr(self, attr, None) for attr in self.JSON_ATTRS}

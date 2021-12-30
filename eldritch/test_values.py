@@ -150,7 +150,7 @@ class SpendTest(unittest.TestCase):
 
   def testFixedValuePrerequisite(self):
     state = DummyState()
-    spend = SpendPrerequisite("dollars", 1)
+    spend = ExactSpendPrerequisite({"dollars": 1})
     # Prerequisite starts unsatisfied.
     self.assertEqual(spend.value(state), 0)
     # Spend one dollar, the prereq is satisfied.
@@ -163,9 +163,20 @@ class SpendTest(unittest.TestCase):
     spend.spend_map["dollars"]["dollars"] = 2
     self.assertEqual(spend.value(state), 0)
 
+  def testSpendZeroPrerequisite(self):
+    state = DummyState()
+    spend = ExactSpendPrerequisite({"dollars": 0})
+    # This can happen when trying to buy an item that has been discounted to zero dollars.
+    self.assertEqual(spend.value(state), 1)
+    spend.spend_map["dollars"]["dollars"] = 1
+    self.assertEqual(spend.value(state), 0)
+    # Should be satisfied both when not present and when present but 0.
+    spend.spend_map["dollars"]["dollars"] = 0
+    self.assertEqual(spend.value(state), 1)
+
   def testRangePrerequisite(self):
     state = DummyState()
-    spend = SpendPrerequisite("dollars", 1, 6)
+    spend = RangeSpendPrerequisite("dollars", 1, 6)
     self.assertEqual(spend.value(state), 0)
 
     spend.spend_map["dollars"]["dollars"] = 1
@@ -178,7 +189,7 @@ class SpendTest(unittest.TestCase):
   def testDynamicRange(self):
     state = DummyState()
     char = DummyChar(sanity=3)
-    spend = SpendPrerequisite("sanity", 1, Calculation(char, "sanity"))
+    spend = RangeSpendPrerequisite("sanity", 1, Calculation(char, "sanity"))
 
     self.assertEqual(spend.value(state), 0)
     spend.spend_map["sanity"]["sanity"] = 1
@@ -190,7 +201,7 @@ class SpendTest(unittest.TestCase):
 
   def testSpendMultipleTypes(self):
     state = DummyState()
-    spend = SpendPrerequisite("clues", 2)
+    spend = ExactSpendPrerequisite({"clues": 2})
     self.assertEqual(spend.value(state), 0)
 
     spend.spend_map["clues"]["clues"] = 1
@@ -202,7 +213,7 @@ class SpendTest(unittest.TestCase):
 
   def testMultiPrerequisite(self):
     state = DummyState()
-    spend = MultiSpendPrerequisite({"dollars": 1, "clues": 2})
+    spend = ExactSpendPrerequisite({"dollars": 1, "clues": 2})
     self.assertEqual(spend.value(state), 0)
 
     spend.spend_map["dollars"]["dollars"] = 1
