@@ -1409,6 +1409,41 @@ class DiscardNamedTest(EventTest):
     self.assertEqual(discard.finish_str(), "Dummy did not have a Food to discard")
 
 
+class ReturnMonstersAndGatesTest(EventTest):
+
+  def testReturnMonster(self):
+    cultist = monsters.Cultist()
+    cultist.idx = 2
+    zombie = monsters.Zombie()
+    zombie.idx = 3
+    cultist2 = monsters.Cultist()
+    cultist2.idx = 4
+    gate = self.state.gates.popleft()
+    self.char.trophies.extend([cultist, gate, zombie, cultist2])
+    self.state.event_stack.append(ReturnMonsterToCup(self.char, "Cultist4"))
+    self.resolve_until_done()
+    self.assertEqual(len(self.char.trophies), 3)
+    trophy_handles = [trophy.handle for trophy in self.char.trophies]
+    self.assertEqual(trophy_handles, ["Cultist2", "Gate Abyss0", "Zombie3"])
+    self.assertEqual(cultist2.place.name, "cup")
+    self.assertIsNone(cultist.place)
+
+  def testReturnGate(self):
+    self.char.trophies.append(self.state.gates.popleft())
+    cultist = monsters.Cultist()
+    cultist.idx = 2
+    self.char.trophies.append(cultist)
+    self.char.trophies.append(self.state.gates.popleft())
+
+    old_length = len(self.state.gates)
+    self.state.event_stack.append(ReturnGateToStack(self.char, "Gate Abyss1"))
+    self.resolve_until_done()
+    self.assertEqual(len(self.char.trophies), 2)
+    trophy_handles = [trophy.handle for trophy in self.char.trophies]
+    self.assertEqual(trophy_handles, ["Gate Abyss0", "Cultist2"])
+    self.assertEqual(len(self.state.gates), old_length+1)
+
+
 class CheckTest(EventTest):
 
   @mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=[4, 5, 1, 3]))

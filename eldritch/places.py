@@ -245,4 +245,4 @@ def CreateOtherWorlds():
   worlds = []
   for info in infos:
     worlds.extend([OtherWorld(info, 1), OtherWorld(info, 2)])
-  return infos, {world.name: world for world in worlds}
+  return {world.name: world for world in worlds}

@@ -1037,7 +1037,7 @@ function updateGate(place, gateDiv) {
   let gateCont = gateDiv.getElementsByClassName("gatecontainer")[0];
   if (place.gate) {  // TODO: sealed
     gateDiv.classList.add("placegatepresent");
-    renderAssetToDiv(gateCont, "Gate " + place.gate.name);
+    renderAssetToDiv(gateCont, place.gate.name);
   } else {
     clearAssetFromDiv(gateCont);
     gateDiv.classList.remove("placegatepresent");
@@ -1509,8 +1509,6 @@ function createTrophy(info, isPlayer, tDiv) {
   let assetName = info.name;
   if (monsterNames.includes(assetName)) {
     assetName += " back";
-  } else if (otherWorlds.includes(assetName)) {
-    assetName = "Gate " + assetName;
   }
   renderAssetToDiv(div, assetName);
 }
