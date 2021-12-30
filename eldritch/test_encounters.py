@@ -1159,50 +1159,47 @@ class SocietyTest(EncounterTest):
     self.assertEqual(self.char.sanity, 1)
     self.assertEqual(self.char.place.name, "Asylum")
 
-  # TODO: update when Gate
-  def testSociety6NoTropy(self):
-    self.char.dollars = 0
+  def testSociety6NoTrophy(self):
     self.state.allies.append(assets.OldProfessor())
     self.state.event_stack.append(encounters.Society6(self.char))
-    choice = self.resolve_to_choice(MultipleChoice)
+    choice = self.resolve_to_choice(SpendChoice)
+    self.assertNotIn(0, self.state.usables)
     with self.assertRaises(AssertionError):
       choice.resolve(self.state, "Yes")
     choice.resolve(self.state, "No")
     self.resolve_until_done()
-    self.assertEqual(self.char.dollars, 0)
     self.assertEqual(len(self.char.possessions), 0)
 
-  # TODO: update when Gate
   def testSociety6TrophyNo(self):
-    self.char.dollars = 2
+    self.char.trophies.append(self.state.gates.popleft())
     self.state.allies.append(assets.OldProfessor())
     self.state.event_stack.append(encounters.Society6(self.char))
-    choice = self.resolve_to_choice(MultipleChoice)
+    choice = self.resolve_to_choice(SpendChoice)
     choice.resolve(self.state, "No")
     self.resolve_until_done()
-    self.assertEqual(self.char.dollars, 2)
+    self.assertEqual(len(self.char.trophies), 1)
     self.assertEqual(len(self.char.possessions), 0)
 
-  # TODO: update when Gate
   def testSociety6TrophyYesAlly(self):
-    self.char.dollars = 2
+    self.char.trophies.append(self.state.gates.popleft())
     self.state.allies.append(assets.OldProfessor())
     self.state.event_stack.append(encounters.Society6(self.char))
-    choice = self.resolve_to_choice(MultipleChoice)
+    choice = self.resolve_to_choice(SpendChoice)
+    self.use_handle(0, self.char.trophies[0].handle)
     choice.resolve(self.state, "Yes")
     self.resolve_until_done()
-    self.assertEqual(self.char.dollars, 1)
+    self.assertEqual(len(self.char.trophies), 0)
     self.assertEqual(len(self.char.possessions), 1)
     self.assertEqual(self.char.possessions[0].name, "Old Professor")
 
-  # TODO: update when Gate
   def testSociety6TrohyYesNoAlly(self):
-    self.char.dollars = 2
+    self.char.trophies.append(self.state.gates.popleft())
     self.state.event_stack.append(encounters.Society6(self.char))
-    choice = self.resolve_to_choice(MultipleChoice)
+    choice = self.resolve_to_choice(SpendChoice)
+    self.use_handle(0, self.char.trophies[0].handle)
     choice.resolve(self.state, "Yes")
     self.resolve_until_done()
-    self.assertEqual(self.char.dollars, 1)
+    self.assertEqual(len(self.char.trophies), 0)
     self.assertEqual(len(self.char.possessions), 1)
     self.assertEqual(self.char.possessions[0].name, "Holy Water")
 

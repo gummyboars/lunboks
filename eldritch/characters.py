@@ -1,6 +1,9 @@
 from collections import OrderedDict
 
 from eldritch import abilities
+from eldritch import events
+from eldritch import gates
+from eldritch import monsters
 
 
 class Character:
@@ -116,10 +119,27 @@ class Character:
     ]
 
   def get_usable_interrupts(self, event, state):
-    return {
+    interrupts = {
         pos.handle: pos.get_usable_interrupt(event, self, state)
         for pos in self.possessions if pos.get_usable_interrupt(event, self, state)
     }
+    if isinstance(event, events.SpendChoice) and not event.is_done():
+      spendable = event.spendable()
+      spent_handles = event.spent_handles()
+      for trophy in self.trophies:
+        handle = trophy.handle
+        if handle in spent_handles:
+          interrupts[handle] = events.Unspend(self, event, handle)
+          continue
+        if isinstance(trophy, monsters.Monster):
+          if "toughness" in spendable:
+            amount = trophy.toughness(state, self)
+            interrupts[handle] = events.Spend(self, event, handle, {"toughness": amount})
+          elif "monsters" in spendable:
+            interrupts[handle] = events.Spend(self, event, handle, {"monsters": 1})
+        elif isinstance(trophy, gates.Gate) and "gates" in spendable:
+          interrupts[handle] = events.Spend(self, event, handle, {"gates": 1})
+    return interrupts
 
   def get_triggers(self, event, state):
     return [
@@ -132,6 +152,23 @@ class Character:
         pos.handle: pos.get_usable_trigger(event, self, state)
         for pos in self.possessions if pos.get_usable_trigger(event, self, state)
     }
+
+  def get_spend_event(self, handle):
+    matching = [pos for pos in self.possessions if pos.handle == handle]
+    if matching:
+      if len(matching) > 1:
+        print(f"ERROR: handle {handle} matched multiple possessions: {matching}")
+      return matching[0].get_spend_event(self)
+    matching = [trophy for trophy in self.trophies if trophy.handle == handle]
+    if not matching:
+      print(f"ERROR: handle {handle} matched no possessions or trophies")
+      return events.Nothing()
+    if len(matching) > 1:
+      print(f"ERROR: handle {handle} matched multiple trophies: {matching}")
+    trophy = matching[0]
+    if isinstance(trophy, monsters.Monster):
+      return events.ReturnMonsterToCup(self, handle)
+    return events.ReturnGateToStack(self, handle)
 
   def bonus(self, check_name, state, attributes=None):
     modifier = state.get_modifier(self, check_name)
@@ -172,20 +209,6 @@ class Character:
 
   def focus_cost(self, pending_sliders):
     return sum([abs(orig - pending_sliders[name]) for name, orig in self.sliders().items()])
-
-  # def get_spendables(self, event, spend_type, already_spent):
-  #   spendables = {}
-  #   for pos in self.possessions:
-  #     if pos.handle in already_spent:
-  #       continue
-  #     spend_amount = pos.get_spend_amount(event, spend_type)
-  #     if spend_amount is not None:
-  #       spendables[pos.handle] = spend_amount
-  #   if spend_type in ["stamina", "sanity", "dollars", "clues"]:
-  #     if getattr(self, spend_type) - already_spent.get(spend_type, 0) > 0:
-  #       spendables[spend_type] = 1  # This is the spend increment, not the max.
-  #   # TODO: trophies
-  #   return spendables
 
   def abilities(self):
     return []

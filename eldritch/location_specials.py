@@ -15,7 +15,7 @@ def CreateFixedEncounters():
 
   restore_all_sanity = FixedEncounter(
       name="Restore All Sanity",
-      prereq=lambda char: values.SpendPrerequisite("dollars", 2),
+      prereq=lambda char: values.ExactSpendPrerequisite({"dollars": 2}),
       encounter=lambda char: events.Gain(char, {"sanity": float("inf")}),
   )
 
@@ -27,7 +27,7 @@ def CreateFixedEncounters():
 
   restore_all_stamina = FixedEncounter(
       name="Restore All Stamina",
-      prereq=lambda char: values.SpendPrerequisite("dollars", 2),
+      prereq=lambda char: values.ExactSpendPrerequisite({"dollars": 2}),
       encounter=lambda char: events.Gain(char, {"stamina": float("inf")}),
   )
 
