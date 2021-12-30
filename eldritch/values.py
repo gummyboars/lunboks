@@ -204,6 +204,61 @@ class RangeSpendPrerequisite(SpendValue):
     return sum(self.spend_map[self.spend_type].values())
 
 
+class ToughnessSpendBase(SpendValue, metaclass=abc.ABCMeta):
+
+  def __init__(self, toughness):
+    assert toughness > 0
+    super().__init__()
+    self.toughness = toughness
+
+  def value(self, state):
+    for spend_type in self.spend_map.keys() - self.spend_types():
+      if sum(self.spend_map[spend_type].values()) != 0:  # Cannot spend anything else.
+        return 0
+
+    total_spent = 0
+    min_spent = None
+    for toughness in self.spend_map["toughness"].values():
+      if min_spent is None or toughness < min_spent:
+        min_spent = toughness
+      total_spent += toughness
+    for count in self.spend_map["gates"].values():  # TODO: can the count ever be not 1?
+      if count == 0:
+        continue
+      if min_spent is None or min_spent > 5:
+        min_spent = 5
+      total_spent += count * 5
+
+    if min_spent is None:
+      return 0
+    if total_spent < self.toughness:
+      return 0
+    if total_spent - self.toughness >= min_spent:  # Not allowed to overspend too much.
+      return 0
+    return 1
+
+  def annotation(self, state):
+    return f"{self.toughness} toughness"
+
+
+class ToughnessSpend(ToughnessSpendBase):
+  """ToughnessSpend represents spending toughness, disallowing excessive overspend."""
+
+  def spend_types(self):
+    return {"toughness"}
+
+
+class ToughnessOrGatesSpend(ToughnessSpendBase):
+  """ToughnessOrGatesSpend represents spending increments of five toughness or one gate trophy."""
+
+  def __init__(self, toughness):
+    assert toughness % 5 == 0
+    super().__init__(toughness)
+
+  def spend_types(self):
+    return {"toughness", "gates"}
+
+
 class SpendCount(Value):
 
   def __init__(self, spend_choice, spend_type):

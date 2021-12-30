@@ -2298,7 +2298,10 @@ def BinarySpend(
     character, spend_type, quantity, prompt, rich_choice, poor_choice, rich_event, poor_event=None,
 ):
   poor_event = poor_event or Nothing()
-  spend = values.ExactSpendPrerequisite({spend_type: quantity})
+  if spend_type == "toughness":
+    spend = values.ToughnessSpend(quantity)
+  else:
+    spend = values.ExactSpendPrerequisite({spend_type: quantity})
   choice = SpendChoice(character, prompt, [rich_choice, poor_choice], [spend, None])
   cond = Conditional(character, choice, "choice_index", {0: rich_event, 1: poor_event})
   return Sequence([choice, cond], character)

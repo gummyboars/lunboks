@@ -1810,7 +1810,7 @@ class SpendChoiceTest(EventTest):
     self.char.trophies.append(self.state.gates.popleft())
     self.char.trophies.append(self.state.gates.popleft())
     self.state.event_stack.append(choice)
-    self.resolve_to_choice(SpendChoice)
+    choice = self.resolve_to_choice(SpendChoice)
 
     self.assertEqual(choice.invalid_choices, [0])
     self.assertIn(0, self.state.usables)
@@ -1840,6 +1840,60 @@ class SpendChoiceTest(EventTest):
     self.assertEqual([trophy.handle for trophy in self.char.trophies], ["Gate Abyss1"])
     self.assertEqual(len(self.state.gates), orig_gates-1)
     self.assertEqual(self.state.gates[-1].handle, "Gate Abyss0")
+
+  def testSpendToughness(self):
+    cultist = monsters.Cultist()
+    vampire = monsters.Vampire()
+    flier = monsters.DreamFlier()
+    self.char.trophies.extend([cultist, vampire, flier])
+    spend_toughness = values.ToughnessSpend(2)
+    choice = SpendChoice(self.char, "choose", ["A", "B"], [spend_toughness, None])
+    self.state.event_stack.append(choice)
+    choice = self.resolve_to_choice(SpendChoice)
+
+    self.assertEqual(choice.invalid_choices, [0])
+    self.assertIn(0, self.state.usables)
+    self.assertEqual(self.state.usables[0].keys(), {"Cultist", "Vampire", "Dream Flier"})
+    self.state.event_stack.append(self.state.usables[0]["Cultist"])
+    choice = self.resolve_to_choice(SpendChoice)
+    self.assertEqual(choice.spent_handles(), {"Cultist"})
+    self.assertEqual(choice.invalid_choices, [0, 1])
+
+    self.state.event_stack.append(self.state.usables[0]["Vampire"])
+    choice = self.resolve_to_choice(SpendChoice)
+    self.assertEqual(choice.spent_handles(), {"Cultist", "Vampire"})
+    self.assertEqual(choice.invalid_choices, [0, 1])
+
+    self.state.event_stack.append(self.state.usables[0]["Cultist"])
+    choice = self.resolve_to_choice(SpendChoice)
+    self.assertEqual(choice.spent_handles(), {"Vampire"})
+    self.assertEqual(choice.invalid_choices, [1])
+
+    choice.resolve(self.state, "A")
+    self.resolve_until_done()
+
+    self.assertEqual([trophy.handle for trophy in self.char.trophies], ["Cultist", "Dream Flier"])
+    self.assertEqual(vampire.place, self.state.monster_cup)
+    self.assertIsNone(cultist.place)
+    self.assertIsNone(flier.place)
+
+  def testSpendToughnessWithGlobals(self):
+    maniac = monsters.Maniac()
+    self.char.trophies.append(maniac)
+    spend_toughness = values.ToughnessSpend(2)
+    self.state.environment = mythos.Mythos45()  # Increases the maniac's toughness by 1.
+    self.assertEqual(maniac.toughness(self.state, self.char), 2)
+    choice = SpendChoice(self.char, "choose", ["A", "B"], [spend_toughness, None])
+    self.state.event_stack.append(choice)
+    choice = self.resolve_to_choice(SpendChoice)
+
+    self.assertEqual(choice.invalid_choices, [0])
+    self.assertIn(0, self.state.usables)
+    self.assertEqual(self.state.usables[0].keys(), {"Maniac"})
+    self.state.event_stack.append(self.state.usables[0]["Maniac"])
+    choice = self.resolve_to_choice(SpendChoice)
+    self.assertEqual(choice.spent_handles(), {"Maniac"})
+    self.assertEqual(choice.invalid_choices, [1])
 
   def testSpendItems(self):
     self.char.possessions.extend([items.ResearchMaterials(0), items.ResearchMaterials(1)])

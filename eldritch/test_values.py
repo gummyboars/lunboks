@@ -228,6 +228,90 @@ class SpendTest(unittest.TestCase):
     self.assertEqual(spend.value(state), 0)
 
 
+class SpendToughnessTest(unittest.TestCase):
+
+  def testToughnessExactSpending(self):
+    state = DummyState()
+    spend = ToughnessSpend(5)
+    self.assertEqual(spend.value(state), 0)
+
+    spend.spend_map["toughness"]["Some monster"] = 4
+    self.assertEqual(spend.value(state), 0)
+    # Exact spend
+    spend.spend_map["toughness"]["Other monster"] = 1
+    self.assertEqual(spend.value(state), 1)
+    # Unrelated spending at zero should have no effect.
+    spend.spend_map["clues"]["clues"] = 0
+    self.assertEqual(spend.value(state), 1)
+    # Cannot spend anything else
+    spend.spend_map["gates"]["some gate"] = 1
+    self.assertEqual(spend.value(state), 0)
+    # A gate does not count as 5 toughness for TougnessSpend.
+    spend.spend_map["toughness"].clear()
+    self.assertEqual(spend.value(state), 0)
+
+  def testToughnessOverspend(self):
+    state = DummyState()
+    spend = ToughnessSpend(5)
+    self.assertEqual(spend.value(state), 0)
+
+    spend.spend_map["toughness"]["Some monster"] = 4
+    self.assertEqual(spend.value(state), 0)
+    # Spent 6, but minimum spend is two, so overspend is okay.
+    spend.spend_map["toughness"]["Other monster"] = 2
+    self.assertEqual(spend.value(state), 1)
+    # Not okay: overspent by two, with one monster worth 2
+    spend.spend_map["toughness"]["Some monster"] = 3
+    spend.spend_map["toughness"]["Third monster"] = 2
+    self.assertEqual(spend.value(state), 0)
+
+  def testToughnessOrGateSpending(self):
+    state = DummyState()
+    spend = ToughnessOrGatesSpend(10)
+    self.assertEqual(spend.value(state), 0)
+
+    spend.spend_map["toughness"]["Some monster"] = 4
+    spend.spend_map["gates"]["Some gate"] = 1
+    self.assertEqual(spend.value(state), 0)
+    # Exact spend
+    spend.spend_map["toughness"]["Other monster"] = 1
+    self.assertEqual(spend.value(state), 1)
+    # Unrelated spending at zero should have no effect.
+    spend.spend_map["clues"]["clues"] = 0
+    self.assertEqual(spend.value(state), 1)
+    # Can use only monsters
+    spend.spend_map["gates"].clear()
+    spend.spend_map["toughness"]["big monster"] = 5
+    self.assertEqual(spend.value(state), 1)
+    # Can use only gates
+    spend.spend_map["toughness"].clear()
+    spend.spend_map["gates"] = {"Some gate": 1, "Other gate": 1}
+    self.assertEqual(spend.value(state), 1)
+
+  def testToughnessOrGateOverspend(self):
+    state = DummyState()
+    spend = ToughnessOrGatesSpend(10)
+    self.assertEqual(spend.value(state), 0)
+
+    spend.spend_map["toughness"]["Some monster"] = 4
+    spend.spend_map["gates"]["Some gate"] = 1
+    self.assertEqual(spend.value(state), 0)
+    # Spent 11, but minimum spend is two, so overspend is okay.
+    spend.spend_map["toughness"]["Other monster"] = 2
+    self.assertEqual(spend.value(state), 1)
+    # Not okay: overspent by two, with one monster worth 2
+    spend.spend_map["toughness"]["Some monster"] = 3
+    spend.spend_map["toughness"]["Third monster"] = 2
+    self.assertEqual(spend.value(state), 0)
+    # Use two gates
+    spend.spend_map["toughness"].clear()
+    spend.spend_map["gates"]["Other gate"] = 1
+    self.assertEqual(spend.value(state), 1)
+    # Not okay: overspend one gate.
+    spend.spend_map["gates"]["Third gate"] = 1
+    self.assertEqual(spend.value(state), 0)
+
+
 class SpendCountTest(unittest.TestCase):
 
   def testSpendCountValue(self):
