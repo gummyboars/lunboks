@@ -25,7 +25,7 @@ class OpenGateTest(EventTest):
     super().setUp()
     self.state.gates.clear()
     self.info = places.OtherWorldInfo("Pluto", {"blue", "yellow"})
-    self.gate = gates.Gate(self.info, -2)
+    self.gate = gates.Gate("Pluto", 0, -2, "circle")
     self.state.gates.append(self.gate)
     self.square = self.state.places["Square"]
     self.woods = self.state.places["Woods"]
@@ -135,7 +135,7 @@ class MonsterSurgeTest(EventTest):
       monster.place = self.state.monster_cup
     self.state.gates.clear()
     self.info = places.OtherWorldInfo("Pluto", {"blue", "yellow"})
-    self.gate = gates.Gate(self.info, -2)
+    self.gate = gates.Gate("Pluto", 0, -2, "circle")
     self.state.places["Woods"].gate = self.gate
 
     self.state.characters.clear()
@@ -170,8 +170,8 @@ class MonsterSurgeTest(EventTest):
       self.assertEqual(self.state.monsters[idx].place.name, "Woods")
 
   def testInvalidInputFormat(self):
-    self.state.places["Square"].gate = gates.Gate(self.info, -2)
-    self.state.places["WitchHouse"].gate = gates.Gate(self.info, -2)
+    self.state.places["Square"].gate = gates.Gate("Pluto", 0, -2, "circle")
+    self.state.places["WitchHouse"].gate = gates.Gate("Pluto", 1, -2, "circle")
     self.state.event_stack.append(MonsterSurge("Woods"))
     with mock.patch.object(events.random, "sample", new=mock.MagicMock(return_value=[0, 1, 5])):
       surge = self.resolve_to_choice(MonsterSurge)
@@ -187,8 +187,8 @@ class MonsterSurgeTest(EventTest):
     self.assertFalse(surge.is_resolved())
 
   def testInvalidInput(self):
-    self.state.places["Square"].gate = gates.Gate(self.info, -2)
-    self.state.places["WitchHouse"].gate = gates.Gate(self.info, -2)
+    self.state.places["Square"].gate = gates.Gate("Pluto", 0, -2, "circle")
+    self.state.places["WitchHouse"].gate = gates.Gate("Pluto", 1, -2, "circle")
     self.state.event_stack.append(MonsterSurge("Woods"))
     with mock.patch.object(events.random, "sample", new=mock.MagicMock(return_value=[0, 1, 5])):
       surge = self.resolve_to_choice(MonsterSurge)
@@ -201,8 +201,8 @@ class MonsterSurgeTest(EventTest):
       surge.resolve(self.state, {"Woods": [0, 1, 5]})
 
   def testMoreGatesThanCharacters(self):
-    self.state.places["Square"].gate = gates.Gate(self.info, -2)
-    self.state.places["WitchHouse"].gate = gates.Gate(self.info, -2)
+    self.state.places["Square"].gate = gates.Gate("Pluto", 0, -2, "circle")
+    self.state.places["WitchHouse"].gate = gates.Gate("Pluto", 1, -2, "circle")
     self.state.event_stack.append(MonsterSurge("Woods"))
     with mock.patch.object(events.random, "sample", new=mock.MagicMock(return_value=[0, 1, 5])):
       surge = self.resolve_to_choice(MonsterSurge)
@@ -221,9 +221,9 @@ class MonsterSurgeTest(EventTest):
 
   def testNotEnoughGatesForAllMonsters(self):
     # Total of four open gates
-    self.state.places["Square"].gate = gates.Gate(self.info, -2)
-    self.state.places["Isle"].gate = gates.Gate(self.info, -2)
-    self.state.places["Cave"].gate = gates.Gate(self.info, -2)
+    self.state.places["Square"].gate = gates.Gate("Pluto", 0, -2, "circle")
+    self.state.places["Isle"].gate = gates.Gate("Pluto", 1, -2, "circle")
+    self.state.places["Cave"].gate = gates.Gate("Pluto", 2, -2, "circle")
     # And four monsters on the board
     self.state.monsters[2].place = self.state.places["Square"]
     self.state.monsters[3].place = self.state.places["Isle"]
@@ -253,8 +253,8 @@ class MonsterSurgeTest(EventTest):
     self.state.all_characters["D"] = self.state.characters[-1]
     self.state.characters[-1].place = self.state.places["Square"]
 
-    self.state.places["Isle"].gate = gates.Gate(self.info, -2)
-    self.state.places["WitchHouse"].gate = gates.Gate(self.info, -2)
+    self.state.places["Isle"].gate = gates.Gate("Pluto", 0, -2, "circle")
+    self.state.places["WitchHouse"].gate = gates.Gate("Pluto", 1, -2, "circle")
     self.state.event_stack.append(MonsterSurge("Woods"))
     surge = self.resolve_to_choice(MonsterSurge)
     self.assertEqual(len(surge.to_spawn), 4)

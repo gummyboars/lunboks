@@ -48,6 +48,7 @@ class Monster:
       self._attributes.add("overwhelming")
     if "horror" in bypass:
       self._attributes.add("nightmarish")
+    self.idx = None
     self.place = None
 
   def __repr__(self):
@@ -55,11 +56,19 @@ class Monster:
       return f"<Monster: {self.name} {id(self)} at nowhere>"
     return f"<Monster: {self.name} {id(self)} at {self.place}>"
 
+  @property
+  def handle(self):
+    if self.idx is None:
+      return self.name
+    return f"{self.name}{self.idx}"
+
   def json_repr(self):
     return {
         "name": self.name,
+        "handle": self.handle,
         "movement": self.movement,
         "dimension": self.dimension,
+        "idx": self.idx,
         "place": getattr(self.place, "name", None),
     }
 

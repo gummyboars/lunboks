@@ -76,10 +76,10 @@ class GameState:
 
   def initialize_for_tests(self):
     self.places = places.CreatePlaces()
-    infos, other_worlds = places.CreateOtherWorlds()
+    other_worlds = places.CreateOtherWorlds()
     self.places.update(other_worlds)
 
-    self.gates.extend(gates.CreateGates(infos[:3]))
+    self.gates.extend(gates.CreateGates())
     self.monsters = [monsters.Cultist(), monsters.Maniac()]
     for monster in self.monsters:
       monster.place = self.monster_cup
@@ -92,7 +92,7 @@ class GameState:
 
   def initialize(self):
     self.places = places.CreatePlaces()
-    infos, other_worlds = places.CreateOtherWorlds()
+    other_worlds = places.CreateOtherWorlds()
     self.places.update(other_worlds)
     specials = location_specials.CreateFixedEncounters()
     encounter_cards = encounters.CreateEncounterCards()
@@ -102,12 +102,13 @@ class GameState:
     for location_name, fixed_encounters in specials.items():
       self.places[location_name].fixed_encounters.extend(fixed_encounters)
 
-    gate_markers = gates.CreateGates(infos)
+    gate_markers = gates.CreateGates()
     random.shuffle(gate_markers)
     self.gates.extend(gate_markers)
 
     self.monsters = monsters.CreateMonsters()
-    for monster in self.monsters:
+    for idx, monster in enumerate(self.monsters):
+      monster.idx = idx
       monster.place = self.monster_cup
 
     self.common.extend(items.CreateCommon())

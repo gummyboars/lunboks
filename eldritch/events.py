@@ -1854,6 +1854,56 @@ class DiscardNamed(Event):
     return f"{self.character.name} discarded their {self.item_name}"
 
 
+class ReturnMonsterToCup(Event):
+
+  def __init__(self, character, handle):
+    self.character = character
+    self.handle = handle
+    self.returned = None
+
+  def resolve(self, state):
+    monsters = [monster for monster in self.character.trophies if monster.handle == self.handle]
+    self.returned = []
+    for monster in monsters:
+      self.character.trophies.remove(monster)
+      monster.place = state.monster_cup
+      self.returned.append(monster.name)
+
+  def is_resolved(self):
+    return self.returned is not None
+
+  def start_str(self):
+    return ""
+
+  def finish_str(self):
+    return f"{self.character.name} returned " + ", ".join(self.returned) + " to the cup"
+
+
+class ReturnGateToStack(Event):
+
+  def __init__(self, character, handle):
+    self.character = character
+    self.handle = handle
+    self.returned = None
+
+  def resolve(self, state):
+    gates = [gate for gate in self.character.trophies if gate.handle == self.handle]
+    self.returned = []
+    for gate in gates:
+      self.character.trophies.remove(gate)
+      state.gates.append(gate)
+      self.returned.append(gate.name)
+
+  def is_resolved(self):
+    return self.returned is not None
+
+  def start_str(self):
+    return ""
+
+  def finish_str(self):
+    return f"{self.character.name} returned " + ", ".join(self.returned)
+
+
 class Check(Event):
 
   def __init__(self, character, check_type, modifier, attributes=None):
