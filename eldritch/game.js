@@ -214,7 +214,7 @@ function finishAnim() {
 function handleData(data) {
   allCharacters = data.all_characters;
   updateCharacterSelect(data.characters, data.player_idx, data.pending_name, data.pending_chars);
-  updateCharacterSheets(data.characters, data.player_idx, data.first_player);
+  updateCharacterSheets(data.characters, data.player_idx, data.first_player, data.choice);
   updateBottomText(data.game_stage, data.turn_phase, data.characters, data.turn_idx, data.player_idx);
   updateGlobals(data.environment, data.rumor);
   updatePlaces(data.places);
@@ -763,23 +763,28 @@ function addChoices(uichoice, choices, invalidChoices) {
 
 function updateUsables(usables, choice) {
   let uiuse = document.getElementById("uiuse");
-  let pDiv;
+  let pDiv, tDiv;
   if (!document.getElementsByClassName("you").length) {
     pDiv = document.createElement("DIV");  // Dummy div.
+    tDiv = pDiv;
   } else {
-    pDiv = document.getElementsByClassName("you")[0].getElementsByClassName("possessions")[0];
+    [pDiv, tDiv] = document.getElementsByClassName("you")[0].getElementsByClassName("possessions");
   }
   uiuse.style.display = "none";
   if (usables == null) {
     pDiv.classList.remove("use");
+    tDiv.classList.remove("use");
     return;
   }
   if (choice == null) {
     uiuse.style.display = "flex";
   }
   pDiv.classList.add("use");
+  tDiv.classList.add("use");
   let posList = pDiv.getElementsByClassName("possession");
-  for (let pos of posList) {
+  let trophyList = tDiv.getElementsByClassName("trophy");
+  let allList = Array.from(posList).concat(Array.from(trophyList));
+  for (let pos of allList) {
     if (usables.includes(pos.handle)) {
       pos.classList.add("usable");
       pos.classList.remove("unusable");
@@ -790,24 +795,19 @@ function updateUsables(usables, choice) {
       }
     }
   }
-  let includesAbility = false;
+  let tradeOnly = true;
   for (let val of usables) {
-    if (val != "clues" && val != "trade") {
-      includesAbility = true;
+    if (val != "trade") {
+      tradeOnly = false;
+      break;
     }
   }
   document.getElementById("usetext").innerText = "Use Items or Abilities";
   document.getElementById("doneusing").innerText = "Done Using";
-  if (!includesAbility) {
-    if (usables.includes("trade")) {
-      document.getElementById("usetext").innerText = "Trade?";
-      document.getElementById("doneusing").innerText = "Done Trading";
-    } else if (usables.includes("clues")) {
-      document.getElementById("usetext").innerText = "Use clues?";
-      document.getElementById("doneusing").innerText = "Done Using";
-    }
+  if (tradeOnly) {
+    document.getElementById("usetext").innerText = "Trade?";
+    document.getElementById("doneusing").innerText = "Done Trading";
   }
-  // TODO: make clues change apperance when usable
 }
 
 function updateSpending(choice) {
@@ -817,7 +817,7 @@ function updateSpending(choice) {
     spendable = choice.spendable;
     for (let key in choice.spent) {
       for (let handle in choice.spent[key]) {
-        spent[handle] = choice.spent[key][handle];
+        spent[handle] = (spent[handle] || 0) + choice.spent[key][handle];
       }
     }
   }
@@ -1193,7 +1193,7 @@ function drawChosenChar(name) {
   renderAssetToDiv(document.getElementById("charchoice"), name);
 }
 
-function updateCharacterSheets(characters, playerIdx, firstPlayer) {
+function updateCharacterSheets(characters, playerIdx, firstPlayer, choice) {
   let rightUI = document.getElementById("uiright");
   for (let [idx, character] of characters.entries()) {
     let sheet;
@@ -1206,7 +1206,7 @@ function updateCharacterSheets(characters, playerIdx, firstPlayer) {
     if (order < 0) {
       order += characters.length;
     }
-    updateCharacterSheet(sheet, character, order, playerIdx == idx);
+    updateCharacterSheet(sheet, character, order, playerIdx == idx, choice);
   }
   let unCollapsed = false;
   for (let sheet of document.getElementsByClassName("player")) {
@@ -1367,12 +1367,27 @@ function showTrophies(bag) {
   trophyTab.classList.remove("inactive");
 }
 
-function updateCharacterSheet(sheet, character, order, isPlayer) {
+function updateCharacterSheet(sheet, character, order, isPlayer, choice) {
   let charMarker = sheet.getElementsByClassName("picture")[0];
   renderAssetToDiv(charMarker, character.name + " picture");
   let charName = sheet.getElementsByClassName("playername")[0];
   renderAssetToDiv(charName, character.name + " title");
   sheet.style.order = order;
+  let spent = {};
+  if (choice != null) {
+    for (let key in choice.spent) {
+      for (let handle in choice.spent[key]) {
+        spent[handle] = (spent[handle] || 0) + choice.spent[key][handle];
+      }
+    }
+  }
+  updateCharacterStats(sheet, character, isPlayer, spent);
+  updateSliders(sheet, character, isPlayer);
+  updatePossessions(sheet, character, isPlayer, spent);
+  updateTrophies(sheet, character, isPlayer, spent);
+}
+
+function updateCharacterStats(sheet, character, isPlayer, spent) {
   let stats = sheet.getElementsByClassName("playerstats")[0];
   let cfgs = [
     ["Stamina", "stamina", "white", "max_stamina"], ["Sanity", "sanity", "white", "max_sanity"],
@@ -1381,7 +1396,8 @@ function updateCharacterSheet(sheet, character, order, isPlayer) {
   for (let cfg of cfgs) {
     let statDiv = sheet.getElementsByClassName(cfg[1])[0];
     renderAssetToDiv(statDiv, cfg[0]);
-    statDiv.statValue = character[cfg[1]];
+    let statSpent = isPlayer ? (spent[cfg[1]] || 0) : 0;
+    statDiv.statValue = character[cfg[1]] - statSpent;
     statDiv.textColor = cfg[2];
     if (cfg.length > 3) {
       statDiv.maxValue = character[cfg[3]];
@@ -1389,9 +1405,6 @@ function updateCharacterSheet(sheet, character, order, isPlayer) {
       statDiv.maxValue = null;
     }
   }
-  updateSliders(sheet, character, isPlayer);
-  updatePossessions(sheet, character, isPlayer);
-  updateTrophies(sheet, character, isPlayer);
 }
 
 function updateStats() {
@@ -1428,22 +1441,25 @@ function updateSliders(sheet, character, isPlayer) {
   }
 }
 
-function updatePossessions(sheet, character, isPlayer) {
+function updatePossessions(sheet, character, isPlayer, spent) {
   let pDiv = sheet.getElementsByClassName("possessions")[0];
   while (pDiv.firstChild) {
     pDiv.removeChild(pDiv.firstChild);
   }
   for (let pos of character.possessions) {
-    createPossession(pos, isPlayer, pDiv);
+    createPossession(pos, isPlayer, pDiv, spent);
   }
 }
 
-function createPossession(info, isPlayer, sheet) {
+function createPossession(info, isPlayer, sheet, spent) {
   let div = document.createElement("DIV");
   div.classList.add("possession", "cnvcontainer");
   div.cnvScale = 2.5;
   if (info.active) {
     div.classList.add("active");
+  }
+  if (spent[info.handle] != null) {
+    div.classList.add("spent");
   }
   div.handle = info.handle;
   if (abilityNames.includes(info.handle)) {
@@ -1486,26 +1502,38 @@ function createPossession(info, isPlayer, sheet) {
   renderAssetToDiv(div, info.name);
 }
 
-function updateTrophies(sheet, character, isPlayer) {
+function updateTrophies(sheet, character, isPlayer, spent) {
   let tDiv = sheet.getElementsByClassName("possessions")[1];
   while (tDiv.firstChild) {
     tDiv.removeChild(tDiv.firstChild);
   }
   for (let trophy of character.trophies) {
-    createTrophy(trophy, isPlayer, tDiv);
+    createTrophy(trophy, isPlayer, tDiv, spent);
   }
 }
 
-function createTrophy(info, isPlayer, tDiv) {
+function createTrophy(info, isPlayer, tDiv, spent) {
+  let handle = info.handle;
   let div = document.createElement("DIV");
   div.classList.add("trophy", "cnvcontainer");
   div.cnvScale = 2.5;
+  if (spent[handle] != null) {
+    div.classList.add("spent");
+  }
+  div.handle = handle;
   let cnv = document.createElement("CANVAS");
   cnv.classList.add("poscnv");
   div.appendChild(cnv);
   div.onmouseenter = bringTop;
   div.onmouseleave = returnBottom;
   tDiv.appendChild(div);
+  let chosenDiv = document.createElement("DIV");
+  chosenDiv.classList.add("chosencheck");
+  chosenDiv.innerText = "✔️";
+  div.appendChild(chosenDiv);
+  if (isPlayer) {
+    div.onclick = function(e) { useAsset(handle); };
+  }
   let assetName = info.name;
   if (monsterNames.includes(assetName)) {
     assetName += " back";
