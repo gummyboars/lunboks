@@ -243,7 +243,7 @@ class GameState:
     if top_event and isinstance(top_event, events.ChoiceEvent) and not top_event.is_done():
       if top_event.character == char:
         output["choice"] = {"prompt": top_event.prompt()}
-        output["choice"]["annotations"] = top_event.annotations()
+        output["choice"]["annotations"] = top_event.annotations(self)
         output["choice"]["invalid_choices"] = getattr(top_event, "invalid_choices", [])
         if isinstance(top_event, events.SpendChoice):
           output["choice"]["spendable"] = list(top_event.spendable())

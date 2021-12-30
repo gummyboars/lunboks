@@ -77,7 +77,7 @@ class ChoiceEvent(Event):
   def compute_choices(self, state) -> NoReturn:
     pass
 
-  def annotations(self) -> Optional[List[str]]:
+  def annotations(self, state) -> Optional[List[str]]:  # pylint: disable=unused-argument
     return None
 
 
@@ -331,11 +331,11 @@ class CityMovement(ChoiceEvent):
   def choices(self):
     return sorted(self.routes.keys())
 
-  def annotations(self):
+  def annotations(self, state):
     return [f"Move ({len(self.routes[dest])})" for dest in sorted(self.routes.keys())]
 
   def compute_choices(self, state):
-    self.routes = self.get_routes(state)  # TODO: annotate
+    self.routes = self.get_routes(state)
 
   def get_distances(self, state):
     routes = self.get_routes(state)
@@ -2148,7 +2148,7 @@ class MultipleChoice(ChoiceEvent):
   def prompt(self):
     return self._prompt
 
-  def annotations(self):
+  def annotations(self, state):
     return self._annotations
 
   @property
@@ -2426,7 +2426,7 @@ class GateChoice(MapChoice):
       return f"there were no open gates to {self.gate_name}"  # TODO
     return f"{self.character.name} chose the gate at {self.choice}"
 
-  def annotations(self):
+  def annotations(self, state):
     if self.annotation and self.choices is not None:
       return [self.annotation for _ in self.choices]
     return None
