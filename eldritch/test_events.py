@@ -279,9 +279,10 @@ class MovementPhaseTest(EventTest):
     self.assertIn("Easttown", movement.choices)
     self.assertIn("Graveyard", movement.choices)
 
-    self.assertEqual(len(movement.annotations()), len(movement.choices))
-    self.assertEqual(movement.annotations()[movement.choices.index("Easttown")], "Move (1)")
-    self.assertEqual(movement.annotations()[movement.choices.index("Graveyard")], "Move (3)")
+    annotations = movement.annotations(self.state)
+    self.assertEqual(len(annotations), len(movement.choices))
+    self.assertEqual(annotations[movement.choices.index("Easttown")], "Move (1)")
+    self.assertEqual(annotations[movement.choices.index("Graveyard")], "Move (3)")
 
   def testMoveInOtherWorld(self):
     self.char.place = self.state.places["Dreamlands1"]
@@ -1926,7 +1927,7 @@ class GateChoiceTest(EventTest):
     self.state.event_stack.append(choice)
     self.resolve_to_choice(GateChoice)
 
-    self.assertEqual(choice.annotations(), ["Return", "Return"])
+    self.assertEqual(choice.annotations(self.state), ["Return", "Return"])
 
     with self.assertRaises(AssertionError):
       choice.resolve(self.state, None)
@@ -2207,7 +2208,7 @@ class PurchaseTest(EventTest):
     self.state.event_stack.append(buy)
     choice = self.resolve_to_choice(CardSpendChoice)
     self.assertEqual(choice.choices, ["Food", "Nothing"])
-    self.assertEqual(choice.annotations(), ["$1"])
+    self.assertEqual(choice.annotations(self.state), ["$1"])
     with self.assertRaises(AssertionError):
       choice.resolve(self.state, "Food")
     self.spend("dollars", 1, choice)
@@ -2306,7 +2307,7 @@ class PurchaseTest(EventTest):
     self.state.event_stack.append(buy)
     choice = self.resolve_to_choice(CardSpendChoice)
     self.assertEqual(choice.choices, ["Food", "Tommy Gun", "Nothing"])
-    self.assertEqual(choice.annotations(), ["$1", "$7"])
+    self.assertEqual(choice.annotations(self.state), ["$1", "$7"])
     self.spend("dollars", 7, choice)
     self.assertCountEqual(choice.invalid_choices, [0, 2])
     choice.resolve(self.state, "Tommy Gun")
@@ -2333,7 +2334,7 @@ class PurchaseTest(EventTest):
     self.state.event_stack.append(buy)
     choice = self.resolve_to_choice(CardSpendChoice)
     self.assertEqual(choice.choices, ["Food", "Tommy Gun", "Nothing"])
-    self.assertEqual(choice.annotations(), ["$0", "$6"])
+    self.assertEqual(choice.annotations(self.state), ["$0", "$6"])
     self.spend("dollars", 6, choice)
     choice.resolve(self.state, "Tommy Gun")
     choice = self.resolve_to_choice(CardSpendChoice)
@@ -2358,7 +2359,7 @@ class PurchaseTest(EventTest):
     self.state.event_stack.append(buy)
     choice = self.resolve_to_choice(CardSpendChoice)
     self.assertEqual(choice.choices, ["Food", "Tommy Gun", "Nothing"])
-    self.assertEqual(choice.annotations(), ["$1", "$4"])
+    self.assertEqual(choice.annotations(self.state), ["$1", "$4"])
     self.spend("dollars", 4, choice)
     choice.resolve(self.state, "Tommy Gun")
     choice = self.resolve_to_choice(CardSpendChoice)
@@ -2384,7 +2385,7 @@ class PurchaseTest(EventTest):
     self.state.event_stack.append(buy)
     choice = self.resolve_to_choice(CardSpendChoice)
     self.assertEqual(choice.choices, ["Food", "Tommy Gun", "Nothing"])
-    self.assertEqual(choice.annotations(), ["$2", "$8"])
+    self.assertEqual(choice.annotations(self.state), ["$2", "$8"])
     self.spend("dollars", 8, choice)
     choice.resolve(self.state, "Tommy Gun")
     choice = self.resolve_to_choice(CardSpendChoice)
