@@ -1006,6 +1006,9 @@ button {
 .possessions.choose .possession.chosen .chosencheck {
   color: black;
 }
+.spent .chosencheck {
+  color: black;
+}
 .trophy {
   position: relative;
   width: calc(min(4.5vw, 7.2vh));
