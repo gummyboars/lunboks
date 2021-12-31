@@ -243,12 +243,11 @@ class EnchantWeapon(CombatSpell):
 
     # Instead of immediately casting the spell, ask the user to make a choice. If they have no
     # valid choices (or if they choose nothing), then don't cast the spell at all.
-    choice = events.SinglePhysicalWeaponChoice(owner, "Choose a physical weapon to enchant")
-    cast = events.CastSpell(owner, self, choice=choice)
-    return events.Sequence([
-        choice, events.Conditional(owner, choice, "choice_count", {0: events.Nothing(), 1: cast})],
-        owner,
+    spend = values.ExactSpendPrerequisite({"sanity": self.sanity_cost})
+    choice = events.SinglePhysicalWeaponChoice(
+        owner, "Choose a physical weapon to enchant", spend=spend,
     )
+    return events.CastSpell(owner, self, choice=choice)
 
   def activate(self):
     assert self.choice.is_resolved()
@@ -285,11 +284,14 @@ class RedSign(CombatSpell):
     if not isinstance(interrupt, events.CastSpell):
       return interrupt
 
-    assert hasattr(event, "monster")
+    if not hasattr(event, "monster"):
+      return None
     attributes = sorted(event.monster.attributes(state, owner) - self.INVALID_ATTRIBUTES)
-    choice = events.MultipleChoice(owner, "Choose an ability to ignore", attributes + ["none"])
-    cast = events.CastSpell(owner, self, choice=choice)
-    return events.Sequence([choice, cast], owner)
+    choices = attributes + ["none", "Cancel"]
+    spend = values.ExactSpendPrerequisite({"sanity": self.sanity_cost})
+    spends = [spend] * (len(choices)-1) + [None]
+    choice = events.SpendChoice(owner, "Choose an ability to ignore", choices, spends=spends)
+    return events.CastSpell(owner, self, choice=choice)
 
   def get_modifier(self, other, attribute):
     if self.active and attribute == "toughness":

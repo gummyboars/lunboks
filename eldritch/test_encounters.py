@@ -2239,12 +2239,14 @@ class BankTest(EncounterTest):
     self.assertEqual(self.char.dollars, 3)
 
   def testBank3Spell(self):
-    self.char.possessions.append(items.Wither(0))
+    self.char.possessions.extend([items.Wither(0), items.RedSign(0)])
     self.state.event_stack.append(encounters.Bank3(self.char))
     choose_weapons = self.resolve_to_choice(CombatChoice)
     self.assertIn(0, self.state.usables)
-    self.assertIn("Wither0", self.state.usables[0])
+    self.assertEqual(self.state.usables[0].keys(), {"Wither0"})  # Red Sign is unusable: no monster.
     self.state.event_stack.append(self.state.usables[0]["Wither0"])
+    choice = self.resolve_to_choice(SpendChoice)
+    choice.resolve(self.state, "Cast")
 
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       choose_weapons = self.resolve_to_choice(CombatChoice)
