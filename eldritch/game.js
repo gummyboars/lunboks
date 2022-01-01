@@ -668,9 +668,9 @@ function updateChoices(choice) {
     if (choice.places != null) {
       updatePlaceChoices(uichoice, choice.places, choice.annotations);
     } else if (choice.cards != null) {
-      addCardChoices(uichoice, uicardchoice, choice.cards, choice.invalid_choices, choice.annotations);
+      addCardChoices(uichoice, uicardchoice, choice.cards, choice.invalid_choices, choice.remaining_spend, choice.annotations);
     } else {
-      addChoices(uichoice, choice.choices, choice.invalid_choices);
+      addChoices(uichoice, choice.choices, choice.invalid_choices, choice.remaining_spend);
     }
   }
 }
@@ -708,17 +708,19 @@ function updateMonsterChoices(choice, monsterList) {
   }
 }
 
-function addCardChoices(uichoice, cardChoice, cards, invalidChoices, annotations) {
+function addCardChoices(uichoice, cardChoice, cards, invalidChoices, remainingSpend, annotations) {
   if (!cards) {
     return;
   }
   let notFound = [];
   let newInvalid = [];
+  let newRemainingSpend = [];
   for (let [idx, card] of cards.entries()) {
     if (!assetNames.includes(card)) {
       if (invalidChoices != null && invalidChoices.includes(idx)) {
         newInvalid.push(notFound.length);
       }
+      newRemainingSpend.push(remainingSpend[idx]);
       notFound.push(card);
       continue;
     }
@@ -726,6 +728,8 @@ function addCardChoices(uichoice, cardChoice, cards, invalidChoices, annotations
     holder.classList.add("cardholder");
     if (invalidChoices != null && invalidChoices.includes(idx)) {
       holder.classList.add("unchoosable");
+    } else if (remainingSpend != null && remainingSpend.length > idx && remainingSpend[idx]) {
+      holder.classList.add("mustspend");
     }
     let div = document.createElement("DIV");
     div.classList.add("cardchoice", "cnvcontainer");
@@ -743,15 +747,17 @@ function addCardChoices(uichoice, cardChoice, cards, invalidChoices, annotations
     cardChoice.appendChild(holder);
     renderAssetToDiv(div, card);
   }
-  addChoices(uichoice, notFound, newInvalid);
+  addChoices(uichoice, notFound, newInvalid, newRemainingSpend);
 }
 
-function addChoices(uichoice, choices, invalidChoices) {
+function addChoices(uichoice, choices, invalidChoices, remainingSpend) {
   for (let [idx, c] of choices.entries()) {
     let div = document.createElement("DIV");
     div.classList.add("choice");
     if (invalidChoices != null && invalidChoices.includes(idx)) {
       div.classList.add("unchoosable");
+    } else if (remainingSpend != null && remainingSpend.length > idx && remainingSpend[idx]) {
+      div.classList.add("mustspend");
     } else {
       div.classList.add("choosable");
     }

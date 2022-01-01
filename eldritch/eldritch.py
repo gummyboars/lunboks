@@ -221,13 +221,13 @@ class GameState:
     roll_events = (events.Check, events.DiceRoll, events.AddExtraDie, events.RerollCheck)
     is_roll = isinstance(top_event, roll_events)
     if len(self.event_stack) > 1 and isinstance(self.event_stack[-2], events.Check):
-      if isinstance(top_event, events.SpendChoice):
+      if isinstance(top_event, events.SpendMixin):
         is_roll = True
     if top_event and is_roll:
       roller = top_event
       bonus = 0
       for event in reversed(self.event_stack):
-        if not isinstance(event, roll_events + (events.SpendChoice,)):
+        if not isinstance(event, roll_events + (events.SpendMixin,)):
           break
         if isinstance(event, events.BonusDiceRoll):
           bonus += event.count
@@ -245,11 +245,12 @@ class GameState:
         output["choice"] = {"prompt": top_event.prompt()}
         output["choice"]["annotations"] = top_event.annotations(self)
         output["choice"]["invalid_choices"] = getattr(top_event, "invalid_choices", [])
-        if isinstance(top_event, events.SpendChoice):
-          output["choice"]["spendable"] = list(top_event.spendable())
+        if isinstance(top_event, events.SpendMixin):
+          output["choice"]["spendable"] = list(top_event.spendable)
           output["choice"]["spent"] = top_event.spend_map
+          output["choice"]["remaining_spend"] = top_event.remaining_spend
 
-        if isinstance(top_event, (events.CardChoice, events.CardSpendChoice)):
+        if isinstance(top_event, events.CardChoice):
           output["choice"]["cards"] = top_event.choices
         elif isinstance(top_event, (events.MapChoice, events.CityMovement)):
           if top_event.choices is not None:
@@ -525,14 +526,14 @@ class GameState:
   def handle_spend(self, char_idx, spend_type):
     assert self.event_stack
     event = self.event_stack[-1]
-    assert isinstance(event, events.SpendChoice)
+    assert isinstance(event, events.SpendMixin)
     assert event.character == self.characters[char_idx]
     event.spend(spend_type)
 
   def handle_unspend(self, char_idx, spend_type):
     assert self.event_stack
     event = self.event_stack[-1]
-    assert isinstance(event, events.SpendChoice)
+    assert isinstance(event, events.SpendMixin)
     assert event.character == self.characters[char_idx]
     event.unspend(spend_type)
 

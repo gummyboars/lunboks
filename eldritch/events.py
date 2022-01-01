@@ -394,12 +394,14 @@ class EncounterPhase(Turn):
       elif self.character.place.fixed_encounters:
         choices = [self.character.place.neighborhood.name + " Card"]
         prereqs = [None]
+        spends = [None]
         results = {0: Encounter(self.character, self.character.place.name)}
         for idx, fixed in enumerate(self.character.place.fixed_encounters):
           choices.append(fixed.name)
           prereqs.append(fixed.prereq(self.character))
+          spends.append(fixed.spend(self.character))
           results[idx+1] = fixed.encounter(self.character)
-        choice = CardSpendChoice(self.character, "Encounter?", choices, prereqs)
+        choice = CardSpendChoice(self.character, "Encounter?", choices, prereqs, spends=spends)
         cond = Conditional(self.character, choice, "choice_index", results)
         self.action = Sequence([choice, cond], self.character)
       else:
@@ -965,15 +967,15 @@ class ForceMovement(Event):
 
   def __init__(self, character, location_name):
     self.character = character
-    self.location_name = location_name
+    self.location_name: Union[MapChoice, str] = location_name
     self.done = False
 
   def resolve(self, state):
     if isinstance(self.location_name, MapChoice):
-      assert self.location_name.is_resolved()
+      assert self.location_name.is_done()
       if self.location_name.choice is None:
         # No need to reset explored, since the character did not move.
-        self.done = True
+        self.cancelled = True
         return
       self.location_name = self.location_name.choice
     self.character.place = state.places[self.location_name]
@@ -1198,11 +1200,11 @@ class PurchaseDrawn(Event):
     # self.keep_count > 0
     choices = [card.name for card in self.drawn] + ["Nothing"]
     prices = [self.discounted_price(card) for card in self.drawn]
-    prereqs = [values.ExactSpendPrerequisite({"dollars": price}) for price in prices] + [None]
+    spends = [values.ExactSpendPrerequisite({"dollars": price}) for price in prices] + [None]
     # TODO: In some circumstances, you must purchase at least
     # one card if able (e.g. General Store)
 
-    self.choice = CardSpendChoice(self.character, self.prompt, choices, prereqs)
+    self.choice = CardSpendChoice(self.character, self.prompt, choices, spends=spends)
     state.event_stack.append(self.choice)
 
   def is_resolved(self):
@@ -1237,7 +1239,7 @@ class Encounter(Event):
 
   def __init__(self, character, location_name, count=1):
     self.character = character
-    self.location_name = location_name
+    self.location_name: Union[MapChoice, str] = location_name
     self.draw: Optional[DrawEncounter] = None
     self.encounter: Optional[Event] = None
     self.count = count
@@ -1245,9 +1247,7 @@ class Encounter(Event):
   def resolve(self, state):
     if isinstance(self.location_name, MapChoice):
       assert self.location_name.is_done()
-      name = None
-      if self.location_name.is_resolved():
-        name = self.location_name.choice
+      name = self.location_name.choice
       if name is None or not isinstance(state.places[name], places.Location):
         self.cancelled = True
         return
@@ -1947,7 +1947,9 @@ class Check(Event):
         self.done = True
         return
       spend = values.ExactSpendPrerequisite({"clues": 1})
-      self.spend = SpendChoice(self.character, "Spend Clues?", ["Spend", "Done"], [spend, None])
+      self.spend = SpendChoice(
+          self.character, "Spend Clues?", ["Spend", "Done"], spends=[spend, None],
+      )
       state.event_stack.append(self.spend)
       return
 
@@ -2157,26 +2159,16 @@ class MultipleChoice(ChoiceEvent):
     return self.choices.index(self.choice)
 
 
-class SpendChoice(MultipleChoice):
+class SpendMixin:
 
-  def __init__(self, character, prompt, choices, prereqs):
-    super().__init__(character, prompt, choices, prereqs, None)
+  def __init__(self, *args, **kwargs):
+    super().__init__(*args, **kwargs)
     self.spend_map = collections.defaultdict(dict)  # Map from type -> map from handle: amount
-
-  def compute_choices(self, state):
-    # Let each spend prerequisite know how much has been earmarked for spending.
-    for prereq in self.prereqs:
-      if isinstance(prereq, values.SpendValue):
-        prereq.spend_map = self.spend_map
-    super().compute_choices(state)
-    # If the user intends to spend anything, invalidate any choices that don't require spending.
-    any_spent = bool(sum(sum(val.values()) for val in self.spend_map.values()))
-    for idx, prereq in enumerate(self.prereqs):
-      if any_spent and not isinstance(prereq, values.SpendValue):
-        self.invalid_choices.append(idx)
 
   def resolve(self, state, choice=None):
     super().resolve(state, choice)
+    if self.is_cancelled():
+      return
     # Spend the basic spendables.
     for spend_count in self.spend_map.values():
       for handle, count in spend_count.items():
@@ -2194,13 +2186,6 @@ class SpendChoice(MultipleChoice):
     spend_seq = [self.character.get_spend_event(handle) for handle in handles]
     state.event_stack.append(Sequence(spend_seq, self.character))
 
-  def spendable(self):
-    spend_types = set()
-    for spend in self.prereqs:
-      if isinstance(spend, values.SpendValue):
-        spend_types |= spend.spend_types()
-    return spend_types
-
   def spent_handles(self):
     # Items that have multiple spend types should only be counted once.
     handles = set()
@@ -2209,7 +2194,7 @@ class SpendChoice(MultipleChoice):
     return handles
 
   def spend_handle(self, handle, spend_map):
-    assert not spend_map.keys() - self.spendable()
+    assert not spend_map.keys() - self.spendable
     assert handle not in self.spent_handles()
     for key, val in spend_map.items():
       self.spend_map[key][handle] = val
@@ -2220,7 +2205,7 @@ class SpendChoice(MultipleChoice):
         del spend_count[handle]
 
   def spend(self, spend_type):
-    assert spend_type in self.spendable() & {"stamina", "sanity", "dollars", "clues"}
+    assert spend_type in self.spendable & {"stamina", "sanity", "dollars", "clues"}
     already_spent = self.spend_map[spend_type].get(spend_type, 0)
     assert getattr(self.character, spend_type) - already_spent > 0
     self.spend_map[spend_type][spend_type] = already_spent + 1
@@ -2231,14 +2216,74 @@ class SpendChoice(MultipleChoice):
     assert already_spent >= 1
     self.spend_map[spend_type][spend_type] -= 1
 
-  def annotations(self, state):
-    annotations = []
-    for prereq in self.prereqs:
-      if isinstance(prereq, values.SpendValue):
-        annotations.append(prereq.annotation(state))
+
+class SpendItemChoiceMixin(SpendMixin):
+
+  def __init__(self, *args, **kwargs):
+    spend = kwargs.pop("spend")
+    super().__init__(*args, **kwargs)
+    assert isinstance(spend, values.SpendValue)
+    self.spend = spend
+    self.spendable = spend.spend_types()
+    self.remaining_spend = True
+    spend.spend_event = self
+
+  def compute_choices(self, state):
+    super().compute_choices(state)
+    satisfied = self.spend.value(state)
+    self.remaining_spend = not satisfied
+
+  def resolve(self, state, choice=None):
+    if choice == []:
+      self.cancelled = True
+      return
+    assert self.spend.value(state)
+    super().resolve(state, choice)
+
+  def annotations(self, state):  # pylint: disable=unused-argument
+    return None
+
+
+class SpendMultiChoiceMixin(SpendMixin):
+
+  def __init__(self, *args, **kwargs):
+    spends = kwargs.pop("spends")
+    super().__init__(*args, **kwargs)
+    assert len(spends) == len(self.choices)
+    assert any(value is None for value in spends)  # must have at least one choice w/ no spending
+
+    self.spends = spends
+    self.spendable = set()
+    self.remaining_spend = [True] * len(self.choices)
+    for spend in spends:
+      if spend is not None:
+        assert isinstance(spend, values.SpendValue)
+        spend.spend_event = self
+        self.spendable |= spend.spend_types()
+
+  def compute_choices(self, state):
+    super().compute_choices(state)
+    any_spent = bool(sum(sum(val.values()) for val in self.spend_map.values()))
+    self.remaining_spend.clear()
+    for spend in self.spends:
+      if spend is not None:
+        satisfied = spend.value(state)
+        self.remaining_spend.append(not satisfied)
       else:
-        annotations.append("")
-    return annotations
+        self.remaining_spend.append(any_spent)
+
+  def resolve(self, state, choice=None):
+    assert choice in self.choices
+    choice_idx = self.choices.index(choice)
+    assert not self.remaining_spend[choice_idx]
+    super().resolve(state, choice)
+
+  def annotations(self, state):
+    return ["" if spend is None else spend.annotation(state) for spend in self.spends]
+
+
+class SpendChoice(SpendMultiChoiceMixin, MultipleChoice):
+  pass
 
 
 class Spend(Event):
@@ -2302,7 +2347,7 @@ def BinarySpend(
     spend = values.ToughnessSpend(quantity)
   else:
     spend = values.ExactSpendPrerequisite({spend_type: quantity})
-  choice = SpendChoice(character, prompt, [rich_choice, poor_choice], [spend, None])
+  choice = SpendChoice(character, prompt, [rich_choice, poor_choice], spends=[spend, None])
   cond = Conditional(character, choice, "choice_index", {0: rich_event, 1: poor_event})
   return Sequence([choice, cond], character)
 
@@ -2327,6 +2372,7 @@ class ItemChoice(ChoiceEvent):
     self.chosen = [pos for pos in self.character.possessions if pos.handle in choice]
 
   def validate_choice(self, state, choices):  # pylint: disable=unused-argument
+    assert isinstance(choices, list)
     assert all(handle in self.choices for handle in choices)
 
   def compute_choices(self, state):
@@ -2404,7 +2450,7 @@ class CardChoice(MultipleChoice):
   pass
 
 
-class CardSpendChoice(SpendChoice):
+class CardSpendChoice(SpendMultiChoiceMixin, CardChoice):
   pass
 
 
@@ -2423,7 +2469,7 @@ class MapChoice(ChoiceEvent, metaclass=abc.ABCMeta):
 
   def resolve(self, state, choice=None):
     if choice is not None and choice == self.none_choice:
-      self.choices = []  # Hack, mark as resolved without setting self.choice.
+      self.cancelled = True
       return
     assert choice in self.choices
     self.choice = choice
@@ -2885,7 +2931,7 @@ class GateCloseAttempt(Event):
     if self.seal_choice is None:
       spend = values.ExactSpendPrerequisite({"clues": 5})
       self.seal_choice = SpendChoice(
-          self.character, "Spend clue tokens to seal the gate?", ["Yes", "No"], [spend, None],
+          self.character, "Spend clues to seal the gate?", ["Yes", "No"], spends=[spend, None],
       )
       state.event_stack.append(self.seal_choice)
       return

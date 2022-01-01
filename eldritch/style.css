@@ -153,6 +153,9 @@ button {
   height: calc(min(15vw, 24vh) * 25 / 16);
   cursor: pointer;
 }
+.mustspend .cardchoice {
+  cursor: not-allowed;
+}
 .unchoosable .cardchoice {
   filter: grayscale(70%) brightness(70%);
   cursor: not-allowed;
@@ -173,6 +176,9 @@ button {
 }
 .choice.choosable:hover {
   background: saddlebrown;
+}
+.choice.mustspend {
+  cursor: not-allowed;
 }
 .choice.unchoosable {
   cursor: not-allowed;

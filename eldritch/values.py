@@ -138,7 +138,13 @@ class SpendValue(Value):
   # TODO: focus and movement points, maybe?
 
   def __init__(self):
-    self.spend_map = collections.defaultdict(dict)
+    self.spend_event = None
+
+  @property
+  def spend_map(self):
+    if self.spend_event is None:
+      return collections.defaultdict(dict)
+    return self.spend_event.spend_map
 
   @abc.abstractmethod
   def spend_types(self):

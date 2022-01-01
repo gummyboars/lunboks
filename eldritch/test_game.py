@@ -62,10 +62,12 @@ class RestorationFixedEncounterTest(FixedEncounterBaseTest):
     self.assertIsInstance(event, events.CardSpendChoice)
     self.assertEqual(event.choices, ["Uptown Card", "Restore 1 Stamina", "Restore All Stamina"])
     self.assertCountEqual(event.invalid_choices, [1, 2])
+    self.assertEqual(event.remaining_spend, [False, False, True])
     self.char.stamina = 1
     for _ in self.state.resolve_loop():
       pass
-    self.assertCountEqual(event.invalid_choices, [2])
+    self.assertCountEqual(event.invalid_choices, [])
+    self.assertEqual(event.remaining_spend, [False, False, True])
     event.resolve(self.state, "Restore 1 Stamina")
     for _ in self.state.resolve_loop():
       pass
@@ -84,11 +86,13 @@ class RestorationFixedEncounterTest(FixedEncounterBaseTest):
     event = self.state.event_stack[-1]
     self.assertIsInstance(event, events.CardSpendChoice)
     self.assertEqual(event.choices, ["Uptown Card", "Restore 1 Stamina", "Restore All Stamina"])
-    self.assertCountEqual(event.invalid_choices, [2])
+    self.assertCountEqual(event.invalid_choices, [])
+    self.assertEqual(event.remaining_spend, [False, False, True])
     for _ in range(2):
       event.spend("dollars")
     for _ in self.state.resolve_loop():
       pass
+    self.assertEqual(event.remaining_spend, [True, True, False])
     event.resolve(self.state, "Restore All Stamina")
     for _ in self.state.resolve_loop():
       pass
