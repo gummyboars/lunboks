@@ -2477,6 +2477,7 @@ class MapChoice(ChoiceEvent, metaclass=abc.ABCMeta):
   def is_resolved(self):
     # It is possible to have no choices (e.g. with "gate" when there are no gates on the board).
     # In the case where there are no choices, the choice reader must account for it.
+    # pylint: disable=use-implicit-booleaness-not-comparison
     return self.choice is not None or self.choices == []
 
   def prompt(self):
