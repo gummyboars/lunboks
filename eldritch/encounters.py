@@ -27,7 +27,9 @@ class EncounterCard:
 def Diner1(char):
   spend = values.RangeSpendPrerequisite("dollars", 1, 6)
   dollar_choice = events.SpendChoice(
-      char, "Spend money to restore stamina and/or sanity?", ["Spend", "No Thanks"], [spend, None])
+      char, "Spend money to restore stamina and/or sanity?", ["Spend", "No Thanks"],
+      spends=[spend, None],
+  )
   gain = events.SplitGain(char, "stamina", "sanity", values.SpendCount(dollar_choice, "dollars"))
   cond = events.Conditional(char, dollar_choice, "choice_index", {0: gain, 1: events.Nothing()})
   return events.Sequence([dollar_choice, cond], char)
@@ -70,8 +72,6 @@ def Diner7(char):
 
 
 def Roadhouse1(char):
-  # TODO: this prerequisite should account for characters that can spend clues in other ways, such
-  # as by discarding a research materials, or by using the violinist's clues, etc.
   draw2 = events.Sequence([events.Draw(char, "common", 1), events.Draw(char, "common", 1)], char)
   draw = events.GainAllyOrReward(char, "Traveling Salesman", draw2)
   return events.BinarySpend(char, "clues", 3, "Spend 3 clues for an ally?", "Yes", "No", draw)
@@ -271,7 +271,7 @@ def Sanctum7(char):
   close = events.Nothing()  # TODO: Close a gate
   ceremony = events.PassFail(char, check, close, events.Nothing())
   choice = events.SpendChoice(
-      char, "Participate in a gating ceremony?", ["Yes", "No"], [spend, None],
+      char, "Participate in a gating ceremony?", ["Yes", "No"], spends=[spend, None],
   )
   cond = events.Conditional(char, choice, "choice_index", {0: ceremony, 1: events.Nothing()})
   return events.Sequence([choice, cond], char)
