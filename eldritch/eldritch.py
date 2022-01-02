@@ -249,6 +249,7 @@ class GameState:
 
         if isinstance(top_event, events.CardChoice):
           output["choice"]["cards"] = top_event.choices
+          output["choice"]["sort_uniq"] = top_event.sort_uniq
         elif isinstance(top_event, (events.MapChoice, events.CityMovement)):
           extra_choices = [top_event.none_choice] if top_event.none_choice is not None else []
           output["choice"]["places"] = (top_event.choices or []) + extra_choices
