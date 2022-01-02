@@ -1528,7 +1528,7 @@ class CombatWithRedSignTest(EventTest):
 
   def testCancelCasting(self):
     vampire = monsters.Vampire()
-    choose_weapons = self.start(vampire)
+    self.start(vampire)
     self.assertEqual(vampire.toughness(self.state, self.char), 2)
     orig_sanity = self.char.sanity  # May have lost some sanity during the horror check.
 
@@ -1760,7 +1760,9 @@ class CombatWithRedSignTest(EventTest):
     self.state.event_stack.append(self.state.usables[0]["Red Sign0"])
     choose_ignore = self.resolve_to_choice(SpendChoice)
     # Overwhelming should not be in the list because the tough guy already ignores it.
-    self.assertEqual(choose_ignore.choices, ["nightmarish", "physical resistance", "none", "Cancel"])
+    self.assertEqual(
+        choose_ignore.choices, ["nightmarish", "physical resistance", "none", "Cancel"],
+    )
     self.spend("sanity", 1, choose_ignore)
     choose_ignore.resolve(self.state, "physical resistance")
 
