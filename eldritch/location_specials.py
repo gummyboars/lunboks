@@ -35,6 +35,13 @@ def CreateFixedEncounters():
       encounter=lambda char: events.Purchase(char, "common", 3),
   )
 
+  ally = FixedEncounter(
+      name="allies",
+      prereq=lambda char: None,
+      spend=lambda char: values.ToughnessOrGatesSpend(10),
+      encounter=lambda char: events.Draw(char, "allies", float("inf")),
+  )
+
   bless = FixedEncounter(
       name="Blessing",
       prereq=lambda char: None,
@@ -88,6 +95,7 @@ def CreateFixedEncounters():
       "Shop": [purchase_unique],
       "Asylum": [restore_sanity, restore_all_sanity],
       "Store": [purchase_common],
+      "House": [ally],
       "Church": [bless],
       "Shoppe": [spell],
       "Hospital": [restore_stamina, restore_all_stamina],

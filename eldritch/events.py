@@ -1167,7 +1167,7 @@ def Sell(char, decks, sell_count=1, discount_type="fixed", discount=0, prompt="S
 
 class PurchaseDrawn(Event):
   def __init__(
-      self, character, draw, discount_type="fixed", discount=0, keep_count=1, prompt="Buy items?", 
+      self, character, draw, discount_type="fixed", discount=0, keep_count=1, prompt="Buy items?",
       sort_uniq=False,
   ):
     # TODO: draw could be something other than DrawItems (Northside 5)

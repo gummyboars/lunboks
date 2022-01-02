@@ -814,12 +814,11 @@ def Shop2(char):
 
 
 def Shop3(char):
-  common = events.Nothing()  # TODO: search through the common deck and purchase any item
-  unique = events.Nothing()  # TODO: search through the unique deck and purchase any item
-  choice = events.BinaryChoice(
-      char, "Purchase a Common or Unique item?", "Common", "Unique", common, unique,
-  )
-  return choice
+  common = events.Purchase(char, "common", float("inf"))
+  unique = events.Purchase(char, "unique", float("inf"))
+  choice = events.CardChoice(char, "Purchase a Common or Unique item?", ["common", "unique"])
+  cond = events.Conditional(char, choice, "choice_index", {0: common, 1: unique})
+  return events.Sequence([choice, cond], char)
 
 
 def Shop4(char):
