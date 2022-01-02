@@ -11,6 +11,7 @@ if os.path.abspath(sys.path[0]) == os.path.dirname(os.path.abspath(__file__)):
   sys.path[0] = os.path.dirname(sys.path[0])
 
 from eldritch import abilities
+from eldritch import assets
 from eldritch import characters
 from eldritch import eldritch
 from eldritch import encounters
@@ -270,6 +271,40 @@ class SpendTrophiesEncounterTest(FixedEncounterBaseTest):
       pass
     self.assertEqual(len(self.char.trophies), 0)
     self.assertEqual(self.char.bless_curse, 1)  # TODO: get a choice of investigators to bless
+
+  def testGainAlly(self):
+    self.char.trophies.append(self.state.gates.popleft())
+    self.char.place = self.state.places["House"]
+    self.state.allies.extend([assets.Dog(), assets.ToughGuy(), assets.BraveGuy()])
+    self.state.event_stack.append(events.EncounterPhase(self.char))
+    for _ in self.state.resolve_loop():
+      pass
+    self.assertTrue(self.state.event_stack)
+    event = self.state.event_stack[-1]
+    self.assertIsInstance(event, events.CardSpendChoice)
+    self.assertEqual(event.choices, ["Southside Card", "allies"])
+    with self.assertRaises(AssertionError):
+      event.resolve(self.state, "allies")
+
+    self.state.event_stack.append(self.state.usables[0][self.char.trophies[0].handle])
+    for _ in self.state.resolve_loop():
+      pass
+    self.state.event_stack.append(self.state.usables[0][self.char.trophies[1].handle])
+    for _ in self.state.resolve_loop():
+      pass
+    event.resolve(self.state, "allies")
+    for _ in self.state.resolve_loop():
+      pass
+    self.assertEqual(len(self.char.trophies), 0)
+    event = self.state.event_stack[-1]
+    self.assertIsInstance(event, events.CardChoice)
+    self.assertNotIsInstance(event, events.SpendMixin)
+    self.assertTrue(event.sort_uniq)
+    event.resolve(self.state, "Dog")
+    for _ in self.state.resolve_loop():
+      pass
+    self.assertFalse(self.state.event_stack)
+    self.assertEqual(self.char.possessions[0].name, "Dog")
 
 
 class GateTravelTest(unittest.TestCase):

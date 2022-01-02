@@ -2609,6 +2609,53 @@ class ShopTest(EncounterTest):
     self.assertEqual(self.char.place.name, "Shop")
     self.assertEqual(self.char.stamina, 2)
 
+  def testShop3Common(self):
+    self.char.dollars = 9
+    self.state.common.extend([
+        items.Food(0), items.DarkCloak(0), items.DarkCloak(1), items.TommyGun(0),
+    ])
+    self.state.event_stack.append(encounters.Shop3(self.char))
+    choice = self.resolve_to_choice(CardChoice)
+    self.assertEqual(choice.choices, ["common", "unique"])
+    choice.resolve(self.state, "common")
+    choice = self.resolve_to_choice(CardSpendChoice)
+    self.spend("dollars", 2, choice)
+    choice.resolve(self.state, "Dark Cloak")
+    self.resolve_until_done()  # Can only buy one item.
+    self.assertEqual(self.char.dollars, 7)
+    self.assertEqual(self.char.possessions[0].name, "Dark Cloak")
+
+  def testShop3Unique(self):
+    self.char.dollars = 9
+    self.state.unique.extend([
+        items.HolyWater(0), items.HolyWater(1), items.MagicLamp(0), items.EnchantedKnife(0),
+    ])
+    self.state.event_stack.append(encounters.Shop3(self.char))
+    choice = self.resolve_to_choice(CardChoice)
+    self.assertEqual(choice.choices, ["common", "unique"])
+    choice.resolve(self.state, "unique")
+    choice = self.resolve_to_choice(CardSpendChoice)
+    self.spend("dollars", 4, choice)
+    choice.resolve(self.state, "Holy Water")
+    self.resolve_until_done()
+    self.assertEqual(self.char.dollars, 5)
+    self.assertEqual(self.char.possessions[0].name, "Holy Water")
+
+  def testShop3BuyNothing(self):
+    self.char.dollars = 9
+    self.state.common.extend([
+        items.Food(0), items.DarkCloak(0), items.DarkCloak(1), items.TommyGun(0),
+    ])
+    self.state.event_stack.append(encounters.Shop3(self.char))
+    choice = self.resolve_to_choice(CardChoice)
+    self.assertEqual(choice.choices, ["common", "unique"])
+    choice.resolve(self.state, "common")
+    choice = self.resolve_to_choice(CardSpendChoice)
+    choice.resolve(self.state, "Nothing")
+    self.resolve_until_done()
+    self.assertEqual(self.char.dollars, 9)
+    self.assertFalse(self.char.possessions)
+
   def testShop4Pass(self):
     self.char.possessions.extend([items.Food(0), items.TommyGun(0)])
     self.state.event_stack.append(encounters.Shop4(self.char))
