@@ -1641,48 +1641,50 @@ class DeactivateItems(Event):
 
 class CastSpell(Event):
 
-  def __init__(self, character, spell, choice=None, action="exhaust"):
+  def __init__(self, character, spell, choice=None):
     assert spell in character.possessions
-    assert action in {"exhaust", "discard"}
     self.character = character
     self.spell = spell
-    self.activation: Optional[Event] = None
+    self.choice: Optional[SpendMixin] = choice
+    self.exhaust: Event = ExhaustAsset(character, spell)
     self.check: Optional[Event] = None
-    self.cost: Optional[Event] = None
+    self.activation: Optional[Event] = None
     self.success = None
-    self.choice: Optional[ChoiceEvent] = choice
-    if action == "discard":
-      self.action = DiscardSpecific(character, [spell])
-    else:
-      self.action = ExhaustAsset(character, spell)
 
   def resolve(self, state):
     if self.spell not in self.character.possessions:
       self.success = False
       return
 
+    if self.choice is None:
+      spend = values.ExactSpendPrerequisite({"sanity": self.spell.sanity_cost})
+      self.choice = SpendChoice(
+          self.character, f"Cast {self.spell.name}", ["Cast", "Cancel"], spends=[spend, None],
+      )
+
+    if not self.choice.is_done():
+      state.event_stack.append(self.choice)
+      return
+
+    if self.choice.is_cancelled() or getattr(self.choice, "choice", None) == "Cancel":
+      self.cancelled = True
+      return
+
     self.spell.in_use = True
     self.spell.deactivatable = False
     self.spell.choice = self.choice
-    # TODO: maybe they should pay the sanity cost first, but we check for insanity after
-    # the spell is over.
     if not self.check:
       self.check = Check(self.character, "spell", self.spell.get_difficulty(state))
       state.event_stack.append(self.check)
       return
     assert self.check.is_done()
 
-    if not self.action.is_done():
-      state.event_stack.append(self.action)
+    if not self.exhaust.is_done():
+      state.event_stack.append(self.exhaust)
       return
 
     if (self.check.successes or 0) < self.spell.get_required_successes(state):
       self.success = False
-      if not self.cost:
-        self.cost = Loss(self.character, {"sanity": self.spell.sanity_cost})
-        state.event_stack.append(self.cost)
-        return
-      assert self.cost.is_done()
       return
 
     self.success = True
@@ -1690,16 +1692,11 @@ class CastSpell(Event):
       self.activation = self.spell.get_cast_event(self.character, state)
       state.event_stack.append(self.activation)
       return
-    assert self.activation.is_done()
-
-    if not self.cost:
-      self.cost = Loss(self.character, {"sanity": self.spell.sanity_cost})
-      state.event_stack.append(self.cost)
-      return
-    assert self.cost.is_done()
 
   def is_resolved(self):
-    return self.cost is not None and self.cost.is_done()
+    if self.success is False:
+      return True
+    return self.success is not None and self.activation.is_done()
 
   def start_str(self):
     return f"{self.character.name} is casting {self.spell.name}"
@@ -2223,21 +2220,21 @@ class SpendItemChoiceMixin(SpendMixin):
     spend = kwargs.pop("spend")
     super().__init__(*args, **kwargs)
     assert isinstance(spend, values.SpendValue)
-    self.spend = spend
+    self.spend_prereq = spend
     self.spendable = spend.spend_types()
     self.remaining_spend = True
     spend.spend_event = self
 
   def compute_choices(self, state):
     super().compute_choices(state)
-    satisfied = self.spend.value(state)
+    satisfied = self.spend_prereq.value(state)
     self.remaining_spend = not satisfied
 
   def resolve(self, state, choice=None):
     if choice == []:
       self.cancelled = True
       return
-    assert self.spend.value(state)
+    assert self.spend_prereq.value(state)
     super().resolve(state, choice)
 
   def annotations(self, state):  # pylint: disable=unused-argument
@@ -2432,10 +2429,10 @@ class ItemCountChoice(ItemChoice):
     assert min_count <= len(choices) <= max_count
 
 
-class SinglePhysicalWeaponChoice(ItemCountChoice):
+class SinglePhysicalWeaponChoice(SpendItemChoiceMixin, ItemCountChoice):
 
-  def __init__(self, character, prompt):
-    super().__init__(character, prompt, 1, min_count=0, item_type="weapon")
+  def __init__(self, character, prompt, spend):
+    super().__init__(character, prompt, 1, min_count=0, item_type="weapon", spend=spend)
 
   def compute_choices(self, state):
     super().compute_choices(state)

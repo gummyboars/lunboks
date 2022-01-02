@@ -436,12 +436,17 @@ class GameState:
   def get_triggers(self, event):
     triggers = []
     # Insane/Unconscious after sanity/stamina loss.
-    if isinstance(event, events.GainOrLoss):
-      # TODO: both going to zero at the same time means you are devoured.
-      if event.character.sanity <= 0:
-        triggers.append(events.Insane(event.character))
-      if event.character.stamina <= 0:
-        triggers.append(events.Unconscious(event.character))
+    if isinstance(event, (events.GainOrLoss, events.SpendMixin, events.CastSpell)):
+      skip = False
+      if isinstance(event, events.SpendMixin) and len(self.event_stack) > 1:
+        if isinstance(self.event_stack[-2], events.CastSpell):
+          skip = True  # In case of a spell, delay insanity calculations until it's done being cast.
+      if not skip:
+        # TODO: both going to zero at the same time means you are devoured.
+        if event.character.sanity <= 0:
+          triggers.append(events.Insane(event.character))
+        if event.character.stamina <= 0:
+          triggers.append(events.Unconscious(event.character))
     # Must fight monsters when you end your movement.
     if isinstance(event, (events.CityMovement, events.Return)):
       # TODO: special handling for the turn that you return from another world

@@ -2260,6 +2260,9 @@ class CastSpellTest(EventTest):
     self.assertEqual(self.char.hands_available(), 2)
 
     self.state.event_stack.append(CastSpell(self.char, shrivelling))
+    choice = self.resolve_to_choice(SpendChoice)
+    self.spend("sanity", 1, choice)
+    choice.resolve(self.state, "Cast")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       self.resolve_until_done()
 
@@ -2275,6 +2278,9 @@ class CastSpellTest(EventTest):
     self.assertEqual(self.char.hands_available(), 2)
 
     self.state.event_stack.append(CastSpell(self.char, shrivelling))
+    choice = self.resolve_to_choice(SpendChoice)
+    self.spend("sanity", 1, choice)
+    choice.resolve(self.state, "Cast")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
       self.resolve_until_done()
 
@@ -2291,6 +2297,9 @@ class CastSpellTest(EventTest):
     self.assertEqual(self.char.hands_available(), 2)
 
     self.state.event_stack.append(CastSpell(self.char, shrivelling))
+    choice = self.resolve_to_choice(SpendChoice)
+    self.spend("sanity", 1, choice)
+    choice.resolve(self.state, "Cast")
     self.resolve_until_done()
 
     self.assertTrue(shrivelling.in_use)
@@ -2301,20 +2310,20 @@ class CastSpellTest(EventTest):
   def testCancelledSpellCost(self):
     shrivelling = items.Shrivelling(0)
     self.char.possessions.append(shrivelling)
-    self.char.possessions.append(Canceller(GainOrLoss))
+    self.char.possessions.append(Canceller(SpendChoice))
     self.assertEqual(self.char.sanity, 5)
     self.assertEqual(self.char.hands_available(), 2)
 
     cast = CastSpell(self.char, shrivelling)
     self.state.event_stack.append(cast)
-    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
-      self.resolve_until_done()
+    self.resolve_until_done()
 
-    self.assertTrue(shrivelling.in_use)
-    self.assertTrue(shrivelling.active)
+    self.assertFalse(shrivelling.in_use)
+    self.assertFalse(shrivelling.active)
     self.assertEqual(self.char.sanity, 5)
-    self.assertEqual(self.char.hands_available(), 1)
-    self.assertTrue(cast.is_resolved())
+    self.assertEqual(self.char.hands_available(), 2)
+    self.assertFalse(cast.is_resolved())
+    self.assertTrue(cast.is_cancelled())
 
   def testCancelledActivation(self):
     shrivelling = items.Shrivelling(0)
@@ -2325,6 +2334,9 @@ class CastSpellTest(EventTest):
 
     cast = CastSpell(self.char, shrivelling)
     self.state.event_stack.append(cast)
+    choice = self.resolve_to_choice(SpendChoice)
+    self.spend("sanity", 1, choice)
+    choice.resolve(self.state, "Cast")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       self.resolve_until_done()
 
