@@ -593,7 +593,7 @@ function toggleCards(e) {
   } else {
     cardsStyle = "flex";
   }
-  document.getElementById("uicardchoice").style.display = cardsStyle;
+  document.getElementById("cardchoicescroll").style.display = cardsStyle;
   setCardButtonText();
 }
 
@@ -603,6 +603,14 @@ function setCardButtonText() {
   } else {
     document.getElementById("togglecards").innerText = "Show Cards";
   }
+}
+
+function scrollCards(e, dir) {
+  let cardChoice = document.getElementById("uicardchoice");
+  let rect = cardChoice.getBoundingClientRect();
+  let width = rect.right - rect.left;
+  let amount = dir * Math.ceil(width / 4);
+  cardChoice.scrollLeft = cardChoice.scrollLeft + amount;
 }
 
 function updateChoices(choice) {
@@ -622,9 +630,12 @@ function updateChoices(choice) {
     place.innerText = "";
   }
   uichoice.style.display = "none";
-  uicardchoice.style.display = "none";
+  document.getElementById("cardchoicescroll").style.display = "none";
   btn.style.display = "none";
   cardtoggle.style.display = "none";
+  for (let scrollBox of document.getElementsByClassName("cardscroll")) {
+    scrollBox.style.display = "none";
+  }
   if (choice == null || choice.monsters != null) {
     pDiv.classList.remove("choose");
     return;
@@ -634,7 +645,7 @@ function updateChoices(choice) {
     uichoice.style.display = "flex";
   }
   if (choice.cards != null) {
-    uicardchoice.style.display = cardsStyle;
+    document.getElementById("cardchoicescroll").style.display = cardsStyle;
     cardtoggle.style.display = "inline-block";
     setCardButtonText();
   }
@@ -655,7 +666,7 @@ function updateChoices(choice) {
     if (choice.places != null) {
       updatePlaceChoices(uichoice, choice.places, choice.annotations);
     } else if (choice.cards != null) {
-      addCardChoices(uichoice, uicardchoice, choice.cards, choice.invalid_choices, choice.remaining_spend, choice.annotations);
+      addCardChoices(uichoice, uicardchoice, choice.cards, choice.invalid_choices, choice.remaining_spend, choice.annotations, choice.sort_uniq);
     } else {
       addChoices(uichoice, choice.choices, choice.invalid_choices, choice.remaining_spend);
     }
@@ -695,10 +706,19 @@ function updateMonsterChoices(choice, monsterList) {
   }
 }
 
-function addCardChoices(uichoice, cardChoice, cards, invalidChoices, remainingSpend, annotations) {
+function addCardChoices(uichoice, cardChoice, cards, invalidChoices, remainingSpend, annotations, sortUniq) {
   if (!cards) {
     return;
   }
+  let count = 0;
+  let uniqueCards = new Set(cards);
+  let sortedCards = [...uniqueCards];
+  sortedCards.sort();
+  let cardToOrder = {};
+  for (let [idx, card] of sortedCards.entries()) {
+    cardToOrder[card] = idx;
+  }
+  uniqueCards = new Set([]);
   let notFound = [];
   let newInvalid = [];
   let newRemainingSpend = [];
@@ -707,12 +727,22 @@ function addCardChoices(uichoice, cardChoice, cards, invalidChoices, remainingSp
       if (invalidChoices != null && invalidChoices.includes(idx)) {
         newInvalid.push(notFound.length);
       }
-      newRemainingSpend.push(remainingSpend[idx]);
+      if (remainingSpend != null && remainingSpend.length > idx) {
+        newRemainingSpend.push(remainingSpend[idx]);
+      }
       notFound.push(card);
       continue;
     }
+    if (sortUniq && uniqueCards.has(card)) {
+      continue;
+    }
+    uniqueCards.add(card);
+    count++;
     let holder = document.createElement("DIV");
     holder.classList.add("cardholder");
+    if (sortUniq) {
+      holder.style.order = cardToOrder[card];
+    }
     let div = document.createElement("DIV");
     div.classList.add("cardchoice", "cnvcontainer");
     div.onclick = function(e) { makeChoice(card); };
@@ -735,6 +765,14 @@ function addCardChoices(uichoice, cardChoice, cards, invalidChoices, remainingSp
     holder.appendChild(desc);
     cardChoice.appendChild(holder);
     renderAssetToDiv(div, card);
+  }
+  if (count > 4) {
+    cardChoice.style.justifyContent = "flex-start";
+    for (let scrollBox of document.getElementsByClassName("cardscroll")) {
+      scrollBox.style.display = "flex";
+    }
+  } else {
+    cardChoice.style.justifyContent = "space-evenly";
   }
   addChoices(uichoice, notFound, newInvalid, newRemainingSpend);
 }

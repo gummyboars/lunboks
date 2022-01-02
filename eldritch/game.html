@@ -46,7 +46,11 @@
             </div>
             <div id="charselectbuttons"><button id="choosecharbutton" onclick="selectChar(event)">Choose</button></div>
           </div>
-          <div id="uicardchoice"></div>
+          <div id="cardchoicescroll">
+            <div id="scrollcardsleft" class="cardscroll" onclick="scrollCards(event, -1)">◀️</div>
+            <div id="uicardchoice"></div>
+            <div id="scrollcardsright" class="cardscroll" onclick="scrollCards(event, 1)">▶️</div>
+          </div>
           <div id="monsterdetails">
             <div id="monsterdetailsname"></div>
             <div id="monsterdetailsbox"></div>

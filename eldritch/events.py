@@ -1047,7 +1047,7 @@ class DrawItems(Event):
 
 
 class KeepDrawn(Event):
-  def __init__(self, character, draw, prompt="Choose a card"):
+  def __init__(self, character, draw, prompt="Choose a card", sort_uniq=False):
     self.character = character
     self.draw: DrawItems = draw
     self.keep_count = 1  # TODO: allow the player to keep more than one?
@@ -1055,6 +1055,7 @@ class KeepDrawn(Event):
     self.kept = None
     self.choice: Optional[ChoiceEvent] = None
     self.prompt = prompt
+    self.sort_uniq = sort_uniq
 
   def resolve(self, state):
     if self.draw.is_cancelled():
@@ -1078,7 +1079,9 @@ class KeepDrawn(Event):
       return
 
     if self.keep_count < len(self.drawn):
-      self.choice = CardChoice(self.character, self.prompt, [card.name for card in self.drawn])
+      self.choice = CardChoice(
+          self.character, self.prompt, [card.name for card in self.drawn], sort_uniq=self.sort_uniq,
+      )
       state.event_stack.append(self.choice)
       return
 
@@ -1099,7 +1102,7 @@ class KeepDrawn(Event):
 
 def Draw(character, deck, draw_count, prompt="Choose a card", target_type=None):
   cards = DrawItems(character, deck, draw_count, target_type=target_type)
-  keep = KeepDrawn(character, cards, prompt)
+  keep = KeepDrawn(character, cards, prompt, sort_uniq=math.isinf(draw_count))
   return Sequence([cards, keep], character)
 
 
@@ -1163,12 +1166,15 @@ def Sell(char, decks, sell_count=1, discount_type="fixed", discount=0, prompt="S
 
 
 class PurchaseDrawn(Event):
-  def __init__(self, character, draw,
-               discount_type="fixed", discount=0, keep_count=1, prompt="Buy items?"):
+  def __init__(
+      self, character, draw, discount_type="fixed", discount=0, keep_count=1, prompt="Buy items?", 
+      sort_uniq=False,
+  ):
     # TODO: draw could be something other than DrawItems (Northside 5)
     assert discount_type in {"fixed", "rate"}
     self.character = character
     self.prompt = prompt
+    self.sort_uniq = sort_uniq
     self.keep_count = keep_count
     self.discount_type = discount_type
     self.discount = discount
@@ -1213,7 +1219,9 @@ class PurchaseDrawn(Event):
     # TODO: In some circumstances, you must purchase at least
     # one card if able (e.g. General Store)
 
-    self.choice = CardSpendChoice(self.character, self.prompt, choices, spends=spends)
+    self.choice = CardSpendChoice(
+        self.character, self.prompt, choices, spends=spends, sort_uniq=self.sort_uniq,
+    )
     state.event_stack.append(self.choice)
 
   def is_resolved(self):
@@ -1239,7 +1247,7 @@ def Purchase(char, deck, draw_count, discount_type="fixed", discount=0, keep_cou
   items = DrawItems(char, deck, draw_count, target_type=target_type)
   buy = PurchaseDrawn(
       char, items, discount_type=discount_type, discount=discount, keep_count=keep_count,
-      prompt=prompt,
+      prompt=prompt, sort_uniq=math.isinf(draw_count),
   )
   return Sequence([items, buy], char)
 
@@ -2505,7 +2513,10 @@ class SinglePhysicalWeaponChoice(SpendItemChoiceMixin, ItemCountChoice):
 
 
 class CardChoice(MultipleChoice):
-  pass
+
+  def __init__(self, *args, **kwargs):
+    self.sort_uniq = kwargs.pop("sort_uniq", False)
+    super().__init__(*args, **kwargs)
 
 
 class CardSpendChoice(SpendMultiChoiceMixin, CardChoice):

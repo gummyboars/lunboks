@@ -125,17 +125,39 @@ button {
   column-gap: 1em;
   row-gap: 0.5em;
 }
+#cardchoicescroll {
+  width: calc(min(72.5vw, 116vh));
+  max-width: calc(min(72.5vw, 116vh));
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  pointer-events: auto;
+  z-index: 20;
+}
+.cardscroll {
+  font-size: calc(min(1.25vw, 2vh));
+  height: calc(min(15vw, 24vh) * 25 / 16);
+  cursor: pointer;
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
 #uicardchoice {
-  width: 100%;
-  max-width: 100%;
+  width: calc(min(70vw, 112vh));
+  max-width: calc(min(70vw, 112vh));
   flex 1 1 auto;
   display: flex;
   flex-direction: row;
-  justify-content: center;
+  justify-content: space-evenly;
   align-items: flex-start;
   column-gap: calc(min(1.5vw, 2.4vh));
-  pointer-events: auto;
-  z-index: 20;
+  overflow-x: scroll;
+  scroll-behavior: smooth;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+#uicardchoice::-webkit-scrollbar {
+  display: none;
 }
 .cardholder {
   display: flex;
