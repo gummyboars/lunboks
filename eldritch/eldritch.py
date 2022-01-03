@@ -108,6 +108,7 @@ class GameState:
     random.shuffle(gate_markers)
     self.gates.extend(gate_markers)
 
+    self.ancient_one = ancient_ones.DummyAncient()
     self.monsters = monsters.CreateMonsters()
     for idx, monster in enumerate(self.monsters):
       monster.idx = idx

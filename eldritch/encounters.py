@@ -617,7 +617,7 @@ def Church5(char):
   lose_sanity = events.Loss(char, {"sanity": 3})
   move = events.ForceMovement(char, "Southside")
   lose_and_move = events.Sequence([lose_sanity, move], char)
-  gain_sanity = events.Gain(char, {"sanity": char.max_sanity})
+  gain_sanity = events.Gain(char, {"sanity": float("inf")})
   cond = events.Conditional(char, check, "successes", {0: lose_and_move, 1: move, 2: gain_sanity})
   return events.Sequence([check, cond], char)
 

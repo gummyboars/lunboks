@@ -13,17 +13,15 @@ class AncientOne(mythos.GlobalEffect, metaclass=abc.ABCMeta):
     self.combat_rating = combat_rating
     self.attributes = attributes
 
-  def get_modifier(self, thing, attribute):
-    if thing is self and attribute == "combat_rating":
-      return self.combat_rating
-    return 0
-
   def awaken(self, state):
     return AncientOneAwaken([])
 
   @abc.abstractmethod
   def attack(self, state):
     raise NotImplementedError
+
+  def json_repr(self):
+    return {"name": self.name}
 
 
 class DummyAncient(AncientOne):
@@ -36,7 +34,7 @@ class DummyAncient(AncientOne):
 
 class SquidFace(AncientOne):
   def __init__(self):
-    super().__init__("SquidFace", 13, set(), -6)
+    super().__init__("Squid Face", 13, set(), -6)
 
   def get_modifier(self, thing, attribute):
     if isinstance(thing, monsters.Cultist):
@@ -64,7 +62,7 @@ class YellowKing(AncientOne):
 
   def get_modifier(self, thing, attribute):
     if isinstance(thing, monsters.Cultist):
-      return {"combat_difficulty": -2}.get(attribute, 0)
+      return {"combatdifficulty": -3}.get(attribute, 0)
     if isinstance(thing, events.GateCloseAttempt) and attribute == "seal_clues":
       return 3
     return super().get_modifier(thing, attribute)
@@ -109,8 +107,8 @@ class Wendigo(AncientOne):
 
   def get_interrupt(self, event, state):
     # TODO: Discard weather cards
-    if isinstance(event, events.ActivateEnvironment):
-      return [events.CancelEvent(event)]
+    if isinstance(event, events.ActivateEnvironment) and event.environment_type == "weather":
+      return events.CancelEvent(event)
     return None
 
   def get_trigger(self, event, state):
@@ -149,7 +147,7 @@ class BlackPharaoh(AncientOne):
     # TODO: Add masks to monster cup
 
   def get_override(self, thing, attribute):
-    if attribute == "endless":
+    if isinstance(thing, monsters.Cultist) and attribute == "endless":
       return True
     return super().get_override(thing, attribute)
 

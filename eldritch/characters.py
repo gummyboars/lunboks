@@ -23,8 +23,8 @@ class Character:
     self.fight_will_slider = 3
     self.lore_luck_slider = 3
     self._focus = focus
-    self.stamina = self.max_stamina
-    self.sanity = self.max_sanity
+    self.stamina = self._max_stamina
+    self.sanity = self._max_sanity
     self.dollars = 0
     self.clues = 0
     self.possessions = []  # includes special abilities, skills, and allies
@@ -46,7 +46,7 @@ class Character:
 
   def get_json(self, state):
     attrs = [
-        "name", "max_stamina", "max_sanity", "stamina", "sanity", "focus",
+        "name", "_max_stamina", "_max_sanity", "stamina", "sanity", "focus",
         "movement_points", "focus_points",
         "dollars", "clues", "possessions", "trophies",  # TODO: special cards
         "delayed_until", "lose_turn_until",
@@ -66,14 +66,11 @@ class Character:
     data["initial"] = self.initial_attributes()
     return data
 
-  # TODO: add global effects to all properties
-  @property
-  def max_stamina(self):
-    return self._max_stamina
+  def max_stamina(self, state):
+    return self._max_stamina + self.bonus("max_stamina", state)
 
-  @property
-  def max_sanity(self):
-    return self._max_sanity
+  def max_sanity(self, state):
+    return self._max_sanity + self.bonus("max_sanity", state)
 
   def speed(self, state):
     return self._speed_sneak[self.speed_sneak_slider][0] + self.bonus("speed", state)

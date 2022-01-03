@@ -588,15 +588,9 @@ class GainOrLoss(Event):
       new_val = old_val + adjustment
       new_val = max(new_val, 0)
       if attr == "stamina":
-        new_val = min(
-            new_val,
-            self.character.max_stamina + state.get_modifier(self.character, "max_stamina")
-        )
+        new_val = min(new_val, self.character.max_stamina(state))
       if attr == "sanity":
-        new_val = min(
-            new_val,
-            self.character.max_sanity + state.get_modifier(self.character, "max_sanity")
-        )
+        new_val = min(new_val, self.character.max_sanity(state))
       self.final_adjustments[attr] = new_val - old_val
       setattr(self.character, attr, new_val)
 
