@@ -88,6 +88,7 @@ class Card(Asset):
     self.passive_bonuses = collections.defaultdict(int)
     self.passive_bonuses.update(passive_bonuses)
     self._active = False
+    self.losable = True
 
   @property
   def active(self):

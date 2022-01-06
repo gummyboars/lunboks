@@ -1344,7 +1344,7 @@ class DiscardSpecificTest(EventTest):
     self.assertEqual(self.char.possessions[0].name, "Tommy Gun")
     self.assertEqual(len(self.state.common), 1)
     self.assertEqual(self.state.common[0].name, "Food")
-    self.assertEqual(discard.discarded, ["Food"])
+    self.assertEqual(discard.discarded, [self.state.common[0]])
 
   def testDiscardSpecificDuplicateName(self):
     self.char.possessions.extend([items.Food(0), items.Food(1)])
@@ -1357,7 +1357,7 @@ class DiscardSpecificTest(EventTest):
     self.assertEqual(self.char.possessions[0].handle, "Food0")
     self.assertEqual(len(self.state.common), 1)
     self.assertEqual(self.state.common[0].handle, "Food1")
-    self.assertEqual(discard.discarded, ["Food"])
+    self.assertEqual(discard.discarded, [self.state.common[0]])
 
   def testDiscardNotPresent(self):
     self.char.possessions.extend([items.Food(0), items.Food(1)])
@@ -1385,7 +1385,7 @@ class DiscardSpecificTest(EventTest):
     self.assertEqual(len(self.char.possessions), 1)
     self.assertEqual(len(self.state.common), 1)
     self.assertEqual(self.state.common[0].handle, "Food0")
-    self.assertEqual(discard.discarded, ["Food"])
+    self.assertEqual(discard.discarded, [self.state.common[0]])
 
   def testDiscardFromCancelledChoice(self):
     self.char.possessions.extend([items.Food(0), items.Food(1), Canceller(ItemChoice)])
@@ -2014,7 +2014,7 @@ class ItemChoiceTest(EventTest):
 
   def testNonItemsInPossessions(self):
     self.char.possessions.extend([assets.Dog(), abilities.Marksman(0)])
-    choice = ItemChoice(self.char, "", None, "tome")
+    choice = ItemChoice(self.char, "", None)
     self.state.event_stack.append(choice)
 
     # Test to make sure that you don't get attribute errors when not all your possessions are items.
@@ -2023,6 +2023,18 @@ class ItemChoiceTest(EventTest):
       choice.resolve(self.state, "Dog")
     with self.assertRaises(AssertionError):
       choice.resolve(self.state, "Marksman0")
+    choice.resolve(self.state, "done")
+    self.resolve_until_done()
+
+  def testChoiceNotRestrictedToItems(self):
+    self.char.possessions.extend([assets.Dog(), abilities.Marksman(0)])
+    choice = ItemChoice(self.char, "", decks={"allies"}, item_type=None)
+    self.state.event_stack.append(choice)
+
+    choice = self.resolve_to_choice(ItemChoice)
+    with self.assertRaises(AssertionError):
+      choice.resolve(self.state, "Marksman0")
+    choice.resolve(self.state, "Dog")
     choice.resolve(self.state, "done")
     self.resolve_until_done()
 
@@ -2047,6 +2059,72 @@ class ItemChoiceTest(EventTest):
     self.resolve_until_done()
     self.assertTrue(choice.is_resolved())
     self.assertEqual(choice.choice_count, 1)
+
+
+class LossChoiceTest(EventTest):
+
+  def setUp(self):
+    super().setUp()
+    self.char.possessions.append(items.Revolver38(0))
+    self.char.possessions.append(items.HolyWater(0))
+    self.char.possessions.append(items.Derringer18(0))
+    self.char.possessions.append(items.Derringer18(1))
+
+  def testLossChoiceNormal(self):
+    choice = ItemLossChoice(self.char, "choose", 2)
+    self.state.event_stack.append(choice)
+    choice = self.resolve_to_choice(ItemLossChoice)
+    choice.resolve(self.state, "Holy Water0")
+    choice.resolve(self.state, ".38 Revolver0")
+    choice.resolve(self.state, "done")
+    self.assertTrue(choice.is_resolved())
+
+  def testCanChooseLosableItems(self):
+    choice = ItemLossChoice(self.char, "choose", 2)
+    self.state.event_stack.append(choice)
+    choice = self.resolve_to_choice(ItemLossChoice)
+    choice.resolve(self.state, ".18 Derringer0")
+    choice.resolve(self.state, ".18 Derringer1")
+    choice.resolve(self.state, "done")
+    self.assertTrue(choice.is_resolved())
+
+  def testCanSkipLosableItems(self):
+    choice = ItemLossChoice(self.char, "choose", 3)
+    self.state.event_stack.append(choice)
+    choice = self.resolve_to_choice(ItemLossChoice)
+    choice.resolve(self.state, "Holy Water0")
+    choice.resolve(self.state, ".38 Revolver0")
+    choice.resolve(self.state, "done")
+    self.assertTrue(choice.is_resolved())
+
+  def testIrrelevantItemsDoNotCount(self):
+    choice = ItemLossChoice(self.char, "choose", 2, decks={"common"})
+    self.state.event_stack.append(choice)
+    choice = self.resolve_to_choice(ItemLossChoice)
+    choice.resolve(self.state, ".38 Revolver0")
+    choice.resolve(self.state, "done")
+    self.assertTrue(choice.is_resolved())
+
+  def testChoosingLosableItemDoesNotDecreaseCount(self):
+    choice = ItemLossChoice(self.char, "choose", 2, decks={"common"})
+    self.state.event_stack.append(choice)
+    choice = self.resolve_to_choice(ItemLossChoice)
+    choice.resolve(self.state, ".18 Derringer0")
+    with self.assertRaises(AssertionError):
+      choice.resolve(self.state, "done")
+    self.assertFalse(choice.is_resolved())
+
+    choice.resolve(self.state, ".38 Revolver0")
+    choice.resolve(self.state, "done")
+    self.assertTrue(choice.is_resolved())
+
+  def testLoseAllItemsInDeck(self):
+    choice = ItemLossChoice(self.char, "choose", float("inf"), decks={"common"})
+    self.state.event_stack.append(choice)
+    choice = self.resolve_to_choice(ItemLossChoice)
+    choice.resolve(self.state, ".38 Revolver0")
+    choice.resolve(self.state, "done")
+    self.assertTrue(choice.is_resolved())
 
 
 class SinglePhysicalWeaponChoiceTest(EventTest):

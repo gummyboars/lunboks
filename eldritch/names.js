@@ -44,6 +44,7 @@ for (let i = 0; i < 4; i++) {
 }
 carefullyAdd(sliderLocations);
 commonNames = [
+  ".18 Derringer",
   ".38 Revolver",
   ".45 Automatic",
   "Bullwhip",
