@@ -195,7 +195,10 @@ class CombatSpell(Spell):
       return None
     if self.exhausted or owner.sanity < self.sanity_cost:
       return None
-    if owner.hands_available() < self.hands:
+    hands_available = owner.hands_available()
+    if isinstance(event, events.CombatChoice):
+      hands_available -= event.hands_used()
+    if hands_available < self.hands:
       return None
     return events.CastSpell(owner, self)
 

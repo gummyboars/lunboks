@@ -5,9 +5,6 @@ portraits = {};
 monsters = {};
 allCharacters = {};
 scale = 1;
-minItemsToChoose = null;
-maxItemsToChoose = null;
-itemChoice = [];
 monsterChoice = {};
 charChoice = null;
 runningAnim = [];
@@ -278,16 +275,7 @@ function makeChoice(val) {
 }
 
 function chooseItems(e) {
-  if ((minItemsToChoose != null && itemChoice.length < minItemsToChoose) ||
-      (maxItemsToChoose != null && itemChoice.length > maxItemsToChoose)) {
-    document.getElementById("errorText").holdSeconds = 3;
-    document.getElementById("errorText").style.opacity = 1.0;
-    let errmsg = "Expected between " + minItemsToChoose + " and " + maxItemsToChoose + " items.";
-    document.getElementById("errorText").innerText = errmsg;
-    setTimeout(clearError, 100);
-    return;
-  }
-  ws.send(JSON.stringify({"type": "choice", "choice": itemChoice}));
+  ws.send(JSON.stringify({"type": "choice", "choice": "done"}));
 }
 
 function doneUsing(e) {
@@ -295,19 +283,11 @@ function doneUsing(e) {
 }
 
 function clickAsset(assetDiv, assetHandle) {
-  // TODO: we should change ItemChoice to choose items one by one.
   if (assetDiv.classList.contains("usable")) {
     useAsset(assetHandle);
     return;
   }
-  let choiceIdx = itemChoice.indexOf(assetHandle);
-  if (choiceIdx >= 0) {
-    itemChoice.splice(choiceIdx, 1);
-    assetDiv.classList.remove("chosen");
-  } else {
-    itemChoice.push(assetHandle);
-    assetDiv.classList.add("chosen");
-  }
+  chooseAsset(assetHandle);
 }
 
 function confirmMonsterChoice(e) {
@@ -336,6 +316,10 @@ function spend(spendType) {
 
 function unspend(spendType) {
   ws.send(JSON.stringify({"type": "unspend", "spend_type": spendType}));
+}
+
+function chooseAsset(handle) {
+  ws.send(JSON.stringify({"type": "choice", "choice": handle}));
 }
 
 function useAsset(handle) {
@@ -631,9 +615,6 @@ function updateChoices(choice) {
   btn.style.display = "none";
   cardtoggle.style.display = "none";
   if (choice == null || choice.monsters != null) {
-    minItemsToChoose = null;
-    maxItemsToChoose = null;
-    itemChoice = [];
     pDiv.classList.remove("choose");
     return;
   }
@@ -656,14 +637,9 @@ function updateChoices(choice) {
   // Set prompt.
   document.getElementById("uiprompt").innerText = choice.prompt;
   if (choice.items) {
-    minItemsToChoose = choice.min_items;
-    maxItemsToChoose = choice.max_items;
     pDiv.classList.add("choose");
     btn.style.display = "inline-block";
   } else {
-    minItemsToChoose = null;
-    maxItemsToChoose = null;
-    itemChoice = [];
     pDiv.classList.remove("choose");
     if (choice.places != null) {
       updatePlaceChoices(uichoice, choice.places, choice.annotations);
@@ -1380,16 +1356,18 @@ function updateCharacterSheet(sheet, character, order, isPlayer, choice) {
   renderAssetToDiv(charName, character.name + " title");
   sheet.style.order = order;
   let spent = {};
+  let chosen = [];
   if (choice != null) {
     for (let key in choice.spent) {
       for (let handle in choice.spent[key]) {
         spent[handle] = (spent[handle] || 0) + choice.spent[key][handle];
       }
     }
+    chosen = choice.chosen || [];
   }
   updateCharacterStats(sheet, character, isPlayer, spent);
   updateSliders(sheet, character, isPlayer);
-  updatePossessions(sheet, character, isPlayer, spent);
+  updatePossessions(sheet, character, isPlayer, spent, chosen);
   updateTrophies(sheet, character, isPlayer, spent);
 }
 
@@ -1447,17 +1425,17 @@ function updateSliders(sheet, character, isPlayer) {
   }
 }
 
-function updatePossessions(sheet, character, isPlayer, spent) {
+function updatePossessions(sheet, character, isPlayer, spent, chosen) {
   let pDiv = sheet.getElementsByClassName("possessions")[0];
   while (pDiv.firstChild) {
     pDiv.removeChild(pDiv.firstChild);
   }
   for (let pos of character.possessions) {
-    createPossession(pos, isPlayer, pDiv, spent);
+    createPossession(pos, isPlayer, pDiv, spent, chosen);
   }
 }
 
-function createPossession(info, isPlayer, sheet, spent) {
+function createPossession(info, isPlayer, sheet, spent, chosen) {
   let div = document.createElement("DIV");
   div.classList.add("possession", "cnvcontainer");
   div.cnvScale = 2.5;
@@ -1496,7 +1474,7 @@ function createPossession(info, isPlayer, sheet, spent) {
   div.onmouseenter = bringTop;
   div.onmouseleave = returnBottom;
   if (isPlayer) {
-    if (itemChoice.includes(handle)) {
+    if (chosen.includes(handle)) {
       div.classList.add("chosen");
     }
     div.onclick = function(e) { clickAsset(div, handle); };

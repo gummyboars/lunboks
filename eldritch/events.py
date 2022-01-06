@@ -2166,6 +2166,8 @@ class SpendMixin:
     super().resolve(state, choice)
     if self.is_cancelled():
       return
+    if not self.is_resolved():  # For itemchoice, resolve() will be called multiple times.
+      return
     # Spend the basic spendables.
     for spend_count in self.spend_map.values():
       for handle, count in spend_count.items():
@@ -2231,11 +2233,15 @@ class SpendItemChoiceMixin(SpendMixin):
     self.remaining_spend = not satisfied
 
   def resolve(self, state, choice=None):
-    if choice == []:
+    if choice == "done" and not self.chosen:
       self.cancelled = True
       return
-    assert self.spend_prereq.value(state)
     super().resolve(state, choice)
+
+  def validate_choice(self, state, chosen, final):
+    if len(chosen) > 0:
+      assert self.spend_prereq.value(state)
+    super().validate_choice(state, chosen, final)
 
   def annotations(self, state):  # pylint: disable=unused-argument
     return None
@@ -2355,22 +2361,32 @@ class ItemChoice(ChoiceEvent):
     self.character = character
     self._prompt = prompt
     self.choices = None
-    self.chosen = None
+    self.chosen = []
     if decks is None:
       decks = {"spells", "common", "unique", "skills", "allies"}
     assert not decks - {"spells", "common", "unique", "skills", "allies"}, f"invalid decks {decks}"
     self.decks = decks
     self.item_type = item_type
+    self.done = False
 
   def resolve(self, state, choice=None):
-    if self.is_resolved():
+    assert isinstance(choice, str)
+    if choice == "done":
+      self.validate_choice(state, self.chosen, final=True)
+      self.done = True
       return
-    self.validate_choice(state, choice)
-    self.chosen = [pos for pos in self.character.possessions if pos.handle in choice]
 
-  def validate_choice(self, state, choices):  # pylint: disable=unused-argument
-    assert isinstance(choices, list)
-    assert all(handle in self.choices for handle in choices)
+    # If the character is trying to deselect an item, remove it from the list.
+    chosen_copy = [pos for pos in self.chosen if pos.handle != choice]
+    if len(chosen_copy) >= len(self.chosen):  # Otherwise, add it to the list.
+      chosen_copy += [pos for pos in self.character.possessions if pos.handle == choice]
+      assert len(chosen_copy) > len(self.chosen)
+
+    self.validate_choice(state, chosen_copy, final=False)
+    self.chosen = chosen_copy
+
+  def validate_choice(self, state, chosen, final):  # pylint: disable=unused-argument
+    assert all(pos.handle in self.choices for pos in chosen)
 
   def compute_choices(self, state):
     self.choices = [
@@ -2380,7 +2396,7 @@ class ItemChoice(ChoiceEvent):
     ]
 
   def is_resolved(self):
-    return self.chosen is not None
+    return self.done
 
   def start_str(self):
     return f"{self.character.name} must " + self.prompt()
@@ -2401,14 +2417,16 @@ class CombatChoice(ItemChoice):
   def __init__(self, character, prompt):
     super().__init__(character, prompt, decks=None, item_type="weapon")
 
-  def validate_choice(self, state, choices):
-    super().validate_choice(state, choices)
-    chosen = [pos for pos in self.character.possessions if pos.handle in choices]
+  def validate_choice(self, state, chosen, final):
+    super().validate_choice(state, chosen, final)
     for pos in chosen:
       assert getattr(pos, "hands", None) is not None
       assert getattr(pos, "deck", None) != "spells"
     hands_used = sum([pos.hands for pos in chosen])
     assert hands_used <= self.character.hands_available()
+
+  def hands_used(self):
+    return sum([pos.hands for pos in self.chosen])
 
 
 class ItemCountChoice(ItemChoice):
@@ -2418,15 +2436,18 @@ class ItemCountChoice(ItemChoice):
     self.count = count
     self.min_count = count if min_count is None else min_count
 
-  def validate_choice(self, state, choices):
-    super().validate_choice(state, choices)
+  def validate_choice(self, state, chosen, final):
+    super().validate_choice(state, chosen, final)
     min_count = self.min_count
     if isinstance(self.min_count, values.Value):
       min_count = self.min_count.value(state)
     max_count = self.count
     if isinstance(self.count, values.Value):
       max_count = self.count.value(state)
-    assert min_count <= len(choices) <= max_count
+    if final:
+      assert min_count <= len(chosen) <= max_count
+    else:
+      assert len(chosen) <= max_count
 
 
 class SinglePhysicalWeaponChoice(SpendItemChoiceMixin, ItemCountChoice):

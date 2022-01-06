@@ -260,8 +260,7 @@ class GameState:
           output["choice"]["choices"] = top_event.choices
           output["choice"]["invalid_choices"] = getattr(top_event, "invalid_choices", [])
         elif isinstance(top_event, events.ItemChoice):
-          output["choice"]["max_items"] = getattr(top_event, "count", None)
-          output["choice"]["min_items"] = getattr(top_event, "min_count", None)
+          output["choice"]["chosen"] = [item.handle for item in top_event.chosen]
           output["choice"]["items"] = True
         elif isinstance(top_event, events.MonsterSpawnChoice):
           output["choice"]["monsters"] = top_event.to_spawn
