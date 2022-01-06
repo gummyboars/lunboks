@@ -1784,6 +1784,13 @@ class DeactivateSpells(Event):
     return ""
 
 
+def LoseItems(character, count, prompt=None, decks=None, item_type="item"):
+  prompt = prompt or "Choose items to lose"
+  choice = ItemLossChoice(character, prompt, count, decks=decks, item_type=item_type)
+  loss = DiscardSpecific(character, choice)
+  return Sequence([choice, loss], character)
+
+
 class DiscardSpecific(Event):
 
   def __init__(self, character, items):
@@ -1805,7 +1812,7 @@ class DiscardSpecific(Event):
         continue
       self.character.possessions.remove(item)
       getattr(state, item.deck).append(item)
-      self.discarded.append(item.name)
+      self.discarded.append(item)
 
   def is_resolved(self):
     return self.discarded is not None
@@ -1818,7 +1825,7 @@ class DiscardSpecific(Event):
   def finish_str(self):
     if not self.discarded:
       return f"{self.character.name} did not have items to discard"
-    return f"{self.character.name} discarded " + ", ".join(self.discarded)
+    return f"{self.character.name} discarded " + ", ".join(item.name for item in self.discarded)
 
 
 class DiscardNamed(Event):
@@ -1834,7 +1841,7 @@ class DiscardNamed(Event):
         self.character.possessions.remove(item)
         deck = getattr(state, item.deck)
         deck.append(item)
-        self.discarded = True
+        self.discarded = item
         return
     self.discarded = False
 
@@ -2357,15 +2364,16 @@ def BinarySpend(
 
 class ItemChoice(ChoiceEvent):
 
-  def __init__(self, character, prompt, decks=None, item_type=None):
+  def __init__(self, character, prompt, decks=None, item_type="item"):
     self.character = character
     self._prompt = prompt
     self.choices = None
     self.chosen = []
     if decks is None:
-      decks = {"spells", "common", "unique", "skills", "allies"}
+      decks = {"spells", "common", "unique", "skills", "allies"}  # TODO: keep in sync with assets
     assert not decks - {"spells", "common", "unique", "skills", "allies"}, f"invalid decks {decks}"
     self.decks = decks
+    assert item_type in {None, "item", "weapon", "tome"}
     self.item_type = item_type
     self.done = False
 
@@ -2391,9 +2399,16 @@ class ItemChoice(ChoiceEvent):
   def compute_choices(self, state):
     self.choices = [
         pos.handle for pos in self.character.possessions
-        if (getattr(pos, "deck", None) in self.decks)
-        and (self.item_type is None or getattr(pos, "item_type", None) == self.item_type)
+        if (getattr(pos, "deck", None) in self.decks) and self._matches_type(pos)
     ]
+
+  def _matches_type(self, pos):
+    if self.item_type is None:
+      return True
+    if self.item_type != "item":
+      return getattr(pos, "item_type", None) == self.item_type
+    # TODO: deputy's revolver, patrol wagon, rail pass
+    return getattr(pos, "deck", None) in {"spells", "common", "unique"}
 
   def is_resolved(self):
     return self.done
@@ -2431,7 +2446,7 @@ class CombatChoice(ItemChoice):
 
 class ItemCountChoice(ItemChoice):
 
-  def __init__(self, character, prompt, count, min_count=None, decks=None, item_type=None):
+  def __init__(self, character, prompt, count, min_count=None, decks=None, item_type="item"):
     super().__init__(character, prompt, decks=decks, item_type=item_type)
     self.count = count
     self.min_count = count if min_count is None else min_count
@@ -2448,6 +2463,29 @@ class ItemCountChoice(ItemChoice):
       assert min_count <= len(chosen) <= max_count
     else:
       assert len(chosen) <= max_count
+
+
+class ItemLossChoice(ItemChoice):
+
+  def __init__(self, character, prompt, count, decks=None, item_type="item"):
+    super().__init__(character, prompt, decks=decks, item_type=item_type)
+    self.count = count
+
+  def validate_choice(self, state, chosen, final=False):
+    super().validate_choice(state, chosen, final)
+    count = self.count.value(state) if isinstance(self.count, values.Value) else self.count
+    assert len(chosen) <= count
+    if not final:
+      return
+
+    if len(chosen) == count:
+      return
+    # If the user has not chosen as many items as they need to lose, go through all of their items
+    # and validate that every viable option is either (a) not losable or (b) already chosen.
+    for pos in self.character.possessions:
+      if pos.handle not in self.choices:
+        continue
+      assert pos in chosen or not getattr(pos, "losable", True)
 
 
 class SinglePhysicalWeaponChoice(SpendItemChoiceMixin, ItemCountChoice):

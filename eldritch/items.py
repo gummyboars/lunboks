@@ -118,6 +118,13 @@ class Cross(Weapon):
     return bonus
 
 
+class Derringer18(Weapon):
+
+  def __init__(self, idx):
+    super().__init__(".18 Derringer", idx, "common", {"physical": 2}, {}, 1, 3)
+    self.losable = False
+
+
 def DarkCloak(idx):
   return Item("Dark Cloak", idx, "common", {}, {"evade": 1}, None, 2)
 
@@ -369,7 +376,7 @@ class FindGate(Spell):
 def CreateCommon():
   common = []
   for item in [
-      Automatic45, DarkCloak, Revolver38, Dynamite,
+      Automatic45, DarkCloak, Derringer18, Revolver38, Dynamite,
       TommyGun, Food, ResearchMaterials, Bullwhip, Cross,
   ]:
     common.extend([item(0), item(1)])

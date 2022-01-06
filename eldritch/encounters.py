@@ -1306,14 +1306,9 @@ def Woods3(char):
 
 def Woods4(char):
   check = events.Check(char, "luck", -1)
-  count = values.Calculation(  # TODO: deputy's items
-      values.ItemDeckCount(char, {"common", "unique", "spells"}), None, min, 2,
-  )
-  item_choice = events.ItemCountChoice(char, "Choose two items to discard", count)
-  bushwhack2 = events.Loss(char, {"stamina": 2})
-  bushwhack = events.Sequence(
-      [item_choice, events.DiscardSpecific(char, item_choice), bushwhack2], char,
-  )
+  loss = events.LoseItems(char, 2, "Choose two items to lose")
+  stamina = events.Loss(char, {"stamina": 2})
+  bushwhack = events.Sequence([loss, stamina], char)
   return events.PassFail(char, check, events.Nothing(), bushwhack)
 
 
