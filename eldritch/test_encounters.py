@@ -2203,7 +2203,7 @@ class BankTest(EncounterTest):
   def testBank3Fail(self):
     self.state.event_stack.append(encounters.Bank3(self.char))
     choose_weapons = self.resolve_to_choice(CombatChoice)
-    choose_weapons.resolve(self.state, [])
+    self.choose_items(choose_weapons, [])
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=2)):
       self.resolve_until_done()
     self.assertEqual(self.char.dollars, 0)
@@ -2212,7 +2212,7 @@ class BankTest(EncounterTest):
     self.char.fight_will_slider = 0
     self.state.event_stack.append(encounters.Bank3(self.char))
     choose_weapons = self.resolve_to_choice(CombatChoice)
-    choose_weapons.resolve(self.state, [])
+    self.choose_items(choose_weapons, [])
     # this should fail because the fight is 1
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       self.resolve_until_done()
@@ -2224,7 +2224,7 @@ class BankTest(EncounterTest):
     self.state.event_stack.append(encounters.Bank3(self.char))
     choose_weapons = self.resolve_to_choice(CombatChoice)
     # choose to use the revolver
-    choose_weapons.resolve(self.state, [".38 Revolver0"])
+    self.choose_items(choose_weapons, [".38 Revolver0"])
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       self.resolve_until_done()
     self.assertEqual(self.char.dollars, 3)
@@ -2232,7 +2232,7 @@ class BankTest(EncounterTest):
   def testBank3HandsPass(self):
     self.state.event_stack.append(encounters.Bank3(self.char))
     choose_weapons = self.resolve_to_choice(CombatChoice)
-    choose_weapons.resolve(self.state, [])
+    self.choose_items(choose_weapons, [])
     # this should pass because the fight is 2
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       self.resolve_until_done()
@@ -2251,7 +2251,7 @@ class BankTest(EncounterTest):
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       choose_weapons = self.resolve_to_choice(CombatChoice)
     self.assertTrue(self.char.possessions[0].active)
-    choose_weapons.resolve(self.state, [])
+    self.choose_items(choose_weapons, [])
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       self.resolve_until_done()
     self.assertEqual(self.char.dollars, 3)
@@ -3165,7 +3165,7 @@ class HospitalTest(EncounterTest):
   def testHospital2Won(self):
     self.state.event_stack.append(encounters.Hospital2(self.char))
     choose_weapons = self.resolve_to_choice(CombatChoice)
-    choose_weapons.resolve(self.state, [])
+    self.choose_items(choose_weapons, [])
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       self.resolve_until_done()
     self.assertEqual(len(self.char.possessions), 0)
@@ -3177,7 +3177,7 @@ class HospitalTest(EncounterTest):
     self.state.event_stack.append(encounters.Hospital2(self.char))
     self.char.sanity = 2
     choose_weapons = self.resolve_to_choice(CombatChoice)
-    choose_weapons.resolve(self.state, [])
+    self.choose_items(choose_weapons, [])
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=4)):
       self.resolve_until_done()
     self.assertEqual(len(self.char.possessions), 0)
@@ -3432,7 +3432,7 @@ class WoodsTest(EncounterTest):
     self.state.event_stack.append(encounters.Woods4(self.char))
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=4)):
       loss_choice = self.resolve_to_choice(ItemChoice)
-    loss_choice.resolve(self.state, ["Holy Water0", "Tommy Gun0"])
+    self.choose_items(loss_choice, ["Holy Water0", "Tommy Gun0"])
     self.resolve_until_done()
     self.assertEqual(len(self.char.possessions), 1)
     self.assertEqual(self.char.stamina, 1)
@@ -3442,7 +3442,7 @@ class WoodsTest(EncounterTest):
     self.state.event_stack.append(encounters.Woods4(self.char))
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=4)):
       loss_choice = self.resolve_to_choice(ItemChoice)
-    loss_choice.resolve(self.state, ["Holy Water0", ".38 Revolver0"])
+    self.choose_items(loss_choice, ["Holy Water0", ".38 Revolver0"])
     self.resolve_until_done()
     self.assertEqual(len(self.char.possessions), 0)
     self.assertEqual(self.char.stamina, 1)
@@ -3452,7 +3452,7 @@ class WoodsTest(EncounterTest):
     self.state.event_stack.append(encounters.Woods4(self.char))
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=4)):
       loss_choice = self.resolve_to_choice(ItemChoice)
-    loss_choice.resolve(self.state, ["Holy Water0"])
+    self.choose_items(loss_choice, ["Holy Water0"])
     self.resolve_until_done()
     self.assertEqual(len(self.char.possessions), 0)
     self.assertEqual(self.char.stamina, 1)
@@ -3461,7 +3461,7 @@ class WoodsTest(EncounterTest):
     self.state.event_stack.append(encounters.Woods4(self.char))
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=4)):
       loss_choice = self.resolve_to_choice(ItemChoice)
-    loss_choice.resolve(self.state, [])
+    self.choose_items(loss_choice, [])
     self.resolve_until_done()
     self.assertEqual(len(self.char.possessions), 0)
     self.assertEqual(self.char.stamina, 1)
@@ -3472,7 +3472,7 @@ class WoodsTest(EncounterTest):
     self.state.event_stack.append(encounters.Woods4(self.char))
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=4)):
       loss_choice = self.resolve_to_choice(ItemChoice)
-    loss_choice.resolve(self.state, ["Holy Water0", ".38 Revolver0"])
+    self.choose_items(loss_choice, ["Holy Water0", ".38 Revolver0"])
     self.resolve_until_done()
     self.assertEqual(len(self.char.possessions), 0)
     self.assertEqual(self.char.stamina, 1)
@@ -4001,7 +4001,7 @@ class StoreTest(EncounterTest):
     self.char.possessions.append(items.Food(0))
     choice = self.resolve_to_choice(ItemChoice)
     self.assertEqual(choice.choices, ["Food0"])
-    choice.resolve(self.state, ["Food0"])
+    self.choose_items(choice, ["Food0"])
     self.resolve_until_done()
     self.assertFalse(self.char.possessions)
     self.assertEqual(self.char.dollars, 5)
@@ -4013,7 +4013,7 @@ class StoreTest(EncounterTest):
     choice = self.resolve_to_choice(ItemChoice)
     self.assertEqual(choice.choices, ["Food0", "Food1"])
     with self.assertRaises(AssertionError):
-      choice.resolve(self.state, ["Food0", "Food1"])
+      self.choose_items(choice, ["Food0", "Food1"])
 
   def testStore4(self):
     self.state.event_stack.append(encounters.Store4(self.char))

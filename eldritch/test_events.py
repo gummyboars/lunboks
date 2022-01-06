@@ -78,6 +78,12 @@ class EventTest(unittest.TestCase):
     self.assertIsInstance(self.state.event_stack[-1], event_class)
     return self.state.event_stack[-1]
 
+  def choose_items(self, choice, handles):
+    self.assertIsInstance(choice, ItemChoice)
+    for handle in handles:
+      choice.resolve(self.state, handle)
+    choice.resolve(self.state, "done")
+
   def spend(self, spend_type, count, choice_event):
     self.assertIsInstance(choice_event, SpendMixin)
     for _ in range(count):
@@ -353,7 +359,7 @@ class MovementTest(EventTest):
 
     third_choice = self.resolve_to_choice(CombatChoice)
     self.assertFalse(third_choice.choices)
-    third_choice.resolve(self.state, [])
+    self.choose_items(third_choice, [])
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       movement = self.resolve_to_choice(CityMovement)
     self.assertFalse(movement.choices)
@@ -426,7 +432,7 @@ class MovementTest(EventTest):
 
     third_choice = self.resolve_to_choice(CombatChoice)
     self.assertFalse(third_choice.choices)
-    third_choice.resolve(self.state, [])
+    self.choose_items(third_choice, [])
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       movement = self.resolve_to_choice(CityMovement)
 
@@ -1373,7 +1379,7 @@ class DiscardSpecificTest(EventTest):
     self.assertFalse(discard.is_resolved())
     self.state.event_stack.append(Sequence([choice, discard], self.char))
     choice = self.resolve_to_choice(ItemChoice)
-    choice.resolve(self.state, ["Food0"])
+    self.choose_items(choice, ["Food0"])
     self.resolve_until_done()
     self.assertTrue(discard.is_resolved())
     self.assertEqual(len(self.char.possessions), 1)
@@ -1952,18 +1958,37 @@ class ItemChoiceTest(EventTest):
     self.char.possessions.append(items.Food(0))
     self.char.possessions.append(items.HolyWater(0))
 
+  def testChooseUnchoose(self):
+    choice = ItemChoice(self.char, "choose")
+    self.state.event_stack.append(choice)
+
+    choice = self.resolve_to_choice(ItemChoice)
+    choice.resolve(self.state, "Food0")
+    self.assertFalse(choice.is_resolved())
+    choice.resolve(self.state, "Holy Water0")
+    choice.resolve(self.state, "Food0")  # Deselect the food
+    choice.resolve(self.state, ".38 Revolver0")
+    choice.resolve(self.state, "done")
+
+    self.assertTrue(choice.is_resolved())
+    self.assertEqual([pos.handle for pos in choice.chosen], ["Holy Water0", ".38 Revolver0"])
+
   def testCountChoice(self):
     choice = ItemCountChoice(self.char, "choose 2", 2)
     self.state.event_stack.append(choice)
 
     self.resolve_to_choice(ItemCountChoice)
 
+    choice.resolve(self.state, "Holy Water0")
+    choice.resolve(self.state, "Food0")
+    self.assertFalse(choice.is_resolved())
     with self.assertRaises(AssertionError):
-      choice.resolve(self.state, ["Holy Water0"])
-    with self.assertRaises(AssertionError):
-      choice.resolve(self.state, [".38 Revolver0", "Food0", "Holy Water0"])
-    choice.resolve(self.state, [".38 Revolver0", "Food0"])
-    self.assertListEqual(choice.chosen, self.char.possessions[:2])
+      choice.resolve(self.state, ".38 Revolver0")
+    choice.resolve(self.state, "Holy Water0")  # Deselect the holy water
+    choice.resolve(self.state, ".38 Revolver0")
+    choice.resolve(self.state, "done")
+    self.assertTrue(choice.is_resolved())
+    self.assertCountEqual(choice.chosen, self.char.possessions[:2])
     self.assertEqual(choice.choice_count, 2)
 
     self.resolve_until_done()
@@ -1977,11 +2002,14 @@ class ItemChoiceTest(EventTest):
     self.char.possessions.remove(self.char.possessions[0])
 
     with self.assertRaises(AssertionError):
-      choice.resolve(self.state, ["Food0", "Holy Water0"])
+      choice.resolve(self.state, "done")
+    self.assertFalse(choice.is_resolved())
+    choice.resolve(self.state, "Food0")
     with self.assertRaises(AssertionError):
-      choice.resolve(self.state, [])
-    choice.resolve(self.state, ["Holy Water0"])
-    self.assertListEqual(choice.chosen, self.char.possessions[1:])
+      choice.resolve(self.state, "Holy Water0")
+    choice.resolve(self.state, "done")
+    self.assertTrue(choice.is_resolved())
+    self.assertListEqual(choice.chosen, self.char.possessions[:1])
     self.assertEqual(choice.choice_count, 1)
 
   def testNonItemsInPossessions(self):
@@ -1989,12 +2017,13 @@ class ItemChoiceTest(EventTest):
     choice = ItemChoice(self.char, "", None, "tome")
     self.state.event_stack.append(choice)
 
+    # Test to make sure that you don't get attribute errors when not all your possessions are items.
     choice = self.resolve_to_choice(ItemChoice)
     with self.assertRaises(AssertionError):
-      choice.resolve(self.state, ["Holy Water0"])
+      choice.resolve(self.state, "Dog")
     with self.assertRaises(AssertionError):
-      choice.resolve(self.state, ["Marksman0"])
-    choice.resolve(self.state, [])
+      choice.resolve(self.state, "Marksman0")
+    choice.resolve(self.state, "done")
     self.resolve_until_done()
 
   def testCombatChoice(self):
@@ -2002,17 +2031,93 @@ class ItemChoiceTest(EventTest):
     self.state.event_stack.append(choice)
     self.resolve_to_choice(ItemChoice)
 
+    choice.resolve(self.state, ".38 Revolver0")
     # Cannot use Food in combat.
     with self.assertRaises(AssertionError):
-      choice.resolve(self.state, [".38 Revolver0", "Food0"])
+      choice.resolve(self.state, "Food0")
 
     # Cannot use three hands in combat.
     with self.assertRaises(AssertionError):
-      choice.resolve(self.state, [".38 Revolver0", "Holy Water0"])
+      choice.resolve(self.state, "Holy Water0")
 
-    choice.resolve(self.state, ["Holy Water0"])
+    # Deselecting the revolver frees up the hand.
+    choice.resolve(self.state, ".38 Revolver0")
+    choice.resolve(self.state, "Holy Water0")
+    choice.resolve(self.state, "done")
     self.resolve_until_done()
+    self.assertTrue(choice.is_resolved())
     self.assertEqual(choice.choice_count, 1)
+
+
+class SinglePhysicalWeaponChoiceTest(EventTest):
+
+  def setUp(self):
+    super().setUp()
+    self.char.possessions.append(items.Revolver38(0))
+    self.char.possessions.append(items.TommyGun(0))
+
+  def testChooseWithSpending(self):
+    spend = values.ExactSpendPrerequisite({"sanity": 1})
+    choice = SinglePhysicalWeaponChoice(self.char, "Choose", spend)
+    self.state.event_stack.append(choice)
+    choice = self.resolve_to_choice(SinglePhysicalWeaponChoice)
+
+    # Cannot choose the revolver before spending.
+    with self.assertRaises(AssertionError):
+      choice.resolve(self.state, ".38 Revolver0")
+
+    self.spend("sanity", 1, choice)
+    choice.resolve(self.state, ".38 Revolver0")
+    self.resolve_to_choice(SinglePhysicalWeaponChoice)
+    self.assertFalse(choice.is_done())
+    self.assertEqual(len(choice.chosen), 1)
+
+    # Cannot choose a second item (count choice says max of 1).
+    with self.assertRaises(AssertionError):
+      choice.resolve(self.state, "Tommy Gun0")
+
+    # If you un-spend the sanity, you cannot confirm your choice.
+    self.spend("sanity", -1, choice)
+    with self.assertRaises(AssertionError):
+      choice.resolve(self.state, "done")
+    self.assertFalse(choice.is_done())
+    self.assertEqual(len(choice.chosen), 1)
+
+    # If you un-spend the sanity, you can de-select an item.
+    choice.resolve(self.state, ".38 Revolver0")
+    self.resolve_to_choice(SinglePhysicalWeaponChoice)
+
+    # Since you've un-spent, you cannot choose the gun.
+    with self.assertRaises(AssertionError):
+      choice.resolve(self.state, "Tommy Gun0")
+
+    # Re-spend the sanity.
+    self.spend("sanity", 1, choice)
+    choice.resolve(self.state, "Tommy Gun0")
+    self.resolve_to_choice(SinglePhysicalWeaponChoice)
+    self.assertFalse(choice.is_done())
+    self.assertEqual(len(choice.chosen), 1)
+
+    # Confirm the final choic.
+    choice.resolve(self.state, "done")
+    self.resolve_until_done()
+    self.assertTrue(choice.is_done())
+    self.assertEqual(len(choice.chosen), 1)
+    self.assertEqual(self.char.sanity, 4)
+
+  def testCancelAfterSpending(self):
+    spend = values.ExactSpendPrerequisite({"sanity": 1})
+    choice = SinglePhysicalWeaponChoice(self.char, "Choose", spend)
+    self.state.event_stack.append(choice)
+    choice = self.resolve_to_choice(SinglePhysicalWeaponChoice)
+
+    # Spend the sanity, but then change our mind and choose no items.
+    self.spend("sanity", 1, choice)
+    choice.resolve(self.state, "done")
+    self.resolve_until_done()
+
+    self.assertTrue(choice.is_cancelled())
+    self.assertEqual(self.char.sanity, 5)
 
 
 class PlaceChoiceTest(EventTest):
@@ -2166,7 +2271,7 @@ class ActivateItemsTest(EventTest):
 
     self.state.event_stack.append(item_choice)
     self.resolve_to_choice(CombatChoice)
-    item_choice.resolve(self.state, ["Bullwhip0", ".38 Revolver0"])
+    self.choose_items(item_choice, ["Bullwhip0", ".38 Revolver0"])
     self.state.event_stack.append(activate)
     self.resolve_until_done()
 
@@ -2183,7 +2288,7 @@ class ActivateItemsTest(EventTest):
 
     self.state.event_stack.append(item_choice)
     self.resolve_to_choice(CombatChoice)
-    item_choice.resolve(self.state, ["Bullwhip0", ".38 Revolver0"])
+    self.choose_items(item_choice, ["Bullwhip0", ".38 Revolver0"])
     self.state.event_stack.append(activate)
     self.resolve_until_done()
 
@@ -2653,7 +2758,7 @@ class SellTest(EventTest):
     self.state.event_stack.append(sell)
     choice = self.resolve_to_choice(ItemChoice)
     self.assertEqual(choice.choices, ["Food0"])
-    choice.resolve(self.state, ["Food0"])
+    self.choose_items(choice, ["Food0"])
     self.resolve_until_done()
 
     self.assertTrue(sell.is_resolved())
@@ -2673,7 +2778,7 @@ class SellTest(EventTest):
     self.state.event_stack.append(sell)
     choice = self.resolve_to_choice(ItemChoice)
     self.assertEqual(choice.choices, ["Food0"])
-    choice.resolve(self.state, [])
+    self.choose_items(choice, [])
     self.resolve_until_done()
 
     self.assertTrue(sell.is_resolved())
@@ -2693,7 +2798,7 @@ class SellTest(EventTest):
     self.state.event_stack.append(buy)
     choice = self.resolve_to_choice(ItemChoice)
     self.assertEqual(choice.choices, ["Food0"])
-    choice.resolve(self.state, ["Food0"])
+    self.choose_items(choice, ["Food0"])
     self.resolve_until_done()
 
     self.assertTrue(buy.is_resolved())
@@ -2708,8 +2813,7 @@ class SellTest(EventTest):
     self.state.event_stack.append(sell)
     choice = self.resolve_to_choice(ItemChoice)
     with self.assertRaises(AssertionError):
-      choice.resolve(self.state, ["Holy Water0"])
-      self.resolve_until_done()
+      choice.resolve(self.state, "Holy Water0")
 
   def testSellChoiceCancelled(self):
     sell = Sell(self.char, {"common"}, 1)
@@ -2786,7 +2890,7 @@ class CloseLocationTest(EventTest):
       choice = self.resolve_to_choice(MultipleChoice)
       choice.resolve(self.state, "Fight")
       choice = self.resolve_to_choice(CombatChoice)
-      choice.resolve(self.state, [])
+      self.choose_items(choice, [])
       self.resolve_until_done()
 
     self.assertEqual(place.closed_until, self.state.turn_number + 1)
