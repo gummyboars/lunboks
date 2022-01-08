@@ -654,7 +654,9 @@ class LodgeTest(EncounterTest):
     self.assertEqual(choice.choices, ["Yes", "No"])
     choice.resolve(self.state, "No")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=4)):
-      self.resolve_until_done()
+      choice = self.resolve_to_choice(ItemLossChoice)
+    self.choose_items(choice, [])
+    self.resolve_until_done()
     self.assertEqual(self.char.stamina, 1)
     self.assertEqual(self.char.place.name, "Hospital")
 
@@ -788,6 +790,8 @@ class LodgeTest(EncounterTest):
     choice = self.resolve_to_choice(MultipleChoice)
     self.assertEqual(choice.choices, [0, 1])
     choice.resolve(self.state, 1)
+    choice = self.resolve_to_choice(ItemLossChoice)
+    self.choose_items(choice, [])
     self.resolve_until_done()
     self.assertEqual(self.char.place.name, "Asylum")
     self.assertEqual(self.char.sanity, 1)
@@ -799,6 +803,8 @@ class LodgeTest(EncounterTest):
     choice = self.resolve_to_choice(MultipleChoice)
     self.assertEqual(choice.choices, [0, 1, 2])
     choice.resolve(self.state, 2)
+    choice = self.resolve_to_choice(ItemLossChoice)
+    self.choose_items(choice, [])
     self.resolve_until_done()
     self.assertEqual(self.char.place.name, "Asylum")
     self.assertEqual(self.char.sanity, 1)
@@ -974,7 +980,9 @@ class WitchHouseTest(EncounterTest):
     self.char.sanity = 3
     self.state.event_stack.append(encounters.WitchHouse3(self.char))
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=4)):
-      self.resolve_until_done()
+      choice = self.resolve_to_choice(ItemLossChoice)
+    self.choose_items(choice, [])
+    self.resolve_until_done()
     self.assertEqual(self.char.sanity, 1)
     self.assertEqual(self.char.place.name, "Asylum")
 
@@ -1010,6 +1018,8 @@ class WitchHouseTest(EncounterTest):
   def testWitchHouse4Insane(self):
     self.char.sanity = 1
     self.state.event_stack.append(encounters.WitchHouse4(self.char))
+    choice = self.resolve_to_choice(ItemLossChoice)
+    self.choose_items(choice, [])
     self.resolve_until_done()
     self.assertEqual(self.char.sanity, 1)
     self.assertEqual(self.char.place.name, "Asylum")
@@ -1030,7 +1040,9 @@ class WitchHouseTest(EncounterTest):
     self.char.sanity = 1
     self.state.event_stack.append(encounters.WitchHouse6(self.char))
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=1)):
-      self.resolve_until_done()
+      choice = self.resolve_to_choice(ItemLossChoice)
+    self.choose_items(choice, [])
+    self.resolve_until_done()
     self.assertEqual(self.char.place.name, "Asylum")
     self.assertEqual(self.char.sanity, 1)
     self.assertEqual(self.char.clues, 1)
@@ -1047,7 +1059,9 @@ class WitchHouseTest(EncounterTest):
     self.char.sanity = 3
     self.state.event_stack.append(encounters.WitchHouse6(self.char))
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
-      self.resolve_until_done()
+      choice = self.resolve_to_choice(ItemLossChoice)
+    self.choose_items(choice, [])
+    self.resolve_until_done()
     self.assertEqual(self.char.place.name, "Asylum")
     self.assertEqual(self.char.sanity, 1)
     self.assertEqual(self.char.clues, 2)
@@ -1206,7 +1220,9 @@ class SocietyTest(EncounterTest):
     self.state.event_stack.append(encounters.Society3(self.char))
     self.char.stamina = 2
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
-      self.resolve_until_done()
+      choice = self.resolve_to_choice(ItemLossChoice)
+    self.choose_items(choice, [])
+    self.resolve_until_done()
     self.assertEqual(self.char.sanity, 3)
     self.assertEqual(self.char.stamina, 1)
     self.assertEqual(self.char.place.name, "Hospital")
@@ -1241,6 +1257,8 @@ class SocietyTest(EncounterTest):
   def testSociety5Insane(self):
     self.char.sanity = 1
     self.state.event_stack.append(encounters.Society5(self.char))
+    choice = self.resolve_to_choice(ItemLossChoice)
+    self.choose_items(choice, [])
     self.resolve_until_done()
     self.assertEqual(self.char.sanity, 1)
     self.assertEqual(self.char.place.name, "Asylum")
@@ -1557,6 +1575,8 @@ class ChurchTest(EncounterTest):
   def testChurch1Insane(self):
     self.state.event_stack.append(encounters.Church1(self.char))
     self.char.sanity = 1
+    choice = self.resolve_to_choice(ItemLossChoice)
+    self.choose_items(choice, [])
     self.resolve_until_done()
     self.assertEqual(self.char.sanity, 1)
     self.assertEqual(self.char.place.name, "Asylum")
@@ -2061,6 +2081,8 @@ class ScienceTest(EncounterTest):
     self.state.allies.extend([assets.ArmWrestler()])
     choice = self.resolve_to_choice(MultipleChoice)
     choice.resolve(self.state, "Yes")
+    choice = self.resolve_to_choice(ItemLossChoice)
+    self.choose_items(choice, [])
     self.resolve_until_done()
     self.assertEqual(len(self.state.allies), 1)
     self.assertEqual(len(self.char.possessions), 0)
@@ -2109,7 +2131,9 @@ class ScienceTest(EncounterTest):
     choice = self.resolve_to_choice(MultipleChoice)
     choice.resolve(self.state, "Yes")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=4)):
-      self.resolve_until_done()
+      choice = self.resolve_to_choice(ItemLossChoice)
+    self.choose_items(choice, [])
+    self.resolve_until_done()
     self.assertEqual(self.char.stamina, 1)
     self.assertEqual(self.char.place.name, "Hospital")
 
@@ -2744,7 +2768,9 @@ class TrainTest(EncounterTest):
     self.assertEqual(self.char.speed(self.state), 2)
     self.state.event_stack.append(encounters.Train2(self.char))
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
-      self.resolve_until_done()
+      choice = self.resolve_to_choice(ItemLossChoice)
+    self.choose_items(choice, [])
+    self.resolve_until_done()
     self.assertEqual(len(self.state.spells), 2)
     self.assertEqual(len(self.char.possessions), 0)
     self.assertEqual(self.char.sanity, 1)
@@ -2865,7 +2891,9 @@ class TrainTest(EncounterTest):
   def testTrain7FailUnconcious(self):
     self.state.event_stack.append(encounters.Train7(self.char))
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
-      self.resolve_until_done()
+      choice = self.resolve_to_choice(ItemLossChoice)
+    self.choose_items(choice, [])
+    self.resolve_until_done()
     self.assertEqual(len(self.char.possessions), 0)
     self.assertEqual(len(self.state.unique), 2)
     self.assertEqual(self.char.stamina, 1)
@@ -2968,7 +2996,9 @@ class DocksTest(EncounterTest):
     self.char.sanity = 1
     self.state.unique.extend([items.Cross(0), items.HolyWater(0)])
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
-      self.resolve_until_done()
+      choice = self.resolve_to_choice(ItemLossChoice)
+    self.choose_items(choice, [])
+    self.resolve_until_done()
     self.assertEqual(len(self.state.unique), 2)
     self.assertEqual(len(self.char.possessions), 0)
     self.assertEqual(self.char.sanity, 1)
@@ -2979,7 +3009,9 @@ class DocksTest(EncounterTest):
     self.char.sanity = 2
     self.state.unique.extend([items.Cross(0), items.HolyWater(0)])
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=2)):
-      self.resolve_until_done()
+      choice = self.resolve_to_choice(ItemLossChoice)
+    self.choose_items(choice, [])
+    self.resolve_until_done()
     self.assertEqual(len(self.state.unique), 2)
     self.assertEqual(len(self.char.possessions), 0)
     self.assertEqual(self.char.sanity, 1)
@@ -3075,6 +3107,8 @@ class UnnamableTest(EncounterTest):
     self.char.sanity = 2
     choice = self.resolve_to_choice(MultipleChoice)
     choice.resolve(self.state, "Yes")
+    choice = self.resolve_to_choice(ItemLossChoice)
+    self.choose_items(choice, [])
     self.resolve_until_done()
     self.assertEqual(self.char.sanity, 1)
     self.assertEqual(len(self.char.possessions), 0)
@@ -3316,7 +3350,9 @@ class HospitalTest(EncounterTest):
     self.char.sanity = 1
     self.state.unique.extend([items.Cross(0), items.HolyWater(0)])
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
-      self.resolve_until_done()
+      choice = self.resolve_to_choice(ItemLossChoice)
+    self.choose_items(choice, [])
+    self.resolve_until_done()
     self.assertEqual(len(self.state.unique), 2)
     self.assertEqual(len(self.char.possessions), 0)
     self.assertEqual(self.char.sanity, 1)
@@ -3434,7 +3470,9 @@ class HospitalTest(EncounterTest):
     self.state.unique.extend([items.Cross(0), items.HolyWater(0)])
     self.state.event_stack.append(encounters.Hospital6(self.char))
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=4)):
-      self.resolve_until_done()
+      choice = self.resolve_to_choice(ItemLossChoice)
+    self.choose_items(choice, [])
+    self.resolve_until_done()
     self.assertEqual(len(self.char.possessions), 0)
     self.assertEqual(len(self.state.unique), 2)
     self.assertEqual(self.char.place.name, "Asylum")
@@ -3483,7 +3521,9 @@ class WoodsTest(EncounterTest):
     choice = self.resolve_to_choice(MultipleChoice)
     choice.resolve(self.state, "Yes")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=4)):
-      self.resolve_until_done()
+      choice = self.resolve_to_choice(ItemLossChoice)
+    self.choose_items(choice, [])
+    self.resolve_until_done()
     self.assertEqual(self.char.sanity, 1)
     self.assertEqual(self.char.place.name, "Asylum")
     self.assertEqual(len(self.char.possessions), 0)
@@ -3553,7 +3593,9 @@ class WoodsTest(EncounterTest):
     self.char.stamina = 2
     self.state.event_stack.append(encounters.Woods2(self.char))
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=4)):
-      self.resolve_until_done()
+      choice = self.resolve_to_choice(ItemLossChoice)
+    self.choose_items(choice, [])
+    self.resolve_until_done()
     self.assertEqual(self.char.place.name, "Hospital")
 
   def testWoods3Pass(self):
@@ -3577,7 +3619,9 @@ class WoodsTest(EncounterTest):
     self.char.stamina = 2
     self.state.event_stack.append(encounters.Woods3(self.char))
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=4)):
-      self.resolve_until_done()
+      choice = self.resolve_to_choice(ItemLossChoice)
+    self.choose_items(choice, [])
+    self.resolve_until_done()
     self.assertEqual(self.char.place.name, "Hospital")
 
   def testWoods4Pass(self):
@@ -3634,6 +3678,9 @@ class WoodsTest(EncounterTest):
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=4)):
       loss_choice = self.resolve_to_choice(ItemChoice)
     self.choose_items(loss_choice, ["Holy Water0", ".38 Revolver0"])
+    # Have to choose again when you get knocked out.
+    choice = self.resolve_to_choice(ItemLossChoice)
+    self.choose_items(choice, [])
     self.resolve_until_done()
     self.assertEqual(len(self.char.possessions), 0)
     self.assertEqual(self.char.stamina, 1)
@@ -3849,7 +3896,9 @@ class CaveTest(EncounterTest):
     self.state.common.append(items.Food(0))
     self.state.event_stack.append(encounters.Cave1(self.char))
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=2)):
-      self.resolve_until_done()
+      choice = self.resolve_to_choice(ItemLossChoice)
+    self.choose_items(choice, [])
+    self.resolve_until_done()
     self.assertEqual(len(self.state.common), 1)
     self.assertEqual(self.char.sanity, 1)
     self.assertEqual(self.char.place.name, "Asylum")
@@ -3869,7 +3918,9 @@ class CaveTest(EncounterTest):
     self.state.common.append(items.Food(0))
     self.state.event_stack.append(encounters.Cave1(self.char))
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
-      self.resolve_until_done()
+      choice = self.resolve_to_choice(ItemLossChoice)
+    self.choose_items(choice, [])
+    self.resolve_until_done()
     self.assertEqual(len(self.state.common), 1)
     self.assertEqual(self.char.sanity, 1)
     self.assertEqual(self.char.place.name, "Asylum")
@@ -3894,6 +3945,8 @@ class CaveTest(EncounterTest):
   def testCave2Insane(self):
     self.char.sanity = 1
     self.state.event_stack.append(encounters.Cave2(self.char))
+    choice = self.resolve_to_choice(ItemLossChoice)
+    self.choose_items(choice, [])
     self.resolve_until_done()
     self.assertEqual(self.char.sanity, 1)
     self.assertEqual(self.char.place.name, "Asylum")
@@ -3914,7 +3967,9 @@ class CaveTest(EncounterTest):
     self.char.stamina = 1
     self.state.event_stack.append(encounters.Cave3(self.char))
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=2)):
-      self.resolve_until_done()
+      choice = self.resolve_to_choice(ItemLossChoice)
+    self.choose_items(choice, [])
+    self.resolve_until_done()
     self.assertEqual(self.char.stamina, 1)
     self.assertEqual(self.char.place.name, "Hospital")
 
@@ -3947,7 +4002,9 @@ class CaveTest(EncounterTest):
     self.char.lore_luck_slider = 2
     self.state.event_stack.append(encounters.Cave5(self.char))
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=2)):
-      self.resolve_until_done()
+      choice = self.resolve_to_choice(ItemLossChoice)
+    self.choose_items(choice, [])
+    self.resolve_until_done()
     self.assertIsNone(self.char.delayed_until)
     self.assertEqual(self.char.stamina, 1)
     self.assertEqual(self.char.place.name, "Hospital")
@@ -4076,7 +4133,9 @@ class CaveTest(EncounterTest):
     self.assertEqual(choice.choices, ["Yes", "No"])
     choice.resolve(self.state, "Yes")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=2)):
-      self.resolve_until_done()
+      choice = self.resolve_to_choice(ItemLossChoice)
+    self.choose_items(choice, [])
+    self.resolve_until_done()
     self.assertEqual(self.char.sanity, 1)
     self.assertEqual(self.char.stamina, 2)
     self.assertEqual(self.char.place.name, "Asylum")
@@ -4088,7 +4147,9 @@ class CaveTest(EncounterTest):
     self.assertEqual(choice.choices, ["Yes", "No"])
     choice.resolve(self.state, "Yes")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=2)):
-      self.resolve_until_done()
+      choice = self.resolve_to_choice(ItemLossChoice)
+    self.choose_items(choice, [])
+    self.resolve_until_done()
     self.assertEqual(self.char.sanity, 2)
     self.assertEqual(self.char.stamina, 1)
     self.assertEqual(self.char.place.name, "Hospital")
@@ -4124,7 +4185,9 @@ class CaveTest(EncounterTest):
     self.assertEqual(choice.choices, ["Yes", "No"])
     choice.resolve(self.state, "Yes")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
-      self.resolve_until_done()
+      choice = self.resolve_to_choice(ItemLossChoice)
+    self.choose_items(choice, [])
+    self.resolve_until_done()
     self.assertEqual(self.char.sanity, 1)
     self.assertEqual(self.char.clues, 1)
     self.assertEqual(self.char.place.name, "Asylum")
@@ -4184,6 +4247,8 @@ class StoreTest(EncounterTest):
   def testStore4Insane(self):
     self.char.sanity = 1
     self.state.event_stack.append(encounters.Store4(self.char))
+    choice = self.resolve_to_choice(ItemLossChoice)
+    self.choose_items(choice, [])
     self.resolve_until_done()
     self.assertEqual(self.char.sanity, 1)
     self.assertEqual(self.char.place.name, "Asylum")
@@ -4285,6 +4350,8 @@ class ShoppeTest(EncounterTest):
   def testShoppe1Insane(self):
     self.char.sanity = 1
     self.state.event_stack.append(encounters.Shoppe1(self.char))
+    choice = self.resolve_to_choice(ItemLossChoice)
+    self.choose_items(choice, [])
     self.resolve_until_done()
     self.assertEqual(self.char.sanity, 1)
     self.assertEqual(self.char.place.name, "Asylum")
@@ -4428,6 +4495,8 @@ class ShoppeTest(EncounterTest):
   def testShoppe7Insane(self):
     self.char.sanity = 1
     self.state.event_stack.append(encounters.Shoppe7(self.char))
+    choice = self.resolve_to_choice(ItemLossChoice)
+    self.choose_items(choice, [])
     self.resolve_until_done()
     self.assertEqual(self.char.sanity, 1)
     self.assertEqual(self.char.place.name, "Asylum")
@@ -4450,7 +4519,9 @@ class GraveyardTest(EncounterTest):
     self.char.sanity = 1
     self.state.event_stack.append(encounters.Graveyard2(self.char))
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
-      self.resolve_until_done()
+      choice = self.resolve_to_choice(ItemLossChoice)
+    self.choose_items(choice, [])
+    self.resolve_until_done()
     self.assertEqual(self.char.sanity, 1)
     self.assertEqual(self.char.place.name, "Asylum")
     self.assertEqual(self.char.clues, 1)
@@ -4513,7 +4584,9 @@ class GraveyardTest(EncounterTest):
     self.state.unique.append(items.HolyWater(0))
     self.state.event_stack.append(encounters.Graveyard3(self.char))
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=4)):
-      self.resolve_until_done()
+      choice = self.resolve_to_choice(ItemLossChoice)
+    self.choose_items(choice, [])
+    self.resolve_until_done()
     self.assertEqual(self.char.place.name, "Hospital")
     self.assertEqual(self.char.stamina, 1)
 

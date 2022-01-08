@@ -890,47 +890,59 @@ class InsaneUnconsciousTest(EventTest):
 
   def testGoInsane(self):
     self.assertEqual(self.char.place.name, "Diner")
+    self.char.possessions.extend([assets.Dog(), abilities.Marksman(0), items.Food(0)])
     self.char.sanity = 0
     self.char.clues = 3
     insane = Insane(self.char)
 
     self.state.event_stack.append(insane)
+    choice = self.resolve_to_choice(ItemLossChoice)
+    self.choose_items(choice, [])
     self.resolve_until_done()
 
     self.assertTrue(insane.is_resolved())
     self.assertEqual(self.char.sanity, 1)
     self.assertEqual(self.char.place.name, "Asylum")
     self.assertEqual(self.char.clues, 2)
+    self.assertEqual(len(self.char.possessions), 3)
     self.assertEqual(self.char.lose_turn_until, self.state.turn_number + 1)
 
   def testGoUnconscious(self):
     self.assertEqual(self.char.place.name, "Diner")
+    self.char.possessions.extend([items.Food(0), items.TommyGun(0), items.Food(1)])
     self.char.stamina = 0
     self.char.clues = 1
     unconscious = Unconscious(self.char)
 
     self.state.event_stack.append(unconscious)
+    choice = self.resolve_to_choice(ItemLossChoice)
+    self.choose_items(choice, ["Food0"])
     self.resolve_until_done()
 
     self.assertTrue(unconscious.is_resolved())
     self.assertEqual(self.char.stamina, 1)
     self.assertEqual(self.char.place.name, "Hospital")
     self.assertEqual(self.char.clues, 1)
+    self.assertEqual(len(self.char.possessions), 2)
     self.assertEqual(self.char.lose_turn_until, self.state.turn_number + 1)
 
   def testInsaneInOtherWorld(self):
     self.char.place = self.state.places["Abyss1"]
+    self.char.possessions.extend([assets.Dog(), abilities.Stealth(0), items.Food(0), items.Food(1)])
     self.char.sanity = 0
     self.char.clues = 2
     insane = Insane(self.char)
 
     self.state.event_stack.append(insane)
+    choice = self.resolve_to_choice(ItemLossChoice)
+    self.choose_items(choice, ["Food0"])
     self.resolve_until_done()
 
     self.assertTrue(insane.is_resolved())
     self.assertEqual(self.char.sanity, 1)
     self.assertEqual(self.char.place.name, "Lost")
     self.assertEqual(self.char.clues, 1)
+    self.assertEqual(len(self.char.possessions), 3)
     self.assertEqual(self.char.lose_turn_until, self.state.turn_number + 2)
 
   @mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5))
@@ -944,6 +956,8 @@ class InsaneUnconsciousTest(EventTest):
     ], self.char)
 
     self.state.event_stack.append(seq)
+    choice = self.resolve_to_choice(ItemLossChoice)
+    self.choose_items(choice, [])
     self.resolve_until_done()
 
     self.assertEqual(self.char.place.name, "Asylum")
