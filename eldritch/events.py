@@ -786,7 +786,9 @@ class InsaneOrUnconscious(Event):
       return
 
     if not self.lose_items:
-      self.lose_items = Nothing()  # TODO: choosing items to lose
+      item_count = values.ItemDeckCount(self.character, {"common", "unique", "spells"})
+      lose_count = values.Calculation(item_count, None, operator.floordiv, 2)
+      self.lose_items = LoseItems(self.character, lose_count)
       state.event_stack.append(self.lose_items)
       return
 

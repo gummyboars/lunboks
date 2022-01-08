@@ -435,6 +435,8 @@ class LoseCombatTest(EventTest):
     choice = self.resolve_to_choice(MultipleChoice)
     choice.resolve(self.state, "Fight")
     # Character auto-fails the horror check.
+    choice = self.resolve_to_choice(ItemLossChoice)
+    self.choose_items(choice, [])
     self.resolve_until_done()
     self.assertEqual(self.char.sanity, 1)
     self.assertFalse(comb2.is_resolved())
@@ -467,6 +469,8 @@ class LoseCombatTest(EventTest):
       choose_weapons = self.resolve_to_choice(CombatChoice)
     self.choose_items(choose_weapons, [])
 
+    choice = self.resolve_to_choice(ItemLossChoice)
+    self.choose_items(choice, [])
     self.resolve_until_done()
     self.assertEqual(self.char.stamina, 1)
     self.assertFalse(combat.is_resolved())
@@ -487,6 +491,8 @@ class LoseCombatTest(EventTest):
     self.assertEqual(self.char.stamina, 1)
 
     next_choice.resolve(self.state, "Flee")
+    choice = self.resolve_to_choice(ItemLossChoice)
+    self.choose_items(choice, [])
     self.resolve_until_done()
     # They failed the next evade check, so they went unconscious.
     self.assertEqual(self.char.stamina, 1)
@@ -698,6 +704,7 @@ class CombatWithItems(EventTest):
 
   def testUnconsciousDeactivatesSpells(self):
     self.char.stamina = 1
+    revolver = self.char.possessions[2]
     choose_weapons = self.resolve_to_choice(CombatChoice)
     self.state.event_stack.append(self.state.usables[0]["Wither0"])
     cast = self.resolve_to_choice(SpendChoice)
@@ -712,17 +719,21 @@ class CombatWithItems(EventTest):
 
     # Fail the combat check.
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
-      self.resolve_until_done()
+      choice = self.resolve_to_choice(ItemLossChoice)
+    self.choose_items(choice, [".38 Revolver0"])
+    self.resolve_until_done()
 
     self.assertEqual(self.char.place.name, "Hospital")
     self.assertFalse(self.char.possessions[0].active)
     self.assertFalse(self.char.possessions[1].in_use)
     self.assertFalse(self.char.possessions[1].active)
     self.assertTrue(self.char.possessions[1].exhausted)
-    self.assertFalse(self.char.possessions[2].active)
+    self.assertNotIn(revolver, self.char.possessions)
+    self.assertFalse(revolver.active)  # No longer in possessions, got discarded.
 
   def testInsaneBeforeCombat(self):
     self.char.possessions[1] = items.Shrivelling(0)
+    revolver = self.char.possessions[2]
     self.char.sanity = 1
 
     self.resolve_to_choice(CombatChoice)
@@ -733,14 +744,17 @@ class CombatWithItems(EventTest):
 
     # Attempting to spend your last sanity to cast this spell makes you go insane before combat.
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
-      self.resolve_until_done()
+      choice = self.resolve_to_choice(ItemLossChoice)
+    self.choose_items(choice, [".38 Revolver0"])
+    self.resolve_until_done()
 
     self.assertEqual(self.char.place.name, "Asylum")
     self.assertFalse(self.char.possessions[0].active)
     self.assertFalse(self.char.possessions[1].in_use)
     self.assertFalse(self.char.possessions[1].active)
     self.assertTrue(self.char.possessions[1].exhausted)
-    self.assertFalse(self.char.possessions[2].active)
+    self.assertNotIn(revolver, self.char.possessions)
+    self.assertFalse(revolver.active)
 
   def testNeedSanityToCast(self):
     # TODO: i think we can get rid of this now that we have SpendMixin
@@ -1441,17 +1455,19 @@ class CombatWithEnchantedWeapon(EventTest):
     self.choose_items(choose_enchant, [".38 Revolver0"])
 
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
-      self.resolve_until_done()
+      choice = self.resolve_to_choice(ItemLossChoice)
+    self.choose_items(choice, ["Dark Cloak0"])
+    self.resolve_until_done()
 
     self.assertEqual(self.char.place.name, "Asylum")
     self.assertFalse(self.combat.combat.is_resolved())
 
-    self.assertFalse(self.char.possessions[2].active)
-    self.assertFalse(self.char.possessions[2].in_use)
-    self.assertTrue(self.char.possessions[2].exhausted)
+    self.assertFalse(self.char.possessions[1].active)
+    self.assertFalse(self.char.possessions[1].in_use)
+    self.assertTrue(self.char.possessions[1].exhausted)
 
-    self.assertEqual(self.char.possessions[1].active_bonuses["magical"], 0)
-    self.assertEqual(self.char.possessions[1].active_bonuses["physical"], 3)
+    self.assertEqual(self.char.possessions[0].active_bonuses["magical"], 0)
+    self.assertEqual(self.char.possessions[0].active_bonuses["physical"], 3)
 
   def testEnchantWeaponDeactivatesOnCombatLoss(self):
     self.char.stamina = 1
@@ -1467,16 +1483,18 @@ class CombatWithEnchantedWeapon(EventTest):
 
     self.choose_items(choose_weapons, [".38 Revolver0"])
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
-      self.resolve_until_done()
+      choice = self.resolve_to_choice(ItemLossChoice)
+    self.choose_items(choice, ["Dark Cloak0"])
+    self.resolve_until_done()
 
     self.assertEqual(self.char.place.name, "Hospital")
 
-    self.assertFalse(self.char.possessions[2].active)
-    self.assertFalse(self.char.possessions[2].in_use)
-    self.assertTrue(self.char.possessions[2].exhausted)
+    self.assertFalse(self.char.possessions[1].active)
+    self.assertFalse(self.char.possessions[1].in_use)
+    self.assertTrue(self.char.possessions[1].exhausted)
 
-    self.assertEqual(self.char.possessions[1].active_bonuses["magical"], 0)
-    self.assertEqual(self.char.possessions[1].active_bonuses["physical"], 3)
+    self.assertEqual(self.char.possessions[0].active_bonuses["magical"], 0)
+    self.assertEqual(self.char.possessions[0].active_bonuses["physical"], 3)
 
   def testCannotUseEnchantWeaponInNextCombat(self):
     self.char.sanity = 6  # Cheat to make sure they don't go insane
@@ -1941,13 +1959,15 @@ class CombatWithRedSignTest(EventTest):
     self.assertFalse(witch.has_attribute("magical resistance", self.state, self.char))
     self.choose_items(choose_weapons, ["Enchanted Knife0"])
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
-      self.resolve_until_done()
+      choice = self.resolve_to_choice(ItemLossChoice)
+    self.choose_items(choice, ["Enchanted Knife0"])
+    self.resolve_until_done()
 
     self.assertEqual(self.char.place.name, "Hospital")
 
-    self.assertFalse(self.char.possessions[2].active)
-    self.assertFalse(self.char.possessions[2].in_use)
-    self.assertTrue(self.char.possessions[2].exhausted)
+    self.assertFalse(self.char.possessions[1].active)
+    self.assertFalse(self.char.possessions[1].in_use)
+    self.assertTrue(self.char.possessions[1].exhausted)
     # Techincally, you wouldn't call this again because the combat has ended. But it's a good
     # check to make sure that the effects of the spell are done.
     self.assertTrue(witch.has_attribute("magical resistance", self.state, self.char))

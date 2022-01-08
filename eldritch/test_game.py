@@ -639,6 +639,10 @@ class InsaneTest(unittest.TestCase):
     self.state.event_stack.append(events.Loss(self.state.characters[0], {"sanity": 1}))
     for _ in self.state.resolve_loop():
       pass
+    self.assertIsInstance(self.state.event_stack[-1], events.ItemLossChoice)
+    self.state.event_stack[-1].resolve(self.state, "done")
+    for _ in self.state.resolve_loop():
+      pass
     self.assertIsInstance(self.state.event_stack[0], events.Upkeep)
     self.assertEqual(self.state.event_stack[0].character, self.state.characters[1])
     self.assertEqual(self.state.turn_idx, 1)
@@ -653,6 +657,10 @@ class InsaneTest(unittest.TestCase):
       pass
     self.assertIsInstance(self.state.event_stack[-1], events.CityMovement)
     self.state.event_stack.append(events.Loss(self.state.characters[2], {"sanity": 1}))
+    for _ in self.state.resolve_loop():
+      pass
+    self.assertIsInstance(self.state.event_stack[-1], events.ItemLossChoice)
+    self.state.event_stack[-1].resolve(self.state, "done")
     for _ in self.state.resolve_loop():
       if self.state.turn_phase != "movement":
         break
@@ -674,6 +682,10 @@ class InsaneTest(unittest.TestCase):
     self.assertIsInstance(self.state.event_stack[-1], events.MultipleChoice)
     self.state.event_stack.append(events.Loss(self.state.characters[2], {"sanity": 1}))
     for _ in self.state.resolve_loop():
+      pass
+    self.assertIsInstance(self.state.event_stack[-1], events.ItemLossChoice)
+    self.state.event_stack[-1].resolve(self.state, "done")
+    for _ in self.state.resolve_loop():
       if self.state.turn_phase != "encounter":
         break
     self.assertIsInstance(self.state.event_stack[0], events.OtherWorldPhase)
@@ -694,6 +706,10 @@ class InsaneTest(unittest.TestCase):
         break
     self.assertIsInstance(self.state.event_stack[-1], events.CardChoice)
     self.state.event_stack[-1].resolve(self.state, "Gate29")
+    for _ in self.state.resolve_loop():
+      pass
+    self.assertIsInstance(self.state.event_stack[-1], events.ItemLossChoice)
+    self.state.event_stack[-1].resolve(self.state, "done")
     for _ in self.state.resolve_loop():
       if self.state.turn_phase != "otherworld":
         break
@@ -722,6 +738,10 @@ class InsaneTest(unittest.TestCase):
     self.assertIsInstance(self.state.event_stack[-1], events.DiceRoll)
     self.assertEqual(self.state.event_stack[-1].character, self.state.characters[0])
     self.state.event_stack.append(events.Loss(self.state.characters[0], {"sanity": 1}))
+    for _ in self.state.resolve_loop():
+      pass
+    self.assertIsInstance(self.state.event_stack[-1], events.ItemLossChoice)
+    self.state.event_stack[-1].resolve(self.state, "done")
     for _ in self.state.resolve_loop():
       pass
     self.assertEqual(self.state.turn_idx, 0)
