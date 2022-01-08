@@ -104,10 +104,18 @@ def Roadhouse6(char):
   check = events.Check(char, "will", -1)
   clues = events.Gain(char, {"clues": 2})
   move = events.ForceMovement(char, "Easttown")
-  dollars_stolen = events.Loss(char, {"dollars": float("inf")})
-  # TODO: allow the character to choose an item to be stolen instead, but this needs to be
-  # conditional on a prerequisite of the character having at least one item.
-  return events.PassFail(char, check, clues, events.Sequence([move, dollars_stolen], char))
+  dollars = events.Loss(char, {"dollars": float("inf")})
+  prereq = values.ItemCountPrerequisite(char, 1, "at least")
+  choice = events.ItemCountChoice(char, "Choose an item to lose", 1)
+  discard = events.DiscardSpecific(char, choice)
+  item = events.Sequence([choice, discard], char)
+  loss = events.BinaryChoice(
+      char, "Lose an item or all your money?", "Item", "Money", item, dollars, prereq,
+  )
+  # NOTE: we are explicitly using ItemCountChoice instead of ItemLossChoice here because we do not
+  # believe it is okay for a player with only a derringer to choose to lose an item, and then avoid
+  # losing anything by claiming that the derringer cannot be lost or stolen.
+  return events.PassFail(char, check, clues, events.Sequence([move, loss], char))
 
 
 def Roadhouse7(char):
@@ -143,7 +151,10 @@ def Police4(char):
 
 
 def Police5(char):
-  return events.Nothing()  # TODO discarding all weapons
+  loss = events.LoseItems(char, float("inf"), "Discard your weapons", item_type="weapon")
+  return events.BinarySpend(
+      char, "dollars", 5, "Bribe Sheriff?", "Bribe ($5)", "Discard Weapons", events.Nothing(), loss,
+  )
 
 
 def Police6(char):
@@ -321,15 +332,10 @@ def WitchHouse6(char):
 def WitchHouse7(char):
   check = events.Check(char, "will", -2)
   spell = events.Draw(char, "spells", 1)
-  n_items_to_lose = int(len(char.possessions)//2)
-  # TODO: Lose half your items properly
-  loss_choice = events.ItemCountChoice(
-      char, "Which items are you missing when you wake up?", n_items_to_lose
+  lose_count = values.Calculation(
+      values.ItemDeckCount(char, {"common", "unique", "spells"}), None, operator.floordiv, 2,
   )
-  loss = events.Sequence([
-      loss_choice,
-      # TODO: Lose items that you chose
-  ], char)
+  loss = events.LoseItems(char, lose_count, "Which items are you missing when you wake up?")
   return events.PassFail(char, check, spell, loss)
 
 
@@ -599,8 +605,16 @@ def Church2(char):
 
 
 def Church3(char):
-  money = events.Loss(char, {"dollars": (char.dollars + 1)//2})
-  lose = events.Nothing()  # TODO: Lose half your items
+  dollars_up = values.Calculation(char, "dollars", operator.add, 1)
+  half_dollar_ceil = values.Calculation(dollars_up, None, operator.floordiv, 2)  # ceil(dollars/2)
+  money = events.Loss(char, {"dollars": half_dollar_ceil})
+  items_up = values.Calculation(
+      values.ItemDeckCount(char, {"common", "unique", "spells"}), None, operator.add, 1,
+  )
+  half_items_ceil = values.Calculation(items_up, None, operator.floordiv, 2)
+  lose = events.LoseItems(char, half_items_ceil, "Choose items to donate.")
+  # TODO: if you choose to donate half your items, but you only have two derringers, do you still
+  # have to donate a derringer to the poor?
   return events.BinaryChoice(
       char, "Donate half or your money or half of your items.", "Money", "Items", money, lose)
 
@@ -740,7 +754,7 @@ def Science1(char):
 def Science2(char):
   spell = events.Draw(char, "spells", 1)
   check = events.Check(char, "fight", -1)
-  lose = events.Nothing()  # TODO: lose an item of your choice
+  lose = events.LoseItems(char, 1, "Choose an item to lose.")
   fight = events.PassFail(char, check, events.Nothing(), lose)
   return events.Sequence([spell, fight], char)
 
@@ -812,7 +826,7 @@ def Shop3(char):
 def Shop4(char):
   check = events.Check(char, "luck", -1)
   prereq = values.ItemCountPrerequisite(char, 1, "at least")
-  loss = events.Nothing()  # TODO: Lose one item of your choice
+  loss = events.LoseItems(char, 1, "Choose an item to lose")
   new_encounter = events.Encounter(char, "Shop")
   fail = events.PassFail(char, prereq, loss, new_encounter)
   return events.PassFail(char, check, events.Nothing(), fail)
@@ -1049,7 +1063,7 @@ def Square3(char):
 
 def Square4(char):
   check = events.Check(char, "luck", -2)
-  loss = events.Nothing()  # TODO: Choose an item to lose
+  loss = events.LoseItems(char, 1, "Choose an item to lose")
   return events.PassFail(char, check, events.Nothing(), loss)
 
 
