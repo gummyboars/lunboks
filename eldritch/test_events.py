@@ -324,6 +324,34 @@ class MovementPhaseTest(EventTest):
     self.assertEqual(self.char.place.name, "Lost")
 
 
+class LostInTimeAndSpaceTest(EventTest):
+
+  def testNoReturnGatesMeansLost(self):
+    self.char.clues = 6
+    self.state.turn_phase = "movement"
+    self.char.place = self.state.places["Dreamlands2"]
+    self.state.event_stack.append(events.Movement(self.char))
+    self.resolve_until_done()
+    self.assertEqual(self.char.place.name, "Lost")
+    self.assertEqual(self.char.clues, 6)  # You do not lose clues/items when lost in time and space.
+
+  def testRecoverFromLostInTimeAndSpace(self):
+    self.state.turn_phase = "movement"
+    self.state.event_stack.append(LostInTimeAndSpace(self.char))
+    self.resolve_until_done()
+    self.advance_turn(self.state.turn_number+1, "movement")
+    self.assertIsInstance(self.state.event_stack[-1], Movement)
+    self.resolve_until_done()  # Player's turn is skipped.
+    self.advance_turn(self.state.turn_number+1, "upkeep")
+    self.assertIsInstance(self.state.event_stack[-1], Upkeep)
+
+    choice = self.resolve_to_choice(PlaceChoice)
+    choice.resolve(self.state, "Uptown")
+    self.resolve_to_choice(SliderInput)
+    self.assertEqual(self.char.place.name, "Uptown")
+    self.assertFalse(self.char.explored)
+
+
 class MovementTest(EventTest):
 
   def testMoveOneSpace(self):

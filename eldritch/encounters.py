@@ -463,8 +463,7 @@ def Graveyard4(char):
 def Graveyard5(char):
   check = events.Check(char, "luck", -2)
   choice = events.PlaceChoice(
-      char, "Move anywhere in the city and have an encounter?", choice_filters={"open"},
-      none_choice="No thanks",
+      char, "Move anywhere in the city and have an encounter?", none_choice="No thanks",
   )
   move = events.ForceMovement(char, choice)
   encounter = events.Encounter(char, choice)
@@ -852,8 +851,7 @@ def Shop7(char):
 def Newspaper1(char):
   money = events.Gain(char, {"dollars": 2})
   choice = events.PlaceChoice(
-      char, "Get a ride anywhere in the city and have an encounter?", choice_filters={"open"},
-      none_choice="No thanks",
+      char, "Get a ride anywhere in the city and have an encounter?", none_choice="No thanks",
   )
   move = events.ForceMovement(char, choice)
   encounter = events.Encounter(char, choice)
@@ -914,8 +912,7 @@ def Train4(char):
 
 def Train5(char):
   choice = events.PlaceChoice(
-      char, "Get a ride anywhere in the city and have an encounter?", choice_filters={"open"},
-      none_choice="No thanks",
+      char, "Get a ride anywhere in the city and have an encounter?", none_choice="No thanks",
   )
   move = events.ForceMovement(char, choice)
   encounter = events.Encounter(char, choice)
@@ -994,8 +991,7 @@ def Asylum7(char):
 
 def Bank1(char):
   choice = events.PlaceChoice(
-      char, "Catch a lift to anywhere in the city and have an encounter?",
-      choice_filters={"open"}, none_choice="No thanks",
+      char, "Catch a lift to anywhere in the city and have an encounter?", none_choice="No thanks",
   )
   move = events.ForceMovement(char, choice)
   encounter = events.Encounter(char, choice)

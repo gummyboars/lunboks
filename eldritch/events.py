@@ -160,6 +160,7 @@ class Upkeep(Turn):
   def __init__(self, character):
     self.character = character
     self.focus_given = False
+    self.reappear: Optional[Event] = None
     self.refresh: Optional[RefreshAssets] = None
     self.actions: Optional[UpkeepActions] = None
     self.sliders: Optional[SliderInput] = None
@@ -167,6 +168,12 @@ class Upkeep(Turn):
 
   def resolve(self, state):
     if self.check_lose_turn():
+      return
+    if self.character.place.name == "Lost":
+      place_choice = PlaceChoice(self.character, "Choose a place to return to")
+      move = ForceMovement(self.character, place_choice)
+      self.reappear = Sequence([place_choice, move], self.character)
+      state.event_stack.append(self.reappear)
       return
     if not self.focus_given:
       self.character.focus_points = self.character.focus
@@ -2547,23 +2554,23 @@ class PlaceChoice(MapChoice):
   VALID_FILTERS = {"streets", "locations", "open", "closed"}
 
   def __init__(self, character, prompt, choices=None, choice_filters=None, none_choice=None):
-    assert choices or choice_filters
-    assert not (choices and choice_filters)
+    assert choice_filters is None or choices is None
     super().__init__(character, prompt, none_choice=none_choice)
     if choices:
       self.fixed_choices = choices
       self.choice_filters = None
     else:
-      assert choice_filters & self.VALID_FILTERS
-      assert not choice_filters - self.VALID_FILTERS
-      for pair in [{"streets", "locations"}, {"open", "closed"}]:
-        if not choice_filters & pair:
-          choice_filters |= pair
+      choice_filters = choice_filters or set()
+      assert choice_filters <= self.VALID_FILTERS
+      if not choice_filters & {"streets", "locations"}:
+        choice_filters |= {"streets", "locations"}
+      if not choice_filters & {"open", "closed"}:
+        choice_filters |= {"open"}
       self.fixed_choices = None
       self.choice_filters = choice_filters
 
   def compute_choices(self, state):
-    if self.fixed_choices:
+    if self.fixed_choices is not None:
       self.choices = self.fixed_choices
       return
     self.choices = []
@@ -2896,6 +2903,7 @@ class Return(Event):
     self.character = character
     self.world_name = world_name
     self.return_choice: Optional[ChoiceEvent] = None
+    self.lost: Optional[Event] = None
     self.returned = None
 
   def resolve(self, state):
@@ -2907,7 +2915,11 @@ class Return(Event):
     assert self.return_choice.is_done()
 
     if self.return_choice.is_cancelled() or self.return_choice.choice is None:  # Unable to return
-      self.returned = False  # TODO: lost in time and space
+      if self.lost is None:
+        self.lost = LostInTimeAndSpace(self.character)
+        state.event_stack.append(self.lost)
+        return
+      self.returned = False
       return
     self.character.place = state.places[self.return_choice.choice]
     self.character.explored = True
