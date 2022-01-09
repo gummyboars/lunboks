@@ -733,7 +733,7 @@ class MoveMonsterTest(EventTest):
 
     self.assertEqual(monster.place.name, "Rivertown")
 
-  def testMovementTypes(self):
+  def testMovementDimensionsAndTypes(self):
     self.state.monsters.clear()
     self.state.monsters.extend([
         monsters.Cultist(),  # moon, moves on black
@@ -752,6 +752,106 @@ class MoveMonsterTest(EventTest):
     self.assertEqual(self.state.monsters[1].place.name, "Rivertown")
     self.assertEqual(self.state.monsters[2].place.name, "Southside")
     self.assertEqual(self.state.monsters[3].place.name, "Rivertown")
+
+  def testMonstersDontMoveFromPlayer(self):
+    self.state.monsters.clear()
+    self.state.monsters.extend([
+        monsters.Cultist(), monsters.Ghost(), monsters.DimensionalShambler(), monsters.Ghoul(),
+    ])
+
+    for monster in self.state.monsters:
+      monster.place = self.state.places["Rivertown"]
+    self.char.place = self.state.places["Rivertown"]
+
+    self.state.event_stack.append(MoveMonsters({"square"}, {"circle", "moon"}))
+    self.resolve_until_done()
+
+    self.assertEqual(self.state.monsters[0].place.name, "Rivertown")
+    self.assertEqual(self.state.monsters[1].place.name, "Rivertown")
+    self.assertEqual(self.state.monsters[2].place.name, "Rivertown")
+    self.assertEqual(self.state.monsters[3].place.name, "Rivertown")
+
+  def testFastMonsterStopsMovingAtPlayer(self):
+    self.state.monsters.clear()
+    self.state.monsters.append(monsters.DimensionalShambler())
+
+    self.state.monsters[0].place = self.state.places["Rivertown"]
+    self.char.place = self.state.places["FrenchHill"]
+
+    self.state.event_stack.append(MoveMonsters({"square"}, {"circle", "moon"}))
+    self.resolve_until_done()
+
+    self.assertEqual(self.state.monsters[0].place.name, "FrenchHill")
+
+  def testFlyingMonsterMovement(self):
+    self.state.monsters.clear()
+    self.state.monsters.extend([
+        monsters.DreamFlier(),  # Slash
+        monsters.Pinata(),  # Circle
+        monsters.GiantInsect(),  # Circle
+        monsters.FlameMatrix(),  # Star
+        monsters.SubterraneanFlier(),  # Hex
+        monsters.Pinata(),  # Circle
+        monsters.DreamFlier(),  # Slash
+    ])
+
+    self.char.place = self.state.places["Merchant"]
+    self.state.monsters[0].place = self.state.places["Merchant"]  # Next to player, will not move.
+    self.state.monsters[1].place = self.state.places["Rivertown"]  # Will move to player (adjacent).
+    self.state.monsters[2].place = self.state.places["Sky"]  # Will move to player from sky.
+    self.state.monsters[3].place = self.state.places["Easttown"]  # Will move to sky.
+    self.state.monsters[4].place = self.state.places["Cave"]  # Will not move (hex).
+    self.state.monsters[5].place = self.state.places["Cave"]  # Will move to sky.
+    self.state.monsters[6].place = self.state.places["Isle"]  # Will move to player.
+
+    self.state.event_stack.append(MoveMonsters({"slash"}, {"circle", "star"}))
+    self.resolve_until_done()
+
+    self.assertEqual(self.state.monsters[0].place.name, "Merchant")
+    self.assertEqual(self.state.monsters[1].place.name, "Merchant")
+    self.assertEqual(self.state.monsters[2].place.name, "Merchant")
+    self.assertEqual(self.state.monsters[3].place.name, "Sky")
+    self.assertEqual(self.state.monsters[4].place.name, "Cave")
+    self.assertEqual(self.state.monsters[5].place.name, "Sky")
+    self.assertEqual(self.state.monsters[6].place.name, "Merchant")
+
+  def testBreakTiesBasedOnSneak(self):
+    self.state.monsters.clear()
+    self.state.monsters.extend([monsters.DreamFlier(), monsters.Pinata(), monsters.GiantInsect()])
+
+    buddy = characters.Character("Buddy", 5, 5, 4, 4, 4, 4, 4, 4, 4, "Square")
+    self.state.all_characters["Buddy"] = buddy
+    self.state.characters.append(buddy)
+
+    buddy.place = self.state.places["Rivertown"]
+    self.char.place = self.state.places["Downtown"]
+    self.state.monsters[0].place = self.state.places["Merchant"]
+    self.state.monsters[1].place = self.state.places["Northside"]
+    self.state.monsters[2].place = self.state.places["Sky"]
+
+    self.char.speed_sneak_slider = 2
+    self.assertEqual(buddy.sneak(self.state), 1)
+    self.assertEqual(self.char.sneak(self.state), 2)
+
+    self.state.event_stack.append(MoveMonsters({"slash"}, {"circle", "star"}))
+    self.resolve_until_done()
+
+    self.assertEqual(self.state.monsters[0].place.name, "Rivertown")
+    self.assertEqual(self.state.monsters[1].place.name, "Downtown")
+    self.assertEqual(self.state.monsters[2].place.name, "Rivertown")
+
+  def testFlyingMovementNobodyInStreets(self):
+    self.state.monsters.clear()
+    self.state.monsters.extend([monsters.DreamFlier(), monsters.Pinata()])
+    self.state.monsters[0].place = self.state.places["Sky"]
+    self.state.monsters[1].place = self.state.places["Isle"]
+    self.char.place = self.state.places["Unnamable"]
+
+    self.state.event_stack.append(MoveMonsters({"slash"}, {"circle", "star"}))
+    self.resolve_until_done()
+
+    self.assertEqual(self.state.monsters[0].place.name, "Sky")
+    self.assertEqual(self.state.monsters[1].place.name, "Sky")
 
   def testOneMovementCancelled(self):
     self.state.monsters.clear()

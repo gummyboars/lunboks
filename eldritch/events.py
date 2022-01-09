@@ -3325,13 +3325,7 @@ class MoveMonsters(Event):
           continue
 
         move_color = "white" if monster.dimension in self.white_dimensions else "black"
-        num_moves = 1
-        if monster.has_attribute("stationary", state, None):
-          num_moves = 0
-        elif monster.has_attribute("fast", state, None):
-          num_moves = 2
-        for _ in range(num_moves):
-          moves.append(MoveMonster(monster, move_color))
+        moves.append(MoveMonster(monster, move_color))
       self.moves = Sequence(moves)
 
     if not self.moves.is_done():
@@ -3360,17 +3354,56 @@ class MoveMonster(Event):
   def resolve(self, state):
     self.source = self.monster.place
 
-    if self.monster.place is None or not hasattr(self.monster.place, "movement"):
+    if self.monster.place is None:
       self.destination = False
       return
 
-    if self.color not in self.monster.place.movement:
+    if self.monster.has_attribute("stationary", state, None):
       self.destination = False
       return
 
-    self.destination = self.monster.place.movement[self.color]
-    self.monster.place = self.destination
-    # TODO: other movement types (flying, unique, stalker, aquatic)
+    local_chars = [char for char in state.characters if char.place == self.monster.place]
+    if local_chars:
+      self.destination = False
+      return
+
+    if self.monster.has_attribute("flying", state, None):
+      if self.monster.place.name == "Sky":
+        nearby_streets = [
+            street for street in state.places.values() if isinstance(street, places.Street)
+        ]
+      else:
+        nearby_streets = [
+            street for street in self.monster.place.connections if isinstance(street, places.Street)
+        ]
+      eligible_chars = [char for char in state.characters if char.place in nearby_streets]
+      if not eligible_chars:
+        if self.monster.place.name == "Sky":
+          self.destination = False
+          return
+        self.destination = state.places["Sky"]
+        self.monster.place = self.destination
+        return
+
+      # TODO: allow the first player to break ties
+      eligible_chars.sort(key=lambda char: char.sneak(state))
+      self.destination = eligible_chars[0].place
+      self.monster.place = self.destination
+      return
+
+    num_moves = 1
+    if self.monster.has_attribute("fast", state, None):
+      num_moves = 2
+
+    self.destination = False
+    for _ in range(num_moves):
+      if self.color in getattr(self.monster.place, "movement", {}):
+        self.destination = self.monster.place.movement[self.color]
+        self.monster.place = self.destination
+      if [char for char in state.characters if char.place == self.monster.place]:
+        break
+
+    # TODO: other movement types (unique, stalker, aquatic)
 
   def is_resolved(self):
     return self.destination is not None
