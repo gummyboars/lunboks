@@ -123,7 +123,7 @@ class Character:
         pos.handle: pos.get_usable_interrupt(event, self, state)
         for pos in self.possessions if pos.get_usable_interrupt(event, self, state)
     }
-    if isinstance(event, events.SpendMixin) and not event.is_done():
+    if isinstance(event, events.SpendMixin) and event.character == self and not event.is_done():
       spent_handles = event.spent_handles()
       for trophy in self.trophies:
         handle = trophy.handle

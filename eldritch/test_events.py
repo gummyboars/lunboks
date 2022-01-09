@@ -1928,6 +1928,23 @@ class SpendChoiceTest(EventTest):
     self.assertEqual(choice.spent_handles(), {"Maniac"})
     self.assertEqual(choice.remaining_spend, [False, True])
 
+  def testOtherCharactersCannotSpendTrophies(self):
+    buddy = characters.Character("Buddy", 5, 5, 4, 4, 4, 4, 4, 4, 4, "Square")
+    buddy.place = self.state.places["Square"]
+    self.state.all_characters["Buddy"] = buddy
+    self.state.characters.append(buddy)
+
+    self.char.trophies.append(self.state.gates.popleft())
+    buddy.trophies.append(self.state.gates.popleft())
+    spend_gate = values.ExactSpendPrerequisite({"gates": 1})
+    choice = SpendChoice(self.char, "choose", ["A", "B"], spends=[spend_gate, None])
+    self.state.event_stack.append(choice)
+    choice = self.resolve_to_choice(SpendChoice)
+
+    self.assertIn(0, self.state.usables)
+    self.assertNotIn(1, self.state.usables)
+    self.assertEqual(len(self.state.usables[0]), 1)
+
   def testSpendItems(self):
     self.char.possessions.extend([items.ResearchMaterials(0), items.ResearchMaterials(1)])
     self.char.clues = 2
@@ -1962,6 +1979,23 @@ class SpendChoiceTest(EventTest):
     self.assertEqual([pos.handle for pos in self.char.possessions], ["Research Materials0"])
     self.assertEqual([item.handle for item in self.state.common], ["Research Materials1"])
     self.assertEqual(self.char.clues, 2)
+
+  def testOtherCharactersCannotSpendItems(self):
+    buddy = characters.Character("Buddy", 5, 5, 4, 4, 4, 4, 4, 4, 4, "Square")
+    buddy.place = self.state.places["Square"]
+    self.state.all_characters["Buddy"] = buddy
+    self.state.characters.append(buddy)
+
+    self.char.possessions.append(items.ResearchMaterials(0))
+    buddy.possessions.append(items.ResearchMaterials(1))
+    spend_clue = values.ExactSpendPrerequisite({"clues": 1})
+    choice = SpendChoice(self.char, "choose", ["A", "B"], spends=[spend_clue, None])
+    self.state.event_stack.append(choice)
+    choice = self.resolve_to_choice(SpendChoice)
+
+    self.assertIn(0, self.state.usables)
+    self.assertNotIn(1, self.state.usables)
+    self.assertEqual(self.state.usables[0].keys(), {"Research Materials0"})
 
 
 class ItemChoiceTest(EventTest):

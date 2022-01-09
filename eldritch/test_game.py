@@ -201,6 +201,77 @@ class DrawCardsFixedEncounterTest(FixedEncounterBaseTest):
     self.assertCountEqual(event.invalid_choices, [1])
 
 
+class SpendTrophiesEncounterTest(FixedEncounterBaseTest):
+
+  def setUp(self):
+    super().setUp()
+    self.char.trophies.append(self.state.gates.popleft())
+
+  def testGainDollars(self):
+    self.char.dollars = 0
+    self.char.place = self.state.places["Docks"]
+    self.state.event_stack.append(events.EncounterPhase(self.char))
+    for _ in self.state.resolve_loop():
+      pass
+    self.assertTrue(self.state.event_stack)
+    event = self.state.event_stack[-1]
+    self.assertIsInstance(event, events.CardSpendChoice)
+    self.assertEqual(event.choices, ["Merchant Card", "Gain $5"])
+    with self.assertRaises(AssertionError):
+      event.resolve(self.state, "Gain $5")
+
+    self.state.event_stack.append(self.state.usables[0][self.char.trophies[0].handle])
+    for _ in self.state.resolve_loop():
+      pass
+    event.resolve(self.state, "Gain $5")
+    for _ in self.state.resolve_loop():
+      pass
+    self.assertEqual(len(self.char.trophies), 0)
+    self.assertEqual(self.char.dollars, 5)
+
+  def testGainClues(self):
+    self.char.place = self.state.places["Science"]
+    self.state.event_stack.append(events.EncounterPhase(self.char))
+    for _ in self.state.resolve_loop():
+      pass
+    self.assertTrue(self.state.event_stack)
+    event = self.state.event_stack[-1]
+    self.assertIsInstance(event, events.CardSpendChoice)
+    self.assertEqual(event.choices, ["University Card", "Gain 2 clues"])
+    with self.assertRaises(AssertionError):
+      event.resolve(self.state, "Gain 2 clues")
+
+    self.state.event_stack.append(self.state.usables[0][self.char.trophies[0].handle])
+    for _ in self.state.resolve_loop():
+      pass
+    event.resolve(self.state, "Gain 2 clues")
+    for _ in self.state.resolve_loop():
+      pass
+    self.assertEqual(len(self.char.trophies), 0)
+    self.assertEqual(self.char.clues, 2)
+
+  def testGetBlessed(self):
+    self.char.place = self.state.places["Church"]
+    self.state.event_stack.append(events.EncounterPhase(self.char))
+    for _ in self.state.resolve_loop():
+      pass
+    self.assertTrue(self.state.event_stack)
+    event = self.state.event_stack[-1]
+    self.assertIsInstance(event, events.CardSpendChoice)
+    self.assertEqual(event.choices, ["Southside Card", "Blessing"])
+    with self.assertRaises(AssertionError):
+      event.resolve(self.state, "Blessing")
+
+    self.state.event_stack.append(self.state.usables[0][self.char.trophies[0].handle])
+    for _ in self.state.resolve_loop():
+      pass
+    event.resolve(self.state, "Blessing")
+    for _ in self.state.resolve_loop():
+      pass
+    self.assertEqual(len(self.char.trophies), 0)
+    self.assertEqual(self.char.bless_curse, 1)  # TODO: get a choice of investigators to bless
+
+
 class GateTravelTest(unittest.TestCase):
 
   def setUp(self):
