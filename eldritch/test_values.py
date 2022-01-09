@@ -112,7 +112,7 @@ class PrerequisiteTest(unittest.TestCase):
     self.assertEqual(prereq.value(None), 1)
 
   def testAttributeNotMaxedPrereq(self):
-    char = DummyChar(sanity=5, max_sanity=5)
+    char = DummyChar(sanity=5, max_sanity=lambda state: 5)
     prereq = AttributeNotMaxedPrerequisite(char, "sanity")
     self.assertEqual(prereq.value(None), 0)
     char.sanity = 3

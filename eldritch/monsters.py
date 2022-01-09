@@ -83,7 +83,7 @@ class Monster:
     state_modifier = state.get_modifier(self, check_type + "damage") or 0
     char_modifier = char.get_modifier(self, check_type + "damage") or 0
     if state_modifier or char_modifier:
-      return min((self.damages.get(check_type) or 0) + state_modifier + char_modifier, 0)
+      return max((self.damages.get(check_type) or 0) + state_modifier + char_modifier, 0)
     return self.damages.get(check_type)
 
   def bypass_damage(self, check_type, state):  # pylint: disable=unused-argument
@@ -103,13 +103,13 @@ class Monster:
 
   def has_attribute(self, attribute, state, char):
     state_override = state.get_override(self, attribute)
-    char_override = char.get_override(self, attribute)
+    char_override = char.get_override(self, attribute) if char else None
     # Prefer specific overrides (at the item level) over general ones (environment, ancient one).
     if char_override is not None:
       return char_override
     if state_override is not None:
       return state_override
-    return attribute in self._attributes
+    return attribute in self._attributes or attribute == self.movement
 
 
 def GiantInsect():
@@ -126,8 +126,9 @@ def LandSquid():
   )
 
 
-def Cultist():
-  return Monster("Cultist", "normal", "moon", {"evade": -3, "combat": 1}, {"combat": 1}, 1)
+class Cultist(Monster):
+  def __init__(self):
+    super().__init__("Cultist", "normal", "moon", {"evade": -3, "combat": 1}, {"combat": 1}, 1)
 
 
 def TentacleTree():
@@ -222,8 +223,9 @@ def Hound():
   )
 
 
-def Maniac():  # TODO: custom class when we add globals
-  return Monster("Maniac", "normal", "moon", {"evade": -1, "combat": 1}, {"combat": 1}, 1)
+class Maniac(Monster):
+  def __init__(self):
+    super().__init__("Maniac", "normal", "moon", {"evade": -1, "combat": 1}, {"combat": 1}, 1)
 
 
 def Pinata():

@@ -110,7 +110,7 @@ class Medicine(assets.Asset):
     if event.character != owner:
       return None
     neighbors = [char for char in state.characters if char.place == owner.place]
-    eligible = [char for char in neighbors if char.stamina < char.max_stamina]
+    eligible = [char for char in neighbors if char.stamina < char.max_stamina(state)]
     if not eligible:
       return None
     gains = {idx: events.Gain(char, {"stamina": 1}) for idx, char in enumerate(eligible)}

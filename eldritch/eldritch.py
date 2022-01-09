@@ -14,6 +14,7 @@ from eldritch import encounters
 from eldritch import characters
 from eldritch import assets
 from eldritch import abilities
+from eldritch import ancient_ones
 from game import (  # pylint: disable=unused-import
     BaseGame, CustomEncoder, InvalidInput, UnknownMove, InvalidMove, InvalidPlayer, NotYourTurn,
     ValidatePlayer, TooManyPlayers,
@@ -88,6 +89,7 @@ class GameState:
     self.turn_idx = 0
     self.turn_number = 0
     self.turn_phase = "upkeep"
+    self.ancient_one = ancient_ones.DummyAncient()
     self.test_mode = True
 
   def initialize(self):
@@ -106,6 +108,7 @@ class GameState:
     random.shuffle(gate_markers)
     self.gates.extend(gate_markers)
 
+    self.ancient_one = ancient_ones.DummyAncient()
     self.monsters = monsters.CreateMonsters()
     for idx, monster in enumerate(self.monsters):
       monster.idx = idx

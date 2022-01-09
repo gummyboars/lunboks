@@ -588,9 +588,9 @@ class GainOrLoss(Event):
       new_val = old_val + adjustment
       new_val = max(new_val, 0)
       if attr == "stamina":
-        new_val = min(new_val, self.character.max_stamina)
+        new_val = min(new_val, self.character.max_stamina(state))
       if attr == "sanity":
-        new_val = min(new_val, self.character.max_sanity)
+        new_val = min(new_val, self.character.max_sanity(state))
       self.final_adjustments[attr] = new_val - old_val
       setattr(self.character, attr, new_val)
 
@@ -2988,7 +2988,9 @@ class GateCloseAttempt(Event):
         return
 
     if self.seal_choice is None:
-      spend = values.ExactSpendPrerequisite({"clues": 5})
+      seal_clues = 5
+      seal_clues += state.get_modifier(self, "seal_clues")
+      spend = values.ExactSpendPrerequisite({"clues": seal_clues})
       self.seal_choice = SpendChoice(
           self.character, "Spend clues to seal the gate?", ["Yes", "No"], spends=[spend, None],
       )
@@ -3073,6 +3075,7 @@ class OpenGate(Event):
     self.opened = state.gates.popleft()
     state.places[self.location_name].gate = self.opened
     state.places[self.location_name].clues = 0  # TODO: this should be its own event
+    # TODO: AddDoom event
     self.spawn = SpawnGateMonster(self.location_name)
     state.event_stack.append(self.spawn)
 
@@ -3307,9 +3310,9 @@ class MoveMonsters(Event):
 
         move_color = "white" if monster.dimension in self.white_dimensions else "black"
         num_moves = 1
-        if monster.movement == "stationary":
+        if monster.has_attribute("stationary", state, None):
           num_moves = 0
-        elif monster.movement == "fast":
+        elif monster.has_attribute("fast", state, None):
           num_moves = 2
         for _ in range(num_moves):
           moves.append(MoveMonster(monster, move_color))
@@ -3473,3 +3476,11 @@ class ActivateEnvironment(Event):
 
   def finish_str(self):
     return f"{self.env.name} is the new environment"
+
+
+class AncientOneAttack(Sequence):
+  pass
+
+
+class AncientOneAwaken(Sequence):
+  pass

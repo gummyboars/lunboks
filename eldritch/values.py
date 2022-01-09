@@ -59,7 +59,7 @@ class AttributeNotMaxedPrerequisite(Value):
     self.attribute = attribute
 
   def value(self, state):
-    char_max = getattr(self.character, "max_" + self.attribute)
+    char_max = getattr(self.character, "max_" + self.attribute)(state)
     current = getattr(self.character, self.attribute)
     return int(current < char_max)
 

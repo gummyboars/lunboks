@@ -142,7 +142,7 @@ class Mythos6(Environment):
     return 0
 
   def get_interrupt(self, event, state):
-    if isinstance(event, events.MoveMonster) and event.monster.movement == "flying":
+    if isinstance(event, events.MoveMonster) and event.monster.has_attribute("flying", state, None):
       return None  # TODO: prevent movement
     return None
 
