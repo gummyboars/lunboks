@@ -241,6 +241,16 @@ class InCity(Value):
     return int(isinstance(self.character.place, places.CityPlace))
 
 
+class OnGate(Value):
+
+  def __init__(self, character):
+    super().__init__()
+    self.character = character
+
+  def value(self, state):
+    return int(getattr(self.character.place, "gate", None) is not None)
+
+
 class UnsuccessfulDice(Value):
 
   def __init__(self, check):

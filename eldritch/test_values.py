@@ -206,6 +206,18 @@ class StabilityTest(unittest.TestCase):
     self.assertEqual(unstable.value(state), 0)
 
 
+class OnGateTest(unittest.TestCase):
+
+  def testOnGate(self):
+    place = DummyPlace(gate=Dummy(name="Abyss"))
+    state = DummyState()
+    char = DummyChar(place=place)
+    on_gate = OnGate(char)
+    self.assertEqual(on_gate.value(state), 1)
+    place.gate = None
+    self.assertEqual(on_gate.value(state), 0)
+
+
 class OpenGatesTest(unittest.TestCase):
 
   def testOpenGates(self):

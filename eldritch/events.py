@@ -461,12 +461,12 @@ class EncounterPhase(Turn):
       if self.character.place.gate and self.character.explored:
         self.action = GateCloseAttempt(self.character, self.character.place.name)
       elif self.character.place.gate:
-        self.action = Travel(self.character, self.character.place.gate.name)
+        self.action = Travel(self.character)
       elif self.character.place.fixed_encounters:
         choices = [self.character.place.neighborhood.name + " Card"]
         prereqs = [None]
         spends = [None]
-        results = {0: Encounter(self.character, self.character.place.name)}
+        results = {0: Encounter(self.character)}
         for idx, fixed in enumerate(self.character.place.fixed_encounters):
           choices.append(fixed.name)
           prereqs.append(fixed.prereq(self.character))
@@ -476,7 +476,7 @@ class EncounterPhase(Turn):
         cond = Conditional(self.character, choice, "choice_index", results)
         self.action = Sequence([choice, cond], self.character)
       else:
-        self.action = Encounter(self.character, self.character.place.name)
+        self.action = Encounter(self.character)
       state.event_stack.append(self.action)
       return
 
@@ -1632,35 +1632,34 @@ def Purchase(char, deck, draw_count, discount_type="fixed", discount=0, keep_cou
   return Sequence([items_to_buy, buy], char)
 
 
+def MoveAndEncounter(character, choice):
+  was_cancelled = values.Calculation(choice, None, operator.methodcaller("is_cancelled"))
+  move_enc = Sequence([ForceMovement(character, choice), TravelOrEncounter(character)], character)
+  return Conditional(character, was_cancelled, "", {0: move_enc, 1: Nothing()})
+
+
+def TravelOrEncounter(character, count=1):
+  on_gate = values.OnGate(character)
+  return Conditional(character, on_gate, "", {0: Encounter(character, count), 1: Travel(character)})
+
+
 class Encounter(Event):
 
-  def __init__(self, character, location_name, count=1):
+  def __init__(self, character, count=1):
     super().__init__()
     self.character = character
-    self.location_name: Union[MapChoice, DrawMythosCard, str] = location_name
+    self.loc_name: Optional[str] = None
     self.draw: Optional[DrawEncounter] = None
     self.encounter: Optional[Event] = None
     self.count = count
 
   def resolve(self, state):
-    if isinstance(self.location_name, MapChoice):
-      assert self.location_name.is_done()
-      if self.location_name.choice is None:
-        self.cancelled = True
-        return
-      self.location_name = self.location_name.choice
-    elif isinstance(self.location_name, DrawMythosCard):
-      assert self.location_name.is_done()
-      if self.location_name.card is None or self.location_name.card.gate_location is None:
-        self.cancelled = True
-        return
-      self.location_name = self.location_name.card.gate_location
-    if not isinstance(state.places[self.location_name], places.Location):
+    if not isinstance(self.character.place, places.Location):
       self.cancelled = True
       return
 
     if self.draw is None:
-      neighborhood = state.places[self.location_name].neighborhood
+      neighborhood = self.character.place.neighborhood
       self.draw = DrawEncounter(self.character, neighborhood, self.count)
 
     if not self.draw.is_done():
@@ -1674,12 +1673,11 @@ class Encounter(Event):
     if self.encounter and self.encounter.is_done():
       return
 
-    location_name = self.location_name
-    if self.character.lodge_membership and self.location_name == "Lodge":
-      location_name = "Sanctum"
+    self.loc_name = self.character.place.name
+    if self.character.lodge_membership and self.loc_name == "Lodge":
+      self.loc_name = "Sanctum"
 
-    encounters = [
-        card.encounter_event(self.character, location_name) for card in self.draw.cards]
+    encounters = [card.encounter_event(self.character, self.loc_name) for card in self.draw.cards]
     if any(isinstance(enc, Unimplemented) for enc in encounters):
       # TODO: Implement all the encounters, but this is a stopgap to let us play
       self.draw = None
@@ -1687,7 +1685,7 @@ class Encounter(Event):
       return
 
     if len(self.draw.cards) == 1 and state.test_mode:  # TODO: test this
-      self.encounter = self.draw.cards[0].encounter_event(self.character, location_name)
+      self.encounter = self.draw.cards[0].encounter_event(self.character, self.loc_name)
       state.event_stack.append(self.encounter)
       return
 
@@ -1706,7 +1704,7 @@ class Encounter(Event):
       return f"[{self.character.name}] did not have an encounter"
     if self.draw is None:
       return f"[{self.character.name}] has an encounter"
-    return f"[{self.character.name}] had an encounter at [{self.location_name}]"
+    return f"[{self.character.name}] had an encounter at [{self.loc_name}]"
 
 
 class DrawEncounter(Event):
@@ -4165,22 +4163,27 @@ class MonsterAppears(Conditional):
 
 class Travel(Event):
 
-  def __init__(self, character, world_name):
+  def __init__(self, character, destination=None):
     super().__init__()
     self.character = character
-    self.world_name: Union[MapChoice, str] = world_name
+    self.destination: Optional[Union[MapChoice, str]] = destination
     self.done = False
 
   def resolve(self, state):
-    if isinstance(self.world_name, MapChoice):
-      if self.world_name.is_cancelled():
+    if isinstance(self.destination, MapChoice):
+      if self.destination.is_cancelled():
         self.cancelled = True
         return
-      if getattr(state.places[self.world_name.choice], "gate", None) is None:
+      if getattr(state.places[self.destination.choice], "gate", None) is None:
         self.cancelled = True
         return
-      self.world_name = state.places[self.world_name.choice].gate.name
-    self.character.place = state.places[self.world_name + "1"]
+      self.destination = state.places[self.destination.choice].gate.name
+    if self.destination is None:
+      if getattr(self.character.place, "gate", None) is None:
+        self.cancelled = True
+        return
+      self.destination = self.character.place.gate.name
+    self.character.place = state.places[self.destination + "1"]
     self.character.explored = False  # just in case
     self.done = True
 
@@ -4192,7 +4195,7 @@ class Travel(Event):
       return f"[{self.character.name}] did not move to another world"
     if not self.done:
       return f"[{self.character.name}] moves to another world"
-    return f"[{self.character.name}] moved to [{self.world_name}]"
+    return f"[{self.character.name}] moved to [{self.destination}]"
 
   def animated(self):
     return True
@@ -4248,13 +4251,12 @@ class Return(Event):
 
 class PullThroughGate(Sequence):
 
-  def __init__(self, chars, world_name):  # TODO: cleanup
+  def __init__(self, chars):  # TODO: characters should not be delayed if the travel is cancelled?
     assert chars
     self.chars = chars
-    self.world_name = world_name
     seq = []
     for char in chars:
-      seq.extend([Travel(char, world_name), Delayed(char)])
+      seq.extend([Travel(char), Delayed(char)])
     super().__init__(seq)
 
 

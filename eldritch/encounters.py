@@ -492,10 +492,8 @@ def Graveyard5(char):
   choice = events.PlaceChoice(
       char, "Move anywhere in the city and have an encounter?", none_choice="No thanks",
   )
-  move = events.ForceMovement(char, choice)
-  encounter = events.Encounter(char, choice)
   clues = events.Gain(char, {"clues": 2})
-  rubbings = events.Sequence([clues, choice, move, encounter], char)
+  rubbings = events.Sequence([clues, choice, events.MoveAndEncounter(char, choice)], char)
   return events.PassFail(char, check, rubbings, events.Nothing())
 
 
@@ -510,7 +508,7 @@ def Graveyard7(char):
 
 def Society1(char):
   move = events.ForceMovement(char, "Woods")
-  encounter = events.Encounter(char, "Woods", 2)
+  encounter = events.TravelOrEncounter(char, 2)
   accept = events.Sequence([move, encounter], char)
   return events.BinaryChoice(char, "Accept Ride?", "Yes", "No", accept, events.Nothing())
 
@@ -556,7 +554,7 @@ def Society6(char):
 
 def Society7(char):
   move = events.ForceMovement(char, "Cave")
-  encounter = events.Encounter(char, "Cave", 2)
+  encounter = events.TravelOrEncounter(char, 2)
   cave = events.Sequence([move, encounter], char)
   return events.BinaryChoice(char, "Go with Cindy?", "Yes", "No", cave, events.Nothing())
 
@@ -575,7 +573,7 @@ def House1(char):
 
 def House2(char):
   move = events.ForceMovement(char, "Lodge")
-  encounter = events.Encounter(char, "Lodge", 2)
+  encounter = events.TravelOrEncounter(char, 2)
   lodge = events.Sequence([move, encounter], char)
   return events.BinaryChoice(char, "Enter the tunnel?", "Yes", "No", lodge, events.Nothing())
 
@@ -852,7 +850,7 @@ def Shop4(char):
   check = events.Check(char, "luck", -1)
   prereq = values.ItemCountPrerequisite(char, 1, "at least")
   loss = events.LoseItems(char, 1, "Choose an item to lose")
-  new_encounter = events.Encounter(char, "Shop")
+  new_encounter = events.Encounter(char)
   fail = events.PassFail(char, prereq, loss, new_encounter)
   return events.PassFail(char, check, events.Nothing(), fail)
 
@@ -875,7 +873,7 @@ def Shop7(char):
   check = events.Check(char, "speed", -1)
   draw_mythos = events.DrawMythosCard(char, require_gate=True)
   move = events.ForceMovement(char, draw_mythos)
-  encounter = events.Encounter(char, draw_mythos)
+  encounter = events.TravelOrEncounter(char)
   fail = events.Sequence([draw_mythos, move, encounter], char)
   return events.PassFail(char, check, events.Nothing(), fail)
 
@@ -885,9 +883,7 @@ def Newspaper1(char):
   choice = events.PlaceChoice(
       char, "Get a ride anywhere in the city and have an encounter?", none_choice="No thanks",
   )
-  move = events.ForceMovement(char, choice)
-  encounter = events.Encounter(char, choice)
-  return events.Sequence([money, choice, move, encounter], char)
+  return events.Sequence([money, choice, events.MoveAndEncounter(char, choice)], char)
 
 
 def Newspaper2(char):
@@ -946,9 +942,7 @@ def Train5(char):
   choice = events.PlaceChoice(
       char, "Get a ride anywhere in the city and have an encounter?", none_choice="No thanks",
   )
-  move = events.ForceMovement(char, choice)
-  encounter = events.Encounter(char, choice)
-  return events.Sequence([choice, move, encounter], char)
+  return events.Sequence([choice, events.MoveAndEncounter(char, choice)], char)
 
 
 def Train6(char):
@@ -1042,9 +1036,7 @@ def Bank1(char):
   choice = events.PlaceChoice(
       char, "Catch a lift to anywhere in the city and have an encounter?", none_choice="No thanks",
   )
-  move = events.ForceMovement(char, choice)
-  encounter = events.Encounter(char, choice)
-  return events.Sequence([choice, move, encounter], char)
+  return events.Sequence([choice, events.MoveAndEncounter(char, choice)], char)
 
 
 def Bank2(char):
