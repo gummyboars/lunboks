@@ -74,7 +74,7 @@ def CreateFixedEncounters():
       name="Gain 2 clues",
       prereq=lambda char: None,
       spend=lambda char: values.ToughnessOrGatesSpend(5),
-      encounter=lambda char: events.Gain(char, {"clues": 5}),
+      encounter=lambda char: events.Gain(char, {"clues": 2}),
   )
 
   dollars = FixedEncounter(
