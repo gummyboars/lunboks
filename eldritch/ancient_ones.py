@@ -107,7 +107,7 @@ class Wendigo(AncientOne):
 
   def get_interrupt(self, event, state):
     # TODO: Discard weather cards
-    if isinstance(event, events.ActivateEnvironment) and event.environment_type == "weather":
+    if isinstance(event, events.ActivateEnvironment) and event.env.environment_type == "weather":
       return events.CancelEvent(event)
     return None
 
