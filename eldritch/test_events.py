@@ -1778,7 +1778,7 @@ class SpendChoiceTest(EventTest):
     self.state.event_stack.append(choice)
     self.resolve_to_choice(SpendChoice)
 
-    self.assertEqual(choice.remaining_spend, [True, False])
+    self.assertEqual(choice.remaining_spend, [{"dollars": 1}, False])
     with self.assertRaises(AssertionError):
       choice.resolve(self.state, "Food")
     self.assertFalse(choice.is_done())
@@ -1793,22 +1793,22 @@ class SpendChoiceTest(EventTest):
     self.state.event_stack.append(choice)
     self.resolve_to_choice(SpendChoice)
 
-    self.assertEqual(choice.remaining_spend, [True, False])
+    self.assertEqual(choice.remaining_spend, [{"dollars": 1}, False])
     with self.assertRaises(AssertionError):
       choice.resolve(self.state, "Food")
 
     self.spend("dollars", 2, choice)
-    self.assertEqual(choice.remaining_spend, [True, True])
+    self.assertEqual(choice.remaining_spend, [{"dollars": -1}, {"dollars": -2}])
     with self.assertRaises(AssertionError):
       choice.resolve(self.state, "Food")
 
     self.spend("dollars", -1, choice)
-    self.assertEqual(choice.remaining_spend, [False, True])
+    self.assertEqual(choice.remaining_spend, [False, {"dollars": -1}])
     with self.assertRaises(AssertionError):  # Cannot choose something else if you've spent.
       choice.resolve(self.state, "Nothing")
 
     self.spend("dollars", -1, choice)
-    self.assertEqual(choice.remaining_spend, [True, False])
+    self.assertEqual(choice.remaining_spend, [{"dollars": 1}, False])
     self.assertFalse(choice.is_done())
     choice.resolve(self.state, "Nothing")
     self.resolve_until_done()
@@ -1830,20 +1830,47 @@ class SpendChoiceTest(EventTest):
       self.spend("dollars", -1, choice)  # Cannot unspend something you did not spend.
     self.assertEqual(choice.spend_map["dollars"].get("dollars", 0), 0)
 
+  def testRangeSpend(self):
+    self.char.dollars = 6
+    spend = values.RangeSpendPrerequisite("dollars", 2, 4)
+    choice = SpendChoice(self.char, "choose", ["Yes", "No"], spends=[spend, None])
+    self.state.event_stack.append(choice)
+    self.resolve_to_choice(SpendChoice)
+
+    self.assertEqual(choice.remaining_spend, [{"dollars": 2}, False])
+    with self.assertRaises(AssertionError):
+      choice.resolve(self.state, "Yes")
+
+    self.spend("dollars", 2, choice)
+    self.assertEqual(choice.remaining_spend, [False, {"dollars": -2}])
+    with self.assertRaises(AssertionError):
+      choice.resolve(self.state, "No")
+
+    self.spend("dollars", 2, choice)
+    self.assertEqual(choice.remaining_spend, [False, {"dollars": -4}])
+
+    self.spend("dollars", 2, choice)
+    self.assertEqual(choice.remaining_spend, [{"dollars": -2}, {"dollars": -6}])
+
+    self.spend("dollars", -3, choice)
+    choice.resolve(self.state, "Yes")
+    self.resolve_until_done()
+    self.assertEqual(self.char.dollars, 3)
+
   def testMultiSpend(self):
     spend = values.ExactSpendPrerequisite({"stamina": 1, "sanity": 1})
     choice = SpendChoice(self.char, "choose", ["Sign", "Nevermind"], spends=[spend, None])
     self.state.event_stack.append(choice)
     self.resolve_to_choice(SpendChoice)
-    self.assertEqual(choice.remaining_spend, [True, False])
+    self.assertEqual(choice.remaining_spend, [{"stamina": 1, "sanity": 1}, False])
     with self.assertRaises(AssertionError):
       choice.resolve(self.state, "Sign")
     self.spend("stamina", 1, choice)
-    self.assertEqual(choice.remaining_spend, [True, True])
+    self.assertEqual(choice.remaining_spend, [{"sanity": 1}, {"stamina": -1}])
     with self.assertRaises(AssertionError):
       choice.resolve(self.state, "Sign")
     self.spend("sanity", 1, choice)
-    self.assertEqual(choice.remaining_spend, [False, True])
+    self.assertEqual(choice.remaining_spend, [False, {"sanity": -1, "stamina": -1}])
     choice.resolve(self.state, "Sign")
     self.resolve_until_done()
     self.assertEqual(self.char.sanity, 4)
@@ -1859,10 +1886,12 @@ class SpendChoiceTest(EventTest):
     choice.spend("stamina")
     choice.spend("sanity")
     self.resolve_to_choice(SpendChoice)
-    self.assertEqual(choice.remaining_spend, [True, True, True])
+    self.assertEqual(
+        choice.remaining_spend, [{"sanity": -1}, {"stamina": -1}, {"sanity": -1, "stamina": -1}],
+    )
     choice.unspend("stamina")
     self.resolve_to_choice(SpendChoice)
-    self.assertEqual(choice.remaining_spend, [True, False, True])
+    self.assertEqual(choice.remaining_spend, [{"sanity": -1, "stamina": 1}, False, {"sanity": -1}])
 
   def testSpendGateTrophies(self):
     spend_gate = values.ExactSpendPrerequisite({"gates": 1})
@@ -1873,27 +1902,27 @@ class SpendChoiceTest(EventTest):
     self.state.event_stack.append(choice)
     choice = self.resolve_to_choice(SpendChoice)
 
-    self.assertEqual(choice.remaining_spend, [True, False])
+    self.assertEqual(choice.remaining_spend, [{"gates": 1}, False])
     self.assertIn(0, self.state.usables)
     self.assertCountEqual(self.state.usables[0].keys(), ["Gate Abyss0", "Gate Abyss1"])
     self.state.event_stack.append(self.state.usables[0]["Gate Abyss1"])
     choice = self.resolve_to_choice(SpendChoice)
     self.assertEqual(choice.spent_handles(), {"Gate Abyss1"})
-    self.assertEqual(choice.remaining_spend, [False, True])
+    self.assertEqual(choice.remaining_spend, [False, {"gates": -1}])
 
     self.assertIn(0, self.state.usables)
     self.assertCountEqual(self.state.usables[0].keys(), ["Gate Abyss0", "Gate Abyss1"])
     self.state.event_stack.append(self.state.usables[0]["Gate Abyss0"])
     choice = self.resolve_to_choice(SpendChoice)
     self.assertEqual(choice.spent_handles(), {"Gate Abyss1", "Gate Abyss0"})
-    self.assertEqual(choice.remaining_spend, [True, True])
+    self.assertEqual(choice.remaining_spend, [{"gates": -1}, {"gates": -2}])
 
     self.assertIn(0, self.state.usables)
     self.assertCountEqual(self.state.usables[0].keys(), ["Gate Abyss0", "Gate Abyss1"])
     self.state.event_stack.append(self.state.usables[0]["Gate Abyss1"])
     choice = self.resolve_to_choice(SpendChoice)
     self.assertEqual(choice.spent_handles(), {"Gate Abyss0"})
-    self.assertEqual(choice.remaining_spend, [False, True])
+    self.assertEqual(choice.remaining_spend, [False, {"gates": -1}])
 
     choice.resolve(self.state, "A")
     self.resolve_until_done()
@@ -1912,23 +1941,23 @@ class SpendChoiceTest(EventTest):
     self.state.event_stack.append(choice)
     choice = self.resolve_to_choice(SpendChoice)
 
-    self.assertEqual(choice.remaining_spend, [True, False])
+    self.assertEqual(choice.remaining_spend, [{"toughness": 2}, False])
     self.assertIn(0, self.state.usables)
     self.assertEqual(self.state.usables[0].keys(), {"Cultist", "Vampire", "Dream Flier"})
     self.state.event_stack.append(self.state.usables[0]["Cultist"])
     choice = self.resolve_to_choice(SpendChoice)
     self.assertEqual(choice.spent_handles(), {"Cultist"})
-    self.assertEqual(choice.remaining_spend, [True, True])
+    self.assertEqual(choice.remaining_spend, [{"toughness": 1}, {"toughness": -1}])
 
     self.state.event_stack.append(self.state.usables[0]["Vampire"])
     choice = self.resolve_to_choice(SpendChoice)
     self.assertEqual(choice.spent_handles(), {"Cultist", "Vampire"})
-    self.assertEqual(choice.remaining_spend, [True, True])
+    self.assertEqual(choice.remaining_spend, [{"toughness": -1}, {"toughness": -3}])
 
     self.state.event_stack.append(self.state.usables[0]["Cultist"])
     choice = self.resolve_to_choice(SpendChoice)
     self.assertEqual(choice.spent_handles(), {"Vampire"})
-    self.assertEqual(choice.remaining_spend, [False, True])
+    self.assertEqual(choice.remaining_spend, [False, {"toughness": -2}])
 
     choice.resolve(self.state, "A")
     self.resolve_until_done()
@@ -1948,13 +1977,13 @@ class SpendChoiceTest(EventTest):
     self.state.event_stack.append(choice)
     choice = self.resolve_to_choice(SpendChoice)
 
-    self.assertEqual(choice.remaining_spend, [True, False])
+    self.assertEqual(choice.remaining_spend, [{"toughness": 2}, False])
     self.assertIn(0, self.state.usables)
     self.assertEqual(self.state.usables[0].keys(), {"Maniac"})
     self.state.event_stack.append(self.state.usables[0]["Maniac"])
     choice = self.resolve_to_choice(SpendChoice)
     self.assertEqual(choice.spent_handles(), {"Maniac"})
-    self.assertEqual(choice.remaining_spend, [False, True])
+    self.assertEqual(choice.remaining_spend, [False, {"toughness": -2}])
 
   def testOtherCharactersCannotSpendTrophies(self):
     buddy = characters.Character("Buddy", 5, 5, 4, 4, 4, 4, 4, 4, 4, "Square")
@@ -1981,26 +2010,26 @@ class SpendChoiceTest(EventTest):
     choice = self.resolve_to_choice(SpendChoice)
 
     self.assertEqual(choice.choices, ["Spend", "Done"])
-    self.assertEqual(choice.remaining_spend, [True, False])
+    self.assertEqual(choice.remaining_spend, [{"clues": 1}, False])
     self.assertIn(0, self.state.usables)
     self.assertEqual(self.state.usables[0].keys(), {"Research Materials0", "Research Materials1"})
 
     self.state.event_stack.append(self.state.usables[0]["Research Materials0"])
     choice = self.resolve_to_choice(SpendChoice)
     self.assertEqual(choice.spent_handles(), {"Research Materials0"})
-    self.assertEqual(choice.remaining_spend, [False, True])
+    self.assertEqual(choice.remaining_spend, [False, {"clues": -1}])
 
     self.assertEqual(self.state.usables[0].keys(), {"Research Materials0", "Research Materials1"})
     self.state.event_stack.append(self.state.usables[0]["Research Materials1"])
     choice = self.resolve_to_choice(SpendChoice)
     self.assertEqual(choice.spent_handles(), {"Research Materials0", "Research Materials1"})
-    self.assertEqual(choice.remaining_spend, [True, True])
+    self.assertEqual(choice.remaining_spend, [{"clues": -1}, {"clues": -2}])
 
     self.assertEqual(self.state.usables[0].keys(), {"Research Materials0", "Research Materials1"})
     self.state.event_stack.append(self.state.usables[0]["Research Materials0"])
     choice = self.resolve_to_choice(SpendChoice)
     self.assertEqual(choice.spent_handles(), {"Research Materials1"})
-    self.assertEqual(choice.remaining_spend, [False, True])
+    self.assertEqual(choice.remaining_spend, [False, {"clues": -1}])
 
     choice.resolve(self.state, "Spend")
     choice = self.resolve_to_choice(SpendChoice)
@@ -2697,12 +2726,12 @@ class PurchaseTest(EventTest):
     choice = self.resolve_to_choice(CardSpendChoice)
     self.assertEqual(choice.choices, ["Tommy Gun", "Food", "Nothing"])
     self.spend("dollars", 1, choice)
-    self.assertEqual(choice.remaining_spend, [True, False, True])
+    self.assertEqual(choice.remaining_spend, [{"dollars": 6}, False, {"dollars": -1}])
     choice.resolve(self.state, "Food")
 
     choice = self.resolve_to_choice(CardSpendChoice)
     self.assertEqual(choice.choices, ["Tommy Gun", "Nothing"])
-    self.assertEqual(choice.remaining_spend, [True, False])
+    self.assertEqual(choice.remaining_spend, [{"dollars": 7}, False])
     choice.resolve(self.state, "Nothing")
     self.resolve_until_done()
 
@@ -2726,7 +2755,7 @@ class PurchaseTest(EventTest):
     self.assertEqual(choice.choices, ["Food", "Tommy Gun", "Nothing"])
     self.assertEqual(choice.annotations(self.state), ["1 dollars", "7 dollars", ""])
     self.spend("dollars", 7, choice)
-    self.assertEqual(choice.remaining_spend, [True, False, True])
+    self.assertEqual(choice.remaining_spend, [{"dollars": -6}, False, {"dollars": -7}])
     choice.resolve(self.state, "Tommy Gun")
     choice = self.resolve_to_choice(CardSpendChoice)
     self.assertEqual(choice.choices, ["Food", "Nothing"])

@@ -310,6 +310,17 @@ function resetMonsterChoice(e) {
   monsterChoice = {};
 }
 
+function defaultSpend(spendDict) {
+  for (let spendType of ["sanity", "stamina", "clues", "dollars"]) {
+    for (let i = 0; i < spendDict[spendType] || 0; i++) {
+      spend(spendType);
+    }
+    for (let i = 0; i < -spendDict[spendType] || 0; i++) {
+      unspend(spendType);
+    }
+  }
+}
+
 function spend(spendType) {
   ws.send(JSON.stringify({"type": "spend", "spend_type": spendType}));
 }
@@ -702,14 +713,16 @@ function addCardChoices(uichoice, cardChoice, cards, invalidChoices, remainingSp
     }
     let holder = document.createElement("DIV");
     holder.classList.add("cardholder");
-    if (invalidChoices != null && invalidChoices.includes(idx)) {
-      holder.classList.add("unchoosable");
-    } else if (remainingSpend != null && remainingSpend.length > idx && remainingSpend[idx]) {
-      holder.classList.add("mustspend");
-    }
     let div = document.createElement("DIV");
     div.classList.add("cardchoice", "cnvcontainer");
     div.onclick = function(e) { makeChoice(card); };
+    if (invalidChoices != null && invalidChoices.includes(idx)) {
+      holder.classList.add("unchoosable");
+    } else if (remainingSpend != null && remainingSpend.length > idx && remainingSpend[idx]) {
+      let rem = remainingSpend[idx];
+      holder.classList.add("mustspend");
+      div.onclick = function(e) { defaultSpend(rem); };
+    }
     let cnv = document.createElement("CANVAS");
     cnv.classList.add("markercnv");  // TODO: use a better class name for this
     div.appendChild(cnv);
@@ -730,15 +743,17 @@ function addChoices(uichoice, choices, invalidChoices, remainingSpend) {
   for (let [idx, c] of choices.entries()) {
     let div = document.createElement("DIV");
     div.classList.add("choice");
+    div.innerText = c;
+    div.onclick = function(e) { makeChoice(c); };
     if (invalidChoices != null && invalidChoices.includes(idx)) {
       div.classList.add("unchoosable");
     } else if (remainingSpend != null && remainingSpend.length > idx && remainingSpend[idx]) {
+      let rem = remainingSpend[idx];
       div.classList.add("mustspend");
+      div.onclick = function(e) { defaultSpend(rem); };
     } else {
       div.classList.add("choosable");
     }
-    div.innerText = c;
-    div.onclick = function(e) { makeChoice(c); };
     uichoice.appendChild(div);
   }
 }

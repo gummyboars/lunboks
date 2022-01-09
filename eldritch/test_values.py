@@ -153,41 +153,41 @@ class SpendTest(unittest.TestCase):
     spend = ExactSpendPrerequisite({"dollars": 1})
     spend.spend_event = Dummy(spend_map=collections.defaultdict(dict))
     # Prerequisite starts unsatisfied.
-    self.assertEqual(spend.value(state), 0)
+    self.assertEqual(spend.remaining_spend(state), {"dollars": 1})
     # Spend one dollar, the prereq is satisfied.
     spend.spend_event.spend_map["dollars"]["dollars"] = 1
-    self.assertEqual(spend.value(state), 1)
+    self.assertEqual(spend.remaining_spend(state), {})
     # If for some reason you decided to spend clues and then changed your mind, still satisfied.
     spend.spend_event.spend_map["clues"]["clues"] = 0
-    self.assertEqual(spend.value(state), 1)
+    self.assertEqual(spend.remaining_spend(state), {})
     # Spend an extra dollar, now no longer satisfied.
     spend.spend_event.spend_map["dollars"]["dollars"] = 2
-    self.assertEqual(spend.value(state), 0)
+    self.assertEqual(spend.remaining_spend(state), {"dollars": -1})
 
   def testSpendZeroPrerequisite(self):
     state = DummyState()
-    spend = ExactSpendPrerequisite({"dollars": 0})
+    spend = SpendNothing()
     spend.spend_event = Dummy(spend_map=collections.defaultdict(dict))
     # This can happen when trying to buy an item that has been discounted to zero dollars.
-    self.assertEqual(spend.value(state), 1)
+    self.assertEqual(spend.remaining_spend(state), {})
     spend.spend_event.spend_map["dollars"]["dollars"] = 1
-    self.assertEqual(spend.value(state), 0)
+    self.assertEqual(spend.remaining_spend(state), {"dollars": -1})
     # Should be satisfied both when not present and when present but 0.
     spend.spend_event.spend_map["dollars"]["dollars"] = 0
-    self.assertEqual(spend.value(state), 1)
+    self.assertEqual(spend.remaining_spend(state), {})
 
   def testRangePrerequisite(self):
     state = DummyState()
     spend = RangeSpendPrerequisite("dollars", 1, 6)
     spend.spend_event = Dummy(spend_map=collections.defaultdict(dict))
-    self.assertEqual(spend.value(state), 0)
+    self.assertEqual(spend.remaining_spend(state), {"dollars": 1})
 
     spend.spend_event.spend_map["dollars"]["dollars"] = 1
-    self.assertEqual(spend.value(state), 1)
+    self.assertEqual(spend.remaining_spend(state), {})
     spend.spend_event.spend_map["dollars"]["dollars"] = 6
-    self.assertEqual(spend.value(state), 1)
+    self.assertEqual(spend.remaining_spend(state), {})
     spend.spend_event.spend_map["dollars"]["dollars"] = 7
-    self.assertEqual(spend.value(state), 0)
+    self.assertEqual(spend.remaining_spend(state), {"dollars": -1})
 
   def testDynamicRange(self):
     state = DummyState()
@@ -195,43 +195,43 @@ class SpendTest(unittest.TestCase):
     spend = RangeSpendPrerequisite("sanity", 1, Calculation(char, "sanity"))
     spend.spend_event = Dummy(spend_map=collections.defaultdict(dict))
 
-    self.assertEqual(spend.value(state), 0)
+    self.assertEqual(spend.remaining_spend(state), {"sanity": 1})
     spend.spend_event.spend_map["sanity"]["sanity"] = 1
-    self.assertEqual(spend.value(state), 1)
+    self.assertEqual(spend.remaining_spend(state), {})
     spend.spend_event.spend_map["sanity"]["sanity"] = 3
-    self.assertEqual(spend.value(state), 1)
+    self.assertEqual(spend.remaining_spend(state), {})
     char.sanity = 2
-    self.assertEqual(spend.value(state), 0)
+    self.assertEqual(spend.remaining_spend(state), {"sanity": -1})
 
   def testSpendMultipleTypes(self):
     state = DummyState()
     spend = ExactSpendPrerequisite({"clues": 2})
     spend.spend_event = Dummy(spend_map=collections.defaultdict(dict))
-    self.assertEqual(spend.value(state), 0)
+    self.assertEqual(spend.remaining_spend(state), {"clues": 2})
 
     spend.spend_event.spend_map["clues"]["clues"] = 1
-    self.assertEqual(spend.value(state), 0)
+    self.assertEqual(spend.remaining_spend(state), {"clues": 1})
     spend.spend_event.spend_map["clues"]["Research Materials0"] = 1
-    self.assertEqual(spend.value(state), 1)
+    self.assertEqual(spend.remaining_spend(state), {})
     spend.spend_event.spend_map["clues"]["clues"] = 2
-    self.assertEqual(spend.value(state), 0)
+    self.assertEqual(spend.remaining_spend(state), {"clues": -1})
 
   def testMultiPrerequisite(self):
     state = DummyState()
     spend = ExactSpendPrerequisite({"dollars": 1, "clues": 2})
     spend.spend_event = Dummy(spend_map=collections.defaultdict(dict))
-    self.assertEqual(spend.value(state), 0)
+    self.assertEqual(spend.remaining_spend(state), {"dollars": 1, "clues": 2})
 
     spend.spend_event.spend_map["dollars"]["dollars"] = 1
-    self.assertEqual(spend.value(state), 0)
+    self.assertEqual(spend.remaining_spend(state), {"clues": 2})
     spend.spend_event.spend_map["clues"]["clues"] = 2
-    self.assertEqual(spend.value(state), 1)
+    self.assertEqual(spend.remaining_spend(state), {})
     spend.spend_event.spend_map["clues"]["Research Materials0"] = 1
-    self.assertEqual(spend.value(state), 0)
+    self.assertEqual(spend.remaining_spend(state), {"clues": -1})
     spend.spend_event.spend_map["clues"]["clues"] = 1
-    self.assertEqual(spend.value(state), 1)
+    self.assertEqual(spend.remaining_spend(state), {})
     spend.spend_event.spend_map["stamina"]["stamina"] = 1
-    self.assertEqual(spend.value(state), 0)
+    self.assertEqual(spend.remaining_spend(state), {"stamina": -1})
 
 
 class SpendToughnessTest(unittest.TestCase):
@@ -240,86 +240,86 @@ class SpendToughnessTest(unittest.TestCase):
     state = DummyState()
     spend = ToughnessSpend(5)
     spend.spend_event = Dummy(spend_map=collections.defaultdict(dict))
-    self.assertEqual(spend.value(state), 0)
+    self.assertEqual(spend.remaining_spend(state), {"toughness": 5})
 
     spend.spend_event.spend_map["toughness"]["Some monster"] = 4
-    self.assertEqual(spend.value(state), 0)
+    self.assertEqual(spend.remaining_spend(state), {"toughness": 1})
     # Exact spend
     spend.spend_event.spend_map["toughness"]["Other monster"] = 1
-    self.assertEqual(spend.value(state), 1)
+    self.assertEqual(spend.remaining_spend(state), {})
     # Unrelated spending at zero should have no effect.
     spend.spend_event.spend_map["clues"]["clues"] = 0
-    self.assertEqual(spend.value(state), 1)
+    self.assertEqual(spend.remaining_spend(state), {})
     # Cannot spend anything else
     spend.spend_event.spend_map["gates"]["some gate"] = 1
-    self.assertEqual(spend.value(state), 0)
+    self.assertEqual(spend.remaining_spend(state), {"gates": -1})
     # A gate does not count as 5 toughness for TougnessSpend.
     spend.spend_event.spend_map["toughness"].clear()
-    self.assertEqual(spend.value(state), 0)
+    self.assertEqual(spend.remaining_spend(state), {"gates": -1, "toughness": 5})
 
   def testToughnessOverspend(self):
     state = DummyState()
     spend = ToughnessSpend(5)
     spend.spend_event = Dummy(spend_map=collections.defaultdict(dict))
-    self.assertEqual(spend.value(state), 0)
+    self.assertEqual(spend.remaining_spend(state), {"toughness": 5})
 
     spend.spend_event.spend_map["toughness"]["Some monster"] = 4
-    self.assertEqual(spend.value(state), 0)
+    self.assertEqual(spend.remaining_spend(state), {"toughness": 1})
     # Spent 6, but minimum spend is two, so overspend is okay.
     spend.spend_event.spend_map["toughness"]["Other monster"] = 2
-    self.assertEqual(spend.value(state), 1)
+    self.assertEqual(spend.remaining_spend(state), {})
     # Not okay: overspent by two, with one monster worth 2
     spend.spend_event.spend_map["toughness"]["Some monster"] = 3
     spend.spend_event.spend_map["toughness"]["Third monster"] = 2
-    self.assertEqual(spend.value(state), 0)
+    self.assertEqual(spend.remaining_spend(state), {"toughness": -2})
 
   def testToughnessOrGateSpending(self):
     state = DummyState()
     spend = ToughnessOrGatesSpend(10)
     spend.spend_event = Dummy(spend_map=collections.defaultdict(dict))
-    self.assertEqual(spend.value(state), 0)
+    self.assertEqual(spend.remaining_spend(state), {"toughness": 10})
 
     spend.spend_event.spend_map["toughness"]["Some monster"] = 4
     spend.spend_event.spend_map["gates"]["Some gate"] = 1
-    self.assertEqual(spend.value(state), 0)
+    self.assertEqual(spend.remaining_spend(state), {"toughness": 1})
     # Exact spend
     spend.spend_event.spend_map["toughness"]["Other monster"] = 1
-    self.assertEqual(spend.value(state), 1)
+    self.assertEqual(spend.remaining_spend(state), {})
     # Unrelated spending at zero should have no effect.
     spend.spend_event.spend_map["clues"]["clues"] = 0
-    self.assertEqual(spend.value(state), 1)
+    self.assertEqual(spend.remaining_spend(state), {})
     # Can use only monsters
     spend.spend_event.spend_map["gates"].clear()
     spend.spend_event.spend_map["toughness"]["big monster"] = 5
-    self.assertEqual(spend.value(state), 1)
+    self.assertEqual(spend.remaining_spend(state), {})
     # Can use only gates
     spend.spend_event.spend_map["toughness"].clear()
     spend.spend_event.spend_map["gates"] = {"Some gate": 1, "Other gate": 1}
-    self.assertEqual(spend.value(state), 1)
+    self.assertEqual(spend.remaining_spend(state), {})
 
   def testToughnessOrGateOverspend(self):
     state = DummyState()
     spend = ToughnessOrGatesSpend(10)
     spend.spend_event = Dummy(spend_map=collections.defaultdict(dict))
-    self.assertEqual(spend.value(state), 0)
+    self.assertEqual(spend.remaining_spend(state), {"toughness": 10})
 
     spend.spend_event.spend_map["toughness"]["Some monster"] = 4
     spend.spend_event.spend_map["gates"]["Some gate"] = 1
-    self.assertEqual(spend.value(state), 0)
+    self.assertEqual(spend.remaining_spend(state), {"toughness": 1})
     # Spent 11, but minimum spend is two, so overspend is okay.
     spend.spend_event.spend_map["toughness"]["Other monster"] = 2
-    self.assertEqual(spend.value(state), 1)
+    self.assertEqual(spend.remaining_spend(state), {})
     # Not okay: overspent by two, with one monster worth 2
     spend.spend_event.spend_map["toughness"]["Some monster"] = 3
     spend.spend_event.spend_map["toughness"]["Third monster"] = 2
-    self.assertEqual(spend.value(state), 0)
+    self.assertEqual(spend.remaining_spend(state), {"toughness": -2})
     # Use two gates
     spend.spend_event.spend_map["toughness"].clear()
     spend.spend_event.spend_map["gates"]["Other gate"] = 1
-    self.assertEqual(spend.value(state), 1)
+    self.assertEqual(spend.remaining_spend(state), {})
     # Not okay: overspend one gate.
     spend.spend_event.spend_map["gates"]["Third gate"] = 1
-    self.assertEqual(spend.value(state), 0)
+    self.assertEqual(spend.remaining_spend(state), {"toughness": -5})
 
 
 class SpendCountTest(unittest.TestCase):
