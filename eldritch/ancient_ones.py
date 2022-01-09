@@ -38,7 +38,7 @@ class SquidFace(AncientOne):
 
   def get_modifier(self, thing, attribute):
     if isinstance(thing, monsters.Cultist):
-      return {"horror": -2, "horror_damage": 2}.get(attribute, 0)
+      return {"horrordifficulty": -2, "horrordamage": 2}.get(attribute, 0)
     if isinstance(thing, characters.Character):
       return {"max_sanity": -1, "max_stamina": -1}.get(attribute, 0)
     return super().get_modifier(thing, attribute)
@@ -79,7 +79,7 @@ class YellowKing(AncientOne):
       checks.append(
           events.PassFail(char, check, events.Nothing(), events.Loss(char, {"sanity": 2}))
       )
-    self.luck_modifier -= 1
+    self.luck_modifier -= 1  # TODO: make this an Event to allow it to be canceled
     return AncientOneAttack(checks)
 
 
@@ -136,7 +136,7 @@ class Wendigo(AncientOne):
       checks.append(
           events.PassFail(char, check, events.Nothing(), events.Loss(char, {"stamina": 2}))
       )
-    self.fight_modifier -= 1
+    self.fight_modifier -= 1  # TODO: make this an Event to allow it to be canceled
     return AncientOneAttack(checks)
 
 
@@ -154,7 +154,7 @@ class BlackPharaoh(AncientOne):
   def awaken(self, state):
     checks = []
     for char in state.characters:
-      has_clues = values.AttributePrerequisite(char, "clues", "at least", 1)
+      has_clues = values.AttributePrerequisite(char, "clues", 1, "at least")
       checks.append(
           events.PassFail(
               char, has_clues, events.Nothing(), events.Nothing()
@@ -175,5 +175,5 @@ class BlackPharaoh(AncientOne):
           ], char)
 
       )
-    self.lore_modifier -= 1
+    self.lore_modifier -= 1  # TODO: make this an Event to allow it to be canceled
     return AncientOneAttack(checks)

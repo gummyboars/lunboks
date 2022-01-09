@@ -46,7 +46,7 @@ class Character:
 
   def get_json(self, state):
     attrs = [
-        "name", "_max_stamina", "_max_sanity", "stamina", "sanity", "focus",
+        "name", "stamina", "sanity", "focus",
         "movement_points", "focus_points",
         "dollars", "clues", "possessions", "trophies",  # TODO: special cards
         "delayed_until", "lose_turn_until",
@@ -58,7 +58,7 @@ class Character:
           "pairs": getattr(self, "_" + slider),
           "selection": getattr(self, slider + "_slider"),
       }
-    computed = ["speed", "sneak", "fight", "will", "lore", "luck"]
+    computed = ["speed", "sneak", "fight", "will", "lore", "luck", "max_sanity", "max_stamina"]
     data.update({attr: getattr(self, attr)(state) for attr in computed})
     data["place"] = self.place.name if self.place is not None else None
     data["fixed"] = sum(self.fixed_possessions().values(), [])

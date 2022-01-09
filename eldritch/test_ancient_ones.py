@@ -34,10 +34,11 @@ class TestAncientOnes(EventTest):
     self.assertEqual(self.char.sanity, 4)
 
   def testSquidFaceMonsters(self):
-    self.assertEqual(self.state.get_modifier(monsters.Cultist(), "horror_damage"), 0)
+    self.assertEqual(monsters.Cultist().damage("horror", self.state, self.char), None)
     self.state.ancient_one = ancient_ones.SquidFace()
-    self.assertEqual(self.state.get_modifier(monsters.Cultist(), "horror"), -2)
-    self.assertEqual(self.state.get_modifier(monsters.Cultist(), "horror_damage"), 2)
+    self.assertEqual(self.state.get_modifier(monsters.Cultist(), "horrordifficulty"), -2)
+    self.assertEqual(self.state.get_modifier(monsters.Cultist(), "horrordamage"), 2)
+    self.assertEqual(monsters.Cultist().damage("horror", self.state, self.char), 2)
 
   def testYellowKingMonsters(self):
     self.state.ancient_one = ancient_ones.YellowKing()

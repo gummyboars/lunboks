@@ -83,7 +83,7 @@ class Monster:
     state_modifier = state.get_modifier(self, check_type + "damage") or 0
     char_modifier = char.get_modifier(self, check_type + "damage") or 0
     if state_modifier or char_modifier:
-      return min((self.damages.get(check_type) or 0) + state_modifier + char_modifier, 0)
+      return max((self.damages.get(check_type) or 0) + state_modifier + char_modifier, 0)
     return self.damages.get(check_type)
 
   def bypass_damage(self, check_type, state):  # pylint: disable=unused-argument
