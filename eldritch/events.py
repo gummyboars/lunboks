@@ -2245,8 +2245,7 @@ class SpendItemChoiceMixin(SpendMixin):
 
   def compute_choices(self, state):
     super().compute_choices(state)
-    satisfied = self.spend_prereq.value(state)
-    self.remaining_spend = not satisfied
+    self.remaining_spend = self.spend_prereq.remaining_spend(state) or False
 
   def resolve(self, state, choice=None):
     if choice == "done" and not self.chosen:
@@ -2256,7 +2255,7 @@ class SpendItemChoiceMixin(SpendMixin):
 
   def validate_choice(self, state, chosen, final):
     if len(chosen) > 0:
-      assert self.spend_prereq.value(state)
+      assert not self.spend_prereq.remaining_spend(state)
     super().validate_choice(state, chosen, final)
 
   def annotations(self, state):  # pylint: disable=unused-argument
@@ -2271,25 +2270,19 @@ class SpendMultiChoiceMixin(SpendMixin):
     assert len(spends) == len(self.choices)
     assert any(value is None for value in spends)  # must have at least one choice w/ no spending
 
-    self.spends = spends
+    self.spends = []
     self.spendable = set()
-    self.remaining_spend = [True] * len(self.choices)
+    self.remaining_spend = [value is not None for value in spends]
     for spend in spends:
-      if spend is not None:
-        assert isinstance(spend, values.SpendValue)
-        spend.spend_event = self
-        self.spendable |= spend.spend_types()
+      spend = spend or values.SpendNothing()
+      assert isinstance(spend, values.SpendValue)
+      self.spends.append(spend)
+      spend.spend_event = self
+      self.spendable |= spend.spend_types()
 
   def compute_choices(self, state):
     super().compute_choices(state)
-    any_spent = bool(sum(sum(val.values()) for val in self.spend_map.values()))
-    self.remaining_spend.clear()
-    for spend in self.spends:
-      if spend is not None:
-        satisfied = spend.value(state)
-        self.remaining_spend.append(not satisfied)
-      else:
-        self.remaining_spend.append(any_spent)
+    self.remaining_spend = [spend.remaining_spend(state) or False for spend in self.spends]
 
   def resolve(self, state, choice=None):
     assert choice in self.choices
@@ -2298,7 +2291,7 @@ class SpendMultiChoiceMixin(SpendMixin):
     super().resolve(state, choice)
 
   def annotations(self, state):
-    return ["" if spend is None else spend.annotation(state) for spend in self.spends]
+    return [spend.annotation(state) for spend in self.spends]
 
 
 class SpendChoice(SpendMultiChoiceMixin, MultipleChoice):

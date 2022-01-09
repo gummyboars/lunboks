@@ -129,7 +129,7 @@ def NoAmbushPrerequisite(monster, character):
       1, None, operator.sub, MonsterAttributePrerequisite(monster, "ambush", character))
 
 
-class SpendValue(Value):
+class SpendValue(metaclass=abc.ABCMeta):
 
   SPEND_TYPES = {
       "stamina": "stamina", "sanity": "sanity", "dollars": "dollars", "clues": "clues",
@@ -147,12 +147,32 @@ class SpendValue(Value):
     return self.spend_event.spend_map
 
   @abc.abstractmethod
+  def remaining_spend(self, state):
+    spent_map = {key: sum(spend_count.values()) for key, spend_count in self.spend_map.items()}
+    return {
+        spend_type: -spend_count for spend_type, spend_count in spent_map.items()
+        if spend_type not in self.spend_types() and spend_count
+    }
+
+  @abc.abstractmethod
   def spend_types(self):
     raise NotImplementedError
 
   @abc.abstractmethod
   def annotation(self, state):
     raise NotImplementedError
+
+
+class SpendNothing(SpendValue):
+
+  def remaining_spend(self, state):  # pylint: disable=useless-super-delegation
+    return super().remaining_spend(state)
+
+  def spend_types(self):
+    return set()
+
+  def annotation(self, state):
+    return ""
 
 
 class ExactSpendPrerequisite(SpendValue):
@@ -164,12 +184,14 @@ class ExactSpendPrerequisite(SpendValue):
     super().__init__()
     self.spend_amounts = spend_amounts
 
-  def value(self, state):
+  def remaining_spend(self, state):
     spent_map = {key: sum(spend_count.values()) for key, spend_count in self.spend_map.items()}
+    remaining = {}
     for spend_type in spent_map.keys() | self.spend_amounts.keys():
-      if spent_map.get(spend_type, 0) != self.spend_amounts.get(spend_type, 0):
-        return 0
-    return 1
+      diff = self.spend_amounts.get(spend_type, 0) - spent_map.get(spend_type, 0)
+      if diff:
+        remaining[spend_type] = diff
+    return remaining
 
   def spend_types(self):
     return set(self.spend_amounts.keys())
@@ -191,12 +213,17 @@ class RangeSpendPrerequisite(SpendValue):
     self.spend_min = spend_min
     self.spend_max = spend_max
 
-  def value(self, state):
+  def remaining_spend(self, state):
+    remaining = super().remaining_spend(state)
+
     spend_min = self.spend_min.value(state) if isinstance(self.spend_min, Value) else self.spend_min
     spend_max = self.spend_max.value(state) if isinstance(self.spend_max, Value) else self.spend_max
-    if sum(sum(spend_count.values()) for spend_count in self.spend_map.values()) != self.spent():
-      return 0
-    return int(self.spent() >= spend_min and self.spent() <= spend_max)
+    spent = sum(self.spend_map[self.spend_type].values())
+    if spent < spend_min:
+      remaining[self.spend_type] = spend_min - spent
+    elif spent > spend_max:
+      remaining[self.spend_type] = spend_max - spent
+    return remaining
 
   def spend_types(self):
     return {self.spend_type}
@@ -204,10 +231,7 @@ class RangeSpendPrerequisite(SpendValue):
   def annotation(self, state):
     spend_min = self.spend_min.value(state) if isinstance(self.spend_min, Value) else self.spend_min
     spend_max = self.spend_max.value(state) if isinstance(self.spend_max, Value) else self.spend_max
-    return f"{spend_min}-{spend_max} self.SPEND_TYPES[self.spend_type]"
-
-  def spent(self):
-    return sum(self.spend_map[self.spend_type].values())
+    return f"{spend_min}-{spend_max} {self.SPEND_TYPES[self.spend_type]}"
 
 
 class ToughnessSpendBase(SpendValue, metaclass=abc.ABCMeta):
@@ -217,31 +241,29 @@ class ToughnessSpendBase(SpendValue, metaclass=abc.ABCMeta):
     super().__init__()
     self.toughness = toughness
 
-  def value(self, state):
-    for spend_type in self.spend_map.keys() - self.spend_types():
-      if sum(self.spend_map[spend_type].values()) != 0:  # Cannot spend anything else.
-        return 0
-
+  def remaining_spend(self, state):
+    remaining = super().remaining_spend(state)
     total_spent = 0
     min_spent = None
     for toughness in self.spend_map["toughness"].values():
       if min_spent is None or toughness < min_spent:
         min_spent = toughness
       total_spent += toughness
-    for count in self.spend_map["gates"].values():  # TODO: can the count ever be not 1?
-      if count == 0:
-        continue
-      if min_spent is None or min_spent > 5:
-        min_spent = 5
-      total_spent += count * 5
+    if "gates" in self.spend_types():
+      for count in self.spend_map["gates"].values():  # TODO: can the count ever be not 1?
+        if count == 0:
+          continue
+        if min_spent is None or min_spent > 5:
+          min_spent = 5
+        total_spent += count * 5
 
     if min_spent is None:
-      return 0
-    if total_spent < self.toughness:
-      return 0
-    if total_spent - self.toughness >= min_spent:  # Not allowed to overspend too much.
-      return 0
-    return 1
+      remaining["toughness"] = self.toughness
+    elif total_spent < self.toughness:
+      remaining["toughness"] = self.toughness - total_spent
+    elif total_spent - self.toughness >= min_spent:  # Not allowed to overspend too much.
+      remaining["toughness"] = self.toughness - total_spent
+    return remaining
 
   def annotation(self, state):
     return f"{self.toughness} toughness"
