@@ -750,6 +750,120 @@ class InsaneTest(unittest.TestCase):
     self.assertEqual(self.state.event_stack[-1].character, self.state.characters[1])
 
 
+class RollDiceTest(unittest.TestCase):
+
+  def setUp(self):
+    self.state = eldritch.GameState()
+    self.state.initialize_for_tests()
+    for name in ["Nun", "Doctor"]:
+      self.state.all_characters[name] = getattr(characters, name)()
+      self.state.characters.append(self.state.all_characters[name])
+    for char in self.state.characters:
+      char.place = self.state.places[char.home]
+    self.state.game_stage = "slumber"
+    self.state.turn_phase = "upkeep"
+    self.state.turn_number = 0
+    self.state.test_mode = True
+
+  def testGenericDiceRoll(self):
+    roll = events.DiceRoll(self.state.characters[0], 1)
+    self.state.event_stack.append(roll)
+    for _ in self.state.resolve_loop():
+      if not self.state.event_stack:
+        break
+      data = self.state.for_player(0)
+      self.assertIn("dice", data)
+      self.assertIn("roller", data)
+      self.assertEqual(data["roller"], 0)
+      self.assertIn("roll", data)
+      self.assertIsInstance(data["roll"], (type(None), list))
+
+      # TODO: figure out if we want to show the dice rolls to other players
+      # other_data = self.state.for_player(1)
+      # self.assertNotIn("dice", data)
+
+    self.assertFalse(self.state.event_stack)
+
+  def testCheckAndSpendAndReroll(self):
+    self.state.characters[0].clues = 2
+    self.state.characters[0].possessions.append(abilities.Stealth(0))
+    check = events.Check(self.state.characters[0], "evade", 0)
+    self.state.event_stack.append(check)
+    roll_started = False
+    for _ in self.state.resolve_loop():
+      data = self.state.for_player(0)
+      self.assertIn("dice", data)
+      self.assertIn("roller", data)
+      if data.get("roll", None) is not None:
+        roll_started = True
+      if roll_started:
+        self.assertIsInstance(data.get("roll", None), list)
+    roll_length = len(data["roll"])
+
+    self.assertTrue(self.state.event_stack)  # Should have the spend event on top
+    spend_choice = self.state.event_stack[-1]
+    self.assertIsInstance(spend_choice, events.SpendMixin)
+    spend_choice.spend("clues")
+    for _ in self.state.resolve_loop():
+      pass
+    self.assertEqual(self.state.event_stack[-1], spend_choice)
+    spend_choice.resolve(self.state, "Spend")
+    for _ in self.state.resolve_loop():
+      data = self.state.for_player(0)
+      self.assertIn("dice", data)
+      self.assertIsInstance(data.get("roll", None), list)
+    self.assertEqual(len(data["roll"]), roll_length+1)
+
+    self.assertIn(0, self.state.usables)
+    self.assertIn("Stealth0", self.state.usables[0])
+    self.state.event_stack.append(self.state.usables[0]["Stealth0"])
+    for _ in self.state.resolve_loop():
+      data = self.state.for_player(0)
+      self.assertIsInstance(data.get("roll", None), list)
+      self.assertEqual(len(data["roll"]), roll_length+1)
+
+    next_spend = self.state.event_stack[-1]
+    next_spend.resolve(self.state, "Done")
+    for _ in self.state.resolve_loop():
+      if not self.state.event_stack:
+        break
+      self.assertEqual(len(data["roll"]), roll_length+1)
+
+
+class MapChoiceTest(unittest.TestCase):
+
+  def setUp(self):
+    self.state = eldritch.GameState()
+    self.state.initialize_for_tests()
+    for name in ["Nun"]:
+      self.state.all_characters[name] = getattr(characters, name)()
+      self.state.characters.append(self.state.all_characters[name])
+    self.state.game_stage = "slumber"
+    self.state.turn_phase = "upkeep"
+    self.state.turn_number = 0
+    self.state.test_mode = True
+
+  def testReturnChoice(self):
+    self.state.places["Woods"].gate = self.state.gates.popleft()
+    gate_name = self.state.places["Woods"].gate.name
+    self.state.characters[0].place = self.state.places[gate_name + "2"]
+    self.state.event_stack.append(events.Return(self.state.characters[0], gate_name))
+    for _ in self.state.resolve_loop():
+      if len(self.state.event_stack) < 2:
+        continue
+      data = self.state.for_player(0)
+      self.assertIn("choice", data)
+      self.assertIsInstance(data["choice"].get("places", None), list)
+
+    return_choice = self.state.event_stack[-1]
+    return_choice.resolve(self.state, "Woods")
+    # Once resolved, the choice should not show up in the UI again.
+    for _ in self.state.resolve_loop():
+      data = self.state.for_player(0)
+      self.assertIsNone(data.get("choice", None))
+    self.assertFalse(self.state.event_stack)
+
+
 class PlayerJoinTest(unittest.TestCase):
 
   def setUp(self):
