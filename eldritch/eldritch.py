@@ -352,7 +352,8 @@ class GameState:
       if self.trigger_stack[-1]:
         self.event_stack.append(self.trigger_stack[-1].pop())
         continue
-      self.usables = self.get_usable_triggers(event)
+      if not event.is_cancelled():
+        self.usables = self.get_usable_triggers(event)
       if not all(self.done_using.get(char_idx) for char_idx in self.usables):
         yield None
         return
@@ -387,8 +388,9 @@ class GameState:
 
   def finish_event(self, event):
     assert len(self.trigger_stack) == len(self.event_stack)
-    if self.trigger_stack[-1] is None:
+    if self.trigger_stack[-1] is None and not event.is_cancelled():
       self.trigger_stack[-1] = self.get_triggers(event)
+      self.clear_usables()
       return True
     # TODO: we should append to the event log here, then override when we pop it?
     return False
