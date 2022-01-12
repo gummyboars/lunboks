@@ -1,3 +1,8 @@
+from collections import defaultdict
+from eldritch import events
+from eldritch import places
+
+
 class MonsterCup:
 
   def __init__(self):
@@ -119,11 +124,23 @@ def GiantInsect():
   )
 
 
-def LandSquid():
-  return Monster(
-      "Land Squid", "unique", "triangle", {"evade": 1, "horror": -2, "combat": -3},
-      {"horror": 2, "combat": 3}, 3,
-  )
+class LandSquid(Monster):
+
+  def __init__(self):
+    super().__init__(
+        "Land Squid", "unique", "triangle", {"evade": 1, "horror": -2, "combat": -3},
+        {"horror": 2, "combat": 3}, 3,
+    )
+
+  def move_event(self, state):
+    seq = events.Sequence([
+        events.Loss(char, {"stamina": 1}) for char in state.characters
+        if isinstance(char.place, places.CityPlace)
+    ])
+    first_player = state.characters[state.first_player]
+    roll = events.DiceRoll(first_player, 1)
+    cond = events.Conditional(first_player, roll, "sum", {0: events.Nothing(), 4: seq})
+    return events.Sequence([roll, cond])
 
 
 class Cultist(Monster):
@@ -216,11 +233,39 @@ def HighPriest():
   )
 
 
-def Hound():
-  return Monster(
-      "Hound", "unique", "square", {"evade": -1, "horror": -2, "combat": -1},
-      {"horror": 4, "combat": 3}, 2, {"physical immunity"},
-  )
+class Hound(Monster):
+
+  def __init__(self):
+    super().__init__(
+        "Hound", "unique", "square", {"evade": -1, "horror": -2, "combat": -1},
+        {"horror": 4, "combat": 3}, 2, {"physical immunity"},
+    )
+
+  def get_destination(self, state):
+    if any(char.place == self.place for char in state.characters):
+      return self.place
+
+    candidates = defaultdict(list)
+    distances = {self.place.name: 0}
+    queue = [self.place]
+    while queue:
+      place = queue.pop(0)
+      if isinstance(place, places.Location) and place.name not in ["Hospital", "Asylum"]:
+        if any(char.place == place for char in state.characters):
+          candidates[distances[place.name]].append(place)
+      for conn in place.connections:
+        if conn.name in distances:
+          continue
+        distances[conn.name] = distances[place.name] + 1
+        queue.append(conn)
+    if not candidates:
+      return False
+    min_list = candidates[min(candidates.keys())]
+    char_list = [char for char in state.characters if char.place in min_list]
+    char_list.sort(key=lambda char: char.sneak(state))
+
+    # TODO: allow the first player to break ties
+    return char_list[0].place
 
 
 class Maniac(Monster):

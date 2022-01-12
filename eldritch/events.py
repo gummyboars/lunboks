@@ -3350,6 +3350,7 @@ class MoveMonster(Event):
     self.color = color
     self.source = None
     self.destination = None
+    self.move_event: Optional[Event] = None
 
   def resolve(self, state):
     self.source = self.monster.place
@@ -3359,6 +3360,20 @@ class MoveMonster(Event):
       return
 
     if self.monster.has_attribute("stationary", state, None):
+      self.destination = False
+      return
+
+    if self.monster.has_attribute("unique", state, None):
+      if hasattr(self.monster, "get_destination"):
+        self.destination = self.monster.get_destination(state)
+        if self.destination:
+          self.monster.place = self.destination
+        return
+      if self.move_event is None:
+        self.move_event = self.monster.move_event(state)
+        state.event_stack.append(self.move_event)
+        return
+      assert self.move_event.is_done()
       self.destination = False
       return
 

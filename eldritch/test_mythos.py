@@ -853,6 +853,157 @@ class MoveMonsterTest(EventTest):
     self.assertEqual(self.state.monsters[0].place.name, "Sky")
     self.assertEqual(self.state.monsters[1].place.name, "Sky")
 
+  def testBasicHoundMovement(self):
+    self.state.monsters.clear()
+    self.state.monsters.append(monsters.Hound())
+    self.state.monsters[0].place = self.state.places["Rivertown"]
+    self.char.place = self.state.places["Newspaper"]
+
+    self.state.event_stack.append(MoveMonsters({"square"}, {"circle"}))
+    self.resolve_until_done()
+
+    self.assertEqual(self.state.monsters[0].place.name, "Newspaper")
+
+  def testHoundStaysInStreetIfNextToChar(self):
+    self.state.monsters.clear()
+    self.state.monsters.append(monsters.Hound())
+    buddy = characters.Character("Buddy", 5, 5, 4, 4, 4, 4, 4, 4, 4, "Square")
+    self.state.all_characters["Buddy"] = buddy
+    self.state.characters.append(buddy)
+
+    self.state.monsters[0].place = self.state.places["Rivertown"]
+    buddy.place = self.state.places["Store"]
+    self.char.place = self.state.places["Rivertown"]
+
+    self.state.event_stack.append(MoveMonsters({"square"}, {"circle"}))
+    self.resolve_until_done()
+
+    self.assertEqual(self.state.monsters[0].place.name, "Rivertown")
+
+  def testHoundMovementNoEligibleChars(self):
+    self.state.monsters.clear()
+    self.state.monsters.append(monsters.Hound())
+    buddy = characters.Character("Buddy", 5, 5, 4, 4, 4, 4, 4, 4, 4, "Square")
+    self.state.all_characters["Buddy"] = buddy
+    self.state.characters.append(buddy)
+
+    self.state.monsters[0].place = self.state.places["Rivertown"]
+    buddy.place = self.state.places["Easttown"]
+    self.char.place = self.state.places["Hospital"]
+
+    self.state.event_stack.append(MoveMonsters({"square"}, {"circle"}))
+    self.resolve_until_done()
+
+    self.assertEqual(self.state.monsters[0].place.name, "Rivertown")
+
+  def testHoundMovementBreakTies(self):
+    self.state.monsters.clear()
+    self.state.monsters.append(monsters.Hound())
+    self.state.monsters[0].place = self.state.places["Rivertown"]
+    buddy = characters.Character("Buddy", 5, 5, 4, 4, 4, 4, 4, 4, 4, "Square")
+    self.state.all_characters["Buddy"] = buddy
+    self.state.characters.append(buddy)
+
+    buddy.place = self.state.places["Store"]
+    self.char.place = self.state.places["Cave"]
+    self.char.speed_sneak_slider = 2
+    self.assertEqual(buddy.sneak(self.state), 1)
+    self.assertEqual(self.char.sneak(self.state), 2)
+
+    self.state.event_stack.append(MoveMonsters({"square"}, {"circle"}))
+    self.resolve_until_done()
+
+    self.assertEqual(self.state.monsters[0].place.name, "Store")
+
+  def testHoundChoosesNearestChar(self):
+    self.state.monsters.clear()
+    self.state.monsters.append(monsters.Hound())
+    self.state.monsters[0].place = self.state.places["Easttown"]
+    buddy = characters.Character("Buddy", 5, 5, 4, 4, 4, 4, 4, 4, 4, "Square")
+    self.state.all_characters["Buddy"] = buddy
+    self.state.characters.append(buddy)
+
+    buddy.place = self.state.places["Library"]  # 4 steps away
+    self.char.place = self.state.places["Newspaper"]  # 3 steps away
+    self.char.speed_sneak_slider = 2
+    self.assertEqual(buddy.sneak(self.state), 1)
+    self.assertEqual(self.char.sneak(self.state), 2)
+
+    self.state.event_stack.append(MoveMonsters({"square"}, {"circle"}))
+    self.resolve_until_done()
+
+    self.assertEqual(self.state.monsters[0].place.name, "Newspaper")
+
+  def testLandSquidMovement(self):
+    self.state.monsters.clear()
+    self.state.monsters.append(monsters.LandSquid())
+    self.state.monsters[0].place = self.state.places["Easttown"]
+    buddy = characters.Character("Buddy", 5, 5, 4, 4, 4, 4, 4, 4, 4, "Square")
+    self.state.all_characters["Buddy"] = buddy
+    self.state.characters.append(buddy)
+
+    buddy.place = self.state.places["Library"]
+    self.char.place = self.state.places["Newspaper"]
+
+    self.state.event_stack.append(MoveMonsters({"triangle"}, {"hex"}))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=4)):
+      self.resolve_until_done()
+
+    self.assertEqual(self.state.monsters[0].place.name, "Easttown")
+    self.assertEqual(buddy.stamina, 4)
+    self.assertEqual(self.char.stamina, 4)
+
+    self.state.event_stack.append(MoveMonsters({"triangle"}, {"hex"}))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
+      self.resolve_until_done()
+
+    self.assertEqual(self.state.monsters[0].place.name, "Easttown")
+    self.assertEqual(buddy.stamina, 4)
+    self.assertEqual(self.char.stamina, 4)
+
+  def testLandSquidIgnoresOtherWorlds(self):
+    self.state.monsters.clear()
+    self.state.monsters.append(monsters.LandSquid())
+    self.state.monsters[0].place = self.state.places["Easttown"]
+    buddy = characters.Character("Buddy", 5, 5, 4, 4, 4, 4, 4, 4, 4, "Square")
+    self.state.all_characters["Buddy"] = buddy
+    self.state.characters.append(buddy)
+
+    buddy.place = self.state.places["Square"]
+    self.char.place = self.state.places["Dreamlands1"]
+
+    self.state.event_stack.append(MoveMonsters({"triangle"}, {"hex"}))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=4)):
+      self.resolve_until_done()
+
+    self.assertEqual(self.state.monsters[0].place.name, "Easttown")
+    self.assertEqual(buddy.stamina, 4)
+    self.assertEqual(self.char.stamina, 5)
+
+  def testLandSquidMovementUnconscious(self):
+    self.state.monsters.clear()
+    self.state.monsters.append(monsters.LandSquid())
+    self.state.monsters[0].place = self.state.places["Easttown"]
+    buddy = characters.Character("Buddy", 5, 5, 4, 4, 4, 4, 4, 4, 4, "Square")
+    self.state.all_characters["Buddy"] = buddy
+    self.state.characters.append(buddy)
+
+    buddy.place = self.state.places["Library"]
+    self.char.place = self.state.places["Newspaper"]
+    self.char.stamina = 1
+
+    self.state.event_stack.append(MoveMonsters({"triangle"}, {"hex"}))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=4)):
+      lose_choice = self.resolve_to_choice(ItemLossChoice)
+    lose_choice.resolve(self.state, "done")
+    self.resolve_until_done()
+
+    self.assertEqual(self.state.monsters[0].place.name, "Easttown")
+    self.assertEqual(self.char.stamina, 1)
+    self.assertEqual(self.char.place.name, "Hospital")
+    # Validate that even though the first player went unconscious, second player also lost stamina.
+    self.assertEqual(buddy.stamina, 4)
+
   def testOneMovementCancelled(self):
     self.state.monsters.clear()
     self.state.monsters.extend([
