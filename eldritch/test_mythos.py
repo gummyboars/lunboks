@@ -1220,6 +1220,13 @@ class GlobalModifierTest(EventTest):
     self.resolve_until_done()
     self.assertEqual(self.char.will(self.state), 0)
 
+  def testEnvironmentModifierIgnoredInOtherWorld(self):
+    self.char.place = self.state.places["Dreamlands1"]
+    self.assertEqual(self.char.will(self.state), 1)
+    self.state.event_stack.append(ActivateEnvironment(Mythos6()))
+    self.resolve_until_done()
+    self.assertEqual(self.char.will(self.state), 1)
+
   def testReplaceEnvironment(self):
     self.assertIsNone(self.state.environment)
     mythos = Mythos6()

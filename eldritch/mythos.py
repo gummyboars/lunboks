@@ -1,6 +1,7 @@
 from eldritch import events
 from eldritch import gates
 from eldritch import monsters
+from eldritch import places
 
 
 class GlobalEffect:
@@ -139,10 +140,11 @@ class Mythos6(Environment):
     super().__init__("Mythos6", "Graveyard", "Isle", {"plus"}, {"moon"}, "weather")
 
   def get_modifier(self, thing, attribute):
-    if attribute == "will":
-      return -1
-    if attribute == "sneak":
-      return 1
+    if isinstance(getattr(thing, "place", None), places.CityPlace):
+      if attribute == "will":
+        return -1
+      if attribute == "sneak":
+        return 1
     return 0
 
   def get_interrupt(self, event, state):
