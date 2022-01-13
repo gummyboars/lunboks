@@ -1,9 +1,12 @@
 ws = null;
 dragged = null;
-characters = {};
+characterMarkers = {};
+characterSheets = {};
 portraits = {};
 monsters = {};
 allCharacters = {};
+availableChars = [];
+pendingName = null;
 scale = 1;
 monsterChoice = {};
 charChoice = null;
@@ -210,8 +213,10 @@ function finishAnim() {
 }
 function handleData(data) {
   allCharacters = data.all_characters;
-  updateCharacterSelect(data.characters, data.player_idx, data.pending_name, data.pending_chars);
-  updateCharacterSheets(data.characters, data.player_idx, data.first_player, data.choice);
+  pendingName = data.pending_name;
+  updateAvailableCharacters(data.characters, data.pending_chars);
+  updateCharacterSelect(data.player_idx);
+  updateCharacterSheets(data.characters, data.pending_chars, data.player_idx, data.first_player, data.choice);
   updateBottomText(data.game_stage, data.turn_phase, data.characters, data.turn_idx, data.player_idx);
   updateGlobals(data.environment, data.rumor);
   updatePlaces(data.places);
@@ -479,7 +484,8 @@ function prevChar(e) {
   } else {
     charChoice = sortedKeys[currentIdx-1];
   }
-  drawChosenChar(charChoice);
+  drawChosenChar(allCharacters[charChoice]);
+  updateStats();
 }
 
 function nextChar(e) {
@@ -490,7 +496,8 @@ function nextChar(e) {
   } else {
     charChoice = sortedKeys[currentIdx+1];
   }
-  drawChosenChar(charChoice);
+  drawChosenChar(allCharacters[charChoice]);
+  updateStats();
 }
 
 function selectChar(e) {
@@ -514,12 +521,12 @@ function updateCharacters(newCharacters) {
       continue;
     }
     updatePortraitDiv(character.name, character.place);
-    if (characters[character.name] == null) {
-      characters[character.name] = createCharacterDiv(character.name);
-      place.appendChild(characters[character.name]);
-      renderAssetToDiv(characters[character.name].getElementsByClassName("cnvcontainer")[0], character.name);
+    if (characterMarkers[character.name] == null) {
+      characterMarkers[character.name] = createCharacterDiv(character.name);
+      place.appendChild(characterMarkers[character.name]);
+      renderAssetToDiv(characterMarkers[character.name].getElementsByClassName("cnvcontainer")[0], character.name);
     } else {
-      animateMovingDiv(characters[character.name], place);
+      animateMovingDiv(characterMarkers[character.name], place);
     }
   }
 }
@@ -1191,51 +1198,111 @@ function updateEventLog(eventLog) {
   logDiv.scrollTop = logDiv.scrollHeight;
 }
 
-function updateCharacterSelect(characters, playerIdx, pendingName, pendingChars) {
+function updateAvailableCharacters(characters, pendingChars) {
+  let keys = Object.keys(allCharacters);
+  // Ignore all characters that are already in the game.
+  for (let character of characters) {
+    let idx = keys.indexOf(character.name);
+    if (idx >= 0) {
+      keys.splice(idx, 1);
+    }
+  }
+  // Ignore all characters that have been chosen by someone else.
+  for (let name of pendingChars) {
+    if (name == pendingName) {
+      continue;
+    }
+    let idx = keys.indexOf(name);
+    if (idx >= 0) {
+      keys.splice(idx, 1);
+    }
+  }
+  keys.sort();
+  availableChars = keys;
+}
+
+function updateCharacterSelect(playerIdx) {
   let charSelect = document.getElementById("charselect");
-  if (playerIdx != null) {  // TODO: choosing a new character.
+  if (playerIdx != null) {  // TODO: choosing a new character after being devoured/retiring.
     charSelect.style.display = "none";
     return;
   }
   charSelect.style.display = "flex";
-  // TODO: choosing a different character after picking a character.
-  if (pendingName != null) {
-    drawChosenChar(pendingName);
-    document.getElementById("choosecharbutton").innerText = "Chosen";
+  if (charChoice == null) {
+    charChoice = availableChars[0];
+  }
+  drawChosenChar(allCharacters[charChoice]);
+}
+
+function drawChosenChar(character) {
+  let sheet = document.getElementById("charchoicesheet");
+  if (sheet == null) {
+    let charChoiceDiv = document.getElementById("charchoice");
+    sheet = createCharacterSheet(null, character.name, charChoiceDiv, false);
+    sheet.id = "charchoicesheet";
+    sheet.classList.remove("collapsed");
+    sheet.getElementsByClassName("bagtabs")[0].classList.add("hidden");
+    sheet.getElementsByClassName("playertop")[0].onclick = null;
+  }
+  let charMarker = sheet.getElementsByClassName("picture")[0];
+  renderAssetToDiv(charMarker, character.name + " picture");
+  let charName = sheet.getElementsByClassName("playername")[0];
+  renderAssetToDiv(charName, character.name + " title");
+  updateInitialStats(sheet, character);
+  let sliders = sheet.getElementsByClassName("sliders")[0];
+  renderAssetToDiv(sliders, character.name + " sliders");
+
+  updateInitialPossessions(sheet, character);
+
+  let choiceButton = document.getElementById("choosecharbutton");
+  if (!availableChars.includes(character.name)) {
+    sheet.classList.add("nochoose");
+    choiceButton.innerText = "Already Taken";
+    choiceButton.disabled = true;
     return;
   }
-  document.getElementById("choosecharbutton").innerText = "Choose";
-  if (charChoice == null) {
-    let keys = Object.keys(allCharacters);
-    for (let character of characters) {
-      let idx = keys.indexOf(character.name);
-      if (idx >= 0) {
-        keys.splice(idx, 1);
-      }
-    }
-    for (let name of pendingChars) {
-      let idx = keys.indexOf(name);
-      if (idx >= 0) {
-        keys.splice(idx, 1);
-      }
-    }
-    charChoice = keys.sort()[0];
+  sheet.classList.remove("nochoose");
+  choiceButton.disabled = false;
+  if (character.name == pendingName) {
+    choiceButton.innerText = "Chosen";
+  } else if (pendingName != null) {
+    choiceButton.innerText = "Change Choice";
+  } else {
+    choiceButton.innerText = "Choose";
   }
-  drawChosenChar(charChoice);
 }
 
-function drawChosenChar(name) {
-  renderAssetToDiv(document.getElementById("charchoice"), name);
-}
-
-function updateCharacterSheets(characters, playerIdx, firstPlayer, choice) {
+function updateCharacterSheets(characters, pendingCharacters, playerIdx, firstPlayer, choice) {
   let rightUI = document.getElementById("uiright");
+  let toKeep = Array.from(pendingCharacters);
+  // If no characters have been chosen yet, draw the characters players have selected.
+  if (!characters.length) {
+    for (let charName of pendingCharacters) {
+      let sheet = characterSheets[charName];
+      if (sheet == null) {
+        sheet = createCharacterSheet(null, allCharacters[charName], rightUI, false);
+        characterSheets[charName] = sheet;
+      }
+      updateInitialStats(sheet, allCharacters[charName]);
+      updateSliders(sheet, allCharacters[charName], false);
+      updateInitialPossessions(sheet, allCharacters[charName]);
+      // TODO: some characters may start with trophies.
+    }
+  }
+  // Draw the characters currently in the game.
   for (let [idx, character] of characters.entries()) {
-    let sheet;
-    if (rightUI.getElementsByClassName("player").length <= idx) {
+    toKeep.push(character.name);
+    let sheet = characterSheets[character.name];
+    if (sheet == null) {
       sheet = createCharacterSheet(idx, character, rightUI, playerIdx == idx);
-    } else {
-      sheet = rightUI.getElementsByClassName("player")[idx];
+      characterSheets[character.name] = sheet;
+    }
+    // If this sheet is left over from before the game started, destroy and recreate it so that
+    // it gets the proper onclick, ondrag, etc. handlers.
+    if (sheet.getElementsByClassName("playertop")[0].idx == null) {
+      rightUI.removeChild(sheet);
+      sheet = createCharacterSheet(idx, character, rightUI, playerIdx == idx);
+      characterSheets[character.name] = sheet;
     }
     let order = idx - firstPlayer;
     if (order < 0) {
@@ -1243,8 +1310,20 @@ function updateCharacterSheets(characters, playerIdx, firstPlayer, choice) {
     }
     updateCharacterSheet(sheet, character, order, playerIdx == idx, choice);
   }
+  // Remove any sheets that are no longer needed.
+  let toDestroy = [];
+  for (let charName in characterSheets) {
+    if (!toKeep.includes(charName)) {
+      toDestroy.push(charName);
+    }
+  }
+  for (let charName of toDestroy) {
+    rightUI.removeChild(characterSheets[charName]);
+    delete characterSheets[charName];
+  }
+  // Finally, if all character sheets are currently collapsed, uncollapse the player's own sheet.
   let unCollapsed = false;
-  for (let sheet of document.getElementsByClassName("player")) {
+  for (let sheet of rightUI.getElementsByClassName("player")) {
     if (!sheet.classList.contains("collapsed")) {
       unCollapsed = true;
       break;
@@ -1265,13 +1344,16 @@ function createCharacterSheet(idx, character, rightUI, isPlayer) {
 
   let charTop = document.createElement("DIV");
   charTop.classList.add("playertop");
-  charTop.idx = idx;
-  charTop.ondrop = drop;
-  charTop.ondragenter = dragEnter;
-  charTop.ondragover = dragOver;
+  charTop.onclick = function(e) { expandSheet(div) };
+  if (idx != null) {
+    charTop.idx = idx;
+    charTop.ondrop = drop;
+    charTop.ondragenter = dragEnter;
+    charTop.ondragover = dragOver;
+  }
+
   let charPic = document.createElement("DIV");
   charPic.classList.add("picture", "cnvcontainer");
-  charPic.onclick = function(e) { expandSheet(div) };
   let cnv = document.createElement("CANVAS");
   cnv.classList.add("markercnv");
   charPic.appendChild(cnv);
@@ -1300,11 +1382,11 @@ function createCharacterSheet(idx, character, rightUI, isPlayer) {
     charStats.appendChild(statDiv);
     if (isPlayer) {
       statDiv.onclick = function(e) { spend(stat); };
-    }
-    if (isPlayer && stat == "dollars") {
-      statDiv.draggable = true;
-      statDiv.ondragstart = dragStart;
-      statDiv.ondragend = dragEnd;
+      if (stat == "dollars") {
+        statDiv.draggable = true;
+        statDiv.ondragstart = dragStart;
+        statDiv.ondragend = dragEnd;
+      }
     }
   }
   charTop.appendChild(charStats);
@@ -1363,6 +1445,8 @@ function createCharacterSheet(idx, character, rightUI, isPlayer) {
   div.appendChild(bag);
 
   rightUI.appendChild(div);
+  renderAssetToDiv(charPic, character.name + " picture");
+  renderAssetToDiv(charName, character.name + " title");
   renderAssetToDiv(statsBg, "statsbg");
   for (let sliderDiv of sliders.getElementsByClassName("slider")) {
     renderAssetToDiv(sliderDiv, "Slider");
@@ -1371,7 +1455,7 @@ function createCharacterSheet(idx, character, rightUI, isPlayer) {
 }
 
 function expandSheet(sheetDiv) {
-  for (let sheet of document.getElementsByClassName("player")) {
+  for (let sheet of document.getElementById("uiright").getElementsByClassName("player")) {
     if (sheet == sheetDiv) {
       sheet.classList.remove("collapsed");
     } else {
@@ -1403,10 +1487,6 @@ function showTrophies(bag) {
 }
 
 function updateCharacterSheet(sheet, character, order, isPlayer, choice) {
-  let charMarker = sheet.getElementsByClassName("picture")[0];
-  renderAssetToDiv(charMarker, character.name + " picture");
-  let charName = sheet.getElementsByClassName("playername")[0];
-  renderAssetToDiv(charName, character.name + " title");
   sheet.style.order = order;
   let spent = {};
   let chosen = [];
@@ -1420,8 +1500,29 @@ function updateCharacterSheet(sheet, character, order, isPlayer, choice) {
   }
   updateCharacterStats(sheet, character, isPlayer, spent);
   updateSliders(sheet, character, isPlayer);
-  updatePossessions(sheet, character, isPlayer, spent, chosen);
+  updatePossessions(sheet, character.possessions, isPlayer, spent, chosen);
   updateTrophies(sheet, character, isPlayer, spent);
+}
+
+function updateInitialStats(sheet, character) {
+  let stats = sheet.getElementsByClassName("playerstats")[0];
+  let cfgs = [
+    ["Stamina", "stamina", "white", "max_stamina"], ["Sanity", "sanity", "white", "max_sanity"],
+  ];
+  for (let cfg of cfgs) {
+    let statDiv = sheet.getElementsByClassName(cfg[1])[0];
+    renderAssetToDiv(statDiv, cfg[0]);
+    statDiv.statValue = character[cfg[3]];
+    statDiv.textColor = cfg[2];
+  }
+  cfgs = [["Clue", "clues", "white"], ["Dollar", "dollars", "black"]];
+  for (let cfg of cfgs) {
+    let statDiv = sheet.getElementsByClassName(cfg[1])[0];
+    renderAssetToDiv(statDiv, cfg[0]);
+    statDiv.statValue = character.initial[cfg[1]] || 0;
+    statDiv.textColor = cfg[2];
+  }
+  // updateStats() will get called to render numbers at the end of handleData()
 }
 
 function updateCharacterStats(sheet, character, isPlayer, spent) {
@@ -1442,6 +1543,7 @@ function updateCharacterStats(sheet, character, isPlayer, spent) {
       statDiv.maxValue = null;
     }
   }
+  // updateStats() will get called to render numbers at the end of handleData()
 }
 
 function updateStats() {
@@ -1478,12 +1580,26 @@ function updateSliders(sheet, character, isPlayer) {
   }
 }
 
-function updatePossessions(sheet, character, isPlayer, spent, chosen) {
+function updateInitialPossessions(sheet, character) {
+  let possessions = [];
+  for (let pos of character.fixed) {
+    possessions.push({name: pos, active: false, handle: null, bonuses: {}});
+  }
+  for (let deck in character.random) {
+    for (let i = 0; i < character.random[deck]; i++) {
+      possessions.push({name: deck, active: false, handle: null, bonuses: {}});
+    }
+  }
+  updatePossessions(sheet, possessions, false, {}, []);
+}
+
+function updatePossessions(sheet, possessions, isPlayer, spent, chosen) {
+  // TODO: figure out which possessions to add/remove based on handle
   let pDiv = sheet.getElementsByClassName("possessions")[0];
   while (pDiv.firstChild) {
     pDiv.removeChild(pDiv.firstChild);
   }
-  for (let pos of character.possessions) {
+  for (let pos of possessions) {
     createPossession(pos, isPlayer, pDiv, spent, chosen);
   }
 }

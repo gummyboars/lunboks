@@ -14,6 +14,9 @@ button {
   display: inline-block;
   font-size: calc(min(1.25vw, 2vh));
 }
+button:disabled {
+  background-color: rgba(233, 233, 237); /* TODO: button styling */
+}
 /* TODO: dedup all of this */
 #errorText {
   position: absolute;
@@ -80,12 +83,9 @@ button {
   flex-direction: row;
   justify-content: center;
   align-items: center;
-  min-width: min(10vw, 16vh);
-  width: min(10vw, 16vh);
-  max-width: min(10vw, 16vh);
-  min-height: min(14vw, 22.4vh);
-  height: min(14vw, 22.4vh);
-  max-height: min(14vw, 22.4vh);
+  min-width: min(20vw, 32vh);
+  width: min(20vw, 32vh);
+  max-width: min(20vw, 32vh);
 }
 .charchoicebutton {
   display: flex;
@@ -851,6 +851,9 @@ button {
   background: cornsilk;
   border-bottom: 1px solid black;
 }
+.player.nochoose {
+  filter: grayscale(70%);
+}
 .playertop {
   width: 100%;
   display: flex;
@@ -946,6 +949,10 @@ button {
   flex-direction: row;
   background-color: wheat;
   justify-content: space-evenly;
+}
+.bagtabs.hidden {
+  max-height: 0;
+  overflow-y: hidden;
 }
 .collapsed .bagtabs {
   max-height: 0;

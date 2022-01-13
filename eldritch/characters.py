@@ -433,7 +433,7 @@ class Researcher(Character):
     return {}
 
   def random_possessions(self):
-    return {"common": 2, "unique": 1, "skill": 1}
+    return {"common": 2, "unique": 1, "skills": 1}
 
 
 class Nun(Character):
