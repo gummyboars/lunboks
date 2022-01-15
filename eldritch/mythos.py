@@ -1,4 +1,6 @@
 from eldritch import events
+from eldritch import gates
+from eldritch import monsters
 
 
 class GlobalEffect:
@@ -82,7 +84,7 @@ class Mythos2(Environment):
     super().__init__("Mythos2", "Isle", "Science", {"square", "diamond"}, {"circle"}, "urban")
 
   def get_modifier(self, thing, attribute):
-    if thing.name == "Pinata" and attribute == "toughness":
+    if isinstance(thing, monsters.Monster) and thing.name == "Pinata" and attribute == "toughness":
       return 2
     return 0
 
@@ -165,9 +167,10 @@ class Mythos45(Environment):
         "Mythos45", "Woods", "Society", {"slash", "triangle", "star"}, {"hex"}, "mystic")
 
   def get_modifier(self, thing, attribute):
-    if thing.name in ("Maniac", "Octopoid") and attribute == "toughness":
-      return 1
-    if thing.name == "Sunken City" and attribute == "difficulty":
+    if isinstance(thing, monsters.Monster):
+      if thing.name in ("Maniac", "Octopoid") and attribute == "toughness":
+        return 1
+    if isinstance(thing, gates.Gate) and thing.name == "Sunken City" and attribute == "difficulty":
       return -1
     return 0
 
