@@ -33,6 +33,15 @@ class NoMythos(mythos.GlobalEffect):
     return events.Nothing()
 
 
+class DevourFirstPlayer(mythos.GlobalEffect):
+
+  def __init__(self):
+    self.name = "DevourFirstPlayer"
+
+  def create_event(self, state):
+    return events.Devoured(state.characters[0])
+
+
 class FixedEncounterBaseTest(unittest.TestCase):
 
   def setUp(self):
@@ -970,7 +979,7 @@ class MapChoiceTest(unittest.TestCase):
     self.assertFalse(self.state.event_stack)
 
 
-class PlayerJoinTest(unittest.TestCase):
+class PlayerTest(unittest.TestCase):
 
   def setUp(self):
     self.game = eldritch.EldritchGame()
@@ -981,6 +990,9 @@ class PlayerJoinTest(unittest.TestCase):
       return
     for _ in res:
       pass
+
+
+class PlayerJoinTest(PlayerTest):
 
   def testJoinJSON(self):
     self.game.connect_user("session")
@@ -1023,9 +1035,9 @@ class PlayerJoinTest(unittest.TestCase):
   def testCanSwitchCharacter(self):
     self.game.connect_user("A")
     self.handle("A", {"type": "join", "char": "Nun"})
-    self.assertEqual(self.game.game.pending_chars, ["Nun"])
+    self.assertEqual(self.game.game.pending_chars, {"Nun": None})
     self.handle("A", {"type": "join", "char": "Doctor"})
-    self.assertEqual(self.game.game.pending_chars, ["Doctor"])
+    self.assertEqual(self.game.game.pending_chars, {"Doctor": None})
 
   def testClearPendingCharactersOnDisconnect(self):
     self.game.connect_user("A")
@@ -1074,8 +1086,18 @@ class PlayerJoinTest(unittest.TestCase):
     self.assertEqual(len(self.game.game.characters), 1)
 
     self.handle("A", {"type": "choice", "choice": "NoMythos"})
-    self.assertEqual(self.game.game.turn_phase, "upkeep")
 
+    # Validate that new characters get a chance to set their sliders before upkeep.
+    self.assertEqual(self.game.game.turn_phase, "mythos")
+    self.assertTrue(self.game.game.event_stack)
+    self.assertIsInstance(self.game.game.event_stack[-1], events.SliderInput)
+    self.assertTrue(self.game.game.event_stack[-1].free)
+
+    self.handle("B", {"type": "set_slider", "name": "done"})
+    self.handle("C", {"type": "set_slider", "name": "done"})
+
+    # Now that they've set their sliders, the next upkeep phase can begin.
+    self.assertEqual(self.game.game.turn_phase, "upkeep")
     self.assertEqual(len(self.game.game.characters), 3)
     self.assertEqual(self.game.game.characters[1].name, "Doctor")
     self.assertEqual(self.game.game.characters[2].name, "Gangster")
@@ -1090,19 +1112,127 @@ class PlayerJoinTest(unittest.TestCase):
     self.assertIn("Medicine", {pos.name for pos in self.game.game.characters[1].possessions})
     self.assertIn("Tommy Gun", {pos.name for pos in self.game.game.characters[2].possessions})
 
-    # Validate that new characters get a chance to set their sliders before upkeep.
-    self.assertTrue(self.game.game.event_stack)
-    self.assertIsInstance(self.game.game.event_stack[-1], events.SliderInput)
-    self.assertTrue(self.game.game.event_stack[-1].free)
-
-    self.handle("B", {"type": "set_slider", "name": "done"})
-    self.handle("C", {"type": "set_slider", "name": "done"})
-
     # It is now the doctor's upkeep. They should be able to spend focus to move their sliders.
     self.assertTrue(self.game.game.event_stack)
     self.assertIsInstance(self.game.game.event_stack[-1], events.SliderInput)
     self.assertEqual(self.game.game.event_stack[-1].character, self.game.game.characters[1])
     self.assertFalse(self.game.game.event_stack[-1].free)
+
+
+class DevouredPlayerJoinTest(PlayerTest):
+
+  def setUp(self):
+    super().setUp()
+    self.game.connect_user("A")
+    self.game.connect_user("B")
+    self.handle("A", {"type": "join", "char": "Nun"})
+    self.handle("B", {"type": "join", "char": "Doctor"})
+
+  def startDevoured(self):
+    with mock.patch.object(mythos, "CreateMythos", return_value=[DevourFirstPlayer(), NoMythos()]):
+      with mock.patch.object(eldritch.random, "shuffle"):
+        self.handle("A", {"type": "start"})
+    self.handle("A", {"type": "set_slider", "name": "done"})
+    self.handle("B", {"type": "set_slider", "name": "done"})
+    with self.assertRaisesRegex(game.InvalidMove, "must choose new"):
+      self.handle("A", {"type": "choice", "choice": "DevourFirstPlayer"})
+
+  def startNormal(self):
+    with mock.patch.object(mythos, "CreateMythos", return_value=[NoMythos(), NoMythos()]):
+      self.handle("A", {"type": "start"})
+    self.handle("A", {"type": "set_slider", "name": "done"})
+    self.handle("B", {"type": "set_slider", "name": "done"})
+    self.handle("A", {"type": "choice", "choice": "NoMythos"})
+
+  def testDevouredCharacterRejoin(self):
+    self.startDevoured()
+    self.assertEqual(self.game.game.characters[0].name, "Nun")
+    self.assertTrue(self.game.game.characters[0].gone)
+    self.assertEqual(self.game.game.turn_phase, "mythos")
+    self.assertEqual(self.game.game.turn_number, -1)
+    self.handle("A", {"type": "join", "char": "Gangster"})
+
+    # Have to set sliders for the new character that joined.
+    self.handle("A", {"type": "set_slider", "name": "done"})
+
+    self.assertEqual(self.game.game.turn_phase, "upkeep")
+    self.assertEqual(self.game.game.turn_number, 0)
+    self.assertEqual(self.game.game.characters[0].name, "Gangster")
+    self.assertTrue(self.game.game.all_characters["Nun"].gone)
+
+  def testInvalidNewCharacterChoice(self):
+    self.startDevoured()
+    with self.assertRaisesRegex(game.InvalidMove, "already taken"):
+      self.handle("A", {"type": "join", "char": "Doctor"})
+    with self.assertRaisesRegex(game.InvalidMove, "been devoured"):
+      self.handle("A", {"type": "join", "char": "Nun"})
+    with self.assertRaisesRegex(game.InvalidMove, "cannot choose"):
+      self.handle("B", {"type": "join", "char": "Gangster"})
+
+    self.assertEqual(self.game.game.turn_phase, "mythos")
+    self.assertEqual(self.game.game.turn_number, -1)
+    self.assertFalse(self.game.game.event_stack)
+    self.handle("A", {"type": "join", "char": "Gangster"})
+
+  def testOtherPlayersJoinWhileDevoured(self):
+    self.startDevoured()
+    self.game.connect_user("C")
+    self.handle("C", {"type": "join", "char": "Gangster"})
+    with self.assertRaisesRegex(game.InvalidMove, "already taken"):
+      self.handle("A", {"type": "join", "char": "Gangster"})
+    self.handle("C", {"type": "join", "char": "Student"})
+    self.handle("A", {"type": "join", "char": "Gangster"})
+
+    self.assertEqual(self.game.game.turn_phase, "mythos")
+    self.assertEqual(self.game.game.turn_number, -1)
+    self.assertTrue(self.game.game.event_stack)
+    self.assertEqual(len(self.game.game.characters), 3)
+    self.assertEqual(
+        [char.name for char in self.game.game.characters], ["Gangster", "Doctor", "Student"],
+    )
+
+    self.handle("A", {"type": "set_slider", "name": "done"})
+    self.handle("C", {"type": "set_slider", "name": "done"})
+
+    self.assertEqual(self.game.game.turn_phase, "upkeep")
+    self.assertEqual(self.game.game.turn_number, 0)
+
+  def testOtherPlayersCannotChooseDevoured(self):
+    self.startNormal()
+    self.handle("A", {"type": "set_slider", "name": "done"})
+    self.handle("B", {"type": "set_slider", "name": "done"})
+    self.game.game.event_stack.append(events.Devoured(self.game.game.characters[0]))
+    for _ in self.game.game.resolve_loop():
+      pass
+    self.handle("B", {"type": "choice", "choice": "Uptown"})
+    self.handle("B", {"type": "choice", "choice": "done"})
+    self.assertEqual(self.game.game.turn_phase, "mythos")
+    self.assertEqual(self.game.game.turn_number, 0)
+    self.handle("A", {"type": "join", "char": "Gangster"})
+    self.game.connect_user("C")
+    with self.assertRaisesRegex(game.InvalidMove, "been devoured"):
+      self.handle("C", {"type": "join", "char": "Nun"})
+    with self.assertRaisesRegex(game.InvalidMove, "already taken"):
+      self.handle("C", {"type": "join", "char": "Gangster"})
+    self.handle("C", {"type": "join", "char": "Scientist"})
+
+  def testDevouredCharacterCanBeFirstPlayer(self):
+    self.startNormal()
+    self.game.game.event_stack.append(events.Devoured(self.game.game.characters[0]))
+    for _ in self.game.game.resolve_loop():
+      pass
+    # First player is devoured, their upkeep ended.
+    self.assertEqual(self.game.game.turn_phase, "upkeep")
+    self.assertEqual(self.game.game.turn_idx, 1)
+    self.assertEqual(self.game.game.event_stack[-1].character, self.game.game.characters[1])
+    self.handle("B", {"type": "set_slider", "name": "done"})
+    # First character also does not get a movement phase (or encounter).
+    self.handle("B", {"type": "choice", "choice": "Uptown"})
+    self.handle("B", {"type": "choice", "choice": "done"})
+    self.assertEqual(self.game.game.turn_phase, "mythos")
+    # Devoured players can still be first player during mythos.
+    self.assertEqual(self.game.game.turn_idx, 0)
+    self.game.handle("A", {"type": "choice", "choice": "NoMythos"})
 
 
 if __name__ == "__main__":

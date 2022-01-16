@@ -1,4 +1,5 @@
 from collections import OrderedDict
+import math
 
 from eldritch import abilities
 from eldritch import events
@@ -37,6 +38,7 @@ class Character:
     self.lodge_membership = False
     self.delayed_until = None
     self.lose_turn_until = None
+    self.gone = False
     self.movement_points = self._speed_sneak[self.speed_sneak_slider][0]
     self.focus_points = self.focus
     self.home = home
@@ -49,9 +51,12 @@ class Character:
         "name", "stamina", "sanity", "focus",
         "movement_points", "focus_points",
         "dollars", "clues", "possessions", "trophies",  # TODO: special cards
-        "delayed_until", "lose_turn_until",
+        "delayed_until", "lose_turn_until", "gone",
     ]
     data = {attr: getattr(self, attr) for attr in attrs}
+    for numeric in ["delayed_until", "lose_turn_until"]:
+      if data[numeric] is not None and math.isinf(data[numeric]):
+        data[numeric] = True  # Any placeholder non-integer value.
     data["sliders"] = OrderedDict()
     for slider in self._slider_names:
       data["sliders"][slider] = {

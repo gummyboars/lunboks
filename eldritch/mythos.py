@@ -72,6 +72,8 @@ class Mythos1(Headline):
   def create_event(self, state):
     seq = super().create_event(state)
     for char in state.characters:
+      if char.gone:
+        continue
       check = events.Check(char, "luck", -1)
       bless = events.Bless(char)
       seq.events.append(events.PassFail(char, check, bless, events.Nothing()))
