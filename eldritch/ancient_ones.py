@@ -21,7 +21,11 @@ class AncientOne(mythos.GlobalEffect, metaclass=abc.ABCMeta):
     raise NotImplementedError
 
   def json_repr(self):
-    return {"name": self.name}
+    return {
+        "name": self.name,
+        "doom": self.doom,
+        "max_doom": self.max_doom,
+    }
 
 
 class DummyAncient(AncientOne):
@@ -185,3 +189,8 @@ class BlackPharaoh(AncientOne):
       )
     self.lore_modifier -= 1  # TODO: make this an Event to allow it to be canceled
     return AncientOneAttack(checks)
+
+
+def AncientOnes():
+  ancients = [SquidFace, YellowKing, ChaosGod, Wendigo, BlackPharaoh]
+  return {ancient().name: ancient() for ancient in ancients}

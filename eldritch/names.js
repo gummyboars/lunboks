@@ -148,6 +148,14 @@ gateNames = otherWorlds.map(name => "Gate " + name);
 carefullyAdd(gateNames);
 extraNames = ["Lost", "Sky", "Outskirts"];
 carefullyAdd(extraNames);
+ancientOneNames = [
+  "Squid Face",
+  "The Yellow King",
+  "God of Chaos",
+  "Wendigo",
+  "The Thousand Masks",
+];
+carefullyAdd(ancientOneNames);
 assetNames = [...assetSet];
 serverNames = {};
 for (let name of assetNames) {

@@ -44,6 +44,7 @@ class GameState:
     self.places = {}
     self.characters = []
     self.all_characters = characters.CreateCharacters()
+    self.all_ancients = ancient_ones.AncientOnes()
     self.pending_chars = {}
     self.common = collections.deque()
     self.unique = collections.deque()
@@ -109,7 +110,6 @@ class GameState:
     random.shuffle(gate_markers)
     self.gates.extend(gate_markers)
 
-    self.ancient_one = ancient_ones.DummyAncient()
     self.monsters = monsters.CreateMonsters()
     for idx, monster in enumerate(self.monsters):
       monster.idx = idx
@@ -286,6 +286,9 @@ class GameState:
     if data.get("type") == "start":
       self.handle_start()
       return self.resolve_loop()
+    if data.get("type") == "ancient":
+      self.handle_ancient(data.get("ancient"))
+      return [None]  # Return a dummy iterable; do not start executing the game loop.
 
     if char_idx not in range(len(self.characters)):
       raise InvalidPlayer(f"no such player {char_idx}")
@@ -493,9 +496,20 @@ class GameState:
         trgs[self.characters.index(event.character)]["trade"] = events.Nothing()
     return {char_idx: triggers for char_idx, triggers in trgs.items() if triggers}
 
+  def handle_ancient(self, ancient):
+    if self.game_stage != "setup":
+      raise InvalidMove("The game has already started.")
+    if ancient not in self.all_ancients:
+      raise InvalidMove(f"Unknown ancient one {ancient}")
+    self.ancient_one = self.all_ancients[ancient]
+
   def handle_start(self):
-    assert self.game_stage == "setup"
-    assert len(self.pending_chars) > 0
+    if self.game_stage != "setup":
+      raise InvalidMove("The game has already started.")
+    if self.ancient_one is None:
+      raise InvalidMove("You must choose an ancient one first.")
+    if not self.pending_chars:
+      raise InvalidMove("At least one player is required to start the game.")
     self.game_stage = "slumber"
     self.turn_idx = 0
     self.turn_number = -1
@@ -778,6 +792,7 @@ class EldritchGame(BaseGame):
     #   output["characters"][idx]["disconnected"] = not is_connected.get(idx, False)
     output["player_idx"] = self.player_sessions.get(session)
     output["pending_name"] = self.pending_sessions.get(session)
+    output["host"] = self.host == session
     return json.dumps(output, cls=CustomEncoder)
 
   def connect_user(self, session):
@@ -804,10 +819,11 @@ class EldritchGame(BaseGame):
     if data.get("type") == "join":
       yield from self.handle_join(session, data)
       return
-    if session not in self.player_sessions and data.get("type") != "start":
+    if session not in self.player_sessions and data.get("type") not in ["start", "ancient"]:
       raise InvalidPlayer("Unknown player")
-    if data.get("type") == "start":
-      assert session == self.host
+    if data.get("type") in ["start", "ancient"]:
+      if session != self.host:
+        raise InvalidMove("Only the host can do that.")
     for val in self.game.handle(self.player_sessions.get(session), data):
       self.update_pending_players()
       yield val

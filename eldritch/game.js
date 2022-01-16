@@ -4,12 +4,15 @@ characterMarkers = {};
 characterSheets = {};
 portraits = {};
 monsters = {};
+allAncients = {};
+chosenAncient = null;
 allCharacters = {};
 availableChars = [];
 pendingName = null;
 scale = 1;
 monsterChoice = {};
 charChoice = null;
+ancientChoice = null;
 runningAnim = [];
 messageQueue = [];
 statTimeout = null;
@@ -213,11 +216,14 @@ function finishAnim() {
 }
 function handleData(data) {
   allCharacters = data.all_characters;
+  allAncients = data.all_ancients;
   pendingName = data.pending_name;
+  chosenAncient = (data.ancient_one == null) ? null : data.ancient_one.name;
   updateAvailableCharacters(data.characters, data.pending_chars);
   updateCharacterSelect(data.characters, data.player_idx);
+  updateAncientSelect(data.game_stage, data.host);
   updateCharacterSheets(data.characters, data.pending_chars, data.player_idx, data.first_player, data.choice);
-  updateBottomText(data.game_stage, data.turn_phase, data.characters, data.turn_idx, data.player_idx);
+  updateBottomText(data.game_stage, data.turn_phase, data.characters, data.turn_idx, data.player_idx, data.host);
   updateGlobals(data.environment, data.rumor);
   updatePlaces(data.places);
   updateCharacters(data.characters);
@@ -476,6 +482,28 @@ function makeCheck(e) {
   ws.send(JSON.stringify({"type": "check", "modifier": modifier, "check_type": check_type}));
 }
 
+function prevAncient(e) {
+  let sortedKeys = Object.keys(allAncients).sort();
+  let currentIdx = sortedKeys.indexOf(ancientChoice);
+  if (currentIdx <= 0) {
+    ancientChoice = sortedKeys[sortedKeys.length-1];
+  } else {
+    ancientChoice = sortedKeys[currentIdx-1];
+  }
+  updateAncientSelect("setup", true);
+}
+
+function nextAncient(e) {
+  let sortedKeys = Object.keys(allAncients).sort();
+  let currentIdx = sortedKeys.indexOf(ancientChoice);
+  if (currentIdx >= sortedKeys.length - 1) {
+    ancientChoice = sortedKeys[0];
+  } else {
+    ancientChoice = sortedKeys[currentIdx+1];
+  }
+  updateAncientSelect("setup", true);
+}
+
 function prevChar(e) {
   let sortedKeys = Object.keys(allCharacters).sort();
   let currentIdx = sortedKeys.indexOf(charChoice);
@@ -498,6 +526,10 @@ function nextChar(e) {
   }
   drawChosenChar(allCharacters[charChoice]);
   updateStats();
+}
+
+function selectAncient(e) {
+  ws.send(JSON.stringify({"type": "ancient", "ancient": ancientChoice}));
 }
 
 function selectChar(e) {
@@ -1124,15 +1156,17 @@ function updatePlaceChoices(uichoice, places, annotations) {
   }
 }
 
-function updateBottomText(gameStage, turnPhase, characters, turnIdx, playerIdx) {
+function updateBottomText(gameStage, turnPhase, characters, turnIdx, playerIdx, host) {
   let uiprompt = document.getElementById("uiprompt");
   let btn = document.getElementById("start");
   uiprompt.innerText = "";
+  btn.style.display = "none";
   if (gameStage == "setup") {
-    btn.style.display = "inline-block";
+    if (host) {
+      btn.style.display = "inline-block";
+    }
     return;
   }
-  btn.style.display = "none";
   if (turnIdx != null) {
     uiprompt.innerText = characters[turnIdx].name + "'s " + turnPhase + " phase";
   }
@@ -1239,6 +1273,34 @@ function updateAvailableCharacters(characters, pendingChars) {
   }
   keys.sort();
   availableChars = keys;
+}
+
+function updateAncientSelect(gameStage, host) {
+  let ancientSelect = document.getElementById("ancientselect");
+  let buffer = document.getElementById("selectbuffer");
+  if (gameStage != "setup" || !host) {
+    ancientSelect.style.display = "none";
+    buffer.style.display = "none";
+    return;
+  }
+  ancientSelect.style.display = "flex";
+  buffer.style.display = "flex";
+  if (ancientChoice == null) {
+    let keys = Object.keys(allAncients);
+    keys.sort();
+    ancientChoice = (chosenAncient == null) ? keys[0] : chosenAncient;
+  }
+
+  let ancientSheet = document.getElementById("ancientchoice");
+  renderAssetToDiv(ancientSheet, ancientChoice);
+  let choiceButton = document.getElementById("chooseancientbutton");
+  if (ancientChoice == chosenAncient) {
+    choiceButton.innerText = "Chosen";
+  } else if (chosenAncient != null) {
+    choiceButton.innerText = "Change Choice";
+  } else {
+    choiceButton.innerText = "Choose";
+  }
 }
 
 function updateCharacterSelect(characters, playerIdx) {
