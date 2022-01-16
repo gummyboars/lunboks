@@ -44,7 +44,7 @@ class GameState:
     self.places = {}
     self.characters = []
     self.all_characters = characters.CreateCharacters()
-    self.pending_chars = []
+    self.pending_chars = {}
     self.common = collections.deque()
     self.unique = collections.deque()
     self.spells = collections.deque()
@@ -318,6 +318,8 @@ class GameState:
   def resolve_loop(self):
     # NOTE: we may produce one message that is identical to the previous state.
     yield None
+    if not self.event_stack and not self.test_mode:
+      self.next_turn()
     while self.event_stack:
       event = self.event_stack[-1]
       if self.start_event(event):
@@ -417,13 +419,18 @@ class GameState:
       nearby_monsters = [mon for mon in self.monsters if mon.place == event.character.place]
       if nearby_monsters:
         interrupts.append(events.EvadeOrFightAll(event.character, nearby_monsters))
-    interrupts.extend(sum([char.get_interrupts(event, self) for char in self.characters], []))
+    interrupts.extend(sum(
+        [char.get_interrupts(event, self) for char in self.characters if not char.gone], [],
+    ))
     global_interrupts = [glob.get_interrupt(event, self) for glob in self.globals() if glob]
     interrupts.extend([interrupt for interrupt in global_interrupts if interrupt])
     return interrupts
 
   def get_usable_interrupts(self, event):
-    i = {idx: char.get_usable_interrupts(event, self) for idx, char in enumerate(self.characters)}
+    i = {
+        idx: char.get_usable_interrupts(event, self)
+        for idx, char in enumerate(self.characters) if not char.gone
+    }
     # If the character is in another world with another character, let them trade before moving.
     if isinstance(event, events.ForceMovement) and self.turn_phase == "movement":
       if len([char for char in self.characters if char.place == event.character.place]) > 1:
@@ -464,13 +471,18 @@ class GameState:
     # Spells deactivate at the end of an entire combat.
     if isinstance(event, (events.Combat, events.InsaneOrUnconscious)):
       triggers.append(events.DeactivateSpells(event.character))
-    triggers.extend(sum([char.get_triggers(event, self) for char in self.characters], []))
+    triggers.extend(sum(
+        [char.get_triggers(event, self) for char in self.characters if not char.gone], [],
+    ))
     global_triggers = [glob.get_trigger(event, self) for glob in self.globals() if glob]
     triggers.extend([trigger for trigger in global_triggers if trigger])
     return triggers
 
   def get_usable_triggers(self, event):
-    trgs = {idx: char.get_usable_triggers(event, self) for idx, char in enumerate(self.characters)}
+    trgs = {
+        idx: char.get_usable_triggers(event, self)
+        for idx, char in enumerate(self.characters) if not char.gone
+    }
     # If the character moved from another world to another character, let them trade after moving.
     if isinstance(event, (events.ForceMovement, events.Return)) and self.turn_phase == "movement":
       if len([char for char in self.characters if char.place == event.character.place]) > 1:
@@ -486,27 +498,38 @@ class GameState:
     self.turn_phase = "mythos"
     self.initialize()
     seq = self.add_pending_players()
-    if seq.events:
-      seq.events.append(events.Mythos(None))
-      self.event_stack.append(seq)
-    else:
-      self.event_stack.append(events.Mythos(None))
+    assert seq.events
+    seq.events.append(events.Mythos(None))
+    self.event_stack.append(seq)
 
-  def handle_join(self, player_idx, old_name, char_name):
-    if player_idx is not None:
-      raise InvalidMove("You are already playing.")
-    if char_name not in self.all_characters:
-      raise InvalidMove(f"Unknown character {char_name}")
-    if char_name in {char.name for char in self.characters} or char_name in self.pending_chars:
+  def validate_new_character(self, name):
+    if name not in self.all_characters:
+      raise InvalidMove(f"Unknown character {name}")
+    if self.all_characters[name].gone:
+      raise InvalidMove("That character has already been devoured or retired.")
+    if name in {char.name for char in self.characters} or name in self.pending_chars:
       raise InvalidMove("That character is already taken.")
-
     if self.game_stage not in ["setup", "slumber"]:
       raise InvalidMove("You cannot join the game right now.")
+
+  def handle_join(self, old_name, char_name):
+    self.validate_new_character(char_name)
+
     if old_name == char_name:
       return
     if old_name is not None and old_name in self.pending_chars:
-      self.pending_chars.remove(old_name)
-    self.pending_chars.append(char_name)
+      self.pending_chars.pop(old_name)
+    self.pending_chars[char_name] = None
+
+  def handle_choose_char(self, player_idx, name):
+    if not self.characters[player_idx].gone:
+      raise InvalidMove("You cannot choose a new character right now.")
+    self.validate_new_character(name)
+
+    to_remove = [name for name, idx in self.pending_chars.items() if idx == player_idx]
+    for old_name in to_remove:
+      self.pending_chars.pop(old_name)
+    self.pending_chars[name] = player_idx
 
   def handle_use(self, char_idx, handle):
     assert char_idx in self.usables
@@ -593,6 +616,8 @@ class GameState:
       raise InvalidPlayer("Invalid recipient")
     if recipient_idx < 0 or recipient_idx >= len(self.characters):
       raise InvalidPlayer("Invalid recipient")
+    if self.characters[recipient_idx].gone:
+      raise InvalidMove("That player is either devoured or retired.")
     if recipient_idx == char_idx:
       raise InvalidMove("You cannot trade with yourself")
     recipient = self.characters[recipient_idx]
@@ -644,7 +669,17 @@ class GameState:
     # TODO: game stages other than slumber
     # Handle the end of the mythos phase separately.
     if self.turn_phase == "mythos":
+      # If we have pending players that need to be added, don't start the next turn yet. next_turn
+      # will be called again when they are done setting their sliders.
       seq = self.add_pending_players()
+      if seq is not None:
+        self.event_stack.append(seq)
+        return
+
+      # If there are any characters that were devoured and have not chosen a new character, stop.
+      if any(char.gone for char in self.characters):
+        raise InvalidMove("All players with devoured characters must choose new characters.")
+
       self.turn_number += 1
       if self.turn_number != 0:
         self.first_player += 1
@@ -654,16 +689,13 @@ class GameState:
       for char in self.characters:  # TODO: is this the right place to check for this?
         if char.lose_turn_until and char.lose_turn_until <= self.turn_number:
           char.lose_turn_until = None
-      if seq.events:
-        seq.events.append(events.Upkeep(self.characters[self.turn_idx]))
-        self.event_stack.append(seq)
-      else:
-        self.event_stack.append(events.Upkeep(self.characters[self.turn_idx]))
+      self.event_stack.append(events.Upkeep(self.characters[self.turn_idx]))
       for place in self.places.values():
         if getattr(place, "closed_until", None) == self.turn_number:
           place.closed_until = None
       return
 
+    # Handling end of all other turn types begins here.
     self.turn_idx += 1
     self.turn_idx %= len(self.characters)
 
@@ -678,14 +710,19 @@ class GameState:
 
   def add_pending_players(self):
     if not self.pending_chars:
-      return events.Sequence([], None)
+      return None
 
-    assert not {char.name for char in self.characters} & set(self.pending_chars)
-    assert len(set(self.pending_chars)) == len(self.pending_chars)
+    assert not {char.name for char in self.characters} & self.pending_chars.keys()
     new_characters = []
-    for name in self.pending_chars:
+    for name, idx in self.pending_chars.items():
       new_characters.append(self.all_characters[name])
-    self.characters.extend(new_characters)
+      if idx is None:
+        self.characters.append(self.all_characters[name])
+      else:
+        assert self.characters[idx].gone
+        self.characters[idx] = self.all_characters[name]
+
+    new_characters.sort(key=self.characters.index)  # Sort by order in self.characters.
     self.pending_chars.clear()
 
     # Abilities and fixed possessions.
@@ -749,7 +786,7 @@ class EldritchGame(BaseGame):
     if session in self.pending_sessions:
       name = self.pending_sessions[session]
       if name in self.game.pending_chars:
-        self.game.pending_chars.remove(name)
+        self.game.pending_chars.pop(name)
       del self.pending_sessions[session]
     if self.host == session:
       if not self.connected:
@@ -761,8 +798,7 @@ class EldritchGame(BaseGame):
     if not isinstance(data, dict):
       raise InvalidMove("Data must be a dictionary.")
     if data.get("type") == "join":
-      self.handle_join(session, data)
-      yield None
+      yield from self.handle_join(session, data)
       return
     if session not in self.player_sessions and data.get("type") != "start":
       raise InvalidPlayer("Unknown player")
@@ -773,9 +809,13 @@ class EldritchGame(BaseGame):
       yield val
 
   def handle_join(self, session, data):
-    self.game.handle_join(
-        self.player_sessions.get(session), self.pending_sessions.get(session), data.get("char"))
+    if session in self.player_sessions:
+      self.game.handle_choose_char(self.player_sessions[session], data.get("char"))
+      yield from self.game.resolve_loop()
+      return
+    self.game.handle_join(self.pending_sessions.get(session), data.get("char"))
     self.pending_sessions[session] = data.get("char")
+    yield None
 
   def update_pending_players(self):
     if not self.pending_sessions:

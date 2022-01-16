@@ -75,6 +75,8 @@ class YellowKing(AncientOne):
   def attack(self, state):
     checks = []
     for char in state.characters:
+      if char.gone:
+        continue
       check = events.Check(char, "luck", self.luck_modifier)
       checks.append(
           events.PassFail(char, check, events.Nothing(), events.Loss(char, {"sanity": 2}))
@@ -132,6 +134,8 @@ class Wendigo(AncientOne):
   def attack(self, state):
     checks = []
     for char in state.characters:
+      if char.gone:
+        continue
       check = events.Check(char, "fight", self.fight_modifier)
       checks.append(
           events.PassFail(char, check, events.Nothing(), events.Loss(char, {"stamina": 2}))
@@ -154,6 +158,8 @@ class BlackPharaoh(AncientOne):
   def awaken(self, state):
     checks = []
     for char in state.characters:
+      if char.gone:
+        continue
       has_clues = values.AttributePrerequisite(char, "clues", 1, "at least")
       checks.append(
           events.PassFail(
@@ -165,6 +171,8 @@ class BlackPharaoh(AncientOne):
   def attack(self, state):
     checks = []
     for char in state.characters:
+      if char.gone:
+        continue
       check = events.Check(char, "lore", self.lore_modifier)
       has_clues = values.AttributePrerequisite(char, "clues", "at least", 1)
       checks.append(

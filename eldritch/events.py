@@ -477,6 +477,9 @@ class Mythos(Turn):
       return
 
     if self.action is None:
+      # TODO: what if the world changes before the event is added to the queue? that is, what
+      # if a character is devoured after we create an event that iterates through all the chars,
+      # but before we make a choice?
       self.action = self.draw.card.create_event(state)
       if not state.test_mode:
         choice = CardChoice(first_player, "Choose a Mythos Card", [self.draw.card.name])
@@ -749,7 +752,30 @@ class CollectClues(Event):
     return f"{self.character.name} picked up {self.picked_up} clues at {self.place}"
 
 
-class InsaneOrUnconscious(Event):
+class StackClearMixin:
+
+  def clear_stack(self, state):
+    saved_interrupts = state.interrupt_stack[-1]
+    saved_triggers = state.trigger_stack[-1]
+    while state.event_stack:
+      event = state.event_stack[-1]
+      if hasattr(event, "character") and event.character == self.character:
+        state.pop_event(event)
+        if event != self:
+          event.cancelled = True
+      else:
+        break
+    # Note that when we cleared the stack, we also cleared this event. But this event should still
+    # be on the stack and get finished, so we have to put it (and its corresponding interrupts
+    # and triggers) back on the stack.
+    state.interrupt_stack.append(saved_interrupts)
+    state.trigger_stack.append(saved_triggers)
+    state.event_stack.append(self)
+    assert len(state.event_stack) == len(state.trigger_stack)
+    assert len(state.event_stack) == len(state.interrupt_stack)
+
+
+class InsaneOrUnconscious(StackClearMixin, Event):
 
   def __init__(self, character, attribute, desc):
     assert attribute in {"sanity", "stamina"}
@@ -767,24 +793,7 @@ class InsaneOrUnconscious(Event):
       assert getattr(self.character, self.attribute) <= 0
       setattr(self.character, self.attribute, 1)
 
-      saved_interrupts = state.interrupt_stack[-1]
-      saved_triggers = state.trigger_stack[-1]
-      while state.event_stack:
-        event = state.event_stack[-1]
-        if hasattr(event, "character") and event.character == self.character:
-          state.pop_event(event)
-          if event != self:
-            event.cancelled = True
-        else:
-          break
-      # Note that when we cleared the stack, we also cleared this event. But this event should still
-      # be on the stack and get finished, so we have to put it (and its corresponding interrupts
-      # and triggers) back on the stack.
-      state.interrupt_stack.append(saved_interrupts)
-      state.trigger_stack.append(saved_triggers)
-      state.event_stack.append(self)
-      assert len(state.event_stack) == len(state.trigger_stack)
-      assert len(state.event_stack) == len(state.interrupt_stack)
+      self.clear_stack(state)
       self.stack_cleared = True
 
     if not self.lose_clues:
@@ -831,6 +840,34 @@ def Insane(character):
 
 def Unconscious(character):
   return InsaneOrUnconscious(character, "stamina", "passed out")
+
+
+class Devoured(StackClearMixin, Event):
+
+  def __init__(self, character):
+    self.character = character
+    self.stack_cleared = False
+
+  def resolve(self, state):
+    if not self.stack_cleared:
+      self.clear_stack(state)
+      self.stack_cleared = True
+      self.character.gone = True
+      self.character.lose_turn_until = float("inf")
+      self.character.place = None
+      for pos in self.character.possessions:
+        if hasattr(pos, "deck"):
+          getattr(state, getattr(pos, "deck")).append(pos)
+      self.character.possessions.clear()
+
+  def is_resolved(self):
+    return self.stack_cleared
+
+  def start_str(self):
+    return ""
+
+  def finish_str(self):
+    return f"{self.character.name} was devoured"
 
 
 class DelayOrLoseTurn(Event):

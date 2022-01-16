@@ -215,7 +215,7 @@ function handleData(data) {
   allCharacters = data.all_characters;
   pendingName = data.pending_name;
   updateAvailableCharacters(data.characters, data.pending_chars);
-  updateCharacterSelect(data.player_idx);
+  updateCharacterSelect(data.characters, data.player_idx);
   updateCharacterSheets(data.characters, data.pending_chars, data.player_idx, data.first_player, data.choice);
   updateBottomText(data.game_stage, data.turn_phase, data.characters, data.turn_idx, data.player_idx);
   updateGlobals(data.environment, data.rumor);
@@ -516,8 +516,11 @@ function updateCharacters(newCharacters) {
   for (let character of newCharacters) {
     let place = document.getElementById("place" + character.place + "chars");
     if (place == null) {
-      // TODO: may need to remove the character instead of letting them stay on the board.
-      console.log("Unknown place " + character.place);
+      if (characterMarkers[character.name] != null) {
+        characterMarkers[character.name].parentNode.removeChild(characterMarkers[character.name]);
+        delete characterMarkers[character.name];
+      }
+      updatePortraitDiv(character.name, "Lost");  // Anything that is not an otherworld will do.
       continue;
     }
     updatePortraitDiv(character.name, character.place);
@@ -1208,7 +1211,7 @@ function updateAvailableCharacters(characters, pendingChars) {
     }
   }
   // Ignore all characters that have been chosen by someone else.
-  for (let name of pendingChars) {
+  for (let name in pendingChars) {
     if (name == pendingName) {
       continue;
     }
@@ -1217,13 +1220,22 @@ function updateAvailableCharacters(characters, pendingChars) {
       keys.splice(idx, 1);
     }
   }
+  // Ignore all characters that have been devoured or retired.
+  for (let name in allCharacters) {
+    if (allCharacters[name].gone) {
+      let idx = keys.indexOf(name);
+      if (idx >= 0) {
+        keys.splice(idx, 1);
+      }
+    }
+  }
   keys.sort();
   availableChars = keys;
 }
 
-function updateCharacterSelect(playerIdx) {
+function updateCharacterSelect(characters, playerIdx) {
   let charSelect = document.getElementById("charselect");
-  if (playerIdx != null) {  // TODO: choosing a new character after being devoured/retiring.
+  if (playerIdx != null && !characters[playerIdx].gone) {
     charSelect.style.display = "none";
     return;
   }
@@ -1257,7 +1269,7 @@ function drawChosenChar(character) {
   let choiceButton = document.getElementById("choosecharbutton");
   if (!availableChars.includes(character.name)) {
     sheet.classList.add("nochoose");
-    choiceButton.innerText = "Already Taken";
+    choiceButton.innerText = "Not Available";
     choiceButton.disabled = true;
     return;
   }
@@ -1274,10 +1286,10 @@ function drawChosenChar(character) {
 
 function updateCharacterSheets(characters, pendingCharacters, playerIdx, firstPlayer, choice) {
   let rightUI = document.getElementById("uiright");
-  let toKeep = Array.from(pendingCharacters);
+  let toKeep = Object.keys(pendingCharacters);
   // If no characters have been chosen yet, draw the characters players have selected.
   if (!characters.length) {
-    for (let charName of pendingCharacters) {
+    for (let charName in pendingCharacters) {
       let sheet = characterSheets[charName];
       if (sheet == null) {
         sheet = createCharacterSheet(null, allCharacters[charName], rightUI, false);
@@ -1291,6 +1303,9 @@ function updateCharacterSheets(characters, pendingCharacters, playerIdx, firstPl
   }
   // Draw the characters currently in the game.
   for (let [idx, character] of characters.entries()) {
+    if (character.gone) {
+      continue;
+    }
     toKeep.push(character.name);
     let sheet = characterSheets[character.name];
     if (sheet == null) {
