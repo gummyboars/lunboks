@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import math
 import os
 import sys
 import unittest
@@ -992,6 +993,20 @@ class InsaneUnconsciousTest(EventTest):
     self.assertEqual(self.char.dollars, 0)
     self.assertEqual(self.char.clues, 0)
     self.assertFalse(seq.events[1].is_resolved())
+
+  def testDevouredCharacter(self):
+    self.char.sanity = 2
+    self.char.stamina = 2
+    self.char.possessions.extend([
+        assets.Dog(), abilities.Marksman(0), items.Cross(0), items.MagicLamp(0), items.Wither(0),
+    ])
+    self.state.event_stack.append(Loss(self.char, {"sanity": 2, "stamina": 3}))
+    self.resolve_until_done()
+    self.assertTrue(self.char.gone)
+    self.assertIsNone(self.char.place)
+    self.assertTrue(math.isinf(self.char.lose_turn_until))
+    for deck in ["common", "unique", "spells", "skills", "allies"]:
+      self.assertEqual(len(getattr(self.state, deck)), 1)
 
 
 class SplitGainTest(EventTest):
