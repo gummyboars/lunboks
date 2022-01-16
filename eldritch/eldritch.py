@@ -446,10 +446,11 @@ class GameState:
         if isinstance(self.event_stack[-2], events.CastSpell):
           skip = True  # In case of a spell, delay insanity calculations until it's done being cast.
       if not skip:
-        # TODO: both going to zero at the same time means you are devoured.
-        if event.character.sanity <= 0:
+        if event.character.sanity <= 0 and event.character.stamina <= 0:
+          triggers.append(events.Devoured(event.character))
+        elif event.character.sanity <= 0:
           triggers.append(events.Insane(event.character))
-        if event.character.stamina <= 0:
+        elif event.character.stamina <= 0:
           triggers.append(events.Unconscious(event.character))
     # Must fight monsters when you end your movement.
     if isinstance(event, (events.CityMovement, events.Return)):

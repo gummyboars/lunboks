@@ -1914,6 +1914,14 @@ class LibraryTest(EncounterTest):
     self.assertEqual(self.char.stamina, 1)
     self.assertEqual(self.char.sanity, 1)
 
+  def testLibrary3Devoured(self):
+    self.char.sanity = 1
+    self.char.stamina = 1
+    self.state.event_stack.append(encounters.Library3(self.char))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=2)):
+      self.resolve_until_done()
+    self.assertTrue(self.char.gone)
+
   def testLibrary4(self):
     self.state.event_stack.append(encounters.Library4(self.char))
     self.state.gate_cards.clear()
@@ -2486,6 +2494,14 @@ class SquareTest(EncounterTest):
       self.resolve_until_done()
     self.assertEqual(self.char.stamina, 2)
     self.assertEqual(self.char.sanity, 2)
+
+  def testSquare3Devoured(self):
+    self.char.stamina = 1
+    self.char.sanity = 1
+    self.state.event_stack.append(encounters.Square3(self.char))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=2)):
+      self.resolve_until_done()
+    self.assertTrue(self.char.gone)
 
   def testSquare4Pass(self):
     self.char.possessions.extend([items.Food(0), items.TommyGun(0)])
@@ -3088,7 +3104,7 @@ class DocksTest(EncounterTest):
       self.resolve_until_done()
     self.assertEqual(self.char.place.name, "Lost")
 
-  def testDock7Pass(self):
+  def testDocks7Pass(self):
     self.state.event_stack.append(encounters.Docks7(self.char))
     self.state.common.extend([items.Revolver38(0), items.TommyGun(0)])
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
@@ -3099,7 +3115,7 @@ class DocksTest(EncounterTest):
     self.assertEqual(self.char.stamina, 3)
     self.assertEqual(self.char.sanity, 3)
 
-  def testDock7Fail(self):
+  def testDocks7Fail(self):
     self.state.event_stack.append(encounters.Docks7(self.char))
     self.char.stamina = 4
     self.state.common.extend([items.Revolver38(0), items.TommyGun(0)])
@@ -3109,6 +3125,14 @@ class DocksTest(EncounterTest):
     self.assertEqual(len(self.char.possessions), 0)
     self.assertEqual(self.char.stamina, 1)
     self.assertEqual(self.char.sanity, 2)
+
+  def testDocks7Devoured(self):
+    self.state.event_stack.append(encounters.Docks7(self.char))
+    self.char.stamina = 3
+    self.char.sanity = 1
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=2)):
+      self.resolve_until_done()
+    self.assertTrue(self.char.gone)
 
 
 class UnnamableTest(EncounterTest):
@@ -4202,16 +4226,15 @@ class CaveTest(EncounterTest):
     self.assertEqual(self.char.place.name, "Hospital")
 
   def testCave7Devoured(self):
-    #    self.char.stamina = 1
-    #    self.char.sanity = 1
-    #    self.state.event_stack.append(encounters.Cave7(self.char))
-    #    choice = self.resolve_to_choice(MultipleChoice)
-    #    self.assertEqual(choice.choices, ["Yes", "No"])
-    #    choice.resolve(self.state, "Yes")
-    #    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=2)):
-    #      self.resolve_until_done()
-    #    self.assertEqual(self.char.is_devoured, True)
-    pass
+    self.char.stamina = 1
+    self.char.sanity = 1
+    self.state.event_stack.append(encounters.Cave7(self.char))
+    choice = self.resolve_to_choice(MultipleChoice)
+    self.assertEqual(choice.choices, ["Yes", "No"])
+    choice.resolve(self.state, "Yes")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=2)):
+      self.resolve_until_done()
+    self.assertTrue(self.char.gone)
 
   def testCave7One(self):
     self.char.lore_luck_slider = 3
