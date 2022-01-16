@@ -11,6 +11,7 @@ if os.path.abspath(sys.path[0]) == os.path.dirname(os.path.abspath(__file__)):
   sys.path[0] = os.path.dirname(sys.path[0])
 
 from eldritch import abilities
+from eldritch import ancient_ones
 from eldritch import assets
 from eldritch import characters
 from eldritch import eldritch
@@ -569,6 +570,7 @@ class InitializePlayersTest(unittest.TestCase):
     for name in chars:
       with self.subTest(char=name):
         state = eldritch.GameState()
+        state.ancient_one = ancient_ones.DummyAncient()
         state.handle_join(None, name)
         state.handle_start()
 
@@ -994,6 +996,7 @@ class PlayerTest(unittest.TestCase):
 
   def setUp(self):
     self.game = eldritch.EldritchGame()
+    self.game.game.ancient_one = ancient_ones.DummyAncient()
 
   def handle(self, session, data):
     res = self.game.handle(session, data)
@@ -1001,6 +1004,34 @@ class PlayerTest(unittest.TestCase):
       return
     for _ in res:
       pass
+
+
+class ChooseAncientOneTest(PlayerTest):
+
+  def setUp(self):
+    super().setUp()
+    self.game.game.ancient_one = None
+
+  def testChoose(self):
+    self.game.connect_user("A")
+    self.handle("A", {"type": "ancient", "ancient": "Wendigo"})
+    with self.assertRaisesRegex(game.InvalidMove, "Unknown"):
+      self.handle("A", {"type": "ancient", "ancient": "Taser Face"})
+    self.handle("A", {"type": "ancient", "ancient": "Squid Face"})
+    self.assertIsInstance(self.game.game.ancient_one, ancient_ones.SquidFace)
+
+  def testBadChoices(self):
+    self.game.connect_user("A")
+    self.game.connect_user("B")
+    with self.assertRaisesRegex(game.InvalidMove, "host"):
+      self.handle("B", {"type": "ancient", "ancient": "Wendigo"})
+    with self.assertRaisesRegex(game.InvalidMove, "Unknown"):
+      self.handle("A", {"type": "ancient", "name": "Wendigo"})
+    self.handle("A", {"type": "ancient", "ancient": "Wendigo"})
+    self.handle("A", {"type": "join", "char": "Nun"})
+    self.handle("A", {"type": "start"})
+    with self.assertRaisesRegex(game.InvalidMove, "already started"):
+      self.handle("A", {"type": "ancient", "ancient": "Wendigo"})
 
 
 class PlayerJoinTest(PlayerTest):
@@ -1023,7 +1054,7 @@ class PlayerJoinTest(PlayerTest):
 
   def testCannotStartWithoutPlayers(self):
     self.game.connect_user("A")
-    with self.assertRaises(AssertionError):
+    with self.assertRaises(game.InvalidMove):
       self.handle("A", {"type": "start"})
 
   def testCannotReuseCharacter(self):

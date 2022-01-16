@@ -39,12 +39,21 @@
             </div>
           </div>
           <div id="charselect">
-            <div id="charchoices">
-              <div id="prevchar" class="charchoicebutton" onclick="prevChar(event)">◀️</div>
+            <div id="charchoices" class="bigchoices">
+              <div id="prevchar" class="choicebutton" onclick="prevChar(event)">◀️</div>
               <div id="charchoice"></div>
-              <div id="nextchar" class="charchoicebutton" onclick="nextChar(event)">▶️</div>
+              <div id="nextchar" class="choicebutton" onclick="nextChar(event)">▶️</div>
             </div>
-            <div id="charselectbuttons"><button id="choosecharbutton" onclick="selectChar(event)">Choose</button></div>
+            <div class="selectbutton"><button id="choosecharbutton" onclick="selectChar(event)">Choose</button></div>
+          </div>
+          <div id="selectbuffer"></div>
+          <div id="ancientselect">
+            <div id="ancientchoices" class="bigchoices">
+              <div id="prevancient" class="choicebutton" onclick="prevAncient(event)">◀️</div>
+              <div id="ancientchoice" class="cnvcontainer"><canvas></canvas></div>
+              <div id="nextancient" class="choicebutton" onclick="nextAncient(event)">▶️</div>
+            </div>
+            <div class="selectbutton"><button id="chooseancientbutton" onclick="selectAncient(event)">Choose</button></div>
           </div>
           <div id="cardchoicescroll">
             <div id="scrollcardsleft" class="cardscroll" onclick="scrollCards(event, -1)">◀️</div>

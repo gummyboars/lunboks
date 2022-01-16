@@ -142,6 +142,9 @@ function renderDefaultToCanvas(cnv, width, height, assetName, variant) {
   if (mythosCards.includes(assetName)) {
     return renderTextRectangle(cnv, assetName, "white", "black");
   }
+  if (ancientOneNames.includes(assetName)) {
+    return renderTextRectangle(cnv, assetName, "midnightblue", "white");
+  }
   if (encounterCardNames.includes(assetName)) {
     for (let neighborhood of neighborhoodNames) {
       if (assetName.startsWith(neighborhood)) {

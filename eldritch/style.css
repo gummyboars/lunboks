@@ -63,7 +63,12 @@ button:disabled {
   justify-content: space-between;
   align-items: center;
 }
-#charselect {
+#selectbuffer {
+  width: min(10vw, 16vh);
+  height: 1px;
+  pointer-events: none;
+}
+#charselect, #ancientselect {
   z-index: 20;
   display: none;
   flex-direction: column;
@@ -72,11 +77,15 @@ button:disabled {
   color: black;
   pointer-events: auto;
 }
-#charchoices {
+.bigchoices {
   display: flex;
   flex-direction: row;
   justify-content: center;
   align-items: space-between;
+}
+#ancientchoice {
+  width: min(20vw, 32vh);
+  height: min(28.25vw, 45.2vh);
 }
 #charchoice {
   display: flex;
@@ -87,7 +96,7 @@ button:disabled {
   width: min(20vw, 32vh);
   max-width: min(20vw, 32vh);
 }
-.charchoicebutton {
+.choicebutton {
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -95,7 +104,7 @@ button:disabled {
   font-size: calc(min(1.25vw, 2vh));
   cursor: pointer;
 }
-#charselectbuttons {
+.selectbutton {
   display: flex;
   flex-direction: row;
   justify-content: center;
