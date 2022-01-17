@@ -222,6 +222,7 @@ function handleData(data) {
   updateAvailableCharacters(data.characters, data.pending_chars);
   updateCharacterSelect(data.characters, data.player_idx);
   updateAncientSelect(data.game_stage, data.host);
+  updateAncientOne(data.ancient_one, data.terror);
   updateCharacterSheets(data.characters, data.pending_chars, data.player_idx, data.first_player, data.choice);
   updateBottomText(data.game_stage, data.turn_phase, data.characters, data.turn_idx, data.player_idx, data.host);
   updateGlobals(data.environment, data.rumor);
@@ -1303,6 +1304,23 @@ function updateAncientSelect(gameStage, host) {
   }
 }
 
+function updateAncientOne(ancientOne, terror) {
+  renderAssetToDiv(document.getElementById("terror"), "Terror" + (terror || 0));
+  let doom = document.getElementById("doom");
+  if (ancientOne == null) {
+    doom.maxValue = null;
+    renderAssetToDiv(doom, "Doom");
+    return;
+  }
+  doom.maxValue = ancientOneDoomMax[ancientOne.name];
+  doom.statValue = ancientOne.doom;
+  renderAssetToDiv(doom, ancientOne.name + " max");
+  let worshippers = document.getElementById("worshippers");
+  renderAssetToDiv(worshippers, ancientOne.name + " worshippers");
+  let slumber = document.getElementById("slumber");
+  renderAssetToDiv(slumber, ancientOne.name + " slumber");
+}
+
 function updateCharacterSelect(characters, playerIdx) {
   let charSelect = document.getElementById("charselect");
   if (playerIdx != null && !characters[playerIdx].gone) {
@@ -1651,6 +1669,26 @@ function updateStats() {
       renderTextCircle(cnv, elem.statValue, "rgba(0, 0, 0, 0)", elem.textColor, 0.7);
     });
   }
+  let doom = document.getElementById("doom");
+  renderAssetToDiv(doom, doom.assetName, doom.variant).then(function() {
+    if (!doom.maxValue) {
+      return;
+    }
+    let pct = doom.statValue / doom.maxValue;
+    let cnv = doom.getElementsByTagName("CANVAS")[0];
+    let ctx = cnv.getContext("2d");
+    ctx.save();
+    ctx.globalAlpha = 0.7; 
+    ctx.globalCompositeOperation = "source-atop";
+    ctx.fillStyle = "black";
+    let rotation = 2 * Math.PI * pct - Math.PI / 2; 
+    ctx.beginPath();
+    ctx.arc(cnv.width / 2, cnv.height / 2, cnv.width / 2, rotation, 3 * Math.PI / 2, false);
+    ctx.lineTo(cnv.width / 2, cnv.height / 2);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  });
 }
 
 function updateSliders(sheet, character, isPlayer) {

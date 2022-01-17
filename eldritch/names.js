@@ -148,14 +148,21 @@ gateNames = otherWorlds.map(name => "Gate " + name);
 carefullyAdd(gateNames);
 extraNames = ["Lost", "Sky", "Outskirts"];
 carefullyAdd(extraNames);
-ancientOneNames = [
-  "Squid Face",
-  "The Yellow King",
-  "God of Chaos",
-  "Wendigo",
-  "The Thousand Masks",
-];
-carefullyAdd(ancientOneNames);
+ancientOneDoomMax = {
+  "Squid Face": 13,
+  "The Yellow King": 13,
+  "God of Chaos": 14,
+  "Wendigo": 11,
+  "The Thousand Masks": 11,
+}
+ancientOnes = Object.keys(ancientOneDoomMax);
+carefullyAdd(ancientOnes);
+ancientOneWorshippers = ancientOnes.map(name => name + " worshippers");
+carefullyAdd(ancientOneWorshippers);
+ancientOneSlumbers = ancientOnes.map(name => name + " slumber");
+carefullyAdd(ancientOneSlumbers);
+ancientOneDooms = ancientOnes.map(name => name + " max");
+carefullyAdd(ancientOneDooms);
 assetNames = [...assetSet];
 serverNames = {};
 for (let name of assetNames) {
@@ -221,6 +228,11 @@ locationNames = [
 carefullyAdd(locationNames);
 tokens = ["Dollar", "Clue", "Sanity", "Stamina", "Slider", "Seal", "Doom"];
 carefullyAdd(tokens);
+terrors = [];
+for (let i = 0; i < 11; i++) {
+  terrors.push("Terror" + i);
+}
+carefullyAdd(terrors);
 deckNames = ["common", "unique", "spells", "skills", "allies"];
 carefullyAdd(deckNames);
 assetNames = ["statsbg", "board"].concat([...assetSet]);
