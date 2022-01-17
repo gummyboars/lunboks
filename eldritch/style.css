@@ -355,9 +355,9 @@ button:disabled {
 }
 #uibottom{
   flex: 1 1 auto;
-  min-height: 22.4%;
-  height: 22.4%;
-  max-height: 22.4%;
+  min-height: 21.4%;
+  height: 21.4%;
+  max-height: 21.4%;
   display: flex;
   flex-direction: row;
 }
@@ -487,22 +487,74 @@ button:disabled {
   left: 50%;
   transform: translate(-50%, -50%) scale(0.5);
 }
-#extra {
+#ancientandplaces {
   width: 25%;
   min-width: 25%;
   max-width: 25%;
+  height: 100%;
+  max-height: 100%;
   display: flex;
   flex-direction: row;
   align-items: flex-start;
-  justify-content: space-evenly;
+  justify-content: flex-end;
+  background-color: midnightblue;
+}
+#ancientone {
+  flex: 1 1 auto;
+  min-width: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+}
+#slumber {
+  width: 52%;
+  max-width: 52%;
+  height: 100%;
+  max-height: 100%;
+}
+#ancienttracks {
+  width: 48%;
+  max-width: 48%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: space-between;
+}
+#worshippers {
+  width: 100%;
+  height: 72.5%;
+  max-height: 72.5%;
+}
+#tracks {
+  width: 100%;
+  height: 27.5%;
+  max-height: 27.5%;
+  display: flex;
+  flex-direction: row;
+  align-items: flex-end;
+  justify-content: space-between;
+}
+.track {
+  width: 50%;
+  height: 100%;
+}
+#extra {
+  width: calc(min(34.24vw, 21.4vh) / 3);
+  height: 100%;
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: flex-start;
 }
 .misc {
-  min-width: calc(min(80vw, 128vh) / 15);
-  width: calc(min(80vw, 128vh) / 15);
-  max-width: calc(min(80vw, 128vh) / 15);
-  min-height: calc(min(80vw, 128vh) / 15);
-  height: calc(min(80vw, 128vh) / 15);
-  max-height: calc(min(80vw, 128vh) / 15);
+  width: calc(min(34.24vw, 21.4vh) / 3);
+  min-height: calc(min(34.24vw, 21.4vh) / 3);
+  height: calc(min(34.24vw, 21.4vh) / 3);
+  max-height: calc(min(34.24vw, 21.4vh) / 3);
   position: relative;
 }
 .placemiscbox {

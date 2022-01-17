@@ -115,31 +115,41 @@
               <button onclick="makeCheck(event)" onmouseenter="highlightCheck(event)" onmouseleave="endHighlight(event)" value="spell">Spell</button>
             </div>
           </div>
-          <div id="extra">
-            <div id="placeOutskirts" class="misc cnvcontainer">
-              <canvas class="misccnv"></canvas>
-              <div id="placeOutskirtsbox" class="placemiscbox">
-                <div id="placeOutskirtsmonsters" class="placemonsters"></div>
+          <div id="ancientandplaces">
+            <div id="ancientone">
+              <div id="ancienttracks">
+                <div id="worshippers" class="cnvcontainer"><canvas></canvas></div>
+                <div id="tracks">
+                  <div id="terror" class="track cnvcontainer"><canvas></canvas></div>
+                  <div id="doom" class="track"><canvas></canvas></div>
+                </div>
               </div>
+              <div id="slumber" class="cnvcontainer"><canvas></canvas></div>
             </div>
-            <div id="placeSky" class="misc cnvcontainer">
-              <canvas class="misccnv"></canvas>
-              <div id="placeSkybox" class="placemiscbox">
-                <div id="placeSkymonsters" class="placemonsters"></div>
+            <div id="extra">
+              <div id="placeOutskirts" class="misc cnvcontainer">
+                <canvas class="misccnv"></canvas>
+                <div id="placeOutskirtsbox" class="placemiscbox">
+                  <div id="placeOutskirtsmonsters" class="placemonsters"></div>
+                </div>
               </div>
-            </div>
-            <div id="placeLost" class="misc cnvcontainer">
-              <canvas class="misccnv"></canvas>
-              <div id="placeLostbox" class="placemiscbox">
-                <div id="placeLostchars" class="placechars"></div>
+              <div id="placeSky" class="misc cnvcontainer">
+                <canvas class="misccnv"></canvas>
+                <div id="placeSkybox" class="placemiscbox">
+                  <div id="placeSkymonsters" class="placemonsters"></div>
+                </div>
+              </div>
+              <div id="placeLost" class="misc cnvcontainer">
+                <canvas class="misccnv"></canvas>
+                <div id="placeLostbox" class="placemiscbox">
+                  <div id="placeLostchars" class="placechars"></div>
+                </div>
               </div>
             </div>
           </div>
         </div>
       </div>
       <div id="uiright">
-        <div id="doomtrack"></div>
-        <div id="terrortrack"></div>
         <div id="eventlog"></div>
       </div>
     </div>
