@@ -600,7 +600,6 @@ class CloseGateTest(EventTest):
     self.assertEqual(self.char.clues, 0)
     self.assertTrue(close.choice.is_cancelled())
     self.assertFalse(close.closed)
-    self.assertFalse(close.sealed)
 
   def testCloseCheckCancelled(self):
     close = GateCloseAttempt(self.char, "Square")
@@ -617,29 +616,126 @@ class CloseGateTest(EventTest):
     self.assertEqual(self.char.clues, 0)
     self.assertTrue(close.check.is_cancelled())
     self.assertFalse(close.closed)
+
+  def testCloseChosenGate(self):
+    self.char.clues = 5
+    self.char.place = self.state.places["Woods"]
+    self.state.places["Woods"].gate = self.state.gates.popleft()
+    choice = GateChoice(self.char, "choose")
+    close = CloseGate(self.char, choice, can_take=True, can_seal=True)
+    self.state.event_stack.append(Sequence([choice, close], self.char))
+    gate_choice = self.resolve_to_choice(GateChoice)
+
+    self.assertCountEqual(gate_choice.choices, ["Square", "Woods"])
+    gate_choice.resolve(self.state, "Square")
+    seal_choice = self.resolve_to_choice(SpendChoice)
+    self.spend("clues", 5, seal_choice)
+    seal_choice.resolve(self.state, "Yes")
+    self.resolve_until_done()
+
+    self.assertIsNone(self.state.places["Square"].gate)
+    self.assertIsNotNone(self.state.places["Woods"].gate)
+    self.assertEqual(len(self.char.trophies), 1)
+    self.assertEqual(self.char.clues, 0)
+    self.assertTrue(close.sealed)
+    self.assertTrue(self.state.places["Square"].sealed)
+
+  def testCannotTakeOrSealGate(self):
+    self.char.clues = 5
+    self.char.place = self.state.places["Woods"]
+    close = CloseGate(self.char, "Square", can_take=False, can_seal=False)
+    self.state.event_stack.append(close)
+
+    self.resolve_until_done()
+
+    self.assertIsNone(self.state.places["Square"].gate)
+    self.assertEqual(len(self.char.trophies), 0)
+    self.assertEqual(self.char.clues, 5)
     self.assertFalse(close.sealed)
+    self.assertFalse(self.state.places["Square"].sealed)
+
+  def testCanTakeButCannotSeal(self):
+    self.char.clues = 5
+    self.char.place = self.state.places["Woods"]
+    close = CloseGate(self.char, "Square", can_take=True, can_seal=False)
+    self.state.event_stack.append(close)
+
+    self.resolve_until_done()
+
+    self.assertIsNone(self.state.places["Square"].gate)
+    self.assertEqual(len(self.char.trophies), 1)
+    self.assertEqual(self.char.clues, 5)
+    self.assertFalse(close.sealed)
+    self.assertFalse(self.state.places["Square"].sealed)
+
+  def testCanSealButCannotTake(self):
+    self.char.clues = 5
+    self.char.place = self.state.places["Woods"]
+    close = CloseGate(self.char, "Square", can_take=False, can_seal=True)
+    self.state.event_stack.append(close)
+
+    seal_choice = self.resolve_to_choice(SpendChoice)
+    self.spend("clues", 5, seal_choice)
+    seal_choice.resolve(self.state, "Yes")
+    self.resolve_until_done()
+
+    self.assertIsNone(self.state.places["Square"].gate)
+    self.assertEqual(len(self.char.trophies), 0)
+    self.assertEqual(self.char.clues, 0)
+    self.assertTrue(close.sealed)
+    self.assertTrue(self.state.places["Square"].sealed)
+
+  def testMonstersDisappearWhenClosed(self):
+    self.state.monsters.clear()
+    self.state.monsters.extend([
+        monsters.Ghoul(), monsters.Pinata(), monsters.Ghoul(), monsters.Ghoul(),
+    ])
+    self.state.monsters[0].place = self.state.places["Uptown"]  # hex
+    self.state.monsters[1].place = self.state.places["Sky"]  # circle
+    self.state.monsters[2].place = self.state.places["Outskirts"]  # hex
+    self.state.monsters[3].place = None  # representing a monster in someone's trophies or the box
+    # close a hex gate
+    close = CloseGate(self.char, "Square", can_take=False, can_seal=False)
+    self.state.event_stack.append(close)
+    self.resolve_until_done()
+
+    self.assertEqual(self.state.monsters[0].place.name, "cup")
+    self.assertEqual(self.state.monsters[1].place.name, "Sky")  # not a hex monster
+    self.assertEqual(self.state.monsters[2].place.name, "cup")  # outskirts monsters disappear too
+    self.assertIsNone(self.state.monsters[3].place)
+
+  def testMonstersDisappearFromSkyWhenClosed(self):
+    self.state.monsters.clear()
+    self.state.monsters.extend([
+        monsters.Ghoul(), monsters.Pinata(), monsters.Ghoul(), monsters.Pinata(),
+    ])
+    self.state.places["Square"].gate = self.state.gates.pop()  # circle gate
+    self.state.monsters[0].place = self.state.places["Uptown"]  # hex
+    self.state.monsters[1].place = self.state.places["Sky"]  # circle
+    self.state.monsters[2].place = self.state.places["Outskirts"]  # hex
+    self.state.monsters[3].place = None  # representing a monster in someone's trophies or the box
+    close = CloseGate(self.char, "Square", can_take=False, can_seal=False)
+    self.state.event_stack.append(close)
+    self.resolve_until_done()
+
+    self.assertEqual(self.state.monsters[0].place.name, "Uptown")
+    self.assertEqual(self.state.monsters[1].place.name, "cup")  # not a hex monster
+    self.assertEqual(self.state.monsters[2].place.name, "Outskirts")  # outskirts monsters disappear too
+    self.assertIsNone(self.state.monsters[3].place)
 
   def testSealChoiceCancelled(self):
     self.char.clues = 6
-    close = GateCloseAttempt(self.char, "Square")
+    close = CloseGate(self.char, "Square", can_take=True, can_seal=True)
     self.state.event_stack.append(close)
-    self.char.possessions.append(Canceller(SpendChoice, 1))
+    self.char.possessions.append(Canceller(SpendChoice))
 
-    choice = self.resolve_to_choice(MultipleChoice)
-    choice.resolve(self.state, "Close with lore")
-    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
-      choice = self.resolve_to_choice(SpendChoice)
-    choice.resolve(self.state, "Done")
     self.resolve_until_done()
 
     self.assertTrue(close.is_resolved())
-    self.assertFalse(self.square.gate)
+    self.assertIsNone(self.square.gate)
     self.assertFalse(self.square.sealed)
     self.assertEqual(self.char.clues, 6)
-    self.assertFalse(close.choice.is_cancelled())
-    self.assertFalse(close.check.is_cancelled())
     self.assertTrue(close.seal_choice.is_cancelled())
-    self.assertTrue(close.closed)
     self.assertFalse(close.sealed)
 
 

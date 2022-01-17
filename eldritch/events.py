@@ -1911,6 +1911,30 @@ class DiscardNamed(Event):
     return f"{self.character.name} discarded their {self.item_name}"
 
 
+class ReturnMonsterFromBoard(Event):  # TODO: merge the three return monster to cup events
+
+  def __init__(self, character, monster):
+    self.character = character
+    self.monster = monster
+    self.returned = False
+
+  def resolve(self, state):
+    if not isinstance(self.monster.place, (places.Outskirts, places.CityPlace)):
+      self.cancelled = True
+      return
+    self.monster.place = state.monster_cup
+    self.returned = True
+
+  def is_resolved(self):
+    return self.returned
+
+  def start_str(self):
+    return ""
+
+  def finish_str(self):
+    return f"{self.monster.name} was returned to the cup"
+
+
 class ReturnMonsterToCup(Event):
 
   def __init__(self, character, handle):
@@ -2998,9 +3022,7 @@ class GateCloseAttempt(Event):
     self.location_name = location_name
     self.choice: Optional[ChoiceEvent] = None
     self.check: Optional[Check] = None
-    self.seal_choice: Optional[ChoiceEvent] = None
     self.closed = None
-    self.sealed = None
 
   def resolve(self, state):
     if self.choice is None:
@@ -3012,7 +3034,6 @@ class GateCloseAttempt(Event):
     assert self.choice.is_done()
     if self.choice.is_cancelled() or self.choice.choice == "Don't close":
       self.closed = False
-      self.sealed = False
       return
 
     if self.check is None:
@@ -3025,13 +3046,59 @@ class GateCloseAttempt(Event):
     assert self.check.is_done()
     if self.check.is_cancelled() or not self.check.successes:
       self.closed = False
-      self.sealed = False
       return
 
+    self.closed = CloseGate(self.character, self.location_name, can_take=True, can_seal=True)
+    state.event_stack.append(self.closed)
+
+  def is_resolved(self):
+    if self.closed is False:
+      return True
+    if self.closed is None:
+      return False
+    return self.closed.is_done()
+
+  def start_str(self):
+    return ""
+
+  def finish_str(self):
+    if self.choice.is_cancelled() or self.choice.choice == "Don't close":
+      return f"{self.character.name} chose not to close the gate at {self.location_name}"
     if not self.closed:
-      self.closed = True
-      # TODO: event for taking a gate trophy
-      self.character.trophies.append(state.places[self.location_name].gate)
+      return f"{self.character.name} failed to close the gate at {self.location_name}"
+    return ""
+
+
+class CloseGate(Event):
+
+  def __init__(self, character, location_name, can_take, can_seal):
+    self.character = character
+    self.location_name: Union[MapChoice, str] = location_name
+    self.gate = None
+    self.can_take = can_take
+    self.can_seal = can_seal
+    self.return_monsters = None
+    self.seal_choice: Optional[ChoiceEvent] = None
+    self.sealed = None
+
+  def resolve(self, state):
+    if isinstance(self.location_name, MapChoice):
+      if self.location_name.is_cancelled() or self.location_name.choice is None:
+        self.cancelled = True
+        return
+      self.location_name = self.location_name.choice
+
+    if self.gate is None:
+      self.gate = state.places[self.location_name].gate
+      if self.gate is None:
+        self.cancelled = True
+        return
+
+      if self.can_take:
+        # TODO: event for taking a gate trophy
+        self.character.trophies.append(self.gate)
+      else:
+        state.gates.append(self.gate)
       state.places[self.location_name].gate = None
       closed_until = state.places[self.location_name].closed_until or -1
       if closed_until > state.turn_number:
@@ -3039,6 +3106,23 @@ class GateCloseAttempt(Event):
             CloseLocation(self.location_name, closed_until - state.turn_number - 1)
         )
         return
+
+    if not self.return_monsters:
+      monsters_to_return = []
+      for monster in state.monsters:
+        if not isinstance(monster.place, (places.Outskirts, places.CityPlace)):
+          continue
+        if monster.dimension == self.gate.dimension:
+          monsters_to_return.append(monster)
+      self.return_monsters = Sequence([
+          ReturnMonsterFromBoard(self.character, monster) for monster in monsters_to_return
+      ], self.character)
+      state.event_stack.append(self.return_monsters)
+      return
+
+    if not self.can_seal:
+      self.sealed = False
+      return
 
     if self.seal_choice is None:
       seal_clues = 5
@@ -3059,19 +3143,14 @@ class GateCloseAttempt(Event):
     self.sealed = True
 
   def is_resolved(self):
-    return self.closed is not None and self.sealed is not None
+    return self.gate is not None and self.sealed is not None
 
   def start_str(self):
-    pass
+    return ""
 
   def finish_str(self):
-    if self.choice.choice == "Don't close":
-      return f"{self.character.name} chose not to close the gate at {self.location_name}"
-    if not self.closed:
-      return f"{self.character.name} failed to close the gate at {self.location_name}"
-    if not self.sealed == 1:
-      return f"{self.character.name} closed the gate at {self.location_name} but did not seal it"
-    return f"{self.character.name} closed and sealed the gate at {self.location_name}"
+    verb = "closed and sealed" if self.sealed else "closed"
+    return f"{self.character.name} {verb} the gate at {self.location_name}"
 
 
 class DrawMythosCard(Event):
