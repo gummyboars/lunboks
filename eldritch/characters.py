@@ -426,7 +426,7 @@ class Scientist(Character):
 class Researcher(Character):
 
   def __init__(self):
-    super().__init__("Researcher", 5, 5, 4, 5, 3, 5, 4, 3, 2, "Libray")
+    super().__init__("Researcher", 5, 5, 4, 5, 3, 5, 4, 3, 2, "Library")
 
   def abilities(self):
     return []  # TODO: Research

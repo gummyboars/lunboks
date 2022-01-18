@@ -562,6 +562,17 @@ class OtherWorldTradingTest(TradingTestBase):
     self.assertIn("trade", self.state.usables[0])
 
 
+class InitializePlayersTest(unittest.TestCase):
+
+  def testInitializePlayers(self):
+    chars = characters.CreateCharacters()
+    for name in chars:
+      with self.subTest(char=name):
+        state = eldritch.GameState()
+        state.handle_join(None, name)
+        state.handle_start()
+
+
 class NextTurnTest(unittest.TestCase):
 
   def setUp(self):
