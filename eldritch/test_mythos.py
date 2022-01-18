@@ -718,9 +718,9 @@ class CloseGateTest(EventTest):
     self.state.event_stack.append(close)
     self.resolve_until_done()
 
-    self.assertEqual(self.state.monsters[0].place.name, "Uptown")
-    self.assertEqual(self.state.monsters[1].place.name, "cup")  # not a hex monster
-    self.assertEqual(self.state.monsters[2].place.name, "Outskirts")  # outskirts monsters disappear too
+    self.assertEqual(self.state.monsters[0].place.name, "Uptown")  # not a circle monster
+    self.assertEqual(self.state.monsters[1].place.name, "cup")
+    self.assertEqual(self.state.monsters[2].place.name, "Outskirts")  # not a circrle monster
     self.assertIsNone(self.state.monsters[3].place)
 
   def testSealChoiceCancelled(self):
