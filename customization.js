@@ -200,6 +200,7 @@ function choosenew(e) {
   let yoff = imageData.yoff || 0;
   let rotation = imageData.rotation || 0;
   let scale = imageData.scale || 1;
+  let lazy = imageData.lazy || false;
   document.getElementById("imgSrc").value = src;
   loadimg();
   document.getElementById("filterType").value = filterType;
@@ -212,6 +213,7 @@ function choosenew(e) {
   document.getElementById("yoff").value = yoff;
   document.getElementById("rotation").value = rotation;
   document.getElementById("scale").value = scale;
+  document.getElementById("lazy").checked = lazy;
   changeFilter(null);
 }
 function updatevariants(variants) {
@@ -303,6 +305,7 @@ function saveimg() {
     yoff: parseFloat(document.getElementById("yoff").value),
     rotation: parseFloat(document.getElementById("rotation").value),
     scale: parseFloat(document.getElementById("scale").value),
+    lazy: document.getElementById("lazy").checked,
     srcnum: imgIdx,
   }
   if (filterIdx != null) {

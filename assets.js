@@ -110,7 +110,7 @@ function renderRatio(orig, destCnv) {
   } else {
     renderHeight = destCnv.height;
     renderWidth = destCnv.height * imageRatio;
-    scaleMultiplier = (orig.naturalWidth || orig.width) / destCnv.width;
+    scaleMultiplier = (orig.naturalHeight || orig.height) / destCnv.height;
   }
   return [renderWidth, renderHeight, scaleMultiplier];
 }
