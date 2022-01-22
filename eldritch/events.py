@@ -2695,6 +2695,40 @@ class GateChoice(MapChoice):
     return None
 
 
+class MonsterOnBoardChoice(ChoiceEvent):
+
+  def __init__(self, character, prompt):
+    self.character = character
+    self._prompt = prompt
+    self.choices = []
+    self.chosen = None
+
+  def compute_choices(self, state):
+    # TODO: other ways of narrowing choices (e.g. streets only)
+    self.choices = [
+        mon.handle for mon in state.monsters
+        if isinstance(mon.place, (places.CityPlace, places.Outskirts))
+    ]
+
+  def resolve(self, state, choice=None):
+    assert choice in self.choices
+    chosen = [mon for mon in state.monsters if mon.handle == choice]
+    assert len(chosen) == 1
+    self.chosen = chosen[0]
+
+  def is_resolved(self):
+    return self.chosen is not None
+
+  def start_str(self):
+    pass
+
+  def finish_str(self):
+    pass
+
+  def prompt(self):
+    return self._prompt
+
+
 class EvadeOrFightAll(Sequence):
 
   def __init__(self, character, monsters):
@@ -2882,17 +2916,17 @@ class CombatRound(Event):
   def __init__(self, character, monster):
     self.character = character
     self.monster = monster
-    self.check: Optional[Check] = None
-    self.damage: Optional[Event] = None
     self.choice: Event = CombatChoice(character, f"Choose weapons to fight the {monster.name}")
     self.choice.monster = self.monster
     self.activate: Optional[Event] = None
+    self.check: Optional[Check] = None
     self.defeated = None
+    self.take_trophy: Optional[Event] = None
+    self.damage: Optional[Event] = None
+    self.done = False
 
   def resolve(self, state):
     self.character.movement_points = 0
-    if self.defeated is not None:
-      return
     if not self.choice.is_done():
       state.event_stack.append(self.choice)
       return
@@ -2909,27 +2943,34 @@ class CombatRound(Event):
       state.event_stack.append(self.check)
       return
 
-    if (self.check.successes or 0) >= self.monster.toughness(state, self.character):
-      if self.monster.has_attribute("overwhelming", state, self.character) and self.damage is None:
-        self.damage = Loss(
-            self.character, {"stamina": self.monster.bypass_damage("combat", state)})
-        state.event_stack.append(self.damage)
-        return
-      # TODO: take the monster as a trophy
-      # Stand-in until we implement trophy code to allow MoveMultipleThroughMonster test to work
-      self.monster.place = None
-      self.character.trophies.append(self.monster)
-      self.defeated = True
+    if self.defeated is None:
+      self.defeated = (self.check.successes or 0) >= self.monster.toughness(state, self.character)
+
+    if not self.defeated:
+      self.damage = Loss(
+          self.character, {"stamina": self.monster.damage("combat", state, self.character)})
+      state.event_stack.append(self.damage)
       return
-    self.defeated = False
-    self.damage = Loss(
-        self.character, {"stamina": self.monster.damage("combat", state, self.character)})
-    state.event_stack.append(self.damage)
+
+    if self.take_trophy is None:
+      self.take_trophy = TakeTrophy(self.character, self.monster)
+      state.event_stack.append(self.take_trophy)
+      return
+
+    if self.monster.has_attribute("overwhelming", state, self.character) and self.damage is None:
+      self.damage = Loss(
+          self.character, {"stamina": self.monster.bypass_damage("combat", state)})
+      state.event_stack.append(self.damage)
+      return
+
+    self.done = True
 
   def is_resolved(self):
     if self.defeated is None:
       return False
-    return self.damage is None or self.damage.is_done()
+    if not self.defeated:
+      return self.damage.is_done()
+    return self.done
 
   def start_str(self):
     return f"{self.character.name} started a combat round against a {self.monster.name}"
@@ -2938,6 +2979,28 @@ class CombatRound(Event):
     if self.defeated:
       return f"{self.character.name} defeated a {self.monster.name}"
     return f"{self.character.name} did not defeat the {self.monster.name}"
+
+
+class TakeTrophy(Event):
+
+  def __init__(self, character, monster):
+    self.character = character
+    self.monster = monster
+    self.done = False
+
+  def resolve(self, state):
+    self.monster.place = None
+    self.character.trophies.append(self.monster)
+    self.done = True
+
+  def is_resolved(self):
+    return self.done
+
+  def start_str(self):
+    return ""
+
+  def finish_str(self):
+    return f"{self.character.name} took a {self.monster.name} as a trophy"
 
 
 class Travel(Event):
