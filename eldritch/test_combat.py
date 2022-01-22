@@ -41,6 +41,8 @@ class CombatTest(EventTest):
     self.assertTrue(combat.combat.defeated)
     self.assertIsNone(combat.combat.damage)
     self.assertTrue(combat.is_resolved())
+    self.assertEqual(len(self.char.trophies), 1)
+    self.assertEqual(self.char.trophies[0].name, "Cultist")
 
   def testCombatFightThenFlee(self):
     self.char.fight_will_slider = 0
@@ -81,6 +83,7 @@ class CombatTest(EventTest):
     self.assertTrue(next_evade_round.evaded)
     self.assertIsNone(next_evade_round.damage)
     self.assertTrue(combat.is_resolved())
+    self.assertEqual(len(self.char.trophies), 0)
 
   def testCombatWithHorror(self):
     self.char.fight_will_slider = 3
@@ -111,6 +114,7 @@ class CombatTest(EventTest):
     self.assertFalse(combat_round.defeated)
     self.assertIsNotNone(combat_round.damage)
     self.assertTrue(combat_round.damage.is_resolved())
+    self.assertEqual(len(self.char.trophies), 0)
     self.assertFalse(combat.is_resolved())
     self.assertEqual(self.char.stamina, 3)
     self.assertEqual(self.char.sanity, 4)  # Assert there wasn't a second horror check/loss.
@@ -255,6 +259,7 @@ class CombatTest(EventTest):
     self.resolve_to_choice(MultipleChoice)
     self.assertEqual(self.char.stamina, 5)
     self.assertTrue(first_combat.is_cancelled())
+    self.assertEqual(len(self.char.trophies), 0)
 
   def testCancelledCombatCheck(self):
     self.assertEqual(self.char.stamina, 5)

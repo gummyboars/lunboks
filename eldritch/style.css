@@ -522,6 +522,10 @@ button:disabled {
   height: calc(min(10vw, 16vh));
   overflow: hidden;
 }
+#monsterdetailsbox.choosable .bigmonster {
+  cursor: pointer;
+  pointer-events: auto;
+}
 .monstercontainer {
   position: absolute;
   top: 0;
@@ -839,6 +843,7 @@ button:disabled {
   flex-direction: row;
   align-items: center;
   justify-content: center;
+  pointer-events: none;
 }
 #hidemonsters {
 }

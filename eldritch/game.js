@@ -543,6 +543,8 @@ function showMonsters(placeDiv, name) {
   document.getElementById("monsterdetails").style.display = "flex";
   for (let monsterDiv of placeDiv.getElementsByClassName("monster")) {
     let container = document.createElement("DIV");
+    let handle = monsterDiv.monsterName + monsterDiv.monsterIdx;
+    container.onclick = function(e) { makeChoice(handle) };
     let frontDiv = createMonsterDiv(monsterDiv.monsterName, "big");
     container.appendChild(frontDiv);
     let backDiv = createMonsterDiv(monsterDiv.monsterName, "big");
@@ -628,6 +630,7 @@ function updateChoices(choice) {
   let uichoice = document.getElementById("uichoice");
   let uicardchoice = document.getElementById("uicardchoice");
   let cardtoggle = document.getElementById("togglecards");
+  let monsterBox = document.getElementById("monsterdetailsbox");
   let pDiv;
   if (!document.getElementsByClassName("you").length) {
     pDiv = document.createElement("DIV");  // Dummy div.
@@ -646,7 +649,12 @@ function updateChoices(choice) {
   for (let scrollBox of document.getElementsByClassName("cardscroll")) {
     scrollBox.style.display = "none";
   }
-  if (choice == null || choice.monsters != null) {
+  if (choice != null && choice.board_monster != null) {
+    monsterBox.classList.add("choosable");
+  } else {
+    monsterBox.classList.remove("choosable");
+  }
+  if (choice == null || choice.monsters != null || choice.board_monster != null) {
     pDiv.classList.remove("choose");
     return;
   }

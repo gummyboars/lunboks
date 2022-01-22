@@ -260,6 +260,8 @@ class GameState:
           output["choice"]["items"] = True
         elif isinstance(top_event, events.MonsterSpawnChoice):
           output["choice"]["monsters"] = top_event.to_spawn
+        elif isinstance(top_event, events.MonsterOnBoardChoice):
+          output["choice"]["board_monster"] = True
         else:
           raise RuntimeError(f"Unknown choice type {top_event.__class__.__name__}")
 
