@@ -756,14 +756,33 @@ class LodgeTest(EncounterTest):
     self.assertEqual(self.char.sanity, 3)
 
   def testSanctum2Pass(self):
+    self.state.monsters[1].place = self.state.places["Uptown"]
     self.state.event_stack.append(encounters.Sanctum2(self.char))
     choice = self.resolve_to_choice(SpendChoice)
     self.spend("sanity", 1, choice)
     choice.resolve(self.state, "Yes")
-    # TODO: Choose monster on the board as a trophy
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      choice = self.resolve_to_choice(MonsterOnBoardChoice)
+    self.assertEqual(choice.choices, ["Maniac1"])
+    choice.resolve(self.state, "Maniac1")
+    self.resolve_until_done()
+    self.assertEqual(self.char.sanity, 2)
+    self.assertIsNone(self.state.monsters[1].place)
+    self.assertEqual(len(self.char.trophies), 1)
+    self.assertEqual(self.char.trophies[0].name, "Maniac")
+
+  def testSanctum2PassNoMonsters(self):
+    # TODO: if we decide they cannot choose yes when there are no monters, rewrite this test.
+    self.state.event_stack.append(encounters.Sanctum2(self.char))
+    choice = self.resolve_to_choice(SpendChoice)
+    self.spend("sanity", 1, choice)
+    choice.resolve(self.state, "Yes")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       self.resolve_until_done()
     self.assertEqual(self.char.sanity, 2)
+    self.assertIsNotNone(self.state.monsters[0].place)
+    self.assertIsNotNone(self.state.monsters[1].place)
+    self.assertEqual(len(self.char.trophies), 0)
 
   def testSanctum2Fail(self):
     self.state.event_stack.append(encounters.Sanctum2(self.char))
@@ -773,6 +792,9 @@ class LodgeTest(EncounterTest):
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=4)):
       self.resolve_until_done()
     self.assertEqual(self.char.sanity, 2)
+    self.assertIsNotNone(self.state.monsters[0].place)
+    self.assertIsNotNone(self.state.monsters[1].place)
+    self.assertEqual(len(self.char.trophies), 0)
 
   def testSanctum3OneSan(self):
     self.char.sanity = 1

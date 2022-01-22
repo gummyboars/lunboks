@@ -82,7 +82,8 @@ class GameState:
 
     self.gates.extend(gates.CreateGates())
     self.monsters = [monsters.Cultist(), monsters.Maniac()]
-    for monster in self.monsters:
+    for idx, monster in enumerate(self.monsters):
+      monster.idx = idx
       monster.place = self.monster_cup
 
     self.game_stage = "slumber"

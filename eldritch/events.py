@@ -2709,6 +2709,8 @@ class MonsterOnBoardChoice(ChoiceEvent):
         mon.handle for mon in state.monsters
         if isinstance(mon.place, (places.CityPlace, places.Outskirts))
     ]
+    if not self.choices:
+      self.cancelled = True
 
   def resolve(self, state, choice=None):
     assert choice in self.choices
@@ -2989,6 +2991,11 @@ class TakeTrophy(Event):
     self.done = False
 
   def resolve(self, state):
+    if isinstance(self.monster, MonsterOnBoardChoice):
+      if self.monster.is_cancelled():
+        self.cancelled = True
+        return
+      self.monster = self.monster.chosen
     self.monster.place = None
     self.character.trophies.append(self.monster)
     self.done = True

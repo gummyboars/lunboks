@@ -236,10 +236,13 @@ def Sanctum1(char):
 
 def Sanctum2(char):
   check = events.Check(char, "luck", -1)
-  success = events.Nothing()  # TODO: claim a monster on the board as a trophy
+  choose = events.MonsterOnBoardChoice(char, "Choose a monster to take as a trophy")
+  take = events.TakeTrophy(char, choose)
+  success = events.Sequence([choose, take], char)
   nothing = events.Nothing()
   seq = events.PassFail(char, check, success, nothing)
   # TODO: Reach consensus on whether this is may or must spend 1 sanity
+  # TODO: Should we prevent the character from choosing yes if there are no monster on the board?
   return events.BinarySpend(char, "sanity", 1, "Cast a banishment spell?", "Yes", "No", seq)
 
 
