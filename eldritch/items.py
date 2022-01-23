@@ -2,6 +2,7 @@ from eldritch.assets import Card
 from eldritch import events
 from eldritch import places
 from eldritch import values
+from eldritch import monsters
 
 
 class Item(Card):
@@ -238,8 +239,41 @@ def DreadCurse(idx):
   return CombatSpell("Dread Curse", idx, {"magical": 9}, 2, -2, 2)
 
 
-class EnchantWeapon(CombatSpell):
+class BindMonster(CombatSpell):
+  def __init__(self, idx):
+    super().__init__(
+        "Bind Monster", idx, {"magical": float("inf"), "physical": float("inf")}, 2,
+        4, 2,
+    )
+    self.combat_round = None
 
+  def get_required_successes(self, state):  # pylint: disable=unused-argument
+    self.combat_round = state.event_stack[
+        -3
+    ]  # CombatRound[-3] > CombatChoice[-2] > CastSpell[-1]
+    return self.combat_round.monster.toughness(state, self.combat_round.character)
+
+  def get_usable_interrupt(self, event, owner, state):
+    if isinstance(event, events.CombatChoice) and isinstance(
+        event.combat_round.monster, monsters.Monster
+    ):
+      ret = super().get_usable_interrupt(event, owner, state)
+      return ret
+    return None
+
+  def get_cast_event(self, owner, state):
+    return events.Sequence(
+        [
+            events.PassCombatRound(self.combat_round),
+            events.TakeTrophy(owner, self.combat_round.monster),
+            # In case we go insane, take trophy explicitly
+            events.DiscardSpecific(owner, [self])
+        ],
+        owner,
+    )
+
+
+class EnchantWeapon(CombatSpell):
   def __init__(self, idx):
     super().__init__("Enchant Weapon", idx, {}, 0, 0, 1)
     self.weapon = None

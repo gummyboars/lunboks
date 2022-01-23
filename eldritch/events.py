@@ -1704,10 +1704,12 @@ class CastSpell(Event):
     self.check: Optional[Event] = None
     self.activation: Optional[Event] = None
     self.success = None
+    self.fail_message = ""
 
   def resolve(self, state):
     if self.spell not in self.character.possessions:
       self.success = False
+      self.fail_message = "(Not in possessions?)"
       return
 
     if self.choice is None:
@@ -1739,6 +1741,7 @@ class CastSpell(Event):
 
     if (self.check.successes or 0) < self.spell.get_required_successes(state):
       self.success = False
+      self.fail_message = f"({self.check.successes} < {self.spell.get_required_successes(state)})"
       return
 
     self.success = True
@@ -1758,7 +1761,7 @@ class CastSpell(Event):
   def finish_str(self):
     if self.success:
       return f"{self.character.name} successfully cast {self.spell.name}"
-    return f"{self.character.name} failed to cast {self.spell.name}"
+    return f"{self.character.name} failed to cast {self.spell.name} {self.fail_message}"
 
 
 class MarkDeactivatable(Event):
@@ -2500,8 +2503,9 @@ class ItemChoice(ChoiceEvent):
 
 class CombatChoice(ItemChoice):
 
-  def __init__(self, character, prompt):
+  def __init__(self, character, prompt, combat_round=None):
     super().__init__(character, prompt, decks=None, item_type="weapon")
+    self.combat_round = combat_round
 
   def validate_choice(self, state, chosen, final):
     super().validate_choice(state, chosen, final)
@@ -2918,7 +2922,9 @@ class CombatRound(Event):
   def __init__(self, character, monster):
     self.character = character
     self.monster = monster
-    self.choice: Event = CombatChoice(character, f"Choose weapons to fight the {monster.name}")
+    self.choice: Event = CombatChoice(
+        character, f"Choose weapons to fight the {monster.name}", combat_round=self
+    )
     self.choice.monster = self.monster
     self.activate: Optional[Event] = None
     self.check: Optional[Check] = None
@@ -2981,6 +2987,27 @@ class CombatRound(Event):
     if self.defeated:
       return f"{self.character.name} defeated a {self.monster.name}"
     return f"{self.character.name} did not defeat the {self.monster.name}"
+
+
+class PassCombatRound(Event):
+  def __init__(self, combat_round, log_message="Combat Round Passed"):
+    self.combat_round = combat_round
+    self.log_message = log_message
+    self.done = False
+
+  def resolve(self, state):
+    self.combat_round.defeated = True
+    self.done = True
+    return True
+
+  def is_resolved(self) -> bool:
+    return self.done
+
+  def start_str(self):
+    return self.log_message
+
+  def finish_str(self):
+    return ""
 
 
 class TakeTrophy(Event):
