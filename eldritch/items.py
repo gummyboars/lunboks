@@ -347,6 +347,41 @@ class EnchantWeapon(CombatSpell):
     self.weapon = None
 
 
+class FleshWard(Spell):
+  def __init__(self, idx):
+    super().__init__("Flesh Ward", idx, {}, 0, -2, 1)
+
+  def get_trigger(self, event, owner, state):
+    if (isinstance(event, events.AncientOneAwaken)):
+      return events.DiscardSpecific(owner, [self])
+
+  def get_usable_interrupt(self, event, owner, state):
+    if (
+        not isinstance(event, events.GainOrLoss)
+        or event.character != owner
+        or 'stamina' not in event.losses
+        or owner.sanity < self.sanity_cost
+        or self.exhausted
+    ):
+      return None
+    choice = events.SpendChoice(owner, )
+    return events.CastSpell(owner, self, choice=choice)
+
+  def get_cast_event(self, owner, state):
+    pass
+
+class Mists(Spell):
+  def __init__(self, idx):
+    super().__init__("Mists", idx, {}, 0, None, 0)
+
+  def get_usable_interrupt(self, event, owner, state):
+    if isinstance(event, events.EvadeRound) and event.character == owner:
+      self.difficulty = event.monster.difficulty("evade", state, owner)
+      return events.CastSpell(owner, self, )
+
+  def get_cast_event(self, owner, state):
+    pass
+
 class RedSign(CombatSpell):
 
   INVALID_ATTRIBUTES = {"magical immunity", "elusive", "mask", "spawn"}
