@@ -16,6 +16,9 @@ from islanders import islanders
 import game
 import server
 
+# pylint: disable=protected-access
+# pylint: disable=invalid-name
+
 InvalidMove = islanders.InvalidMove
 Road = islanders.Road
 
@@ -91,7 +94,8 @@ class TestInitBoard(unittest.TestCase):
 class TestLoadState(unittest.TestCase):
 
   def testLoadState(self):
-    with open(os.path.join(os.path.dirname(__file__), "beginner.json")) as json_file:
+    path = os.path.join(os.path.dirname(__file__), "beginner.json")
+    with open(path, encoding="ascii") as json_file:
       json_data = json_file.read()
     g = islanders.IslandersGame.parse_json(json_data)
     c = g.game
@@ -102,7 +106,8 @@ class TestLoadState(unittest.TestCase):
     # TODO: add some more assertions here
 
   def testLoadSeafarerState(self):
-    with open(os.path.join(os.path.dirname(__file__), "ship_test.json")) as json_file:
+    path = os.path.join(os.path.dirname(__file__), "ship_test.json")
+    with open(path, encoding="ascii") as json_file:
       json_data = json_file.read()
     g = islanders.IslandersGame.parse_json(json_data)
     c = g.game
@@ -135,7 +140,8 @@ class TestLoadState(unittest.TestCase):
         self.recursiveAssertEqual(c, d, "")
 
   def recursiveAssertEqual(self, obja, objb, path):
-    if not isinstance(obja, islanders.IslandersState):  # Dynamically generated classes are not equal.
+    if not isinstance(obja, islanders.IslandersState):
+      # Dynamically generated classes are not equal, so skip type comparison.
       self.assertEqual(type(obja), type(objb), path)
     if hasattr(obja, "__dict__"):  # Objects
       self.assertCountEqual(obja.__dict__.keys(), objb.__dict__.keys(), path)
@@ -169,8 +175,8 @@ class BreakpointTestMixin(unittest.TestCase):
   def breakpoint(self):
     t = threading.Thread(target=server.ws_main, args=(server.GLOBAL_LOOP,))
     t.start()
-    server.GAMES['test'] = game.GameHandler('test', islanders.IslandersGame)
-    server.GAMES['test'].game = self.g
+    server.GAMES["test"] = game.GameHandler("test", islanders.IslandersGame)
+    server.GAMES["test"].game = self.g
     server.main(8001)
     t.join()
 
@@ -178,159 +184,159 @@ class BreakpointTestMixin(unittest.TestCase):
 class CornerComputationTest(unittest.TestCase):
 
   def testIslandCorners(self):
-    self.c = islanders.SeafarerIslands()
-    self.c.load_file("islands3.json")
-    self.c._compute_contiguous_islands()
-    self.assertIn((3, 1), self.c.corners_to_islands)
-    self.assertIn((5, 5), self.c.corners_to_islands)
-    self.assertEqual(self.c.corners_to_islands[(3, 1)], self.c.corners_to_islands[(5, 5)])
+    c = islanders.SeafarerIslands()
+    c.load_file("islands3.json")
+    c._compute_contiguous_islands()
+    self.assertIn((3, 1), c.corners_to_islands)
+    self.assertIn((5, 5), c.corners_to_islands)
+    self.assertEqual(c.corners_to_islands[(3, 1)], c.corners_to_islands[(5, 5)])
 
-    self.assertIn((15, 1), self.c.corners_to_islands)
-    self.assertIn((12, 4), self.c.corners_to_islands)
-    self.assertEqual(self.c.corners_to_islands[(15, 1)], self.c.corners_to_islands[(12, 4)])
+    self.assertIn((15, 1), c.corners_to_islands)
+    self.assertIn((12, 4), c.corners_to_islands)
+    self.assertEqual(c.corners_to_islands[(15, 1)], c.corners_to_islands[(12, 4)])
 
-    self.assertNotEqual(self.c.corners_to_islands[(3, 1)], self.c.corners_to_islands[(12, 4)])
+    self.assertNotEqual(c.corners_to_islands[(3, 1)], c.corners_to_islands[(12, 4)])
 
   def testShoreCorners(self):
-    self.c = islanders.SeafarerShores()
-    self.c.load_file("shores4.json")
-    self.c._compute_contiguous_islands()
-    self.assertIn((3, 3), self.c.corners_to_islands)
-    self.assertIn((14, 8), self.c.corners_to_islands)
-    self.assertEqual(self.c.corners_to_islands[(3, 3)], self.c.corners_to_islands[(14, 8)])
+    c = islanders.SeafarerShores()
+    c.load_file("shores4.json")
+    c._compute_contiguous_islands()
+    self.assertIn((3, 3), c.corners_to_islands)
+    self.assertIn((14, 8), c.corners_to_islands)
+    self.assertEqual(c.corners_to_islands[(3, 3)], c.corners_to_islands[(14, 8)])
 
-    self.assertIn((18, 4), self.c.corners_to_islands)
-    self.assertIn((20, 6), self.c.corners_to_islands)
-    self.assertEqual(self.c.corners_to_islands[(18, 4)], self.c.corners_to_islands[(20, 6)])
+    self.assertIn((18, 4), c.corners_to_islands)
+    self.assertIn((20, 6), c.corners_to_islands)
+    self.assertEqual(c.corners_to_islands[(18, 4)], c.corners_to_islands[(20, 6)])
 
-    self.assertIn((14, 10), self.c.corners_to_islands)
-    self.assertIn((18, 12), self.c.corners_to_islands)
-    self.assertEqual(self.c.corners_to_islands[(14, 10)], self.c.corners_to_islands[(18, 12)])
+    self.assertIn((14, 10), c.corners_to_islands)
+    self.assertIn((18, 12), c.corners_to_islands)
+    self.assertEqual(c.corners_to_islands[(14, 10)], c.corners_to_islands[(18, 12)])
 
     # Assert that the island number for each of these corners is unique.
-    islands = [self.c.corners_to_islands[loc] for loc in [(3, 3), (20, 6), (14, 10)]]
+    islands = [c.corners_to_islands[loc] for loc in [(3, 3), (20, 6), (14, 10)]]
     self.assertEqual(len(islands), len(set(islands)))
 
   def testDesertCorners(self):
-    self.c = islanders.SeafarerDesert()
-    self.c.load_file("desert3.json")
-    self.c._compute_contiguous_islands()
-    self.assertIn((3, 1), self.c.corners_to_islands)
-    self.assertIn((14, 6), self.c.corners_to_islands)
-    self.assertEqual(self.c.corners_to_islands[(3, 1)], self.c.corners_to_islands[(14, 6)])
+    c = islanders.SeafarerDesert()
+    c.load_file("desert3.json")
+    c._compute_contiguous_islands()
+    self.assertIn((3, 1), c.corners_to_islands)
+    self.assertIn((14, 6), c.corners_to_islands)
+    self.assertEqual(c.corners_to_islands[(3, 1)], c.corners_to_islands[(14, 6)])
 
-    self.assertIn((15, 1), self.c.corners_to_islands)
-    self.assertIn((20, 4), self.c.corners_to_islands)
-    self.assertEqual(self.c.corners_to_islands[(15, 1)], self.c.corners_to_islands[(20, 4)])
+    self.assertIn((15, 1), c.corners_to_islands)
+    self.assertIn((20, 4), c.corners_to_islands)
+    self.assertEqual(c.corners_to_islands[(15, 1)], c.corners_to_islands[(20, 4)])
 
-    self.assertIn((3, 9), self.c.corners_to_islands)
+    self.assertIn((3, 9), c.corners_to_islands)
 
     # Assert that the island number for each of these corners is unique.
-    islands = [self.c.corners_to_islands[loc] for loc in [(3, 1), (20, 4), (3, 9)]]
+    islands = [c.corners_to_islands[loc] for loc in [(3, 1), (20, 4), (3, 9)]]
     self.assertEqual(len(islands), len(set(islands)))
 
     # Desert corner that doesn't touch any other land should not have an island number.
-    self.assertNotIn((21, 5), self.c.corners_to_islands)
+    self.assertNotIn((21, 5), c.corners_to_islands)
 
 
 class PlacementRestrictionsTest(unittest.TestCase):
 
   def testSaveAndLoad(self):
-    self.c = islanders.SeafarerDesert()
-    self.c.add_player("red", "player1")
-    self.c.add_player("blue", "player2")
-    self.c.add_player("green", "player3")
-    self.c.init({})
-    self.assertCountEqual(self.c.placement_islands, [(-1, 3)])
-    self.g = islanders.IslandersGame()
-    self.g.update_rulesets_and_choices({"Scenario": "The Four Islands", "5-6 Players": False})
-    self.g.game = self.c
+    c = islanders.SeafarerDesert()
+    c.add_player("red", "player1")
+    c.add_player("blue", "player2")
+    c.add_player("green", "player3")
+    c.init({})
+    self.assertCountEqual(c.placement_islands, [(-1, 3)])
+    g = islanders.IslandersGame()
+    g.update_rulesets_and_choices({"Scenario": "The Four Islands", "5-6 Players": False})
+    g.game = c
 
-    dump = self.g.json_str()
+    dump = g.json_str()
     loaded = islanders.IslandersGame.parse_json(dump)
-    game = loaded.game
-    self.assertCountEqual(game.placement_islands, [(-1, 3)])
+    loaded_game = loaded.game
+    self.assertCountEqual(loaded_game.placement_islands, [(-1, 3)])
 
   def testDesert3Placement(self):
-    self.c = islanders.SeafarerDesert()
-    self.c.add_player("red", "player1")
-    self.c.add_player("blue", "player2")
-    self.c.add_player("green", "player3")
-    self.c.init({})
-    self.assertCountEqual(self.c.placement_islands, [(-1, 3)])
+    c = islanders.SeafarerDesert()
+    c.add_player("red", "player1")
+    c.add_player("blue", "player2")
+    c.add_player("green", "player3")
+    c.init({})
+    self.assertCountEqual(c.placement_islands, [(-1, 3)])
 
     with self.assertRaisesRegex(InvalidMove, "first settlements"):
-      self.c.handle(0, {"type": "settle", "location": [0, 8]})
+      c.handle(0, {"type": "settle", "location": [0, 8]})
     with self.assertRaisesRegex(InvalidMove, "first settlements"):
-      self.c.handle(0, {"type": "settle", "location": [12, 0]})
-    self.c.handle(0, {"type": "settle", "location": [3, 3]})
+      c.handle(0, {"type": "settle", "location": [12, 0]})
+    c.handle(0, {"type": "settle", "location": [3, 3]})
 
     # We're going to skip a bunch of placements.
-    self.c.game_phase = "place2"
-    self.c.turn_phase = "settle"
-    self.c.turn_idx = 1
+    c.game_phase = "place2"
+    c.turn_phase = "settle"
+    c.turn_idx = 1
 
     with self.assertRaisesRegex(InvalidMove, "first settlements"):
-      self.c.handle(1, {"type": "settle", "location": [9, 9]})
-    self.c.handle(1, {"type": "settle", "location": [3, 5]})
+      c.handle(1, {"type": "settle", "location": [9, 9]})
+    c.handle(1, {"type": "settle", "location": [3, 5]})
 
   def testDesert4Placement(self):
-    self.c = islanders.SeafarerDesert()
-    self.c.add_player("red", "player1")
-    self.c.add_player("blue", "player2")
-    self.c.add_player("green", "player3")
-    self.c.add_player("violet", "player4")
-    self.c.init({})
-    self.assertCountEqual(self.c.placement_islands, [(-1, 5)])
+    c = islanders.SeafarerDesert()
+    c.add_player("red", "player1")
+    c.add_player("blue", "player2")
+    c.add_player("green", "player3")
+    c.add_player("violet", "player4")
+    c.init({})
+    self.assertCountEqual(c.placement_islands, [(-1, 5)])
 
     with self.assertRaisesRegex(InvalidMove, "first settlements"):
-      self.c.handle(0, {"type": "settle", "location": [0, 8]})
+      c.handle(0, {"type": "settle", "location": [0, 8]})
     with self.assertRaisesRegex(InvalidMove, "first settlements"):
-      self.c.handle(0, {"type": "settle", "location": [12, 0]})
-    self.c.handle(0, {"type": "settle", "location": [3, 3]})
+      c.handle(0, {"type": "settle", "location": [12, 0]})
+    c.handle(0, {"type": "settle", "location": [3, 3]})
 
     # We're going to skip a bunch of placements.
-    self.c.game_phase = "place2"
-    self.c.turn_phase = "settle"
-    self.c.turn_idx = 1
+    c.game_phase = "place2"
+    c.turn_phase = "settle"
+    c.turn_idx = 1
 
     # It should still validate islands in the second placement round.
     with self.assertRaisesRegex(InvalidMove, "first settlements"):
-      self.c.handle(1, {"type": "settle", "location": [12, 12]})
-    self.c.handle(1, {"type": "settle", "location": [12, 8]})
+      c.handle(1, {"type": "settle", "location": [12, 12]})
+    c.handle(1, {"type": "settle", "location": [12, 8]})
 
   def testShores3Placement(self):
-    self.c = islanders.SeafarerShores()
-    self.c.add_player("red", "player1")
-    self.c.add_player("blue", "player2")
-    self.c.add_player("green", "player3")
-    self.c.init({})
-    self.assertCountEqual(self.c.placement_islands, [(-1, 3)])
+    c = islanders.SeafarerShores()
+    c.add_player("red", "player1")
+    c.add_player("blue", "player2")
+    c.add_player("green", "player3")
+    c.init({})
+    self.assertCountEqual(c.placement_islands, [(-1, 3)])
 
     with self.assertRaisesRegex(InvalidMove, "first settlements"):
-      self.c.handle(0, {"type": "settle", "location": [3, 9]})
+      c.handle(0, {"type": "settle", "location": [3, 9]})
     with self.assertRaisesRegex(InvalidMove, "first settlements"):
-      self.c.handle(0, {"type": "settle", "location": [18, 4]})
+      c.handle(0, {"type": "settle", "location": [18, 4]})
     with self.assertRaisesRegex(InvalidMove, "first settlements"):
-      self.c.handle(0, {"type": "settle", "location": [15, 9]})
-    self.c.handle(0, {"type": "settle", "location": [3, 3]})
+      c.handle(0, {"type": "settle", "location": [15, 9]})
+    c.handle(0, {"type": "settle", "location": [3, 3]})
 
   def testShores4Placement(self):
-    self.c = islanders.SeafarerShores()
-    self.c.add_player("red", "player1")
-    self.c.add_player("blue", "player2")
-    self.c.add_player("green", "player3")
-    self.c.add_player("violet", "player4")
-    self.c.init({})
-    self.assertCountEqual(self.c.placement_islands, [(-1, 3)])
+    c = islanders.SeafarerShores()
+    c.add_player("red", "player1")
+    c.add_player("blue", "player2")
+    c.add_player("green", "player3")
+    c.add_player("violet", "player4")
+    c.init({})
+    self.assertCountEqual(c.placement_islands, [(-1, 3)])
 
     with self.assertRaisesRegex(InvalidMove, "first settlements"):
-      self.c.handle(0, {"type": "settle", "location": [3, 11]})
+      c.handle(0, {"type": "settle", "location": [3, 11]})
     with self.assertRaisesRegex(InvalidMove, "first settlements"):
-      self.c.handle(0, {"type": "settle", "location": [18, 4]})
+      c.handle(0, {"type": "settle", "location": [18, 4]})
     with self.assertRaisesRegex(InvalidMove, "first settlements"):
-      self.c.handle(0, {"type": "settle", "location": [17, 11]})
-    self.c.handle(0, {"type": "settle", "location": [3, 3]})
+      c.handle(0, {"type": "settle", "location": [17, 11]})
+    c.handle(0, {"type": "settle", "location": [3, 3]})
 
 
 class TestIslandCalculations(BreakpointTestMixin):
@@ -417,12 +423,12 @@ class TestIslandCalculations(BreakpointTestMixin):
     self.settleForeignIslands()
     dump = self.g.json_str()
     loaded = islanders.IslandersGame.parse_json(dump)
-    game = loaded.game
-    self.assertIsInstance(game.home_corners, collections.defaultdict)
-    self.assertIsInstance(game.foreign_landings, collections.defaultdict)
-    self.assertCountEqual(game.home_corners[0], [(12, 4)])
-    self.assertCountEqual(game.home_corners[1], [(5, 5), (9, 1)])
-    self.assertCountEqual(game.home_corners[2], [(8, 8), (18, 8)])
+    loaded_game = loaded.game
+    self.assertIsInstance(loaded_game.home_corners, collections.defaultdict)
+    self.assertIsInstance(loaded_game.foreign_landings, collections.defaultdict)
+    self.assertCountEqual(loaded_game.home_corners[0], [(12, 4)])
+    self.assertCountEqual(loaded_game.home_corners[1], [(5, 5), (9, 1)])
+    self.assertCountEqual(loaded_game.home_corners[2], [(8, 8), (18, 8)])
     self.assertCountEqual(self.c.foreign_landings[0], [(9, 3)])
     self.assertCountEqual(self.c.foreign_landings[1], [(12, 2), (5, 7)])
     self.assertCountEqual(self.c.foreign_landings[2], [(8, 6)])
@@ -434,7 +440,8 @@ class BaseInputHandlerTest(BreakpointTestMixin):
   EXTRA_RULES = []
 
   def setUp(self):
-    with open(os.path.join(os.path.dirname(__file__), self.TEST_FILE)) as json_file:
+    path = os.path.join(os.path.dirname(__file__), self.TEST_FILE)
+    with open(path, encoding="ascii") as json_file:
       json_data = json.loads(json_file.read())
     if self.EXTRA_RULES:
       json_data["rules"].extend(self.EXTRA_RULES)
@@ -1450,7 +1457,7 @@ class TestShipMovement(BaseInputHandlerTest):
   TEST_FILE = "sea_test.json"
 
   def setUp(self):
-    super(TestShipMovement, self).setUp()
+    super().setUp()
     self.c.add_road(Road([3, 5, 5, 5], "ship", 0))
 
   def testMoveShip(self):
@@ -1751,7 +1758,7 @@ class TestLongestRouteCalculation(BaseInputHandlerTest):
     # Start by testing a simple loop.
     for corner in [(5, 3), (6, 4), (8, 4), (9, 3), (8, 2), (6, 2)]:
       val = self.c._dfs_depth(0, islanders.CornerLocation(*corner), set([]), None)
-      self.assertEqual(val, 6, "loop length for corner %s" % (corner,))
+      self.assertEqual(val, 6, f"loop length for corner {corner}")
 
     # Add two tips onto the end of the loop. Length from either end should be 7.
     self.c._add_road(Road([3, 3, 5, 3], "road", 0))
@@ -1806,7 +1813,8 @@ class TestLongestRouteAssignment(BreakpointTestMixin):
 
   def setUp(self):
     # Be sure to call add_road on the last road for each player to recalculate longest road.
-    with open(os.path.join(os.path.dirname(__file__), "beginner.json")) as json_file:
+    path = os.path.join(os.path.dirname(__file__), "beginner.json")
+    with open(path, encoding="ascii") as json_file:
       json_data = json_file.read()
     self.c = islanders.IslandersState.parse_json(json.loads(json_data))
     self.c.add_player("blue", "PlayerA")
@@ -1949,7 +1957,7 @@ class TestDiscard(BaseInputHandlerTest):
     for pdata in self.c.player_data:
       pdata.cards.clear()
 
-  def testCalculateDiscardPlayers(self, randint):
+  def testCalculateDiscardPlayers(self, unused_randint):
     self.c.player_data[0].cards.update({"rsrc1": 4, "rsrc2": 4, "rsrc3": 4, "rsrc5": 4})
     self.c.player_data[1].cards.update({"rsrc1": 4, "rsrc3": 2, "rsrc5": 1, "knight": 5})
     self.c.player_data[2].cards.update({"rsrc1": 2, "rsrc2": 4, "rsrc3": 2, "rsrc5": 1})
@@ -1981,7 +1989,7 @@ class TestDiscard(BaseInputHandlerTest):
     self.assertIn("discarded 4 {rsrc1}, 4 {rsrc2}", self.c.event_log[-1].public_text)
     self.assertEqual(self.c.turn_phase, "robber")
 
-  def testNobodyDiscards(self, randint):
+  def testNobodyDiscards(self, unused_randint):
     self.c.player_data[0].cards.update({"rsrc1": 2, "rsrc2": 2, "rsrc3": 1, "rsrc5": 1})
     self.c.player_data[1].cards.update({"rsrc1": 4, "rsrc3": 2, "rsrc5": 1, "knight": 5})
     self.c.player_data[2].cards.update({"rsrc1": 2, "rsrc2": 0, "rsrc3": 2, "rsrc5": 1})
@@ -2313,5 +2321,5 @@ class TestGameOptions(unittest.TestCase):
     self.assertIsInstance(self.c.game, islanders.ExtraPlayers)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
   unittest.main()
