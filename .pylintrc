@@ -1,6 +1,7 @@
 [BASIC]
 function-rgx=(([a-z_]+)|(([A-Z][a-z]*)+))
 method-rgx=(([a-z_)+)|(test([A-Z][a-z0-9]*)+)
+good-names=i,x,y
 
 [FORMAT]
 indent-after-paren=4

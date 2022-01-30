@@ -95,7 +95,6 @@ class GameOption:
 class Location:
 
   def __init__(self, x, y):
-    # pylint: disable=invalid-name
     self.x = x
     self.y = y
 
