@@ -3238,7 +3238,7 @@ class DrawMythosCard(Event):
       state.mythos.append(card)
       if card.name != "ShuffleMythos":
         break
-      random.shuffle(state.gate_cards)
+      random.shuffle(state.mythos)
       self.shuffled = True
     self.card = card
 
@@ -3717,6 +3717,9 @@ class ActivateEnvironment(Event):
     self.done = False
 
   def resolve(self, state):
+    if state.environment is not None:
+      state.mythos.append(state.environment)
+    state.mythos.remove(self.env)
     state.environment = self.env
     self.done = True
 
