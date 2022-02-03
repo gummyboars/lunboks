@@ -1124,12 +1124,13 @@ class MoveMonsterTest(EventTest):
     self.assertEqual(self.state.monsters[3].place.name, "Easttown")
 
   def testMovementAfterSpawn(self):
+    self.state.mythos.append(Mythos3())
     self.state.monsters.clear()
     shambler = monsters.DimensionalShambler()
     shambler.place = self.state.monster_cup
     self.state.monsters.append(shambler)
 
-    self.state.event_stack.append(Mythos3().create_event(self.state))
+    self.state.event_stack.append(self.state.mythos[-1].create_event(self.state))
     self.resolve_until_done()
 
     # The monster will appear at the Square, but should immediately move after appearing.
@@ -1215,34 +1216,73 @@ class GlobalModifierTest(EventTest):
     self.state.monsters.extend(more_monsters)
 
   def testEnvironmentModifier(self):
+    mythos = Mythos6()
+    self.state.mythos.append(mythos)
     self.assertEqual(self.char.will(self.state), 1)
-    self.state.event_stack.append(ActivateEnvironment(Mythos6()))
+    self.state.event_stack.append(ActivateEnvironment(mythos))
     self.resolve_until_done()
     self.assertEqual(self.char.will(self.state), 0)
 
   def testEnvironmentModifierIgnoredInOtherWorld(self):
+    mythos = Mythos6()
+    self.state.mythos.append(mythos)
     self.char.place = self.state.places["Dreamlands1"]
     self.assertEqual(self.char.will(self.state), 1)
-    self.state.event_stack.append(ActivateEnvironment(Mythos6()))
+    self.state.event_stack.append(ActivateEnvironment(mythos))
     self.resolve_until_done()
     self.assertEqual(self.char.will(self.state), 1)
 
   def testReplaceEnvironment(self):
-    self.assertIsNone(self.state.environment)
     mythos = Mythos6()
+    headline = Mythos11()
+    env = Mythos45()
+    self.state.mythos.extend([env, headline, mythos])
+
+    self.assertIsNone(self.state.environment)
     self.state.event_stack.append(mythos.create_event(self.state))
     self.resolve_until_done()
     self.assertEqual(self.state.environment, mythos)
 
-    headline = Mythos11()
     self.state.event_stack.append(headline.create_event(self.state))
     self.resolve_until_done()
     self.assertEqual(self.state.environment, mythos)
 
-    env = Mythos45()
     self.state.event_stack.append(env.create_event(self.state))
     self.resolve_until_done()
     self.assertEqual(self.state.environment, env)
+
+  def testEnvironmentActivationRemovesFromDeck(self):
+    self.state.mythos.clear()
+    self.state.mythos.extend([Mythos45(), Mythos6(), Mythos11(), ShuffleMythos()])
+    self.state.event_stack.append(Mythos(self.char))
+    self.resolve_until_done()
+
+    self.assertEqual(self.state.environment.name, "Mythos45")
+    self.assertEqual(len(self.state.mythos), 3)
+    self.assertNotIn("Mythos45", [card.name for card in self.state.mythos])
+
+    self.state.event_stack.append(Mythos(self.char))
+    self.resolve_until_done()
+    self.assertEqual(self.state.environment.name, "Mythos6")
+    self.assertIn("Mythos45", [card.name for card in self.state.mythos])
+    self.assertNotIn("Mythos6", [card.name for card in self.state.mythos])
+
+
+class DrawMythosTest(EventTest):
+
+  def testMythosShuffle(self):
+    self.state.mythos.clear()
+    self.state.mythos.extend([
+        ShuffleMythos(), Mythos1(), Mythos2(), Mythos3(), Mythos4(), Mythos5(),
+    ])
+    draw = DrawMythosCard(self.char)
+    self.state.event_stack.append(draw)
+    self.resolve_until_done()
+    self.assertTrue(draw.shuffled)
+    card_names = [card.name for card in self.state.mythos]
+    unshuffled_names = ["Mythos2", "Mythos3", "Mythos4", "Mythos5", "ShuffleMythos", "Mythos1"]
+    self.assertCountEqual(card_names, unshuffled_names)
+    self.assertNotEqual(card_names, unshuffled_names)  # NOTE: small chance of failing
 
 
 class MythosPhaseTest(EventTest):
