@@ -510,6 +510,105 @@ class Mythos(Turn):
     return ""
 
 
+class InvestigatorAttack(Turn):
+
+  def __init__(self, character):
+    self.character = character
+    self.choice: Event = CombatChoice(character, "Choose weapons to fight the ancient one")
+    self.activate: Optional[Event] = None
+    self.check: Optional[Check] = None
+    self.damage: Optional[Event] = None
+
+  def resolve(self, state):
+    if not self.choice.is_done():
+      self.choice.monster = state.ancient_one
+      state.event_stack.append(self.choice)
+      return
+    if len(self.choice.choices or []) > 0 and self.activate is None:
+      self.activate = ActivateChosenItems(self.character, self.choice)
+      state.event_stack.append(self.activate)
+      return
+
+    if self.check is None:
+      attrs = state.ancient_one.attributes(state, self.character)
+      self.check = Check(
+          self.character, "combat", state.ancient_one.combat_rating(state, self.character), attrs,
+      )
+    if not self.check.is_done():
+      state.event_stack.append(self.check)
+      return
+
+    if (self.check.successes or 0) > 0 and self.damage is None:
+      self.damage = DamageAncientOne(self.character, self.check.successes)
+      state.event_stack.append(self.damage)
+
+  def is_resolved(self):
+    if self.check is None:
+      return False
+    if self.check.is_done() and not self.check.successes:
+      return True
+    return self.damage is not None and self.damage.is_done()
+
+  def start_str(self):
+    return ""
+
+  def finish_str(self):
+    return ""
+
+
+class DamageAncientOne(Event):
+
+  def __init__(self, character, successes):
+    self.character = character
+    self.successes = successes
+    self.done = False
+
+  def resolve(self, state):
+    state.ancient_one.health -= self.successes
+    state.ancient_one.health = max(0, state.ancient_one.health)
+    if state.ancient_one.health <= 0:
+      state.game_stage = "victory"
+    self.done = True
+
+  def is_resolved(self):
+    return self.done
+
+  def start_str(self):
+    return ""
+
+  def finish_str(self):
+    return ""
+
+
+class AncientAttack(Turn):
+
+  def __init__(self, _):
+    self.attack: Optional[Event] = None
+    self.escalated = False
+    self.done = False
+
+  def resolve(self, state):
+    if self.attack is None:
+      self.attack = state.ancient_one.attack(state)
+      state.event_stack.append(self.attack)
+      return
+
+    if not self.escalated:
+      state.ancient_one.escalate(state)
+      self.escalated = True
+
+    self.done = True
+
+  def is_resolved(self):
+    return self.done
+
+  def start_str(self):
+    return ""
+
+  def finish_str(self):
+    return ""
+
+
 class DiceRoll(Event):
 
   def __init__(self, character, count):
@@ -867,6 +966,9 @@ class Devoured(StackClearMixin, Event):
         if hasattr(pos, "deck"):
           getattr(state, getattr(pos, "deck")).append(pos)
       self.character.possessions.clear()
+      if state.game_stage == "awakened":
+        if all(char.gone for char in state.characters):
+          state.game_stage = "defeat"
 
   def is_resolved(self):
     return self.stack_cleared
@@ -3504,7 +3606,10 @@ class OpenGate(Event):
       state.event_stack.append(self.spawn)
       return
 
-    # TODO: if there are no gates tokens left, the ancient one awakens
+    if not state.gates:
+      state.event_stack.append(Awaken())
+      return
+    # TODO: should drawing a gate be its own event?
     state.places[self.location_name].gate = state.gates.popleft()
     state.places[self.location_name].clues = 0
     self.spawn = MonsterSpawnChoice(self.draw_monsters, self.location_name, [self.location_name])
@@ -3527,17 +3632,20 @@ class OpenGate(Event):
 
 
 class AddDoom(Event):
-  def __init__(self, character=None):
+  def __init__(self, character=None, count=1):
     self.added = False
+    self.count = count
     self.done = False
     self.character = character
 
   def resolve(self, state):
     if not self.added:
-      state.ancient_one.doom += 1
-    if state.ancient_one.doom == state.ancient_one.max_doom:
-      state.event_stack.append(state.ancient_one.awaken(state))
-      return
+      state.ancient_one.doom += self.count
+      state.ancient_one.doom = min(state.ancient_one.doom, state.ancient_one.max_doom)
+      if state.game_stage == "awakened":
+        state.ancient_one.health += len(state.characters) * self.count
+        max_health = state.ancient_one.max_doom * len(state.characters)
+        state.ancient_one.health = min(state.ancient_one.health, max_health)
     if not self.done:
       self.done = True
 
@@ -3545,11 +3653,11 @@ class AddDoom(Event):
     return self.done
 
   def start_str(self):
-    return "Doom token to be added"
+    return f"{self.count} doom tokens to be added"
 
   def finish_str(self):
     if self.done:
-      return "Doom token was added"
+      return f"{self.count} doom tokens were added"
     return "Doom token was prevented from being added"
 
 
@@ -3561,6 +3669,10 @@ class RemoveDoom(Event):
   def resolve(self, state):
     if not self.done:
       state.ancient_one.doom = max(0, state.ancient_one.doom - 1)
+      if state.game_stage == "awakened":
+        state.ancient_one.health = max(0, state.ancient_one.health - len(state.characters))
+        if state.ancient_one.health <= 0:
+          state.game_stage = "victory"
       self.done = True
 
   def is_resolved(self):
@@ -3586,7 +3698,9 @@ class DrawMonstersFromCup(Event):
     monster_indexes = [
         idx for idx, monster in enumerate(state.monsters) if monster.place == state.monster_cup
     ]
-    # TODO: if there are no monsters left, the ancient one awakens.
+    if len(monster_indexes) < self.count:
+      state.event_stack.append(Awaken())
+      return
     self.monsters = random.sample(monster_indexes, self.count)
 
   def is_resolved(self):
@@ -4076,5 +4190,51 @@ class AncientOneAttack(Sequence):
   pass
 
 
-class AncientOneAwaken(Sequence):
-  pass
+class Awaken(Event):
+
+  def __init__(self):
+    self.stack_cleared = False
+    self.awaken_done = False
+    self.doom_maxed = False
+    self.moved_chars = False
+    self.done = False
+
+  def resolve(self, state):
+    if not self.stack_cleared:
+      saved_interrupts = state.interrupt_stack[-1]
+      saved_triggers = state.trigger_stack[-1]
+      state.event_stack.clear()
+      state.interrupt_stack.clear()
+      state.trigger_stack.clear()
+      state.event_stack.append(self)
+      state.interrupt_stack.append(saved_interrupts)
+      state.trigger_stack.append(saved_triggers)
+      state.game_stage = "awakened"
+      state.turn_phase = "ancient"
+      state.environment = None
+      state.rumor = None
+      self.stack_cleared = True
+    if not self.awaken_done:
+      state.ancient_one.health = len(state.characters) * state.ancient_one.max_doom
+      state.ancient_one.awaken(state)
+      self.awaken_done = True
+    if not self.doom_maxed:
+      state.event_stack.append(AddDoom(count=float("inf")))
+      self.doom_maxed = True
+      return
+    if not self.moved_chars:
+      # TODO: we can devour lost characters here instead of in global triggers
+      for char in state.characters:
+        if char.place != state.places["Lost"]:
+          char.place = state.places["Battle"]
+      self.moved_chars = True
+    self.done = True
+
+  def is_resolved(self):
+    return self.done
+
+  def start_str(self):
+    return ""
+
+  def finish_str(self):
+    return ""

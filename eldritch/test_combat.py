@@ -2238,5 +2238,84 @@ class BindMonsterTest(EventTest):
   #  thus devouring you
 
 
+class FightAncientOneTest(EventTest):
+
+  def setUp(self):
+    super().setUp()
+    self.state.game_stage = "awakened"
+    self.state.turn_phase = "attack"
+    self.state.ancient_one.health = 20
+    self.state.ancient_one._combat_rating = -2  # pylint: disable=protected-access
+
+  def testBasicCombat(self):
+    self.state.event_stack.append(InvestigatorAttack(self.char))
+    combat_choice = self.resolve_to_choice(CombatChoice)
+    combat_choice.resolve(self.state, "done")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)) as rand:
+      self.resolve_until_done()
+      self.assertEqual(rand.call_count, 2)  # Fight (4) + combat rating (-2)
+    self.assertEqual(self.state.ancient_one.health, 18)  # Two successes
+
+  def testCombatResistances(self):
+    self.state.ancient_one._attributes |= {"magical resistance", "physical resistance"}
+    self.state.event_stack.append(InvestigatorAttack(self.char))
+    self.char.possessions.extend([items.Revolver38(0), items.EnchantedKnife(0)])
+    combat_choice = self.resolve_to_choice(CombatChoice)
+    self.choose_items(combat_choice, [".38 Revolver0", "Enchanted Knife0"])
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)) as rand:
+      self.resolve_until_done()
+      # Fight (4) + Combat rating (-2) + Revolver (2) + Knife (2)
+      self.assertEqual(rand.call_count, 6)
+    self.assertEqual(self.state.ancient_one.health, 14)
+
+  def testCombatWithWeirdSpells(self):
+    self.state.event_stack.append(InvestigatorAttack(self.char))
+    self.char.possessions.extend([items.RedSign(0), items.BindMonster(0)])
+    combat_choice = self.resolve_to_choice(CombatChoice)
+    self.assertFalse(self.state.usables)
+    combat_choice.resolve(self.state, "done")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)) as rand:
+      self.resolve_until_done()
+      self.assertEqual(rand.call_count, 2)
+    self.assertEqual(self.state.ancient_one.health, 20)
+
+  def testCombatWithNormalSpells(self):
+    self.state.ancient_one._attributes |= {"physical resistance"}
+    self.state.event_stack.append(InvestigatorAttack(self.char))
+    self.char.possessions.extend([items.Wither(0), items.EnchantWeapon(0), items.Revolver38(0)])
+    combat_choice = self.resolve_to_choice(CombatChoice)
+    self.assertCountEqual(["Wither0", "Enchant Weapon0"], self.state.usables[0].keys())
+    self.state.event_stack.append(self.state.usables[0]["Enchant Weapon0"])
+    weapon_choice = self.resolve_to_choice(SinglePhysicalWeaponChoice)
+    self.spend("sanity", 1, weapon_choice)
+    self.choose_items(weapon_choice, [".38 Revolver0"])
+
+    # Successfully cast
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      combat_choice = self.resolve_to_choice(CombatChoice)
+
+    self.assertCountEqual(["Wither0"], self.state.usables[0].keys())
+    self.state.event_stack.append(self.state.usables[0]["Wither0"])
+    cast_choice = self.resolve_to_choice(MultipleChoice)
+    cast_choice.resolve(self.state, "Cast")
+
+    # Successfully cast
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      combat_choice = self.resolve_to_choice(CombatChoice)
+
+    self.choose_items(combat_choice, [".38 Revolver0"])
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)) as rand:
+      self.resolve_until_done()
+      # Fight (4) + combat rating (-2) + enchanted revolver (3) + wither (3)
+      self.assertEqual(rand.call_count, 8)
+    self.assertEqual(self.state.ancient_one.health, 12)
+
+    self.assertTrue(self.char.possessions[0].exhausted)
+    self.assertFalse(self.char.possessions[0].active)
+    self.assertTrue(self.char.possessions[1].exhausted)
+    self.assertFalse(self.char.possessions[1].active)
+    self.assertFalse(self.char.possessions[2].active)
+
+
 if __name__ == "__main__":
   unittest.main()

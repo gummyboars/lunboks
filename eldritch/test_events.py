@@ -3258,7 +3258,7 @@ class AddDoomTest(EventTest):
   def testAddDoomAwaken(self):
     self.state.ancient_one.doom = 9
     self.state.event_stack.append(AddDoom())
-    self.resolve_until_event_type(AncientOneAwaken)
+    self.resolve_until_event_type(Awaken)
     self.assertEqual(self.state.ancient_one.doom, 10)
 
 

@@ -726,7 +726,7 @@ class InitializePlayersTest(unittest.TestCase):
         self.assertEqual(state.places["Science"].clues, 1-int(science_clue_missing))
 
 
-class NextTurnTest(unittest.TestCase):
+class NextTurnBase(unittest.TestCase):
 
   def setUp(self):
     self.state = eldritch.GameState()
@@ -740,6 +740,9 @@ class NextTurnTest(unittest.TestCase):
     self.state.turn_phase = "upkeep"
     self.state.turn_number = 0
     self.state.test_mode = False
+
+
+class NextTurnTest(NextTurnBase):
 
   def testTurnProgression(self):
     self.assertEqual(self.state.first_player, 0)
@@ -894,6 +897,268 @@ class NextTurnTest(unittest.TestCase):
     self.assertEqual(self.state.first_player, 1)
 
 
+class NextAwakenedTurnTestBase(NextTurnBase):
+
+  ALIVE_COUNT = 3
+  FIRST_ALIVE = 0
+
+  def setUp(self):
+    super().setUp()
+    self.state.turn_phase = "upkeep"
+    self.state.game_stage = "awakened"
+    self.state.ancient_one.health = 1
+    self.alive_count = self.ALIVE_COUNT
+    self.first_alive = self.FIRST_ALIVE
+    self.state.turn_idx = self.first_alive
+    self.state.first_player = self.first_alive
+
+  def testTurnProgression(self):
+    self.assertEqual(self.state.first_player, self.first_alive)
+    self.assertEqual(self.state.turn_idx, self.first_alive)
+    self.assertEqual(self.state.turn_phase, "upkeep")
+    self.state.event_stack.append(events.Upkeep(self.state.characters[self.first_alive]))
+    for _ in self.state.resolve_loop():
+      pass
+
+    for turn_idx in range(self.first_alive, self.first_alive + self.alive_count):
+      self.assertEqual(self.state.turn_phase, "upkeep")
+      self.assertEqual(self.state.turn_idx, turn_idx)
+      self.assertIsInstance(self.state.event_stack[0], events.Upkeep)
+      self.assertEqual(self.state.event_stack[0].character, self.state.characters[turn_idx])
+      self.assertFalse(self.state.usables)
+      self.state.event_stack[-1].done = True
+      # Will stop at each slider input. Last one will stop at Trading.
+      for _ in self.state.resolve_loop():
+        pass
+
+    self.assertTrue(self.state.usables)
+    # Characters who are still alive may trade.
+    for turn_idx in range(3):
+      if turn_idx in range(self.first_alive, self.first_alive + self.alive_count):
+        self.assertIn(turn_idx, self.state.usables)
+        self.assertIn("trade", self.state.usables[turn_idx])
+      else:
+        self.assertNotIn(turn_idx, self.state.usables)
+
+    for turn_idx in range(self.first_alive, self.first_alive + self.alive_count):
+      self.state.done_using[turn_idx] = True
+    for _ in self.state.resolve_loop():
+      pass
+
+    for turn_idx in range(self.first_alive, self.first_alive + self.alive_count):
+      self.assertEqual(self.state.turn_phase, "attack")
+      self.assertEqual(self.state.turn_idx, turn_idx)
+      self.assertIsInstance(self.state.event_stack[0], events.InvestigatorAttack)
+      self.assertEqual(self.state.event_stack[0].character, self.state.characters[turn_idx])
+      self.state.event_stack[-1].resolve(self.state, "done")
+      # Will stop at each DiceRoll.
+      for _ in self.state.resolve_loop():
+        pass
+      self.assertIsInstance(self.state.event_stack[-1], events.DiceRoll)
+      # Roll no successes so that the investigators don't win.
+      with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
+        self.state.event_stack[-1].resolve(self.state)
+      # Will now stop at each SpendChoice.
+      for _ in self.state.resolve_loop():
+        pass
+      self.assertIsInstance(self.state.event_stack[-1], events.SpendChoice)
+      self.state.event_stack[-1].resolve(self.state, "Done")
+      # It should stop at the next player's combat choice (or stop for the ancient one's attack).
+      for _ in self.state.resolve_loop():
+        if self.state.turn_phase != "attack":
+          break
+
+    self.assertEqual(self.state.turn_phase, "ancient")
+    self.assertEqual(self.state.turn_idx, self.first_alive)
+    self.assertIsInstance(self.state.event_stack[0], events.AncientAttack)
+
+    # Run the resolver once more to get to the next turn & next player's upkeep.
+    for _ in self.state.resolve_loop():
+      pass
+
+    # Because of the way we've set things up, the next player will always be player 1.
+    self.assertEqual(self.state.turn_phase, "upkeep")
+    self.assertEqual(self.state.turn_idx, 1)
+    self.assertEqual(self.state.first_player, 1)
+    self.assertEqual(self.state.turn_number, 1)
+
+
+class NextTurnAwakenedAllAliveTest(NextAwakenedTurnTestBase):
+  ALIVE_COUNT = 3
+  FIRST_ALIVE = 0
+
+
+class NextTurnAwakenedLastPlayerDevouredTest(NextAwakenedTurnTestBase):
+  ALIVE_COUNT = 2
+  FIRST_ALIVE = 0
+
+  def setUp(self):
+    super().setUp()
+    self.state.characters[2].gone = True
+
+
+class NextTurnAwakenedOnePlayerLeftTest(NextAwakenedTurnTestBase):
+  ALIVE_COUNT = 1
+  FIRST_ALIVE = 1
+
+  def setUp(self):
+    super().setUp()
+    self.state.characters[0].gone = True
+    self.state.characters[2].gone = True
+
+
+class TradingWhenAwakenedTest(NextTurnBase):
+
+  def setUp(self):
+    super().setUp()
+    self.state.game_stage = "awakened"
+    self.state.turn_phase = "upkeep"
+    self.state.turn_number = 0
+    self.state.turn_idx = 2
+    self.state.test_mode = False
+    self.state.characters[0].dollars = 10
+    for char in self.state.characters:
+      char.place = self.state.places["Battle"]
+
+  def testCanTradeAtEndOfUpkeep(self):
+    self.state.event_stack.append(events.Upkeep(self.state.characters[2]))
+    for _ in self.state.resolve_loop():
+      pass
+    # Cannot trade while setting your sliders.
+    with self.assertRaises(game.InvalidMove):
+      self.state.handle_give(0, 1, "dollars", 10)
+    self.state.event_stack[-1].done = True
+    for _ in self.state.resolve_loop():
+      pass
+
+    # Can trade after the last player has set their sliders.
+    self.state.handle_give(0, 1, "dollars", 7)
+    self.assertEqual(self.state.characters[0].dollars, 3)
+    self.assertEqual(self.state.characters[1].dollars, 7)
+    self.assertEqual(self.state.characters[2].dollars, 0)
+
+    # After a character says they are done trading, they can still trade until they're all done.
+    self.state.done_using[1] = True
+    self.state.handle_give(1, 2, "dollars", 4)
+    self.assertEqual(self.state.characters[0].dollars, 3)
+    self.assertEqual(self.state.characters[1].dollars, 3)
+    self.assertEqual(self.state.characters[2].dollars, 4)
+
+    self.state.done_using[0] = True
+    self.state.done_using[2] = True
+    for _ in self.state.resolve_loop():
+      pass
+
+    with self.assertRaises(game.InvalidMove):
+      self.state.handle_give(1, 2, "dollars", 1)
+
+
+class EndGameTest(NextTurnBase):
+
+  def testAncientOneHasCorrectHealthWhenAwakened(self):
+    self.state.event_stack.append(events.AddDoom(count=float("inf")))
+    for _ in self.state.resolve_loop():
+      pass
+    self.assertEqual(self.state.turn_phase, "upkeep")
+    self.assertEqual(self.state.turn_idx, 1)
+    self.assertEqual(self.state.ancient_one.health, 30)
+
+  def testDealFinalDamageToAncientOne(self):
+    self.state.game_stage = "awakened"
+    self.state.ancient_one.health = 1
+    self.state.turn_phase = "attack"
+    char = self.state.characters[self.state.turn_idx]
+    self.state.event_stack.append(events.InvestigatorAttack(char))
+
+    for _ in self.state.resolve_loop():
+      pass
+    self.assertTrue(self.state.event_stack)
+    # Choose no weapons to fight the ancient one.
+    self.state.event_stack[-1].resolve(self.state, "done")
+    for _ in self.state.resolve_loop():
+      pass
+    # Roll successes on the attack roll.
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.state.event_stack[-1].resolve(self.state)
+    for _ in self.state.resolve_loop():
+      pass
+    # Don't spend any clue tokens.
+    self.state.event_stack[-1].resolve(self.state, "Done")
+    for _ in self.state.resolve_loop():
+      pass
+    self.assertFalse(self.state.event_stack)
+    self.assertEqual(self.state.game_stage, "victory")
+
+  def testLastCharacterDevoured(self):
+    self.state.game_stage = "awakened"
+    self.state.ancient_one.health = 1
+    self.state.turn_phase = "ancient"
+    char = self.state.characters[self.state.turn_idx]
+    # Start with most characters already devoured.
+    for character in self.state.characters:
+      if character != char:
+        character.gone = True
+        character.place = None
+
+    self.state.event_stack.append(events.AncientAttack(char))
+    # The ancient one's attack devours the last character.
+
+    def devour(state):  # pylint: disable=unused-argument
+      return events.AncientOneAttack([events.Devoured(char)])
+    with mock.patch.object(self.state.ancient_one, "attack", new=devour):
+      for _ in self.state.resolve_loop():
+        pass
+    self.assertFalse(self.state.event_stack)
+    self.assertEqual(self.state.game_stage, "defeat")
+
+  def testLastCharacterDevouredDuringUpkeep(self):
+    self.state.game_stage = "awakened"
+    self.state.ancient_one.health = 1
+    self.state.turn_phase = "upkeep"
+    char = self.state.characters[self.state.turn_idx]
+    # Start with most characters already devoured.
+    for character in self.state.characters:
+      if character != char:
+        character.gone = True
+        character.place = None
+
+    # One character starts with a heal spell
+    char.possessions.append(items.Heal(0))
+    char.sanity = 1
+
+    self.state.event_stack.append(events.Upkeep(char))
+    for _ in self.state.resolve_loop():
+      pass
+    self.assertTrue(self.state.usables)
+    self.assertIn(self.state.turn_idx, self.state.usables)
+    self.assertIn("Heal0", self.state.usables[self.state.turn_idx])
+
+    # Use the heal spell. It consumes this character's last sanity.
+    self.state.event_stack.append(self.state.usables[self.state.turn_idx]["Heal0"])
+    for _ in self.state.resolve_loop():
+      pass
+    spend_choice = self.state.event_stack[-1]
+    spend_choice.spend("sanity")
+    for _ in self.state.resolve_loop():
+      pass
+    spend_choice.resolve(self.state, "Cast")
+    for _ in self.state.resolve_loop():
+      pass
+
+    # Fail casting just so that we don't also have to choose a character.
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
+      self.state.event_stack[-1].resolve(self.state)
+    for _ in self.state.resolve_loop():
+      pass
+    # Don't spend any clue tokens.
+    self.state.event_stack[-1].resolve(self.state, "Done")
+    for _ in self.state.resolve_loop():
+      pass
+
+    self.assertFalse(self.state.event_stack)
+    self.assertEqual(self.state.game_stage, "defeat")
+
+
 class InsaneTest(unittest.TestCase):
 
   def setUp(self):
@@ -1027,6 +1292,170 @@ class InsaneTest(unittest.TestCase):
     self.assertEqual(self.state.turn_phase, "mythos")
     self.assertIsInstance(self.state.event_stack[-1], events.DiceRoll)
     self.assertEqual(self.state.event_stack[-1].character, self.state.characters[1])
+
+  def testLoseStaminaAndHealthMeansDevoured(self):
+    self.state.characters[0].sanity = 1
+    self.state.characters[0].stamina = 1
+    self.state.turn_idx = 0
+    self.state.turn_phase = "otherworld"
+    self.state.event_stack.append(
+        events.Loss(self.state.characters[0], {"sanity": 1, "stamina": 1}),
+    )
+    for _ in self.state.resolve_loop():
+      if self.state.turn_idx != 0:
+        break
+    self.assertEqual(self.state.turn_idx, 1)
+    self.assertEqual(self.state.turn_phase, "otherworld")
+    self.assertTrue(self.state.characters[0].gone)
+    self.assertFalse(self.state.characters[1].gone)
+
+  def testInsaneAgainstAncientOne(self):
+    self.state.characters[0].sanity = 1
+    self.state.turn_idx = 0
+    self.state.game_stage = "awakened"
+    self.state.turn_phase = "attack"
+    self.state.event_stack.append(events.InvestigatorAttack(self.state.characters[0]))
+    for _ in self.state.resolve_loop():
+      pass
+    self.state.event_stack.append(events.Loss(self.state.characters[0], {"sanity": 1}))
+    for _ in self.state.resolve_loop():
+      pass
+    self.assertTrue(self.state.characters[0].gone)
+    self.assertEqual(self.state.turn_idx, 1)
+    self.assertEqual(self.state.game_stage, "awakened")
+    self.assertEqual(self.state.turn_phase, "attack")
+
+
+class OpenGateCountTest(unittest.TestCase):
+
+  def testOpenGateCount(self):
+    state = eldritch.GameState()
+    expected = {1: 8, 2: 8, 3: 7, 4: 7, 5: 6, 6: 6, 7: 5, 8: 5}
+    for num_players, expected_gate_limit in expected.items():
+      with self.subTest(num_players=num_players):
+        state.characters = [None] * num_players
+        self.assertEqual(state.gate_limit(), expected_gate_limit)
+
+
+class AwakenTest(unittest.TestCase):
+
+  def setUp(self):
+    self.state = eldritch.GameState()
+    self.state.initialize_for_tests()
+    self.state.all_characters["Gangster"] = characters.Gangster()
+    self.state.characters.append(self.state.all_characters["Gangster"])
+    self.state.characters[0].place = self.state.places["House"]
+    self.state.game_stage = "slumber"
+    self.state.turn_number = 100
+    self.state.turn_phase = "mythos"
+    self.state.test_mode = False
+
+  def testGatesOpenCausesAwakeningTest(self):
+    for place in ["Square", "Isle", "Woods", "WitchHouse", "Graveyard", "Cave", "Unnamable"]:
+      self.state.places[place].gate = self.state.gates.popleft()
+    self.state.event_stack.append(events.OpenGate("Science"))
+    for _ in self.state.resolve_loop():
+      pass
+    self.assertEqual(self.state.game_stage, "awakened")
+    self.assertEqual(self.state.turn_phase, "upkeep")
+    self.assertEqual(self.state.turn_number, 101)
+
+  def testAddingLastDoomTokenAwakens(self):
+    self.state.ancient_one.doom = self.state.ancient_one.max_doom - 1
+    self.state.event_stack.append(events.OpenGate("Science"))
+    for _ in self.state.resolve_loop():
+      pass
+    self.assertEqual(self.state.game_stage, "awakened")
+    self.assertEqual(self.state.turn_phase, "upkeep")
+    self.assertEqual(self.state.ancient_one.doom, self.state.ancient_one.max_doom)
+
+  def testDontAwakenForOtherDoomTokens(self):
+    self.state.ancient_one.doom = self.state.ancient_one.max_doom - 2
+    self.state.event_stack.append(events.OpenGate("Science"))
+    for _ in self.state.resolve_loop():
+      pass
+    self.assertEqual(self.state.game_stage, "slumber")
+    self.assertEqual(self.state.turn_phase, "upkeep")
+    self.assertEqual(self.state.ancient_one.doom, self.state.ancient_one.max_doom - 1)
+
+  def testCanAwakenFromAnyPhaseWithoutGate(self):
+    self.state.ancient_one.doom = self.state.ancient_one.max_doom - 1
+    self.state.event_stack.append(events.AddDoom())
+    for _ in self.state.resolve_loop():
+      pass
+    self.assertEqual(self.state.game_stage, "awakened")
+    self.assertEqual(self.state.turn_phase, "upkeep")
+    self.assertEqual(self.state.ancient_one.doom, self.state.ancient_one.max_doom)
+
+  def testCannotOverfillDoomTrack(self):
+    self.state.ancient_one.doom = self.state.ancient_one.max_doom - 1
+    self.state.event_stack.append(events.AddDoom(count=2))
+    for _ in self.state.resolve_loop():
+      pass
+    self.assertEqual(self.state.game_stage, "awakened")
+    self.assertEqual(self.state.turn_phase, "upkeep")
+    self.assertEqual(self.state.ancient_one.doom, self.state.ancient_one.max_doom)
+
+  def testAwakenIfNoMonstersLeftMonsterSurge(self):
+    for place in ["Square", "Isle", "Woods"]:
+      self.state.places[place].gate = self.state.gates.popleft()
+    self.assertEqual(len(self.state.monsters), 2)
+    # Trigger a monster surge - there are three open gates, so we want to draw 3 monsters. This
+    # is larger than the number in the cup (2), so the ancient one should awaken.
+    self.state.event_stack.append(events.OpenGate("Square"))
+    for _ in self.state.resolve_loop():
+      pass
+    # Since the ancient one is awakening, we should not place monsters on gates.
+    self.assertIsInstance(self.state.event_stack[-1], events.SliderInput)
+    self.assertEqual(self.state.game_stage, "awakened")
+    self.assertEqual(self.state.turn_phase, "upkeep")
+    # We should always fill the doom track when the ancient one awakens.
+    self.assertEqual(self.state.ancient_one.doom, self.state.ancient_one.max_doom)
+
+  def testAwakenIfNoMonstersLeftInEncounter(self):
+    self.state.monsters.clear()
+    self.state.characters[0].place = self.state.places["Graveyard"]
+    self.state.turn_phase = "encounter"
+    self.state.event_stack.append(encounters.Graveyard7(self.state.characters[0]))
+    for _ in self.state.resolve_loop():
+      pass
+    # Since the ancient one is awakening, we should not place monsters on gates.
+    self.assertIsInstance(self.state.event_stack[-1], events.SliderInput)
+    self.assertEqual(self.state.game_stage, "awakened")
+    self.assertEqual(self.state.turn_phase, "upkeep")
+
+  def testAwakenIfNoMonstersLeftOnlyCountsMonstersInCup(self):
+    self.state.monsters[0].place = self.state.places["Square"]
+    self.state.monsters[1].place = self.state.places["Woods"]
+    self.state.event_stack.append(events.OpenGate("Isle"))
+    for _ in self.state.resolve_loop():
+      pass
+    self.assertIsInstance(self.state.event_stack[-1], events.SliderInput)
+    self.assertEqual(self.state.game_stage, "awakened")
+    self.assertEqual(self.state.turn_phase, "upkeep")
+
+  def testAwakenIfNoGatesLeft(self):
+    self.state.gates.clear()
+    self.state.event_stack.append(events.OpenGate("Isle"))
+    for _ in self.state.resolve_loop():
+      pass
+    self.assertIsInstance(self.state.event_stack[-1], events.SliderInput)
+    self.assertEqual(self.state.game_stage, "awakened")
+    self.assertEqual(self.state.turn_phase, "upkeep")
+
+  def testLostInvestigatorsAreDevoured(self):
+    self.state.all_characters["Doctor"] = characters.Doctor()
+    self.state.characters.append(self.state.all_characters["Doctor"])
+    self.state.characters[1].place = self.state.places["Lost"]
+    self.state.event_stack.append(events.AddDoom(count=float("inf")))
+    for _ in self.state.resolve_loop():
+      pass
+    self.assertIsInstance(self.state.event_stack[-1], events.SliderInput)
+    self.assertEqual(self.state.game_stage, "awakened")
+    self.assertEqual(self.state.turn_phase, "upkeep")
+
+    self.assertEqual(self.state.characters[0].place.name, "Battle")
+    self.assertTrue(self.state.characters[1].gone)
 
 
 class RollDiceTest(unittest.TestCase):
