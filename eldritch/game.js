@@ -651,11 +651,12 @@ function setCardButtonText() {
 }
 
 function scrollCards(e, dir) {
-  let cardChoice = document.getElementById("uicardchoice");
-  let rect = cardChoice.getBoundingClientRect();
+  let container = e.currentTarget.parentNode;
+  let cardScroller = container.getElementsByClassName("cardscroller")[0];
+  let rect = cardScroller.getBoundingClientRect();
   let width = rect.right - rect.left;
   let amount = dir * Math.ceil(width / 4);
-  cardChoice.scrollLeft = cardChoice.scrollLeft + amount;
+  cardScroller.scrollLeft = cardScroller.scrollLeft + amount;
 }
 
 function updateChoices(choice) {
@@ -679,9 +680,6 @@ function updateChoices(choice) {
   document.getElementById("cardchoicescroll").style.display = "none";
   btn.style.display = "none";
   cardtoggle.style.display = "none";
-  for (let scrollBox of document.getElementsByClassName("cardscroll")) {
-    scrollBox.style.display = "none";
-  }
   if (choice != null && choice.board_monster != null) {
     monsterBox.classList.add("choosable");
   } else {
@@ -817,13 +815,11 @@ function addCardChoices(uichoice, cardChoice, cards, invalidChoices, remainingSp
     cardChoice.appendChild(holder);
     renderAssetToDiv(div, card);
   }
+  let scrollParent = cardChoice.parentNode;
   if (count > 4) {
-    cardChoice.style.justifyContent = "flex-start";
-    for (let scrollBox of document.getElementsByClassName("cardscroll")) {
-      scrollBox.style.display = "flex";
-    }
+    scrollParent.classList.add("overflowing");
   } else {
-    cardChoice.style.justifyContent = "space-evenly";
+    scrollParent.classList.remove("overflowing");
   }
   addChoices(uichoice, notFound, newInvalid, newRemainingSpend);
 }
@@ -1175,18 +1171,61 @@ function updateBottomText(gameStage, turnPhase, characters, turnIdx, playerIdx, 
 
 function updateGlobals(env, rumor) {
   let envDiv = document.getElementById("environment");
+  let envCnt = envDiv.getElementsByClassName("mythoscard")[0];
   let rumorDiv = document.getElementById("rumor");
-  envDiv.cnvScale = 2;
-  rumorDiv.cnvScale = 2;
+  let rumorCnt = rumorDiv.getElementsByClassName("mythoscard")[0];
   if (env == null) {
-    clearAssetFromDiv(envDiv);
+    clearAssetFromDiv(envCnt);
+    envDiv.classList.add("missing");
+    envDiv.name = null;
   } else {
-    renderAssetToDiv(envDiv, env);
+    envDiv.classList.remove("missing");
+    envDiv.name = typeof(env) == "string" ? env : env.name;
+    renderAssetToDiv(envCnt, envDiv.name);
   }
   if (rumor == null) {
-    clearAssetFromDiv(rumorDiv);
+    clearAssetFromDiv(rumorCnt);
+    rumorDiv.classList.add("missing");
+    rumorDiv.name = null;
   } else {
-    renderAssetToDiv(rumorDiv, rumor);
+    rumorDiv.classList.remove("missing");
+    rumorDiv.name = typeof(rumor) == "string" ? rumor : rumor.name;
+    renderAssetToDiv(rumorCnt, rumorDiv.name);
+  }
+}
+
+function toggleGlobals(e) {
+  let globalBox = document.getElementById("globals");
+  let globalScroll = document.getElementById("globalscroll");
+  let globalCards = document.getElementById("globalcards");
+  if (globalBox.classList.contains("zoomed")) {
+    globalBox.classList.remove("zoomed");
+    globalScroll.style.display = "none";
+    return;
+  }
+  globalBox.classList.add("zoomed");
+  globalScroll.style.display = "flex";
+  while (globalCards.getElementsByClassName("bigmythoscard").length) {
+    globalCards.removeChild(globalCards.getElementsByClassName("bigmythoscard")[0]);
+  }
+  let count = 0;
+  for (let cont of document.getElementById("globals").getElementsByClassName("mythoscontainer")) {
+    if (!cont.name) {
+      continue;
+    }
+    count++;
+    let holder = document.createElement("DIV");
+    holder.classList.add("bigmythoscard", "cnvcontainer");
+    let cnv = document.createElement("CANVAS");
+    cnv.classList.add("markercnv");  // TODO: use a better class name for this
+    holder.appendChild(cnv);
+    globalCards.appendChild(holder);
+    renderAssetToDiv(holder, cont.name);
+  }
+  if (count > 4) {
+    globalScroll.classList.add("overflowing");
+  } else {
+    globalScroll.classList.remove("overflowing");
   }
 }
 
@@ -1278,14 +1317,11 @@ function updateAvailableCharacters(characters, pendingChars) {
 
 function updateAncientSelect(gameStage, host) {
   let ancientSelect = document.getElementById("ancientselect");
-  let buffer = document.getElementById("selectbuffer");
   if (gameStage != "setup" || !host) {
     ancientSelect.style.display = "none";
-    buffer.style.display = "none";
     return;
   }
   ancientSelect.style.display = "flex";
-  buffer.style.display = "flex";
   if (ancientChoice == null) {
     let keys = Object.keys(allAncients);
     keys.sort();
@@ -1322,12 +1358,12 @@ function updateAncientOne(ancientOne, terror) {
 }
 
 function updateCharacterSelect(characters, playerIdx) {
-  let charSelect = document.getElementById("charselect");
+  let selectors = document.getElementById("selectors");
   if (playerIdx != null && !characters[playerIdx].gone) {
-    charSelect.style.display = "none";
+    selectors.style.display = "none";
     return;
   }
-  charSelect.style.display = "flex";
+  selectors.style.display = "flex";
   if (charChoice == null) {
     charChoice = availableChars[0];
   }
