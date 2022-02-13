@@ -250,6 +250,7 @@ class FindGateTest(EventTest):
 
   def testCastBeforeMovement(self):
     self.char.place = self.state.places["Pluto1"]
+    self.state.places["Isle"].gate = gates.Gate("Pluto", 0, -2, "circle")
     self.state.event_stack.append(Movement(self.char))
     self.resolve_to_usable(0, "Find Gate0", CastSpell)
 
@@ -261,10 +262,10 @@ class FindGateTest(EventTest):
     spend_choice.resolve(self.state, "Cast")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       choice = self.resolve_to_choice(GateChoice)
-    choice.resolve(self.state, "Woods")
+    choice.resolve(self.state, "Isle")
     self.resolve_until_done()
 
-    self.assertEqual(self.char.place.name, "Woods")
+    self.assertEqual(self.char.place.name, "Isle")
     self.assertTrue(self.char.explored)
 
   def testCastAfterMovement(self):
@@ -281,9 +282,7 @@ class FindGateTest(EventTest):
     self.spend("sanity", 1, spend_choice)
     spend_choice.resolve(self.state, "Cast")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
-      choice = self.resolve_to_choice(GateChoice)
-    choice.resolve(self.state, "Woods")
-    self.resolve_until_done()
+      self.resolve_until_done()
 
     self.assertEqual(self.char.place.name, "Woods")
     self.assertTrue(self.char.explored)

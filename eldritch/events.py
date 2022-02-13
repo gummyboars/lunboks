@@ -2678,6 +2678,8 @@ class GateChoice(MapChoice):
       if getattr(place, "gate", None) is not None:
         if place.gate.name == self.gate_name or self.gate_name is None:
           self.choices.append(name)
+    if len(self.choices) == 1 and self.none_choice is None:
+      self.choice = self.choices[0]
 
   def start_str(self):
     if self.gate_name is not None:

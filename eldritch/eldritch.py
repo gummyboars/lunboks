@@ -437,10 +437,11 @@ class GameState:
         idx: char.get_usable_interrupts(event, self)
         for idx, char in enumerate(self.characters) if not char.gone
     }
-    # If the character is in another world with another character, let them trade before moving.
-    if isinstance(event, events.ForceMovement) and self.turn_phase == "movement":
-      if len([char for char in self.characters if char.place == event.character.place]) > 1:
-        i[self.characters.index(event.character)]["trade"] = events.Nothing()
+    if self.turn_phase == "movement":
+      # If the character is in another world with another character, let them trade before moving.
+      if isinstance(event, (events.ForceMovement, events.GateChoice)):
+        if len([char for char in self.characters if char.place == event.character.place]) > 1:
+          i[self.characters.index(event.character)]["trade"] = events.Nothing()
     return {char_idx: interrupts for char_idx, interrupts in i.items() if interrupts}
 
   def get_triggers(self, event):

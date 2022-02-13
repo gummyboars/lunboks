@@ -2347,6 +2347,7 @@ class GateChoiceTest(EventTest):
     choice = GateChoice(self.char, "choose place")
     self.state.event_stack.append(choice)
     self.state.places["Square"].gate = self.state.gates.popleft()
+    self.state.places["Isle"].gate = self.state.gates.popleft()
     self.resolve_to_choice(GateChoice)
 
     with self.assertRaises(AssertionError):
@@ -2354,6 +2355,14 @@ class GateChoiceTest(EventTest):
 
     choice.resolve(self.state, "Square")
     self.assertTrue(choice.is_resolved())
+
+  def testAutoChooseIfOnlyOneGate(self):
+    choice = GateChoice(self.char, "choose place")
+    self.state.event_stack.append(choice)
+    self.state.places["Cave"].gate = self.state.gates.popleft()
+    self.resolve_until_done()
+    self.assertTrue(choice.is_resolved())
+    self.assertEqual(choice.choice, "Cave")
 
   def testChooseGateLocationsNoGates(self):
     choice = GateChoice(self.char, "choose place")
