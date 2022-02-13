@@ -38,27 +38,33 @@
               <button onclick="finishGive(event)">Give</button>
             </div>
           </div>
-          <div id="charselect">
-            <div id="charchoices" class="bigchoices">
-              <div id="prevchar" class="choicebutton" onclick="prevChar(event)">◀️</div>
-              <div id="charchoice"></div>
-              <div id="nextchar" class="choicebutton" onclick="nextChar(event)">▶️</div>
+          <div id="selectors">
+            <div id="charselect">
+              <div id="charchoices" class="bigchoices">
+                <div id="prevchar" class="choicebutton" onclick="prevChar(event)">◀️</div>
+                <div id="charchoice"></div>
+                <div id="nextchar" class="choicebutton" onclick="nextChar(event)">▶️</div>
+              </div>
+              <div class="selectbutton"><button id="choosecharbutton" onclick="selectChar(event)">Choose</button></div>
             </div>
-            <div class="selectbutton"><button id="choosecharbutton" onclick="selectChar(event)">Choose</button></div>
-          </div>
-          <div id="selectbuffer"></div>
-          <div id="ancientselect">
-            <div id="ancientchoices" class="bigchoices">
-              <div id="prevancient" class="choicebutton" onclick="prevAncient(event)">◀️</div>
-              <div id="ancientchoice" class="cnvcontainer"><canvas></canvas></div>
-              <div id="nextancient" class="choicebutton" onclick="nextAncient(event)">▶️</div>
+            <div id="ancientselect">
+              <div id="ancientchoices" class="bigchoices">
+                <div id="prevancient" class="choicebutton" onclick="prevAncient(event)">◀️</div>
+                <div id="ancientchoice" class="cnvcontainer"><canvas></canvas></div>
+                <div id="nextancient" class="choicebutton" onclick="nextAncient(event)">▶️</div>
+              </div>
+              <div class="selectbutton"><button id="chooseancientbutton" onclick="selectAncient(event)">Choose</button></div>
             </div>
-            <div class="selectbutton"><button id="chooseancientbutton" onclick="selectAncient(event)">Choose</button></div>
           </div>
-          <div id="cardchoicescroll">
-            <div id="scrollcardsleft" class="cardscroll" onclick="scrollCards(event, -1)">◀️</div>
-            <div id="uicardchoice"></div>
-            <div id="scrollcardsright" class="cardscroll" onclick="scrollCards(event, 1)">▶️</div>
+          <div id="cardchoicescroll" class="cardscroll">
+            <div id="scrollcardsleft" class="cardscrollbtn" onclick="scrollCards(event, -1)">◀️</div>
+            <div id="uicardchoice" class="cardscroller"></div>
+            <div id="scrollcardsright" class="cardscrollbtn" onclick="scrollCards(event, 1)">▶️</div>
+          </div>
+          <div id="globalscroll" class="cardscroll">
+            <div id="scrollglobalsleft" class="cardscrollbtn" onclick="scrollCards(event, -1)">◀️</div>
+            <div id="globalcards" class="cardscroller"></div>
+            <div id="scrollglobalsright" class="cardscrollbtn" onclick="scrollCards(event, 1)">▶️</div>
           </div>
           <div id="monsterdetails">
             <div id="monsterdetailsname"></div>
@@ -71,10 +77,11 @@
           <canvas id="boardcanvas"></canvas>
         </div>
         <div id="uibottom">
-          <div id="globals">
-            <div id="environment" class="mythoscard cnvcontainer"><canvas class="mythoscnv"></canvas></div>
-            <div id="rumor" class="mythoscard cnvcontainer"><canvas class="mythoscnv"></canvas></div>
+          <div id="globals" onclick="toggleGlobals(event)">
+            <div id="environment" class="mythoscontainer"><div class="mythoscard cnvcontainer"><canvas class="mythoscnv"></canvas></div></div>
+            <div id="rumor" class="mythoscontainer"><div class="mythoscard cnvcontainer"><canvas class="mythoscnv"></canvas></div></div>
           </div>
+          <div id="currentcard"></div>
           <div id="bottomcenter">
             <div id="uiprompt"></div>
             <button id="start" onclick="start(event)">Start</button>

@@ -63,11 +63,6 @@ button:disabled {
   justify-content: space-between;
   align-items: center;
 }
-#selectbuffer {
-  width: min(10vw, 16vh);
-  height: 1px;
-  pointer-events: none;
-}
 #charselect, #ancientselect {
   z-index: 20;
   display: none;
@@ -134,7 +129,7 @@ button:disabled {
   column-gap: 1em;
   row-gap: 0.5em;
 }
-#cardchoicescroll {
+.cardscroll {
   width: calc(min(72.5vw, 116vh));
   max-width: calc(min(72.5vw, 116vh));
   display: flex;
@@ -143,15 +138,19 @@ button:disabled {
   pointer-events: auto;
   z-index: 20;
 }
-.cardscroll {
+.cardscrollbtn {
   font-size: calc(min(1.25vw, 2vh));
   height: calc(min(15vw, 24vh) * 25 / 16);
   cursor: pointer;
   display: none;
   align-items: center;
   justify-content: center;
+  display: none;
 }
-#uicardchoice {
+.overflowing .cardscrollbtn {
+  display: flex;
+}
+.cardscroller {
   width: calc(min(70vw, 112vh));
   max-width: calc(min(70vw, 112vh));
   flex 1 1 auto;
@@ -165,8 +164,11 @@ button:disabled {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
-#uicardchoice::-webkit-scrollbar {
+.cardscroller::-webkit-scrollbar {
   display: none;
+}
+.overflowing .cardscroller {
+  justify-content: flex-start;
 }
 .cardholder {
   display: flex;
@@ -340,9 +342,19 @@ button:disabled {
   top: 0;
   left: 0;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  row-gap: calc(min(5vw, 8vh));
   pointer-events: none;
+}
+#selectors {
+  z-index: 20;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-evenly;
 }
 #board {
   width: 100%;
@@ -461,31 +473,53 @@ button:disabled {
   top: 0;
   left: 0;
 }
+#currentcard {
+  width: 12.5%;
+  min-width: 12.5%;
+  max-width: 12.5%;
+  height: 100%;
+}
 #globals {
-  width: 25%;
-  min-width: 25%;
-  max-width: 25%;
+  width: 12.5%;
+  min-width: 12.5%;
+  max-width: 12.5%;
+  height: 100%;
+  max-height: 100%;
   display: flex;
-  flex-direction: row;
-  align-items: flex-start;
+  flex-direction: column;
+  align-items: center;
   justify-content: space-evenly;
+  cursor: zoom-in;
+}
+#globals.zoomed {
+  cursor: zoom-out;
+}
+.mythoscontainer {
+  position: relative;
+  flex: 1 1 auto;
+  width: 87.5%;
+  min-height: 0;
+  height: 100%;
+}
+.mythoscontainer.missing {
+  height: 0;
 }
 .mythoscard {
-  position: relative;
-  width: 45%;
-  height: 100%;
-  transition: all 0.3s;
-  transform-origin: center;
-}
-.mythoscard:hover {
-  transform: scale(2);
-  transition-delay: 0.5s;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: calc(min(8.75vw, 14vh));
+  height: calc(min(8.75vw, 14vh) * 3 / 2);
 }
 .mythoscnv {
   position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%) scale(0.5);
+  top: 0;
+  left: 0;
+}
+.bigmythoscard {
+  position: relative;
+  width: calc(min(15vw, 24vh));
+  height: calc(min(15vw, 24vh) * 3 / 2);
 }
 #ancientandplaces {
   width: 25%;
