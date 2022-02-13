@@ -226,6 +226,7 @@ function handleData(data) {
   updateCharacterSheets(data.characters, data.pending_chars, data.player_idx, data.first_player, data.choice);
   updateBottomText(data.game_stage, data.turn_phase, data.characters, data.turn_idx, data.player_idx, data.host);
   updateGlobals(data.environment, data.rumor);
+  updateCurrentCard(data.current);
   updatePlaces(data.places);
   updateCharacters(data.characters);
   updateSliderButton(data.sliders);
@@ -1192,6 +1193,19 @@ function updateGlobals(env, rumor) {
     rumorDiv.name = typeof(rumor) == "string" ? rumor : rumor.name;
     renderAssetToDiv(rumorCnt, rumorDiv.name);
   }
+}
+
+function updateCurrentCard(current) {
+  let currDiv = document.getElementById("currentcard");
+  if (current == null) {
+    // TODO: because rendering happens in a promise, clearing the asset from the div can
+    // actually happen before the promise is fulfilled. ugh.
+    clearAssetFromDiv(currDiv);
+    currDiv.classList.add("missing");
+    return;
+  }
+  currDiv.classList.remove("missing");
+  renderAssetToDiv(currDiv, current);
 }
 
 function toggleGlobals(e) {

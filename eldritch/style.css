@@ -65,7 +65,7 @@ button:disabled {
 }
 #charselect, #ancientselect {
   z-index: 20;
-  display: none;
+  display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
@@ -474,10 +474,14 @@ button:disabled {
   left: 0;
 }
 #currentcard {
+  position: relative;
   width: 12.5%;
   min-width: 12.5%;
   max-width: 12.5%;
   height: 100%;
+}
+#currentcard.missing {
+  height: 0;
 }
 #globals {
   width: 12.5%;

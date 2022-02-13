@@ -193,6 +193,9 @@ function renderBoardToCanvas(cnv, width, height) {
 
 function renderSlider(cnv, width, height) {
   let border = 2;
+  if (width/2 <= border) {
+    return;  // Safeguard: ctx.arc errors out if radius is negative.
+  }
   let ctx = cnv.getContext("2d");
   ctx.lineWidth = border;
   ctx.beginPath();

@@ -222,6 +222,32 @@ class GameState:
 
     top_event = self.event_stack[-1] if self.event_stack else None
 
+    # Figure out the current encounter/mythos card being resolved.
+    current = None
+    for event in reversed(self.event_stack):
+      if current is None:
+        # If it's an encounter, get the name of the drawn card (or chosen card if more than 1).
+        if isinstance(event, events.Encounter) and event.draw and event.draw.cards:
+          if len(event.draw.cards) == 1:
+            current = event.draw.cards[0].name
+          else:
+            seq = getattr(event.encounter, "events", [])
+            if seq and seq[0].is_resolved():
+              current = event.draw.cards[seq[0].choice_index].name
+        # Same thing for otherworld encounters (cards attribute is in a different place).
+        if isinstance(event, events.GateEncounter) and event.cards and event.encounter:
+          if len(event.cards) == 1:
+            current = event.cards[0].name
+          else:
+            seq = getattr(event.encounter, "events", [])
+            if seq and seq[0].is_resolved():
+              current = event.cards[seq.choice_index].name
+        # For mythos cards, there is a single drawn card.
+        if isinstance(event, events.Mythos) and event.draw and event.draw.card:
+          current = event.draw.card.name
+    output["current"] = current
+
+    # Figure out the current dice roll and how many bonus dice it has.
     roller = None
     bonus = 0
     for event in reversed(self.event_stack):
