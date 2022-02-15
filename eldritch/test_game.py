@@ -604,6 +604,8 @@ class InitializePlayersTest(unittest.TestCase):
         state.ancient_one = ancient_ones.DummyAncient()
         state.handle_join(None, name)
         state.handle_start()
+        science_clue_missing = name == "Scientist"
+        self.assertEqual(state.places["Science"].clues, 1-int(science_clue_missing))
 
 
 class NextTurnTest(unittest.TestCase):

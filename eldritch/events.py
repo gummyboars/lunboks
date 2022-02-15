@@ -3372,7 +3372,7 @@ class OpenGate(Event):
         return
       self.location_name = self.location_name.card.gate_location
 
-    if state.places[self.location_name].sealed:
+    if not state.places[self.location_name].is_unstable(state):
       self.opened = False
       return
     if state.places[self.location_name].gate is not None:

@@ -2,7 +2,13 @@ from collections import namedtuple
 
 
 class Place:
-  pass
+
+  def is_unstable(self, state):
+    if any(char.name == "Scientist" and char.place == self for char in state.characters):
+      return False
+    if getattr(self, "sealed", False):
+      return False
+    return getattr(self, "unstable", False)
 
 
 class LostInTimeAndSpace(Place):

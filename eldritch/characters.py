@@ -410,7 +410,7 @@ class Scientist(Character):
     super().__init__("Scientist", 4, 6, 4, 5, 4, 3, 5, 4, 1, "Science")
 
   def abilities(self):
-    return []  # TODO: Flux Stabilizer
+    return [abilities.FluxStabilizer()]
 
   def initial_attributes(self):
     # TODO: don't place a clue on the science building to start the game
