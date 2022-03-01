@@ -45,16 +45,17 @@ class AncientOne(mythos.GlobalEffect, metaclass=abc.ABCMeta):
 
   def combat_rating(self, state, char):
     state_modifier = state.get_modifier(self, "combatdifficulty") or 0
-    char_modifier = char.get_modifier(self, "combatdifficulty") or 0
+    char_modifier = (char.get_modifier(self, "combatdifficulty") or 0) if char is not None else 0
     return self._combat_rating + state_modifier + char_modifier
 
-  def json_repr(self):
+  def json_repr(self, state):
     return {
         "name": self.name,
         "doom": self.doom,
         "max_doom": self.max_doom,
         "health": self.health,
-        # TODO: combat rating, attributes
+        "attributes": sorted(self.attributes(state, None)),
+        "combat_rating": self.combat_rating(state, None),
     }
 
 
@@ -87,7 +88,8 @@ class SquidFace(AncientOne):
 
 class YellowKing(AncientOne):
   def __init__(self):
-    super().__init__("The Yellow King", 13, {"physical resistance"}, None)
+    # TODO: change this to always have a combat rating equal to the terror level
+    super().__init__("The Yellow King", 13, {"physical resistance"}, 0)
     self.luck_modifier = 1
 
   def awaken(self, state):
@@ -134,6 +136,11 @@ class ChaosGod(AncientOne):
     if isinstance(thing, monsters.Maniac):
       return {"toughness": 1}.get(attribute, 0)
     return super().get_modifier(thing, attribute)
+
+  def json_repr(self, state):
+    data = super().json_repr(state)
+    data["combat_rating"] = "-\u221E"
+    return data
 
 
 class Wendigo(AncientOne):

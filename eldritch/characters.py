@@ -56,7 +56,7 @@ class Character:
     data = {attr: getattr(self, attr) for attr in attrs}
     for numeric in ["delayed_until", "lose_turn_until"]:
       if data[numeric] is not None and math.isinf(data[numeric]):
-        data[numeric] = True  # Any placeholder non-integer value.
+        data[numeric] = "\u221E"  # Any placeholder non-integer value.
     data["sliders"] = OrderedDict()
     for slider in self._slider_names:
       data["sliders"][slider] = {

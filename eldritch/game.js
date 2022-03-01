@@ -225,9 +225,9 @@ function handleData(data) {
   updateAncientOne(data.ancient_one, data.terror);
   updateCharacterSheets(data.characters, data.pending_chars, data.player_idx, data.first_player, data.choice);
   updateBottomText(data.game_stage, data.turn_phase, data.characters, data.turn_idx, data.player_idx, data.host);
-  updateGlobals(data.environment, data.rumor);
+  updateGlobals(data.environment, data.rumor, data.other_globals);
   updateCurrentCard(data.current);
-  updatePlaces(data.places);
+  updatePlaces(data.places, data.activity);
   updateCharacters(data.characters);
   updateSliderButton(data.sliders);
   updateChoices(data.choice);
@@ -1058,7 +1058,7 @@ function moveAndTranslateNode(div, destParent) {
   div.style.transform = "translateX(" + diffX + "px) translateY(" + diffY + "px)";
 }
 
-function updatePlaces(places) {
+function updatePlaces(places, activity) {
   for (let placeName in places) {
     let place = places[placeName];
     let gateDiv = document.getElementById("place" + placeName + "gate");
@@ -1071,6 +1071,7 @@ function updatePlaces(places) {
     if (place.clues != null) {
       updateClues(place);
     }
+    updateActivity(placeName, activity[placeName]);
   }
 }
 
@@ -1113,6 +1114,41 @@ function updateSeal(place) {
     sealDiv.appendChild(cnvContainer);
     charsDiv.appendChild(sealDiv);
     renderAssetToDiv(cnvContainer, "Seal");
+  }
+}
+
+function updateActivity(placeName, activity) {
+  if (activity == null) {
+    activity = [];
+  }
+  let toRemove = {};
+  let charsDiv = document.getElementById("place" + placeName + "chars");
+  if (charsDiv == null) {  // e.g. outskirts
+    return;
+  }
+  for (let act of charsDiv.getElementsByClassName("activity")) {
+    toRemove[act.name] = act;
+  }
+  for (let [cardName, number] of activity) {
+    if (toRemove[cardName]) {
+      delete toRemove[cardName];
+      continue;
+    }
+    let actDiv = document.createElement("DIV");
+    actDiv.name = cardName;
+    actDiv.classList.add("activity");
+    let cnvContainer = document.createElement("DIV");
+    cnvContainer.classList.add("actcontainer", "cnvcontainer");
+    let cnv = document.createElement("CANVAS");
+    cnv.classList.add("cluecnv");
+    cnvContainer.appendChild(cnv);
+    actDiv.appendChild(cnvContainer);
+    charsDiv.appendChild(actDiv);
+    renderAssetToDiv(cnvContainer, "Activity", number);
+    actDiv.onclick = function(e) { toggleGlobals(null, cardName) };
+  }
+  for (let cardName in toRemove) {
+    charsDiv.removeChild(toRemove[cardName]);
   }
 }
 
@@ -1170,7 +1206,7 @@ function updateBottomText(gameStage, turnPhase, characters, turnIdx, playerIdx, 
   }
 }
 
-function updateGlobals(env, rumor) {
+function updateGlobals(env, rumor, otherGlobals) {
   let envDiv = document.getElementById("environment");
   let envCnt = envDiv.getElementsByClassName("mythoscard")[0];
   let rumorDiv = document.getElementById("rumor");
@@ -1179,19 +1215,57 @@ function updateGlobals(env, rumor) {
     clearAssetFromDiv(envCnt);
     envDiv.classList.add("missing");
     envDiv.name = null;
+    envDiv.annotation = null;
   } else {
     envDiv.classList.remove("missing");
-    envDiv.name = typeof(env) == "string" ? env : env.name;
+    envDiv.name = env.name;
+    envDiv.annotation = "Environment";
     renderAssetToDiv(envCnt, envDiv.name);
   }
   if (rumor == null) {
     clearAssetFromDiv(rumorCnt);
     rumorDiv.classList.add("missing");
     rumorDiv.name = null;
+    rumorDiv.annotation = null;
   } else {
     rumorDiv.classList.remove("missing");
-    rumorDiv.name = typeof(rumor) == "string" ? rumor : rumor.name;
+    rumorDiv.name = rumor.name;
+    rumorDiv.annotation = "Rumor: " + rumor.progress + "/" + rumor.max_progress;
     renderAssetToDiv(rumorCnt, rumorDiv.name);
+  }
+  let toRemove = {};
+  for (let node of document.getElementById("globals").getElementsByClassName("mythoscontainer")) {
+    if (node.id == "environment" || node.id == "rumor") {
+      continue;
+    }
+    toRemove[node.name] = node;
+  }
+  for (let glob of otherGlobals) {
+    let globName = typeof(glob) == "string" ? glob : glob.name;
+    if (toRemove[globName] != null) {
+      delete toRemove[globName];
+      continue;
+    }
+    let globDiv = document.createElement("DIV");
+    globDiv.classList.add("mythoscontainer");
+    globDiv.name = globName;
+    globDiv.annotation = typeof(glob) == "string" ? null : glob.annotation;
+    let globCont = document.createElement("DIV");
+    globCont.classList.add("mythoscard", "cnvcontainer");
+    let globCnv = document.createElement("CANVAS");
+    globCnv.classList.add("mythoscnv");
+    globCont.appendChild(globCnv);
+    globDiv.appendChild(globCont);
+    document.getElementById("globals").appendChild(globDiv);
+    renderAssetToDiv(globCont, globName);
+  }
+  for (let name in toRemove) {
+    toRemove[name].parentNode.removeChild(toRemove[name]);
+  }
+  let globalBox = document.getElementById("globals");
+  if (globalBox.classList.contains("zoomed")) {
+    globalBox.classList.remove("zoomed");
+    toggleGlobals(null);
   }
 }
 
@@ -1208,7 +1282,7 @@ function updateCurrentCard(current) {
   renderAssetToDiv(currDiv, current);
 }
 
-function toggleGlobals(e) {
+function toggleGlobals(e, frontCard) {
   let globalBox = document.getElementById("globals");
   let globalScroll = document.getElementById("globalscroll");
   let globalCards = document.getElementById("globalcards");
@@ -1219,25 +1293,46 @@ function toggleGlobals(e) {
   }
   globalBox.classList.add("zoomed");
   globalScroll.style.display = "flex";
-  while (globalCards.getElementsByClassName("bigmythoscard").length) {
-    globalCards.removeChild(globalCards.getElementsByClassName("bigmythoscard")[0]);
+  while (globalCards.getElementsByClassName("cardholder").length) {
+    globalCards.removeChild(globalCards.getElementsByClassName("cardholder")[0]);
   }
   let count = 0;
+  let toDisplay = null;
   for (let cont of document.getElementById("globals").getElementsByClassName("mythoscontainer")) {
     if (!cont.name) {
       continue;
     }
     count++;
     let holder = document.createElement("DIV");
-    holder.classList.add("bigmythoscard", "cnvcontainer");
+    holder.classList.add("cardholder");
+    if (frontCard != null) {
+      if (cont.name == frontCard) {
+        toDisplay = holder;
+      } else {
+        holder.classList.add("unchoosable");
+      }
+    }
+    let container = document.createElement("DIV");
+    container.classList.add("bigmythoscard", "cnvcontainer");
     let cnv = document.createElement("CANVAS");
     cnv.classList.add("markercnv");  // TODO: use a better class name for this
-    holder.appendChild(cnv);
+    container.appendChild(cnv);
+    holder.appendChild(container);
+    let desc = document.createElement("DIV");
+    desc.classList.add("desc");
+    if (cont.annotation) {
+      desc.innerText = cont.annotation;
+    }
+    holder.appendChild(desc);
     globalCards.appendChild(holder);
-    renderAssetToDiv(holder, cont.name);
+    renderAssetToDiv(container, cont.name);
   }
   if (count > 4) {
     globalScroll.classList.add("overflowing");
+    if (toDisplay != null) {
+      // toDisplay.scrollIntoView({"inline": "center"}); TODO: this scrolls the entire document
+      // instead, use scrollTo() after calculating the coords using getBoundingClientRect()
+    }
   } else {
     globalScroll.classList.remove("overflowing");
   }
