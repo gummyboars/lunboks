@@ -47,19 +47,31 @@ commonNames = [
   ".18 Derringer",
   ".38 Revolver",
   ".45 Automatic",
+  "Ancient Tome",
   "Bullwhip",
   "Cross",
   "Dark Cloak",
   "Dynamite",
   "Food",
+  "Map",
+  "Motorcycle",
+  "Old Journal",
   "Tommy Gun",
   "Research Materials",
 ];
 carefullyAdd(commonNames);
 uniqueNames = [
+  "Alien Statue",
+  "Ancient Tablet",
+  "Tibetan Tome",
+  "Mysticism Tome",
+  "Black Magic Tome",
   "Enchanted Knife",
   "Holy Water",
   "Magic Lamp",
+  "Black Book",
+  "Book of the Dead",
+  "Yellow Play",
 ];
 carefullyAdd(uniqueNames);
 spellNames = [
