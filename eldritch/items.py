@@ -148,6 +148,19 @@ class Tome(Item):
     return events.Nothing()
 
 
+class AncientTome(Tome):
+
+  def __init__(self, idx):
+    super().__init__("Ancient Tome", idx, "common", 4, 2)
+
+  def read_event(self, owner):
+    check = events.Check(owner, "lore", -1)
+    success = events.Sequence(
+        [events.Draw(owner, "spells", 1), events.DiscardSpecific(owner, [self])], owner,
+    )
+    return events.PassFail(owner, check, success, events.Nothing())
+
+
 def DarkCloak(idx):
   return Item("Dark Cloak", idx, "common", {}, {"evade": 1}, None, 2)
 
@@ -405,7 +418,7 @@ class FindGate(Spell):
 def CreateCommon():
   common = []
   for item in [
-      Automatic45, DarkCloak, Derringer18, Revolver38, Dynamite,
+      AncientTome, Automatic45, DarkCloak, Derringer18, Revolver38, Dynamite,
       TommyGun, Food, ResearchMaterials, Bullwhip, Cross,
   ]:
     common.extend([item(0), item(1)])

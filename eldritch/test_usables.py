@@ -191,6 +191,61 @@ class OneshotItemTest(EventTest):
     self.assertEqual(len(self.char.possessions), 0)
 
 
+class TomeTest(EventTest):
+
+  def setUp(self):
+    super().setUp()
+    self.state.turn_phase = "movement"
+    self.char.place = self.state.places["Diner"]
+    self.state.event_stack.append(Movement(self.char))
+
+  def testCannotReadInsufficientMovement(self):
+    self.char.possessions.append(items.AncientTome(0))
+    self.char.speed_sneak_slider = 0
+    self.resolve_to_choice(CityMovement)
+    self.assertEqual(self.char.movement_points, 1)
+    self.assertNotIn(0, self.state.usables)
+
+  def testCannotReadInOtherWorlds(self):
+    self.char.place = self.state.places["Dreamlands1"]
+    # If the ancient tome is usable in the dreamlands, then the event loop will stop and ask
+    # if the user wants to use it, which will cause resolve_until_done to fail.
+    self.resolve_until_done()
+
+  def testReadAncientTomeSuccess(self):
+    self.char.speed_sneak_slider = 1
+    self.char.possessions.append(items.AncientTome(0))
+    self.state.spells.append(items.FindGate(0))
+    self.resolve_to_choice(CityMovement)
+
+    self.assertEqual(self.char.movement_points, 2)
+    self.assertIn(0, self.state.usables)
+    self.assertIn("Ancient Tome0", self.state.usables[0])
+    self.state.event_stack.append(self.state.usables[0]["Ancient Tome0"])
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_to_choice(CityMovement)
+
+    self.assertEqual(self.char.movement_points, 0)
+    self.assertEqual(len(self.char.possessions), 1)
+    self.assertEqual(self.char.possessions[0].name, "Find Gate")
+    self.assertEqual(len(self.state.common), 1)
+
+  def testReadAncientTomeFailure(self):
+    self.char.possessions.append(items.AncientTome(0))
+    self.state.spells.append(items.FindGate(0))
+    self.resolve_to_choice(CityMovement)
+
+    self.state.event_stack.append(self.state.usables[0]["Ancient Tome0"])
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
+      self.resolve_to_choice(CityMovement)
+
+    self.assertEqual(self.char.movement_points, 2)
+    self.assertEqual(len(self.char.possessions), 1)
+    self.assertEqual(self.char.possessions[0].name, "Ancient Tome")
+    self.assertEqual(len(self.state.common), 0)
+    self.assertEqual(len(self.state.spells), 1)
+
+
 class LossPreventionTest(EventTest):
 
   def setUp(self):
