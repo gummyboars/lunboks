@@ -2412,6 +2412,35 @@ class Unspend(Event):
     return ""
 
 
+class ChangeMovementPoints(Event):
+
+  def __init__(self, character, count):
+    self.character = character
+    self.count = count
+    self.change = None
+
+  def resolve(self, state):
+    orig = self.character.movement_points
+    self.character.movement_points += self.count
+    self.character.movement_points = max(self.character.movement_points, 0)
+    self.change = self.character.movement_points - orig
+
+  def is_resolved(self):
+    return self.change is not None
+
+  def start_str(self):
+    return ""
+
+  def finish_str(self):
+    return ""
+
+
+class ReadTome(Sequence):
+
+  def __init__(self, events, character):
+    super().__init__(events, character)
+
+
 def BinaryChoice(
         character, prompt, first_choice, second_choice, first_event, second_event, prereq=None):
   choice = MultipleChoice(character, prompt, [first_choice, second_choice], [prereq, None])
