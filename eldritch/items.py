@@ -125,6 +125,29 @@ class Derringer18(Weapon):
     self.losable = False
 
 
+class Tome(Item):
+
+  def __init__(self, name, idx, deck, price, movement_cost):
+    super().__init__(name, idx, deck, {}, {}, None, price, "tome")
+    self.movement_cost = movement_cost
+
+  def get_usable_interrupt(self, event, owner, state):
+    if not isinstance(event, events.CityMovement) or event.character != owner:
+      return None
+    if self.exhausted:
+      return None
+    if event.character.movement_points < self.movement_cost:
+      return None
+    return events.ReadTome([
+        events.ExhaustAsset(owner, self),
+        events.ChangeMovementPoints(owner, -self.movement_cost),
+        self.read_event(owner),
+    ], owner)
+
+  def read_event(self, owner):  # pylint: disable=unused-argument
+    return events.Nothing()
+
+
 def DarkCloak(idx):
   return Item("Dark Cloak", idx, "common", {}, {"evade": 1}, None, 2)
 

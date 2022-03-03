@@ -325,6 +325,35 @@ class MovementPhaseTest(EventTest):
     self.assertEqual(self.char.place.name, "Lost")
 
 
+class MovementPointsTest(EventTest):
+
+  def testAddMovementPoints(self):
+    self.state.turn_phase = "movement"
+    self.char.movement_points = 2
+    mov = ChangeMovementPoints(self.char, 3)
+    self.assertFalse(mov.is_resolved())
+    self.state.event_stack.append(mov)
+    self.resolve_until_done()
+    self.assertTrue(mov.is_resolved())
+    self.assertEqual(mov.change, 3)
+
+  def testLoseMovementPoints(self):
+    self.state.turn_phase = "movement"
+    self.char.movement_points = 3
+    mov = ChangeMovementPoints(self.char, -2)
+    self.state.event_stack.append(mov)
+    self.resolve_until_done()
+    self.assertEqual(mov.change, -2)
+
+  def testMinZeroMovementPoints(self):
+    self.state.turn_phase = "movement"
+    self.char.movement_points = 2
+    mov = ChangeMovementPoints(self.char, -3)
+    self.state.event_stack.append(mov)
+    self.resolve_until_done()
+    self.assertEqual(mov.change, -2)
+
+
 class LostInTimeAndSpaceTest(EventTest):
 
   def testNoReturnGatesMeansLost(self):
