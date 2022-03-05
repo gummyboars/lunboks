@@ -432,6 +432,7 @@ def CreateUnique():
 
 def CreateSpells():
   counts = {
+      BindMonster: 2,
       DreadCurse: 4,
       EnchantWeapon: 3,
       FindGate: 4,
