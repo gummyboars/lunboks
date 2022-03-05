@@ -2969,7 +2969,6 @@ class CombatRound(Event):
       return
 
     self.done = True
-    return True
 
   def is_resolved(self):
     if self.defeated is None:
@@ -3023,7 +3022,6 @@ class PassCombatRound(Event):
       return
 
     self.done = True
-    return True
 
   def is_resolved(self) -> bool:
     return self.done

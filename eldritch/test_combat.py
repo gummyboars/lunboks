@@ -2086,7 +2086,7 @@ class BindMonsterTest(EventTest):
   def testNotUsableInBankRobbery(self):
     # Also presumably in the Hospital2 encounter
     self.state.event_stack.append(encounters.Bank3(self.char))
-    choice = self.resolve_to_choice(CombatChoice)
+    self.resolve_to_choice(CombatChoice)
     self.assertNotIn("Bind Monster0", self.state.usables)
 
   # TODO: test when a successful cast drives you insane, and the monster is overwhelming,
