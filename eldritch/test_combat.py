@@ -2012,10 +2012,8 @@ class BindMonsterTest(EventTest):
     with mock.patch.object(
         events.random, "randint", new=mock.MagicMock(return_value=5)
     ):
-      choice = self.resolve_to_choice(CombatChoice)
+      self.resolve_until_done()
 
-    choice.resolve(self.state, "done")
-    self.resolve_until_done()
     self.assertIn(worm, self.char.trophies)
     self.assertEqual(self.char.sanity, 1)
     self.assertEqual(self.char.stamina, 4)  # overwhelming
@@ -2029,13 +2027,11 @@ class BindMonsterTest(EventTest):
     self.assertEqual(self.char.sanity, 2)  # Lost one to nightmarish
     self.assertEqual(self.char.stamina, 5)
     self.state.event_stack.append(self.state.usables[0]["Bind Monster0"])
-    choose_ignore = self.resolve_to_choice(SpendChoice)
-    self.spend("sanity", 2, choose_ignore)
+    cast_choice = self.resolve_to_choice(SpendChoice)
+    self.spend("sanity", 2, cast_choice)
     choice = self.resolve_to_choice(SpendChoice)
     choice.resolve(self.state, "Cast")
-    with mock.patch.object(
-        events.random, "randint", new=mock.MagicMock(return_value=5)
-    ):
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       insane_choice = self.resolve_to_choice(ItemLossChoice)
     insane_choice.resolve(self.state, "done")
 
@@ -2052,10 +2048,10 @@ class BindMonsterTest(EventTest):
     self.char.possessions.append(items.TommyGun(0))
     cultist = monsters.Cultist()
     self.start(cultist)
-    self.assertEqual(self.char.sanity, 3)  # Lost one to nightmarish
+    self.assertEqual(self.char.sanity, 3)
     self.state.event_stack.append(self.state.usables[0]["Bind Monster0"])
-    choose_ignore = self.resolve_to_choice(SpendChoice)
-    self.spend("sanity", 2, choose_ignore)
+    cast_choice = self.resolve_to_choice(SpendChoice)
+    self.spend("sanity", 2, cast_choice)
     choice = self.resolve_to_choice(SpendChoice)
     choice.resolve(self.state, "Cast")
     with mock.patch.object(

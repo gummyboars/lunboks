@@ -257,16 +257,13 @@ class BindMonster(CombatSpell):
     if isinstance(event, events.CombatChoice) and isinstance(
         event.combat_round.monster, monsters.Monster
     ):
-      ret = super().get_usable_interrupt(event, owner, state)
-      return ret
+      return super().get_usable_interrupt(event, owner, state)
     return None
 
   def get_cast_event(self, owner, state):
     return events.Sequence(
         [
             events.PassCombatRound(self.combat_round),
-            events.TakeTrophy(owner, self.combat_round.monster),
-            # In case we go insane, take trophy explicitly
             events.DiscardSpecific(owner, [self])
         ],
         owner,
