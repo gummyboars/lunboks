@@ -2969,7 +2969,6 @@ class CombatRound(Event):
     self.done = True
     return True
 
-
   def is_resolved(self):
     if self.defeated is None:
       return False

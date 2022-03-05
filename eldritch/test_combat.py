@@ -2005,13 +2005,11 @@ class BindMonsterTest(EventTest):
     self.assertEqual(self.char.sanity, 3)
     self.assertEqual(self.char.stamina, 5)
     self.state.event_stack.append(self.state.usables[0]["Bind Monster0"])
-    choose_ignore = self.resolve_to_choice(SpendChoice)
-    self.spend("sanity", 2, choose_ignore)
+    cast_choice = self.resolve_to_choice(SpendChoice)
+    self.spend("sanity", 2, cast_choice)
     choice = self.resolve_to_choice(SpendChoice)
     choice.resolve(self.state, "Cast")
-    with mock.patch.object(
-        events.random, "randint", new=mock.MagicMock(return_value=5)
-    ):
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       self.resolve_until_done()
 
     self.assertIn(worm, self.char.trophies)
@@ -2064,6 +2062,16 @@ class BindMonsterTest(EventTest):
       choice.resolve(self.state, "Tommy Gun0")
 
     choice.resolve(self.state, "done")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=1)):
+      choice = self.resolve_to_choice(MultipleChoice)
+    choice.resolve(self.state, "Fight")
+
+    self.state.event_stack.append(DeactivateSpell(self.char, self.bind_monster))
+    choice = self.resolve_to_choice(CombatChoice)
+    self.assertNotIn("BindMonster0", choice.choices)
+    choice.resolve(self.state, "Tommy Gun0")
+    choice.resolve(self.state, "done")
+
     with mock.patch.object(
         events.random, "randint", new=mock.MagicMock(return_value=5)
     ):

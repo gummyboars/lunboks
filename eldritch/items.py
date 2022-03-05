@@ -241,16 +241,12 @@ def DreadCurse(idx):
 
 class BindMonster(CombatSpell):
   def __init__(self, idx):
-    super().__init__(
-        "Bind Monster", idx, {"magical": float("inf"), "physical": float("inf")}, 2,
-        4, 2,
-    )
+    super().__init__("Bind Monster", idx, {}, 2, 4, 2, )
     self.combat_round = None
 
-  def get_required_successes(self, state):  # pylint: disable=unused-argument
-    self.combat_round = state.event_stack[
-        -3
-    ]  # CombatRound[-3] > CombatChoice[-2] > CastSpell[-1]
+  def get_required_successes(self, state):
+    self.combat_round = state.event_stack[-3]
+    # CombatRound[-3] > CombatChoice[-2] > CastSpell[-1]
     return self.combat_round.monster.toughness(state, self.combat_round.character)
 
   def get_usable_interrupt(self, event, owner, state):
