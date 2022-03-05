@@ -15,6 +15,7 @@ from eldritch.events import *
 from eldritch import items
 from eldritch import monsters
 from eldritch import mythos
+from eldritch import encounters
 from eldritch.test_events import EventTest, Canceller
 
 
@@ -2068,7 +2069,8 @@ class BindMonsterTest(EventTest):
 
     self.state.event_stack.append(DeactivateSpell(self.char, self.bind_monster))
     choice = self.resolve_to_choice(CombatChoice)
-    self.assertNotIn("BindMonster0", choice.choices)
+    self.assertNotIn("Bind Monster0", choice.choices)
+    self.assertFalse(self.state.usables)
     choice.resolve(self.state, "Tommy Gun0")
     choice.resolve(self.state, "done")
 
@@ -2080,6 +2082,12 @@ class BindMonsterTest(EventTest):
     self.assertEqual(self.char.sanity, 1)
     self.assertIn(self.bind_monster, self.char.possessions)
     self.assertTrue(self.bind_monster.exhausted)
+
+  def testNotUsableInBankRobbery(self):
+    # Also presumably in the Hospital2 encounter
+    self.state.event_stack.append(encounters.Bank3(self.char))
+    choice = self.resolve_to_choice(CombatChoice)
+    self.assertNotIn("Bind Monster0", self.state.usables)
 
   # TODO: test when a successful cast drives you insane, and the monster is overwhelming,
   #  thus devouring you

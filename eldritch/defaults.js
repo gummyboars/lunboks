@@ -78,6 +78,9 @@ function renderDefaultToCanvas(cnv, width, height, assetName, variant) {
   if (assetName == "statsbg") {
     return renderTextRectangle(cnv, "", "silver", "black");
   }
+  if (assetName.startsWith("Terror")) {
+    return renderTextCircle(cnv, assetName.substring(6), "white", "black", 0.7);
+  }
   if (assetName == "Doom") {
     return renderTextCircle(cnv, "👁️", "royalblue", "black", 0.8);
   }
@@ -142,6 +145,15 @@ function renderDefaultToCanvas(cnv, width, height, assetName, variant) {
   if (mythosCards.includes(assetName)) {
     return renderTextRectangle(cnv, assetName, "white", "black");
   }
+  if (ancientOnes.includes(assetName)) {
+    return renderTextRectangle(cnv, assetName, "midnightblue", "white");
+  }
+  if (assetName.endsWith(" worshippers") || assetName.endsWith(" slumber")) {
+    return renderTextRectangle(cnv, assetName, "midnightblue", "white");
+  }
+  if (assetName.endsWith(" max")) {
+    return renderTextCircle(cnv, ancientOneDoomMax[assetName.substring(0, assetName.length - 4)], "midnightblue", "white", 0.7);
+  }
   if (encounterCardNames.includes(assetName)) {
     for (let neighborhood of neighborhoodNames) {
       if (assetName.startsWith(neighborhood)) {
@@ -181,6 +193,9 @@ function renderBoardToCanvas(cnv, width, height) {
 
 function renderSlider(cnv, width, height) {
   let border = 2;
+  if (width/2 <= border) {
+    return;  // Safeguard: ctx.arc errors out if radius is negative.
+  }
   let ctx = cnv.getContext("2d");
   ctx.lineWidth = border;
   ctx.beginPath();

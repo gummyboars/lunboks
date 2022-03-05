@@ -1420,8 +1420,8 @@ def CreateEncounterCards():
           EncounterCard("Downtown3", {"Asylum": Asylum3, "Bank": Bank3, "Square": Square3}),
           EncounterCard("Downtown4", {"Asylum": Asylum4, "Bank": Bank4, "Square": Square4}),
           EncounterCard("Downtown5", {"Asylum": Asylum5, "Bank": Bank5, "Square": Square5}),
-          EncounterCard("Donwtown6", {"Asylum": Asylum6, "Bank": Bank6, "Square": Square6}),
-          EncounterCard("Donwtown7", {"Asylum": Asylum7, "Bank": Bank7, "Square": Square7}),
+          EncounterCard("Downtown6", {"Asylum": Asylum6, "Bank": Bank6, "Square": Square6}),
+          EncounterCard("Downtown7", {"Asylum": Asylum7, "Bank": Bank7, "Square": Square7}),
       ],
       "Easttown": [
           EncounterCard("Easttown1", {"Diner": Diner1, "Roadhouse": Roadhouse1, "Police": Police1}),

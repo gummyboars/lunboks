@@ -4,12 +4,15 @@ characterMarkers = {};
 characterSheets = {};
 portraits = {};
 monsters = {};
+allAncients = {};
+chosenAncient = null;
 allCharacters = {};
 availableChars = [];
 pendingName = null;
 scale = 1;
 monsterChoice = {};
 charChoice = null;
+ancientChoice = null;
 runningAnim = [];
 messageQueue = [];
 statTimeout = null;
@@ -213,12 +216,17 @@ function finishAnim() {
 }
 function handleData(data) {
   allCharacters = data.all_characters;
+  allAncients = data.all_ancients;
   pendingName = data.pending_name;
+  chosenAncient = (data.ancient_one == null) ? null : data.ancient_one.name;
   updateAvailableCharacters(data.characters, data.pending_chars);
   updateCharacterSelect(data.characters, data.player_idx);
+  updateAncientSelect(data.game_stage, data.host);
+  updateAncientOne(data.ancient_one, data.terror);
   updateCharacterSheets(data.characters, data.pending_chars, data.player_idx, data.first_player, data.choice);
-  updateBottomText(data.game_stage, data.turn_phase, data.characters, data.turn_idx, data.player_idx);
+  updateBottomText(data.game_stage, data.turn_phase, data.characters, data.turn_idx, data.player_idx, data.host);
   updateGlobals(data.environment, data.rumor);
+  updateCurrentCard(data.current);
   updatePlaces(data.places);
   updateCharacters(data.characters);
   updateSliderButton(data.sliders);
@@ -476,6 +484,28 @@ function makeCheck(e) {
   ws.send(JSON.stringify({"type": "check", "modifier": modifier, "check_type": check_type}));
 }
 
+function prevAncient(e) {
+  let sortedKeys = Object.keys(allAncients).sort();
+  let currentIdx = sortedKeys.indexOf(ancientChoice);
+  if (currentIdx <= 0) {
+    ancientChoice = sortedKeys[sortedKeys.length-1];
+  } else {
+    ancientChoice = sortedKeys[currentIdx-1];
+  }
+  updateAncientSelect("setup", true);
+}
+
+function nextAncient(e) {
+  let sortedKeys = Object.keys(allAncients).sort();
+  let currentIdx = sortedKeys.indexOf(ancientChoice);
+  if (currentIdx >= sortedKeys.length - 1) {
+    ancientChoice = sortedKeys[0];
+  } else {
+    ancientChoice = sortedKeys[currentIdx+1];
+  }
+  updateAncientSelect("setup", true);
+}
+
 function prevChar(e) {
   let sortedKeys = Object.keys(allCharacters).sort();
   let currentIdx = sortedKeys.indexOf(charChoice);
@@ -498,6 +528,10 @@ function nextChar(e) {
   }
   drawChosenChar(allCharacters[charChoice]);
   updateStats();
+}
+
+function selectAncient(e) {
+  ws.send(JSON.stringify({"type": "ancient", "ancient": ancientChoice}));
 }
 
 function selectChar(e) {
@@ -618,11 +652,12 @@ function setCardButtonText() {
 }
 
 function scrollCards(e, dir) {
-  let cardChoice = document.getElementById("uicardchoice");
-  let rect = cardChoice.getBoundingClientRect();
+  let container = e.currentTarget.parentNode;
+  let cardScroller = container.getElementsByClassName("cardscroller")[0];
+  let rect = cardScroller.getBoundingClientRect();
   let width = rect.right - rect.left;
   let amount = dir * Math.ceil(width / 4);
-  cardChoice.scrollLeft = cardChoice.scrollLeft + amount;
+  cardScroller.scrollLeft = cardScroller.scrollLeft + amount;
 }
 
 function updateChoices(choice) {
@@ -646,9 +681,6 @@ function updateChoices(choice) {
   document.getElementById("cardchoicescroll").style.display = "none";
   btn.style.display = "none";
   cardtoggle.style.display = "none";
-  for (let scrollBox of document.getElementsByClassName("cardscroll")) {
-    scrollBox.style.display = "none";
-  }
   if (choice != null && choice.board_monster != null) {
     monsterBox.classList.add("choosable");
   } else {
@@ -784,13 +816,11 @@ function addCardChoices(uichoice, cardChoice, cards, invalidChoices, remainingSp
     cardChoice.appendChild(holder);
     renderAssetToDiv(div, card);
   }
+  let scrollParent = cardChoice.parentNode;
   if (count > 4) {
-    cardChoice.style.justifyContent = "flex-start";
-    for (let scrollBox of document.getElementsByClassName("cardscroll")) {
-      scrollBox.style.display = "flex";
-    }
+    scrollParent.classList.add("overflowing");
   } else {
-    cardChoice.style.justifyContent = "space-evenly";
+    scrollParent.classList.remove("overflowing");
   }
   addChoices(uichoice, notFound, newInvalid, newRemainingSpend);
 }
@@ -1124,15 +1154,17 @@ function updatePlaceChoices(uichoice, places, annotations) {
   }
 }
 
-function updateBottomText(gameStage, turnPhase, characters, turnIdx, playerIdx) {
+function updateBottomText(gameStage, turnPhase, characters, turnIdx, playerIdx, host) {
   let uiprompt = document.getElementById("uiprompt");
   let btn = document.getElementById("start");
   uiprompt.innerText = "";
+  btn.style.display = "none";
   if (gameStage == "setup") {
-    btn.style.display = "inline-block";
+    if (host) {
+      btn.style.display = "inline-block";
+    }
     return;
   }
-  btn.style.display = "none";
   if (turnIdx != null) {
     uiprompt.innerText = characters[turnIdx].name + "'s " + turnPhase + " phase";
   }
@@ -1140,18 +1172,74 @@ function updateBottomText(gameStage, turnPhase, characters, turnIdx, playerIdx) 
 
 function updateGlobals(env, rumor) {
   let envDiv = document.getElementById("environment");
+  let envCnt = envDiv.getElementsByClassName("mythoscard")[0];
   let rumorDiv = document.getElementById("rumor");
-  envDiv.cnvScale = 2;
-  rumorDiv.cnvScale = 2;
+  let rumorCnt = rumorDiv.getElementsByClassName("mythoscard")[0];
   if (env == null) {
-    clearAssetFromDiv(envDiv);
+    clearAssetFromDiv(envCnt);
+    envDiv.classList.add("missing");
+    envDiv.name = null;
   } else {
-    renderAssetToDiv(envDiv, env);
+    envDiv.classList.remove("missing");
+    envDiv.name = typeof(env) == "string" ? env : env.name;
+    renderAssetToDiv(envCnt, envDiv.name);
   }
   if (rumor == null) {
-    clearAssetFromDiv(rumorDiv);
+    clearAssetFromDiv(rumorCnt);
+    rumorDiv.classList.add("missing");
+    rumorDiv.name = null;
   } else {
-    renderAssetToDiv(rumorDiv, rumor);
+    rumorDiv.classList.remove("missing");
+    rumorDiv.name = typeof(rumor) == "string" ? rumor : rumor.name;
+    renderAssetToDiv(rumorCnt, rumorDiv.name);
+  }
+}
+
+function updateCurrentCard(current) {
+  let currDiv = document.getElementById("currentcard");
+  if (current == null) {
+    // TODO: because rendering happens in a promise, clearing the asset from the div can
+    // actually happen before the promise is fulfilled. ugh.
+    clearAssetFromDiv(currDiv);
+    currDiv.classList.add("missing");
+    return;
+  }
+  currDiv.classList.remove("missing");
+  renderAssetToDiv(currDiv, current);
+}
+
+function toggleGlobals(e) {
+  let globalBox = document.getElementById("globals");
+  let globalScroll = document.getElementById("globalscroll");
+  let globalCards = document.getElementById("globalcards");
+  if (globalBox.classList.contains("zoomed")) {
+    globalBox.classList.remove("zoomed");
+    globalScroll.style.display = "none";
+    return;
+  }
+  globalBox.classList.add("zoomed");
+  globalScroll.style.display = "flex";
+  while (globalCards.getElementsByClassName("bigmythoscard").length) {
+    globalCards.removeChild(globalCards.getElementsByClassName("bigmythoscard")[0]);
+  }
+  let count = 0;
+  for (let cont of document.getElementById("globals").getElementsByClassName("mythoscontainer")) {
+    if (!cont.name) {
+      continue;
+    }
+    count++;
+    let holder = document.createElement("DIV");
+    holder.classList.add("bigmythoscard", "cnvcontainer");
+    let cnv = document.createElement("CANVAS");
+    cnv.classList.add("markercnv");  // TODO: use a better class name for this
+    holder.appendChild(cnv);
+    globalCards.appendChild(holder);
+    renderAssetToDiv(holder, cont.name);
+  }
+  if (count > 4) {
+    globalScroll.classList.add("overflowing");
+  } else {
+    globalScroll.classList.remove("overflowing");
   }
 }
 
@@ -1241,13 +1329,55 @@ function updateAvailableCharacters(characters, pendingChars) {
   availableChars = keys;
 }
 
-function updateCharacterSelect(characters, playerIdx) {
-  let charSelect = document.getElementById("charselect");
-  if (playerIdx != null && !characters[playerIdx].gone) {
-    charSelect.style.display = "none";
+function updateAncientSelect(gameStage, host) {
+  let ancientSelect = document.getElementById("ancientselect");
+  if (gameStage != "setup" || !host) {
+    ancientSelect.style.display = "none";
     return;
   }
-  charSelect.style.display = "flex";
+  ancientSelect.style.display = "flex";
+  if (ancientChoice == null) {
+    let keys = Object.keys(allAncients);
+    keys.sort();
+    ancientChoice = (chosenAncient == null) ? keys[0] : chosenAncient;
+  }
+
+  let ancientSheet = document.getElementById("ancientchoice");
+  renderAssetToDiv(ancientSheet, ancientChoice);
+  let choiceButton = document.getElementById("chooseancientbutton");
+  if (ancientChoice == chosenAncient) {
+    choiceButton.innerText = "Chosen";
+  } else if (chosenAncient != null) {
+    choiceButton.innerText = "Change Choice";
+  } else {
+    choiceButton.innerText = "Choose";
+  }
+}
+
+function updateAncientOne(ancientOne, terror) {
+  renderAssetToDiv(document.getElementById("terror"), "Terror" + (terror || 0));
+  let doom = document.getElementById("doom");
+  if (ancientOne == null) {
+    doom.maxValue = null;
+    renderAssetToDiv(doom, "Doom");
+    return;
+  }
+  doom.maxValue = ancientOneDoomMax[ancientOne.name];
+  doom.statValue = ancientOne.doom;
+  renderAssetToDiv(doom, ancientOne.name + " max");
+  let worshippers = document.getElementById("worshippers");
+  renderAssetToDiv(worshippers, ancientOne.name + " worshippers");
+  let slumber = document.getElementById("slumber");
+  renderAssetToDiv(slumber, ancientOne.name + " slumber");
+}
+
+function updateCharacterSelect(characters, playerIdx) {
+  let selectors = document.getElementById("selectors");
+  if (playerIdx != null && !characters[playerIdx].gone) {
+    selectors.style.display = "none";
+    return;
+  }
+  selectors.style.display = "flex";
   if (charChoice == null) {
     charChoice = availableChars[0];
   }
@@ -1589,6 +1719,26 @@ function updateStats() {
       renderTextCircle(cnv, elem.statValue, "rgba(0, 0, 0, 0)", elem.textColor, 0.7);
     });
   }
+  let doom = document.getElementById("doom");
+  renderAssetToDiv(doom, doom.assetName, doom.variant).then(function() {
+    if (!doom.maxValue) {
+      return;
+    }
+    let pct = doom.statValue / doom.maxValue;
+    let cnv = doom.getElementsByTagName("CANVAS")[0];
+    let ctx = cnv.getContext("2d");
+    ctx.save();
+    ctx.globalAlpha = 0.7; 
+    ctx.globalCompositeOperation = "source-atop";
+    ctx.fillStyle = "black";
+    let rotation = 2 * Math.PI * pct - Math.PI / 2; 
+    ctx.beginPath();
+    ctx.arc(cnv.width / 2, cnv.height / 2, cnv.width / 2, rotation, 3 * Math.PI / 2, false);
+    ctx.lineTo(cnv.width / 2, cnv.height / 2);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  });
 }
 
 function updateSliders(sheet, character, isPlayer) {

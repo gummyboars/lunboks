@@ -250,8 +250,10 @@ class BindMonster(CombatSpell):
     return self.combat_round.monster.toughness(state, self.combat_round.character)
 
   def get_usable_interrupt(self, event, owner, state):
-    if isinstance(event, events.CombatChoice) and isinstance(
-        event.combat_round.monster, monsters.Monster
+    if (
+        isinstance(event, events.CombatChoice)
+        and event.combat_round is not None
+        and isinstance(event.combat_round.monster, monsters.Monster)
     ):
       return super().get_usable_interrupt(event, owner, state)
     return None

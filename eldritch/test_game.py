@@ -11,6 +11,7 @@ if os.path.abspath(sys.path[0]) == os.path.dirname(os.path.abspath(__file__)):
   sys.path[0] = os.path.dirname(sys.path[0])
 
 from eldritch import abilities
+from eldritch import ancient_ones
 from eldritch import assets
 from eldritch import characters
 from eldritch import eldritch
@@ -386,6 +387,26 @@ class GateTravelTest(unittest.TestCase):
     for _ in self.state.resolve_loop():
       pass
 
+    self.assertEqual(self.state.turn_phase, "encounter")
+    self.assertEqual(char.place.name, "Square")
+    self.assertTrue(self.state.event_stack)
+    self.assertIsInstance(self.state.event_stack[-1], events.MultipleChoice)
+    self.assertEqual(self.state.event_stack[-1].prompt(), "Close the gate?")
+
+  def testReturnFromOtherWorldMultipleChoices(self):
+    world_name = self.state.places["Square"].gate.name
+    self.state.places["Graveyard"].gate = self.state.gates.popleft()
+    self.assertEqual(self.state.places["Graveyard"].gate.name, world_name)
+
+    char = self.state.characters[0]
+    char.place = self.state.places[world_name + "2"]
+    self.state.turn_phase = "upkeep"
+    upkeep = events.Upkeep(char)
+    upkeep.done = True
+    self.state.event_stack.append(upkeep)
+    for _ in self.state.resolve_loop():
+      pass
+
     self.assertTrue(self.state.event_stack)
     self.assertIsInstance(self.state.event_stack[-1], events.GateChoice)
     self.state.event_stack[-1].resolve(self.state, "Square")
@@ -545,15 +566,26 @@ class OtherWorldTradingTest(TradingTestBase):
     self.assertEqual(
         [pos.name for pos in self.gangster.possessions], ["Tommy Gun", "Marksman", "Cross"])
 
+  def testTradeBeforeReturnMultipleGates(self):
+    self.state.places["Square"].gate = self.state.gates.popleft()
+    self.state.places["Isle"].gate = self.state.gates.popleft()
+    self.assertEqual(self.state.places["Square"].gate.name, self.state.places["Isle"].gate.name)
+    name = self.state.places["Isle"].gate.name + "2"
+    self.nun.place = self.state.places[name]
+    self.gangster.place = self.state.places[name]
+    for _ in self.state.resolve_loop():
+      pass
+    self.assertIsInstance(self.state.event_stack[-1], events.GateChoice)
+    self.state.handle_give(0, 1, "Cross0", None)
+    self.assertEqual([pos.name for pos in self.nun.possessions], ["Bravery"])
+    self.assertEqual(
+        [pos.name for pos in self.gangster.possessions], ["Tommy Gun", "Marksman", "Cross"])
+
   def testTradeOnReturn(self):
     self.state.places["Square"].gate = self.state.gates.popleft()
     name = self.state.places["Square"].gate.name + "2"
     self.nun.place = self.state.places[name]
     self.gangster.place = self.state.places["Square"]
-    for _ in self.state.resolve_loop():
-      pass
-    self.assertIsInstance(self.state.event_stack[-1], events.GateChoice)
-    self.state.event_stack[-1].resolve(self.state, "Square")
     for _ in self.state.resolve_loop():
       pass
     self.assertEqual(self.nun.place.name, "Square")
@@ -569,6 +601,7 @@ class InitializePlayersTest(unittest.TestCase):
     for name in chars:
       with self.subTest(char=name):
         state = eldritch.GameState()
+        state.ancient_one = ancient_ones.DummyAncient()
         state.handle_join(None, name)
         state.handle_start()
 
@@ -972,6 +1005,9 @@ class MapChoiceTest(unittest.TestCase):
   def testReturnChoice(self):
     self.state.places["Woods"].gate = self.state.gates.popleft()
     gate_name = self.state.places["Woods"].gate.name
+    self.state.places["Square"].gate = self.state.gates.popleft()
+    self.assertEqual(self.state.places["Square"].gate.name, gate_name)
+
     self.state.characters[0].place = self.state.places[gate_name + "2"]
     self.state.event_stack.append(events.Return(self.state.characters[0], gate_name))
     for _ in self.state.resolve_loop():
@@ -994,6 +1030,7 @@ class PlayerTest(unittest.TestCase):
 
   def setUp(self):
     self.game = eldritch.EldritchGame()
+    self.game.game.ancient_one = ancient_ones.DummyAncient()
 
   def handle(self, session, data):
     res = self.game.handle(session, data)
@@ -1001,6 +1038,34 @@ class PlayerTest(unittest.TestCase):
       return
     for _ in res:
       pass
+
+
+class ChooseAncientOneTest(PlayerTest):
+
+  def setUp(self):
+    super().setUp()
+    self.game.game.ancient_one = None
+
+  def testChoose(self):
+    self.game.connect_user("A")
+    self.handle("A", {"type": "ancient", "ancient": "Wendigo"})
+    with self.assertRaisesRegex(game.InvalidMove, "Unknown"):
+      self.handle("A", {"type": "ancient", "ancient": "Taser Face"})
+    self.handle("A", {"type": "ancient", "ancient": "Squid Face"})
+    self.assertIsInstance(self.game.game.ancient_one, ancient_ones.SquidFace)
+
+  def testBadChoices(self):
+    self.game.connect_user("A")
+    self.game.connect_user("B")
+    with self.assertRaisesRegex(game.InvalidMove, "host"):
+      self.handle("B", {"type": "ancient", "ancient": "Wendigo"})
+    with self.assertRaisesRegex(game.InvalidMove, "Unknown"):
+      self.handle("A", {"type": "ancient", "name": "Wendigo"})
+    self.handle("A", {"type": "ancient", "ancient": "Wendigo"})
+    self.handle("A", {"type": "join", "char": "Nun"})
+    self.handle("A", {"type": "start"})
+    with self.assertRaisesRegex(game.InvalidMove, "already started"):
+      self.handle("A", {"type": "ancient", "ancient": "Wendigo"})
 
 
 class PlayerJoinTest(PlayerTest):
@@ -1023,7 +1088,7 @@ class PlayerJoinTest(PlayerTest):
 
   def testCannotStartWithoutPlayers(self):
     self.game.connect_user("A")
-    with self.assertRaises(AssertionError):
+    with self.assertRaises(game.InvalidMove):
       self.handle("A", {"type": "start"})
 
   def testCannotReuseCharacter(self):

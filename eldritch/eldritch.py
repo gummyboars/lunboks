@@ -44,6 +44,7 @@ class GameState:
     self.places = {}
     self.characters = []
     self.all_characters = characters.CreateCharacters()
+    self.all_ancients = ancient_ones.AncientOnes()
     self.pending_chars = {}
     self.common = collections.deque()
     self.unique = collections.deque()
@@ -109,7 +110,6 @@ class GameState:
     random.shuffle(gate_markers)
     self.gates.extend(gate_markers)
 
-    self.ancient_one = ancient_ones.DummyAncient()
     self.monsters = monsters.CreateMonsters()
     for idx, monster in enumerate(self.monsters):
       monster.idx = idx
@@ -222,6 +222,32 @@ class GameState:
 
     top_event = self.event_stack[-1] if self.event_stack else None
 
+    # Figure out the current encounter/mythos card being resolved.
+    current = None
+    for event in reversed(self.event_stack):
+      if current is None:
+        # If it's an encounter, get the name of the drawn card (or chosen card if more than 1).
+        if isinstance(event, events.Encounter) and event.draw and event.draw.cards:
+          if len(event.draw.cards) == 1:
+            current = event.draw.cards[0].name
+          else:
+            seq = getattr(event.encounter, "events", [])
+            if seq and seq[0].is_resolved():
+              current = event.draw.cards[seq[0].choice_index].name
+        # Same thing for otherworld encounters (cards attribute is in a different place).
+        if isinstance(event, events.GateEncounter) and event.cards and event.encounter:
+          if len(event.cards) == 1:
+            current = event.cards[0].name
+          else:
+            seq = getattr(event.encounter, "events", [])
+            if seq and seq[0].is_resolved():
+              current = event.cards[seq.choice_index].name
+        # For mythos cards, there is a single drawn card.
+        if isinstance(event, events.Mythos) and event.draw and event.draw.card:
+          current = event.draw.card.name
+    output["current"] = current
+
+    # Figure out the current dice roll and how many bonus dice it has.
     roller = None
     bonus = 0
     for event in reversed(self.event_stack):
@@ -286,6 +312,9 @@ class GameState:
     if data.get("type") == "start":
       self.handle_start()
       return self.resolve_loop()
+    if data.get("type") == "ancient":
+      self.handle_ancient(data.get("ancient"))
+      return [None]  # Return a dummy iterable; do not start executing the game loop.
 
     if char_idx not in range(len(self.characters)):
       raise InvalidPlayer(f"no such player {char_idx}")
@@ -434,10 +463,11 @@ class GameState:
         idx: char.get_usable_interrupts(event, self)
         for idx, char in enumerate(self.characters) if not char.gone
     }
-    # If the character is in another world with another character, let them trade before moving.
-    if isinstance(event, events.ForceMovement) and self.turn_phase == "movement":
-      if len([char for char in self.characters if char.place == event.character.place]) > 1:
-        i[self.characters.index(event.character)]["trade"] = events.Nothing()
+    if self.turn_phase == "movement":
+      # If the character is in another world with another character, let them trade before moving.
+      if isinstance(event, (events.ForceMovement, events.GateChoice)):
+        if len([char for char in self.characters if char.place == event.character.place]) > 1:
+          i[self.characters.index(event.character)]["trade"] = events.Nothing()
     return {char_idx: interrupts for char_idx, interrupts in i.items() if interrupts}
 
   def get_triggers(self, event):
@@ -493,9 +523,20 @@ class GameState:
         trgs[self.characters.index(event.character)]["trade"] = events.Nothing()
     return {char_idx: triggers for char_idx, triggers in trgs.items() if triggers}
 
+  def handle_ancient(self, ancient):
+    if self.game_stage != "setup":
+      raise InvalidMove("The game has already started.")
+    if ancient not in self.all_ancients:
+      raise InvalidMove(f"Unknown ancient one {ancient}")
+    self.ancient_one = self.all_ancients[ancient]
+
   def handle_start(self):
-    assert self.game_stage == "setup"
-    assert len(self.pending_chars) > 0
+    if self.game_stage != "setup":
+      raise InvalidMove("The game has already started.")
+    if self.ancient_one is None:
+      raise InvalidMove("You must choose an ancient one first.")
+    if not self.pending_chars:
+      raise InvalidMove("At least one player is required to start the game.")
     self.game_stage = "slumber"
     self.turn_idx = 0
     self.turn_number = -1
@@ -778,6 +819,7 @@ class EldritchGame(BaseGame):
     #   output["characters"][idx]["disconnected"] = not is_connected.get(idx, False)
     output["player_idx"] = self.player_sessions.get(session)
     output["pending_name"] = self.pending_sessions.get(session)
+    output["host"] = self.host == session
     return json.dumps(output, cls=CustomEncoder)
 
   def connect_user(self, session):
@@ -804,10 +846,11 @@ class EldritchGame(BaseGame):
     if data.get("type") == "join":
       yield from self.handle_join(session, data)
       return
-    if session not in self.player_sessions and data.get("type") != "start":
+    if session not in self.player_sessions and data.get("type") not in ["start", "ancient"]:
       raise InvalidPlayer("Unknown player")
-    if data.get("type") == "start":
-      assert session == self.host
+    if data.get("type") in ["start", "ancient"]:
+      if session != self.host:
+        raise InvalidMove("Only the host can do that.")
     for val in self.game.handle(self.player_sessions.get(session), data):
       self.update_pending_players()
       yield val

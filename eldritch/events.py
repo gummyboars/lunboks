@@ -2682,6 +2682,8 @@ class GateChoice(MapChoice):
       if getattr(place, "gate", None) is not None:
         if place.gate.name == self.gate_name or self.gate_name is None:
           self.choices.append(name)
+    if len(self.choices) == 1 and self.none_choice is None:
+      self.choice = self.choices[0]
 
   def start_str(self):
     if self.gate_name is not None:
@@ -3273,6 +3275,27 @@ class CloseGate(Event):
     return f"{self.character.name} {verb} the gate at {self.location_name}"
 
 
+class RemoveAllSeals(Event):
+
+  def __init__(self):
+    self.done = False
+
+  def resolve(self, state):
+    for place in state.places.values():
+      if getattr(place, "sealed", False):
+        place.sealed = False
+    self.done = True
+
+  def is_resolved(self):
+    return self.done
+
+  def start_str(self):
+    return ""
+
+  def finish_str(self):
+    return "All locations were unsealed."
+
+
 class DrawMythosCard(Event):
 
   def __init__(self, character):
@@ -3286,7 +3309,7 @@ class DrawMythosCard(Event):
       state.mythos.append(card)
       if card.name != "ShuffleMythos":
         break
-      random.shuffle(state.gate_cards)
+      random.shuffle(state.mythos)
       self.shuffled = True
     self.card = card
 
@@ -3313,6 +3336,12 @@ class OpenGate(Event):
     if self.spawn is not None:
       assert self.spawn.is_done()
       return
+
+    if isinstance(self.location_name, DrawMythosCard):
+      if getattr(self.location_name.card, "gate_location", None) is None:
+        self.cancelled = True
+        return
+      self.location_name = self.location_name.card.gate_location
 
     if state.places[self.location_name].sealed:
       self.opened = False
@@ -3765,6 +3794,9 @@ class ActivateEnvironment(Event):
     self.done = False
 
   def resolve(self, state):
+    if state.environment is not None:
+      state.mythos.append(state.environment)
+    state.mythos.remove(self.env)
     state.environment = self.env
     self.done = True
 
@@ -3776,6 +3808,81 @@ class ActivateEnvironment(Event):
 
   def finish_str(self):
     return f"{self.env.name} is the new environment"
+
+
+class StartRumor(Event):
+
+  def __init__(self, rumor):
+    self.rumor = rumor
+    self.started = None
+
+  def resolve(self, state):
+    if state.rumor is not None:
+      self.started = False
+      return
+    state.mythos.remove(self.rumor)
+    state.rumor = self.rumor
+    self.rumor.start_turn = state.turn_number + 1
+    self.started = True
+
+  def is_resolved(self):
+    return self.started is not None
+
+  def start_str(self):
+    return ""
+
+  def finish_str(self):
+    if not self.started:
+      return ""
+    return f"{self.rumor.name} entered play"
+
+
+class ProgressRumor(Event):
+
+  def __init__(self, rumor, amount=1):
+    self.rumor = rumor
+    self.amount = amount
+    self.increase = None
+
+  def resolve(self, state):
+    if isinstance(self.amount, values.Value):
+      self.amount = self.amount.value(state)
+    self.rumor.progress += self.amount
+    self.increase = self.amount
+
+  def is_resolved(self):
+    return self.increase is not None
+
+  def start_str(self):
+    return ""
+
+  def finish_str(self):
+    return ""
+
+
+class EndRumor(Event):
+
+  def __init__(self, rumor, failed, add_global=False):
+    self.rumor = rumor
+    self.add_global = add_global
+    self.failed = failed
+    self.done = False
+
+  def resolve(self, state):
+    self.rumor.failed = self.failed
+    state.rumor = None
+    if self.add_global:
+      state.other_globals.append(self.rumor)
+    self.done = True
+
+  def is_resolved(self):
+    return self.done
+
+  def start_str(self):
+    return ""
+
+  def finish_str(self):
+    return ""
 
 
 class AncientOneAttack(Sequence):

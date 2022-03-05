@@ -15,8 +15,8 @@ import uuid
 import websockets
 import websockets.server
 
-import islanders.islanders as islanders
-import eldritch.eldritch as eldritch
+from eldritch import eldritch
+from islanders import islanders
 import game as game_handler
 
 
@@ -27,7 +27,7 @@ INDEX_WEBSOCKETS = set()
 GAMES = {}
 GAME_TYPES = {"islanders": islanders.IslandersGame, "eldritch": eldritch.EldritchGame}
 # Check to make sure abstract base classes are satisfied.
-[game_class() for game_class in GAME_TYPES.values()]
+[game_class() for game_class in GAME_TYPES.values()]  # pylint: disable=expression-not-assigned
 
 
 class ThreadingHTTPServer(ThreadingMixIn, HTTPServer):
@@ -44,7 +44,7 @@ class MyHandler(BaseHTTPRequestHandler):
     game = GAMES.get(game_id_arg[0]) if game_id_arg else None
 
     if game_id_arg and not game:
-      self.send_error(HTTPStatus.BAD_REQUEST.value, "Unknown game_id %s" % game_id_arg[0])
+      self.send_error(HTTPStatus.BAD_REQUEST.value, f"Unknown game_id {game_id_arg[0]}")
       return
     if game and path.rstrip("/") in game.get_urls():
       game.handle_get(GLOBAL_LOOP, self, path.rstrip("/"), args)
@@ -64,11 +64,11 @@ class MyHandler(BaseHTTPRequestHandler):
         ROOT_DIR,
     ]
     if os.path.dirname(filepath) not in allowable_dirs:
-      print("dirname is %s but root is %s" % (os.path.dirname(filepath), allowable_dirs))
-      self.send_error(HTTPStatus.FORBIDDEN.value, "Access to %s forbidden" % path)
+      print(f"dirname is {os.path.dirname(filepath)} but roots are {allowable_dirs}")
+      self.send_error(HTTPStatus.FORBIDDEN.value, f"Access to {path} forbidden")
       return
     if not os.path.exists(filepath):
-      self.send_error(HTTPStatus.NOT_FOUND.value, "File %s not found" % path)
+      self.send_error(HTTPStatus.NOT_FOUND.value, f"File {path} not found")
       return
 
     self.send_response(HTTPStatus.OK.value)
@@ -83,16 +83,16 @@ class MyHandler(BaseHTTPRequestHandler):
       except (TypeError, ValueError):
         session = None
     if not session:
-      new_session = "session=%s" % (uuid.uuid4())
+      new_session = f"session={uuid.uuid4()}"
       self.send_header("Set-Cookie", new_session)
-      print("setting session cookie %s" % new_session)
+      print(f"setting session cookie {new_session}")
     if filepath.endswith(".jpg") or filepath.endswith(".jpeg") or filepath.endswith(".png"):
       self.send_header("Cache-Control", "public, max-age=604800")
 
     self.end_headers()
 
-    with open(filepath, 'rb') as w:
-      self.wfile.write(w.read())
+    with open(filepath, "rb") as reader:
+      self.wfile.write(reader.read())
 
   def do_POST(self):
     parsed_url = urllib.parse.urlparse(self.path)
@@ -114,11 +114,11 @@ class MyHandler(BaseHTTPRequestHandler):
 
     game = GAMES.get(game_id_arg[0])
     if not game:
-      self.send_error(HTTPStatus.BAD_REQUEST.value, "Game not found: %s" % game_id_arg[0])
+      self.send_error(HTTPStatus.BAD_REQUEST.value, f"Game not found: {game_id_arg[0]}")
       return
 
     if path.rstrip("/") not in game.post_urls():
-      self.send_error(HTTPStatus.NOT_FOUND.value, "Unknown path %s" % path)
+      self.send_error(HTTPStatus.NOT_FOUND.value, f"Unknown path {path}")
       return
 
     game.handle_post(GLOBAL_LOOP, self, path.rstrip("/"), args, data)
@@ -135,20 +135,22 @@ def CreateGame(http_handler, data):
   generated_id = GenerateId(2)
   if not generated_id:
     http_handler.send_error(
-        HTTPStatus.INTERNAL_SERVER_ERROR, "no unique game ids left. probably. i didn't try very hard")
+        HTTPStatus.INTERNAL_SERVER_ERROR,
+        "no unique game ids left. probably. i didn't try very hard",
+    )
     return
   GAMES[generated_id] = game_handler.GameHandler(generated_id, GAME_TYPES[game_type])
   http_handler.send_response(301)
-  http_handler.send_header('Location', GAMES[generated_id].game_url())
+  http_handler.send_header("Location", GAMES[generated_id].game_url())
   http_handler.end_headers()
-  print("Created new game of type %s with id %s" % (game_type, generated_id))
+  print(f"Created new game of type {game_type} with id {generated_id}")
 
 
 def GenerateId(length):
   generated = None
-  for attempt in range(5):
+  for _ in range(5):
     chars = []
-    for x in range(length):
+    for _ in range(length):
       chars.append(random.choice(string.ascii_lowercase))
     generated = "".join(chars)
     # TODO: concurrency
@@ -157,8 +159,8 @@ def GenerateId(length):
   return None
 
 
-async def PushError(ws, e):
-  await ws.send(json.dumps({"type": "error", "message": e}))
+async def PushError(websocket, error_text):
+  await websocket.send(json.dumps({"type": "error", "message": error_text}))
 
 
 async def HandleWebsocket(websocket, path):
@@ -177,20 +179,22 @@ async def HandleWebsocket(websocket, path):
   session = cookies.get("session")
   if not session:
     session = str(uuid.uuid4())
-    await PushError(websocket, "Session cookie not set; you will not be able to resume if you close this tab.")
+    await PushError(
+        websocket, "Session cookie not set; you will not be able to resume if you close this tab.",
+    )
   await GameLoop(websocket, session, game)
 
 
 async def GameLoop(websocket, session, game):
-  print("new websocket connection by %s from %s" % (session, websocket.remote_address))
+  print(f"new websocket connection by {session} from {websocket.remote_address}")
   await game.connect_user(session, websocket)
   try:
     async for raw in websocket:
       await game.handle(websocket, session, raw)
   except websockets.exceptions.ConnectionClosed:
-    print("connection for %s from %s closed unexpectedly" % (session, websocket.remote_address))
+    print(f"connection for {session} from {websocket.remote_address} closed unexpectedly")
   finally:
-    print("closed websocket connection for %s from %s" % (session, websocket.remote_address))
+    print(f"closed websocket connection for {session} from {websocket.remote_address}")
     await game.disconnect_user(session, websocket)
 
 
@@ -205,7 +209,7 @@ async def SendGames(websocket):
   await websocket.send(json.dumps({"games": game_data}))
   INDEX_WEBSOCKETS.add(websocket)
   try:
-    async for raw in websocket:
+    async for _ in websocket:
       pass
   except websockets.exceptions.ConnectionClosed:
     pass
@@ -229,25 +233,25 @@ async def SendGameUpdates():
 
 def ws_main(loop):
   port = 8081  # TODO: this is hard-coded into various .js files.
-  global GLOBAL_WS_SERVER
+  global GLOBAL_WS_SERVER  # pylint: disable=global-statement
   asyncio.set_event_loop(loop)
   asyncio.ensure_future(SendGameUpdates())
-  start_server = websockets.server.serve(HandleWebsocket, '', port)
+  start_server = websockets.server.serve(HandleWebsocket, "", port)
   GLOBAL_WS_SERVER = loop.run_until_complete(start_server)
-  print("Websocket server started on port %d" % port)
+  print(f"Websocket server started on port {port}")
   loop.run_forever()
 
 
 def main(port):
   try:
-    server = ThreadingHTTPServer(('', port), MyHandler)
-    print('Started server on port %d' % port)
+    server = ThreadingHTTPServer(("", port), MyHandler)
+    print(f"Started server on port {port}")
     server.serve_forever()
-  except (KeyboardInterrupt, Exception) as e:
-    if isinstance(e, KeyboardInterrupt):
-      print('keyboard interrupt received; shutting down')
+  except (KeyboardInterrupt, Exception) as err:  # pylint: disable=broad-except
+    if isinstance(err, KeyboardInterrupt):
+      print("keyboard interrupt received; shutting down")
     else:
-      print('%s (%s) occurred; shutting down' % (e, e.__class__))
+      print(f"{err} {err.__class__} occurred; shutting down")
     server.socket.close()
     GLOBAL_WS_SERVER.close()
     fut = asyncio.run_coroutine_threadsafe(GLOBAL_WS_SERVER.wait_closed(), GLOBAL_LOOP)
@@ -255,12 +259,12 @@ def main(port):
     GLOBAL_LOOP.stop()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
   parser = argparse.ArgumentParser()
   parser.add_argument(
       "--http-port", type=int, help="HTTP port", metavar="PORT", default=8001)
-  args = parser.parse_args()
+  flags = parser.parse_args()
   t2 = threading.Thread(target=ws_main, args=(GLOBAL_LOOP,))
   t2.start()
-  main(args.http_port)
+  main(flags.http_port)
   t2.join()
