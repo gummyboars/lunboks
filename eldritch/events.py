@@ -2993,9 +2993,11 @@ class PassCombatRound(Event):
       log_message="{char_name} passed a combat round against {monster_name}"
   ):
     self.combat_round = combat_round
+    # self.character = combat_round.character
     self.log_message = log_message.format(
         char_name=combat_round.character.name,
         monster_name=getattr(combat_round.monster, "name", "No Monster")
+        # TODO: might look weird if no monster (e.g. Bank3)
     )
     self.take_trophy: Optional[Event] = None
     self.damage: Optional[Event] = None
@@ -3007,7 +3009,7 @@ class PassCombatRound(Event):
       self.combat_round.pass_combat = self
     self.combat_round.defeated = True
     if self.combat_round.choice is not None and not self.combat_round.choice.is_resolved():
-      self.combat_round.choice.resolve(state,  "done")
+      self.combat_round.choice.cancelled = True
     char = self.combat_round.character
     monster = self.combat_round.monster
     if self.take_trophy is None and monster is not None:

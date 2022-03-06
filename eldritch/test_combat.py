@@ -2038,8 +2038,7 @@ class BindMonsterTest(EventTest):
     self.assertIn(worm, self.char.trophies)
     self.assertEqual(self.char.place.name, "Asylum")
     self.assertNotIn(self.bind_monster, self.char.possessions)
-    # self.assertEqual(self.char.stamina, 4) # Overwhelming 1
-    # TODO: Overwhelming should also happen
+    self.assertEqual(self.char.stamina, 4)  # Overwhelming 1
 
   def testSaneFail(self):
     self.char.sanity = 3

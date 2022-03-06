@@ -63,6 +63,7 @@ uniqueNames = [
 ];
 carefullyAdd(uniqueNames);
 spellNames = [
+  "Bind Monster",
   "Dread Curse",
   "Enchant Weapon",
   "Find Gate",
