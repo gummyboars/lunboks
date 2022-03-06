@@ -364,23 +364,26 @@ class FleshWard(Spell):
         or self.exhausted
     ):
       return None
-    choice = events.SpendChoice(owner, )
-    return events.CastSpell(owner, self, choice=choice)
+    return events.CastSpell(owner, self)
 
   def get_cast_event(self, owner, state):
     pass
+
 
 class Mists(Spell):
   def __init__(self, idx):
     super().__init__("Mists", idx, {}, 0, None, 0)
+    self.evade = None
 
   def get_usable_interrupt(self, event, owner, state):
     if isinstance(event, events.EvadeRound) and event.character == owner:
       self.difficulty = event.monster.difficulty("evade", state, owner)
-      return events.CastSpell(owner, self, )
+      self.evade = event
+      return events.CastSpell(owner, self)
 
   def get_cast_event(self, owner, state):
-    pass
+    return
+
 
 class RedSign(CombatSpell):
 
@@ -507,6 +510,8 @@ def CreateSpells():
       DreadCurse: 4,
       EnchantWeapon: 3,
       FindGate: 4,
+      FleshWard: 4,
+      Mists: 4,
       RedSign: 2,
       Shrivelling: 5,
       Voice: 3,
