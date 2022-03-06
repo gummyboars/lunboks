@@ -2993,7 +2993,7 @@ class PassCombatRound(Event):
       log_message="{char_name} passed a combat round against {monster_name}"
   ):
     self.combat_round = combat_round
-    # self.character = combat_round.character
+    self.character = combat_round.character
     self.log_message = log_message.format(
         char_name=combat_round.character.name,
         monster_name=getattr(combat_round.monster, "name", "No Monster")

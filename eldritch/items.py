@@ -261,8 +261,8 @@ class BindMonster(CombatSpell):
   def get_cast_event(self, owner, state):
     return events.Sequence(
         [
+            events.DiscardSpecific(owner, [self]),
             events.PassCombatRound(self.combat_round),
-            events.DiscardSpecific(owner, [self])
         ],
         owner,
     )
