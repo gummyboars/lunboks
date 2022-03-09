@@ -350,24 +350,32 @@ class EnchantWeapon(CombatSpell):
 class FleshWard(Spell):
   def __init__(self, idx):
     super().__init__("Flesh Ward", idx, {}, 0, -2, 1)
+    self.loss = None
 
   def get_trigger(self, event, owner, state):
-    if (isinstance(event, events.AncientOneAwaken)):
+    if isinstance(event, events.AncientOneAwaken):
       return events.DiscardSpecific(owner, [self])
+    return None
 
   def get_usable_interrupt(self, event, owner, state):
     if (
         not isinstance(event, events.GainOrLoss)
         or event.character != owner
-        or 'stamina' not in event.losses
+        or "stamina" not in event.losses
         or owner.sanity < self.sanity_cost
         or self.exhausted
     ):
       return None
+    self.loss = event
     return events.CastSpell(owner, self)
 
   def get_cast_event(self, owner, state):
-    pass
+    new_losses = self.loss.losses.copy()
+    new_losses.drop("stamina")
+    return events.Sequence([
+        events.CancelEvent(self.loss),
+        events.GainOrLoss(self.loss.character, self.loss.gains, new_losses)
+    ])
 
 
 class Mists(Spell):
@@ -380,9 +388,10 @@ class Mists(Spell):
       self.difficulty = event.monster.difficulty("evade", state, owner)
       self.evade = event
       return events.CastSpell(owner, self)
+    return None
 
   def get_cast_event(self, owner, state):
-    return
+    return events.PassEvadeRound(self.evade)
 
 
 class RedSign(CombatSpell):

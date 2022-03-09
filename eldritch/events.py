@@ -2914,7 +2914,7 @@ class EvadeRound(Event):
     self.monster = monster
     self.check: Optional[Check] = None
     self.damage: Optional[Event] = None
-    self.pass_evade: Optional[PassEvadeRound] = None,
+    self.pass_evade: Optional[PassEvadeRound] = None
     self.evaded = None
 
   def resolve(self, state):
@@ -2950,9 +2950,14 @@ class EvadeRound(Event):
 
 
 class PassEvadeRound(Event):
-  def __init__(self, evade_round, log_message='{char_name} passed an evade round against {mosnter_name}'):
+  def __init__(
+      self, evade_round, log_message="{char_name} passed an evade round against {monster_name}"
+  ):
     self.evade_round = evade_round
-    self.log_message = log_message.format(char_name=evade_round.character.name, monster_name=getattr(evade_round.monster, 'name', 'No Monster'))
+    self.log_message = log_message.format(
+        char_name=evade_round.character.name,
+        monster_name=getattr(evade_round.monster, "name", "No Monster")
+    )
     self.done = False
 
   def resolve(self, state):
