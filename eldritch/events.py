@@ -1704,10 +1704,12 @@ class CastSpell(Event):
     self.check: Optional[Event] = None
     self.activation: Optional[Event] = None
     self.success = None
+    self.fail_message = ""
 
   def resolve(self, state):
     if self.spell not in self.character.possessions:
       self.success = False
+      self.fail_message = "(Not in possessions?)"
       return
 
     if self.choice is None:
@@ -1739,6 +1741,7 @@ class CastSpell(Event):
 
     if (self.check.successes or 0) < self.spell.get_required_successes(state):
       self.success = False
+      self.fail_message = f"({self.check.successes} < {self.spell.get_required_successes(state)})"
       return
 
     self.success = True
@@ -1758,7 +1761,7 @@ class CastSpell(Event):
   def finish_str(self):
     if self.success:
       return f"{self.character.name} successfully cast {self.spell.name}"
-    return f"{self.character.name} failed to cast {self.spell.name}"
+    return f"{self.character.name} failed to cast {self.spell.name} {self.fail_message}"
 
 
 class MarkDeactivatable(Event):
@@ -2529,8 +2532,9 @@ class ItemChoice(ChoiceEvent):
 
 class CombatChoice(ItemChoice):
 
-  def __init__(self, character, prompt):
+  def __init__(self, character, prompt, combat_round=None):
     super().__init__(character, prompt, decks=None, item_type="weapon")
+    self.combat_round = combat_round
 
   def validate_choice(self, state, chosen, final):
     super().validate_choice(state, chosen, final)
@@ -2949,13 +2953,16 @@ class CombatRound(Event):
   def __init__(self, character, monster):
     self.character = character
     self.monster = monster
-    self.choice: Event = CombatChoice(character, f"Choose weapons to fight the {monster.name}")
+    self.choice: Event = CombatChoice(
+        character, f"Choose weapons to fight the {monster.name}", combat_round=self
+    )
     self.choice.monster = self.monster
     self.activate: Optional[Event] = None
     self.check: Optional[Check] = None
     self.defeated = None
     self.take_trophy: Optional[Event] = None
     self.damage: Optional[Event] = None
+    self.pass_combat: Optional[Event] = None
     self.done = False
 
   def resolve(self, state):
@@ -2985,15 +2992,9 @@ class CombatRound(Event):
       state.event_stack.append(self.damage)
       return
 
-    if self.take_trophy is None:
-      self.take_trophy = TakeTrophy(self.character, self.monster)
-      state.event_stack.append(self.take_trophy)
-      return
-
-    if self.monster.has_attribute("overwhelming", state, self.character) and self.damage is None:
-      self.damage = Loss(
-          self.character, {"stamina": self.monster.bypass_damage("combat", state)})
-      state.event_stack.append(self.damage)
+    if self.defeated and not self.pass_combat:
+      self.pass_combat = PassCombatRound(self)
+      state.event_stack.append(self.pass_combat)
       return
 
     self.done = True
@@ -3012,6 +3013,55 @@ class CombatRound(Event):
     if self.defeated:
       return f"{self.character.name} defeated a {self.monster.name}"
     return f"{self.character.name} did not defeat the {self.monster.name}"
+
+
+class PassCombatRound(Event):
+  def __init__(
+      self,
+      combat_round,
+      log_message="{char_name} passed a combat round against {monster_name}"
+  ):
+    self.combat_round = combat_round
+    self.character = combat_round.character
+    self.log_message = log_message.format(
+        char_name=combat_round.character.name,
+        monster_name=getattr(combat_round.monster, "name", "No Monster")
+        # TODO: might look weird if no monster (e.g. Bank3)
+    )
+    self.take_trophy: Optional[Event] = None
+    self.damage: Optional[Event] = None
+    self.done = False
+
+  def resolve(self, state):
+    if self.combat_round.pass_combat is None:
+      # Can happen if passing combat is the effect of a spell, e.g. Bind Monster
+      self.combat_round.pass_combat = self
+    self.combat_round.defeated = True
+    if self.combat_round.choice is not None and not self.combat_round.choice.is_resolved():
+      self.combat_round.choice.cancelled = True
+    char = self.combat_round.character
+    monster = self.combat_round.monster
+    if self.take_trophy is None and monster is not None:
+      self.take_trophy = TakeTrophy(char, monster)
+      state.event_stack.append(self.take_trophy)
+      return
+
+    if monster.has_attribute("overwhelming", state, char) and self.damage is None:
+      self.damage = Loss(
+          char, {"stamina": monster.bypass_damage("combat", state)})
+      state.event_stack.append(self.damage)
+      return
+
+    self.done = True
+
+  def is_resolved(self) -> bool:
+    return self.done
+
+  def start_str(self):
+    return ""
+
+  def finish_str(self):
+    return self.log_message
 
 
 class TakeTrophy(Event):

@@ -15,6 +15,7 @@ from eldritch.events import *
 from eldritch import items
 from eldritch import monsters
 from eldritch import mythos
+from eldritch import encounters
 from eldritch.test_events import EventTest, Canceller
 
 
@@ -1976,6 +1977,119 @@ class CombatWithRedSignTest(EventTest):
     # Techincally, you wouldn't call this again because the combat has ended. But it's a good
     # check to make sure that the effects of the spell are done.
     self.assertTrue(witch.has_attribute("magical resistance", self.state, self.char))
+
+
+class BindMonsterTest(EventTest):
+  def setUp(self):
+    super().setUp()
+    self.bind_monster = items.BindMonster(0)
+    self.char.possessions = [self.bind_monster]
+
+  def start(self, monster):
+    # pylint: disable=attribute-defined-outside-init
+    self.combat = Combat(self.char, monster)
+    self.state.event_stack.append(self.combat)
+
+    with mock.patch.object(
+        events.random, "randint", new=mock.MagicMock(return_value=5)
+    ):
+      fight_or_flee = self.resolve_to_choice(MultipleChoice)
+      fight_or_flee.resolve(self.state, "Fight")
+
+      return self.resolve_to_choice(CombatChoice)
+
+  def testSanePass(self):
+    self.char.sanity = 4
+    self.char.fight_will_slider = 0
+    worm = monsters.GiantWorm()
+    self.start(worm)
+    self.assertEqual(self.char.sanity, 3)
+    self.assertEqual(self.char.stamina, 5)
+    self.state.event_stack.append(self.state.usables[0]["Bind Monster0"])
+    cast_choice = self.resolve_to_choice(SpendChoice)
+    self.spend("sanity", 2, cast_choice)
+    choice = self.resolve_to_choice(SpendChoice)
+    choice.resolve(self.state, "Cast")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+
+    self.assertIn(worm, self.char.trophies)
+    self.assertEqual(self.char.sanity, 1)
+    self.assertEqual(self.char.stamina, 4)  # overwhelming
+    self.assertNotIn(self.bind_monster, self.char.possessions)
+
+  def testInsanePass(self):
+    self.char.sanity = 3
+    self.char.fight_will_slider = 0
+    worm = monsters.GiantWorm()
+    self.start(worm)
+    self.assertEqual(self.char.sanity, 2)  # Lost one to nightmarish
+    self.assertEqual(self.char.stamina, 5)
+    self.state.event_stack.append(self.state.usables[0]["Bind Monster0"])
+    cast_choice = self.resolve_to_choice(SpendChoice)
+    self.spend("sanity", 2, cast_choice)
+    choice = self.resolve_to_choice(SpendChoice)
+    choice.resolve(self.state, "Cast")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      insane_choice = self.resolve_to_choice(ItemLossChoice)
+    insane_choice.resolve(self.state, "done")
+
+    self.resolve_until_done()
+    self.assertIn(worm, self.char.trophies)
+    self.assertEqual(self.char.place.name, "Asylum")
+    self.assertNotIn(self.bind_monster, self.char.possessions)
+    self.assertEqual(self.char.stamina, 4)  # Overwhelming 1
+
+  def testSaneFail(self):
+    self.char.sanity = 3
+    self.char.fight_will_slider = 0
+    self.char.possessions.append(items.TommyGun(0))
+    cultist = monsters.Cultist()
+    self.start(cultist)
+    self.assertEqual(self.char.sanity, 3)
+    self.state.event_stack.append(self.state.usables[0]["Bind Monster0"])
+    cast_choice = self.resolve_to_choice(SpendChoice)
+    self.spend("sanity", 2, cast_choice)
+    choice = self.resolve_to_choice(SpendChoice)
+    choice.resolve(self.state, "Cast")
+    with mock.patch.object(
+        events.random, "randint", new=mock.MagicMock(return_value=4)
+    ):
+      choice = self.resolve_to_choice(CombatChoice)
+
+    with self.assertRaises(AssertionError):
+      # We already used our hands
+      choice.resolve(self.state, "Tommy Gun0")
+
+    choice.resolve(self.state, "done")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=1)):
+      choice = self.resolve_to_choice(MultipleChoice)
+    choice.resolve(self.state, "Fight")
+
+    self.state.event_stack.append(DeactivateSpell(self.char, self.bind_monster))
+    choice = self.resolve_to_choice(CombatChoice)
+    self.assertNotIn("Bind Monster0", choice.choices)
+    self.assertFalse(self.state.usables)
+    choice.resolve(self.state, "Tommy Gun0")
+    choice.resolve(self.state, "done")
+
+    with mock.patch.object(
+        events.random, "randint", new=mock.MagicMock(return_value=5)
+    ):
+      self.resolve_until_done()
+    self.assertIn(cultist, self.char.trophies)
+    self.assertEqual(self.char.sanity, 1)
+    self.assertIn(self.bind_monster, self.char.possessions)
+    self.assertTrue(self.bind_monster.exhausted)
+
+  def testNotUsableInBankRobbery(self):
+    # Also presumably in the Hospital2 encounter
+    self.state.event_stack.append(encounters.Bank3(self.char))
+    self.resolve_to_choice(CombatChoice)
+    self.assertNotIn("Bind Monster0", self.state.usables)
+
+  # TODO: test when a successful cast drives you insane, and the monster is overwhelming,
+  #  thus devouring you
 
 
 if __name__ == "__main__":
