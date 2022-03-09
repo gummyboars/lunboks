@@ -374,6 +374,27 @@ class FindGateTest(EventTest):
   # TODO: a test covering the ability to cast after travelling during the movement phase
 
 
+class FleshWardTest(EventTest):
+  def setUp(self):
+    super().setUp()
+    self.char.possessions.append(items.FleshWard(0))
+
+  def testCombat(self):
+    # Active on first round
+    # Combat does not count at defeated
+    # Enter another round, not available
+    pass
+
+  def testOverwhelming(self):
+    pass
+
+  def testNonCombat(self):
+    pass
+
+  def testCombinedSanityStaminaLoss(self):
+    pass
+
+
 class MedicineTest(EventTest):
 
   def setUp(self):
@@ -417,6 +438,19 @@ class MedicineTest(EventTest):
     self.assertEqual(nun.stamina, 2)
     self.assertEqual(self.char.stamina, 3)
     self.assertTrue(self.char.possessions[0].exhausted)
+
+
+class MistsTest(EventTest):
+  def setUp(self):
+    super().setUp()
+    self.char.possessions.append(items.FleshWard(0))
+
+  def testCombatEvade(self):
+    pass
+
+  def encounterEvade(self):
+    pass
+  #TODO: test Elusive monsters
 
 
 if __name__ == "__main__":

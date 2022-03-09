@@ -372,10 +372,7 @@ class FleshWard(Spell):
   def get_cast_event(self, owner, state):
     new_losses = self.loss.losses.copy()
     new_losses.drop("stamina")
-    return events.Sequence([
-        events.CancelEvent(self.loss),
-        events.GainOrLoss(self.loss.character, self.loss.gains, new_losses)
-    ])
+    return events.LossPrevention(self, self.loss, "stamina", float('inf'))
 
 
 class Mists(Spell):
