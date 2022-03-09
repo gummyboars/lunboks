@@ -450,7 +450,7 @@ class MistsTest(EventTest):
 
   def encounterEvade(self):
     pass
-  #TODO: test Elusive monsters
+  # TODO: test Elusive monsters
 
 
 if __name__ == "__main__":
