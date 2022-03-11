@@ -11,10 +11,12 @@ if os.path.abspath(sys.path[0]) == os.path.dirname(os.path.abspath(__file__)):
 
 from eldritch import abilities
 from eldritch import characters
+from eldritch import encounters
 from eldritch import events
 from eldritch.events import *
 from eldritch import gates
 from eldritch import items
+from eldritch import monsters
 from eldritch.test_events import EventTest, Canceller
 
 
@@ -378,21 +380,97 @@ class FleshWardTest(EventTest):
   def setUp(self):
     super().setUp()
     self.char.possessions.append(items.FleshWard(0))
+    self.char.possessions.append(items.TommyGun(0))
 
   def testCombat(self):
-    # Active on first round
-    # Combat does not count at defeated
-    # Enter another round, not available
-    pass
+    monster = monsters.Cultist()
+    combat = Combat(self.char, monster)
+    self.state.event_stack.append(combat)
+    fight_or_flee = self.resolve_to_choice(MultipleChoice)
+    fight_or_flee.resolve(self.state, "Fight")
+    combat_choice = self.resolve_to_choice(CombatChoice)
+    combat_choice.resolve(self.state, "done")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=4)):
+      self.resolve_to_usable(0, "Flesh Ward0", events.CastSpell)
+    self.state.event_stack.append(self.state.usables[0]["Flesh Ward0"])
+    choice = self.resolve_to_choice(SpendMixin)
+    self.assertListEqual(choice.choices, ["Cast", "Cancel"])
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.spend("sanity", 1, choice)
+      choice.resolve(self.state, "Cast")
+      fight_or_flee = self.resolve_to_choice(MultipleChoice)
+
+    self.assertEqual(self.char.stamina, 5)
+    self.assertEqual(self.char.sanity, 4)
+
+    fight_or_flee.resolve(self.state, "Fight")
+    combat_choice = self.resolve_to_choice(CombatChoice)
+    combat_choice.resolve(self.state, "done")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=4)):
+      with self.assertRaises(AssertionError):
+        # no longer usable
+        self.resolve_to_usable(0, "Flesh Ward0", events.CastSpell)
+
 
   def testOverwhelming(self):
-    pass
+    self.char.fight_will_slider = 2
+    monster = monsters.GiantWorm()
+    combat = Combat(self.char, monster)
+    self.state.event_stack.append(combat)
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      # pass horror check
+      fight_or_flee = self.resolve_to_choice(MultipleChoice)
+    fight_or_flee.resolve(self.state, "Fight")
+    combat_choice = self.resolve_to_choice(CombatChoice)
+    self.assertEqual(self.char.sanity, 4)
+    combat_choice.resolve(self.state, "Tommy Gun0")
+    combat_choice.resolve(self.state, "done")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_to_usable(0, "Flesh Ward0", events.CastSpell)
+    self.state.event_stack.append(self.state.usables[0]["Flesh Ward0"])
+    choice = self.resolve_to_choice(SpendMixin)
+    self.assertListEqual(choice.choices, ["Cast", "Cancel"])
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.spend("sanity", 1, choice)
+      choice.resolve(self.state, "Cast")
+      self.resolve_until_done()
+
+    self.assertEqual(self.char.stamina, 5)
+    self.assertEqual(self.char.sanity, 3)
+
 
   def testNonCombat(self):
-    pass
+    self.assertEqual(self.char.stamina, 5)
+    self.assertEqual(self.char.sanity, 5)
+    self.state.event_stack.append(encounters.Woods2(self.char))
+    # Fail a sneak check, get worked over by gang
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=4)):
+      self.resolve_to_usable(0, "Flesh Ward0", events.CastSpell)
+    self.state.event_stack.append(self.state.usables[0]["Flesh Ward0"])
+    choice = self.resolve_to_choice(SpendMixin)
+    self.assertListEqual(choice.choices, ["Cast", "Cancel"])
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.spend("sanity", 1, choice)
+      choice.resolve(self.state, "Cast")
+      self.resolve_until_done()
+    self.assertEqual(self.char.stamina, 5)
+    self.assertEqual(self.char.sanity, 4)
 
   def testCombinedSanityStaminaLoss(self):
-    pass
+    self.assertEqual(self.char.stamina, 5)
+    self.assertEqual(self.char.sanity, 5)
+    self.state.event_stack.append(Loss(self.char, {'sanity': 1, 'stamina': 5}))
+    self.resolve_to_usable(0, "Flesh Ward0", events.CastSpell)
+    self.state.event_stack.append(self.state.usables[0]["Flesh Ward0"])
+    choice = self.resolve_to_choice(SpendMixin)
+    self.assertListEqual(choice.choices, ["Cast", "Cancel"])
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.spend("sanity", 1, choice)
+      choice.resolve(self.state, "Cast")
+      self.resolve_until_done()
+    self.assertEqual(self.char.stamina, 5)
+    # -1 from the spell, -1 from the Loss()
+    self.assertEqual(self.char.sanity, 3)
 
 
 class MedicineTest(EventTest):
@@ -443,13 +521,21 @@ class MedicineTest(EventTest):
 class MistsTest(EventTest):
   def setUp(self):
     super().setUp()
-    self.char.possessions.append(items.FleshWard(0))
+    self.char.possessions.append(items.Mists(0))
 
   def testCombatEvade(self):
-    pass
+    monster = monsters.Cultist()
+    self.state.event_stack.append(EvadeOrCombat(self.char, monster))
+    evade_choice = self.resolve_to_choice(MultipleChoice)
+    evade_choice.resolve(self.state, "Evade")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=4)):
+      self.resolve_to_usable(0, "Mists0", events.CastSpell)
+    self.state.event_stack.append(self.state.usables[0]["Mists0"])
+    choice = self.resolve_to_choice(MultipleChoice)
+    choice.resolve(self.state, "Cast")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
 
-  def encounterEvade(self):
-    pass
   # TODO: test Elusive monsters
 
 

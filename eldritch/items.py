@@ -370,8 +370,6 @@ class FleshWard(Spell):
     return events.CastSpell(owner, self)
 
   def get_cast_event(self, owner, state):
-    new_losses = self.loss.losses.copy()
-    new_losses.drop("stamina")
     return events.LossPrevention(self, self.loss, "stamina", float("inf"))
 
 
