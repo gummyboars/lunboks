@@ -133,7 +133,7 @@ class Tome(Item):
     self.movement_cost = movement_cost
 
   def get_usable_interrupt(self, event, owner, state):
-    if not isinstance(event, events.CityMovement) or event.character != owner:
+    if not isinstance(event, events.CityMovement) or event.character != owner or event.is_done():
       return None
     if self.exhausted:
       return None
