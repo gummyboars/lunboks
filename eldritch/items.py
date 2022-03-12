@@ -379,10 +379,15 @@ class Mists(Spell):
     self.evade = None
 
   def get_usable_interrupt(self, event, owner, state):
-    if isinstance(event, events.EvadeRound) and event.character == owner:
+    if event.is_done() or self.exhausted or event.character != owner:
+      return None
+    # TODO: be able to cast Mists on an EvadeCheck
+    if isinstance(event, events.EvadeRound):
       self.difficulty = event.monster.difficulty("evade", state, owner)
       self.evade = event
       return events.CastSpell(owner, self)
+    if isinstance(event, events.SpendChoice) and isinstance(state.event_stack[-1], events.Check) and isinstance(state.event_stack[-2], events.EvadeRound):
+      assert False
     return None
 
   def get_cast_event(self, owner, state):

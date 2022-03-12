@@ -526,8 +526,23 @@ class MistsTest(EventTest):
     self.state.event_stack.append(EvadeOrCombat(self.char, monster))
     evade_choice = self.resolve_to_choice(MultipleChoice)
     evade_choice.resolve(self.state, "Evade")
+    self.resolve_to_usable(0, "Mists0", events.CastSpell)
+    self.state.event_stack.append(self.state.usables[0]["Mists0"])
+    choice = self.resolve_to_choice(MultipleChoice)
+    choice.resolve(self.state, "Cast")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+
+  def testCastAfterFail(self):
+    monster = monsters.Cultist()
+    self.state.event_stack.append(EvadeOrCombat(self.char, monster))
+    evade_choice = self.resolve_to_choice(MultipleChoice)
+    evade_choice.resolve(self.state, "Evade")
+    self.resolve_to_usable(0, "Mists0", events.CastSpell)
+    self.state.done_using[0] = True
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=4)):
       self.resolve_to_usable(0, "Mists0", events.CastSpell)
+    assert False
     self.state.event_stack.append(self.state.usables[0]["Mists0"])
     choice = self.resolve_to_choice(MultipleChoice)
     choice.resolve(self.state, "Cast")
