@@ -28,8 +28,10 @@ jobs:
       run: |
         autopep8 --diff --exit-code **/*.py
     - name: Analysing the code with pylint
+      if: always()
       run: |
         pylint **/*.py
     - name: Test
+      if: always()
       run: |
         python -m unittest

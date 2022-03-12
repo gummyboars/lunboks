@@ -26,7 +26,8 @@ random = SystemRandom()
 
 class GameState:
 
-  DEQUE_ATTRIBUTES = {"common", "unique", "spells", "skills", "allies", "gates"}
+  DEQUE_ATTRIBUTES = {
+"common", "unique", "spells", "skills", "allies", "gates"}
   HIDDEN_ATTRIBUTES = {
       "event_stack", "interrupt_stack", "trigger_stack", "usables", "mythos", "gate_cards"}
   CUSTOM_ATTRIBUTES = {"characters", "all_characters"}
