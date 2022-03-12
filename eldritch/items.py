@@ -386,8 +386,16 @@ class Mists(Spell):
       self.difficulty = event.monster.difficulty("evade", state, owner)
       self.evade = event
       return events.CastSpell(owner, self)
-    if isinstance(event, events.SpendChoice) and isinstance(state.event_stack[-1], events.Check) and isinstance(state.event_stack[-2], events.EvadeRound):
-      assert False
+    if (
+        isinstance(event, events.SpendChoice)
+        and len(state.event_stack) >= 3
+        and isinstance(state.event_stack[-2], events.Check)
+        and isinstance(state.event_stack[-3], events.EvadeRound)
+        and not state.event_stack[-3].is_done()
+    ):
+      self.evade = state.event_stack[-3]
+      self.difficulty = self.evade.monster.difficulty("evade", state, owner)
+      return events.CastSpell(owner, self)
     return None
 
   def get_cast_event(self, owner, state):

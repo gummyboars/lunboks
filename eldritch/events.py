@@ -2966,6 +2966,16 @@ class PassEvadeRound(Event):
       self.evade_round.pass_evade = self
     if self.evade_round.monster:
       self.evade_round.character.avoid_monsters.append(self.evade_round.monster)
+    if (
+        self.evade_round.check
+        and self.evade_round.check.spend
+        and not self.evade_round.check.spend.is_cancelled()
+    ):
+      state.event_stack.append(CancelEvent(self.evade_round.check.spend))
+      return
+    if self.evade_round.check and not self.evade_round.check.is_cancelled():
+      state.event_stack.append(CancelEvent(self.evade_round.check))
+      return
     self.evade_round.evaded = True
     self.done = True
 
