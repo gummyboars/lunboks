@@ -1199,7 +1199,7 @@ class DevouredPlayerJoinTest(PlayerTest):
 
   def setUp(self):
     super().setUp()
-    self.game.connect_user("C")
+    self.game.connect_user("A")
     self.game.connect_user("B")
     self.handle("A", {"type": "join", "char": "Nun"})
     self.handle("B", {"type": "join", "char": "Doctor"})
