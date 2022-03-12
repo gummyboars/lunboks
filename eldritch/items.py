@@ -379,7 +379,7 @@ class Mists(Spell):
     self.evade = None
 
   def get_usable_interrupt(self, event, owner, state):
-    if event.is_done() or self.exhausted or getattr(event, 'character', None) != owner:
+    if event.is_done() or self.exhausted or getattr(event, "character", None) != owner:
       return None
     # TODO: be able to cast Mists on an EvadeCheck
     if isinstance(event, events.EvadeRound):
