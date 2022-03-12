@@ -22,6 +22,9 @@ jobs:
         python -m pip install --upgrade pip
         pip install pylint autopep8
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+    - name: Test
+      run: |
+        python -m unittest
     - name: Check formatting with autopep8
       run: |
         autopep8 --diff --exit-code **/*.py

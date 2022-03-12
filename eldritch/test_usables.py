@@ -411,7 +411,6 @@ class FleshWardTest(EventTest):
         # no longer usable
         self.resolve_to_usable(0, "Flesh Ward0", events.CastSpell)
 
-
   def testOverwhelming(self):
     self.char.fight_will_slider = 2
     monster = monsters.GiantWorm()
@@ -438,7 +437,6 @@ class FleshWardTest(EventTest):
     self.assertEqual(self.char.stamina, 5)
     self.assertEqual(self.char.sanity, 3)
 
-
   def testNonCombat(self):
     self.assertEqual(self.char.stamina, 5)
     self.assertEqual(self.char.sanity, 5)
@@ -459,7 +457,7 @@ class FleshWardTest(EventTest):
   def testCombinedSanityStaminaLoss(self):
     self.assertEqual(self.char.stamina, 5)
     self.assertEqual(self.char.sanity, 5)
-    self.state.event_stack.append(Loss(self.char, {'sanity': 1, 'stamina': 5}))
+    self.state.event_stack.append(Loss(self.char, {"sanity": 1, "stamina": 5}))
     self.resolve_to_usable(0, "Flesh Ward0", events.CastSpell)
     self.state.event_stack.append(self.state.usables[0]["Flesh Ward0"])
     choice = self.resolve_to_choice(SpendMixin)
