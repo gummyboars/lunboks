@@ -40,6 +40,16 @@ class DummyMonster(Dummy):
     return getattr(self, attribute)
 
 
+class DummyPlace(Dummy):
+
+  def __init__(self, **kwargs):
+    self.sealed = False
+    super().__init__(**kwargs)
+
+  def is_unstable(self, state):  # pylint: disable=unused-argument
+    return not self.sealed
+
+
 class DummyState(Dummy):
 
   def __init__(self, **kwargs):
@@ -144,6 +154,20 @@ class PrerequisiteTest(unittest.TestCase):
     self.assertEqual(prereq.value(state), 0)
     char.override = False
     self.assertEqual(prereq.value(state), 1)
+
+
+class StabilityTest(unittest.TestCase):
+
+  def testStability(self):
+    place = DummyPlace()
+    state = DummyState()
+    stable = PlaceStable(place)
+    unstable = PlaceUnstable(place)
+    self.assertEqual(stable.value(state), 0)
+    self.assertEqual(unstable.value(state), 1)
+    place.sealed = True
+    self.assertEqual(stable.value(state), 1)
+    self.assertEqual(unstable.value(state), 0)
 
 
 class SpendTest(unittest.TestCase):

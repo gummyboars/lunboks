@@ -129,6 +129,24 @@ def NoAmbushPrerequisite(monster, character):
       1, None, operator.sub, MonsterAttributePrerequisite(monster, "ambush", character))
 
 
+class PlaceStable(Value):
+
+  def __init__(self, place):
+    self.place = place
+
+  def value(self, state):
+    return int(not self.place.is_unstable(state))
+
+
+class PlaceUnstable(Value):
+
+  def __init__(self, place):
+    self.place = place
+
+  def value(self, state):
+    return int(self.place.is_unstable(state))
+
+
 class SpendValue(metaclass=abc.ABCMeta):
 
   SPEND_TYPES = {
