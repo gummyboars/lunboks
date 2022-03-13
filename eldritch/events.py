@@ -3090,6 +3090,12 @@ class TakeTrophy(Event):
         self.cancelled = True
         return
       self.monster = self.monster.chosen
+    if isinstance(self.monster, DrawMonstersFromCup):
+      if self.monster.is_cancelled() or len(self.monster.monsters) != 1:
+        self.cancelled = True
+        return
+      self.monster = state.monsters[self.monster.monsters[0]]
+
     self.monster.place = None
     self.character.trophies.append(self.monster)
     self.done = True
