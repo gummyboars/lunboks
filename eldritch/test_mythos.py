@@ -94,6 +94,36 @@ class OpenGateTest(EventTest):
     self.assertEqual(monster_counts["Square"], 0)
     self.assertEqual(monster_counts["cup"], cup_count)
 
+  def testOpenGateOnScientist(self):
+    self.assertEqual(len(self.state.gates), 1)
+    self.assertIsNone(self.square.gate)
+    scientist = characters.Scientist()
+    self.state.characters.append(scientist)
+    self.state.all_characters["Scientist"] = scientist
+    scientist.place = self.square
+
+    self.state.event_stack.append(OpenGate("Square"))
+    self.resolve_until_done()
+
+    self.assertEqual(len(self.state.gates), 1)
+    self.assertIsNone(self.square.gate)
+    self.assertFalse(self.square.sealed)
+
+  def testOpenGateAwayFromScientist(self):
+    self.assertEqual(len(self.state.gates), 1)
+    self.assertIsNone(self.square.gate)
+    scientist = characters.Scientist()
+    self.state.characters.append(scientist)
+    self.state.all_characters["Scientist"] = scientist
+    scientist.place = self.woods
+
+    self.state.event_stack.append(OpenGate("Square"))
+    self.resolve_until_done()
+
+    self.assertEqual(len(self.state.gates), 0)
+    self.assertIsNotNone(self.square.gate)
+    self.assertFalse(self.square.sealed)
+
   def testOpenGateDrawMonstersCancelled(self):
     self.assertEqual(self.state.characters[0].place.name, "Diner")
     self.assertEqual(self.state.characters[1].place.name, "Square")

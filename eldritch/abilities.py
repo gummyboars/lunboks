@@ -89,6 +89,12 @@ def CreateSkills():
   return skills
 
 
+class FluxStabilizer(assets.Asset):
+
+  def __init__(self):
+    super().__init__("Flux Stabilizer")
+
+
 class Medicine(assets.Asset):
 
   def __init__(self):
