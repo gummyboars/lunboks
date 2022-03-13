@@ -822,6 +822,76 @@ class CombatWithItems(EventTest):
     self.assertFalse(self.char.possessions[2].active)
 
 
+class MonsterAppearsTest(EventTest):
+
+  def setUp(self):
+    super().setUp()
+    self.char.place = self.state.places["Graveyard"]
+    self.char.speed_sneak_slider = 2
+    self.maniac = monsters.Maniac()
+    self.state.monsters = [self.maniac]
+    self.maniac.place = self.state.monster_cup
+
+  def testEvadeMonster(self):
+    appears = MonsterAppears(self.char)
+    self.state.event_stack.append(appears)
+    choice = self.resolve_to_choice(MultipleChoice)
+    self.assertEqual(choice.monster, self.state.monsters[0])
+    choice.resolve(self.state, "Evade")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+    self.assertEqual(self.state.monsters[0].place, self.state.monster_cup)
+    self.assertFalse(self.char.trophies)
+
+  def testFightMonster(self):
+    appears = MonsterAppears(self.char)
+    self.state.event_stack.append(appears)
+    choice = self.resolve_to_choice(MultipleChoice)
+    self.assertEqual(choice.monster, self.state.monsters[0])
+    choice.resolve(self.state, "Fight")
+    choice = self.resolve_to_choice(MultipleChoice)
+    choice.resolve(self.state, "Fight")
+    choice = self.resolve_to_choice(CombatChoice)
+    choice.resolve(self.state, "done")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+    self.assertIsNone(self.state.monsters[0].place)
+    self.assertEqual(len(self.char.trophies), 1)
+    self.assertEqual(self.char.trophies[0], self.state.monsters[0])
+
+  def testLoseToMonster(self):
+    self.char.stamina = 1
+    appears = MonsterAppears(self.char)
+    self.state.event_stack.append(appears)
+    choice = self.resolve_to_choice(MultipleChoice)
+    self.assertEqual(choice.monster, self.state.monsters[0])
+    choice.resolve(self.state, "Fight")
+    choice = self.resolve_to_choice(MultipleChoice)
+    choice.resolve(self.state, "Fight")
+    choice = self.resolve_to_choice(CombatChoice)
+    choice.resolve(self.state, "done")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
+      loss_choice = self.resolve_to_choice(ItemChoice)
+    loss_choice.resolve(self.state, "done")
+    self.resolve_until_done()
+    self.assertEqual(self.state.monsters[0].place, self.state.monster_cup)
+    self.assertFalse(self.char.trophies)
+    self.assertEqual(self.char.place.name, "Hospital")
+
+  def testNothingInSealedLocation(self):
+    self.state.places["Graveyard"].sealed = True
+    appears = MonsterAppears(self.char)
+    self.state.event_stack.append(appears)
+    self.resolve_until_done()
+
+  def testNothingWithScientist(self):
+    self.state.characters.append(self.state.all_characters["Scientist"])
+    self.state.characters[-1].place = self.state.places["Graveyard"]
+    appears = MonsterAppears(self.char)
+    self.state.event_stack.append(appears)
+    self.resolve_until_done()
+
+
 class AmbushTest(EventTest):
 
   def testAmbush(self):

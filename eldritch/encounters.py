@@ -438,8 +438,7 @@ def Store7(char):
 
 
 def Graveyard1(char):
-  # TODO: A monster appears
-  return events.Nothing()
+  return events.MonsterAppears(char)
 
 
 def Graveyard2(char):

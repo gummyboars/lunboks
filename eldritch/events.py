@@ -2823,13 +2823,24 @@ class EvadeOrCombat(Event):
   def __init__(self, character, monster):
     self.character = character
     self.monster = monster
-    self.combat: Combat = Combat(character, monster)
-    self.evade: EvadeRound = EvadeRound(character, monster)
-    prompt = f"Fight the {monster.name} or evade it?"
-    self.choice: Event = BinaryChoice(character, prompt, "Fight", "Evade", self.combat, self.evade)
-    self.choice.events[0].monster = monster
+    self.combat: Optional[Combat] = None
+    self.evade: Optional[EvadeRound] = None
+    self.choice: Optional[Event] = None
 
   def resolve(self, state):
+    if isinstance(self.monster, DrawMonstersFromCup):
+      if self.monster.is_cancelled() or len(self.monster.monsters) != 1:
+        self.cancelled = True
+        return
+      self.monster = state.monsters[self.monster.monsters[0]]
+
+    if self.choice is None:
+      self.combat = Combat(self.character, self.monster)
+      self.evade = EvadeRound(self.character, self.monster)
+      prompt = f"Fight the {self.monster.name} or evade it?"
+      self.choice = BinaryChoice(self.character, prompt, "Fight", "Evade", self.combat, self.evade)
+      self.choice.events[0].monster = self.monster
+
     if not self.choice.is_done():
       state.event_stack.append(self.choice)
       return
@@ -2840,6 +2851,8 @@ class EvadeOrCombat(Event):
       return
 
   def is_resolved(self):
+    if self.choice is None:
+      return False
     return self.combat.is_done() or (self.evade.is_resolved() and self.evade.evaded)
 
   def start_str(self):
@@ -3089,6 +3102,15 @@ class TakeTrophy(Event):
 
   def finish_str(self):
     return f"{self.character.name} took a {self.monster.name} as a trophy"
+
+
+class MonsterAppears(Conditional):
+
+  def __init__(self, character):
+    draw = DrawMonstersFromCup(1, character)
+    appears = Sequence([draw, EvadeOrCombat(character, draw)], character)
+    unstable = values.PlaceUnstable(character.place)
+    super().__init__(character, unstable, "", {0: Nothing(), 1: appears})
 
 
 class Travel(Event):
