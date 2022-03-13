@@ -479,7 +479,8 @@ def Graveyard6(char):
 
 
 def Graveyard7(char):
-  return events.Nothing()  # TODO: take a monster trophy from the cup
+  draw = events.DrawMonstersFromCup(1, char)
+  return events.Sequence([draw, events.TakeTrophy(char, draw)], char)
 
 
 def Society1(char):

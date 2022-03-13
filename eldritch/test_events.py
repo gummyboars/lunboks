@@ -1508,6 +1508,47 @@ class DiscardNamedTest(EventTest):
     self.assertEqual(discard.finish_str(), "Dummy did not have a Food to discard")
 
 
+class TakeTrophyTest(EventTest):
+
+  def testTakeTrophy(self):
+    take = TakeTrophy(self.char, self.state.monsters[0])
+    self.state.event_stack.append(take)
+    self.resolve_until_done()
+    self.assertTrue(take.is_resolved())
+    self.assertEqual(len(self.char.trophies), 1)
+    self.assertEqual(self.char.trophies[0], self.state.monsters[0])
+    self.assertIsNone(self.state.monsters[0].place)
+    self.assertEqual(self.state.monsters[1].place, self.state.monster_cup)
+
+  def testTakeTrophyFromBoard(self):
+    self.state.monsters[0].place = self.state.places["Graveyard"]
+    self.state.monsters[1].place = self.state.places["Cave"]
+    choose = MonsterOnBoardChoice(self.char, "choose")
+    take = TakeTrophy(self.char, choose)
+    self.state.event_stack.append(Sequence([choose, take], self.char))
+    choice = self.resolve_to_choice(MonsterOnBoardChoice)
+    self.assertCountEqual(choice.choices, ["Cultist0", "Maniac1"])
+    choice.resolve(self.state, "Maniac1")
+    self.resolve_until_done()
+    self.assertTrue(take.is_resolved())
+    self.assertEqual(len(self.char.trophies), 1)
+    self.assertEqual(self.char.trophies[0], self.state.monsters[1])
+    self.assertIsNone(self.state.monsters[1].place)
+    self.assertEqual(self.state.monsters[0].place, self.state.places["Graveyard"])
+
+  def testTakeTrophyFromCup(self):
+    draw = DrawMonstersFromCup(1, self.char)
+    take = TakeTrophy(self.char, draw)
+    self.state.event_stack.append(Sequence([draw, take], self.char))
+    with mock.patch.object(events.random, "sample", new=mock.MagicMock(return_value=[1])):
+      self.resolve_until_done()
+    self.assertTrue(take.is_resolved())
+    self.assertEqual(len(self.char.trophies), 1)
+    self.assertEqual(self.char.trophies[0], self.state.monsters[1])
+    self.assertIsNone(self.state.monsters[1].place)
+    self.assertEqual(self.state.monsters[0].place, self.state.monster_cup)
+
+
 class ReturnMonstersAndGatesTest(EventTest):
 
   def testReturnMonster(self):
