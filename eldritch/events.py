@@ -3359,6 +3359,7 @@ class OpenGate(Event):
   def __init__(self, location_name):
     self.location_name = location_name
     self.opened = None
+    self.draw_monsters: Optional[Event] = None
     self.spawn: Optional[Event] = None
 
   def resolve(self, state):
@@ -3375,23 +3376,35 @@ class OpenGate(Event):
     if not state.places[self.location_name].is_unstable(state):
       self.opened = False
       return
-    if state.places[self.location_name].gate is not None:
-      self.opened = False
-      self.spawn = MonsterSurge(self.location_name)
+
+    if self.draw_monsters is None:
+      if state.places[self.location_name].gate is not None:  # Monster surge
+        self.opened = False
+        open_gates = [place for place in state.places.values() if getattr(place, "gate", None)]
+        count = max(len(open_gates), len(state.characters))
+      else:  # Regular gate opening
+        self.opened = True
+        count = 2 if len(state.characters) > 4 else 1
+      self.draw_monsters = DrawMonstersFromCup(count)
+      state.event_stack.append(self.draw_monsters)
+      return
+
+    if not self.opened:  # Monster surge
+      gates = [name for name, place in state.places.items() if getattr(place, "gate", None)]
+      self.spawn = MonsterSpawnChoice(self.draw_monsters, self.location_name, gates)
       state.event_stack.append(self.spawn)
       return
 
     # TODO: if there are no gates tokens left, the ancient one awakens
-    self.opened = state.gates.popleft()
-    state.places[self.location_name].gate = self.opened
-    state.places[self.location_name].clues = 0  # TODO: this should be its own event
+    state.places[self.location_name].gate = state.gates.popleft()
+    state.places[self.location_name].clues = 0
     # TODO: AddDoom event
-    self.spawn = SpawnGateMonster(self.location_name)
+    self.spawn = MonsterSpawnChoice(self.draw_monsters, self.location_name, [self.location_name])
     state.event_stack.append(self.spawn)
 
   def is_resolved(self):
-    if self.spawn is not None:
-      return self.spawn.is_done()
+    if self.draw_monsters is not None:
+      return self.spawn is not None and self.spawn.is_done()
     return self.opened is not None
 
   def start_str(self):
@@ -3399,16 +3412,43 @@ class OpenGate(Event):
 
   def finish_str(self):
     if self.opened:
-      return f"A gate to {self.opened.name} appeared at {self.location_name}."
+      return f"A gate appeared at {self.location_name}."
+    if self.spawn:
+      return f"A monster surge occurred at {self.location_name}."
     return f"A gate did not appear at {self.location_name}."
+
+
+class DrawMonstersFromCup(Event):
+
+  def __init__(self, count=1, character=None):
+    self.character = character
+    self.count = count
+    self.monsters = None
+
+  def resolve(self, state):
+    monster_indexes = [
+        idx for idx, monster in enumerate(state.monsters) if monster.place == state.monster_cup
+    ]
+    # TODO: if there are no monsters left, the ancient one awakens.
+    self.monsters = random.sample(monster_indexes, self.count)
+
+  def is_resolved(self):
+    return self.monsters is not None
+
+  def start_str(self):
+    return ""
+
+  def finish_str(self):
+    return ""
 
 
 class MonsterSpawnChoice(ChoiceEvent):
 
-  def __init__(self):
-    self.location_name = None
+  def __init__(self, draw_monsters, location_name, open_gates):
+    self.draw_monsters = draw_monsters
+    self.location_name = location_name
+    self.open_gates = open_gates
     self.spawned = None
-    self.open_gates = None
     self.max_count = None
     self.min_count = None
     self.spawn_count = None
@@ -3416,14 +3456,6 @@ class MonsterSpawnChoice(ChoiceEvent):
     self.num_clears = None
     self.character = None
     self.to_spawn = None
-
-  @abc.abstractmethod
-  def compute_open_gates(self, state):
-    pass
-
-  @abc.abstractmethod
-  def initial_count(self, state):
-    pass
 
   @staticmethod
   def spawn_counts(to_spawn, on_board, in_outskirts, monster_limit, outskirts_limit):
@@ -3450,27 +3482,24 @@ class MonsterSpawnChoice(ChoiceEvent):
     return available_board_count, in_outskirts, to_cup, num_clears
 
   def compute_choices(self, state):
+    if self.draw_monsters.is_cancelled() or len(self.draw_monsters.monsters) < 1:
+      self.cancelled = True
+      return
     if self.to_spawn is not None:
       return
     if self.location_name is not None:
       assert getattr(state.places[self.location_name], "gate", None) is not None
-    self.compute_open_gates(state)
     open_count = len(self.open_gates)
     on_board = len([m for m in state.monsters if isinstance(m.place, places.CityPlace)])
     in_outskirts = len([m for m in state.monsters if isinstance(m.place, places.Outskirts)])
     self.spawn_count, self.outskirts_count, cup_count, self.num_clears = self.spawn_counts(
-        self.initial_count(state), on_board, in_outskirts,
+        len(self.draw_monsters.monsters), on_board, in_outskirts,
         state.monster_limit(), state.outskirts_limit(),
     )
     self.min_count = self.spawn_count // open_count
     self.max_count = (self.spawn_count + open_count - 1) // open_count
     self.character = state.characters[state.first_player]
-    monster_indexes = [
-        idx for idx, monster in enumerate(state.monsters) if monster.place == state.monster_cup]
-    # TODO: if there are no monsters left, the ancient one awakens.
-    self.to_spawn = random.sample(
-        monster_indexes, self.spawn_count + self.outskirts_count + cup_count
-    )
+    self.to_spawn = self.draw_monsters.monsters[:]
 
     # Don't ask the user for a choice in the simple case of one gate, no outskirts.
     if len(self.open_gates) == 1 and self.outskirts_count == 0 and cup_count == 0:
@@ -3514,34 +3543,6 @@ class MonsterSpawnChoice(ChoiceEvent):
 
   def finish_str(self):
     return ""
-
-
-class SpawnGateMonster(MonsterSpawnChoice):
-
-  def __init__(self, location_name):
-    super().__init__()
-    self.location_name = location_name
-
-  def compute_open_gates(self, state):
-    self.open_gates = [self.location_name]
-
-  def initial_count(self, state):
-    return 2 if len(state.characters) > 4 else 1
-
-
-class MonsterSurge(MonsterSpawnChoice):
-
-  def __init__(self, location_name):
-    super().__init__()
-    self.location_name = location_name  # May be None for certain mythos cards.
-
-  def compute_open_gates(self, state):
-    self.open_gates = [
-        name for name, place in state.places.items() if getattr(place, "gate", None) is not None
-    ]
-
-  def initial_count(self, state):
-    return max(len(self.open_gates), len(state.characters))
 
 
 class SpawnClue(Event):
