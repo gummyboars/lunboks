@@ -293,6 +293,7 @@ class RoadhouseTest(EncounterTest):
 
   def testRoadhouse1No(self):
     self.char.clues = 3
+    self.state.common.append(items.Food(0))
     self.state.allies.append(assets.TravelingSalesman())
     self.state.event_stack.append(encounters.Roadhouse1(self.char))
     choice = self.resolve_to_choice(SpendChoice)
@@ -304,6 +305,7 @@ class RoadhouseTest(EncounterTest):
 
   def testRoadhouse1Yes(self):
     self.char.clues = 3
+    self.state.common.extend([items.Food(0), items.Food(1)])
     self.state.allies.append(assets.TravelingSalesman())
     self.state.event_stack.append(encounters.Roadhouse1(self.char))
     choice = self.resolve_to_choice(SpendChoice)
@@ -312,12 +314,13 @@ class RoadhouseTest(EncounterTest):
     self.resolve_until_done()
     self.assertEqual(self.char.clues, 0)
     self.assertEqual(len(self.state.allies), 0)
-    self.assertEqual(len(self.char.possessions), 1)
+    self.assertEqual(len(self.char.possessions), 2)
     self.assertEqual(self.char.possessions[0].name, "Traveling Salesman")
+    self.assertEqual(self.char.possessions[1].name, "Food")  # Draw a common item when they join you
 
   def testRoadhouse1Reward(self):
     self.char.clues = 3
-    self.state.common.extend([items.Revolver38(0), items.Food(0)])
+    self.state.common.extend([items.Revolver38(0), items.Food(0), items.Food(1)])
     self.state.event_stack.append(encounters.Roadhouse1(self.char))
     choice = self.resolve_to_choice(SpendChoice)
     self.spend("clues", 3, choice)
@@ -582,15 +585,18 @@ class LodgeTest(EncounterTest):
 
   def testLodge2PassAlly(self):
     self.state.event_stack.append(encounters.Lodge2(self.char))
+    self.state.unique.extend([items.HolyWater(0), items.HolyWater(1)])
     self.state.allies.append(assets.Thief())
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       self.resolve_until_done()
-    self.assertEqual(len(self.char.possessions), 1)
+    self.assertEqual(len(self.char.possessions), 2)
     self.assertEqual(self.char.possessions[0].name, "Thief")
+    # Draw a unique item when they join you.
+    self.assertEqual(self.char.possessions[1].name, "Holy Water")
 
   def testLodge2PassReward(self):
     self.state.event_stack.append(encounters.Lodge2(self.char))
-    self.state.unique.append(items.HolyWater(0))
+    self.state.unique.extend([items.HolyWater(0), items.HolyWater(1)])
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       self.resolve_until_done()
     self.assertEqual(len(self.char.possessions), 1)
@@ -947,28 +953,31 @@ class WitchHouseTest(EncounterTest):
     self.char.place = self.state.places["WitchHouse"]
 
   def testWitchHouse1Fail(self):
+    self.state.spells.extend([items.Wither(0), items.Voice(0)])
     self.state.allies.extend([assets.PoliceDetective()])
     self.state.event_stack.append(encounters.WitchHouse1(self.char))
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=1)):
       self.resolve_until_done()
     self.assertEqual(len(self.char.possessions), 0)
+    self.assertEqual(self.char.clues, 0)
 
   def testWitchHouse1PassAlly(self):
+    self.state.spells.extend([items.Wither(0), items.Voice(0)])
     self.state.allies.extend([assets.PoliceDetective()])
     self.state.event_stack.append(encounters.WitchHouse1(self.char))
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       self.resolve_until_done()
-    self.assertEqual(len(self.char.possessions), 1)
+    self.assertEqual(len(self.char.possessions), 2)
     self.assertEqual(self.char.possessions[0].name, "Police Detective")
+    self.assertEqual(self.char.possessions[1].name, "Wither")  # Draw a spell when they join you
 
   def testWitchHouse1PassReward(self):
-    # TODO: ally not available
-    # self.state.event_stack.append(encounters.WitchHouse1(self.char))
-    # with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
-    #   self.resolve_until_done()
-    # self.assertEqual(len(self.char.possessions), 0)
-    # self.assertEqual(self.char.clues, 2)
-    pass
+    self.state.spells.extend([items.Wither(0), items.Voice(0)])
+    self.state.event_stack.append(encounters.WitchHouse1(self.char))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+    self.assertEqual(len(self.char.possessions), 0)
+    self.assertEqual(self.char.clues, 2)
 
   def testWitchHouse2Pass(self):
     self.state.event_stack.append(encounters.WitchHouse2(self.char))
@@ -2487,6 +2496,7 @@ class SquareTest(EncounterTest):
       self.resolve_until_done()
     self.assertEqual(len(self.state.allies), 0)
     self.assertEqual(self.char.possessions[0].name, "Fortune Teller")
+    self.assertEqual(self.char.clues, 2)  # Gain 2 clues when they join you.
 
   def testSquare2PassReward(self):
     self.state.event_stack.append(encounters.Square2(self.char))
@@ -2502,6 +2512,7 @@ class SquareTest(EncounterTest):
       self.resolve_until_done()
     self.assertEqual(len(self.state.allies), 1)
     self.assertEqual(len(self.char.possessions), 0)
+    self.assertEqual(self.char.clues, 0)
 
   def testSquare3Pass(self):
     self.state.event_stack.append(encounters.Square3(self.char))
