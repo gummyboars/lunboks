@@ -142,8 +142,32 @@ function renderDefaultToCanvas(cnv, width, height, assetName, variant) {
   if (["Deputy", "Deputy's Revolver", "Patrol Wagon"].includes(assetName)) {
     return renderTextRectangle(cnv, assetName, "dimgray", "black");
   }
-  if (gateCards.includes(assetName)) {
+  if (assetName == "Lodge Membership") {
+    return renderTextRectangle(cnv, assetName, "steelblue", "black");
+  }
+  if (assetName == "Retainer") {
+    return renderTextRectangle(cnv, assetName, "yellowgreen", "black");
+  }
+  if (assetName == "Blessing") {
+    return renderTextRectangle(cnv, assetName, "lightblue", "black");
+  }
+  if (assetName == "Curse") {
+    return renderTextRectangle(cnv, assetName, "darkred", "black");
+  }
+  if (assetName == "Bank Loan") {
     return renderTextRectangle(cnv, assetName, "white", "black");
+  }
+  if (gateCards.includes(assetName)) {
+    if (assetName.length < 6 || assetName < "Gate13") {
+      return renderTextRectangle(cnv, assetName, "skyblue", "black");
+    }
+    if (assetName < "Gate25") {
+      return renderTextRectangle(cnv, assetName, "yellowgreen", "black");
+    }
+    if (assetName < "Gate37") {
+      return renderTextRectangle(cnv, assetName, "firebrick", "black");
+    }
+    return renderTextRectangle(cnv, assetName, "khaki", "black");
   }
   if (mythosCards.includes(assetName)) {
     return renderTextRectangle(cnv, assetName, "white", "black");
