@@ -119,6 +119,12 @@ abilityNames = [
   "Flux Stabilizer",
 ];
 carefullyAdd(abilityNames);
+otherNames = [
+  "Deputy",
+  "Deputy's Revolver",
+  "Patrol Wagon",
+];
+carefullyAdd(otherNames);
 monsterNames = [
   "Giant Insect",
   "Land Squid",

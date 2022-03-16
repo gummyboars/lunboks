@@ -75,7 +75,7 @@ class Asset(metaclass=abc.ABCMeta):
 
 class Card(Asset):
 
-  DECKS = {"common", "unique", "spells", "skills", "allies"}
+  DECKS = {"common", "unique", "spells", "skills", "allies", "tradables", "specials"}
   VALID_BONUS_TYPES = CHECK_TYPES | SUB_CHECKS.keys() | COMBAT_SUBTYPES
 
   def __init__(self, name, idx, deck, active_bonuses, passive_bonuses):
@@ -205,6 +205,22 @@ class ToughGuy(Card):
   def get_override(self, other, attribute):
     if attribute == "overwhelming":
       return False
+    return None
+
+
+class Deputy(Card):
+
+  def __init__(self):
+    super().__init__("Deputy", None, "specials", {}, {})
+
+  def get_trigger(self, event, owner, state):
+    if isinstance(event, events.UpkeepActions) and event.character == owner:
+      return events.Gain(owner, {"dollars": 1})
+    if isinstance(event, events.KeepDrawn) and self.name in event.kept:
+      return events.Sequence([
+          events.DrawSpecific(owner, "tradables", "Deputy's Revolver"),
+          events.DrawSpecific(owner, "tradables", "Patrol Wagon"),
+      ], owner)
     return None
 
 

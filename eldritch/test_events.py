@@ -1028,6 +1028,7 @@ class InsaneUnconsciousTest(EventTest):
     self.char.stamina = 2
     self.char.possessions.extend([
         assets.Dog(), abilities.Marksman(0), items.Cross(0), items.MagicLamp(0), items.Wither(0),
+        assets.Deputy(), items.DeputysRevolver(), items.PatrolWagon(),
     ])
     self.state.event_stack.append(Loss(self.char, {"sanity": 2, "stamina": 3}))
     self.resolve_until_done()
@@ -1036,6 +1037,10 @@ class InsaneUnconsciousTest(EventTest):
     self.assertTrue(math.isinf(self.char.lose_turn_until))
     for deck in ["common", "unique", "spells", "skills", "allies"]:
       self.assertEqual(len(getattr(self.state, deck)), 1)
+    self.assertCountEqual(
+        [item.name for item in self.state.tradables], ["Deputy's Revolver", "Patrol Wagon"],
+    )
+    self.assertEqual([item.name for item in self.state.specials], ["Deputy"])
 
 
 class SplitGainTest(EventTest):
@@ -2291,6 +2296,16 @@ class LossChoiceTest(EventTest):
     self.assertTrue(choice.is_resolved())
 
   def testCanSkipLosableItems(self):
+    choice = ItemLossChoice(self.char, "choose", 3)
+    self.state.event_stack.append(choice)
+    choice = self.resolve_to_choice(ItemLossChoice)
+    choice.resolve(self.state, "Holy Water0")
+    choice.resolve(self.state, ".38 Revolver0")
+    choice.resolve(self.state, "done")
+    self.assertTrue(choice.is_resolved())
+
+  def testRevolverIsNotLosable(self):
+    self.char.possessions.append(items.DeputysRevolver())
     choice = ItemLossChoice(self.char, "choose", 3)
     self.state.event_stack.append(choice)
     choice = self.resolve_to_choice(ItemLossChoice)

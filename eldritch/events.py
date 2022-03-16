@@ -15,6 +15,9 @@ random = SystemRandom()
 # pylint: disable=attribute-defined-outside-init
 # TODO: turn this back on when all events call super().__init__() to get a cancelled attribute
 
+# TODO: pull this from Card class without creating an import loop
+DECKS = {"common", "unique", "spells", "skills", "allies", "tradables", "specials"}
+
 
 class Event(metaclass=abc.ABCMeta):
   """An Event represents an Event that is resolved by the event loop.
@@ -802,8 +805,7 @@ class InsaneOrUnconscious(StackClearMixin, Event):
       return
 
     if not self.lose_items:
-      item_count = values.ItemDeckCount(self.character, {"common", "unique", "spells"})
-      lose_count = values.Calculation(item_count, None, operator.floordiv, 2)
+      lose_count = values.Calculation(values.ItemCount(self.character), None, operator.floordiv, 2)
       self.lose_items = LoseItems(self.character, lose_count)
       state.event_stack.append(self.lose_items)
       return
@@ -1042,7 +1044,7 @@ class ForceMovement(Event):
 class DrawItems(Event):
 
   def __init__(self, character, deck, draw_count, prompt="Choose a card", target_type=None):
-    assert deck in {"common", "unique", "spells", "skills", "allies"}
+    assert deck in DECKS
     self.character = character
     self.deck = deck
     self.prompt = prompt
@@ -1469,7 +1471,7 @@ class DrawGateCard(Event):
 class DrawNamed(Event):
 
   def __init__(self, character, deck, item_name):
-    assert deck in {"common", "unique", "spells", "skills", "allies"}
+    assert deck in DECKS
     self.character = character
     self.deck = deck
     self.item_name = item_name
@@ -1483,7 +1485,8 @@ class DrawNamed(Event):
         break
     else:
       self.drawn = []
-    random.shuffle(getattr(state, self.deck))
+    if self.deck not in {"specials", "tradables"}:
+      random.shuffle(getattr(state, self.deck))
 
   def is_resolved(self):
     return self.drawn is not None
@@ -1845,7 +1848,7 @@ class DeactivateSpells(Event):
     return ""
 
 
-def LoseItems(character, count, prompt=None, decks=None, item_type="item"):
+def LoseItems(character, count, prompt=None, decks=None, item_type=None):
   prompt = prompt or "Choose items to lose"
   choice = ItemLossChoice(character, prompt, count, decks=decks, item_type=item_type)
   loss = DiscardSpecific(character, choice)
@@ -2471,16 +2474,16 @@ def BinarySpend(
 
 class ItemChoice(ChoiceEvent):
 
-  def __init__(self, character, prompt, decks=None, item_type="item"):
+  def __init__(self, character, prompt, decks=None, item_type=None):
     self.character = character
     self._prompt = prompt
     self.choices = None
     self.chosen = []
     if decks is None:
-      decks = {"spells", "common", "unique", "skills", "allies"}  # TODO: keep in sync with assets
-    assert not decks - {"spells", "common", "unique", "skills", "allies"}, f"invalid decks {decks}"
+      decks = {"common", "unique", "spells", "tradables"}
+    assert not decks - DECKS, f"invalid decks {decks}"
     self.decks = decks
-    assert item_type in {None, "item", "weapon", "tome"}
+    assert item_type in {None, "weapon", "tome"}
     self.item_type = item_type
     self.done = False
 
@@ -2512,10 +2515,7 @@ class ItemChoice(ChoiceEvent):
   def _matches_type(self, pos):
     if self.item_type is None:
       return True
-    if self.item_type != "item":
-      return getattr(pos, "item_type", None) == self.item_type
-    # TODO: deputy's revolver, patrol wagon, rail pass
-    return getattr(pos, "deck", None) in {"spells", "common", "unique"}
+    return getattr(pos, "item_type", None) == self.item_type
 
   def is_resolved(self):
     return self.done
@@ -2554,7 +2554,7 @@ class CombatChoice(ItemChoice):
 
 class ItemCountChoice(ItemChoice):
 
-  def __init__(self, character, prompt, count, min_count=None, decks=None, item_type="item"):
+  def __init__(self, character, prompt, count, min_count=None, decks=None, item_type=None):
     super().__init__(character, prompt, decks=decks, item_type=item_type)
     self.count = count
     self.min_count = count if min_count is None else min_count
@@ -2575,7 +2575,7 @@ class ItemCountChoice(ItemChoice):
 
 class ItemLossChoice(ItemChoice):
 
-  def __init__(self, character, prompt, count, decks=None, item_type="item"):
+  def __init__(self, character, prompt, count, decks=None, item_type=None):
     super().__init__(character, prompt, decks=decks, item_type=item_type)
     self.count = count
 
@@ -2873,7 +2873,7 @@ class Combat(Event):
     self.monster = monster
     self.horror: Optional[Event] = None
     self.sanity_loss: Optional[Event] = None
-    self.choice: Optional[ChoiceEvent] = None
+    self.choice: Optional[Sequence] = None
     self.evade: Optional[EvadeRound] = None
     self.combat: Optional[CombatRound] = None
     self.done = False

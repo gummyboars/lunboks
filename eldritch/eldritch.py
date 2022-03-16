@@ -51,6 +51,8 @@ class GameState:
     self.spells = collections.deque()
     self.skills = collections.deque()
     self.allies = collections.deque()
+    self.tradables = []
+    self.specials = []
     self.mythos = collections.deque()
     self.gates = collections.deque()
     self.gate_cards = collections.deque()
@@ -120,15 +122,17 @@ class GameState:
     self.spells.extend(items.CreateSpells())
     self.skills.extend(abilities.CreateSkills())
     self.allies.extend(assets.CreateAllies())
-    handles = [
-        card.handle for card in self.common + self.unique + self.spells + self.skills + self.allies
-    ]
+    self.tradables.extend(items.CreateTradables())
+    self.specials.extend(items.CreateSpecials())
+    all_cards = self.common + self.unique + self.spells + self.skills + self.allies
+    all_cards += self.tradables + self.specials
+    handles = [card.handle for card in all_cards]
     assert len(handles) == len(set(handles))
 
     self.mythos.extend(mythos.CreateMythos())
 
     # Shuffle the decks.
-    for deck in assets.Card.DECKS | {"gate_cards", "mythos"}:
+    for deck in assets.Card.DECKS | {"gate_cards", "mythos"} - {"tradables", "specials"}:
       random.shuffle(getattr(self, deck))
     # Place initial clues.
     for place in self.places.values():
