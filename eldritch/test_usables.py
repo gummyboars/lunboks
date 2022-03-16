@@ -10,6 +10,7 @@ if os.path.abspath(sys.path[0]) == os.path.dirname(os.path.abspath(__file__)):
   sys.path[0] = os.path.dirname(sys.path[0])
 
 from eldritch import abilities
+from eldritch import assets
 from eldritch import characters
 from eldritch import encounters
 from eldritch import events
@@ -168,6 +169,60 @@ class RerollTest(EventTest):
     self.assertTrue(reroll.events[1].is_cancelled())
     self.assertEqual(self.check.roll, old_roll)
     self.assertEqual(self.check.successes, old_successes)
+
+
+class DeputyTest(EventTest):
+
+  def testBecomingDeputyGivesItems(self):
+    self.state.tradables.extend(items.CreateTradables())
+    self.state.specials.extend(items.CreateSpecials())
+    self.state.event_stack.append(DrawSpecific(self.char, "specials", "Deputy"))
+    self.resolve_until_done()
+    self.assertEqual(len(self.char.possessions), 3)
+    self.assertCountEqual(
+        [pos.name for pos in self.char.possessions],
+        ["Deputy", "Deputy's Revolver", "Patrol Wagon"],
+    )
+
+  def testGainADollarDuringUpkeep(self):
+    self.char.possessions.append(assets.Deputy())
+    self.assertEqual(self.char.dollars, 0)
+    self.state.event_stack.append(Upkeep(self.char))
+    self.resolve_to_choice(SliderInput)
+    self.assertEqual(self.char.dollars, 1)
+
+  def testCannotBeDeputyIfSomeoneElseIs(self):
+    buddy = characters.Character("Buddy", 5, 5, 4, 4, 4, 4, 4, 4, 4, "Square")
+    buddy.place = self.state.places["Square"]
+    self.state.all_characters["Buddy"] = buddy
+    self.state.characters.append(buddy)
+
+    self.state.tradables.extend(items.CreateTradables())
+    self.state.specials.extend(items.CreateSpecials())
+
+    self.state.event_stack.append(DrawSpecific(buddy, "specials", "Deputy"))
+    self.resolve_until_done()
+    self.state.event_stack.append(DrawSpecific(self.char, "specials", "Deputy"))
+    self.resolve_until_done()
+
+    self.assertEqual(len(buddy.possessions), 3)
+    self.assertEqual(len(self.char.possessions), 0)
+
+  def testDeputyCardsReturnIfDevoured(self):
+    self.state.tradables.extend([items.DeputysRevolver(), items.PatrolWagon()])
+    self.state.specials.append(assets.Deputy())
+    self.state.event_stack.append(DrawSpecific(self.char, "specials", "Deputy"))
+    self.resolve_until_done()
+
+    self.assertFalse(self.state.tradables)
+    self.assertFalse(self.state.specials)
+
+    self.state.event_stack.append(Devoured(self.char))
+    self.resolve_until_done()
+
+    self.assertEqual(len(self.state.tradables), 2)
+    self.assertEqual(len(self.state.specials), 1)
+    self.assertEqual(self.state.specials[0].name, "Deputy")
 
 
 class OneshotItemTest(EventTest):

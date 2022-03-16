@@ -112,6 +112,33 @@ class CalculationTest(unittest.TestCase):
     self.assertEqual(success.value(None), 1)
 
 
+class ItemCountTest(unittest.TestCase):
+
+  def testNamedItemCount(self):
+    char = DummyChar()
+    char.possessions.extend([Dummy(name="Food"), Dummy(name="Water")])
+    count = ItemNameCount(char, "Food")
+    self.assertEqual(count.value(None), 1)
+    char.possessions.append(Dummy(name="Food"))
+    self.assertEqual(count.value(None), 2)
+    char.possessions.clear()
+    self.assertEqual(count.value(None), 0)
+
+  def testItemDeckCount(self):
+    char = DummyChar()
+    count = ItemCount(char)
+    char.possessions.append(Dummy(name="Revolver", deck="tradables"))
+    char.possessions.append(Dummy(name="Deputy", deck="specials"))
+    self.assertEqual(count.value(None), 1)
+    char.possessions.append(Dummy(name="Food", deck="common"))
+    self.assertEqual(count.value(None), 2)
+    char.possessions = char.possessions[2:]
+    char.possessions.append(Dummy(name="Wagon", deck="tradables"))
+    self.assertEqual(count.value(None), 2)
+    char.possessions.clear()
+    self.assertEqual(count.value(None), 0)
+
+
 class PrerequisiteTest(unittest.TestCase):
 
   def testAttributePrereq(self):

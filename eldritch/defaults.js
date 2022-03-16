@@ -139,6 +139,9 @@ function renderDefaultToCanvas(cnv, width, height, assetName, variant) {
   if (abilityNames.includes(assetName)) {
     return renderTextRectangle(cnv, assetName, "wheat", "black");
   }
+  if (["Deputy", "Deputy's Revolver", "Patrol Wagon"].includes(assetName)) {
+    return renderTextRectangle(cnv, assetName, "dimgray", "black");
+  }
   if (gateCards.includes(assetName)) {
     return renderTextRectangle(cnv, assetName, "white", "black");
   }

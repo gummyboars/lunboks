@@ -1,4 +1,4 @@
-from eldritch.assets import Card
+from eldritch.assets import Card, Deputy
 from eldritch import events
 from eldritch import places
 from eldritch import values
@@ -525,6 +525,22 @@ class FindGate(Spell):
     return events.Return(owner, owner.place.info.name)
 
 
+class DeputysRevolver(Weapon):
+
+  def __init__(self):
+    super().__init__("Deputy's Revolver", None, "tradables", {"physical": 3}, {}, 1, 0)
+    self.losable = False
+
+
+class PatrolWagon(Card):
+
+  def __init__(self):
+    super().__init__("Patrol Wagon", None, "tradables", {}, {})
+
+  def get_interrupt(self, event, owner, state):
+    return None  # TODO: replacing movement
+
+
 def CreateCommon():
   common = []
   for item in [
@@ -564,3 +580,11 @@ def CreateSpells():
   for item, count in counts.items():
     spells.extend([item(idx) for idx in range(count)])
   return spells
+
+
+def CreateTradables():
+  return [DeputysRevolver(), PatrolWagon()]
+
+
+def CreateSpecials():
+  return [Deputy()]

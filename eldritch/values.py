@@ -74,6 +74,10 @@ class ItemDeckCount(Value):
     return sum([getattr(item, "deck", None) in self.decks for item in self.character.possessions])
 
 
+def ItemCount(character):
+  return ItemDeckCount(character, {"common", "unique", "spells", "tradables"})
+
+
 class ItemNameCount(Value):
 
   def __init__(self, character, item_name):
@@ -98,9 +102,7 @@ def ItemDeckPrerequisite(character, deck, threshold=1, operand="at least"):
 
 def ItemCountPrerequisite(character, threshold=1, operand="at least"):
   oper = {"at least": operator.ge, "at most": operator.le, "exactly": operator.eq}[operand]
-  return Calculation(
-      ItemDeckCount(character, {"common", "unique", "spells"}), None, oper, threshold
-  )
+  return Calculation(ItemCount(character), None, oper, threshold)
 
 
 class ContainsPrerequisite(Value):
