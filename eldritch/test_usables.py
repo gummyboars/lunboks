@@ -566,7 +566,8 @@ class MedicineTest(EventTest):
 class MistsTest(EventTest):
   def setUp(self):
     super().setUp()
-    self.char.possessions.append(items.Mists(0))
+    self.mists = items.Mists(0)
+    self.char.possessions.append(self.mists)
 
   def testCombatEvade(self):
     monster = monsters.Cultist()
@@ -579,6 +580,20 @@ class MistsTest(EventTest):
     choice.resolve(self.state, "Cast")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       self.resolve_until_done()
+
+  def testFailToCast(self):
+    monster = monsters.Cultist()
+    self.state.event_stack.append(EvadeOrCombat(self.char, monster))
+    evade_choice = self.resolve_to_choice(MultipleChoice)
+    evade_choice.resolve(self.state, "Evade")
+    self.resolve_to_usable(0, "Mists0", events.CastSpell)
+    self.state.event_stack.append(self.state.usables[0]["Mists0"])
+    choice = self.resolve_to_choice(MultipleChoice)
+    choice.resolve(self.state, "Cast")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=4)):
+      self.resolve_to_choice(MultipleChoice)
+      self.assertNotIn("Mists0", self.state.usables)
+      self.assertTrue(self.mists.exhausted)
 
   def testCastAfterFail(self):
     monster = monsters.Cultist()
