@@ -2953,9 +2953,10 @@ class PassEvadeRound(Event):
   def __init__(
       self, evade_round, log_message="{char_name} passed an evade round against {monster_name}"
   ):
+    self.character = evade_round.character
     self.evade_round = evade_round
     self.log_message = log_message.format(
-        char_name=evade_round.character.name,
+        char_name=self.character.name,
         monster_name=getattr(evade_round.monster, "name", "No Monster")
     )
     self.done = False
@@ -2969,13 +2970,11 @@ class PassEvadeRound(Event):
     if (
         self.evade_round.check
         and self.evade_round.check.spend
-        and not self.evade_round.check.spend.is_cancelled()
+        and not self.evade_round.check.spend.is_done()
     ):
-      state.event_stack.append(CancelEvent(self.evade_round.check.spend))
-      return
-    if self.evade_round.check and not self.evade_round.check.is_cancelled():
-      state.event_stack.append(CancelEvent(self.evade_round.check))
-      return
+      self.evade_round.check.spend.cancelled = True
+    if self.evade_round.check and not self.evade_round.check.is_done():
+      self.evade_round.check.cancelled = True
     self.evade_round.evaded = True
     self.done = True
 

@@ -379,7 +379,8 @@ class FindGateTest(EventTest):
 class FleshWardTest(EventTest):
   def setUp(self):
     super().setUp()
-    self.char.possessions.append(items.FleshWard(0))
+    self.flesh_ward = items.FleshWard(0)
+    self.char.possessions.append(self.flesh_ward)
     self.char.possessions.append(items.TommyGun(0))
 
   def testCombat(self):
@@ -407,9 +408,42 @@ class FleshWardTest(EventTest):
     combat_choice = self.resolve_to_choice(CombatChoice)
     combat_choice.resolve(self.state, "done")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=4)):
-      with self.assertRaises(AssertionError):
-        # no longer usable
-        self.resolve_to_usable(0, "Flesh Ward0", events.CastSpell)
+      self.resolve_to_choice(MultipleChoice)
+      # no longer usable
+      self.assertNotIn("Flesh Ward0", self.state.usables)
+      self.assertFalse(self.state.usables)
+
+  def testFailToCast(self):
+    monster = monsters.Cultist()
+    combat = Combat(self.char, monster)
+    self.state.event_stack.append(combat)
+    fight_or_flee = self.resolve_to_choice(MultipleChoice)
+    fight_or_flee.resolve(self.state, "Fight")
+    combat_choice = self.resolve_to_choice(CombatChoice)
+    combat_choice.resolve(self.state, "done")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=4)):
+      self.resolve_to_usable(0, "Flesh Ward0", events.CastSpell)
+    self.state.event_stack.append(self.state.usables[0]["Flesh Ward0"])
+    choice = self.resolve_to_choice(SpendMixin)
+    self.assertListEqual(choice.choices, ["Cast", "Cancel"])
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=4)):
+      self.spend("sanity", 1, choice)
+      choice.resolve(self.state, "Cast")
+      fight_or_flee = self.resolve_to_choice(MultipleChoice)
+
+    self.assertTrue(self.flesh_ward.exhausted)
+
+    self.assertEqual(self.char.stamina, 4)
+    self.assertEqual(self.char.sanity, 4)
+
+    fight_or_flee.resolve(self.state, "Fight")
+    combat_choice = self.resolve_to_choice(CombatChoice)
+    combat_choice.resolve(self.state, "done")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=4)):
+      self.resolve_to_choice(MultipleChoice)
+      # no longer usable
+      self.assertNotIn("Flesh Ward0", self.state.usables)
+      self.assertFalse(self.state.usables)
 
   def testOverwhelming(self):
     self.char.fight_will_slider = 2
@@ -469,6 +503,19 @@ class FleshWardTest(EventTest):
     self.assertEqual(self.char.stamina, 5)
     # -1 from the spell, -1 from the Loss()
     self.assertEqual(self.char.sanity, 3)
+
+  def testNotUsableAfterDamageReduced(self):
+    self.char.possessions.append(items.Food(0))
+    self.assertEqual(self.char.stamina, 5)
+    self.assertEqual(self.char.sanity, 5)
+    self.state.event_stack.append(Loss(self.char, {"stamina": 1}))
+    self.resolve_to_usable(0, "Flesh Ward0", events.CastSpell)
+    self.state.event_stack.append(self.state.usables[0]["Food0"])
+    self.resolve_until_done()
+    self.assertNotIn("Flesh Ward0", self.state.usables)
+    self.assertEqual(self.char.stamina, 5)
+
+    # TODO: Discard if ancient one awakens
 
 
 class MedicineTest(EventTest):

@@ -366,6 +366,12 @@ class FleshWard(Spell):
         or self.exhausted
     ):
       return None
+    stam_loss = event.losses["stamina"]
+    if (
+        (isinstance(stam_loss, values.Value) and stam_loss.value(state) == 0)
+        or (isinstance(stam_loss, (int, float)) and stam_loss == 0)
+    ):
+      return None
     self.loss = event
     return events.CastSpell(owner, self)
 
@@ -382,6 +388,8 @@ class Mists(Spell):
     if event.is_done() or self.exhausted or getattr(event, "character", None) != owner:
       return None
     # TODO: be able to cast Mists on an EvadeCheck
+    if event.is_done():
+      return None
     if isinstance(event, events.EvadeRound):
       self.difficulty = event.monster.difficulty("evade", state, owner)
       self.evade = event
