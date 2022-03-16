@@ -1269,6 +1269,18 @@ class DrawTest(EventTest):
     self.assertEqual(self.char.possessions[0].name, "Food")
     self.assertEqual(len(self.state.common), 1)
 
+  def testDrawNamedShufflesDeck(self):
+    self.state.common.extend([
+        items.Food(0), items.Food(1), items.TommyGun(0), items.TommyGun(1), items.Bullwhip(0),
+        items.Cross(0), items.Cross(1), items.DarkCloak(0), items.DarkCloak(1), items.Dynamite(0),
+    ])
+    names = [item.name for item in self.state.common if item.name != "Bullwhip"]
+    self.state.event_stack.append(DrawSpecific(self.char, "common", "Bullwhip"))
+    self.resolve_until_done()
+    new_names = [item.name for item in self.state.common]
+    self.assertCountEqual(new_names, names)
+    self.assertNotEqual(new_names, names)  # TODO: 1 in 9!/8 chance of failing
+
 
 class DrawRandomTest(EventTest):
 
