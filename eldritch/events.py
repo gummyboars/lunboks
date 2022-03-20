@@ -1731,6 +1731,7 @@ class CastSpell(Event):
     self.spell.choice = self.choice
     if not self.check:
       self.check = Check(self.character, "spell", self.spell.get_difficulty(state))
+      self.spell.check = self.check
       state.event_stack.append(self.check)
       return
     assert self.check.is_done()

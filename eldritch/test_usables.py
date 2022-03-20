@@ -374,6 +374,109 @@ class FindGateTest(EventTest):
   # TODO: a test covering the ability to cast after travelling during the movement phase
 
 
+class HealTest(EventTest):
+
+  def setUp(self):
+    super().setUp()
+    self.char.place = self.state.places["Uptown"]
+    self.char.possessions.append(items.Heal(0))
+    self.char.stamina = 3
+    self.state.turn_phase = "upkeep"
+
+  def testHeal(self):
+    upkeep = events.UpkeepActions(self.char)
+    self.state.event_stack.append(upkeep)
+    self.resolve_to_usable(0, "Heal0", CastSpell)
+
+    self.state.event_stack.append(self.state.usables[0]["Heal0"])
+    choice = self.resolve_to_choice(SpendMixin)
+    self.assertEqual(choice.choices, ["Cast", "Cancel"])
+    self.spend("sanity", 1, choice)
+    choice.resolve(self.state, "Cast")
+    with mock.patch.object(
+            events.random,
+            "randint",
+            new=mock.MagicMock(side_effect=[5, 1, 1, 1, 1, 1, 1])):
+      choice = self.resolve_to_choice(MultipleChoice)
+    self.assertEqual(choice.choices, ["Dummy"])
+    choice.resolve(self.state, "Dummy")
+    self.resolve_until_done()
+
+    self.assertEqual(self.char.stamina, 4)
+    self.assertEqual(self.char.sanity, 4)
+    self.assertTrue(self.char.possessions[0].exhausted)
+
+  def testHealCapped(self):
+    upkeep = events.UpkeepActions(self.char)
+    self.state.event_stack.append(upkeep)
+    self.resolve_to_usable(0, "Heal0", CastSpell)
+
+    self.state.event_stack.append(self.state.usables[0]["Heal0"])
+    choice = self.resolve_to_choice(SpendMixin)
+    self.assertEqual(choice.choices, ["Cast", "Cancel"])
+    self.spend("sanity", 1, choice)
+    choice.resolve(self.state, "Cast")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      choice = self.resolve_to_choice(MultipleChoice)
+    self.assertEqual(choice.choices, ["Dummy"])
+    choice.resolve(self.state, "Dummy")
+    self.resolve_until_done()
+
+    self.assertEqual(self.char.stamina, 5)
+    self.assertEqual(self.char.sanity, 4)
+    self.assertTrue(self.char.possessions[0].exhausted)
+
+  def testHealFailCast(self):
+    upkeep = events.UpkeepActions(self.char)
+    self.state.event_stack.append(upkeep)
+    self.resolve_to_usable(0, "Heal0", CastSpell)
+
+    self.state.event_stack.append(self.state.usables[0]["Heal0"])
+    choice = self.resolve_to_choice(SpendMixin)
+    self.assertEqual(choice.choices, ["Cast", "Cancel"])
+    self.spend("sanity", 1, choice)
+    choice.resolve(self.state, "Cast")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=4)):
+      self.resolve_until_done()
+
+    self.assertEqual(self.char.stamina, 3)
+    self.assertEqual(self.char.sanity, 4)
+    self.assertTrue(self.char.possessions[0].exhausted)
+
+  def testMultipleOptions(self):
+    all_chars = characters.CreateCharacters()
+    nun = all_chars["Nun"]
+    doctor = all_chars["Doctor"]
+    nun.stamina = 1
+    doctor.stamina = 1
+    nun.place = self.char.place
+    doctor.place = self.state.places["Woods"]
+    self.state.all_characters["Nun"] = nun
+    self.state.all_characters["Doctor"] = doctor
+    self.state.characters.append(nun)
+    self.state.characters.append(doctor)
+
+    upkeep = events.UpkeepActions(self.char)
+    self.state.event_stack.append(upkeep)
+    self.resolve_to_usable(0, "Heal0", CastSpell)
+
+    self.state.event_stack.append(self.state.usables[0]["Heal0"])
+    choice = self.resolve_to_choice(SpendMixin)
+    self.assertEqual(choice.choices, ["Cast", "Cancel"])
+    self.spend("sanity", 1, choice)
+    choice.resolve(self.state, "Cast")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      choice = self.resolve_to_choice(MultipleChoice)
+    self.assertEqual(choice.choices, ["Dummy", "Nun"])
+    choice.resolve(self.state, "Nun")
+    self.resolve_until_done()
+
+    self.assertEqual(nun.stamina, 3)
+    self.assertEqual(self.char.stamina, 3)
+    self.assertEqual(self.char.sanity, 4)
+    self.assertTrue(self.char.possessions[0].exhausted)
+
+
 class MedicineTest(EventTest):
 
   def setUp(self):

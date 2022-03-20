@@ -203,6 +203,7 @@ class Spell(Item):
     self.in_use = False
     self.deactivatable = False
     self.choice = None
+    self.check = None
 
   def get_difficulty(self, state):  # pylint: disable=unused-argument
     return self.difficulty
@@ -345,6 +346,25 @@ class EnchantWeapon(CombatSpell):
     self.active_change = 0
     self.passive_change = 0
     self.weapon = None
+
+
+class Heal(Spell):
+  def __init__(self, idx):
+    super().__init__("Heal", idx, {}, 0, 1, 1)
+
+  def get_usable_interrupt(self, event, owner, state):
+    if not self.exhausted and isinstance(event, events.UpkeepActions):
+      return events.CastSpell(owner, self)
+    return None
+
+  def get_cast_event(self, owner, state):
+    neighbors = [char for char in state.characters if char.place == owner.place]
+    gains = {idx: events.Gain(char, {"stamina": self.check.successes})
+             for idx, char in enumerate(neighbors)}
+    choice = events.MultipleChoice(
+        owner, "Choose a character to heal", [char.name for char in neighbors])
+    cond = events.Conditional(owner, choice, "choice_index", gains)
+    return events.Sequence([choice, cond], owner)
 
 
 class RedSign(CombatSpell):
