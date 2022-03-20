@@ -1326,6 +1326,64 @@ class GlobalModifierTest(EventTest):
     self.assertNotIn("Mythos6", [card.name for card in self.state.mythos])
 
 
+class EnvironmentTests(EventTest):
+
+  def testMythos15Pass(self):
+    self.state.environment = Mythos15()
+    self.state.turn_phase = "movement"
+    self.state.event_stack.append(Movement(self.char))
+    choice = self.resolve_to_choice(CityMovement)
+    choice.resolve(self.state, "Easttown")
+    choice = self.resolve_to_choice(CityMovement)
+    choice.resolve(self.state, "done")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)) as rand:
+      self.resolve_until_done()
+      self.assertGreater(rand.call_count, 0)
+    self.assertEqual(self.char.place.name, "Easttown")
+    self.assertIsNone(self.char.lose_turn_until)
+
+  def testMythos15Fail(self):
+    self.state.environment = Mythos15()
+    self.state.turn_phase = "movement"
+    self.state.event_stack.append(Movement(self.char))
+    choice = self.resolve_to_choice(CityMovement)
+    choice.resolve(self.state, "Easttown")
+    choice = self.resolve_to_choice(CityMovement)
+    choice.resolve(self.state, "done")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)) as rand:
+      self.resolve_until_done()
+      self.assertGreater(rand.call_count, 0)
+    self.assertEqual(self.char.place.name, "Police")
+    self.assertTrue(self.char.lose_turn_until)
+
+  def testMythos15NotInStreet(self):
+    self.state.environment = Mythos15()
+    self.state.turn_phase = "movement"
+    self.state.event_stack.append(Movement(self.char))
+    choice = self.resolve_to_choice(CityMovement)
+    choice.resolve(self.state, "done")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)) as rand:
+      self.resolve_until_done()
+      self.assertEqual(rand.call_count, 0)
+    self.assertEqual(self.char.place.name, "Diner")
+    self.assertIsNone(self.char.lose_turn_until)
+
+  def testMythos15IgnoresDeputy(self):
+    self.state.environment = Mythos15()
+    self.state.turn_phase = "movement"
+    self.state.event_stack.append(Movement(self.char))
+    self.char.possessions.append(items.Deputy())
+    choice = self.resolve_to_choice(CityMovement)
+    choice.resolve(self.state, "Easttown")
+    choice = self.resolve_to_choice(CityMovement)
+    choice.resolve(self.state, "done")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)) as rand:
+      self.resolve_until_done()
+      self.assertEqual(rand.call_count, 0)
+    self.assertEqual(self.char.place.name, "Easttown")
+    self.assertIsNone(self.char.lose_turn_until)
+
+
 class DrawMythosTest(EventTest):
 
   def testMythosShuffle(self):
