@@ -225,6 +225,195 @@ class DeputyTest(EventTest):
     self.assertEqual(self.state.specials[0].name, "Deputy")
 
 
+class WagonTest(EventTest):
+
+  def setUp(self):
+    super().setUp()
+    self.char.possessions.append(items.PatrolWagon())
+    self.state.turn_phase = "movement"
+
+  def testCanWagonInsteadOfMove(self):
+    self.char.place = self.state.places["Square"]
+    self.state.event_stack.append(Movement(self.char))
+    self.resolve_to_choice(CityMovement)
+    self.assertIn(0, self.state.usables)
+    self.assertIn("Patrol Wagon", self.state.usables[0])
+    self.state.event_stack.append(self.state.usables[0]["Patrol Wagon"])
+    choice = self.resolve_to_choice(PlaceChoice)
+    self.assertIn("Woods", choice.choices)
+    self.assertIn("Easttown", choice.choices)
+    # self.assertNotIn("Square", choice.choices)  TODO
+    choice.resolve(self.state, "Woods")
+    self.resolve_until_done()  # CityMovement should get cancelled
+    self.assertEqual(self.char.place.name, "Woods")
+
+  def testCanCancelWagon(self):
+    self.state.event_stack.append(Movement(self.char))
+    self.resolve_to_choice(CityMovement)
+    self.state.event_stack.append(self.state.usables[0]["Patrol Wagon"])
+    choice = self.resolve_to_choice(PlaceChoice)
+    choice.resolve(self.state, "Cancel")
+    self.resolve_to_choice(CityMovement)
+    self.assertIn("Patrol Wagon", self.state.usables[0])  # Can change your mind again and use it.
+
+  def testCannotWagonAfterMoving(self):
+    self.state.event_stack.append(Movement(self.char))
+    move = self.resolve_to_choice(CityMovement)
+    move.resolve(self.state, "Easttown")
+    self.resolve_to_choice(CityMovement)
+    self.assertNotIn(0, self.state.usables)
+
+  def testCanUseTomeBeforeWagon(self):
+    self.state.spells.append(items.Wither(0))
+    self.char.possessions.append(items.AncientTome(0))
+    self.state.event_stack.append(Movement(self.char))
+    self.resolve_to_choice(CityMovement)
+    self.state.event_stack.append(self.state.usables[0]["Ancient Tome0"])
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_to_choice(CityMovement)
+    self.assertIn(0, self.state.usables)
+    self.assertIn("Patrol Wagon", self.state.usables[0])
+    self.assertNotIn("Ancient Tome0", self.state.usables[0])
+    self.assertIn("Wither", [card.name for card in self.char.possessions])
+    self.assertNotIn("Ancient Tome", [card.name for card in self.char.possessions])
+
+    self.state.event_stack.append(self.state.usables[0]["Patrol Wagon"])
+    choice = self.resolve_to_choice(PlaceChoice)
+    choice.resolve(self.state, "Woods")
+    self.resolve_until_done()
+    self.assertEqual(self.char.place.name, "Woods")
+
+  def testCanUseTomeAfterWagon(self):
+    self.state.spells.append(items.Wither(0))
+    self.char.possessions.append(items.AncientTome(0))
+    self.state.event_stack.append(Movement(self.char))
+    self.resolve_to_choice(CityMovement)
+    self.state.event_stack.append(self.state.usables[0]["Patrol Wagon"])
+    choice = self.resolve_to_choice(PlaceChoice)
+    choice.resolve(self.state, "Woods")
+    self.resolve_to_usable(0, "Ancient Tome0", Sequence)
+
+    self.assertIsInstance(self.state.event_stack[-1], WagonMove)
+    self.assertNotIn("Patrol Wagon", self.state.usables[0])
+    self.state.event_stack.append(self.state.usables[0]["Ancient Tome0"])
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+    self.assertIn("Wither", [card.name for card in self.char.possessions])
+    self.assertNotIn("Ancient Tome", [card.name for card in self.char.possessions])
+
+  def testEvadeMonstersAtWagonStart(self):
+    self.char.speed_sneak_slider = 1
+    self.state.monsters[1].place = self.char.place
+    self.state.event_stack.append(Movement(self.char))
+    self.resolve_to_choice(CityMovement)
+    self.state.event_stack.append(self.state.usables[0]["Patrol Wagon"])
+    choice = self.resolve_to_choice(PlaceChoice)
+    choice.resolve(self.state, "Woods")
+    fight_or_evade = self.resolve_to_choice(MultipleChoice)
+    fight_or_evade.resolve(self.state, "Evade")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.place.name, "Woods")
+
+  def testCancelUsingWagonNearbyMonsters(self):
+    self.state.monsters[0].place = self.char.place
+    self.state.event_stack.append(Movement(self.char))
+    self.resolve_to_choice(CityMovement)
+    self.state.event_stack.append(self.state.usables[0]["Patrol Wagon"])
+    choice = self.resolve_to_choice(PlaceChoice)
+    choice.resolve(self.state, "Cancel")
+    # If there are monsters at your location, you should be able to cancel using the patrol wagon
+    # without being asked to fight or evade them.
+    self.resolve_to_choice(CityMovement)
+
+  def testCaughtByMonstersAtWagonStart(self):
+    self.state.monsters[0].place = self.char.place
+    self.state.event_stack.append(Movement(self.char))
+    self.resolve_to_choice(CityMovement)
+    self.state.event_stack.append(self.state.usables[0]["Patrol Wagon"])
+    choice = self.resolve_to_choice(PlaceChoice)
+    choice.resolve(self.state, "Woods")
+    fight_or_evade = self.resolve_to_choice(MultipleChoice)
+    fight_or_evade.resolve(self.state, "Evade")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
+      fight_or_flee = self.resolve_to_choice(MultipleChoice)
+    fight_or_flee.resolve(self.state, "Fight")
+    weapons = self.resolve_to_choice(CombatChoice)
+    weapons.resolve(self.state, "done")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      # After fighting, your movement is over; the wagon cannot be used.
+      # Note that the dice roll of 5 also covers the roll to see if you lose the wagon.
+      self.resolve_until_done()
+    self.assertEqual(self.char.place.name, "Diner")
+
+  def testMustHandleMonstersAtEnd(self):
+    self.state.monsters[0].place = self.state.places["Woods"]
+    self.state.event_stack.append(Movement(self.char))
+    self.resolve_to_choice(CityMovement)
+    self.state.event_stack.append(self.state.usables[0]["Patrol Wagon"])
+    choice = self.resolve_to_choice(PlaceChoice)
+    choice.resolve(self.state, "Woods")
+    fight_or_evade = self.resolve_to_choice(MultipleChoice)
+    self.assertEqual(self.char.place.name, "Woods")  # Have already moved, now fighting cultist.
+    fight_or_evade.resolve(self.state, "Fight")
+    fight_or_flee = self.resolve_to_choice(MultipleChoice)
+    fight_or_flee.resolve(self.state, "Fight")
+    weapons = self.resolve_to_choice(CombatChoice)
+    weapons.resolve(self.state, "done")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=1)):
+      fight_or_flee = self.resolve_to_choice(MultipleChoice)
+    # You should not lose the patrol wagon after a combat round; only after the combat is over.
+    self.assertEqual(len(self.char.possessions), 1)
+    fight_or_flee.resolve(self.state, "Fight")
+    weapons = self.resolve_to_choice(CombatChoice)
+    weapons.resolve(self.state, "done")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+    self.assertEqual(len(self.char.possessions), 1)
+
+  def testLoseWagonAfterCombat(self):
+    self.state.monsters[0].place = self.state.places["Woods"]
+    self.state.event_stack.append(Movement(self.char))
+    self.resolve_to_choice(CityMovement)
+    self.state.event_stack.append(self.state.usables[0]["Patrol Wagon"])
+    choice = self.resolve_to_choice(PlaceChoice)
+    choice.resolve(self.state, "Woods")
+    fight_or_evade = self.resolve_to_choice(MultipleChoice)
+    self.assertEqual(self.char.place.name, "Woods")  # Have already moved, now fighting cultist.
+    fight_or_evade.resolve(self.state, "Fight")
+    fight_or_flee = self.resolve_to_choice(MultipleChoice)
+    fight_or_flee.resolve(self.state, "Fight")
+    weapons = self.resolve_to_choice(CombatChoice)
+    weapons.resolve(self.state, "done")
+    rolls = self.char.fight(self.state) * [5] + [5] + [1]
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=rolls)):
+      self.resolve_until_done()
+    self.assertEqual(len(self.char.possessions), 0)
+    self.assertFalse(self.state.tradables)
+
+  def testPatrolWagonReturn(self):
+    self.state.places["Isle"].gate = self.state.gates.popleft()
+    self.char.place = self.state.places[self.state.places["Isle"].gate.name + "2"]
+    self.state.event_stack.append(Movement(self.char))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=2)) as rand:
+      self.resolve_until_done()
+      self.assertEqual(rand.call_count, 1)
+    self.assertEqual(self.char.place.name, "Isle")
+    self.assertEqual(len(self.char.possessions), 1)
+    self.assertEqual(self.char.possessions[0].name, "Patrol Wagon")
+
+  def testLosePatrolWagonReturn(self):
+    self.state.places["Isle"].gate = self.state.gates.popleft()
+    self.char.place = self.state.places[self.state.places["Isle"].gate.name + "2"]
+    self.state.event_stack.append(Movement(self.char))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=1)) as rand:
+      self.resolve_until_done()
+      self.assertEqual(rand.call_count, 1)
+    self.assertEqual(self.char.place.name, "Isle")
+    self.assertEqual(len(self.char.possessions), 0)
+    self.assertNotIn("Patrol Wagon", [card.name for card in self.state.tradables])
+
+
 class OneshotItemTest(EventTest):
 
   def setUp(self):

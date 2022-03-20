@@ -332,6 +332,6 @@ class ShuffleMythos(MythosCard):
 
 def CreateMythos():
   return [
-      Mythos1(), Mythos2(), Mythos3(), Mythos4(), Mythos5(), Mythos6(), Mythos11(), Mythos27(),
-      Mythos45(), Mythos59(), ShuffleMythos(),
+      Mythos1(), Mythos2(), Mythos3(), Mythos4(), Mythos5(), Mythos6(), Mythos11(), Mythos15(),
+      Mythos27(), Mythos45(), Mythos59(), ShuffleMythos(),
   ]
