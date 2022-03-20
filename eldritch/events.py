@@ -2928,6 +2928,7 @@ class EvadeRound(Event):
     self.monster = monster
     self.check: Optional[Check] = None
     self.damage: Optional[Event] = None
+    self.pass_evade: Optional[PassEvadeRound] = None
     self.evaded = None
 
   def resolve(self, state):
@@ -2940,8 +2941,8 @@ class EvadeRound(Event):
       state.event_stack.append(self.check)
       return
     if not self.check.is_cancelled() and self.check.successes >= 1:
-      self.evaded = True
-      self.character.avoid_monsters.append(self.monster)
+      self.pass_evade = PassEvadeRound(self)
+      state.event_stack.append(self.pass_evade)
       return
     self.character.movement_points = 0
     self.evaded = False
@@ -2960,6 +2961,45 @@ class EvadeRound(Event):
       return f"{self.character.name} evaded a {self.monster.name}"
     return (f"{self.character.name} did not evade the {self.monster.name}"
             + " and lost any remaining movement")
+
+
+class PassEvadeRound(Event):
+  def __init__(
+      self, evade_round, log_message="{char_name} passed an evade round against {monster_name}"
+  ):
+    self.character = evade_round.character
+    self.evade_round = evade_round
+    self.log_message = log_message.format(
+        char_name=self.character.name,
+        monster_name=getattr(evade_round.monster, "name", "No Monster")
+    )
+    self.done = False
+
+  def resolve(self, state):
+    if self.evade_round.pass_evade is None:
+      # can happen if passing the evade is the result of a spell, e.g. Mists of ©
+      self.evade_round.pass_evade = self
+    if self.evade_round.monster:
+      self.evade_round.character.avoid_monsters.append(self.evade_round.monster)
+    if (
+        self.evade_round.check
+        and self.evade_round.check.spend
+        and not self.evade_round.check.spend.is_done()
+    ):
+      self.evade_round.check.spend.cancelled = True
+    if self.evade_round.check and not self.evade_round.check.is_done():
+      self.evade_round.check.cancelled = True
+    self.evade_round.evaded = True
+    self.done = True
+
+  def is_resolved(self) -> bool:
+    return self.done
+
+  def start_str(self):
+    return ""
+
+  def finish_str(self):
+    return self.log_message
 
 
 class CombatRound(Event):

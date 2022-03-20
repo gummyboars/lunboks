@@ -348,6 +348,38 @@ class EnchantWeapon(CombatSpell):
     self.weapon = None
 
 
+class FleshWard(Spell):
+  def __init__(self, idx):
+    super().__init__("Flesh Ward", idx, {}, 0, -2, 1)
+    self.loss = None
+
+  def get_trigger(self, event, owner, state):
+    if isinstance(event, events.AncientOneAwaken):
+      return events.DiscardSpecific(owner, [self])
+    return None
+
+  def get_usable_interrupt(self, event, owner, state):
+    if (
+        not isinstance(event, events.GainOrLoss)
+        or event.character != owner
+        or "stamina" not in event.losses
+        or owner.sanity < self.sanity_cost
+        or self.exhausted
+    ):
+      return None
+    stam_loss = event.losses["stamina"]
+    if (
+        (isinstance(stam_loss, values.Value) and stam_loss.value(state) == 0)
+        or (isinstance(stam_loss, (int, float)) and stam_loss == 0)
+    ):
+      return None
+    self.loss = event
+    return events.CastSpell(owner, self)
+
+  def get_cast_event(self, owner, state):
+    return events.LossPrevention(self, self.loss, "stamina", float("inf"))
+
+
 class Heal(Spell):
   def __init__(self, idx):
     super().__init__("Heal", idx, {}, 0, 1, 1)
@@ -365,6 +397,35 @@ class Heal(Spell):
         owner, "Choose a character to heal", [char.name for char in neighbors])
     cond = events.Conditional(owner, choice, "choice_index", gains)
     return events.Sequence([choice, cond], owner)
+
+
+class Mists(Spell):
+  def __init__(self, idx):
+    super().__init__("Mists", idx, {}, 0, None, 0)
+    self.evade = None
+
+  def get_usable_interrupt(self, event, owner, state):
+    if event.is_done() or self.exhausted or getattr(event, "character", None) != owner:
+      return None
+    # TODO: be able to cast Mists on an EvadeCheck
+    if isinstance(event, events.EvadeRound):
+      self.difficulty = event.monster.difficulty("evade", state, owner)
+      self.evade = event
+      return events.CastSpell(owner, self)
+    if (
+        isinstance(event, events.SpendChoice)
+        and len(state.event_stack) >= 3
+        and isinstance(state.event_stack[-2], events.Check)
+        and isinstance(state.event_stack[-3], events.EvadeRound)
+        and not state.event_stack[-3].is_done()
+    ):
+      self.evade = state.event_stack[-3]
+      self.difficulty = self.evade.monster.difficulty("evade", state, owner)
+      return events.CastSpell(owner, self)
+    return None
+
+  def get_cast_event(self, owner, state):
+    return events.PassEvadeRound(self.evade)
 
 
 class RedSign(CombatSpell):
@@ -492,6 +553,8 @@ def CreateSpells():
       DreadCurse: 4,
       EnchantWeapon: 3,
       FindGate: 4,
+      FleshWard: 4,
+      Mists: 4,
       RedSign: 2,
       Shrivelling: 5,
       Voice: 3,

@@ -79,6 +79,8 @@ spellNames = [
   "Dread Curse",
   "Enchant Weapon",
   "Find Gate",
+  "Flesh Ward",
+  "Mists",
   "Red Sign",
   "Shrivelling",
   "Voice",
