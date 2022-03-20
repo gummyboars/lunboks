@@ -388,8 +388,6 @@ class Mists(Spell):
     if event.is_done() or self.exhausted or getattr(event, "character", None) != owner:
       return None
     # TODO: be able to cast Mists on an EvadeCheck
-    if event.is_done():
-      return None
     if isinstance(event, events.EvadeRound):
       self.difficulty = event.monster.difficulty("evade", state, owner)
       self.evade = event

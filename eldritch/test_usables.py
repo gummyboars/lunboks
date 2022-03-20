@@ -442,7 +442,6 @@ class FleshWardTest(EventTest):
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=4)):
       self.resolve_to_choice(MultipleChoice)
       # no longer usable
-      self.assertNotIn("Flesh Ward0", self.state.usables)
       self.assertFalse(self.state.usables)
 
   def testOverwhelming(self):
@@ -512,7 +511,7 @@ class FleshWardTest(EventTest):
     self.resolve_to_usable(0, "Flesh Ward0", events.CastSpell)
     self.state.event_stack.append(self.state.usables[0]["Food0"])
     self.resolve_until_done()
-    self.assertNotIn("Flesh Ward0", self.state.usables)
+    self.assertFalse(self.state.usables)
     self.assertEqual(self.char.stamina, 5)
 
     # TODO: Discard if ancient one awakens
@@ -592,7 +591,7 @@ class MistsTest(EventTest):
     choice.resolve(self.state, "Cast")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=4)):
       self.resolve_to_choice(MultipleChoice)
-      self.assertNotIn("Mists0", self.state.usables)
+      self.assertFalse(self.state.usables)
       self.assertTrue(self.mists.exhausted)
 
   def testCastAfterFail(self):
@@ -610,6 +609,8 @@ class MistsTest(EventTest):
     choice.resolve(self.state, "Cast")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       spend_choice = self.resolve_to_choice(SpendChoice)
+      self.assertIsInstance(self.state.event_stack[-2], Check)
+      self.assertEqual(self.state.event_stack[-2].check_type, "spell")
     spend_choice.resolve(self.state, "Done")
     self.resolve_until_done()
 
