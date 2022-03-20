@@ -444,11 +444,17 @@ class HealTest(EventTest):
     self.assertTrue(self.char.possessions[0].exhausted)
 
   def testMultipleOptions(self):
-    nun = characters.CreateCharacters()["Nun"]
+    all_chars = characters.CreateCharacters()
+    nun = all_chars["Nun"]
+    doctor = all_chars["Doctor"]
     nun.stamina = 1
+    doctor.stamina = 1
     nun.place = self.char.place
+    doctor.place = self.state.places["Woods"]
     self.state.all_characters["Nun"] = nun
+    self.state.all_characters["Doctor"] = doctor
     self.state.characters.append(nun)
+    self.state.characters.append(doctor)
 
     upkeep = events.UpkeepActions(self.char)
     self.state.event_stack.append(upkeep)
