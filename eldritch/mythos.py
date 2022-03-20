@@ -201,6 +201,21 @@ class Mythos11(Headline):
     return seq
 
 
+class Mythos15(Environment):
+
+  def __init__(self):
+    super().__init__("Mythos15", "Isle", "Science", {"plus"}, {"moon"}, "urban")
+
+  def get_trigger(self, event, state):
+    if isinstance(event, events.Movement) and isinstance(event.character.place, places.Street):
+      is_deputy = values.ItemNameCount(event.character, "Deputy")
+      check = events.Check(event.character, "will", 0)
+      arrested = events.Arrested(event.character)
+      make_check = events.PassFail(event.character, check, events.Nothing(), arrested)
+      return events.PassFail(event.character, is_deputy, events.Nothing(), make_check)
+    return None
+
+
 class Mythos27(Rumor):
 
   def __init__(self):
