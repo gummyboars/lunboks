@@ -49,9 +49,9 @@ class SquidFace(AncientOne):
 
   def attack(self, state):
     self.doom = min(self.doom + 1, self.max_doom)
-    # TODO: make an AddDoom item
     return AncientOneAttack([
         # TODO: Each character lowers max sanity or stamina
+      events.AddDoom()
     ])
 
 
