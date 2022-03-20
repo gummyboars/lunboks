@@ -4596,9 +4596,17 @@ class ShoppeTest(EncounterTest):
 
 class GraveyardTest(EncounterTest):
 
-  # TODO: Implement
-  #  def testGraveyard1(self):
-  #    raise NotImplementedError("A monster appears")
+  def setUp(self):
+    super().setUp()
+    self.char.place = self.state.places["Graveyard"]
+
+  def testGraveyard1(self):
+    self.char.speed_sneak_slider = 0
+    self.state.event_stack.append(encounters.Graveyard1(self.char))
+    choice = self.resolve_to_choice(MultipleChoice)
+    choice.resolve(self.state, "Evade")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
 
   def testGraveyard2Pass(self):
     self.state.event_stack.append(encounters.Graveyard2(self.char))
@@ -4769,9 +4777,13 @@ class GraveyardTest(EncounterTest):
     self.resolve_until_done()
     self.assertEqual(self.char.sanity, 5)
 
-# TODO: Monster trophy
-#  def testGraveyard7(self):
-#    raise NotImplementedError("Take a monster trophy")
+  def testGraveyard7(self):
+    self.state.event_stack.append(encounters.Graveyard7(self.char))
+    with mock.patch.object(events.random, "sample", new=mock.MagicMock(return_value=[1])):
+      self.resolve_until_done()
+    self.assertEqual(len(self.char.trophies), 1)
+    self.assertEqual(self.char.trophies[0], self.state.monsters[1])
+    self.assertIsNone(self.state.monsters[1].place)
 
 
 if __name__ == "__main__":

@@ -130,9 +130,9 @@ class GameState:
     # Shuffle the decks.
     for deck in assets.Card.DECKS | {"gate_cards", "mythos"}:
       random.shuffle(getattr(self, deck))
-    # Place initial clues. TODO: some characters may change location stability.
+    # Place initial clues.
     for place in self.places.values():
-      if isinstance(place, places.Location) and place.unstable:
+      if isinstance(place, places.Location) and place.is_unstable(self):
         place.clues += 1
 
   def give_fixed_possessions(self, char, possessions):
@@ -543,6 +543,8 @@ class GameState:
     self.turn_phase = "mythos"
     self.initialize()
     seq = self.add_pending_players()
+    if any(char.name == "Scientist" for char in self.characters):
+      self.places["Science"].clues = 0
     assert seq.events
     seq.events.append(events.Mythos(None))
     self.event_stack.append(seq)
@@ -639,12 +641,12 @@ class GameState:
 
   def handle_spawn_gate(self, place):
     assert place in self.places
-    assert getattr(self.places[place], "unstable", False) is True
+    assert self.places[place].is_unstable(self)
     self.event_stack.append(events.OpenGate(place))
 
   def handle_spawn_clue(self, place):
     assert place in self.places
-    assert getattr(self.places[place], "unstable", False) is True
+    assert self.places[place].is_unstable(self)
     self.event_stack.append(events.SpawnClue(place))
 
   def handle_slider(self, char_idx, name, value):

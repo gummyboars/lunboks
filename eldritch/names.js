@@ -116,6 +116,7 @@ allyNames = [
 carefullyAdd(allyNames);
 abilityNames = [
   "Medicine",
+  "Flux Stabilizer",
 ];
 carefullyAdd(abilityNames);
 monsterNames = [
