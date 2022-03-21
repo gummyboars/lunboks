@@ -101,21 +101,48 @@ class Card(Asset):
     return bonus
 
 
-# TODO: drawing things when these allies join you
-def FortuneTeller():
-  return Card("Fortune Teller", None, "allies", {}, {"luck": 2})
+class FortuneTeller(Card):
+
+  def __init__(self):
+    super().__init__("Fortune Teller", None, "allies", {}, {"luck": 2})
+
+  def get_trigger(self, event, owner, state):
+    if isinstance(event, events.KeepDrawn) and self.name in event.kept:
+      return events.Gain(owner, {"clues": 2})
+    return None
 
 
-def TravelingSalesman():
-  return Card("Traveling Salesman", None, "allies", {}, {"sneak": 1, "will": 1})
+class TravelingSalesman(Card):
+
+  def __init__(self):
+    super().__init__("Traveling Salesman", None, "allies", {}, {"sneak": 1, "will": 1})
+
+  def get_trigger(self, event, owner, state):
+    if isinstance(event, events.KeepDrawn) and self.name in event.kept:
+      return events.Draw(owner, "common", 1)
+    return None
 
 
-def PoliceDetective():
-  return Card("Police Detective", None, "allies", {}, {"fight": 1, "lore": 1})
+class PoliceDetective(Card):
+
+  def __init__(self):
+    super().__init__("Police Detective", None, "allies", {}, {"fight": 1, "lore": 1})
+
+  def get_trigger(self, event, owner, state):
+    if isinstance(event, events.KeepDrawn) and self.name in event.kept:
+      return events.Draw(owner, "spells", 1)
+    return None
 
 
-def Thief():
-  return Card("Thief", None, "allies", {}, {"sneak": 2})
+class Thief(Card):
+
+  def __init__(self):
+    super().__init__("Thief", None, "allies", {}, {"sneak": 2})
+
+  def get_trigger(self, event, owner, state):
+    if isinstance(event, events.KeepDrawn) and self.name in event.kept:
+      return events.Draw(owner, "unique", 1)
+    return None
 
 
 def ArmWrestler():
