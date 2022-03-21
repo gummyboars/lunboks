@@ -1086,7 +1086,7 @@ class DrawItems(Event):
 class KeepDrawn(Event):
   def __init__(self, character, draw, prompt="Choose a card", sort_uniq=False):
     self.character = character
-    self.draw: DrawItems = draw
+    self.draw: Union[DrawItems, DrawNamed] = draw
     self.keep_count = 1  # TODO: allow the player to keep more than one?
     self.drawn = None
     self.kept = None
@@ -1141,6 +1141,11 @@ def Draw(character, deck, draw_count, prompt="Choose a card", target_type=None):
   cards = DrawItems(character, deck, draw_count, target_type=target_type)
   keep = KeepDrawn(character, cards, prompt, sort_uniq=math.isinf(draw_count))
   return Sequence([cards, keep], character)
+
+
+def DrawSpecific(character, deck, item_name):
+  draw = DrawNamed(character, deck, item_name)
+  return Sequence([draw, KeepDrawn(character, draw)], character)
 
 
 def GainAllyOrReward(character, ally: str, reward: Event):
@@ -1461,35 +1466,33 @@ class DrawGateCard(Event):
     return f"{self.character.name} drew {self.card.name}"
 
 
-class DrawSpecific(Event):
+class DrawNamed(Event):
 
   def __init__(self, character, deck, item_name):
     assert deck in {"common", "unique", "spells", "skills", "allies"}
     self.character = character
     self.deck = deck
     self.item_name = item_name
-    self.received = None
+    self.drawn = None
 
   def resolve(self, state):
     deck = getattr(state, self.deck)
     for item in deck:
       if item.name == self.item_name:
-        deck.remove(item)
-        self.character.possessions.append(item)
-        self.received = True
-        # TODO: Shuffle the deck after drawing the item
+        self.drawn = [item]
         break
     else:
-      self.received = False
+      self.drawn = []
+    random.shuffle(getattr(state, self.deck))
 
   def is_resolved(self):
-    return self.received is not None
+    return self.drawn is not None
 
   def start_str(self):
     return self.character.name + " searches the " + self.deck + " deck for a " + self.item_name
 
   def finish_str(self):
-    if self.received:
+    if self.drawn:
       return self.character.name + " drew a " + self.item_name + " from the " + self.deck + " deck"
     return "There were no " + self.item_name + "s left in the " + self.deck + " deck"
 
