@@ -1603,6 +1603,81 @@ class CombatWithEnchantedWeapon(EventTest):
       self.assertEqual(rand.call_count, 2)  # Fight (4) + spawn (-2) + physical immunity (0)
 
 
+class CombatWithMagicPowderTest(EventTest):
+  def setUp(self):
+    super().setUp()
+    self.powder = items.MagicPowder(0)
+    self.char.possessions.append(self.powder)
+
+  def start(self, monster):
+    # pylint: disable=attribute-defined-outside-init
+    self.combat = Combat(self.char, monster)
+    self.state.event_stack.append(self.combat)
+
+    fight_or_flee = self.resolve_to_choice(MultipleChoice)
+    fight_or_flee.resolve(self.state, "Fight")
+
+    return self.resolve_to_choice(CombatChoice)
+
+  def testUsePowder(self):
+    self.assertEqual(self.char.sanity, 5)
+    cultist = monsters.Cultist()
+    combat_choice = self.start(cultist)
+    combat_choice.resolve(self.state, "Magic Powder0")
+    combat_choice.resolve(self.state, "done")
+    # Mock shows that we get enough dice to actually need the powder
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=[1]*8+[5]*100)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.sanity, 4)
+    self.assertIn(cultist, self.char.trophies)
+    self.assertNotIn(self.powder, self.char.possessions)
+
+  def testUsePowderFail(self):
+    self.assertEqual(self.char.sanity, 5)
+    cultist = monsters.Cultist()
+    combat_choice = self.start(cultist)
+    combat_choice.resolve(self.state, "Magic Powder0")
+    combat_choice.resolve(self.state, "done")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=1)):
+      choice = self.resolve_to_choice(MultipleChoice)
+    choice.resolve(self.state, "Fight")
+    combat_choice = self.resolve_to_choice(CombatChoice)
+    self.assertNotIn("Magic Powder0", combat_choice.choices)
+    combat_choice.resolve(self.state, "done")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.sanity, 4)
+    self.assertIn(cultist, self.char.trophies)
+    self.assertNotIn(self.powder, self.char.possessions)
+
+  def testPowderInsane(self):
+    self.char.sanity = 1
+    cultist = monsters.Cultist()
+    combat_choice = self.start(cultist)
+    combat_choice.resolve(self.state, "Magic Powder0")
+    combat_choice.resolve(self.state, "done")
+    choice = self.resolve_to_choice(ItemLossChoice)
+    choice.resolve(self.state, "done")
+    self.resolve_until_done()
+    self.assertEqual(self.char.place.name, "Asylum")
+    self.assertFalse(self.char.possessions)
+    self.assertFalse(self.char.trophies)
+
+  def testPowderAndWhiskey(self):
+    self.char.possessions.append(items.Whiskey(0))
+    cultist = monsters.Cultist()
+    combat_choice = self.start(cultist)
+    combat_choice.resolve(self.state, "Magic Powder0")
+    combat_choice.resolve(self.state, "done")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=[1]*8+[5]*100)):
+      self.resolve_to_usable(0, "Whiskey0")
+    self.state.event_stack.append(self.state.usables[0]["Whiskey0"])
+    self.resolve_until_done()
+    self.assertEqual(self.char.sanity, 5)
+    self.assertIn(cultist, self.char.trophies)
+    self.assertNotIn(self.powder, self.char.possessions)
+
+
 class CombatWithRedSignTest(EventTest):
 
   def setUp(self):
