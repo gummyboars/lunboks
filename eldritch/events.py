@@ -3419,6 +3419,11 @@ class OpenGate(Event):
       state.event_stack.append(self.draw_monsters)
       return
 
+    if self.opened and self.add_doom is None:
+      self.add_doom = AddDoom()
+      state.event_stack.append(self.add_doom)
+      return
+
     if not self.opened:  # Monster surge
       gates = [name for name, place in state.places.items() if getattr(place, "gate", None)]
       self.spawn = MonsterSpawnChoice(self.draw_monsters, self.location_name, gates)
@@ -3428,17 +3433,13 @@ class OpenGate(Event):
     # TODO: if there are no gates tokens left, the ancient one awakens
     state.places[self.location_name].gate = state.gates.popleft()
     state.places[self.location_name].clues = 0
-    if self.opened and self.add_doom is None:
-      self.add_doom = AddDoom()
-      state.event_stack.append(self.add_doom)
-      return
     self.spawn = MonsterSpawnChoice(self.draw_monsters, self.location_name, [self.location_name])
     state.event_stack.append(self.spawn)
 
   def is_resolved(self):
     if self.draw_monsters is not None:
       return self.spawn is not None and self.spawn.is_done()
-    return self.opened is not None
+    return (self.opened is False) or (self.opened and self.add_doom)
 
   def start_str(self):
     return f"Gate will open at {self.location_name}"
