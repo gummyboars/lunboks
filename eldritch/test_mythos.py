@@ -79,6 +79,7 @@ class OpenGateTest(EventTest):
     self.assertEqual(self.state.characters[0].place.name, "Diner")
     self.assertEqual(self.state.characters[1].place.name, "Square")
     self.assertEqual(self.state.characters[2].place.name, "Square")
+    self.assertEqual(self.state.ancient_one.doom, 0)
     self.assertEqual(monster_counts["Square"], 0)
     cup_count = monster_counts["cup"]
     self.square.sealed = True
@@ -110,6 +111,7 @@ class OpenGateTest(EventTest):
     self.assertEqual(len(self.state.gates), 1)
     self.assertIsNone(self.square.gate)
     self.assertFalse(self.square.sealed)
+    self.assertEqual(self.state.ancient_one.doom, 0)
 
   def testOpenGateAwayFromScientist(self):
     self.assertEqual(len(self.state.gates), 1)
@@ -124,6 +126,7 @@ class OpenGateTest(EventTest):
 
     self.assertEqual(len(self.state.gates), 0)
     self.assertIsNotNone(self.square.gate)
+    self.assertEqual(self.state.ancient_one.doom, 1)
     self.assertFalse(self.square.sealed)
 
   def testOpenGateDrawMonstersCancelled(self):
@@ -226,6 +229,7 @@ class MonsterSurgeTest(EventTest):
     monster_counts = self.monstersByPlace()
     self.assertEqual(monster_counts["Woods"], 2)
     self.assertEqual(monster_counts["cup"], 5)
+    self.assertEqual(self.state.ancient_one.doom, 0)
     for idx in surge.spawn.to_spawn:
       self.assertEqual(self.state.monsters[idx].place.name, "Woods")
 
@@ -278,6 +282,7 @@ class MonsterSurgeTest(EventTest):
     self.assertEqual(self.state.monsters[0].place.name, "Woods")
     self.assertEqual(self.state.monsters[1].place.name, "Square")
     self.assertEqual(self.state.monsters[5].place.name, "WitchHouse")
+    self.assertEqual(self.state.ancient_one.doom, 0)
 
   def testNotEnoughGatesForAllMonsters(self):
     # Total of four open gates
@@ -304,6 +309,7 @@ class MonsterSurgeTest(EventTest):
 
     surge.resolve(self.state, {"Woods": [1], "Outskirts": [0, 5, 7]})
     self.assertTrue(surge.is_resolved())
+    self.assertEqual(self.state.ancient_one.doom, 0)
 
   def testUnevenGatesAndCharacters(self):
     self.state.characters.append(characters.Character("C", 5, 5, 4, 4, 4, 4, 4, 4, 4, "Square"))
@@ -334,6 +340,7 @@ class MonsterSurgeTest(EventTest):
     self.assertEqual(self.state.monsters[1].place.name, "Woods")
     self.assertEqual(self.state.monsters[5].place.name, "Woods")
     self.assertEqual(self.state.monsters[6].place.name, "WitchHouse")
+    self.assertEqual(self.state.ancient_one.doom, 0)
 
   def testSendToOutskirts(self):
     # Add 4 monsters to the outskirts.
@@ -377,6 +384,7 @@ class MonsterSurgeTest(EventTest):
     self.assertEqual(counts["Square"], 5)
     self.assertEqual(counts["Woods"], 0)
     self.assertEqual(counts["cup"], 5)
+    self.assertEqual(self.state.ancient_one.doom, 0)
 
   def testAllToCup(self):
     # Add 5 monsters to the outskirts.
