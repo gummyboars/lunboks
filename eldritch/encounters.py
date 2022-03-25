@@ -639,10 +639,9 @@ def Church5(char):
 
 
 def Church6(char):
-  # TODO: remove a counter from the doomtrack
-  roll = events.Nothing()  # TODO: roll for a success
-  doom = events.Nothing()  # TODO: remove a doom token
-  chance = events.Sequence([roll, doom], char)
+  roll = events.DiceRoll(char, 1)
+  doom = events.RemoveDoom(char)
+  chance = events.PassFail(char, roll, doom, events.Nothing())
   return events.BinarySpend(
       char, "clues", 1, "Spend a clue token for a chance to remove a Doom Token?",
       "Yes", "No", chance,

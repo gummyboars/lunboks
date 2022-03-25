@@ -3433,6 +3433,7 @@ class OpenGate(Event):
     self.opened = None
     self.draw_monsters: Optional[Event] = None
     self.spawn: Optional[Event] = None
+    self.add_doom: Optional[Event] = None
 
   def resolve(self, state):
     if self.spawn is not None:
@@ -3461,6 +3462,11 @@ class OpenGate(Event):
       state.event_stack.append(self.draw_monsters)
       return
 
+    if self.opened and self.add_doom is None:
+      self.add_doom = AddDoom()
+      state.event_stack.append(self.add_doom)
+      return
+
     if not self.opened:  # Monster surge
       gates = [name for name, place in state.places.items() if getattr(place, "gate", None)]
       self.spawn = MonsterSpawnChoice(self.draw_monsters, self.location_name, gates)
@@ -3470,14 +3476,13 @@ class OpenGate(Event):
     # TODO: if there are no gates tokens left, the ancient one awakens
     state.places[self.location_name].gate = state.gates.popleft()
     state.places[self.location_name].clues = 0
-    # TODO: AddDoom event
     self.spawn = MonsterSpawnChoice(self.draw_monsters, self.location_name, [self.location_name])
     state.event_stack.append(self.spawn)
 
   def is_resolved(self):
     if self.draw_monsters is not None:
       return self.spawn is not None and self.spawn.is_done()
-    return self.opened is not None
+    return (self.opened is False) or (self.opened and self.add_doom)
 
   def start_str(self):
     return f"Gate will open at {self.location_name}"
@@ -3488,6 +3493,55 @@ class OpenGate(Event):
     if self.spawn:
       return f"A monster surge occurred at {self.location_name}."
     return f"A gate did not appear at {self.location_name}."
+
+
+class AddDoom(Event):
+  def __init__(self, character=None):
+    self.added = False
+    self.done = False
+    self.character = character
+
+  def resolve(self, state):
+    if not self.added:
+      state.ancient_one.doom += 1
+    if state.ancient_one.doom == state.ancient_one.max_doom:
+      state.event_stack.append(state.ancient_one.awaken(state))
+      return
+    if not self.done:
+      self.done = True
+
+  def is_resolved(self):
+    return self.done
+
+  def start_str(self):
+    return "Doom token to be added"
+
+  def finish_str(self):
+    if self.done:
+      return "Doom token was added"
+    return "Doom token was prevented from being added"
+
+
+class RemoveDoom(Event):
+  def __init__(self, character=None):
+    self.done = False
+    self.character = character
+
+  def resolve(self, state):
+    if not self.done:
+      state.ancient_one.doom = max(0, state.ancient_one.doom - 1)
+      self.done = True
+
+  def is_resolved(self):
+    return self.done
+
+  def start_str(self):
+    return "Doom token to be removed"
+
+  def finish_str(self):
+    if self.done:
+      return "Doom token was removed"
+    return "Doom token was prevented from being removed"
 
 
 class DrawMonstersFromCup(Event):

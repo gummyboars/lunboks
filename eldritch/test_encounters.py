@@ -1708,16 +1708,31 @@ class ChurchTest(EncounterTest):
     self.resolve_until_done()
     self.assertEqual(self.char.clues, 2)
 
-  def testChurch6CluesYes(self):
-    # Actually check for doom track removal and roll
+  def testChurch6CluesYesPass(self):
+    self.state.ancient_one.doom = 2
     self.state.event_stack.append(encounters.Church6(self.char))
     self.char.clues = 2
     self.assertEqual(self.char.clues, 2)
     choice = self.resolve_to_choice(SpendChoice)
     self.spend("clues", 1, choice)
     choice.resolve(self.state, "Yes")
-    self.resolve_until_done()
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
     self.assertEqual(self.char.clues, 1)
+    self.assertEqual(self.state.ancient_one.doom, 1)
+
+  def testChurch6CluesYesFail(self):
+    self.state.ancient_one.doom = 2
+    self.state.event_stack.append(encounters.Church6(self.char))
+    self.char.clues = 2
+    self.assertEqual(self.char.clues, 2)
+    choice = self.resolve_to_choice(SpendChoice)
+    self.spend("clues", 1, choice)
+    choice.resolve(self.state, "Yes")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=4)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.clues, 1)
+    self.assertEqual(self.state.ancient_one.doom, 2)
 
   def testChurch7Pass(self):
     self.state.event_stack.append(encounters.Church7(self.char))

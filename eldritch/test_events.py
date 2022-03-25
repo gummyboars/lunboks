@@ -69,6 +69,16 @@ class EventTest(unittest.TestCase):
       if count > 100:
         self.fail(f"Exceeded maximum number of events: {self.state.event_stack}")
 
+  def resolve_until_event_type(self, event_class):
+    count = 0
+    for _ in self.state.resolve_loop():
+      count += 1
+      if count > 100:
+        self.fail(f"Exceeded maximum number of events: {self.state.event_stack}")
+      if isinstance(self.state.event_stack[-1], event_class):
+        return
+    self.fail(f"Did not encounter an event of class {event_class}")
+
   def resolve_until_done(self):
     self.resolve_loop()
     self.assertFalse(self.state.event_stack)
@@ -3242,6 +3252,20 @@ class CloseLocationTest(EventTest):
     movement = self.resolve_to_choice(CityMovement)
     self.assertIn("Downtown", movement.choices)
     self.assertFalse(place.closed)
+
+
+class AddDoomTest(EventTest):
+  def testAddDoom(self):
+    self.state.ancient_one.doom = 8
+    self.state.event_stack.append(AddDoom())
+    self.resolve_until_done()
+    self.assertEqual(self.state.ancient_one.doom, 9)
+
+  def testAddDoomAwaken(self):
+    self.state.ancient_one.doom = 9
+    self.state.event_stack.append(AddDoom())
+    self.resolve_until_event_type(AncientOneAwaken)
+    self.assertEqual(self.state.ancient_one.doom, 10)
 
 
 if __name__ == "__main__":
