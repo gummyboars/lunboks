@@ -3471,17 +3471,18 @@ class AddDoom(Event):
     return self.done
 
   def start_str(self):
-    return f"Doom token to be added"
+    return "Doom token to be added"
 
   def finish_str(self):
     if self.done:
       return "Doom token was added"
     return "Doom token was prevented from being added"
 
+
 class RemoveDoom(Event):
   def __init__(self, character=None):
-      self.done = False
-      self.character = character
+    self.done = False
+    self.character = character
 
   def resolve(self, state):
     if not self.done:
@@ -3489,15 +3490,15 @@ class RemoveDoom(Event):
       self.done = True
 
   def is_resolved(self):
-      return self.done
+    return self.done
 
   def start_str(self):
-    return f"Doom token to be removed"
+    return "Doom token to be removed"
 
   def finish_str(self):
     if self.done:
-      return f"Doom token was removed"
-    return f"Doom token was prevented from being removed"
+      return "Doom token was removed"
+    return "Doom token was prevented from being removed"
 
 
 class DrawMonstersFromCup(Event):

@@ -3240,5 +3240,6 @@ class AddDoomTest(EventTest):
     self.resolve_until_event_type(AncientOneAwaken)
     self.assertEqual(self.state.ancient_one.doom, 10)
 
+
 if __name__ == "__main__":
   unittest.main()
