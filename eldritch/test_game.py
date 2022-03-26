@@ -279,8 +279,47 @@ class SpendTrophiesEncounterTest(FixedEncounterBaseTest):
     event.resolve(self.state, "Blessing")
     for _ in self.state.resolve_loop():
       pass
+    self.assertTrue(self.state.event_stack)
+    choice = self.state.event_stack[-1]
+    self.assertIsInstance(choice, events.MultipleChoice)
+    self.assertEqual(choice.choices, ["Nun"])
+    choice.resolve(self.state, "Nun")
+    for _ in self.state.resolve_loop():
+      pass
     self.assertEqual(len(self.char.trophies), 0)
-    self.assertEqual(self.char.bless_curse, 1)  # TODO: get a choice of investigators to bless
+    self.assertEqual(self.char.bless_curse, 1)
+
+  def testBlessSomeoneElse(self):
+    dead = characters.Character("Dead", 5, 5, 4, 4, 4, 4, 4, 4, 4, "Train")
+    dead.gone = True  # Represents a currently devoured character.
+    self.state.all_characters["Dead"] = dead
+    self.state.characters.append(dead)
+    buddy = characters.Character("Buddy", 5, 5, 4, 4, 4, 4, 4, 4, 4, "Square")
+    buddy.place = self.state.places["Dreamlands1"]
+    self.state.all_characters["Buddy"] = buddy
+    self.state.characters.append(buddy)
+    self.char.place = self.state.places["Church"]
+
+    self.state.event_stack.append(events.EncounterPhase(self.char))
+    for _ in self.state.resolve_loop():
+      pass
+    choice = self.state.event_stack[-1]
+    self.assertEqual(choice.choices, ["Southside Card", "Blessing"])
+    self.state.event_stack.append(self.state.usables[0][self.char.trophies[0].handle])
+    for _ in self.state.resolve_loop():
+      pass
+    choice.resolve(self.state, "Blessing")
+    for _ in self.state.resolve_loop():
+      pass
+    choice = self.state.event_stack[-1]
+    self.assertIsInstance(choice, events.MultipleChoice)
+    self.assertCountEqual(choice.choices, ["Nun", "Buddy"])
+    choice.resolve(self.state, "Buddy")
+    for _ in self.state.resolve_loop():
+      pass
+    self.assertEqual(len(self.char.trophies), 0)
+    self.assertEqual(self.char.bless_curse, 0)
+    self.assertEqual(buddy.bless_curse, 1)
 
   def testGainAlly(self):
     self.char.trophies.append(self.state.gates.popleft())
@@ -315,6 +354,85 @@ class SpendTrophiesEncounterTest(FixedEncounterBaseTest):
       pass
     self.assertFalse(self.state.event_stack)
     self.assertEqual(self.char.possessions[0].name, "Dog")
+
+  def testBecomeDeputized(self):
+    self.state.specials.append(items.Deputy())
+    self.state.tradables.extend([items.DeputysRevolver(), items.PatrolWagon()])
+    self.char.trophies.append(self.state.gates.popleft())
+    self.char.place = self.state.places["Police"]
+    self.state.event_stack.append(events.EncounterPhase(self.char))
+    for _ in self.state.resolve_loop():
+      pass
+    self.assertTrue(self.state.event_stack)
+    event = self.state.event_stack[-1]
+    self.assertIsInstance(event, events.CardSpendChoice)
+    self.assertEqual(event.choices, ["Easttown Card", "Deputy"])
+    with self.assertRaises(AssertionError):
+      event.resolve(self.state, "Deputy")
+
+    self.state.event_stack.append(self.state.usables[0][self.char.trophies[0].handle])
+    for _ in self.state.resolve_loop():
+      pass
+    self.state.event_stack.append(self.state.usables[0][self.char.trophies[1].handle])
+    for _ in self.state.resolve_loop():
+      pass
+    event.resolve(self.state, "Deputy")
+    for _ in self.state.resolve_loop():
+      pass
+    self.assertFalse(self.state.event_stack)
+    self.assertEqual(len(self.char.trophies), 0)
+    self.assertEqual(len(self.char.possessions), 3)
+    self.assertCountEqual(
+        [card.name for card in self.char.possessions],
+        ["Deputy", "Deputy's Revolver", "Patrol Wagon"],
+    )
+
+  def testCannotBecomeDeputyIfSomeoneElseIs(self):
+    self.state.tradables.extend([items.DeputysRevolver(), items.PatrolWagon()])
+    self.char.trophies.append(self.state.gates.popleft())
+    self.char.place = self.state.places["Police"]
+    self.state.event_stack.append(events.EncounterPhase(self.char))
+    for _ in self.state.resolve_loop():
+      pass
+    self.assertTrue(self.state.event_stack)
+    event = self.state.event_stack[-1]
+    self.assertIsInstance(event, events.CardSpendChoice)
+    self.assertEqual(event.choices, ["Easttown Card", "Deputy"])
+    self.state.event_stack.append(self.state.usables[0][self.char.trophies[0].handle])
+    for _ in self.state.resolve_loop():
+      pass
+    self.state.event_stack.append(self.state.usables[0][self.char.trophies[1].handle])
+    for _ in self.state.resolve_loop():
+      pass
+    with self.assertRaises(AssertionError):
+      event.resolve(self.state, "Deputy")
+
+  def testBecomeDeputyMissingDeputyItems(self):
+    self.state.specials.append(items.Deputy())
+    self.char.trophies.append(self.state.gates.popleft())
+    self.char.place = self.state.places["Police"]
+    self.state.event_stack.append(events.EncounterPhase(self.char))
+    for _ in self.state.resolve_loop():
+      pass
+    self.assertTrue(self.state.event_stack)
+    event = self.state.event_stack[-1]
+    self.assertIsInstance(event, events.CardSpendChoice)
+    self.assertEqual(event.choices, ["Easttown Card", "Deputy"])
+
+    self.state.event_stack.append(self.state.usables[0][self.char.trophies[0].handle])
+    for _ in self.state.resolve_loop():
+      pass
+    self.state.event_stack.append(self.state.usables[0][self.char.trophies[1].handle])
+    for _ in self.state.resolve_loop():
+      pass
+    event.resolve(self.state, "Deputy")
+    for _ in self.state.resolve_loop():
+      pass
+    self.assertFalse(self.state.event_stack)
+
+    self.assertEqual(len(self.char.trophies), 0)
+    self.assertEqual(len(self.char.possessions), 1)
+    self.assertEqual(self.char.possessions[0].name, "Deputy")
 
 
 class GateTravelTest(unittest.TestCase):

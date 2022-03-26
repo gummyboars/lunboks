@@ -410,7 +410,7 @@ class EncounterPhase(Turn):
           choices.append(fixed.name)
           prereqs.append(fixed.prereq(self.character))
           spends.append(fixed.spend(self.character))
-          results[idx+1] = fixed.encounter(self.character)
+          results[idx+1] = fixed.encounter(self.character, state)
         choice = CardSpendChoice(self.character, "Encounter?", choices, prereqs, spends=spends)
         cond = Conditional(self.character, choice, "choice_index", results)
         self.action = Sequence([choice, cond], self.character)
