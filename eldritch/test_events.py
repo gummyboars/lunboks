@@ -1475,6 +1475,17 @@ class DiscardSpecificTest(EventTest):
     self.assertEqual(self.state.common[0].handle, "Food2")
     self.assertEqual(discard.discarded, [])
 
+  def testDiscardToBox(self):
+    self.char.possessions.extend([items.Food(0), items.TommyGun(0)])
+    discard = DiscardSpecific(self.char, [self.char.possessions[0]], to_box=True)
+    self.assertFalse(discard.is_resolved())
+    self.state.event_stack.append(discard)
+    self.resolve_until_done()
+    self.assertTrue(discard.is_resolved())
+    self.assertEqual(len(self.char.possessions), 1)
+    self.assertEqual(len(self.state.common), 0)
+    self.assertEqual([card.name for card in discard.discarded], ["Food"])
+
   def testDiscardFromChoice(self):
     self.char.possessions.extend([items.Food(0), items.Food(1)])
     choice = ItemChoice(self.char, "")

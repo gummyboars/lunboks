@@ -1857,9 +1857,10 @@ def LoseItems(character, count, prompt=None, decks=None, item_type=None):
 
 class DiscardSpecific(Event):
 
-  def __init__(self, character, items):
+  def __init__(self, character, items, to_box=False):
     self.character = character
     self.items = items
+    self.to_box = to_box
     self.discarded = None
 
   def resolve(self, state):
@@ -1875,7 +1876,8 @@ class DiscardSpecific(Event):
       if item not in self.character.possessions:
         continue
       self.character.possessions.remove(item)
-      getattr(state, item.deck).append(item)
+      if not self.to_box:
+        getattr(state, item.deck).append(item)
       self.discarded.append(item)
 
   def is_resolved(self):
@@ -1883,13 +1885,21 @@ class DiscardSpecific(Event):
 
   def start_str(self):
     if isinstance(self.items, ItemChoice):
-      return f"{self.character.name} will discard the chosen items"
-    return f"{self.character.name} will discard " + ", ".join(item.name for item in self.items)
+      text = f"{self.character.name} will discard the chosen items"
+    else:
+      text = f"{self.character.name} will discard " + ", ".join(item.name for item in self.items)
+    if not self.to_box:
+      return text
+    return text + " to the box"
 
   def finish_str(self):
     if not self.discarded:
-      return f"{self.character.name} did not have items to discard"
-    return f"{self.character.name} discarded " + ", ".join(item.name for item in self.discarded)
+      text = f"{self.character.name} did not have items to discard"
+    else:
+      text = f"{self.character.name} discarded " + ", ".join(item.name for item in self.discarded)
+    if not self.to_box:
+      return text
+    return text + " to the box"
 
 
 class DiscardNamed(Event):
