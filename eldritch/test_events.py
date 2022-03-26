@@ -411,6 +411,8 @@ class MovementTest(EventTest):
     self.char.place = self.state.places["Rivertown"]
     maniac.place = self.state.places["Easttown"]
     self.advance_turn(self.state.turn_number, "movement")
+    # We give them a tome to make sure that it is not usable after they have fought the maniac.
+    self.char.possessions.append(items.AncientTome(0))
     movement = self.resolve_to_choice(CityMovement)
     self.assertEqual(self.char.movement_points, 4)
     movement.resolve(self.state, "Easttown")
@@ -429,15 +431,11 @@ class MovementTest(EventTest):
     self.assertFalse(third_choice.choices)
     self.choose_items(third_choice, [])
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
-      movement = self.resolve_to_choice(CityMovement)
-    self.assertFalse(movement.choices)
-    movement.resolve(self.state, movement.none_choice)
+      self.resolve_until_done()  # You do not get to move again after fighting.
 
     self.assertEqual(self.char.place.name, "Easttown")
-    self.assertEqual(self.char.movement_points, 0)
-    # self.assertIn(cultist, self.char.possessions)
-    # TODO: take the monster as a trophy
-    self.assertTrue(movement.is_resolved())
+    self.assertIn(maniac, self.char.trophies)
+    self.assertTrue(movement.is_done())
 
   def testMoveMultipleSpaces(self):
     movement = Sequence(
@@ -502,17 +500,11 @@ class MovementTest(EventTest):
     self.assertFalse(third_choice.choices)
     self.choose_items(third_choice, [])
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
-      movement = self.resolve_to_choice(CityMovement)
+      self.resolve_until_done()  # Movement ends, do not get a CityMovement choice.
 
-    self.assertFalse(movement.choices)
-    movement.resolve(self.state, movement.none_choice)
-    self.resolve_until_done()
-
-    self.assertTrue(movement.is_resolved())
+    self.assertTrue(movement.is_done())
     self.assertEqual(self.char.place.name, "Rivertown")
-    self.assertEqual(self.char.movement_points, 0)
-    # self.assertIn(cultist, self.char.possessions)
-    # TODO: take the monster as a trophy
+    self.assertIn(cultist, self.char.trophies)
 
   def testMoveMultipleThroughMonsterFailedEvade(self):
     zombie = monsters.Zombie()
@@ -543,21 +535,15 @@ class MovementTest(EventTest):
     next_choice.resolve(self.state, "Flee")
 
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
-      movement = self.resolve_to_choice(CityMovement)
-
-    self.assertFalse(movement.choices)
-    movement.resolve(self.state, movement.none_choice)
+      self.resolve_until_done()
     # resolve_until_done tests that you don't have to re-evade the zombie
-    self.resolve_until_done()
 
-    self.assertTrue(movement.is_resolved())
+    self.assertTrue(movement.is_done())
     self.assertEqual(self.char.place.name, "Rivertown")
-    self.assertEqual(self.char.movement_points, 0)
-    # self.assertIn(zombie, self.char.possessions)
-    # TODO: take the monster as a trophy
 
   def testMoveMultipleThroughTwoMonstersFailedEvade(self):
     self.char.speed_sneak_slider = 1
+    self.char.possessions.append(items.AncientTome(0))
     cultist = next(monster for monster in self.state.monsters if monster.name == "Cultist")
     cultist.place = None  # Take one cultist as a trophy to test CityMovement's get_routes.
     monster1 = next(monster for monster in self.state.monsters if monster.name == "Maniac")
@@ -593,15 +579,12 @@ class MovementTest(EventTest):
       maniac_choice = self.resolve_to_choice(MultipleChoice)
       self.assertEqual(maniac_choice.choices, ["Fight", "Evade"])
       maniac_choice.resolve(self.state, "Evade")
-      movement = self.resolve_to_choice(CityMovement)
+      self.resolve_until_done()
 
-    self.assertFalse(movement.choices)
-    movement.resolve(self.state, movement.none_choice)
-    self.assertTrue(movement.is_resolved())
+    self.assertTrue(movement.is_done())
     self.assertEqual(self.char.place.name, "Easttown")
     self.assertEqual(self.char.stamina, 4)
     self.assertEqual(self.char.sanity, 5)
-    self.assertEqual(self.char.movement_points, 0)
 
   # TODO: If you have a motorcycle, should not be able to exhaust for move movement.
   # TODO: Fight a dream flier, get sucked through a gate, cast find gate, and return.

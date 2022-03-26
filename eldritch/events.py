@@ -2957,8 +2957,14 @@ class EvadeRound(Event):
       self.pass_evade = PassEvadeRound(self)
       state.event_stack.append(self.pass_evade)
       return
-    self.character.movement_points = 0
+
     self.evaded = False
+    for event in reversed(state.event_stack):  # Cancel any movement.
+      if isinstance(event, MoveOne):
+        event.cancelled = True
+      if isinstance(event, CityMovement):
+        event.done = True  # TODO: should this be cancelled instead?
+        break
     self.damage = Loss(
         self.character, {"stamina": self.monster.damage("combat", state, self.character)})
     state.event_stack.append(self.damage)
@@ -3020,6 +3026,7 @@ class CombatRound(Event):
   def __init__(self, character, monster):
     self.character = character
     self.monster = monster
+    self.movement_cancelled = False
     self.choice: Event = CombatChoice(
         character, f"Choose weapons to fight the {monster.name}", combat_round=self
     )
@@ -3033,7 +3040,15 @@ class CombatRound(Event):
     self.done = False
 
   def resolve(self, state):
-    self.character.movement_points = 0
+    if not self.movement_cancelled:  # Cancel any movement.
+      for event in reversed(state.event_stack):
+        if isinstance(event, MoveOne):
+          event.cancelled = True
+        if isinstance(event, CityMovement):
+          event.done = True  # TODO: should this be cancelled instead?
+          break
+      self.movement_cancelled = True
+
     if not self.choice.is_done():
       state.event_stack.append(self.choice)
       return
