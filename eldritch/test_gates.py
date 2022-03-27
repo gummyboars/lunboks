@@ -119,17 +119,14 @@ class Gate2Test(GateEncounterTest):
 
   def testOther2Pass(self):
     self.char.speed_sneak_slider = 3
-    self.char.place = self.state.places["Dreamlands2"]
+    self.char.place = self.state.places["Dreamlands1"]
     self.state.gates.clear() #Throws away gate markers
-    self.info = places.OtherWorldInfo("Dreamlands", {"blue", "yellow", "green", "red"}) #Defines colored encounters that can happen in Dreamlands
-    self.gate = gates.Gate(self.info, 0) #Creates a gate marker of difficulty 0
+    self.gate = gates.Gate("Dreamlands", 1, 0, "circle") #Creates a gate marker of "name", identifier no., difficulty, gate symbol
     self.state.gates.append(self.gate) #Takes the gate marker created in the previous line and adds it to the pile of gates that was previously cleared in the line two above
     self.state.places["Square"].gate = self.state.gates.popleft() #At Independence Square, we are going to take a gate off of the gate pile defined above, that goes to the Dreamlands
     self.state.event_stack.append(gate_encounters.Other2(self.char))
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
-      choice = self.resolve_to_choice(GateChoice) #Resolve event stack until user/player has to choose which gate to come back through
-    choice.resolve(self.state, "Square") #Player has to choose Square
-    self.resolve_until_done()
+      self.resolve_until_done()
     self.assertEqual(self.char.place.name, "Square")    
     #TODO "In either event, you automatically close the gate you entered through
 
@@ -151,7 +148,7 @@ class Gate5Test(GateEncounterTest):
     
   def testAbyss5Pass(self):
     self.char.place = self.state.places["Abyss1"]
-    self.state.unique.append(items.HolyWater()) #Adds "Holy Water" item to the unique pile
+    self.state.unique.append(items.HolyWater(1)) #Adds "Holy Water" item to the unique pile
     self.state.event_stack.append(gate_encounters.Abyss5(self.char))
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       self.resolve_until_done()
