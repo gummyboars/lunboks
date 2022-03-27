@@ -4,16 +4,20 @@
 // variants: a mapping from asset name to an object with the variants, cycle, and default props.
 //   variants = {rsrc1tile: {variants: [0, 1, "other"], cycle: false, default: 0}}
 // imageinfo: a mapping from (assetName + variant) to
-//   imageinfo = {rsrc2tile: {srcnum: 0, filternum: 1, xoff, yoff, scale, rotation},
-//                rsrc1tile0: {srcnum: 2, xoff, yoff, scale, rotation}, ...}
+//   imageinfo = {rsrc2tile: {srcnum: 0, filternum: 1, xoff, yoff, scale, rotation, lazy},
+//                rsrc1tile0: {srcnum: 2, xoff, yoff, scale, rotation, lazy}, ...}
 // This file also expects global variable assetNames to be set to a list of asset names.
 
 renderLoops = {};
+sources = [];
 variants = {};
 imageInfo = {};
 totalImages = 0;
+eagerImages = 0;
 loadedImages = 0;
 errorImages = 0;
+imagePromises = [];
+resizeTimeout = null;
 
 function getAsset(assetName, variant) {
   let img = document.getElementById("canvas" + assetName + variant);
@@ -43,6 +47,273 @@ function renderAssetToCanvas(canvas, assetName, variant) {
   ctx.restore();
 }
 
+function renderAssetToDiv(div, assetName, variant) {
+  variant = variant || "";
+  // These will be used to re-render the div when it is resized.
+  div.assetName = assetName;
+  div.variant = variant;
+  // Resize the canvas to match the size of its container.
+  let cnv = div.getElementsByTagName("CANVAS")[0];
+  let cnvScale = div.cnvScale || 1;
+  cnv.width = div.offsetWidth * cnvScale;
+  cnv.height = div.offsetHeight * cnvScale;
+
+  // Clear the canvas.
+  let ctx = cnv.getContext("2d");
+  ctx.clearRect(0, 0, cnv.width, cnv.height);
+
+  // If there is nothing specified for this asset, render the default asset.
+  let imgData = imageInfo[assetName + variant] || imageInfo[assetName];
+  if (imgData == null) {
+    renderDefaultToCanvas(cnv, cnv.width, cnv.height, assetName, variant);
+    return new Promise((resolve, reject) => {resolve(true);});
+  }
+  // If this asset is specified but the source is not, this skin does not want to render this asset.
+  if (imgData.srcnum == null) {
+    return new Promise((resolve, reject) => {resolve(true);});
+  }
+
+  let prom = createImage(imgData.srcnum);
+  let handleDefault = function() { renderDefaultToCanvas(cnv, cnv.width, cnv.height, assetName, variant); };
+  if (imgData.filternum == null) {
+    return prom.then(function() { renderImage(cnv, imgData.srcnum); }, handleDefault);
+  }
+  return prom.then(function() { renderMaskedImage(cnv, imgData); }, handleDefault);
+}
+
+function clearAssetFromDiv(div) {
+  div.assetName = null;
+  div.variant = null;
+  let cnv = div.getElementsByTagName("CANVAS")[0];
+  cnv.width = div.offsetWidth;
+  cnv.height = div.offsetHeight;
+  let ctx = cnv.getContext("2d");
+  ctx.clearRect(0, 0, cnv.width, cnv.height);
+}
+
+function preloadAsset(assetName, variant) {
+  let imgData = imageInfo[assetName + variant] || imageInfo[assetName];
+  if (imgData == null || imgData.srcnum == null) {
+    return;
+  }
+  createImage(imgData.srcnum);
+}
+
+function renderRatio(orig, destCnv) {
+  let imageRatio = (orig.naturalWidth || orig.width) / (orig.naturalHeight || orig.height);
+  let cnvRatio = destCnv.width / destCnv.height;
+  let renderWidth, renderHeight, scaleMultiplier;
+  if (imageRatio > cnvRatio) {
+    renderWidth = destCnv.width;
+    renderHeight = destCnv.width / imageRatio;
+    scaleMultiplier = (orig.naturalWidth || orig.width) / destCnv.width;
+  } else {
+    renderHeight = destCnv.height;
+    renderWidth = destCnv.height * imageRatio;
+    scaleMultiplier = (orig.naturalHeight || orig.height) / destCnv.height;
+  }
+  return [renderWidth, renderHeight, scaleMultiplier];
+}
+
+function renderImage(cnv, idx) {
+  let img = document.getElementById("img" + idx);
+  if (img == null) {
+    throw "renderImage: img was null " + idx;
+  }
+  let renderWidth, renderHeight, unused;
+  [renderWidth, renderHeight, unused] = renderRatio(img, cnv);
+  let ctx = cnv.getContext("2d");
+  ctx.save();
+  ctx.translate(cnv.width/2, cnv.height/2);
+  ctx.drawImage(img, -renderWidth/2, -renderHeight/2, renderWidth, renderHeight);
+  ctx.restore();
+}
+
+function renderMaskedImage(cnv, imgData) {
+  let img = document.getElementById("img" + imgData.srcnum);
+  let mask = document.getElementById("img" + imgData.filternum);
+  if (img == null || mask == null) {
+    throw "renderMaskedImage: img or mask was null " + imgData.srcnum + " " + imgData.filternum;
+  }
+
+  let xoff = imgData.xoff || 0;
+  let yoff = imgData.yoff || 0;
+  let rotation = imgData.rotation || 0;
+  let scale = imgData.scale || 1;
+  let colorDiff = imgData.difference;
+
+  // Calculate rendering size.
+  let renderWidth, renderHeight, scaleMultiplier;
+  [renderWidth, renderHeight, scaleMultiplier] = renderRatio(mask, cnv);
+
+  // Clear the canvas.
+  let ctx = cnv.getContext("2d");
+  ctx.clearRect(0, 0, cnv.width, cnv.height);
+
+  ctx.save();
+  ctx.translate(cnv.width/2, cnv.height/2);
+  // Draw a color correction rectangle if necessary.
+  if (colorDiff != null) {
+    ctx.fillStyle = colorDiff;
+    ctx.fillRect(-cnv.width/2, -cnv.height/2, cnv.width, cnv.height);
+    ctx.globalCompositeOperation = "difference";
+  }
+  // Rotate, scale, draw the base image.
+  ctx.rotate(Math.PI * rotation / 180);
+  ctx.scale(scale / scaleMultiplier, scale / scaleMultiplier);
+  let cssFilter = "";
+  for (let filterName of ["contrast", "saturate", "brightness"]) {
+    if (imgData[filterName] != null) {
+      cssFilter += " " + filterName + "(" + imgData[filterName] + "%)";
+    }
+  }
+  if (cssFilter != "") {
+    ctx.filter = cssFilter;
+  }
+  ctx.drawImage(img, -xoff, -yoff);
+  ctx.restore();
+
+  // Now, mask the image using the mask. TODO: rename filter to mask.
+  ctx.save();
+  ctx.translate(cnv.width/2, cnv.height/2);
+  ctx.globalCompositeOperation = "destination-in";
+  ctx.drawImage(mask, -renderWidth/2, -renderHeight/2, renderWidth, renderHeight);
+  ctx.restore();
+}
+
+function setDivXYPercent(div, baseAsset, relativeAsset, fromBottom) {
+  if (imageInfo[baseAsset] == null || imageInfo[relativeAsset] == null) {
+    return false;
+  }
+  let xoff = imageInfo[relativeAsset].xoff - imageInfo[baseAsset].xoff;
+  let yoff = imageInfo[relativeAsset].yoff - imageInfo[baseAsset].yoff;
+  let angle = Math.PI * imageInfo[baseAsset].rotation / 180;
+  let xdiff = Math.cos(angle) * xoff - Math.sin(angle) * yoff;
+  let ydiff = Math.sin(angle) * xoff + Math.cos(angle) * yoff;
+  // TODO: scale
+  let baseImg;
+  if (imageInfo[baseAsset].filternum != null) {
+    baseImg = document.getElementById("img" + imageInfo[baseAsset].filternum);
+  } else {
+    baseImg = document.getElementById("img" + imageInfo[baseAsset].srcnum);
+  }
+  let width = baseImg.naturalWidth || baseImg.width;
+  let height = baseImg.naturalHeight || baseImg.height;
+  let xpct = (width / 2 + xdiff) / width;
+  let ypct = (height / 2 + ydiff) / height;
+  if (fromBottom) {
+    div.style.bottom = 100 * (1-ypct) + "%";
+  } else {
+    div.style.top = 100 * ypct + "%";
+  }
+  div.style.left = 100 * xpct + "%";
+  return true;
+}
+
+function loadImages() {
+  let prefix = assetPrefix || "";
+  // Parse data and set globals.
+  sources = JSON.parse(localStorage.getItem(prefix + "sources") || "[]");
+  variants = JSON.parse(localStorage.getItem(prefix + "variants") || "{}");
+  imageInfo = JSON.parse(localStorage.getItem(prefix + "imageinfo") || "{}");
+  imagePromises = [];
+  totalImages = sources.length;
+  loadedImages = 0;
+  errorImages = 0;
+
+  // Just computes which image sources should be eagerly rendered (and how many there are).
+  let eagerLoaded = [];
+  eagerImages = 0;
+  for (let assetName of assetNames) {
+    let variantConfig = variants[assetName];
+    let assetVariants;
+    if (!variantConfig) {
+      assetVariants = [""];
+    } else {
+      assetVariants = variantConfig.variants;
+    }
+    for (let variant of assetVariants) {
+      let imgData = imageInfo[assetName + variant];
+      if (imgData == null) {
+        continue;
+      }
+      if (!imgData.lazy) {
+        if (imgData.srcnum != null && !eagerLoaded[imgData.srcnum]) {
+          eagerImages++;
+          eagerLoaded[imgData.srcnum] = true;
+        }
+      }
+      // Filters are always eagerly loaded.
+      if (imgData.filternum != null && !eagerLoaded[imgData.filternum]) {
+        eagerImages++;
+        eagerLoaded[imgData.filternum] = true;
+      }
+    }
+  }
+
+  // Reset assets and loading bar.
+  let assets = document.getElementById("assets");
+  while (assets.firstChild) {
+    assets.removeChild(assets.firstChild);
+  }
+  if (document.getElementById("uiload") != null) {
+    document.getElementById("uiload").style.display = "block";
+  }
+  updateLoad();
+
+  // Create an element for every image, and return a promise that resolves when all are loaded.
+  let promises = [];
+  for (let [idx, source] of sources.entries()) {
+    if (!eagerLoaded[idx]) {
+      continue;
+    }
+    let promise = createImage(idx);
+    promise.then(incrementLoad, incrementError);
+    promises.push(promise);
+  }
+  return Promise.allSettled(promises);
+}
+
+function createImage(idx) {
+  if (imagePromises[idx] != null) {
+    return imagePromises[idx];
+  }
+  imagePromises[idx] = new Promise((resolve, reject) => {
+    let assets = document.getElementById("assets");
+    let source = sources[idx];
+    let img;
+    if (typeof(source) == "object") {
+      try {
+        img = createShape(source);
+        img.id = "img" + idx;
+        assets.appendChild(img);
+        resolve(idx);
+      } catch(err) {
+        reject(idx);
+      }
+    } else {
+      img = document.createElement("IMG");
+      img.id = "img" + idx;
+      img.src = source;
+      img.addEventListener("load", function () { resolve(idx); });
+      img.addEventListener("error", function () { reject(idx); });
+      img.addEventListener("abort", function () { reject(idx); });
+      assets.appendChild(img);
+    }
+  });
+  return imagePromises[idx];
+}
+
+function rerenderAll() {
+  let toRerender = document.getElementsByClassName("cnvcontainer");
+  for (let div of toRerender) {
+    if (div.assetName == null) {
+      continue;
+    }
+    renderAssetToDiv(div, div.assetName, div.variant);
+  }
+}
+
 function incrementLoad() {
   loadedImages++;
   updateLoad();
@@ -56,22 +327,22 @@ function incrementError() {
 function updateLoad() {
   let loadbar = document.getElementById("loadingbar");
   if (loadbar != null) {
-    loadbar.style.width = (100 * loadedImages / totalImages) + "%";
+    loadbar.style.width = (100 * loadedImages / eagerImages) + "%";
   }
   let errorbar = document.getElementById("errorbar");
   if (errorbar != null) {
-    errorbar.style.width = (100 * errorImages / totalImages) + "%";
+    errorbar.style.width = (100 * errorImages / eagerImages) + "%";
   }
   let loadspan = document.getElementById("loadcount");
   if (loadspan != null) {
-    let loadCount = String(loadedImages) + " / " + String(totalImages);
+    let loadCount = String(loadedImages) + " / " + String(eagerImages);
     if (errorImages > 0) {
       loadCount += " (" + String(errorImages) + " errors)";
     }
     loadspan.innerText = loadCount;
   }
   let uiload = document.getElementById("uiload");
-  if (uiload != null && (loadedImages + errorImages) == totalImages) {
+  if (uiload != null && (loadedImages + errorImages) == eagerImages) {
     document.getElementById("uiload").style.display = "none";
   }
 }
@@ -89,6 +360,7 @@ function failRender(assetName, cnv) {
   }
 }
 
+// TODO: dedup
 function renderSource(assetName, cnv, img, filter) {
   if (!renderLoops[assetName]) {
     renderLoops[assetName] = 1;
@@ -138,6 +410,9 @@ function createShape(specs) {
   if (specs.shape == "rect") {
     cnv.width = specs.width;
     cnv.height = specs.height;
+  } else if (specs.shape == "circle") {
+    cnv.width = specs.radius * 2;
+    cnv.height = specs.radius * 2;
   }
   let ctx = cnv.getContext("2d");
   if (specs.style) {
@@ -145,6 +420,9 @@ function createShape(specs) {
   }
   if (specs.shape == "rect") {
     ctx.fillRect(0, 0, specs.width, specs.height);
+  } else if (specs.shape == "circle") {
+    ctx.arc(specs.radius, specs.radius, specs.radius, 0, 2 * Math.PI);
+    ctx.fill();
   }
   return cnv;
 }
@@ -163,6 +441,7 @@ function renderImages() {
   try {
     let sources = JSON.parse(localStorage.getItem(prefix + "sources") || "[]");
     totalImages = sources.length;
+    eagerImages = totalImages;
     loadedImages = 0;
     errorImages = 0;
     updateLoad();
@@ -283,3 +562,8 @@ function checkInitDone(resolver, rejecter, maxTries) {
   }
   resolver("loaded");
 }
+
+window.addEventListener("resize", function() {
+  clearTimeout(resizeTimeout);
+  resizeTimeout = setTimeout(rerenderAll, 250);
+});

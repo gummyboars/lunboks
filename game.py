@@ -64,11 +64,11 @@ class BaseGame(metaclass=abc.ABCMeta):
   def post_urls(self):
     return []
 
-  def handle_get(self, http_handler, path, args):
-    http_handler.send_error(HTTPStatus.NOT_FOUND.value, "Unknown path %s" % path)
+  def handle_get(self, http_handler, path, args):  # pylint: disable=unused-argument
+    http_handler.send_error(HTTPStatus.NOT_FOUND.value, f"Unknown path {path}")
 
-  def handle_post(self, http_handler, path, args, data):
-    http_handler.send_error(HTTPStatus.NOT_FOUND.value, "Unknown path %s" % path)
+  def handle_post(self, http_handler, path, args, data):  # pylint: disable=unused-argument
+    http_handler.send_error(HTTPStatus.NOT_FOUND.value, f"Unknown path {path}")
 
   @abc.abstractmethod
   def game_url(self, game_id):
@@ -78,11 +78,11 @@ class BaseGame(metaclass=abc.ABCMeta):
     return self.__class__.__name__ + " game"
 
   @abc.abstractmethod
-  def connect_user(self):
+  def connect_user(self, session):
     pass
 
   @abc.abstractmethod
-  def disconnect_user(self):
+  def disconnect_user(self, session):
     pass
 
   @abc.abstractmethod
@@ -97,12 +97,13 @@ class BaseGame(metaclass=abc.ABCMeta):
   def handle(self, session, data):
     pass
 
-  @abc.abstractclassmethod
+  @classmethod
+  @abc.abstractmethod
   def parse_json(cls, data):
     return None
 
 
-class GameHandler(object):
+class GameHandler:
 
   def __init__(self, game_id, game_class):
     self.game_id = game_id
@@ -126,9 +127,9 @@ class GameHandler(object):
     valid.update(["/load"])
     return valid
 
-  def handle_get(self, event_loop, http_handler, path, args):
+  def handle_get(self, event_loop, http_handler, path, args):  # pylint: disable=unused-argument
     if path in ["/dump", "/save", "/json"]:
-      value = self.game.json_str().encode('ascii')
+      value = self.game.json_str().encode("ascii")
       http_handler.send_response(HTTPStatus.OK.value)
       http_handler.end_headers()
       http_handler.wfile.write(value)
@@ -139,11 +140,11 @@ class GameHandler(object):
     if path in ["/load"]:
       try:
         new_game = self.game_class.parse_json(data)
-      except Exception as e:
+      except Exception as err:  # pylint: disable=broad-except
         print(sys.exc_info()[0])
         print(sys.exc_info()[1])
         traceback.print_tb(sys.exc_info()[2])
-        http_handler.send_error(HTTPStatus.BAD_REQUEST.value, str(e))
+        http_handler.send_error(HTTPStatus.BAD_REQUEST.value, str(err))
         return
       self.game = new_game
       for session in self.websockets:
@@ -159,7 +160,7 @@ class GameHandler(object):
     is_new_user = not self.websockets[session]
     self.websockets[session].add(websocket)
     if is_new_user:
-      print("added %s to the game %s" % (session, self.game_id))
+      print(f"added {session} to the game {self.game_id}")
       self.game.connect_user(session)
     # Need to push, since the new connection needs data too.
     await self.push()
@@ -167,16 +168,16 @@ class GameHandler(object):
   async def disconnect_user(self, session, websocket):
     self.websockets[session].remove(websocket)
     if not self.websockets[session]:
-      print("%s has left game %s" % (session, self.game_id))
+      print(f"{session} has left game {self.game_id}")
       del self.websockets[session]
       self.game.disconnect_user(session)
       await self.push()
 
-  async def handle(self, ws, session, raw_data):
+  async def handle(self, websocket, session, raw_data):
     try:
       data = json.loads(raw_data, object_pairs_hook=collections.OrderedDict)
-    except Exception as e:
-      await self.push_error(ws, str(e))
+    except Exception as err:  # pylint: disable=broad-except
+      await self.push_error(websocket, str(err))
       return
     pushed = False
     try:
@@ -188,20 +189,22 @@ class GameHandler(object):
           await self.push()
         # Avoid pushing the last state twice.
         pushed = True
-    except (GameException, AssertionError) as e:
-      if not str(e):
-        await self.push_error(ws, "Unknown error")
+    except (GameException, AssertionError) as err:
+      if not str(err):
+        await self.push_error(websocket, "Unknown error")
         print(sys.exc_info()[0])
         print(sys.exc_info()[1])
         traceback.print_tb(sys.exc_info()[2])
       else:
-        await self.push_error(ws, str(e))
+        await self.push_error(websocket, str(err))
       # Intentionally fall through so that we can push the new state.
-    except Exception as e:
+    except Exception as err:  # pylint: disable=broad-except
       print(sys.exc_info()[0])
       print(sys.exc_info()[1])
       traceback.print_tb(sys.exc_info()[2])
-      await self.push_error(ws, "unexpected error of type %s: %s" % (sys.exc_info()[0], sys.exc_info()[1]))
+      await self.push_error(
+          websocket, f"unexpected error of type {sys.exc_info()[0]}: {sys.exc_info()[1]}",
+      )
     if not pushed:
       await self.push()
 
@@ -209,9 +212,9 @@ class GameHandler(object):
     callbacks = []
     for session, ws_list in self.websockets.items():
       data = self.game.for_player(session)
-      for ws in ws_list:
-        callbacks.append(ws.send(data))
+      for websocket in ws_list:
+        callbacks.append(websocket.send(data))
     await asyncio.gather(*callbacks)
 
-  async def push_error(self, ws, e):
-    await ws.send(json.dumps({"type": "error", "message": e}))
+  async def push_error(self, websocket, err):
+    await websocket.send(json.dumps({"type": "error", "message": err}))

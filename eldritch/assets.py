@@ -11,15 +11,24 @@ COMBAT_SUBTYPES = {"physical", "magical"}
 
 class Asset(metaclass=abc.ABCMeta):
 
-  JSON_ATTRS = {"name", "active", "exhausted", "hands", "bonuses"}
+  # pylint: disable=unused-argument
 
-  def __init__(self, name):
+  JSON_ATTRS = {"name", "handle", "active", "exhausted", "hands", "bonuses"}
+
+  def __init__(self, name, idx=None):
     self._name = name
+    self._idx = idx
     self._exhausted = False
 
   @property
   def name(self):
     return self._name
+
+  @property
+  def handle(self):
+    if self._idx is None:
+      return self._name
+    return f"{self._name}{self._idx}"
 
   @property
   def exhausted(self):
@@ -32,7 +41,7 @@ class Asset(metaclass=abc.ABCMeta):
   def bonuses(self):
     bonuses = {check: self.get_bonus(check, None) for check in CHECK_TYPES | SUB_CHECKS.keys()}
     bonuses["combat"] = sum([
-      self.get_bonus(check, None) for check in {"combat", "physical", "magical"}])
+        self.get_bonus(check, None) for check in {"combat", "physical", "magical"}])
     return bonuses
 
   def get_modifier(self, other, attribute):
@@ -53,6 +62,9 @@ class Asset(metaclass=abc.ABCMeta):
   def get_usable_trigger(self, event, owner, state):
     return None
 
+  def get_spend_event(self, owner):
+    return events.Nothing()
+
   def json_repr(self):
     return {attr: getattr(self, attr, None) for attr in self.JSON_ATTRS}
 
@@ -63,19 +75,20 @@ class Asset(metaclass=abc.ABCMeta):
 
 class Card(Asset):
 
-  DECKS = {"common", "unique", "spells", "skills", "allies"}
+  DECKS = {"common", "unique", "spells", "skills", "allies", "tradables", "specials"}
   VALID_BONUS_TYPES = CHECK_TYPES | SUB_CHECKS.keys() | COMBAT_SUBTYPES
 
-  def __init__(self, name, deck, active_bonuses, passive_bonuses):
+  def __init__(self, name, idx, deck, active_bonuses, passive_bonuses):
     assert deck in self.DECKS
-    assert not ((active_bonuses.keys() | passive_bonuses.keys()) - self.VALID_BONUS_TYPES)
-    super(Card, self).__init__(name)
+    assert not (active_bonuses.keys() | passive_bonuses.keys()) - self.VALID_BONUS_TYPES
+    super().__init__(name, idx)
     self.deck = deck
     self.active_bonuses = collections.defaultdict(int)
     self.active_bonuses.update(active_bonuses)
     self.passive_bonuses = collections.defaultdict(int)
     self.passive_bonuses.update(passive_bonuses)
     self._active = False
+    self.losable = True
 
   @property
   def active(self):
@@ -88,25 +101,62 @@ class Card(Asset):
     return bonus
 
 
-# TODO: drawing things when these allies join you
-def FortuneTeller():
-  return Card("Fortune Teller", "allies", {}, {"luck": 2})
-def TravelingSalesman():
-  return Card("Traveling Salesman", "allies", {}, {"sneak": 1, "will": 1})
-def PoliceDetective():
-  return Card("Police Detective", "allies", {}, {"fight": 1, "lore": 1})
-def Thief():
-  return Card("Thief", "allies", {}, {"sneak": 2})
+class FortuneTeller(Card):
+
+  def __init__(self):
+    super().__init__("Fortune Teller", None, "allies", {}, {"luck": 2})
+
+  def get_trigger(self, event, owner, state):
+    if isinstance(event, events.KeepDrawn) and self.name in event.kept:
+      return events.Gain(owner, {"clues": 2})
+    return None
+
+
+class TravelingSalesman(Card):
+
+  def __init__(self):
+    super().__init__("Traveling Salesman", None, "allies", {}, {"sneak": 1, "will": 1})
+
+  def get_trigger(self, event, owner, state):
+    if isinstance(event, events.KeepDrawn) and self.name in event.kept:
+      return events.Draw(owner, "common", 1)
+    return None
+
+
+class PoliceDetective(Card):
+
+  def __init__(self):
+    super().__init__("Police Detective", None, "allies", {}, {"fight": 1, "lore": 1})
+
+  def get_trigger(self, event, owner, state):
+    if isinstance(event, events.KeepDrawn) and self.name in event.kept:
+      return events.Draw(owner, "spells", 1)
+    return None
+
+
+class Thief(Card):
+
+  def __init__(self):
+    super().__init__("Thief", None, "allies", {}, {"sneak": 2})
+
+  def get_trigger(self, event, owner, state):
+    if isinstance(event, events.KeepDrawn) and self.name in event.kept:
+      return events.Draw(owner, "unique", 1)
+    return None
+
+
 def ArmWrestler():
-  return Card("Arm Wrestler", "allies", {}, {})  # TODO: maximum stamina
+  return Card("Arm Wrestler", None, "allies", {}, {})  # TODO: maximum stamina
+
+
 def Dog():
-  return Card("Dog", "allies", {}, {})  # TODO: maximum sanity
+  return Card("Dog", None, "allies", {}, {})  # TODO: maximum sanity
 
 
 class BraveGuy(Card):
 
   def __init__(self):
-    super(BraveGuy, self).__init__("Brave Guy", "allies", {}, {"speed": 2})
+    super().__init__("Brave Guy", None, "allies", {}, {"speed": 2})
 
   def get_override(self, other, attribute):
     if attribute == "nightmarish":
@@ -117,7 +167,7 @@ class BraveGuy(Card):
 class PoliceInspector(Card):
 
   def __init__(self):
-    super(PoliceInspector, self).__init__("Police Inspector", "allies", {}, {"will": 2})
+    super().__init__("Police Inspector", None, "allies", {}, {"will": 2})
 
   def get_override(self, other, attribute):
     if attribute == "endless":
@@ -128,7 +178,7 @@ class PoliceInspector(Card):
 class VisitingPainter(Card):
 
   def __init__(self):
-    super(VisitingPainter, self).__init__("Visiting Painter", "allies", {}, {"speed": 1, "luck": 1})
+    super().__init__("Visiting Painter", None, "allies", {}, {"speed": 1, "luck": 1})
 
   def get_override(self, other, attribute):
     if attribute == "physical resistance":
@@ -139,7 +189,7 @@ class VisitingPainter(Card):
 class OldProfessor(Card):
 
   def __init__(self):
-    super(OldProfessor, self).__init__("Old Professor", "allies", {}, {"lore": 2})
+    super().__init__("Old Professor", None, "allies", {}, {"lore": 2})
 
   def get_override(self, other, attribute):
     if attribute == "magical resistance":
@@ -150,7 +200,7 @@ class OldProfessor(Card):
 class ToughGuy(Card):
 
   def __init__(self):
-    super(ToughGuy, self).__init__("Tough Guy", "allies", {}, {"fight": 2})
+    super().__init__("Tough Guy", None, "allies", {}, {"fight": 2})
 
   def get_override(self, other, attribute):
     if attribute == "overwhelming":
@@ -158,10 +208,26 @@ class ToughGuy(Card):
     return None
 
 
+class Deputy(Card):
+
+  def __init__(self):
+    super().__init__("Deputy", None, "specials", {}, {})
+
+  def get_trigger(self, event, owner, state):
+    if isinstance(event, events.UpkeepActions) and event.character == owner:
+      return events.Gain(owner, {"dollars": 1})
+    if isinstance(event, events.KeepDrawn) and self.name in event.kept:
+      return events.Sequence([
+          events.DrawSpecific(owner, "tradables", "Deputy's Revolver"),
+          events.DrawSpecific(owner, "tradables", "Patrol Wagon"),
+      ], owner)
+    return None
+
+
 def CreateAllies():
   return [
       ally() for ally in [
-        FortuneTeller, TravelingSalesman, PoliceDetective, Thief, BraveGuy,
-        PoliceInspector, ArmWrestler, VisitingPainter, ToughGuy, OldProfessor, Dog,
+          FortuneTeller, TravelingSalesman, PoliceDetective, Thief, BraveGuy,
+          PoliceInspector, ArmWrestler, VisitingPainter, ToughGuy, OldProfessor, Dog,
       ]
   ]

@@ -1,18 +1,22 @@
+from collections import OrderedDict
+import math
+
 from eldritch import abilities
 from eldritch import events
-from eldritch import items
-from eldritch import places
+from eldritch import gates
+from eldritch import monsters
 
 
-class Character(object):
-  
+class Character:
+
   def __init__(
       self, name, max_stamina, max_sanity, max_speed, max_sneak,
       max_fight, max_will, max_lore, max_luck, focus, home,
-    ):
+  ):
     self.name = name
     self._max_stamina = max_stamina
     self._max_sanity = max_sanity
+    self._slider_names = ["speed_sneak", "fight_will", "lore_luck"]
     self._speed_sneak = [(max_speed - 3 + i, max_sneak - i) for i in range(4)]
     self._fight_will = [(max_fight - 3 + i, max_will - i) for i in range(4)]
     self._lore_luck = [(max_lore - 3 + i, max_luck - i) for i in range(4)]
@@ -20,11 +24,12 @@ class Character(object):
     self.fight_will_slider = 3
     self.lore_luck_slider = 3
     self._focus = focus
-    self.stamina = self.max_stamina
-    self.sanity = self.max_sanity
+    self.stamina = self._max_stamina
+    self.sanity = self._max_sanity
     self.dollars = 0
     self.clues = 0
     self.possessions = []  # includes special abilities, skills, and allies
+    self.trophies = []
     # TODO: maybe the blessings, retainers, bank loans, and lodge memberships should be possessions.
     self.bless_curse = 0  # -1 for curse, +1 for blessed
     self.bless_curse_start = None
@@ -33,27 +38,32 @@ class Character(object):
     self.lodge_membership = False
     self.delayed_until = None
     self.lose_turn_until = None
+    self.gone = False
     self.movement_points = self._speed_sneak[self.speed_sneak_slider][0]
     self.focus_points = self.focus
     self.home = home
     self.place = None
     self.explored = False
+    self.avoid_monsters = []
 
   def get_json(self, state):
     attrs = [
-        "name", "max_stamina", "max_sanity", "stamina", "sanity", "focus",
+        "name", "stamina", "sanity", "focus",
         "movement_points", "focus_points",
-        "dollars", "clues", "possessions", # TODO: special cards
-        "delayed_until", "lose_turn_until",
+        "dollars", "clues", "possessions", "trophies",  # TODO: special cards
+        "delayed_until", "lose_turn_until", "gone",
     ]
     data = {attr: getattr(self, attr) for attr in attrs}
-    data["sliders"] = {}
-    for slider in self.sliders():
+    for numeric in ["delayed_until", "lose_turn_until"]:
+      if data[numeric] is not None and math.isinf(data[numeric]):
+        data[numeric] = True  # Any placeholder non-integer value.
+    data["sliders"] = OrderedDict()
+    for slider in self._slider_names:
       data["sliders"][slider] = {
           "pairs": getattr(self, "_" + slider),
           "selection": getattr(self, slider + "_slider"),
       }
-    computed = ["speed", "sneak", "fight", "will", "lore", "luck"]
+    computed = ["speed", "sneak", "fight", "will", "lore", "luck", "max_sanity", "max_stamina"]
     data.update({attr: getattr(self, attr)(state) for attr in computed})
     data["place"] = self.place.name if self.place is not None else None
     data["fixed"] = sum(self.fixed_possessions().values(), [])
@@ -61,14 +71,11 @@ class Character(object):
     data["initial"] = self.initial_attributes()
     return data
 
-  # TODO: add global effects to all properties
-  @property
-  def max_stamina(self):
-    return self._max_stamina
+  def max_stamina(self, state):
+    return self._max_stamina + self.bonus("max_stamina", state)
 
-  @property
-  def max_sanity(self):
-    return self._max_sanity
+  def max_sanity(self, state):
+    return self._max_sanity + self.bonus("max_sanity", state)
 
   def speed(self, state):
     return self._speed_sneak[self.speed_sneak_slider][0] + self.bonus("speed", state)
@@ -114,10 +121,26 @@ class Character(object):
     ]
 
   def get_usable_interrupts(self, event, state):
-    return {
-        idx: p.get_usable_interrupt(event, self, state) for idx, p in enumerate(self.possessions)
-        if p.get_usable_interrupt(event, self, state)
+    interrupts = {
+        pos.handle: pos.get_usable_interrupt(event, self, state)
+        for pos in self.possessions if pos.get_usable_interrupt(event, self, state)
     }
+    if isinstance(event, events.SpendMixin) and event.character == self and not event.is_done():
+      spent_handles = event.spent_handles()
+      for trophy in self.trophies:
+        handle = trophy.handle
+        if handle in spent_handles:
+          interrupts[handle] = events.Unspend(self, event, handle)
+          continue
+        if isinstance(trophy, monsters.Monster):
+          if "toughness" in event.spendable:
+            amount = trophy.toughness(state, self)
+            interrupts[handle] = events.Spend(self, event, handle, {"toughness": amount})
+          elif "monsters" in event.spendable:
+            interrupts[handle] = events.Spend(self, event, handle, {"monsters": 1})
+        elif isinstance(trophy, gates.Gate) and "gates" in event.spendable:
+          interrupts[handle] = events.Spend(self, event, handle, {"gates": 1})
+    return interrupts
 
   def get_triggers(self, event, state):
     return [
@@ -126,18 +149,32 @@ class Character(object):
     ]
 
   def get_usable_triggers(self, event, state):
-    triggers = {
-        idx: p.get_usable_trigger(event, self, state) for idx, p in enumerate(self.possessions)
-        if p.get_usable_trigger(event, self, state)
+    return {
+        pos.handle: pos.get_usable_trigger(event, self, state)
+        for pos in self.possessions if pos.get_usable_trigger(event, self, state)
     }
-    if self.clues > 0 and isinstance(event, events.Check) and event.character == self:
-      triggers["clues"] = events.SpendClue(self, event)
-    return triggers
+
+  def get_spend_event(self, handle):
+    matching = [pos for pos in self.possessions if pos.handle == handle]
+    if matching:
+      if len(matching) > 1:
+        print(f"ERROR: handle {handle} matched multiple possessions: {matching}")
+      return matching[0].get_spend_event(self)
+    matching = [trophy for trophy in self.trophies if trophy.handle == handle]
+    if not matching:
+      print(f"ERROR: handle {handle} matched no possessions or trophies")
+      return events.Nothing()
+    if len(matching) > 1:
+      print(f"ERROR: handle {handle} matched multiple trophies: {matching}")
+    trophy = matching[0]
+    if isinstance(trophy, monsters.Monster):
+      return events.ReturnMonsterToCup(self, handle)
+    return events.ReturnGateToStack(self, handle)
 
   def bonus(self, check_name, state, attributes=None):
     modifier = state.get_modifier(self, check_name)
-    for p in self.possessions:
-      bonus = p.get_bonus(check_name, attributes)
+    for pos in self.possessions:
+      bonus = pos.get_bonus(check_name, attributes)
       if attributes and check_name in {"magical", "physical"}:
         if check_name + " immunity" in attributes:
           bonus = 0
@@ -151,8 +188,8 @@ class Character(object):
 
   def get_override(self, other, attribute):
     override = None
-    for p in self.possessions:
-      val = p.get_override(other, attribute)
+    for pos in self.possessions:
+      val = pos.get_override(other, attribute)  # pylint: disable=assignment-from-none
       if val is None:
         continue
       if override is None:
@@ -161,6 +198,7 @@ class Character(object):
     return override
 
   def count_successes(self, roll, check_type):
+    # pylint: disable=unused-argument
     threshold = 5 - self.bless_curse
     return len([result for result in roll if result >= threshold])
 
@@ -168,11 +206,7 @@ class Character(object):
     return 2 - sum([pos.hands_used() for pos in self.possessions if hasattr(pos, "hands_used")])
 
   def sliders(self):
-    sliders = {}
-    for key, val in self.__dict__.items():
-      if key.endswith("_slider"):
-        sliders[key[:-7]] = val
-    return sliders
+    return {slider: getattr(self, slider + "_slider") for slider in self._slider_names}
 
   def focus_cost(self, pending_sliders):
     return sum([abs(orig - pending_sliders[name]) for name, orig in self.sliders().items()])
@@ -190,10 +224,230 @@ class Character(object):
     return {}
 
 
+class Student(Character):
+
+  def __init__(self):
+    super().__init__("Student", 5, 5, 4, 4, 4, 4, 4, 4, 3, "Bank")
+
+  def abilities(self):
+    return []  # TODO: Studious
+
+  def initial_attributes(self):
+    return {"dollars": 1, "clues": 1}
+
+  def fixed_possessions(self):
+    return {}
+
+  def random_possessions(self):
+    return {"common": 1, "unique": 1, "spells": 1, "skills": 2}
+
+
+class Drifter(Character):
+
+  def __init__(self):
+    super().__init__("Drifter", 6, 4, 3, 6, 5, 5, 3, 3, 1, "Docks")
+
+  def abilities(self):
+    return []  # TODO: Scrounge
+
+  def initial_attributes(self):
+    return {"dollars": 1, "clues": 3}
+
+  def fixed_possessions(self):
+    return {"allies": ["Dog"]}
+
+  def random_possessions(self):
+    return {"common": 1, "unique": 1, "skills": 1}
+
+
+class Salesman(Character):
+
+  def __init__(self):
+    super().__init__("Salesman", 6, 4, 5, 3, 4, 6, 3, 4, 1, "Store")
+
+  def abilities(self):
+    return []  # TODO: Shrewd
+
+  def initial_attributes(self):
+    return {"dollars": 9}
+
+  def fixed_possessions(self):
+    return {}
+
+  def random_possessions(self):
+    return {"common": 2, "unique": 2, "skills": 1}
+
+
+class Psychologist(Character):
+
+  def __init__(self):
+    super().__init__("Psychologist", 4, 6, 3, 3, 4, 4, 5, 5, 2, "Asylum")
+
+  def abilities(self):
+    return []  # TODO: Psychology
+
+  def initial_attributes(self):
+    return {"dollars": 7, "clues": 1}
+
+  def fixed_possessions(self):
+    return {}
+
+  def random_possessions(self):
+    return {"unique": 2, "common": 2, "skills": 1}
+
+
+class Photographer(Character):
+
+  def __init__(self):
+    super().__init__("Photographer", 6, 4, 5, 3, 5, 4, 3, 4, 2, "Newspaper")
+
+  def abilities(self):
+    return []  # TODO: Hometown
+
+  def initial_attributes(self):
+    return {"dollars": 1, "clues": 1, "retainer_start": 0}
+
+  def fixed_possessions(self):
+    return {}
+
+  def random_possessions(self):
+    return {"common": 1, "unique": 2, "skills": 1}
+
+
+class Magician(Character):
+
+  def __init__(self):
+    super().__init__("Magician", 5, 5, 5, 4, 4, 3, 5, 3, 2, "Shoppe")
+
+  def abilities(self):
+    return []  # TODO: Gift
+
+  def initial_attributes(self):
+    return {"dollars": 5}
+
+  def fixed_possessions(self):
+    return {"spells": ["Shrivelling"]}
+
+  def random_possessions(self):
+    return {"common": 1, "unique": 1, "spells": 2, "skills": 1}
+
+
+class Author(Character):
+
+  def __init__(self):
+    super().__init__("Author", 4, 6, 4, 3, 3, 5, 4, 5, 2, "Diner")
+
+  def abilities(self):
+    return []  # TODO: Sensitivity
+
+  def initial_attributes(self):
+    return {"dollars": 7, "clues": 2}
+
+  def fixed_possessions(self):
+    return {}
+
+  def random_possessions(self):
+    return {"common": 2, "spells": 2, "skills": 1}
+
+
+class Professor(Character):
+
+  def __init__(self):
+    super().__init__("Professor", 3, 7, 3, 5, 3, 3, 6, 4, 2, "Administration")
+
+  def abilities(self):
+    return []  # TODO: Mind
+
+  def initial_attributes(self):
+    return {"dollars": 5, "clues": 1}
+
+  def fixed_possessions(self):
+    return {}
+
+  def random_possessions(self):
+    return {"unique": 2, "spells": 2, "skills": 1}
+
+
+class Dilettante(Character):
+
+  def __init__(self):
+    super().__init__("Dilettante", 4, 6, 3, 4, 4, 5, 4, 5, 1, "Train")
+
+  def abilities(self):
+    return []  # TODO: Trust Fund
+
+  def initial_attributes(self):
+    return {"dollars": 10}
+
+  def fixed_possessions(self):
+    return {}
+
+  def random_possessions(self):
+    return {"common": 2, "unique": 1, "spells": 1, "skills": 1}
+
+
+class PrivateEye(Character):
+
+  def __init__(self):
+    super().__init__("Private Eye", 6, 4, 6, 4, 5, 3, 3, 3, 3, "Police")
+
+  def abilities(self):
+    return []  # TODO: Hunches
+
+  def initial_attributes(self):
+    return {"dollars": 8, "clues": 3}
+
+  def fixed_possessions(self):
+    return {"common": [".45 Automatic"]}
+
+  def random_possessions(self):
+    return {"common": 2, "skills": 1}
+
+
+class Scientist(Character):
+
+  def __init__(self):
+    super().__init__("Scientist", 4, 6, 4, 5, 4, 3, 5, 4, 1, "Science")
+
+  def abilities(self):
+    return [abilities.FluxStabilizer()]
+
+  def initial_attributes(self):
+    # TODO: don't place a clue on the science building to start the game
+    return {"dollars": 7, "clues": 2}
+
+  def fixed_possessions(self):
+    return {}
+
+  def random_possessions(self):
+    return {"common": 1, "unique": 1, "spells": 2, "skills": 1}
+
+
+class Researcher(Character):
+
+  def __init__(self):
+    super().__init__("Researcher", 5, 5, 4, 5, 3, 5, 4, 3, 2, "Library")
+
+  def abilities(self):
+    return []  # TODO: Research
+
+  def initial_attributes(self):
+    return {"dollars": 6, "clues": 4}
+
+  def fixed_possessions(self):
+    return {}
+
+  def random_possessions(self):
+    return {"common": 2, "unique": 1, "skills": 1}
+
+
 class Nun(Character):
 
   def __init__(self):
-    super(Nun, self).__init__("Nun", 3, 7, 4, 4, 3, 4, 4, 6, 1, "Church")
+    super().__init__("Nun", 3, 7, 4, 4, 3, 4, 4, 6, 1, "Church")
+
+  def abilities(self):
+    return []  # TODO: Angel
 
   def initial_attributes(self):
     return {"bless_curse": 1}
@@ -208,7 +462,7 @@ class Nun(Character):
 class Doctor(Character):
 
   def __init__(self):
-    super(Doctor, self).__init__("Doctor", 5, 5, 3, 5, 3, 4, 5, 4, 2, "Hospital")
+    super().__init__("Doctor", 5, 5, 3, 5, 3, 4, 5, 4, 2, "Hospital")
 
   def abilities(self):
     return [abilities.Medicine()]
@@ -226,7 +480,10 @@ class Doctor(Character):
 class Archaeologist(Character):
 
   def __init__(self):
-    super(Archaeologist, self).__init__("Archaeologist", 7, 3, 4, 3, 5, 3, 4, 5, 2, "Shop")
+    super().__init__("Archaeologist", 7, 3, 4, 3, 5, 3, 4, 5, 2, "Shop")
+
+  def abilities(self):
+    return []  # TODO: Archaeology
 
   def initial_attributes(self):
     return {"dollars": 7, "clues": 1}
@@ -241,7 +498,10 @@ class Archaeologist(Character):
 class Gangster(Character):
 
   def __init__(self):
-    super(Gangster, self).__init__("Gangster", 7, 3, 5, 4, 6, 4, 3, 3, 1, "House")
+    super().__init__("Gangster", 7, 3, 5, 4, 6, 4, 3, 3, 1, "House")
+
+  def abilities(self):
+    return []  # TODO: Body
 
   def initial_attributes(self):
     return {"dollars": 8}
@@ -254,4 +514,10 @@ class Gangster(Character):
 
 
 def CreateCharacters():
-  return {c.name: c for c in [Nun(), Doctor(), Archaeologist(), Gangster()]}
+  return {
+      c.name: c for c in [
+          Student(), Drifter(), Salesman(), Psychologist(), Photographer(), Magician(), Author(),
+          Professor(), Dilettante(), PrivateEye(), Scientist(), Researcher(), Nun(), Doctor(),
+          Archaeologist(), Gangster(),
+      ]
+  }

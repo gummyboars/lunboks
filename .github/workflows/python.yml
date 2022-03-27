@@ -9,10 +9,8 @@ on:
     branches: [ master ]
 
 jobs:
-  build:
-
+  format-check:
     runs-on: ubuntu-latest
-
     steps:
     - uses: actions/checkout@v2
     - name: Set up Python 3.6
@@ -22,11 +20,40 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install pylint
+        pip install pylint autopep8
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-    - name: Analysing the code with pylint
+    - name: Check formatting with autopep8
       run: |
-        pylint -E `find . -name '*.py'`
-    - name: Test
+        autopep8 --diff --exit-code **/*.py
+  lint-check:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python 3.6
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.6
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pylint autopep8
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+    - name: Analyze the code with pylint
+      run: |
+        pylint -j 0 **/*.py
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python 3.6
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.6
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pylint autopep8
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+    - name: Run Tests
       run: |
         python -m unittest

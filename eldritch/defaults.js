@@ -1,8 +1,6 @@
 radiusRatio = 1 / 29;
-widthRatio = 1 / 9;
-heightRatio = 2 / 45;
-markerWidthRatio = radiusRatio;
-markerHeightRatio = radiusRatio * 3 / 2;
+widthRatio = 2 / 39;
+heightRatio = 1 / 6;
 
 connections = {
   Easttown: ["Downtown", "Rivertown"],
@@ -13,154 +11,302 @@ connections = {
 };
 
 locations = {
-  Shop: {name: "Curiositie Shoppe", color: "orange", x: 0.2240, y: 0.5379},
-  Newspaper: {name: "Newspaper", color: "orange", x: 0.1332, y: 0.5379},
-  Train: {name: "Train Station", color: "orange", x: 0.0513, y: 0.4769},
-  Bank: {name: "Bank", color: "white", x: 0.0513, y: 0.3668},
-  Asylum: {name: "Asylum", color: "white", x: 0.0506, y: 0.2634},
-  Square: {name: "Independence Square", color: "white", x: 0.0506, y: 0.1615},
-  Roadhouse: {name: "Hibb's Roadhouse", color: "dimgray", x: 0.1467, y: 0.1392},
-  Diner: {name: "Velma's Diner", color: "dimgray", x: 0.2044, y: 0.0543},
-  Police: {name: "Police Station", color: "dimgray", x: 0.3004, y: 0.0543},
-  Graveyard: {name: "Graveyard", color: "purple", x: 0.4310, y: 0.0543},
-  Cave: {name: "Black Cave", color: "purple", x: 0.5233, y: 0.0543},
-  Store: {name: "General Store", color: "purple", x: 0.5366, y: 0.1726},
-  Witch: {name: "The Witch House", color: "steelblue", x: 0.6672, y: 0.0521},
-  Lodge: {name: "Silver Twilight Lodge", color: "steelblue", x: 0.7193, y: 0.1466},
-  House: {name: "Ma's Boarding House", color: "saddlebrown", x: 0.8457, y: 0.0513},
-  Church: {name: "South Church", color: "saddlebrown", x: 0.9479, y: 0.0900},
-  Society: {name: "Historical Society", color: "saddlebrown", x: 0.9479, y: 0.2068},
-  Woods: {name: "Woods", color: "firebrick", x: 0.9472, y: 0.3259},
-  Shoppe: {name: "Þe Old Magick Shoppe", color: "firebrick", x: 0.9323, y: 0.4606},
-  Hospital: {name: "St. Mary's Hospital", color: "firebrick", x: 0.8162, y: 0.5387},
-  Library: {name: "Library", color: "yellow", x: 0.7149, y: 0.4523},
-  Administration: {name: "Administration", color: "yellow", x: 0.6714, y: 0.5387},
-  Science: {name: "Science Building", color: "yellow", x: 0.5729, y: 0.5387},
-  Unnamable: {name: "The Unnamable", color: "green", x: 0.4918, y: 0.4523},
-  Docks: {name: "River Docks", color: "green", x: 0.4501, y: 0.5387},
-  Isle: {name: "Unvisited Isle", color: "green", x: 0.3616, y: 0.5387},
+  Shop: {name: "Curiositie Shoppe", color: "orange", x: 0.2158, y: 0.9143},
+  Newspaper: {name: "Newspaper", color: "orange", x: 0.1266, y: 0.9139},
+  Train: {name: "Train Station", color: "orange", x: 0.0444, y: 0.8017},
+  Bank: {name: "Bank", color: "white", x: 0.0439, y: 0.6232},
+  Asylum: {name: "Asylum", color: "white", x: 0.0434, y: 0.4479},
+  Square: {name: "Independence Square", color: "white", x: 0.0430, y: 0.2733},
+  Roadhouse: {name: "Hibb's Roadhouse", color: "dimgray", x: 0.1585, y: 0.2694},
+  Diner: {name: "Velma's Diner", color: "dimgray", x: 0.1577, y: 0.0912},
+  Police: {name: "Police Station", color: "dimgray", x: 0.2518, y: 0.0900},
+  Graveyard: {name: "Graveyard", color: "purple", x: 0.3928, y: 0.0900},
+  Cave: {name: "Black Cave", color: "purple", x: 0.4834, y: 0.0885},
+  Store: {name: "General Store", color: "purple", x: 0.4769, y: 0.2915},
+  WitchHouse: {name: "The Witch House", color: "steelblue", x: 0.6174, y: 0.0869},
+  Lodge: {name: "Silver Twilight Lodge", color: "steelblue", x: 0.6682, y: 0.2480},
+  House: {name: "Ma's Boarding House", color: "saddlebrown", x: 0.7745, y: 0.0853},
+  Church: {name: "South Church", color: "saddlebrown", x: 0.9094, y: 0.1517},
+  Society: {name: "Historical Society", color: "saddlebrown", x: 0.9344, y: 0.3507},
+  Woods: {name: "Woods", color: "firebrick", x: 0.9348, y: 0.5521},
+  Shoppe: {name: "Þe Old Magick Shoppe", color: "firebrick", x: 0.9201, y: 0.7820},
+  Hospital: {name: "St. Mary's Hospital", color: "firebrick", x: 0.8045, y: 0.9147},
+  Library: {name: "Library", color: "yellow", x: 0.6525, y: 0.6485},
+  Administration: {name: "Administration", color: "yellow", x: 0.6844, y: 0.8152},
+  Science: {name: "Science Building", color: "yellow", x: 0.5628, y: 0.9143},
+  Unnamable: {name: "The Unnamable", color: "green", x: 0.4824, y: 0.7338},
+  Docks: {name: "River Docks", color: "green", x: 0.4404, y: 0.9139},
+  Isle: {name: "Unvisited Isle", color: "green", x: 0.3530, y: 0.9131},
 };
 
 streets = {
-  Northside: {name: "Northside", color: "orange", x: 0.2180, y: 0.3952},
-  Downtown: {name: "Downtown", color: "white", x: 0.2180, y: 0.2920},
-  Easttown: {name: "Easttown", color: "dimgray", x: 0.3050, y: 0.1713},
-  Rivertown: {name: "Rivertown", color: "purple", x: 0.3966, y: 0.2473},
-  FrenchHill: {name: "French Hill", color: "steelblue", x: 0.6069, y: 0.2473},
-  Southside: {name: "Southside", color: "saddlebrown", x: 0.8122, y: 0.2473},
-  Uptown: {name: "Uptown", color: "firebrick", x: 0.8122, y: 0.3575},
-  University: {name: "Miskatonic University", color: "yellow", x: 0.6069, y: 0.3575},
-  Merchant: {name: "Merchant District", color: "green", x: 0.3966, y: 0.3575},
+  Northside: {name: "Northside", color: "orange", x: 0.1978, y: 0.7030},
+  Downtown: {name: "Downtown", color: "white", x: 0.1964, y: 0.4621},
+  Easttown: {name: "Easttown", color: "dimgray", x: 0.3041, y: 0.3420},
+  Rivertown: {name: "Rivertown", color: "purple", x: 0.3946, y: 0.3618},
+  FrenchHill: {name: "French Hill", color: "steelblue", x: 0.5924, y: 0.3523},
+  Southside: {name: "Southside", color: "saddlebrown", x: 0.8087, y: 0.3294},
+  Uptown: {name: "Uptown", color: "firebrick", x: 0.8073, y: 0.5663},
+  University: {name: "Miskatonic University", color: "yellow", x: 0.5735, y: 0.6082},
+  Merchant: {name: "Merchant District", color: "green", x: 0.3956, y: 0.6106},
 };
 
-function initializeDefaults() {
-  let assets = document.getElementById("defaultassets");
-  let ctx;
-  let aspectRatio = 1.7;
-  // let w = window.innerWidth;
-  // let h = aspectRatio * window.innerHeight;
-  let desiredWidth = document.documentElement.clientWidth * 0.8;
-  let desiredHeight = document.documentElement.clientHeight * 0.9;
-  let width, height;
-  if (desiredHeight * aspectRatio > desiredWidth) {
-    width = desiredWidth;
-    height = desiredWidth / aspectRatio;
-  } else {
-    height = desiredHeight;
-    width = desiredHeight * aspectRatio;
+function renderDefaultToCanvas(cnv, width, height, assetName, variant) {
+  if (assetName == "board") {
+    return renderBoardToCanvas(cnv, width, height);
   }
-  let board = document.createElement("CANVAS");
-  board.width = width;
-  board.height = height;
-  ctx = board.getContext("2d");
+  if (assetName == "Clue") {
+    return renderTextCircle(cnv, "🔍", "#47BA1F", "black", 0.65);
+  }
+  if (assetName == "Dollar") {
+    return renderTextRectangle(cnv, "💵", "rgba(0, 0, 0, 0)", "black");
+  }
+  if (assetName == "Stamina") {
+    return renderTextRectangle(cnv, "❤️", "rgba(0, 0, 0, 0)", "black");
+  }
+  if (assetName == "Sanity") {
+    let ctx = cnv.getContext("2d");
+    ctx.save();
+    ctx.filter = "hue-rotate(225deg)";
+    renderTextRectangle(cnv, "🧠", "rgba(0, 0, 0, 0)", "black");
+    ctx.restore();
+    return;
+  }
+  if (assetName == "Slider") {
+    return renderSlider(cnv, width, height);
+  }
+  if (assetName == "statsbg") {
+    return renderTextRectangle(cnv, "", "silver", "black");
+  }
+  if (assetName.startsWith("Terror")) {
+    return renderTextCircle(cnv, assetName.substring(6), "white", "black", 0.7);
+  }
+  if (assetName == "Doom") {
+    return renderTextCircle(cnv, "👁️", "royalblue", "black", 0.8);
+  }
+  if (assetName == "Seal") {
+    renderTextCircle(cnv, "", "royalblue", "black");
+    let ctx = cnv.getContext("2d");
+    ctx.save();
+    ctx.globalCompositeOperation = "destination-out";
+    renderTextCircle(cnv, "⭐", "rgba(0, 0, 0, 0)", "black", 0.65);
+    ctx.globalCompositeOperation = "destination-over";
+    renderTextCircle(cnv, "", "silver", "black");
+    ctx.globalCompositeOperation = "source-over";
+    renderTextCircle(cnv, "👁️", "rgba(0, 0, 0, 0)", "black", 0.35);
+    ctx.restore();
+    return;
+  }
+  if (characterNames.includes(assetName)) {
+    return renderTextRectangle(cnv, assetName, "silver", "black");
+  }
+  if (assetName.endsWith(" sliders")) {
+    return renderSliders(cnv, assetName.substring(0, assetName.length - 8));
+  }
+  if (assetName.endsWith(" title")) {
+    return renderTextRectangle(cnv, assetName.substring(0, assetName.length - 5), "silver", "black");
+  }
+  if (assetName.endsWith(" picture")) {
+    return renderTextRectangle(cnv, assetName.substring(0, assetName.length - 8), "silver", "black");
+  }
+  if (monsterNames.includes(assetName)) {
+    return renderTextRectangle(cnv, assetName, "black", "white");
+  }
+  if (monsterBacks.includes(assetName)) {
+    return renderTextRectangle(cnv, assetName, "black", "white");
+  }
+  if (otherWorlds.includes(assetName)) {
+    return renderOtherWorld(cnv, assetName, width, height);
+  }
+  if (assetName.startsWith("Gate ")) {
+    return renderTextCircle(cnv, assetName.substring(5), "palegoldenrod", "black", 0.3);
+  }
+  if (commonNames.includes(assetName) || assetName == "common") {
+    return renderTextRectangle(cnv, assetName, "darkkhaki", "black");
+  }
+  if (uniqueNames.includes(assetName) || assetName == "unique") {
+    return renderTextRectangle(cnv, assetName, "indianred", "black");
+  }
+  if (spellNames.includes(assetName) || assetName == "spells") {
+    return renderTextRectangle(cnv, assetName, "mediumpurple", "black");
+  }
+  if (skillNames.includes(assetName) || assetName == "skills") {
+    return renderTextRectangle(cnv, assetName, "gold", "black");
+  }
+  if (allyNames.includes(assetName) || assetName == "allies") {
+    return renderTextRectangle(cnv, assetName, "darkorange", "black");
+  }
+  if (abilityNames.includes(assetName)) {
+    return renderTextRectangle(cnv, assetName, "wheat", "black");
+  }
+  if (["Deputy", "Deputy's Revolver", "Patrol Wagon"].includes(assetName)) {
+    return renderTextRectangle(cnv, assetName, "dimgray", "black");
+  }
+  if (assetName == "Lodge Membership") {
+    return renderTextRectangle(cnv, assetName, "steelblue", "black");
+  }
+  if (assetName == "Retainer") {
+    return renderTextRectangle(cnv, assetName, "yellowgreen", "black");
+  }
+  if (assetName == "Blessing") {
+    return renderTextRectangle(cnv, assetName, "lightblue", "black");
+  }
+  if (assetName == "Curse") {
+    return renderTextRectangle(cnv, assetName, "darkred", "black");
+  }
+  if (assetName == "Bank Loan") {
+    return renderTextRectangle(cnv, assetName, "white", "black");
+  }
+  if (gateCards.includes(assetName)) {
+    if (assetName.length < 6 || assetName < "Gate13") {
+      return renderTextRectangle(cnv, assetName, "skyblue", "black");
+    }
+    if (assetName < "Gate25") {
+      return renderTextRectangle(cnv, assetName, "yellowgreen", "black");
+    }
+    if (assetName < "Gate37") {
+      return renderTextRectangle(cnv, assetName, "firebrick", "black");
+    }
+    return renderTextRectangle(cnv, assetName, "khaki", "black");
+  }
+  if (mythosCards.includes(assetName)) {
+    return renderTextRectangle(cnv, assetName, "white", "black");
+  }
+  if (ancientOnes.includes(assetName)) {
+    return renderTextRectangle(cnv, assetName, "midnightblue", "white");
+  }
+  if (assetName.endsWith(" worshippers") || assetName.endsWith(" slumber")) {
+    return renderTextRectangle(cnv, assetName, "midnightblue", "white");
+  }
+  if (assetName.endsWith(" max")) {
+    return renderTextCircle(cnv, ancientOneDoomMax[assetName.substring(0, assetName.length - 4)], "midnightblue", "white", 0.7);
+  }
+  if (encounterCardNames.includes(assetName)) {
+    for (let neighborhood of neighborhoodNames) {
+      if (assetName.startsWith(neighborhood)) {
+        return renderTextRectangle(cnv, assetName, streets[neighborhood].color, "black");
+      }
+    }
+    throw new Error("unknown neighborhood for " + assetName);
+  }
+  if (extraNames.includes(assetName)) {
+    let bgColor = {"Outskirts": "purple", "Sky": "green", "Lost": "yellow"}[assetName];
+    return renderTextRectangle(cnv, assetName, bgColor, "black");
+  }
+  throw new Error("unknown asset " + assetName);
+}
+
+function renderBoardToCanvas(cnv, width, height) {
+  ctx = cnv.getContext("2d");
   ctx.fillStyle = "#D2A253";
   ctx.fillRect(0, 0, width, height);
   for (let conn in connections) {
     for (let dest of connections[conn]) {
-      drawConnection(ctx, streets[conn], streets[dest], board.width);
+      drawConnection(ctx, streets[conn], streets[dest], cnv.width, cnv.height);
     }
   }
   for (let loc in locations) {
     for (let street in streets) {
       if (streets[street].color == locations[loc].color) {
-        drawConnection(ctx, streets[street], locations[loc], board.width);
+        drawConnection(ctx, streets[street], locations[loc], cnv.width, cnv.height);
       }
     }
-    drawLocation(ctx, locations[loc], board.width);
+    drawLocation(ctx, locations[loc], cnv.width, cnv.height);
   }
   for (let street in streets) {
-    drawStreet(ctx, streets[street], board.width);
+    drawStreet(ctx, streets[street], cnv.width, cnv.height);
   }
-  board.id = "defaultboard";
-  assets.appendChild(board);
-  let cfgs = [
-    {names: characterNames, color: "silver"},
-    {names: commonNames, color: "darkkhaki"},
-    {names: uniqueNames, color: "indianred"},
-    {names: spellNames, color: "mediumpurple"},
-    {names: skillNames, color: "gold"},
-    {names: allyNames, color: "darkorange"},
-    {names: abilityNames, color: "sienna"},
-  ];
-  for (let cfg of cfgs) {
-    for (let name of cfg.names) {
-      let asset = createTextRectangle(name, cfg.color, board.width, cfg.fgColor);
-      asset.id = "default" + name;
-      assets.appendChild(asset);
+}
+
+function renderSlider(cnv, width, height) {
+  let border = 2;
+  if (width/2 <= border) {
+    return;  // Safeguard: ctx.arc errors out if radius is negative.
+  }
+  let ctx = cnv.getContext("2d");
+  ctx.lineWidth = border;
+  ctx.beginPath();
+  ctx.moveTo(width - border, height/2);
+  ctx.lineTo(width - border, width/2);
+  ctx.arc(width/2, width/2, width/2 - border, 0, Math.PI, true);
+  ctx.lineTo(border, height/2);
+  ctx.strokeStyle = "blue";
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(border, height/2);
+  ctx.lineTo(border, height - width/2);
+  ctx.arc(width/2, height - width/2, width/2 - border, Math.PI, 2*Math.PI, true);
+  ctx.lineTo(width - border, height/2);
+  ctx.strokeStyle = "red";
+  ctx.stroke();
+}
+
+function renderSliders(cnv, charName) {
+  let ctx = cnv.getContext("2d");
+  ctx.fillStyle = "cornsilk";
+  ctx.fillRect(0, 0, cnv.width, cnv.height);
+  for (let [idx, name] of ["SPEED", "SNEAK", "FIGHT", "WILL", "LORE", "LUCK"].entries()) {
+    let fontSize = getTextSize(ctx, "SPEED", 2 * cnv.width / 11, cnv.height / 8);
+    ctx.font = fontSize + "px sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = "black";
+
+    let numSpacesAbove = 1 + ((idx - idx % 2) / 2) * 0.5;
+    let textY = (numSpacesAbove + idx) * cnv.height / 8;
+    let textX = 1.25 * cnv.width / 11;
+    ctx.fillText(name, textX, textY);
+
+    let sliderValue = characterSliders[charName][idx];
+    let sliderIncrement = (idx % 2 == 0) ? 1 : -1;
+    let xoff = (idx % 4 == 2 || idx % 4 == 3) ? 2 : 1;
+    for (let j = 1; j < 5; j++) {
+      if (idx % 2 == 0) {
+        ctx.fillStyle = "blue";
+      } else {
+        ctx.fillStyle = "red";
+      }
+      ctx.font = "bold " + fontSize + "px sans-serif";
+      textX = (2 * j + xoff) * cnv.width / 11;
+      ctx.fillText(sliderValue, textX, textY);
+      sliderValue += sliderIncrement;
     }
   }
-  for (let name of monsterNames) {
-    let asset = createTextSquare(name, "black", board.width, "white");
-    asset.id = "default" + name;
-    assets.appendChild(asset);
-    asset = createTextSquare(name + " back", "black", board.width, "white");
-    asset.id = "default" + name + "back";
-    assets.appendChild(asset);
-  }
-  for (let world of otherWorlds) {
-    let asset = createTextCircle(world, "palegoldenrod", board.width, "black", 0.3);
-    asset.id = "default" + "Gate " + world;
-    assets.appendChild(asset);
-    asset = createOtherWorld(world, board.width);
-    asset.id = "default" + world;
-    assets.appendChild(asset);
-  }
-  let clue = createTextCircle("🔍", "#47BA1F", board.width, "black", 0.65);
-  clue.id = "defaultClue";
-  assets.appendChild(clue);
 }
 
 function getTextSize(ctx, text, maxWidth, maxHeight) {
   ctx.font = "72px sans-serif";
-  let measurements = ctx.measureText(text);
+  let alphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  let widthMeasure = ctx.measureText(text);
+  let heightMeasure = ctx.measureText(alphabet);
   let textHeight;
-  if (measurements.emHeightAscent) {
-    textHeight = measurements.emHeightAscent + measurements.emHeightDescent;
-  } else if (measurements.fontBoundingBoxAscent) {
-    textHeight = measurements.fontBoundingBoxAscent + measurements.fontBoundingBoxDescent;
+  if (heightMeasure.emHeightAscent) {
+    textHeight = heightMeasure.emHeightAscent + heightMeasure.emHeightDescent;
+  } else if (heightMeasure.fontBoundingBoxAscent) {
+    textHeight = heightMeasure.fontBoundingBoxAscent + heightMeasure.fontBoundingBoxDescent;
   } else {
-    textHeight = measurements.actualBoundingBoxAscent + measurements.actualBoundingBoxDescent;
+    textHeight = heightMeasure.actualBoundingBoxAscent + heightMeasure.actualBoundingBoxDescent;
   }
-  let shrinkRatio = Math.min(maxWidth / measurements.width, maxHeight / textHeight);
+  let shrinkRatio = Math.min(maxWidth / widthMeasure.width, maxHeight / textHeight);
   return Math.floor(72 * shrinkRatio);
 }
 
-function drawConnection(ctx, src, dest, boardWidth) {
+function drawConnection(ctx, src, dest, boardWidth, boardHeight) {
   ctx.save();
   ctx.strokeStyle = "black";
   ctx.lineWidth = 1;
   ctx.beginPath();
-  ctx.moveTo(src.x * boardWidth, src.y * boardWidth);
-  ctx.lineTo(dest.x * boardWidth, dest.y * boardWidth);
+  ctx.moveTo(src.x * boardWidth, src.y * boardHeight);
+  ctx.lineTo(dest.x * boardWidth, dest.y * boardHeight);
   ctx.stroke();
   ctx.restore();
 }
 
-function drawLocation(ctx, data, boardWidth) {
+function drawLocation(ctx, data, boardWidth, boardHeight) {
   let width = boardWidth * 2 * radiusRatio;
   let height = width;
   ctx.save();
-  ctx.translate(boardWidth * data.x, boardWidth * data.y);
+  ctx.translate(boardWidth * data.x, boardHeight * data.y);
   ctx.beginPath();
   ctx.arc(0, 0, width / 2, 0, 2 * Math.PI, true);
   ctx.closePath();
@@ -177,20 +323,17 @@ function drawLocation(ctx, data, boardWidth) {
   ctx.restore();
 }
 
-function drawStreet(ctx, data, boardWidth) {
+function drawStreet(ctx, data, boardWidth, boardHeight) {
   let width = boardWidth * widthRatio;
-  let height = boardWidth * heightRatio;
+  let height = boardHeight * heightRatio;
   ctx.save();
-  ctx.translate(boardWidth * data.x, boardWidth * data.y);
+  ctx.translate(boardWidth * data.x, boardHeight * data.y);
   ctx.fillStyle = data.color;
   ctx.fillRect(-width/2, -height/2, width, height);
   ctx.restore();
 }
 
-function createTextRectangle(name, bgColor, boardWidth, fgColor) {
-  let cnv = document.createElement("CANVAS");
-  cnv.width = 3 * boardWidth * markerWidthRatio;
-  cnv.height = 3 * boardWidth * markerHeightRatio;
+function renderTextRectangle(cnv, name, bgColor, fgColor) {
   let ctx = cnv.getContext("2d");
   ctx.save();
   ctx.fillStyle = bgColor;
@@ -206,53 +349,25 @@ function createTextRectangle(name, bgColor, boardWidth, fgColor) {
   }
   ctx.fillText(name, cnv.width/2, cnv.height/2);
   ctx.restore();
-  return cnv;
 }
 
-function createTextSquare(name, bgColor, boardWidth, fgColor) {
-  let cnv = document.createElement("CANVAS");
-  cnv.width = boardWidth / 12;
-  cnv.height = boardWidth / 12;
-  let ctx = cnv.getContext("2d");
-  ctx.save();
-  ctx.fillStyle = bgColor;
-  ctx.fillRect(0, 0, cnv.width, cnv.height);
-  let fontSize = getTextSize(ctx, name, cnv.width, cnv.height);
-  ctx.font = fontSize + "px sans-serif";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  if (fgColor != null) {
-    ctx.fillStyle = fgColor;
-  } else {
-    ctx.fillStyle = "black";
-  }
-  ctx.fillText(name, cnv.width/2, cnv.height/2);
-  ctx.restore();
-  return cnv;
-}
-
-function createTextCircle(name, bgColor, boardWidth, fgColor, heightFactor) {
-  let cnv = document.createElement("CANVAS");
-  let radius = boardWidth * radiusRatio;
-  cnv.width = 2 * radius;
-  cnv.height = 2 * radius;
+function renderTextCircle(cnv, name, bgColor, fgColor, heightFactor) {
   let ctx = cnv.getContext("2d");
   ctx.save();
   ctx.fillStyle = bgColor;
   ctx.beginPath();
-  ctx.arc(radius, radius, radius, 0, 2 * Math.PI);
+  ctx.arc(cnv.width/2, cnv.width/2, cnv.width/2, 0, 2 * Math.PI);
   ctx.fill();
   let fontSize = getTextSize(ctx, name, cnv.width, heightFactor * cnv.height);
   ctx.font = fontSize + "px sans-serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   ctx.fillStyle = fgColor;
-  ctx.fillText(name, radius, radius);
+  ctx.fillText(name, cnv.width/2, cnv.width/2);
   ctx.restore();
-  return cnv;
 }
 
-function createOtherWorld(name, boardWidth) {
+function renderOtherWorld(cnv, name, width, height) {
   let colors = {
     "Abyss": ["red", "blue"],
     "Another Dimension": ["blue", "green", "red", "gold"],
@@ -263,38 +378,33 @@ function createOtherWorld(name, boardWidth) {
     "Dreamlands": ["blue", "green", "red", "gold"],
     "Pluto": ["blue", "gold"],
   };
-  let cnv = document.createElement("CANVAS");
-  let worldSize = boardWidth / 8;
-  cnv.width = worldSize;
-  cnv.height = worldSize;
   let ctx = cnv.getContext("2d");
   ctx.save();
   ctx.fillStyle = "palegoldenrod";
-  ctx.fillRect(0, 0, worldSize, worldSize);
-  let fontSize = getTextSize(ctx, name, worldSize * 3 / 4, worldSize / 4);
+  ctx.fillRect(0, 0, width, height);
+  let fontSize = getTextSize(ctx, name, width * 3 / 4, height / 4);
   ctx.font = fontSize + "px sans-serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   ctx.fillStyle = "black";
-  ctx.fillText(name, worldSize / 2, worldSize / 8);
+  ctx.fillText(name, width / 2, height / 8);
   ctx.strokeStyle = "black";
-  ctx.moveTo(0, worldSize / 4);
-  ctx.lineTo(worldSize, worldSize / 4);
+  ctx.moveTo(0, height / 4);
+  ctx.lineTo(width, height / 4);
   ctx.stroke();
-  ctx.moveTo(worldSize / 2, worldSize / 4);
-  ctx.lineTo(worldSize / 2, worldSize);
+  ctx.moveTo(width / 2, height / 4);
+  ctx.lineTo(width / 2, height);
   ctx.stroke();
   for (let [idx, color] of colors[name].entries()) {
     let x, y;
     if (idx < 2) {
-      x = worldSize * 15 / 16;
+      x = width * 15 / 16;
     } else {
-      x = worldSize * 14 / 16;
+      x = width * 14 / 16;
     }
-    y = (idx % 2) * worldSize / 16;
+    y = (idx % 2) * height / 16;
     ctx.fillStyle = color;
-    ctx.fillRect(x, y, worldSize / 16, worldSize / 16);
+    ctx.fillRect(x, y, width / 16, height / 16);
   }
   ctx.restore();
-  return cnv;
 }

@@ -1,15 +1,23 @@
 ws = null;
 dragged = null;
-characters = {};
+characterMarkers = {};
+characterSheets = {};
+portraits = {};
 monsters = {};
+allAncients = {};
+chosenAncient = null;
 allCharacters = {};
+availableChars = [];
+pendingName = null;
 scale = 1;
-itemsToChoose = null;
-itemChoice = [];
 monsterChoice = {};
 charChoice = null;
+ancientChoice = null;
 runningAnim = [];
 messageQueue = [];
+statTimeout = null;
+cardsStyle = "flex";
+statNames = {"stamina": "Stamina", "sanity": "Sanity", "clues": "Clue", "dollars": "Dollar"};
 
 function init() {
   let params = new URLSearchParams(window.location.search);
@@ -18,34 +26,26 @@ function init() {
     return;
   }
   let gameId = params.get("game_id");
-  initializeDefaults();
-  let promise = renderImages();
+  let promise = loadImages();
   promise.then(function() { continueInit(gameId); }, showError);
 }
 
 function continueInit(gameId) {
   ws = new WebSocket("ws://" + window.location.hostname + ":8081/" + gameId);
   ws.onmessage = onmsg;
-  document.getElementById("boardcanvas").width = document.getElementById("defaultboard").width;
-  document.getElementById("boardcanvas").height = document.getElementById("defaultboard").height;
-  renderAssetToCanvas(document.getElementById("boardcanvas"), "board", "");
+  renderAssetToDiv(document.getElementById("board"), "board");
   let width = document.getElementById("boardcanvas").width;
   let cont = document.getElementById("board");
-  let heights = {"location": Math.floor(2*radiusRatio*width), "street": Math.floor(width*heightRatio)};
-  let widths = {"location": Math.floor(2*radiusRatio*width), "street": Math.floor(width*widthRatio)};
   for (let [placeType, places] of [["location", locations], ["street", streets]]) {
     for (let name in places) {
       let div = document.createElement("DIV");
       div.id = "place" + name;
-      div.style.width = widths[placeType] + "px";
-      div.style.height = heights[placeType] + "px";
       div.classList.add("place");
-      div.style.top = Math.round(places[name].y*width) + "px";
-      div.style.left = Math.round(places[name].x*width) + "px";
-      div.onmouseenter = bringToTop;
+      div.onmouseenter = bringTop;
+      div.onmouseleave = returnBottom;
       let box = document.createElement("DIV");
       box.id = "place" + name + "box";
-      box.classList.add("placebox", "placeboxhover");  // FIXME
+      box.classList.add("placebox");
       box.ondrop = drop;
       box.ondragenter = dragEnter;
       box.ondragover = dragOver;
@@ -53,13 +53,11 @@ function continueInit(gameId) {
       let monstersDiv = document.createElement("DIV");
       monstersDiv.id = "place" + name + "monsters";
       monstersDiv.classList.add("placemonsters");
-      monstersDiv.style.height = div.style.height;
       monstersDiv.onclick = function(e) { showMonsters(monstersDiv, name); };
       let details = document.createElement("DIV");
       details.id = "place" + name + "details";
       details.classList.add("placedetails");
-      details.style.height = div.style.height;
-      if (places[name].y < 0.3) {
+      if (places[name].y < 0.5) {
         box.classList.add("placeupper");
         box.appendChild(details);
         box.appendChild(monstersDiv);
@@ -77,25 +75,20 @@ function continueInit(gameId) {
       let chars = document.createElement("DIV");
       chars.id = "place" + name + "chars";
       chars.classList.add("placechars");
-      chars.style.height = div.style.height;
-      chars.style.minWidth = div.style.width;
       details.appendChild(chars);
       let gateDiv = document.createElement("DIV");
       gateDiv.id = "place" + name + "gate";
       gateDiv.classList.add("placegate");
-      gateDiv.style.height = div.style.height;
-      gateDiv.style.width = div.style.width;
       details.appendChild(gateDiv);
+      let gateCont = document.createElement("DIV");
+      gateCont.classList.add("gatecontainer", "cnvcontainer");
+      gateDiv.appendChild(gateCont);
       let gate = document.createElement("CANVAS");
       gate.classList.add("gate");
-      gate.width = Math.floor(2*radiusRatio*width);
-      gate.height = Math.floor(2*radiusRatio*width);
-      gateDiv.appendChild(gate);
+      gateCont.appendChild(gate);
       let select = document.createElement("DIV");
       select.id = "place" + name + "select";
       select.classList.add("placeselect", placeType);
-      select.style.height = div.style.height;
-      select.style.width = div.style.width;
       select.onclick = function(e) { clickPlace(name); };
       details.appendChild(select);
       cont.appendChild(div);
@@ -106,54 +99,68 @@ function continueInit(gameId) {
       document.getElementById("placechoice").appendChild(opt);
     }
   }
+  placeLocations();
   for (let name of monsterNames) {
     let opt = document.createElement("OPTION");
     opt.value = name;
     opt.text = name;
     document.getElementById("monsterchoice").appendChild(opt);
   }
-  for (let [idx, name] of otherWorlds.entries()) {
+  for (let name of otherWorlds) {
     let div = document.createElement("DIV");
     div.id = "world" + name;
     div.classList.add("world");
-    div.style.width = Math.floor(width/8) + "px";
-    div.style.maxHeight = Math.floor(width/8) + "px";
     let worldbox = document.createElement("DIV");
     worldbox.id = "world" + name + "box";
     worldbox.classList.add("worldbox");
-    worldbox.style.width = Math.floor(width/8) + "px";
-    worldbox.style.height = Math.floor(width/8) + "px";
     for (let [i, side] of [[1, "left"], [2, "right"]]) {
       let world = document.createElement("DIV");
       world.id = "place" + name + i + "chars";
       world.classList.add("world" + side, "worldchars");
       worldbox.appendChild(world);
+      let portrait = document.createElement("DIV");
+      portrait.id = "place" + name + i + "portraits";
+      portrait.classList.add("portrait" + side);
+      worldbox.appendChild(portrait);
     }
     div.appendChild(worldbox);
+    let cnvContainer = document.createElement("DIV");
+    cnvContainer.classList.add("worldcnvcontainer", "cnvcontainer");
     let cnv = document.createElement("CANVAS");
     cnv.classList.add("worldcnv");
-    cnv.width = width / 8;
-    cnv.height = width / 8;
-    renderAssetToCanvas(cnv, name, "");
-    div.appendChild(cnv);
-    if (idx < otherWorlds.length / 2) {
-      document.getElementById("worldstop").appendChild(div);
-    } else {
-      document.getElementById("worldsbottom").appendChild(div);
+    cnvContainer.appendChild(cnv);
+    div.appendChild(cnvContainer);
+    document.getElementById("worlds").appendChild(div);
+    renderAssetToDiv(cnvContainer, name);
+  }
+  for (let extra of ["Lost", "Sky", "Outskirts"]) {
+    renderAssetToDiv(document.getElementById("place" + extra), extra);
+    if (extra != "Lost") {
+      let box = document.getElementById("place" + extra + "box");
+      let monstersDiv = box.getElementsByClassName("placemonsters")[0];
+      monstersDiv.onclick = function(e) { showMonsters(monstersDiv, extra); };
     }
   }
-  let worlds = document.getElementById("worlds");
-  worlds.style.height = Math.floor(width/16) + "px";
-  worlds.style.maxHeight = Math.floor(width/16) + "px";
+  let outskirtsBox = document.getElementById("placeOutskirtsbox");
+  outskirtsBox.ondragenter = dragEnter;
+  outskirtsBox.ondragover = dragOver;
+  outskirtsBox.ondrop = drop;
+  window.addEventListener("resize", function() {
+    clearTimeout(statTimeout);
+    statTimeout = setTimeout(updateStats, 255);
+  });
+}
 
-  let markerWidth = width * markerWidthRatio;
-  let markerHeight = width * markerHeightRatio;
-  let charChoice = document.getElementById("charchoice");
-  let cnv = document.getElementById("charchoicecnv");
-  charChoice.style.width = markerWidth + "px";
-  charChoice.style.height = markerHeight + "px";
-  cnv.width = markerWidth;
-  cnv.height = markerHeight;
+function placeLocations() {
+  for (let [placeType, places] of [["location", locations], ["street", streets]]) {
+    for (let name in places) {
+      let div = document.getElementById("place" + name);
+      if (!setDivXYPercent(div, "board", name)) {
+        div.style.top = 100 * places[name].y + "%";
+        div.style.left = 100 * places[name].x + "%";
+      }
+    }
+  }
 }
 
 // TODO: dedup
@@ -203,22 +210,37 @@ function finishAnim() {
   runningAnim.shift();
   if (messageQueue.length && !runningAnim.length) {
     handleData(messageQueue.shift());
+  } else {
+    updateStats();  // TODO: this is hacky
   }
 }
 function handleData(data) {
   allCharacters = data.all_characters;
-  updateCharacterSelect(data.characters, data.player_idx, data.pending_name, data.pending_chars);
-  updateCharacterSheets(data.characters, data.player_idx, data.first_player);
-  updateDone(data.game_stage, data.sliders);
+  allAncients = data.all_ancients;
+  pendingName = data.pending_name;
+  chosenAncient = (data.ancient_one == null) ? null : data.ancient_one.name;
+  updateAvailableCharacters(data.characters, data.pending_chars);
+  updateCharacterSelect(data.characters, data.player_idx);
+  updateAncientSelect(data.game_stage, data.host);
+  updateAncientOne(data.ancient_one, data.terror);
+  updateCharacterSheets(data.characters, data.pending_chars, data.player_idx, data.first_player, data.choice);
+  updateBottomText(data.game_stage, data.turn_phase, data.characters, data.turn_idx, data.player_idx, data.host);
+  updateGlobals(data.environment, data.rumor);
+  updateCurrentCard(data.current);
   updatePlaces(data.places);
   updateCharacters(data.characters);
+  updateSliderButton(data.sliders);
   updateChoices(data.choice);
   updateMonsters(data.monsters);
   updateMonsterChoices(data.choice, data.monsters);
   updateUsables(data.usables, data.choice);
+  updateSpending(data.choice);
+  updateDice(data.dice, data.roll, data.roller == data.player_idx);
   updateEventLog(data.event_log);
   if (messageQueue.length && !runningAnim.length) {
     handleData(messageQueue.shift());
+  } else {
+    updateStats();  // TODO: this is hacky
   }
 }
 
@@ -228,6 +250,10 @@ function clickPlace(place) {
 
 function setSlider(sliderName, sliderValue) {
   ws.send(JSON.stringify({"type": "set_slider", "name": sliderName, "value": sliderValue}));
+}
+
+function roll(e) {
+  ws.send(JSON.stringify({"type": "roll"}));
 }
 
 function spawnMonster(e) {
@@ -246,63 +272,35 @@ function spawnClue(e) {
   ws.send(JSON.stringify({"type": "clue", "place": place}));
 }
 
-function bringToTop(e) {
-  // It turns out that for siblings in the DOM, browsers give precedence to the sibling that
-  // comes later in the dom when calculating which element is being hovered. So once the user
-  // hovers over a box, we put that box last so that it gets priority over all the other boxes.
-  // This is a convoluted way of doing it - it turns out that if you move the dom element that
-  // you just moused over, firefox has trouble with applying the hover attributes. So instead
-  // of moving the element to the end, we move all OTHER elements before it, and this makes
-  // firefox happy.
-  let board = e.currentTarget.parentNode;
-  let divsToMove = [];
-  let found = false;
-  for (let i = 0; i < board.children.length; i++) {
-    if (found && board.children[i].classList.contains("place")) {
-      divsToMove.push(board.children[i]);
-    }
-    if (board.children[i] == e.currentTarget) {
-      found = true;
-    }
-  }
-  for (let other of divsToMove) {
-    board.insertBefore(other, e.currentTarget);
-  }
+function bringTop(e) {
+  let node = e.currentTarget;
+  node.origZ = node.style.zIndex;
+  node.style.zIndex = 5;
+}
+
+function returnBottom(e) {
+  let node = e.currentTarget;
+  node.style.zIndex = node.origZ || 0;
 }
 
 function makeChoice(val) {
-  if (itemsToChoose == null) {
-    ws.send(JSON.stringify({"type": "choice", "choice": val}));
-    return;
-  }
-  if (itemsToChoose > 0 && itemChoice.length != itemsToChoose) {
-    document.getElementById("errorText").holdSeconds = 3;
-    document.getElementById("errorText").style.opacity = 1.0;
-    document.getElementById("errorText").innerText = "Expected " + itemsToChoose + " items.";
-    setTimeout(clearError, 100);
-    return;
-  }
-  ws.send(JSON.stringify({"type": "choice", "choice": itemChoice}));
+  ws.send(JSON.stringify({"type": "choice", "choice": val}));
+}
+
+function chooseItems(e) {
+  ws.send(JSON.stringify({"type": "choice", "choice": "done"}));
 }
 
 function doneUsing(e) {
   ws.send(JSON.stringify({"type": "done_using"}));
 }
 
-function clickAsset(assetDiv, assetIdx) {
-  // TODO: we should change ItemChoice to choose items one by one.
+function clickAsset(assetDiv, assetHandle) {
   if (assetDiv.classList.contains("usable")) {
-    useAsset(assetIdx);
+    useAsset(assetHandle);
     return;
   }
-  let choiceIdx = itemChoice.indexOf(assetIdx);
-  if (choiceIdx >= 0) {
-    itemChoice.splice(choiceIdx, 1);
-    assetDiv.classList.remove("chosen");
-  } else {
-    itemChoice.push(assetIdx);
-    assetDiv.classList.add("chosen");
-  }
+  chooseAsset(assetHandle);
 }
 
 function confirmMonsterChoice(e) {
@@ -325,8 +323,31 @@ function resetMonsterChoice(e) {
   monsterChoice = {};
 }
 
-function useAsset(idx) {
-  ws.send(JSON.stringify({"type": "use", "idx": idx}));
+function defaultSpend(spendDict) {
+  for (let spendType of ["sanity", "stamina", "clues", "dollars"]) {
+    for (let i = 0; i < spendDict[spendType] || 0; i++) {
+      spend(spendType);
+    }
+    for (let i = 0; i < -spendDict[spendType] || 0; i++) {
+      unspend(spendType);
+    }
+  }
+}
+
+function spend(spendType) {
+  ws.send(JSON.stringify({"type": "spend", "spend_type": spendType}));
+}
+
+function unspend(spendType) {
+  ws.send(JSON.stringify({"type": "unspend", "spend_type": spendType}));
+}
+
+function chooseAsset(handle) {
+  ws.send(JSON.stringify({"type": "choice", "choice": handle}));
+}
+
+function useAsset(handle) {
+  ws.send(JSON.stringify({"type": "use", "handle": handle}));
 }
 
 function dragStart(e) {
@@ -372,7 +393,7 @@ function dropMonster(e) {
     return;
   }
   let placeName = e.currentTarget.id.substring(5, e.currentTarget.id.length - 3)
-  if (streets[placeName] == null && locations[placeName] == null) {
+  if (streets[placeName] == null && locations[placeName] == null && placeName != "Outskirts") {
     console.log("dragged to a place that's not a place");
     return;
   }
@@ -386,8 +407,8 @@ function dropMonster(e) {
 }
 
 function dropPossession(e) {
-  if (dragged.idx == null) {
-    console.log("dragged elem did not have an index");
+  if (dragged.handle == null) {
+    console.log("dragged elem did not have a handle");
     return;
   }
   if (!e.currentTarget.classList.contains("playertop")) {
@@ -399,7 +420,7 @@ function dropPossession(e) {
     return;
   }
   e.preventDefault();
-  ws.send(JSON.stringify({"type": "give", "recipient": e.currentTarget.idx, "idx": dragged.idx}));
+  ws.send(JSON.stringify({"type": "give", "recipient": e.currentTarget.idx, "handle": dragged.handle}));
 }
 
 function dropDollars(dragged, e) {
@@ -411,9 +432,7 @@ function dropDollars(dragged, e) {
     console.log("dragged to a player without an id");
     return;
   }
-  let colonIdx = dragged.innerText.indexOf(":");
-  let valueText = dragged.innerText.substring(colonIdx+1).trim();
-  let maxAmount = parseInt(valueText, 10);
+  let maxAmount = parseInt(dragged.statValue, 10);
   if (isNaN(maxAmount)) {
     console.log("dragged a non-integer number of dollars");
     return;
@@ -452,7 +471,7 @@ function finishGive(e) {
   let msg = {
     "type": "give",
     "recipient": document.getElementById("giveselect").idx,
-    "idx": "dollars",
+    "handle": "dollars",
     "amount": parseInt(document.getElementById("giveslider").value, 10),
   };
   ws.send(JSON.stringify(msg));
@@ -465,6 +484,28 @@ function makeCheck(e) {
   ws.send(JSON.stringify({"type": "check", "modifier": modifier, "check_type": check_type}));
 }
 
+function prevAncient(e) {
+  let sortedKeys = Object.keys(allAncients).sort();
+  let currentIdx = sortedKeys.indexOf(ancientChoice);
+  if (currentIdx <= 0) {
+    ancientChoice = sortedKeys[sortedKeys.length-1];
+  } else {
+    ancientChoice = sortedKeys[currentIdx-1];
+  }
+  updateAncientSelect("setup", true);
+}
+
+function nextAncient(e) {
+  let sortedKeys = Object.keys(allAncients).sort();
+  let currentIdx = sortedKeys.indexOf(ancientChoice);
+  if (currentIdx >= sortedKeys.length - 1) {
+    ancientChoice = sortedKeys[0];
+  } else {
+    ancientChoice = sortedKeys[currentIdx+1];
+  }
+  updateAncientSelect("setup", true);
+}
+
 function prevChar(e) {
   let sortedKeys = Object.keys(allCharacters).sort();
   let currentIdx = sortedKeys.indexOf(charChoice);
@@ -473,7 +514,8 @@ function prevChar(e) {
   } else {
     charChoice = sortedKeys[currentIdx-1];
   }
-  drawChosenChar(charChoice);
+  drawChosenChar(allCharacters[charChoice]);
+  updateStats();
 }
 
 function nextChar(e) {
@@ -484,7 +526,12 @@ function nextChar(e) {
   } else {
     charChoice = sortedKeys[currentIdx+1];
   }
-  drawChosenChar(charChoice);
+  drawChosenChar(allCharacters[charChoice]);
+  updateStats();
+}
+
+function selectAncient(e) {
+  ws.send(JSON.stringify({"type": "ancient", "ancient": ancientChoice}));
 }
 
 function selectChar(e) {
@@ -495,10 +542,6 @@ function start(e) {
   ws.send(JSON.stringify({"type": "start"}));
 }
 
-function done(e) {
-  ws.send(JSON.stringify({"type": "choice", "choice": "done"}));
-}
-
 function doneSliders(e) {
   ws.send(JSON.stringify({"type": "set_slider", "name": "done"}));
 }
@@ -507,15 +550,20 @@ function updateCharacters(newCharacters) {
   for (let character of newCharacters) {
     let place = document.getElementById("place" + character.place + "chars");
     if (place == null) {
-      // TODO: may need to remove the character instead of letting them stay on the board.
-      console.log("Unknown place " + character.place);
+      if (characterMarkers[character.name] != null) {
+        characterMarkers[character.name].parentNode.removeChild(characterMarkers[character.name]);
+        delete characterMarkers[character.name];
+      }
+      updatePortraitDiv(character.name, "Lost");  // Anything that is not an otherworld will do.
       continue;
     }
-    if (characters[character.name] == null) {
-      characters[character.name] = createCharacterDiv(character.name);
-      place.appendChild(characters[character.name]);
+    updatePortraitDiv(character.name, character.place);
+    if (characterMarkers[character.name] == null) {
+      characterMarkers[character.name] = createCharacterDiv(character.name);
+      place.appendChild(characterMarkers[character.name]);
+      renderAssetToDiv(characterMarkers[character.name].getElementsByClassName("cnvcontainer")[0], character.name);
     } else {
-      animateMovingDiv(characters[character.name], place);
+      animateMovingDiv(characterMarkers[character.name], place);
     }
   }
 }
@@ -525,14 +573,20 @@ function showMonsters(placeDiv, name) {
   while (box.children.length) {
     box.removeChild(box.firstChild);
   }
-  for (let monsterDiv of placeDiv.getElementsByClassName("monster")) {
-    let container = document.createElement("DIV");
-    container.appendChild(createMonsterDiv(monsterDiv.monsterName, 2, ""));
-    container.appendChild(createMonsterDiv(monsterDiv.monsterName, 2, "back"));
-    box.appendChild(container);
-  }
   document.getElementById("monsterdetailsname").innerText = name;
   document.getElementById("monsterdetails").style.display = "flex";
+  for (let monsterDiv of placeDiv.getElementsByClassName("monster")) {
+    let container = document.createElement("DIV");
+    let handle = monsterDiv.monsterName + monsterDiv.monsterIdx;
+    container.onclick = function(e) { makeChoice(handle) };
+    let frontDiv = createMonsterDiv(monsterDiv.monsterName, "big");
+    container.appendChild(frontDiv);
+    let backDiv = createMonsterDiv(monsterDiv.monsterName, "big");
+    container.appendChild(backDiv);
+    box.appendChild(container);
+    renderAssetToDiv(frontDiv.getElementsByClassName("cnvcontainer")[0], monsterDiv.monsterName);
+    renderAssetToDiv(backDiv.getElementsByClassName("cnvcontainer")[0], monsterDiv.monsterName + " back");
+  }
 }
 
 function hideMonsters(e) {
@@ -560,18 +614,58 @@ function updateMonsters(monster_list) {
       continue;
     }
     if (monsters[i] == null) {
-      monsters[i] = createMonsterDiv(monster.name, 1, "");
+      monsters[i] = createMonsterDiv(monster.name);
       monsters[i].monsterIdx = i;
       place.appendChild(monsters[i]);
+      renderAssetToDiv(monsters[i].getElementsByClassName("cnvcontainer")[0], monster.name);
     } else {
       animateMovingDiv(monsters[i], place);
     }
   }
 }
 
+function updateSliderButton(sliders) {
+  if (sliders) {
+    document.getElementById("uiprompt").innerText = sliders.prompt;
+    document.getElementById("donesliders").style.display = "inline-block";
+  } else {
+    document.getElementById("donesliders").style.display = "none";
+  }
+}
+
+function toggleCards(e) {
+  if (cardsStyle == "flex") {
+    cardsStyle = "none";
+  } else {
+    cardsStyle = "flex";
+  }
+  document.getElementById("cardchoicescroll").style.display = cardsStyle;
+  setCardButtonText();
+}
+
+function setCardButtonText() {
+  if (cardsStyle == "flex") {
+    document.getElementById("togglecards").innerText = "Hide Cards";
+  } else {
+    document.getElementById("togglecards").innerText = "Show Cards";
+  }
+}
+
+function scrollCards(e, dir) {
+  let container = e.currentTarget.parentNode;
+  let cardScroller = container.getElementsByClassName("cardscroller")[0];
+  let rect = cardScroller.getBoundingClientRect();
+  let width = rect.right - rect.left;
+  let amount = dir * Math.ceil(width / 4);
+  cardScroller.scrollLeft = cardScroller.scrollLeft + amount;
+}
+
 function updateChoices(choice) {
+  let btn = document.getElementById("doneitems");
   let uichoice = document.getElementById("uichoice");
   let uicardchoice = document.getElementById("uicardchoice");
+  let cardtoggle = document.getElementById("togglecards");
+  let monsterBox = document.getElementById("monsterdetailsbox");
   let pDiv;
   if (!document.getElementsByClassName("you").length) {
     pDiv = document.createElement("DIV");  // Dummy div.
@@ -583,19 +677,27 @@ function updateChoices(choice) {
     place.classList.remove("unselectable");
     place.innerText = "";
   }
-  if (choice == null || choice.monsters != null) {
-    uichoice.style.display = "none";
-    itemsToChoose = null;
-    itemChoice = [];
+  uichoice.style.display = "none";
+  document.getElementById("cardchoicescroll").style.display = "none";
+  btn.style.display = "none";
+  cardtoggle.style.display = "none";
+  if (choice != null && choice.board_monster != null) {
+    monsterBox.classList.add("choosable");
+  } else {
+    monsterBox.classList.remove("choosable");
+  }
+  if (choice == null || choice.monsters != null || choice.board_monster != null) {
     pDiv.classList.remove("choose");
     return;
   }
   // Set display style for uichoice div.
-  uichoice.style.display = "flex";
+  if (!choice.items) {
+    uichoice.style.display = "flex";
+  }
   if (choice.cards != null) {
-    uichoice.style.maxWidth = "100%";
-  } else {
-    uichoice.style.maxWidth = "40%";
+    document.getElementById("cardchoicescroll").style.display = cardsStyle;
+    cardtoggle.style.display = "inline-block";
+    setCardButtonText();
   }
   // Clean out any old choices it may have.
   while (uichoice.getElementsByClassName("choice").length) {
@@ -606,26 +708,24 @@ function updateChoices(choice) {
   }
   // Set prompt.
   document.getElementById("uiprompt").innerText = choice.prompt;
-  if (choice.items != null) {
-    itemsToChoose = choice.items;
+  if (choice.items) {
     pDiv.classList.add("choose");
-    addChoices(uichoice, ["Done Choosing Items"]);
+    btn.style.display = "inline-block";
   } else {
-    itemsToChoose = null;
-    itemChoice = [];
     pDiv.classList.remove("choose");
     if (choice.places != null) {
       updatePlaceChoices(uichoice, choice.places, choice.annotations);
     } else if (choice.cards != null) {
-      addCardChoices(uicardchoice, choice.cards, choice.invalid_choices, choice.annotations);
+      addCardChoices(uichoice, uicardchoice, choice.cards, choice.invalid_choices, choice.remaining_spend, choice.annotations, choice.sort_uniq);
     } else {
-      addChoices(uichoice, choice.choices, choice.invalid_choices);
+      addChoices(uichoice, choice.choices, choice.invalid_choices, choice.remaining_spend);
     }
   }
 }
 
 function updateMonsterChoices(choice, monsterList) {
   // TODO: indicate how many monsters each location should receive.
+  let uiprompt = document.getElementById("uiprompt");
   let uimonsterchoice = document.getElementById("uimonsterchoice");
   let choicesBox = document.getElementById("monsterchoices");
   if (choice == null || choice.monsters == null) {
@@ -641,151 +741,271 @@ function updateMonsterChoices(choice, monsterList) {
     monsterChoice = {};
     return;
   }
+  uiprompt.innerText = "Drag Monsters to Gates";
   uimonsterchoice.style.display = "flex";
   for (let monsterIdx of choice.monsters) {
     if (monsters[monsterIdx] == null) {
-      monsters[monsterIdx] = createMonsterDiv(monsterList[monsterIdx].name, 1, "");
+      monsters[monsterIdx] = createMonsterDiv(monsterList[monsterIdx].name);
       monsters[monsterIdx].monsterIdx = monsterIdx;
       monsters[monsterIdx].draggable = true;
       monsters[monsterIdx].ondragstart = dragStart;
       monsters[monsterIdx].ondragend = dragEnd;
       choicesBox.appendChild(monsters[monsterIdx]);
+      renderAssetToDiv(monsters[monsterIdx].getElementsByClassName("cnvcontainer")[0], monsterList[monsterIdx].name);
     }
   }
 }
 
-function addCardChoices(cardChoice, cards, invalidChoices, annotations) {
+function addCardChoices(uichoice, cardChoice, cards, invalidChoices, remainingSpend, annotations, sortUniq) {
   if (!cards) {
     return;
   }
+  let count = 0;
+  let uniqueCards = new Set(cards);
+  let sortedCards = [...uniqueCards];
+  sortedCards.sort();
+  let cardToOrder = {};
+  for (let [idx, card] of sortedCards.entries()) {
+    cardToOrder[card] = idx;
+  }
+  uniqueCards = new Set([]);
+  let notFound = [];
+  let newInvalid = [];
+  let newRemainingSpend = [];
   for (let [idx, card] of cards.entries()) {
+    if (!assetNames.includes(card)) {
+      if (invalidChoices != null && invalidChoices.includes(idx)) {
+        newInvalid.push(notFound.length);
+      }
+      if (remainingSpend != null && remainingSpend.length > idx) {
+        newRemainingSpend.push(remainingSpend[idx]);
+      }
+      notFound.push(card);
+      continue;
+    }
+    if (sortUniq && uniqueCards.has(card)) {
+      continue;
+    }
+    uniqueCards.add(card);
+    count++;
     let holder = document.createElement("DIV");
     holder.classList.add("cardholder");
+    if (sortUniq) {
+      holder.style.order = cardToOrder[card];
+    }
     let div = document.createElement("DIV");
-    div.classList.add("cardchoice");
+    div.classList.add("cardchoice", "cnvcontainer");
     div.onclick = function(e) { makeChoice(card); };
-    let asset = getAsset(card, "");
-    let elemWidth = asset.naturalWidth || asset.width;
-    let elemHeight = asset.naturalHeight || asset.height;
-    div.style.width = elemWidth + "px";
-    div.style.height = elemHeight + "px";
+    if (invalidChoices != null && invalidChoices.includes(idx)) {
+      holder.classList.add("unchoosable");
+    } else if (remainingSpend != null && remainingSpend.length > idx && remainingSpend[idx]) {
+      let rem = remainingSpend[idx];
+      holder.classList.add("mustspend");
+      div.onclick = function(e) { defaultSpend(rem); };
+    }
     let cnv = document.createElement("CANVAS");
-    cnv.width = elemWidth;
-    cnv.height = elemHeight;
     cnv.classList.add("markercnv");  // TODO: use a better class name for this
-    renderAssetToCanvas(cnv, card, "");
     div.appendChild(cnv);
     holder.appendChild(div);
     let desc = document.createElement("DIV");
+    desc.classList.add("desc");
     if (annotations != null && annotations.length > idx) {
       desc.innerText = annotations[idx];
     }
     holder.appendChild(desc);
     cardChoice.appendChild(holder);
-    let spacer = document.createElement("DIV");
-    spacer.style.height = "100%";
-    spacer.style.width = 0.1 * elemWidth + "px";
-    cardChoice.appendChild(spacer);
+    renderAssetToDiv(div, card);
   }
-  cardChoice.removeChild(cardChoice.lastChild);
+  let scrollParent = cardChoice.parentNode;
+  if (count > 4) {
+    scrollParent.classList.add("overflowing");
+  } else {
+    scrollParent.classList.remove("overflowing");
+  }
+  addChoices(uichoice, notFound, newInvalid, newRemainingSpend);
 }
 
-function addChoices(uichoice, choices, invalidChoices) {
+function addChoices(uichoice, choices, invalidChoices, remainingSpend) {
   for (let [idx, c] of choices.entries()) {
     let div = document.createElement("DIV");
     div.classList.add("choice");
+    div.innerText = c;
+    div.onclick = function(e) { makeChoice(c); };
     if (invalidChoices != null && invalidChoices.includes(idx)) {
       div.classList.add("unchoosable");
+    } else if (remainingSpend != null && remainingSpend.length > idx && remainingSpend[idx]) {
+      let rem = remainingSpend[idx];
+      div.classList.add("mustspend");
+      div.onclick = function(e) { defaultSpend(rem); };
     } else {
       div.classList.add("choosable");
     }
-    div.innerText = c;
-    div.onclick = function(e) { makeChoice(c); };
     uichoice.appendChild(div);
   }
 }
 
 function updateUsables(usables, choice) {
   let uiuse = document.getElementById("uiuse");
-  let pDiv;
+  let pDiv, tDiv;
   if (!document.getElementsByClassName("you").length) {
     pDiv = document.createElement("DIV");  // Dummy div.
+    tDiv = pDiv;
   } else {
-    pDiv = document.getElementsByClassName("you")[0].getElementsByClassName("possessions")[0];
+    [pDiv, tDiv] = document.getElementsByClassName("you")[0].getElementsByClassName("possessions");
   }
   uiuse.style.display = "none";
   if (usables == null) {
     pDiv.classList.remove("use");
+    tDiv.classList.remove("use");
     return;
   }
   if (choice == null) {
     uiuse.style.display = "flex";
   }
   pDiv.classList.add("use");
+  tDiv.classList.add("use");
   let posList = pDiv.getElementsByClassName("possession");
-  for (let i = 0; i < posList.length; i++) {
-    if (usables.includes(i)) {
-      posList[i].classList.add("usable");
-      posList[i].classList.remove("unusable");
+  let trophyList = tDiv.getElementsByClassName("trophy");
+  let allList = Array.from(posList).concat(Array.from(trophyList));
+  for (let pos of allList) {
+    if (usables.includes(pos.handle)) {
+      pos.classList.add("usable");
+      pos.classList.remove("unusable");
     } else {
-      posList[i].classList.remove("usable");
+      pos.classList.remove("usable");
       if (choice == null) {  // TODO: this is hacky.
-        posList[i].classList.add("unusable");
+        pos.classList.add("unusable");
       }
     }
   }
-  let includesAbility = false;
+  let tradeOnly = true;
   for (let val of usables) {
-    if (val != "clues" && val != "trade") {
-      includesAbility = true;
+    if (val != "trade") {
+      tradeOnly = false;
+      break;
     }
   }
   document.getElementById("usetext").innerText = "Use Items or Abilities";
   document.getElementById("doneusing").innerText = "Done Using";
-  if (!includesAbility) {
-    if (usables.includes("trade")) {
-      document.getElementById("usetext").innerText = "Trade?";
-      document.getElementById("doneusing").innerText = "Done Trading";
-    } else if (usables.includes("clues")) {
-      document.getElementById("usetext").innerText = "Use clues?";
-      document.getElementById("doneusing").innerText = "Done Using";
-    }
+  if (tradeOnly) {
+    document.getElementById("usetext").innerText = "Trade?";
+    document.getElementById("doneusing").innerText = "Done Trading";
   }
-  // TODO: make clues change apperance when usable
 }
 
-function createMonsterDiv(name, scale, side) {
-  let width = document.getElementById("boardcanvas").width;
-  let markerHeight = width * markerHeightRatio;
+function updateSpending(choice) {
+  let spendable = null;
+  let spent = {};
+  if (choice != null) {
+    spendable = choice.spendable;
+    for (let key in choice.spent) {
+      for (let handle in choice.spent[key]) {
+        spent[handle] = (spent[handle] || 0) + choice.spent[key][handle];
+      }
+    }
+  }
+  updateSpendList(spendable, spent);
+  updateStatSpending(spendable);
+}
+
+function updateSpendList(spendable, spent) {
+  let spendDiv = document.getElementById("uispend");
+  if (spendable == null) {
+    spendDiv.style.display = "none";
+    return;
+  }
+  spendDiv.style.display = "flex";
+  for (let stat in statNames) {
+    let count = spent[stat] || 0;
+    while (spendDiv.getElementsByClassName(stat).length > count) {
+      spendDiv.removeChild(spendDiv.getElementsByClassName(stat)[0]);
+    }
+    while (spendDiv.getElementsByClassName(stat).length < count) {
+      let statDiv = document.createElement("DIV");
+      statDiv.classList.add("stats", "cnvcontainer", stat, "spendable");
+      let cnv = document.createElement("CANVAS");
+      cnv.classList.add("cluecnv");
+      statDiv.appendChild(cnv);
+      spendDiv.appendChild(statDiv);
+      renderAssetToDiv(statDiv, statNames[stat]);
+      statDiv.onclick = function(e) { unspend(stat); };
+    }
+  }
+}
+
+function updateStatSpending(spendable) {
+  let yourSheets = document.getElementsByClassName("you");
+  if (!yourSheets.length) {
+    return;
+  }
+  let yourSheet = yourSheets[0];
+  if (spendable == null) {
+    for (let div of yourSheet.getElementsByClassName("stats")) {
+      div.classList.remove("spendable");
+    }
+    return;
+  }
+  for (let stat in statNames) {
+    for (let div of yourSheet.getElementsByClassName(stat)) {
+      if (spendable.includes(stat)) {
+        div.classList.add("spendable");
+      } else {
+        div.classList.remove("spendable");
+      }
+    }
+  }
+}
+
+function createMonsterDiv(name, classPrefix) {
+  classPrefix = classPrefix || "";
   let div = document.createElement("DIV");
-  div.style.width = + markerHeight * scale + "px";
-  div.style.height = markerHeight * scale + "px";
-  div.classList.add("monster");
+  div.classList.add(classPrefix + "monster");
+  let cnvContainer = document.createElement("DIV");
+  cnvContainer.classList.add(classPrefix + "monstercontainer", "cnvcontainer");
   let cnv = document.createElement("CANVAS");
   cnv.classList.add("monstercnv");
-  cnv.width = markerHeight * scale;
-  cnv.height = markerHeight * scale;
-  renderAssetToCanvas(cnv, name, side);
-  div.appendChild(cnv);
+  cnvContainer.appendChild(cnv);
+  div.appendChild(cnvContainer);
   div.monsterName = name;
   return div;
 }
 
 function createCharacterDiv(name) {
-  let width = document.getElementById("boardcanvas").width;
-  let markerWidth = width * markerWidthRatio;
-  let markerHeight = width * markerHeightRatio;
   let div = document.createElement("DIV");
-  div.style.width = + markerWidth + "px";
-  div.style.height = markerHeight + "px";
   div.classList.add("marker");
+  let cnvContainer = document.createElement("DIV");
+  cnvContainer.classList.add("markercontainer", "cnvcontainer");
   let cnv = document.createElement("CANVAS");
   cnv.classList.add("markercnv");
-  cnv.width = markerWidth;
-  cnv.height = markerHeight;
-  renderAssetToCanvas(cnv, name, "");
+  cnvContainer.appendChild(cnv);
+  div.appendChild(cnvContainer);
+  return div;
+}
+
+function createCharacterPortrait(name) {
+  let div = document.createElement("DIV");
+  div.classList.add("portrait", "cnvcontainer");
+  let cnv = document.createElement("CANVAS");
+  cnv.classList.add("markercnv");
   div.appendChild(cnv);
   return div;
+}
+
+function updatePortraitDiv(charName, destName) {
+  let charsDiv = document.getElementById("place" + destName + "chars");
+  if (charsDiv.classList.contains("worldchars")) {
+    if (portraits[charName] == null) {
+      portraits[charName] = createCharacterPortrait(charName);
+    }
+    let dest = document.getElementById("place" + destName + "portraits");
+    dest.appendChild(portraits[charName]);
+    renderAssetToDiv(portraits[charName], charName + " picture");
+  } else {
+    if (portraits[charName] != null) {
+      portraits[charName].parentNode.removeChild(portraits[charName]);
+      portraits[charName] = null;
+    }
+  }
 }
 
 function animateMovingDiv(div, destParent) {
@@ -845,6 +1065,9 @@ function updatePlaces(places) {
     if (gateDiv != null) {  // Some places cannot have gates.
       updateGate(place, gateDiv);
     }
+    if (place.sealed != null) {
+      updateSeal(place);
+    }
     if (place.clues != null) {
       updateClues(place);
     }
@@ -852,8 +1075,6 @@ function updatePlaces(places) {
 }
 
 function updateClues(place) {
-  let boardWidth = document.getElementById("boardcanvas").width;
-  let size = Math.floor(radiusRatio * boardWidth * 3 / 4);
   // TODO: maybe put them somewhere else?
   let charsDiv = document.getElementById("place" + place.name + "chars");
   let numClues = charsDiv.getElementsByClassName("clue").length;
@@ -864,27 +1085,44 @@ function updateClues(place) {
   while (numClues < place.clues) {
     let clueDiv = document.createElement("DIV");
     clueDiv.classList.add("clue");
-    clueDiv.style.height = size + "px";
-    clueDiv.style.width = size + "px";
+    let cnvContainer = document.createElement("DIV");
+    cnvContainer.classList.add("cluecontainer", "cnvcontainer");
     let cnv = document.createElement("CANVAS");
     cnv.classList.add("cluecnv");
-    cnv.width = size;
-    cnv.height = size;
-    renderAssetToCanvas(cnv, "Clue", "");
-    clueDiv.appendChild(cnv);
+    cnvContainer.appendChild(cnv);
+    clueDiv.appendChild(cnvContainer);
     charsDiv.appendChild(clueDiv);
+    renderAssetToDiv(cnvContainer, "Clue");
     numClues++;
   }
 }
 
+function updateSeal(place) {
+  let charsDiv = document.getElementById("place" + place.name + "chars");
+  let hasSeal = charsDiv.getElementsByClassName("seal").length;
+  if (!place.sealed && hasSeal) {
+    charsDiv.removeChild(charsDiv.getElementsByClassName("seal")[0]);
+  } else if (place.sealed && !hasSeal) {
+    let sealDiv = document.createElement("DIV");
+    sealDiv.classList.add("seal");
+    let cnvContainer = document.createElement("DIV");
+    cnvContainer.classList.add("cluecontainer", "cnvcontainer");
+    let cnv = document.createElement("CANVAS");
+    cnv.classList.add("cluecnv");
+    cnvContainer.appendChild(cnv);
+    sealDiv.appendChild(cnvContainer);
+    charsDiv.appendChild(sealDiv);
+    renderAssetToDiv(cnvContainer, "Seal");
+  }
+}
+
 function updateGate(place, gateDiv) {
-  let gateCnv = gateDiv.getElementsByTagName("CANVAS")[0];
+  let gateCont = gateDiv.getElementsByClassName("gatecontainer")[0];
   if (place.gate) {  // TODO: sealed
-    renderAssetToCanvas(gateCnv, "Gate " + place.gate.name, "");
     gateDiv.classList.add("placegatepresent");
+    renderAssetToDiv(gateCont, place.gate.name);
   } else {
-    let ctx = gateCnv.getContext("2d");
-    ctx.clearRect(0, 0, gateCnv.width, gateCnv.height);
+    clearAssetFromDiv(gateCont);
     gateDiv.classList.remove("placegatepresent");
   }
 }
@@ -916,18 +1154,132 @@ function updatePlaceChoices(uichoice, places, annotations) {
   }
 }
 
-function updateDone(gameStage, sliders) {
-  let btn = document.getElementById("done").firstChild;
+function updateBottomText(gameStage, turnPhase, characters, turnIdx, playerIdx, host) {
+  let uiprompt = document.getElementById("uiprompt");
+  let btn = document.getElementById("start");
+  uiprompt.innerText = "";
+  btn.style.display = "none";
   if (gameStage == "setup") {
-    btn.innerText = "Start";
-    btn.onclick = start;
+    if (host) {
+      btn.style.display = "inline-block";
+    }
     return;
   }
-  btn.innerText = "Done";
-  if (sliders) {
-    btn.onclick = doneSliders;
+  if (turnIdx != null) {
+    uiprompt.innerText = characters[turnIdx].name + "'s " + turnPhase + " phase";
+  }
+}
+
+function updateGlobals(env, rumor) {
+  let envDiv = document.getElementById("environment");
+  let envCnt = envDiv.getElementsByClassName("mythoscard")[0];
+  let rumorDiv = document.getElementById("rumor");
+  let rumorCnt = rumorDiv.getElementsByClassName("mythoscard")[0];
+  if (env == null) {
+    clearAssetFromDiv(envCnt);
+    envDiv.classList.add("missing");
+    envDiv.name = null;
   } else {
-    btn.onclick = done;
+    envDiv.classList.remove("missing");
+    envDiv.name = typeof(env) == "string" ? env : env.name;
+    renderAssetToDiv(envCnt, envDiv.name);
+  }
+  if (rumor == null) {
+    clearAssetFromDiv(rumorCnt);
+    rumorDiv.classList.add("missing");
+    rumorDiv.name = null;
+  } else {
+    rumorDiv.classList.remove("missing");
+    rumorDiv.name = typeof(rumor) == "string" ? rumor : rumor.name;
+    renderAssetToDiv(rumorCnt, rumorDiv.name);
+  }
+}
+
+function updateCurrentCard(current) {
+  let currDiv = document.getElementById("currentcard");
+  if (current == null) {
+    // TODO: because rendering happens in a promise, clearing the asset from the div can
+    // actually happen before the promise is fulfilled. ugh.
+    clearAssetFromDiv(currDiv);
+    currDiv.classList.add("missing");
+    return;
+  }
+  currDiv.classList.remove("missing");
+  renderAssetToDiv(currDiv, current);
+}
+
+function toggleGlobals(e) {
+  let globalBox = document.getElementById("globals");
+  let globalScroll = document.getElementById("globalscroll");
+  let globalCards = document.getElementById("globalcards");
+  if (globalBox.classList.contains("zoomed")) {
+    globalBox.classList.remove("zoomed");
+    globalScroll.style.display = "none";
+    return;
+  }
+  globalBox.classList.add("zoomed");
+  globalScroll.style.display = "flex";
+  while (globalCards.getElementsByClassName("bigmythoscard").length) {
+    globalCards.removeChild(globalCards.getElementsByClassName("bigmythoscard")[0]);
+  }
+  let count = 0;
+  for (let cont of document.getElementById("globals").getElementsByClassName("mythoscontainer")) {
+    if (!cont.name) {
+      continue;
+    }
+    count++;
+    let holder = document.createElement("DIV");
+    holder.classList.add("bigmythoscard", "cnvcontainer");
+    let cnv = document.createElement("CANVAS");
+    cnv.classList.add("markercnv");  // TODO: use a better class name for this
+    holder.appendChild(cnv);
+    globalCards.appendChild(holder);
+    renderAssetToDiv(holder, cont.name);
+  }
+  if (count > 4) {
+    globalScroll.classList.add("overflowing");
+  } else {
+    globalScroll.classList.remove("overflowing");
+  }
+}
+
+function updateDice(numDice, roll, yours) {
+  let uidice = document.getElementById("uidice");
+  let diceDiv = document.getElementById("dice");
+  let btn = document.getElementById("dicebutton");
+  if (numDice == null) {
+    uidice.style.display = "none";
+    return;
+  }
+  uidice.style.display = "flex";
+  if (yours && (roll == null || roll.length < numDice)) {
+    btn.style.display = "inline-block";
+  } else {
+    btn.style.display = "none";
+  }
+  while (diceDiv.getElementsByClassName("die").length > Math.max(numDice, 0)) {
+    diceDiv.removeChild(diceDiv.getElementsByClassName("die")[0])
+  }
+  while (diceDiv.getElementsByClassName("die").length < numDice) {
+    let die = document.createElement("DIV");
+    die.classList.add("die");
+    diceDiv.appendChild(die);
+  }
+
+  let allDice = diceDiv.getElementsByClassName("die");
+  for (let die of allDice) {
+    die.innerText = "?";
+  }
+
+  if (roll == null) {
+    return;
+  }
+  for (let [idx, val] of roll.entries()) {
+    if (idx >= allDice.length) {
+      console.log("too many dice rolls");
+      return;
+    }
+    allDice[idx].innerText = val;
   }
 }
 
@@ -945,61 +1297,186 @@ function updateEventLog(eventLog) {
   logDiv.scrollTop = logDiv.scrollHeight;
 }
 
-function updateCharacterSelect(characters, playerIdx, pendingName, pendingChars) {
-  let charSelect = document.getElementById("charselect");
-  if (playerIdx != null) {  // TODO: choosing a new character.
-    charSelect.style.display = "none";
-    return;
-  }
-  charSelect.style.display = "flex";
-  // TODO: choosing a different character after picking a character.
-  if (pendingName != null) {
-    drawChosenChar(pendingName);
-    document.getElementById("choosecharbutton").innerText = "Chosen";
-    return;
-  }
-  document.getElementById("choosecharbutton").innerText = "Choose";
-  if (charChoice == null) {
-    let keys = Object.keys(allCharacters);
-    for (let character of characters) {
-      let idx = keys.indexOf(character.name);
-      if (idx >= 0) {
-        keys.splice(idx, 1);
-      }
+function updateAvailableCharacters(characters, pendingChars) {
+  let keys = Object.keys(allCharacters);
+  // Ignore all characters that are already in the game.
+  for (let character of characters) {
+    let idx = keys.indexOf(character.name);
+    if (idx >= 0) {
+      keys.splice(idx, 1);
     }
-    for (let name of pendingChars) {
+  }
+  // Ignore all characters that have been chosen by someone else.
+  for (let name in pendingChars) {
+    if (name == pendingName) {
+      continue;
+    }
+    let idx = keys.indexOf(name);
+    if (idx >= 0) {
+      keys.splice(idx, 1);
+    }
+  }
+  // Ignore all characters that have been devoured or retired.
+  for (let name in allCharacters) {
+    if (allCharacters[name].gone) {
       let idx = keys.indexOf(name);
       if (idx >= 0) {
         keys.splice(idx, 1);
       }
     }
-    charChoice = keys.sort()[0];
   }
-  drawChosenChar(charChoice);
+  keys.sort();
+  availableChars = keys;
 }
 
-function drawChosenChar(name) {
-  let cnv = document.getElementById("charchoicecnv");
-  renderAssetToCanvas(cnv, name, "");
+function updateAncientSelect(gameStage, host) {
+  let ancientSelect = document.getElementById("ancientselect");
+  if (gameStage != "setup" || !host) {
+    ancientSelect.style.display = "none";
+    return;
+  }
+  ancientSelect.style.display = "flex";
+  if (ancientChoice == null) {
+    let keys = Object.keys(allAncients);
+    keys.sort();
+    ancientChoice = (chosenAncient == null) ? keys[0] : chosenAncient;
+  }
+
+  let ancientSheet = document.getElementById("ancientchoice");
+  renderAssetToDiv(ancientSheet, ancientChoice);
+  let choiceButton = document.getElementById("chooseancientbutton");
+  if (ancientChoice == chosenAncient) {
+    choiceButton.innerText = "Chosen";
+  } else if (chosenAncient != null) {
+    choiceButton.innerText = "Change Choice";
+  } else {
+    choiceButton.innerText = "Choose";
+  }
 }
 
-function updateCharacterSheets(characters, playerIdx, firstPlayer) {
+function updateAncientOne(ancientOne, terror) {
+  renderAssetToDiv(document.getElementById("terror"), "Terror" + (terror || 0));
+  let doom = document.getElementById("doom");
+  if (ancientOne == null) {
+    doom.maxValue = null;
+    renderAssetToDiv(doom, "Doom");
+    return;
+  }
+  doom.maxValue = ancientOneDoomMax[ancientOne.name];
+  doom.statValue = ancientOne.doom;
+  renderAssetToDiv(doom, ancientOne.name + " max");
+  let worshippers = document.getElementById("worshippers");
+  renderAssetToDiv(worshippers, ancientOne.name + " worshippers");
+  let slumber = document.getElementById("slumber");
+  renderAssetToDiv(slumber, ancientOne.name + " slumber");
+}
+
+function updateCharacterSelect(characters, playerIdx) {
+  let selectors = document.getElementById("selectors");
+  if (playerIdx != null && !characters[playerIdx].gone) {
+    selectors.style.display = "none";
+    return;
+  }
+  selectors.style.display = "flex";
+  if (charChoice == null) {
+    charChoice = availableChars[0];
+  }
+  drawChosenChar(allCharacters[charChoice]);
+}
+
+function drawChosenChar(character) {
+  let sheet = document.getElementById("charchoicesheet");
+  if (sheet == null) {
+    let charChoiceDiv = document.getElementById("charchoice");
+    sheet = createCharacterSheet(null, character.name, charChoiceDiv, false);
+    sheet.id = "charchoicesheet";
+    sheet.classList.remove("collapsed");
+    sheet.getElementsByClassName("bagtabs")[0].classList.add("hidden");
+    sheet.getElementsByClassName("playertop")[0].onclick = null;
+  }
+  let charMarker = sheet.getElementsByClassName("picture")[0];
+  renderAssetToDiv(charMarker, character.name + " picture");
+  let charName = sheet.getElementsByClassName("playername")[0];
+  renderAssetToDiv(charName, character.name + " title");
+  updateInitialStats(sheet, character);
+  let sliders = sheet.getElementsByClassName("sliders")[0];
+  renderAssetToDiv(sliders, character.name + " sliders");
+
+  updateInitialPossessions(sheet, character);
+
+  let choiceButton = document.getElementById("choosecharbutton");
+  if (!availableChars.includes(character.name)) {
+    sheet.classList.add("nochoose");
+    choiceButton.innerText = "Not Available";
+    choiceButton.disabled = true;
+    return;
+  }
+  sheet.classList.remove("nochoose");
+  choiceButton.disabled = false;
+  if (character.name == pendingName) {
+    choiceButton.innerText = "Chosen";
+  } else if (pendingName != null) {
+    choiceButton.innerText = "Change Choice";
+  } else {
+    choiceButton.innerText = "Choose";
+  }
+}
+
+function updateCharacterSheets(characters, pendingCharacters, playerIdx, firstPlayer, choice) {
   let rightUI = document.getElementById("uiright");
+  let toKeep = Object.keys(pendingCharacters);
+  // If no characters have been chosen yet, draw the characters players have selected.
+  if (!characters.length) {
+    for (let charName in pendingCharacters) {
+      let sheet = characterSheets[charName];
+      if (sheet == null) {
+        sheet = createCharacterSheet(null, allCharacters[charName], rightUI, false);
+        characterSheets[charName] = sheet;
+      }
+      updateInitialStats(sheet, allCharacters[charName]);
+      updateSliders(sheet, allCharacters[charName], false);
+      updateInitialPossessions(sheet, allCharacters[charName]);
+      // TODO: some characters may start with trophies.
+    }
+  }
+  // Draw the characters currently in the game.
   for (let [idx, character] of characters.entries()) {
-    let sheet;
-    if (rightUI.getElementsByClassName("player").length <= idx) {
-      sheet = createCharacterSheet(idx, character, rightUI);
-    } else {
-      sheet = rightUI.getElementsByClassName("player")[idx];
+    if (character.gone) {
+      continue;
+    }
+    toKeep.push(character.name);
+    let sheet = characterSheets[character.name];
+    if (sheet == null) {
+      sheet = createCharacterSheet(idx, character, rightUI, playerIdx == idx);
+      characterSheets[character.name] = sheet;
+    }
+    // If this sheet is left over from before the game started, destroy and recreate it so that
+    // it gets the proper onclick, ondrag, etc. handlers.
+    if (sheet.getElementsByClassName("playertop")[0].idx == null) {
+      rightUI.removeChild(sheet);
+      sheet = createCharacterSheet(idx, character, rightUI, playerIdx == idx);
+      characterSheets[character.name] = sheet;
     }
     let order = idx - firstPlayer;
     if (order < 0) {
       order += characters.length;
     }
-    updateCharacterSheet(sheet, character, order, playerIdx == idx);
+    updateCharacterSheet(sheet, character, order, playerIdx == idx, choice);
   }
+  // Remove any sheets that are no longer needed.
+  let toDestroy = [];
+  for (let charName in characterSheets) {
+    if (!toKeep.includes(charName)) {
+      toDestroy.push(charName);
+    }
+  }
+  for (let charName of toDestroy) {
+    rightUI.removeChild(characterSheets[charName]);
+    delete characterSheets[charName];
+  }
+  // Finally, if all character sheets are currently collapsed, uncollapse the player's own sheet.
   let unCollapsed = false;
-  for (let sheet of document.getElementsByClassName("player")) {
+  for (let sheet of rightUI.getElementsByClassName("player")) {
     if (!sheet.classList.contains("collapsed")) {
       unCollapsed = true;
       break;
@@ -1010,56 +1487,128 @@ function updateCharacterSheets(characters, playerIdx, firstPlayer) {
   }
 }
 
-function createCharacterSheet(idx, character, rightUI) {
+function createCharacterSheet(idx, character, rightUI, isPlayer) {
   let div = document.createElement("DIV");
   div.classList.add("player");
   div.classList.add("collapsed");
+  if (isPlayer) {
+    div.classList.add("you");
+  }
 
   let charTop = document.createElement("DIV");
   charTop.classList.add("playertop");
-  charTop.idx = idx;
-  charTop.ondrop = drop;
-  charTop.ondragenter = dragEnter;
-  charTop.ondragover = dragOver;
+  charTop.onclick = function(e) { expandSheet(div) };
+  if (idx != null) {
+    charTop.idx = idx;
+    charTop.ondrop = drop;
+    charTop.ondragenter = dragEnter;
+    charTop.ondragover = dragOver;
+  }
+
   let charPic = document.createElement("DIV");
-  charPic.classList.add("playerpicouter");
-  charPic.onclick = function(e) { expandSheet(div) };
+  charPic.classList.add("picture", "cnvcontainer");
   let cnv = document.createElement("CANVAS");
-  cnv.classList.add("playerpiccanvas");
+  cnv.classList.add("markercnv");
   charPic.appendChild(cnv);
   charTop.appendChild(charPic);
 
-  let charInfo = document.createElement("DIV");
-  charInfo.classList.add("playerinfo");
   let charName = document.createElement("DIV");
-  charName.classList.add("playername");
-  charName.onclick = function(e) { expandSheet(div) };
-  charInfo.appendChild(charName);
-  let charStats = document.createElement("DIV");
-  charStats.classList.add("playerstats");
-  charInfo.appendChild(charStats);
-  charTop.appendChild(charInfo);
+  charName.classList.add("playername", "cnvcontainer");
+  cnv = document.createElement("CANVAS");
+  charName.appendChild(cnv);
+  charTop.appendChild(charName);
   div.appendChild(charTop);
 
+  let charStats = document.createElement("DIV");
+  charStats.classList.add("playerstats");
+  let statsBg = document.createElement("DIV");
+  statsBg.classList.add("statsbg", "cnvcontainer");
+  let bgcnv = document.createElement("CANVAS");
+  bgcnv.classList.add("markercnv");
+  statsBg.appendChild(bgcnv);
+  charStats.appendChild(statsBg);
+  for (let stat in statNames) {
+    let statDiv = document.createElement("DIV");
+    statDiv.classList.add("stats", stat);  // intentionally omit cnvcontainer; see updateStats()
+    let cnv = document.createElement("CANVAS");
+    statDiv.appendChild(cnv);
+    charStats.appendChild(statDiv);
+    if (isPlayer) {
+      statDiv.onclick = function(e) { spend(stat); };
+      if (stat == "dollars") {
+        statDiv.draggable = true;
+        statDiv.ondragstart = dragStart;
+        statDiv.ondragend = dragEnd;
+      }
+    }
+  }
+  charTop.appendChild(charStats);
+
+  let sliderCont = document.createElement("DIV");
+  sliderCont.classList.add("slidercont");
   let sliders = document.createElement("DIV");
-  sliders.classList.add("sliders");
-  let spacer = document.createElement("DIV");
-  spacer.classList.add("sliderspacer");
-  sliders.appendChild(spacer);
-  div.appendChild(sliders);
+  sliders.classList.add("sliders", "cnvcontainer");
+  sliderCont.appendChild(sliders);
+  div.appendChild(sliderCont);
+  let slidersCnv = document.createElement("CANVAS");
+  slidersCnv.classList.add("worldcnv");  // TODO
+  sliders.appendChild(slidersCnv);
+  for (let i = 0; i < 3; i++) {  // TODO: fourth slider
+    for (let j = 0; j < 4; j++) {
+      let sliderDiv = document.createElement("DIV");
+      sliderDiv.classList.add("slider", "slider" + i + "" + j, "cnvcontainer");
+      let sliderCnv = document.createElement("CANVAS");
+      sliderCnv.classList.add("worldcnv");
+      sliderDiv.appendChild(sliderCnv);
+      sliders.appendChild(sliderDiv);
+      if (isPlayer) {
+        let sliderName = Object.entries(character.sliders)[i][0];
+        sliderDiv.onclick = function(e) { setSlider(sliderName, j); };
+      }
+      if (!setDivXYPercent(sliderDiv, "Nun sliders", "Slider " + i + " " + j, true)) {
+        let xoff = (i % 2 == 0) ? 1 : 2;
+        let xpct = (2 * (j+1) + xoff) * 9.09 + "%";
+        sliderDiv.style.left = xpct;
+        sliderDiv.style.bottom = (3 + 5 * (2-i)) * 100 / 16 + "%";
+      }
+    }
+  }
+
+  let bag = document.createElement("DIV");
+  bag.classList.add("bag");
+  let bagTabs = document.createElement("DIV");
+  bagTabs.classList.add("bagtabs");
+  let posTab = document.createElement("DIV");
+  posTab.classList.add("bagtab");
+  posTab.innerText = "POSSESSIONS";
+  posTab.onclick = function(e) { showPossessions(bag); };
+  let trophyTab = document.createElement("DIV");
+  trophyTab.classList.add("bagtab", "inactive");
+  trophyTab.innerText = "TROPHIES";
+  trophyTab.onclick = function(e) { showTrophies(bag); };
+  bagTabs.appendChild(posTab);
+  bagTabs.appendChild(trophyTab);
+  bag.appendChild(bagTabs);
   let possessions = document.createElement("DIV");
   possessions.classList.add("possessions");
-  div.appendChild(possessions);
-  let spacer2 = document.createElement("DIV");
-  spacer2.classList.add("sliderspacer");
-  div.appendChild(spacer2);
+  bag.appendChild(possessions);
+  let trophies = document.createElement("DIV");
+  trophies.classList.add("possessions", "hidden");
+  bag.appendChild(trophies);
+  div.appendChild(bag);
 
   rightUI.appendChild(div);
+  renderAssetToDiv(charPic, character.name + " picture");
+  renderAssetToDiv(charName, character.name + " title");
+  renderAssetToDiv(statsBg, "statsbg");
+  for (let sliderDiv of sliders.getElementsByClassName("slider")) {
+    renderAssetToDiv(sliderDiv, "Slider");
+  }
   return div;
 }
 
 function expandSheet(sheetDiv) {
-  for (let sheet of document.getElementsByClassName("player")) {
+  for (let sheet of document.getElementById("uiright").getElementsByClassName("player")) {
     if (sheet == sheetDiv) {
       sheet.classList.remove("collapsed");
     } else {
@@ -1068,151 +1617,182 @@ function expandSheet(sheetDiv) {
   }
 }
 
-function updateCharacterSheet(sheet, character, order, isPlayer) {
-  let width = document.getElementById("boardcanvas").width;
-  let markerWidth = width * markerWidthRatio;
-  let markerHeight = width * markerHeightRatio;
-  let picDiv = sheet.getElementsByClassName("playerpicouter")[0];
-  let cnv = sheet.getElementsByClassName("playerpiccanvas")[0];
-  picDiv.style.width = markerWidth + "px";
-  picDiv.style.height = markerHeight + "px";
-  cnv.width = markerWidth;
-  cnv.height = markerHeight;
-  renderAssetToCanvas(cnv, character.name, "");
-  if (isPlayer) {
-    sheet.classList.add("you");
-  } else {
-    sheet.classList.remove("you");
-  }
+function showPossessions(bag) {
+  let possessions = bag.getElementsByClassName("possessions")[0];
+  let trophies = bag.getElementsByClassName("possessions")[1];
+  let posTab = bag.getElementsByClassName("bagtab")[0];
+  let trophyTab = bag.getElementsByClassName("bagtab")[1];
+  possessions.classList.remove("hidden");
+  trophies.classList.add("hidden");
+  posTab.classList.remove("inactive");
+  trophyTab.classList.add("inactive");
+}
+
+function showTrophies(bag) {
+  let possessions = bag.getElementsByClassName("possessions")[0];
+  let trophies = bag.getElementsByClassName("possessions")[1];
+  let posTab = bag.getElementsByClassName("bagtab")[0];
+  let trophyTab = bag.getElementsByClassName("bagtab")[1];
+  possessions.classList.add("hidden");
+  trophies.classList.remove("hidden");
+  posTab.classList.add("inactive");
+  trophyTab.classList.remove("inactive");
+}
+
+function updateCharacterSheet(sheet, character, order, isPlayer, choice) {
   sheet.style.order = order;
-  sheet.getElementsByClassName("playername")[0].innerText = character.name;
-  let stats = sheet.getElementsByClassName("playerstats")[0];
-  while (stats.firstChild) {
-    stats.removeChild(stats.firstChild);
+  let spent = {};
+  let chosen = [];
+  if (choice != null) {
+    for (let key in choice.spent) {
+      for (let handle in choice.spent[key]) {
+        spent[handle] = (spent[handle] || 0) + choice.spent[key][handle];
+      }
+    }
+    chosen = choice.chosen || [];
   }
-  let cfgs = [  // TODO: speed is not the correct cap for movement points
-    ["stamina", "stamina", "max_stamina"], ["sanity", "sanity", "max_sanity"],
-    ["movement", "movement_points", "speed"], ["focus", "focus_points", "focus"],
-    ["clues", "clues"], ["dollars", "dollars"],
+  updateCharacterStats(sheet, character, isPlayer, spent);
+  updateSliders(sheet, character, isPlayer);
+  updatePossessions(sheet, character.possessions, isPlayer, spent, chosen);
+  updateTrophies(sheet, character, isPlayer, spent);
+}
+
+function updateInitialStats(sheet, character) {
+  let stats = sheet.getElementsByClassName("playerstats")[0];
+  let cfgs = [
+    ["Stamina", "stamina", "white", "max_stamina"], ["Sanity", "sanity", "white", "max_sanity"],
   ];
   for (let cfg of cfgs) {
-    let text = cfg[0] + ": " + character[cfg[1]];
-    if (cfg.length > 2) {
-      text += " / " + character[cfg[2]];
-    }
-    let statDiv = document.createElement("DIV");
-    statDiv.classList.add("stat");
-    statDiv.innerText = text;
-    // TODO: make this nicer
-    if (isPlayer && cfg[0] == "clues") {
-      statDiv.classList.add("clue");
-      statDiv.onclick = function(e) { useAsset("clues") };
-    }
-    if (isPlayer && cfg[0] == "dollars") {
-      statDiv.classList.add("dollars");
-      statDiv.draggable = true;
-      statDiv.ondragstart = dragStart;
-      statDiv.ondragend = dragEnd;
-    }
-    stats.appendChild(statDiv);
+    let statDiv = sheet.getElementsByClassName(cfg[1])[0];
+    renderAssetToDiv(statDiv, cfg[0]);
+    statDiv.statValue = character[cfg[3]];
+    statDiv.textColor = cfg[2];
   }
-  updateSliders(sheet, character, isPlayer);
-  updatePossessions(sheet, character, isPlayer);
+  cfgs = [["Clue", "clues", "white"], ["Dollar", "dollars", "black"]];
+  for (let cfg of cfgs) {
+    let statDiv = sheet.getElementsByClassName(cfg[1])[0];
+    renderAssetToDiv(statDiv, cfg[0]);
+    statDiv.statValue = character.initial[cfg[1]] || 0;
+    statDiv.textColor = cfg[2];
+  }
+  // updateStats() will get called to render numbers at the end of handleData()
+}
+
+function updateCharacterStats(sheet, character, isPlayer, spent) {
+  let stats = sheet.getElementsByClassName("playerstats")[0];
+  let cfgs = [
+    ["Stamina", "stamina", "white", "max_stamina"], ["Sanity", "sanity", "white", "max_sanity"],
+    ["Clue", "clues", "white"], ["Dollar", "dollars", "black"],
+  ];
+  for (let cfg of cfgs) {
+    let statDiv = sheet.getElementsByClassName(cfg[1])[0];
+    renderAssetToDiv(statDiv, cfg[0]);
+    let statSpent = isPlayer ? (spent[cfg[1]] || 0) : 0;
+    statDiv.statValue = character[cfg[1]] - statSpent;
+    statDiv.textColor = cfg[2];
+    if (cfg.length > 3) {
+      statDiv.maxValue = character[cfg[3]];
+    } else {
+      statDiv.maxValue = null;
+    }
+  }
+  // updateStats() will get called to render numbers at the end of handleData()
+}
+
+function updateStats() {
+  for (let elem of document.getElementsByClassName("stats")) {
+    if (elem.assetName == null) {
+      continue;
+    }
+    renderAssetToDiv(elem, elem.assetName, elem.variant).then(function() {
+      let cnv = elem.getElementsByTagName("CANVAS")[0];
+      if (elem.maxValue != null) {
+        let pct = (elem.maxValue - elem.statValue) / elem.maxValue;
+        let ctx = cnv.getContext("2d");
+        ctx.save();
+        ctx.globalAlpha = 0.7;
+        ctx.globalCompositeOperation = "source-atop";
+        ctx.fillStyle = "white";
+        ctx.fillRect(0, 0, cnv.width, cnv.height * pct);
+        ctx.restore();
+      }
+      renderTextCircle(cnv, elem.statValue, "rgba(0, 0, 0, 0)", elem.textColor, 0.7);
+    });
+  }
+  let doom = document.getElementById("doom");
+  renderAssetToDiv(doom, doom.assetName, doom.variant).then(function() {
+    if (!doom.maxValue) {
+      return;
+    }
+    let pct = doom.statValue / doom.maxValue;
+    let cnv = doom.getElementsByTagName("CANVAS")[0];
+    let ctx = cnv.getContext("2d");
+    ctx.save();
+    ctx.globalAlpha = 0.7; 
+    ctx.globalCompositeOperation = "source-atop";
+    ctx.fillStyle = "black";
+    let rotation = 2 * Math.PI * pct - Math.PI / 2; 
+    ctx.beginPath();
+    ctx.arc(cnv.width / 2, cnv.height / 2, cnv.width / 2, rotation, 3 * Math.PI / 2, false);
+    ctx.lineTo(cnv.width / 2, cnv.height / 2);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  });
 }
 
 function updateSliders(sheet, character, isPlayer) {
-  for (let sliderName in character.sliders) {
-    let sliderDiv = sheet.getElementsByClassName("slider_" + sliderName)[0];
-    if (sliderDiv == null) {
-      sliderDiv = createSlider(sliderName, character.sliders[sliderName], isPlayer);
-      sheet.getElementsByClassName("sliders")[0].appendChild(sliderDiv);
-      let spacerDiv = document.createElement("DIV");
-      spacerDiv.classList.add("sliderspacer");
-      sheet.getElementsByClassName("sliders")[0].appendChild(spacerDiv);
-    }
-    let selection = character.sliders[sliderName].selection;
-    let pairs = sliderDiv.getElementsByClassName("slidervaluepair");
-    for (let idx = 0; idx < pairs.length; idx++) {
-      let sliderPair = pairs[idx];
-      if (idx == selection) {
-        sliderPair.classList.add("sliderselected");
-        sliderPair.classList.remove("sliderdeselected");
-      } else {
-        sliderPair.classList.remove("sliderselected");
-        sliderPair.classList.add("sliderdeselected");
-      }
-    }
+  let sliders = sheet.getElementsByClassName("sliders")[0];
+  renderAssetToDiv(sliders, character.name + " sliders");
+  for (let slider of sliders.getElementsByClassName("slider")) {
+    slider.classList.remove("chosen");
+  }
+  for (let [idx, [sliderName, sliderInfo]] of Object.entries(character.sliders).entries()) {
+    let chosen = sheet.getElementsByClassName("slider" + idx + "" + sliderInfo.selection)[0];
+    chosen.classList.add("chosen");
   }
 }
 
-function createSlider(sliderName, sliderInfo, isPlayer) {
-  let firstName = sliderName.split("_")[0];
-  let secondName = sliderName.split("_")[1];
-  let sliderDiv = document.createElement("DIV");
-  sliderDiv.classList.add("slider");
-  sliderDiv.classList.add("slider_" + sliderName);
-  let nameDiv = document.createElement("DIV");
-  nameDiv.classList.add("sliderpair");
-  nameDiv.classList.add("slidernames");
-  let firstNameDiv = document.createElement("DIV");
-  firstNameDiv.classList.add("slidername");
-  firstNameDiv.innerText = firstName;
-  let secondNameDiv = document.createElement("DIV");
-  secondNameDiv.classList.add("slidername");
-  secondNameDiv.innerText = secondName;
-  nameDiv.appendChild(firstNameDiv);
-  nameDiv.appendChild(secondNameDiv);
-  sliderDiv.appendChild(nameDiv);
-  for (let idx = 0; idx < sliderInfo.pairs.length; idx++) {
-    let pair = sliderInfo.pairs[idx];
-    let pairDiv = document.createElement("DIV");
-    pairDiv.classList.add("sliderpair");
-    pairDiv.classList.add("slidervaluepair");
-    let firstDiv = document.createElement("DIV");
-    firstDiv.classList.add("slidervalue");
-    firstDiv.classList.add("slidertop");
-    firstDiv.innerText = pair[0];
-    let secondDiv = document.createElement("DIV");
-    secondDiv.classList.add("slidervalue");
-    secondDiv.classList.add("sliderbottom");
-    secondDiv.innerText = pair[1];
-    pairDiv.appendChild(firstDiv);
-    pairDiv.appendChild(secondDiv);
-    if (isPlayer) {
-      pairDiv.onclick = function(e) { setSlider(sliderName, idx); };
-    }
-    sliderDiv.appendChild(pairDiv);
+function updateInitialPossessions(sheet, character) {
+  let possessions = [];
+  for (let pos of character.fixed) {
+    possessions.push({name: pos, active: false, handle: null, bonuses: {}});
   }
-  return sliderDiv;
+  for (let deck in character.random) {
+    for (let i = 0; i < character.random[deck]; i++) {
+      possessions.push({name: deck, active: false, handle: null, bonuses: {}});
+    }
+  }
+  updatePossessions(sheet, possessions, false, {}, []);
 }
 
-function updatePossessions(sheet, character, isPlayer) {
+function updatePossessions(sheet, possessions, isPlayer, spent, chosen) {
+  // TODO: figure out which possessions to add/remove based on handle
   let pDiv = sheet.getElementsByClassName("possessions")[0];
   while (pDiv.firstChild) {
     pDiv.removeChild(pDiv.firstChild);
   }
-  for (let i = 0; i < character.possessions.length; i++) {
-    pDiv.appendChild(createPossession(character.possessions[i], i, isPlayer));
+  for (let pos of possessions) {
+    createPossession(pos, isPlayer, pDiv, spent, chosen);
   }
 }
 
-function createPossession(info, idx, isPlayer) {
-  let width = document.getElementById("boardcanvas").width;
-  let posWidth = 3 * width * markerWidthRatio / 2;
-  let posHeight = 3 * width * markerHeightRatio / 2;
+function createPossession(info, isPlayer, sheet, spent, chosen) {
   let div = document.createElement("DIV");
-  div.classList.add("possession");
+  div.classList.add("possession", "cnvcontainer");
+  div.cnvScale = 2.5;
   if (info.active) {
     div.classList.add("active");
   }
-  div.idx = idx;
+  if (spent[info.handle] != null) {
+    div.classList.add("spent");
+  }
+  div.handle = info.handle;
+  if (abilityNames.includes(info.handle)) {
+    div.classList.add("big");
+  }
   let cnv = document.createElement("CANVAS");
-  div.style.width = posWidth + "px";
-  div.style.height = posHeight + "px";
-  cnv.width = posWidth;
-  cnv.height = posHeight;
-  cnv.classList.add("markercnv");  // TODO: maybe these should be a different size/class.
-  renderAssetToCanvas(cnv, info.name, "");
+  cnv.classList.add("poscnv");
   div.appendChild(cnv);
   let cascade = {"sneak": "evade", "fight": "combat", "will": "horror", "lore": "spell"};
   for (let attr in info.bonuses) {
@@ -1220,25 +1800,71 @@ function createPossession(info, idx, isPlayer) {
       continue;
     }
     let highlightDiv = document.createElement("DIV");
-    highlightDiv.classList.add("bonus");
-    highlightDiv.classList.add("bonus" + attr);
+    highlightDiv.classList.add("bonus", "bonus" + attr);
     highlightDiv.innerText = (info.bonuses[attr] >= 0 ? "+" : "") + info.bonuses[attr];
     if (cascade[attr]) {
       highlightDiv.classList.add("bonus" + cascade[attr]);
     }
     div.appendChild(highlightDiv);
   }
+  let chosenDiv = document.createElement("DIV");
+  chosenDiv.classList.add("chosencheck");
+  chosenDiv.innerText = "✔️";
+  div.appendChild(chosenDiv);
   // TODO: show some information about bonuses that aren't active right now
+  let handle = info.handle;
+  div.onmouseenter = bringTop;
+  div.onmouseleave = returnBottom;
   if (isPlayer) {
-    if (itemChoice.includes(idx)) {
+    if (chosen.includes(handle)) {
       div.classList.add("chosen");
     }
-    div.onclick = function(e) { clickAsset(div, idx); };
+    div.onclick = function(e) { clickAsset(div, handle); };
     div.draggable = true;
     div.ondragstart = dragStart;
     div.ondragend = dragEnd;
   }
-  return div;
+  sheet.appendChild(div);
+  renderAssetToDiv(div, info.name);
+}
+
+function updateTrophies(sheet, character, isPlayer, spent) {
+  let tDiv = sheet.getElementsByClassName("possessions")[1];
+  while (tDiv.firstChild) {
+    tDiv.removeChild(tDiv.firstChild);
+  }
+  for (let trophy of character.trophies) {
+    createTrophy(trophy, isPlayer, tDiv, spent);
+  }
+}
+
+function createTrophy(info, isPlayer, tDiv, spent) {
+  let handle = info.handle;
+  let div = document.createElement("DIV");
+  div.classList.add("trophy", "cnvcontainer");
+  div.cnvScale = 2.5;
+  if (spent[handle] != null) {
+    div.classList.add("spent");
+  }
+  div.handle = handle;
+  let cnv = document.createElement("CANVAS");
+  cnv.classList.add("poscnv");
+  div.appendChild(cnv);
+  div.onmouseenter = bringTop;
+  div.onmouseleave = returnBottom;
+  tDiv.appendChild(div);
+  let chosenDiv = document.createElement("DIV");
+  chosenDiv.classList.add("chosencheck");
+  chosenDiv.innerText = "✔️";
+  div.appendChild(chosenDiv);
+  if (isPlayer) {
+    div.onclick = function(e) { useAsset(handle); };
+  }
+  let assetName = info.name;
+  if (monsterNames.includes(assetName)) {
+    assetName += " back";
+  }
+  renderAssetToDiv(div, assetName);
 }
 
 function highlightCheck(e) {

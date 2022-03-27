@@ -1,27 +1,30 @@
 import collections
 import json
 from random import SystemRandom
-random = SystemRandom()
 
-from game import (
-    BaseGame, ValidatePlayer, CustomEncoder, InvalidInput, UnknownMove, InvalidMove,
-    InvalidPlayer, TooManyPlayers, NotYourTurn,
+from eldritch import places
+from eldritch import mythos
+from eldritch import monsters
+from eldritch import location_specials
+from eldritch import items
+from eldritch import gate_encounters
+from eldritch import gates
+from eldritch import events
+from eldritch import encounters
+from eldritch import characters
+from eldritch import assets
+from eldritch import abilities
+from eldritch import ancient_ones
+from game import (  # pylint: disable=unused-import
+    BaseGame, CustomEncoder, InvalidInput, UnknownMove, InvalidMove, InvalidPlayer, NotYourTurn,
+    ValidatePlayer, TooManyPlayers,
 )
 
-from eldritch import abilities
-from eldritch import assets
-from eldritch import characters
-from eldritch import encounters
-from eldritch import events
-from eldritch import gates
-from eldritch import gate_encounters
-from eldritch import items
-from eldritch import monsters
-from eldritch import mythos
-from eldritch import places
+
+random = SystemRandom()
 
 
-class GameState(object):
+class GameState:
 
   DEQUE_ATTRIBUTES = {"common", "unique", "spells", "skills", "allies", "gates"}
   HIDDEN_ATTRIBUTES = {
@@ -37,15 +40,19 @@ class GameState(object):
   }
 
   def __init__(self):
+    self.name = "game"
     self.places = {}
     self.characters = []
     self.all_characters = characters.CreateCharacters()
-    self.pending_chars = []
+    self.all_ancients = ancient_ones.AncientOnes()
+    self.pending_chars = {}
     self.common = collections.deque()
     self.unique = collections.deque()
     self.spells = collections.deque()
     self.skills = collections.deque()
     self.allies = collections.deque()
+    self.tradables = []
+    self.specials = []
     self.mythos = collections.deque()
     self.gates = collections.deque()
     self.gate_cards = collections.deque()
@@ -73,35 +80,41 @@ class GameState(object):
 
   def initialize_for_tests(self):
     self.places = places.CreatePlaces()
-    infos, other_worlds = places.CreateOtherWorlds()
+    other_worlds = places.CreateOtherWorlds()
     self.places.update(other_worlds)
 
-    self.gates.extend(gates.CreateGates(infos[:3]))
+    self.gates.extend(gates.CreateGates())
     self.monsters = [monsters.Cultist(), monsters.Maniac()]
-    for monster in self.monsters:
+    for idx, monster in enumerate(self.monsters):
+      monster.idx = idx
       monster.place = self.monster_cup
 
     self.game_stage = "slumber"
     self.turn_idx = 0
     self.turn_number = 0
     self.turn_phase = "upkeep"
+    self.ancient_one = ancient_ones.DummyAncient()
     self.test_mode = True
 
   def initialize(self):
     self.places = places.CreatePlaces()
-    infos, other_worlds = places.CreateOtherWorlds()
+    other_worlds = places.CreateOtherWorlds()
     self.places.update(other_worlds)
+    specials = location_specials.CreateFixedEncounters()
     encounter_cards = encounters.CreateEncounterCards()
     self.gate_cards.extend(gate_encounters.CreateGateCards())
     for neighborhood_name, cards in encounter_cards.items():
       self.places[neighborhood_name].encounters.extend(cards)
+    for location_name, fixed_encounters in specials.items():
+      self.places[location_name].fixed_encounters.extend(fixed_encounters)
 
-    gate_markers = gates.CreateGates(infos)
+    gate_markers = gates.CreateGates()
     random.shuffle(gate_markers)
     self.gates.extend(gate_markers)
 
     self.monsters = monsters.CreateMonsters()
-    for monster in self.monsters:
+    for idx, monster in enumerate(self.monsters):
+      monster.idx = idx
       monster.place = self.monster_cup
 
     self.common.extend(items.CreateCommon())
@@ -109,15 +122,21 @@ class GameState(object):
     self.spells.extend(items.CreateSpells())
     self.skills.extend(abilities.CreateSkills())
     self.allies.extend(assets.CreateAllies())
+    self.tradables.extend(items.CreateTradables())
+    self.specials.extend(items.CreateSpecials())
+    all_cards = self.common + self.unique + self.spells + self.skills + self.allies
+    all_cards += self.tradables + self.specials
+    handles = [card.handle for card in all_cards]
+    assert len(handles) == len(set(handles))
 
     self.mythos.extend(mythos.CreateMythos())
 
     # Shuffle the decks.
-    for deck in assets.Card.DECKS:
+    for deck in assets.Card.DECKS | {"gate_cards", "mythos"} - {"tradables", "specials"}:
       random.shuffle(getattr(self, deck))
-    # Place initial clues. TODO: some characters may change location stability.
+    # Place initial clues.
     for place in self.places.values():
-      if isinstance(place, places.Location) and place.unstable:
+      if isinstance(place, places.Location) and place.is_unstable(self):
         place.clues += 1
 
   def give_fixed_possessions(self, char, possessions):
@@ -133,7 +152,7 @@ class GameState(object):
           keep.append(card)
         else:
           rest.append(card)
-      assert not names, "could not find %s for %s in %s" % (str(names), char.name, deck)
+      assert not names, f"could not find {str(names)} for {char.name} in {deck}"
       char.possessions.extend(keep)
       cards.extend(rest)
 
@@ -167,15 +186,21 @@ class GameState(object):
   def globals(self):
     return [self.rumor, self.environment, self.ancient_one] + self.other_globals
 
+  def monster_limit(self):
+    # TODO: return infinity when the terror track reaches 10
+    limit = len(self.characters) + 3
+    return limit + self.get_modifier(self, "monster_limit")
+
+  def outskirts_limit(self):
+    limit = 8 - len(self.characters)
+    return limit + self.get_modifier(self, "outskirts_limit")
+
   def game_status(self):
     return "eldritch game"  # TODO
 
   def json_repr(self):
-    output = {}
-    output.update({
-      key: getattr(self, key) for key in
-      self.__dict__.keys() - self.DEQUE_ATTRIBUTES - self.HIDDEN_ATTRIBUTES - self.CUSTOM_ATTRIBUTES
-    })
+    ignore_attributes = self.DEQUE_ATTRIBUTES | self.HIDDEN_ATTRIBUTES | self.CUSTOM_ATTRIBUTES
+    output = {key: getattr(self, key) for key in self.__dict__.keys() - ignore_attributes}
     for attr in self.DEQUE_ATTRIBUTES:
       output[attr] = list(getattr(self, attr))
 
@@ -199,33 +224,81 @@ class GameState(object):
     if char_idx is not None and char_idx < len(self.characters):
       char = self.characters[char_idx]
 
-    output["choice"] = None
     top_event = self.event_stack[-1] if self.event_stack else None
-    if top_event and isinstance(top_event, events.ChoiceEvent) and not top_event.is_resolved():
+
+    # Figure out the current encounter/mythos card being resolved.
+    current = None
+    for event in reversed(self.event_stack):
+      if current is None:
+        # If it's an encounter, get the name of the drawn card (or chosen card if more than 1).
+        if isinstance(event, events.Encounter) and event.draw and event.draw.cards:
+          if len(event.draw.cards) == 1:
+            current = event.draw.cards[0].name
+          else:
+            seq = getattr(event.encounter, "events", [])
+            if seq and seq[0].is_resolved():
+              current = event.draw.cards[seq[0].choice_index].name
+        # Same thing for otherworld encounters (cards attribute is in a different place).
+        if isinstance(event, events.GateEncounter) and event.cards and event.encounter:
+          if len(event.cards) == 1:
+            current = event.cards[0].name
+          else:
+            seq = getattr(event.encounter, "events", [])
+            if seq and seq[0].is_resolved():
+              current = event.cards[seq.choice_index].name
+        # For mythos cards, there is a single drawn card.
+        if isinstance(event, events.Mythos) and event.draw and event.draw.card:
+          current = event.draw.card.name
+    output["current"] = current
+
+    # Figure out the current dice roll and how many bonus dice it has.
+    roller = None
+    bonus = 0
+    for event in reversed(self.event_stack):
+      if isinstance(event, events.BonusDiceRoll):
+        bonus += event.count
+      if isinstance(event, events.DiceRoll):
+        roller = event
+      if isinstance(event, events.Check):
+        roller = event
+        break
+    if roller is not None:
+      output["dice"] = roller.count + bonus if roller.count is not None else None
+      output["roll"] = roller.roll
+      output["roller"] = self.characters.index(roller.character)
+
+    output["choice"] = None
+    if top_event and isinstance(top_event, events.ChoiceEvent) and not top_event.is_done():
       if top_event.character == char:
         output["choice"] = {"prompt": top_event.prompt()}
-        output["choice"]["annotations"] = top_event.annotations()
+        output["choice"]["annotations"] = top_event.annotations(self)
+        output["choice"]["invalid_choices"] = getattr(top_event, "invalid_choices", [])
+        if isinstance(top_event, events.SpendMixin):
+          output["choice"]["spendable"] = list(top_event.spendable)
+          output["choice"]["spent"] = top_event.spend_map
+          output["choice"]["remaining_spend"] = top_event.remaining_spend
+
         if isinstance(top_event, events.CardChoice):
           output["choice"]["cards"] = top_event.choices
-          output["choice"]["invalid_choices"] = getattr(top_event, "invalid_choices", [])
+          output["choice"]["sort_uniq"] = top_event.sort_uniq
         elif isinstance(top_event, (events.MapChoice, events.CityMovement)):
-          if top_event.choices is not None:
-            extra_choices = [top_event.none_choice] if top_event.none_choice is not None else []
-            output["choice"]["places"] = top_event.choices + extra_choices
+          extra_choices = [top_event.none_choice] if top_event.none_choice is not None else []
+          output["choice"]["places"] = (top_event.choices or []) + extra_choices
         elif isinstance(top_event, events.MultipleChoice):
           output["choice"]["choices"] = top_event.choices
-          output["choice"]["invalid_choices"] = getattr(top_event, "invalid_choices", [])
-        elif isinstance(top_event, events.CombatChoice):
-          output["choice"]["items"] = 0
-        elif isinstance(top_event, events.ItemCountChoice):
-          output["choice"]["items"] = top_event.count
-        elif isinstance(top_event, events.MonsterSurge):
+        elif isinstance(top_event, events.ItemChoice):
+          output["choice"]["chosen"] = [item.handle for item in top_event.chosen]
+          output["choice"]["items"] = True
+        elif isinstance(top_event, events.MonsterSpawnChoice):
           output["choice"]["monsters"] = top_event.to_spawn
+        elif isinstance(top_event, events.MonsterOnBoardChoice):
+          output["choice"]["board_monster"] = True
         else:
-          raise RuntimeError("Unknown choice type %s" % top_event.__class__.__name__)
-    if top_event and isinstance(top_event, events.SliderInput) and not top_event.is_resolved():
+          raise RuntimeError(f"Unknown choice type {top_event.__class__.__name__}")
+
+    if top_event and isinstance(top_event, events.SliderInput) and not top_event.is_done():
       if top_event.character == char:
-        output["sliders"] = True
+        output["sliders"] = {"prompt": top_event.prompt()}
         # TODO: distinguish between pending/current sliders, pending/current focus.
         for name, value in top_event.pending.items():
           output["characters"][char_idx]["sliders"][name]["selection"] = value
@@ -243,13 +316,16 @@ class GameState(object):
     if data.get("type") == "start":
       self.handle_start()
       return self.resolve_loop()
+    if data.get("type") == "ancient":
+      self.handle_ancient(data.get("ancient"))
+      return [None]  # Return a dummy iterable; do not start executing the game loop.
 
     if char_idx not in range(len(self.characters)):
-      raise InvalidPlayer("no such player %s" % char_idx)
+      raise InvalidPlayer(f"no such player {char_idx}")
     if data.get("type") == "set_slider":
       self.handle_slider(char_idx, data.get("name"), data.get("value"))
     elif data.get("type") == "give":
-      self.handle_give(char_idx, data.get("recipient"), data.get("idx"), data.get("amount"))
+      self.handle_give(char_idx, data.get("recipient"), data.get("handle"), data.get("amount"))
     elif data.get("type") == "check":  # TODO: remove
       self.handle_check(char_idx, data.get("check_type"), data.get("modifier"))
     elif data.get("type") == "monster":  # TODO: remove
@@ -260,8 +336,14 @@ class GameState(object):
       self.handle_spawn_clue(data.get("place"))
     elif data.get("type") == "choice":
       self.handle_choice(char_idx, data.get("choice"))
+    elif data.get("type") == "spend":
+      self.handle_spend(char_idx, data.get("spend_type"))
+    elif data.get("type") == "unspend":
+      self.handle_unspend(char_idx, data.get("spend_type"))
+    elif data.get("type") == "roll":
+      self.handle_roll(char_idx)
     elif data.get("type") == "use":
-      self.handle_use(char_idx, data.get("idx"))
+      self.handle_use(char_idx, data.get("handle"))
     elif data.get("type") == "done_using":
       self.handle_done_using(char_idx)
     else:
@@ -272,6 +354,8 @@ class GameState(object):
   def resolve_loop(self):
     # NOTE: we may produce one message that is identical to the previous state.
     yield None
+    if not self.event_stack and not self.test_mode:
+      self.next_turn()
     while self.event_stack:
       event = self.event_stack[-1]
       if self.start_event(event):
@@ -282,34 +366,51 @@ class GameState(object):
       # If the event requires the character to make a choice, stop here.
       self.usables = self.get_usable_interrupts(event)
       # TODO: maybe we can have an Input class. Or a needs_input() method.
-      if isinstance(event, events.ChoiceEvent) and not event.is_resolved():
+      if isinstance(event, events.ChoiceEvent) and not event.is_done():
         event.compute_choices(self)
-        if not event.is_resolved():
+        if not event.is_done():
           yield None
           return
-      if isinstance(event, events.SliderInput) and not event.is_resolved():
+      if not self.test_mode and isinstance(event, events.DiceRoll) and not event.is_done():
         yield None
         return
-      if not all([self.done_using.get(char_idx) for char_idx in self.usables]):
+      if isinstance(event, events.SliderInput) and not event.is_done():
         yield None
         return
-      if not event.is_resolved():
+      if not all(self.done_using.get(char_idx) for char_idx in self.usables):
+        yield None
+        return
+      if not event.is_done():
         event.resolve(self)
-      if not event.is_resolved():
+        self.validate_resolve(event)
+      if not event.is_done():
         continue
       if self.finish_event(event):
         yield None
       if self.trigger_stack[-1]:
         self.event_stack.append(self.trigger_stack[-1].pop())
         continue
-      self.usables = self.get_usable_triggers(event)
-      if not all([self.done_using.get(char_idx) for char_idx in self.usables]):
+      if not event.is_cancelled():
+        self.usables = self.get_usable_triggers(event)
+      if not all(self.done_using.get(char_idx) for char_idx in self.usables):
         yield None
         return
       self.pop_event(event)
       yield None
       if not self.event_stack and not self.test_mode:
         self.next_turn()
+
+  def validate_resolve(self, event):
+    if event.is_done():
+      return
+    if self.event_stack[-1] != event:
+      return
+    if isinstance(event, (events.ChoiceEvent, events.SliderInput)):
+      return
+    raise RuntimeError(
+        f"Event {event} returned from resolve() without (a) becoming resolved or "
+        "(b) becoming cancelled or (c) adding a new event to the stack"
+    )
 
   def start_event(self, event):
     # TODO: what about multiple events added to the stack at the same time? disallow?
@@ -325,8 +426,9 @@ class GameState(object):
 
   def finish_event(self, event):
     assert len(self.trigger_stack) == len(self.event_stack)
-    if self.trigger_stack[-1] is None:
+    if self.trigger_stack[-1] is None and not event.is_cancelled():
       self.trigger_stack[-1] = self.get_triggers(event)
+      self.clear_usables()
       return True
     # TODO: we should append to the event log here, then override when we pop it?
     return False
@@ -349,32 +451,46 @@ class GameState(object):
   # TODO: global interrupts/triggers from ancient one, environment, other mythos/encounter cards
   def get_interrupts(self, event):
     interrupts = []
-    if isinstance(event, events.MoveOne):
+    if isinstance(event, (events.MoveOne, events.WagonMove)):
       nearby_monsters = [mon for mon in self.monsters if mon.place == event.character.place]
       if nearby_monsters:
         interrupts.append(events.EvadeOrFightAll(event.character, nearby_monsters))
-    interrupts += sum([char.get_interrupts(event, self) for char in self.characters], [])
+    interrupts.extend(sum(
+        [char.get_interrupts(event, self) for char in self.characters if not char.gone], [],
+    ))
+    global_interrupts = [glob.get_interrupt(event, self) for glob in self.globals() if glob]
+    interrupts.extend([interrupt for interrupt in global_interrupts if interrupt])
     return interrupts
 
   def get_usable_interrupts(self, event):
-    i = {idx: char.get_usable_interrupts(event, self) for idx, char in enumerate(self.characters)}
-    # If the character is in another world with another character, let them trade before moving.
-    if isinstance(event, events.ForceMovement) and self.turn_phase == "movement":
-      if len([char for char in self.characters if char.place == event.character.place]) > 1:
-        i[self.characters.index(event.character)]["trade"] = events.Nothing()
-    return {char_idx: interrupt_list for char_idx, interrupt_list in i.items() if interrupt_list}
+    i = {
+        idx: char.get_usable_interrupts(event, self)
+        for idx, char in enumerate(self.characters) if not char.gone
+    }
+    if self.turn_phase == "movement":
+      # If the character is in another world with another character, let them trade before moving.
+      if isinstance(event, (events.ForceMovement, events.GateChoice)):
+        if len([char for char in self.characters if char.place == event.character.place]) > 1:
+          i[self.characters.index(event.character)]["trade"] = events.Nothing()
+    return {char_idx: interrupts for char_idx, interrupts in i.items() if interrupts}
 
   def get_triggers(self, event):
     triggers = []
     # Insane/Unconscious after sanity/stamina loss.
-    if isinstance(event, events.GainOrLoss):
-      # TODO: both going to zero at the same time means you are devoured.
-      if event.character.sanity <= 0:
-        triggers.append(events.Insane(event.character))
-      if event.character.stamina <= 0:
-        triggers.append(events.Unconscious(event.character))
+    if isinstance(event, (events.GainOrLoss, events.SpendMixin, events.CastSpell)):
+      skip = False
+      if isinstance(event, events.SpendMixin) and len(self.event_stack) > 1:
+        if isinstance(self.event_stack[-2], events.CastSpell):
+          skip = True  # In case of a spell, delay insanity calculations until it's done being cast.
+      if not skip:
+        if event.character.sanity <= 0 and event.character.stamina <= 0:
+          triggers.append(events.Devoured(event.character))
+        elif event.character.sanity <= 0:
+          triggers.append(events.Insane(event.character))
+        elif event.character.stamina <= 0:
+          triggers.append(events.Unconscious(event.character))
     # Must fight monsters when you end your movement.
-    if isinstance(event, (events.CityMovement, events.Return)):
+    if isinstance(event, (events.CityMovement, events.WagonMove, events.Return)):
       # TODO: special handling for the turn that you return from another world
       nearby_monsters = [mon for mon in self.monsters if mon.place == event.character.place]
       if nearby_monsters:
@@ -393,53 +509,84 @@ class GameState(object):
     # Spells deactivate at the end of an entire combat.
     if isinstance(event, (events.Combat, events.InsaneOrUnconscious)):
       triggers.append(events.DeactivateSpells(event.character))
-    triggers.extend(sum([char.get_triggers(event, self) for char in self.characters], []))
+    triggers.extend(sum(
+        [char.get_triggers(event, self) for char in self.characters if not char.gone], [],
+    ))
+    global_triggers = [glob.get_trigger(event, self) for glob in self.globals() if glob]
+    triggers.extend([trigger for trigger in global_triggers if trigger])
     return triggers
 
   def get_usable_triggers(self, event):
-    t = {idx: char.get_usable_triggers(event, self) for idx, char in enumerate(self.characters)}
+    trgs = {
+        idx: char.get_usable_triggers(event, self)
+        for idx, char in enumerate(self.characters) if not char.gone
+    }
     # If the character moved from another world to another character, let them trade after moving.
     if isinstance(event, (events.ForceMovement, events.Return)) and self.turn_phase == "movement":
       if len([char for char in self.characters if char.place == event.character.place]) > 1:
-        t[self.characters.index(event.character)]["trade"] = events.Nothing()
-    return {char_idx: trigger_list for char_idx, trigger_list in t.items() if trigger_list}
+        trgs[self.characters.index(event.character)]["trade"] = events.Nothing()
+    return {char_idx: triggers for char_idx, triggers in trgs.items() if triggers}
+
+  def handle_ancient(self, ancient):
+    if self.game_stage != "setup":
+      raise InvalidMove("The game has already started.")
+    if ancient not in self.all_ancients:
+      raise InvalidMove(f"Unknown ancient one {ancient}")
+    self.ancient_one = self.all_ancients[ancient]
 
   def handle_start(self):
-    assert self.game_stage == "setup"
-    assert len(self.pending_chars) > 0
+    if self.game_stage != "setup":
+      raise InvalidMove("The game has already started.")
+    if self.ancient_one is None:
+      raise InvalidMove("You must choose an ancient one first.")
+    if not self.pending_chars:
+      raise InvalidMove("At least one player is required to start the game.")
     self.game_stage = "slumber"
     self.turn_idx = 0
     self.turn_number = -1
     self.turn_phase = "mythos"
     self.initialize()
     seq = self.add_pending_players()
-    if seq.events:
-      seq.events.append(events.Mythos(None))
-      self.event_stack.append(seq)
-    else:
-      self.event_stack.append(events.Mythos(None))
+    if any(char.name == "Scientist" for char in self.characters):
+      self.places["Science"].clues = 0
+    assert seq.events
+    seq.events.append(events.Mythos(None))
+    self.event_stack.append(seq)
 
-  def handle_join(self, player_idx, old_name, char_name):
-    if player_idx is not None:
-      raise InvalidMove("You are already playing.")
-    if char_name not in self.all_characters:
-      raise InvalidMove(f"Unknown character {char_name}")
-    if char_name in {char.name for char in self.characters} or char_name in self.pending_chars:
+  def validate_new_character(self, name):
+    if name not in self.all_characters:
+      raise InvalidMove(f"Unknown character {name}")
+    if self.all_characters[name].gone:
+      raise InvalidMove("That character has already been devoured or retired.")
+    if name in {char.name for char in self.characters} or name in self.pending_chars:
       raise InvalidMove("That character is already taken.")
-
     if self.game_stage not in ["setup", "slumber"]:
       raise InvalidMove("You cannot join the game right now.")
+
+  def handle_join(self, old_name, char_name):
+    self.validate_new_character(char_name)
+
     if old_name == char_name:
       return
     if old_name is not None and old_name in self.pending_chars:
-      self.pending_chars.remove(old_name)
-    self.pending_chars.append(char_name)
+      self.pending_chars.pop(old_name)
+    self.pending_chars[char_name] = None
 
-  def handle_use(self, char_idx, possession_idx):
+  def handle_choose_char(self, player_idx, name):
+    if not self.characters[player_idx].gone:
+      raise InvalidMove("You cannot choose a new character right now.")
+    self.validate_new_character(name)
+
+    to_remove = [name for name, idx in self.pending_chars.items() if idx == player_idx]
+    for old_name in to_remove:
+      self.pending_chars.pop(old_name)
+    self.pending_chars[name] = player_idx
+
+  def handle_use(self, char_idx, handle):
     assert char_idx in self.usables
-    assert possession_idx in self.usables[char_idx]
-    assert possession_idx != "trade"  # "trade" is just a placeholder
-    self.event_stack.append(self.usables[char_idx].pop(possession_idx))
+    assert handle in self.usables[char_idx]
+    assert handle != "trade"  # "trade" is just a placeholder
+    self.event_stack.append(self.usables[char_idx].pop(handle))
 
   def handle_done_using(self, char_idx):
     assert char_idx in self.usables
@@ -452,6 +599,27 @@ class GameState(object):
     assert event.character == self.characters[char_idx]
     event.resolve(self, choice)
 
+  def handle_spend(self, char_idx, spend_type):
+    assert self.event_stack
+    event = self.event_stack[-1]
+    assert isinstance(event, events.SpendMixin)
+    assert event.character == self.characters[char_idx]
+    event.spend(spend_type)
+
+  def handle_unspend(self, char_idx, spend_type):
+    assert self.event_stack
+    event = self.event_stack[-1]
+    assert isinstance(event, events.SpendMixin)
+    assert event.character == self.characters[char_idx]
+    event.unspend(spend_type)
+
+  def handle_roll(self, char_idx):
+    assert self.event_stack
+    event = self.event_stack[-1]
+    assert isinstance(event, events.DiceRoll)
+    assert event.character == self.characters[char_idx]
+    event.resolve(self)
+
   def handle_check(self, char_idx, check_type, modifier):
     if check_type is None:
       raise InvalidInput("no check type")
@@ -460,7 +628,7 @@ class GameState(object):
     try:
       modifier = int(modifier)
     except (ValueError, TypeError):
-      raise InvalidInput("invalid difficulty")
+      raise InvalidInput("invalid difficulty")  # pylint: disable=raise-missing-from
     if self.event_stack:
       raise InvalidInput("there are events on the stack")
     self.event_stack.append(events.Check(self.characters[char_idx], check_type, modifier))
@@ -477,12 +645,12 @@ class GameState(object):
 
   def handle_spawn_gate(self, place):
     assert place in self.places
-    assert getattr(self.places[place], "unstable", False) == True
+    assert self.places[place].is_unstable(self)
     self.event_stack.append(events.OpenGate(place))
 
   def handle_spawn_clue(self, place):
     assert place in self.places
-    assert getattr(self.places[place], "unstable", False) == True
+    assert self.places[place].is_unstable(self)
     self.event_stack.append(events.SpawnClue(place))
 
   def handle_slider(self, char_idx, name, value):
@@ -494,11 +662,13 @@ class GameState(object):
       raise NotYourTurn("It is not your turn to set sliders.")
     event.resolve(self, name, value)
 
-  def handle_give(self, char_idx, recipient_idx, idx, amount):
+  def handle_give(self, char_idx, recipient_idx, handle, amount):
     if not isinstance(recipient_idx, int):
       raise InvalidPlayer("Invalid recipient")
     if recipient_idx < 0 or recipient_idx >= len(self.characters):
       raise InvalidPlayer("Invalid recipient")
+    if self.characters[recipient_idx].gone:
+      raise InvalidMove("That player is either devoured or retired.")
     if recipient_idx == char_idx:
       raise InvalidMove("You cannot trade with yourself")
     recipient = self.characters[recipient_idx]
@@ -509,7 +679,7 @@ class GameState(object):
     if donor.place != recipient.place:
       raise InvalidMove("You must be in the same place to trade.")
 
-    if idx == "dollars":
+    if handle == "dollars":
       if not isinstance(amount, int):
         raise InvalidMove("Invalid quantity")
       if amount < 0 or amount > donor.dollars:
@@ -518,16 +688,19 @@ class GameState(object):
       donor.dollars -= amount
       return
 
-    if not isinstance(idx, int):
-      raise InvalidMove("Invalid possession index")
-    if idx < 0 or idx >= len(donor.possessions):
-      raise InvalidMove("Invalid possession index")
+    if not isinstance(handle, str):
+      raise InvalidMove("Invalid possession")
+    donations = [pos for pos in donor.possessions if pos.handle == handle]
+    if len(donations) != 1:
+      raise InvalidMove("Invalid possession")
+    donation = donations[0]
     # TODO: trading the deputy's revolver and patrol wagon
-    if getattr(donor.possessions[idx], "deck", None) not in {"common", "unique", "spells"}:
+    if getattr(donation, "deck", None) not in {"common", "unique", "spells"}:
       raise InvalidMove("You can only trade items")
 
     # TODO: turn this into an event.
-    recipient.possessions.append(donor.possessions.pop(idx))
+    donor.possessions.remove(donation)
+    recipient.possessions.append(donation)
 
   def can_trade(self):
     if self.turn_phase != "movement":  # TODO: trading during the final battle
@@ -547,7 +720,17 @@ class GameState(object):
     # TODO: game stages other than slumber
     # Handle the end of the mythos phase separately.
     if self.turn_phase == "mythos":
+      # If we have pending players that need to be added, don't start the next turn yet. next_turn
+      # will be called again when they are done setting their sliders.
       seq = self.add_pending_players()
+      if seq is not None:
+        self.event_stack.append(seq)
+        return
+
+      # If there are any characters that were devoured and have not chosen a new character, stop.
+      if any(char.gone for char in self.characters):
+        raise InvalidMove("All players with devoured characters must choose new characters.")
+
       self.turn_number += 1
       if self.turn_number != 0:
         self.first_player += 1
@@ -557,13 +740,13 @@ class GameState(object):
       for char in self.characters:  # TODO: is this the right place to check for this?
         if char.lose_turn_until and char.lose_turn_until <= self.turn_number:
           char.lose_turn_until = None
-      if seq.events:
-        seq.events.append(events.Upkeep(self.characters[self.turn_idx]))
-        self.event_stack.append(seq)
-      else:
-        self.event_stack.append(events.Upkeep(self.characters[self.turn_idx]))
+      self.event_stack.append(events.Upkeep(self.characters[self.turn_idx]))
+      for place in self.places.values():
+        if getattr(place, "closed_until", None) == self.turn_number:
+          place.closed_until = None
       return
 
+    # Handling end of all other turn types begins here.
     self.turn_idx += 1
     self.turn_idx %= len(self.characters)
 
@@ -578,14 +761,19 @@ class GameState(object):
 
   def add_pending_players(self):
     if not self.pending_chars:
-      return events.Sequence([], None)
+      return None
 
-    assert not {char.name for char in self.characters} & set(self.pending_chars)
-    assert len(set(self.pending_chars)) == len(self.pending_chars)
+    assert not {char.name for char in self.characters} & self.pending_chars.keys()
     new_characters = []
-    for name in self.pending_chars:
+    for name, idx in self.pending_chars.items():
       new_characters.append(self.all_characters[name])
-    self.characters.extend(new_characters)
+      if idx is None:
+        self.characters.append(self.all_characters[name])
+      else:
+        assert self.characters[idx].gone
+        self.characters[idx] = self.all_characters[name]
+
+    new_characters.sort(key=self.characters.index)  # Sort by order in self.characters.
     self.pending_chars.clear()
 
     # Abilities and fixed possessions.
@@ -620,7 +808,7 @@ class EldritchGame(BaseGame):
     return self.game.game_status()
 
   @classmethod
-  def parse_json(cls, json_str):
+  def parse_json(cls, json_str):  # pylint: disable=arguments-renamed,unused-argument
     return None  # TODO
 
   def json_str(self):
@@ -631,14 +819,13 @@ class EldritchGame(BaseGame):
 
   def for_player(self, session):
     output = self.game.for_player(self.player_sessions.get(session))
-    is_connected = {idx: sess in self.connected for sess, idx in self.player_sessions.items()}
-    '''
-    TODO: send connection information somehow
-    for idx in range(len(output["characters"])):
-      output["characters"][idx]["disconnected"] = not is_connected.get(idx, False)
-      '''
+    # is_connected = {idx: sess in self.connected for sess, idx in self.player_sessions.items()}
+    # TODO: send connection information somehow
+    # for idx in range(len(output["characters"])):
+    #   output["characters"][idx]["disconnected"] = not is_connected.get(idx, False)
     output["player_idx"] = self.player_sessions.get(session)
     output["pending_name"] = self.pending_sessions.get(session)
+    output["host"] = self.host == session
     return json.dumps(output, cls=CustomEncoder)
 
   def connect_user(self, session):
@@ -651,7 +838,7 @@ class EldritchGame(BaseGame):
     if session in self.pending_sessions:
       name = self.pending_sessions[session]
       if name in self.game.pending_chars:
-        self.game.pending_chars.remove(name)
+        self.game.pending_chars.pop(name)
       del self.pending_sessions[session]
     if self.host == session:
       if not self.connected:
@@ -663,21 +850,25 @@ class EldritchGame(BaseGame):
     if not isinstance(data, dict):
       raise InvalidMove("Data must be a dictionary.")
     if data.get("type") == "join":
-      self.handle_join(session, data)
-      yield None
-      return 
-    if session not in self.player_sessions and data.get("type") != "start":
+      yield from self.handle_join(session, data)
+      return
+    if session not in self.player_sessions and data.get("type") not in ["start", "ancient"]:
       raise InvalidPlayer("Unknown player")
-    if data.get("type") == "start":
-      assert session == self.host
+    if data.get("type") in ["start", "ancient"]:
+      if session != self.host:
+        raise InvalidMove("Only the host can do that.")
     for val in self.game.handle(self.player_sessions.get(session), data):
       self.update_pending_players()
       yield val
 
   def handle_join(self, session, data):
-    self.game.handle_join(
-        self.player_sessions.get(session), self.pending_sessions.get(session), data.get("char"))
+    if session in self.player_sessions:
+      self.game.handle_choose_char(self.player_sessions[session], data.get("char"))
+      yield from self.game.resolve_loop()
+      return
+    self.game.handle_join(self.pending_sessions.get(session), data.get("char"))
     self.pending_sessions[session] = data.get("char")
+    yield None
 
   def update_pending_players(self):
     if not self.pending_sessions:

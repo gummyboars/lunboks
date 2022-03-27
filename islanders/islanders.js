@@ -58,7 +58,7 @@ resourceSelectionUI = {
     okText: "OK",
   },
 };
-var snd1 = new Audio("beep.mp3");
+var snd1 = new Audio("/beep.mp3");
 
 // The websocket
 ws = null;

@@ -22,79 +22,141 @@
         </div>
       </div>
       <div id="uimain">
-        <div id="giveselect">
-          <div id="givetext">How much do you want to give?</div>
-          <div id="givebottom">
-            <datalist id="giveoptions">
-              <option value="0" label="0"></option>
-            </datalist>
-            <input type="range" min="0" value="0" list="giveoptions" id="giveslider" oninput="updateGive(value)"></input>
-            <output for="giveslider" id="givevalue">0</output>
+        <div id="centerizer">
+          <div id="giveselect">
+            <div id="givetext">How much do you want to give?</div>
+            <div id="givebottom">
+              <datalist id="giveoptions">
+                <option value="0" label="0"></option>
+              </datalist>
+              <input type="range" min="0" value="0" list="giveoptions" id="giveslider" oninput="updateGive(value)"></input>
+              <output for="giveslider" id="givevalue">0</output>
+            </div>
+            <div id="givebuttons">
+              <button onclick="cancelGive(event)">Cancel</button>
+              <div class="spacer"></div>
+              <button onclick="finishGive(event)">Give</button>
+            </div>
           </div>
-          <div id="givebuttons">
-            <button onclick="cancelGive(event)">Cancel</button>
-            <button onclick="finishGive(event)">Give</button>
+          <div id="selectors">
+            <div id="charselect">
+              <div id="charchoices" class="bigchoices">
+                <div id="prevchar" class="choicebutton" onclick="prevChar(event)">◀️</div>
+                <div id="charchoice"></div>
+                <div id="nextchar" class="choicebutton" onclick="nextChar(event)">▶️</div>
+              </div>
+              <div class="selectbutton"><button id="choosecharbutton" onclick="selectChar(event)">Choose</button></div>
+            </div>
+            <div id="ancientselect">
+              <div id="ancientchoices" class="bigchoices">
+                <div id="prevancient" class="choicebutton" onclick="prevAncient(event)">◀️</div>
+                <div id="ancientchoice" class="cnvcontainer"><canvas></canvas></div>
+                <div id="nextancient" class="choicebutton" onclick="nextAncient(event)">▶️</div>
+              </div>
+              <div class="selectbutton"><button id="chooseancientbutton" onclick="selectAncient(event)">Choose</button></div>
+            </div>
+          </div>
+          <div id="cardchoicescroll" class="cardscroll">
+            <div id="scrollcardsleft" class="cardscrollbtn" onclick="scrollCards(event, -1)">◀️</div>
+            <div id="uicardchoice" class="cardscroller"></div>
+            <div id="scrollcardsright" class="cardscrollbtn" onclick="scrollCards(event, 1)">▶️</div>
+          </div>
+          <div id="globalscroll" class="cardscroll">
+            <div id="scrollglobalsleft" class="cardscrollbtn" onclick="scrollCards(event, -1)">◀️</div>
+            <div id="globalcards" class="cardscroller"></div>
+            <div id="scrollglobalsright" class="cardscrollbtn" onclick="scrollCards(event, 1)">▶️</div>
+          </div>
+          <div id="monsterdetails">
+            <div id="monsterdetailsname"></div>
+            <div id="monsterdetailsbox"></div>
+            <div id="hidemonsters"><button onclick="hideMonsters(event)">Close</button></div>
           </div>
         </div>
-        <div id="charselect">
-          <div id="charchoices">
-            <div id="prevchar" class="charchoicebutton" onclick="prevChar(event)">◀️</div>
-            <div id="charchoice"><canvas id="charchoicecnv"></canvas></div>
-            <div id="nextchar" class="charchoicebutton" onclick="nextChar(event)">▶️</div>
-          </div>
-          <div id="charselectbuttons"><button id="choosecharbutton" onclick="selectChar(event)">Choose</button></div>
-        </div>
-        <div id="monsterdetails">
-          <div id="monsterdetailsname"></div>
-          <div id="monsterdetailsbox"></div>
-          <div id="hidemonsters"><button onclick="hideMonsters(event)">Close</button></div>
-        </div>
-        <div id="uimonsterchoice">
-          <div id="monsterchoicetext">Drag Monsters to Locations</div>
-          <div id="monsterchoices"></div>
-          <div id="monsterchoicebuttons">
-            <button onclick="confirmMonsterChoice(event)">Confirm</button>
-            <button onclick="resetMonsterChoice(event)">Reset</button>
-          </div>
-        </div>
-        <div id="uichoice">
-          <div id="uiprompt" class="uiprompt"></div>
-          <div id="uicardchoice"></div>
-        </div>
-        <div id="uiuse"><span id="usetext">Use Items or Abilities</span><button onclick="doneUsing(event)" id="doneusing">Done Using</button></div>
-        <div id="board">
+        <div id="worlds"></div>
+        <div id="board" class="cnvcontainer">
           <canvas id="boardcanvas"></canvas>
         </div>
         <div id="uibottom">
-          <div id="worlds">
-            <div id="worldstop" class="worldsrow"></div>
-            <div id="worldsbottom" class="worldsrow"></div>
+          <div id="globals" onclick="toggleGlobals(event)">
+            <div id="environment" class="mythoscontainer"><div class="mythoscard cnvcontainer"><canvas class="mythoscnv"></canvas></div></div>
+            <div id="rumor" class="mythoscontainer"><div class="mythoscard cnvcontainer"><canvas class="mythoscnv"></canvas></div></div>
           </div>
-          <div style="flex: 1 1 auto">
-            <div id="done"><button>Done</button></div>
+          <div id="currentcard" class="cnvcontainer"><canvas class="mythoscnv"></canvas></div>
+          <div id="bottomcenter">
+            <div id="uiprompt"></div>
+            <button id="start" onclick="start(event)">Start</button>
+            <button id="doneitems" onclick="chooseItems(event)">Done Choosing Items</button>
+            <button id="donesliders" onclick="doneSliders(event)">Accept Sliders</button>
+            <button id="togglecards" onclick="toggleCards(event)">Show Choices</button>
+            <div id="uidice">
+              <div id="dice"></div>
+              <div class="buttonholder"><button id="dicebutton" onclick="roll(event)">Roll</button></div>
+            </div>
+            <div id="uichoice"></div>
+            <div id="uimonsterchoice">
+              <div id="monsterchoices"></div>
+              <div id="monsterchoicebuttons">
+                <button onclick="confirmMonsterChoice(event)">Confirm</button>
+                <button onclick="resetMonsterChoice(event)">Reset</button>
+              </div>
+            </div>
+            <div id="uiuse"><span id="usetext">Use Items or Abilities</span><div class="spacer"></div><button onclick="doneUsing(event)" id="doneusing">Done Using</button></div>
+            <div id="uispend"></div>
+          </div>
+          <div style="display: none">
             <select id="monsterchoice"></select>
             <select id="placechoice"></select>
             <button onclick="spawnMonster(event)">Spawn Monster</button>
             <button onclick="spawnGate(event)">Spawn Gate</button>
             <button onclick="spawnClue(event)">Spawn Clue</button>
+            <div id="checks">
+              <button onclick="makeCheck(event)" onmouseenter="highlightCheck(event)" onmouseleave="endHighlight(event)" value="speed">Speed</button>
+              <button onclick="makeCheck(event)" onmouseenter="highlightCheck(event)" onmouseleave="endHighlight(event)" value="sneak">Sneak</button>
+              <button onclick="makeCheck(event)" onmouseenter="highlightCheck(event)" onmouseleave="endHighlight(event)" value="fight">Fight</button>
+              <button onclick="makeCheck(event)" onmouseenter="highlightCheck(event)" onmouseleave="endHighlight(event)" value="will">Will</button>
+              <button onclick="makeCheck(event)" onmouseenter="highlightCheck(event)" onmouseleave="endHighlight(event)" value="lore">Lore</button>
+              <button onclick="makeCheck(event)" onmouseenter="highlightCheck(event)" onmouseleave="endHighlight(event)" value="luck">Luck</button>
+              <button onclick="makeCheck(event)" onmouseenter="highlightCheck(event)" onmouseleave="endHighlight(event)" value="evade">Evade</button>
+              <button onclick="makeCheck(event)" onmouseenter="highlightCheck(event)" onmouseleave="endHighlight(event)" value="combat">Combat</button>
+              <button onclick="makeCheck(event)" onmouseenter="highlightCheck(event)" onmouseleave="endHighlight(event)" value="horror">Horror</button>
+              <button onclick="makeCheck(event)" onmouseenter="highlightCheck(event)" onmouseleave="endHighlight(event)" value="spell">Spell</button>
+            </div>
+          </div>
+          <div id="ancientandplaces">
+            <div id="ancientone">
+              <div id="ancienttracks">
+                <div id="worshippers" class="cnvcontainer"><canvas></canvas></div>
+                <div id="tracks">
+                  <div id="terror" class="track cnvcontainer"><canvas></canvas></div>
+                  <div id="doom" class="track"><canvas></canvas></div>
+                </div>
+              </div>
+              <div id="slumber" class="cnvcontainer"><canvas></canvas></div>
+            </div>
+            <div id="extra">
+              <div id="placeOutskirts" class="misc cnvcontainer">
+                <canvas class="misccnv"></canvas>
+                <div id="placeOutskirtsbox" class="placemiscbox">
+                  <div id="placeOutskirtsmonsters" class="placemonsters"></div>
+                </div>
+              </div>
+              <div id="placeSky" class="misc cnvcontainer">
+                <canvas class="misccnv"></canvas>
+                <div id="placeSkybox" class="placemiscbox">
+                  <div id="placeSkymonsters" class="placemonsters"></div>
+                </div>
+              </div>
+              <div id="placeLost" class="misc cnvcontainer">
+                <canvas class="misccnv"></canvas>
+                <div id="placeLostbox" class="placemiscbox">
+                  <div id="placeLostchars" class="placechars"></div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
       <div id="uiright">
-        <div id="checks">
-          <button onclick="makeCheck(event)" onmouseenter="highlightCheck(event)" onmouseleave="endHighlight(event)" value="speed">Speed</button>
-          <button onclick="makeCheck(event)" onmouseenter="highlightCheck(event)" onmouseleave="endHighlight(event)" value="sneak">Sneak</button>
-          <button onclick="makeCheck(event)" onmouseenter="highlightCheck(event)" onmouseleave="endHighlight(event)" value="fight">Fight</button>
-          <button onclick="makeCheck(event)" onmouseenter="highlightCheck(event)" onmouseleave="endHighlight(event)" value="will">Will</button>
-          <button onclick="makeCheck(event)" onmouseenter="highlightCheck(event)" onmouseleave="endHighlight(event)" value="lore">Lore</button>
-          <button onclick="makeCheck(event)" onmouseenter="highlightCheck(event)" onmouseleave="endHighlight(event)" value="luck">Luck</button>
-          <button onclick="makeCheck(event)" onmouseenter="highlightCheck(event)" onmouseleave="endHighlight(event)" value="evade">Evade</button>
-          <button onclick="makeCheck(event)" onmouseenter="highlightCheck(event)" onmouseleave="endHighlight(event)" value="combat">Combat</button>
-          <button onclick="makeCheck(event)" onmouseenter="highlightCheck(event)" onmouseleave="endHighlight(event)" value="horror">Horror</button>
-          <button onclick="makeCheck(event)" onmouseenter="highlightCheck(event)" onmouseleave="endHighlight(event)" value="spell">Spell</button>
-        </div>
-        <div id="doomtrack"></div>
-        <div id="terrortrack"></div>
         <div id="eventlog"></div>
       </div>
     </div>

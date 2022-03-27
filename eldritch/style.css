@@ -1,7 +1,10 @@
 body {
-  margin: 0px;
+  margin: auto;
   padding: 0px;
   overflow: hidden;
+  width: min(100vw, 160vh);
+  height: min(62.5vw, 100vh);
+  color: black;
 }
 div {
   display: block;
@@ -9,6 +12,10 @@ div {
 }
 button {
   display: inline-block;
+  font-size: calc(min(1.25vw, 2vh));
+}
+button:disabled {
+  background-color: rgba(233, 233, 237); /* TODO: button styling */
 }
 /* TODO: dedup all of this */
 #errorText {
@@ -24,10 +31,6 @@ button {
   z-index: 40; /* error should be shown over everything else */
 }
 #giveselect {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
   z-index: 20;
   display: none;
   flex-direction: column;
@@ -35,8 +38,9 @@ button {
   align-items: center;
   background: sienna;
   color: black;
-  font-size: 3em;
+  font-size: calc(min(2.5vw, 4vh));
   border: 1px solid black;
+  pointer-events: auto;
 }
 #givetext {
   width: 100%;
@@ -59,88 +63,146 @@ button {
   justify-content: space-between;
   align-items: center;
 }
-#charselect {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
+#charselect, #ancientselect {
   z-index: 20;
-  display: none;
+  display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  background: sienna;
   color: black;
-  font-size: 3em;
-  border: 1px solid black;
+  pointer-events: auto;
 }
-#charchoices {
+.bigchoices {
   display: flex;
   flex-direction: row;
   justify-content: center;
   align-items: space-between;
+}
+#ancientchoice {
+  width: min(20vw, 32vh);
+  height: min(28.25vw, 45.2vh);
 }
 #charchoice {
   display: flex;
   flex-direction: row;
   justify-content: center;
   align-items: center;
+  min-width: min(20vw, 32vh);
+  width: min(20vw, 32vh);
+  max-width: min(20vw, 32vh);
 }
-.charchoicebutton {
+.choicebutton {
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
+  font-size: calc(min(1.25vw, 2vh));
+  cursor: pointer;
 }
-#charselectbuttons {
+.selectbutton {
   display: flex;
   flex-direction: row;
   justify-content: center;
   align-items: space-between;
 }
-#uichoice {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  z-index: 10;
-  display: none;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  max-width: 40%;
-  background: sienna;
-  color: black;
-  font-size: 3em;
-  border: 1px solid black;
-}
-#uicardchoice {
-  width: 100%;
-  flex 1 1 auto;
+#bottomcenter {
+  flex: 1 1 auto;
   display: flex;
-  flex-direction: row;
-  justify-content: center;
-  align-items: flex-start;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: center;
+  font-size: calc(min(2vw, 3.2vh));
 }
 #uiprompt {
   width: 100%;
-  flex: 1 1 auto;
+  flex: 0 0 auto;
+  text-align: center;
+}
+#uichoice {
+  display: none;
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: space-evenly;
+  align-items: center;
+  color: black;
+  font-size: calc(min(2vw, 3.2vh));
+  column-gap: 1em;
+  row-gap: 0.5em;
+}
+.cardscroll {
+  width: calc(min(72.5vw, 116vh));
+  max-width: calc(min(72.5vw, 116vh));
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  pointer-events: auto;
+  z-index: 20;
+}
+.cardscrollbtn {
+  font-size: calc(min(1.25vw, 2vh));
+  height: calc(min(15vw, 24vh) * 25 / 16);
+  cursor: pointer;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  display: none;
+}
+.overflowing .cardscrollbtn {
+  display: flex;
+}
+.cardscroller {
+  width: calc(min(70vw, 112vh));
+  max-width: calc(min(70vw, 112vh));
+  flex 1 1 auto;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-evenly;
+  align-items: flex-start;
+  column-gap: calc(min(1.5vw, 2.4vh));
+  overflow-x: scroll;
+  scroll-behavior: smooth;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.cardscroller::-webkit-scrollbar {
+  display: none;
+}
+.overflowing .cardscroller {
+  justify-content: flex-start;
 }
 .cardholder {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: flex-start;
+  background-color: sienna;
+}
+.cardholder.unchoosable {
+  background-color: darkgrey;
 }
 .cardchoice {
   position: relative;
-  flex: 1 1 auto;
+  width: calc(min(15vw, 24vh));
+  height: calc(min(15vw, 24vh) * 25 / 16);
   cursor: pointer;
 }
+.mustspend .cardchoice {
+  cursor: not-allowed;
+}
+.unchoosable .cardchoice {
+  filter: grayscale(70%) brightness(70%);
+  cursor: not-allowed;
+}
+.desc {
+  font-size: calc(min(2vw, 3.2vh));
+}
 .choice {
-  width: 100%;
-  flex: 1 1 auto;
-  border-top: 1px solid black;
+  flex: 0 0 auto;
+  border: 1px solid black;
+  background: sienna;
+  padding-left: 0.25em;
+  padding-right: 0.25em;
+  text-align: center;
 }
 .choice.choosable {
   cursor: pointer;
@@ -148,24 +210,21 @@ button {
 .choice.choosable:hover {
   background: saddlebrown;
 }
+.choice.mustspend {
+  cursor: not-allowed;
+}
 .choice.unchoosable {
   cursor: not-allowed;
   background: darkgrey;
   text-decoration: line-through;
 }
 #uimonsterchoice {
-  position: absolute;
-  top: 10%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  z-index: 10;
   display: none;
   flex-direction: column;
   justify-content: center;
   align-items: center;
   background: sienna;
   color: black;
-  font-size: 3em;
   border: 1px solid black;
 }
 #monsterchoices {
@@ -174,22 +233,26 @@ button {
   justify-content: center;
   align-items: center;
 }
+#monsterchoicebuttons button {
+  font-size: calc(min(1vw, 1.6vh));
+}
 #uiuse {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  z-index: 10;
   display: none;
   flex-direction: row;
-  justify-content: space-around;
+  justify-content: center;
   align-items: center;
-  width: 30%;
-  max-width: 30%;
-  background: sienna;
-  color: black;
-  font-size: 2.5em;
-  border: 1px solid black;
+  width: 100%;
+}
+.spacer {
+  flex: 0 1 1em;
+  width: 1em;
+}
+#uispend {
+  display: none;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
 }
 #uiload {
   position: absolute;
@@ -240,7 +303,7 @@ button {
   flex-direction: column;
   justify-content: flex-start;
   align-items: center;
-  max-height: 100vh;
+  max-height: min(62.5vw, 100vh);
 }
 #eventlog {
   min-height: 0;
@@ -252,7 +315,6 @@ button {
   align-items: flex-start;
   justify-content: flex-start;
   width: 100%;
-  border: 1px solid black;
   overflow-y: scroll;
 }
 .logevent {
@@ -266,59 +328,118 @@ button {
   width: 80%;
   max-width: 80%;
   height: 100%;
-  max-height: 100vh;
-  background: red;
+  max-height: min(62.5vw, 100vh);
+  background: #D2A253;
   display: flex;
   flex-direction: column;
+  position: relative;
+}
+#centerizer {
+  z-index: 20;
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  row-gap: calc(min(5vw, 8vh));
+  pointer-events: none;
+}
+#selectors {
+  z-index: 20;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-evenly;
 }
 #board {
   width: 100%;
   max-width: 100%;
-  background: green;
-}
-#boardcanvas {
-  width: 100%;
-  height: 100%;
+  height: 75%;
+  min-height: 75%;
+  max-height: 75%;
+  background: #D2A253;
+  position: relative;
 }
 #uibottom{
-  flex: 0 1 auto;
-  min-height: 0;
-  height: 100%;
-  max-height: 100%;
+  flex: 1 1 auto;
+  min-height: 21.4%;
+  height: 21.4%;
+  max-height: 21.4%;
   display: flex;
   flex-direction: row;
 }
 #worlds {
-  min-height: 0;
-  flex: 0 0 50%;
-}
-.worldsrow {
-  height: 50%;
-  width: 100%;
+  min-height: calc(min(62.5vw, 100vh) * 9 / 250);
+  height: calc(min(62.5vw, 100vh) * 9 / 250);
+  max-height: calc(min(62.5vw, 100vh) * 9 / 250);
+  width: min(80vw, 128vh);
   display: flex;
   flex-direction: row;
+  z-index: 1;
 }
 .world {
   position: relative;
   overflow: hidden;
   transition: all 0.5s;
-  height: 100%;
+  height: calc(min(62.5vw, 100vh) * 9 / 250);
+  width: min(10vw, 16vh);
 }
 .world:hover {
-  transform: translateY(-75%);
-  height: 400%;
+  height: calc(min(62.5vw, 100vh) * 4 / 25);
   transition-delay: 0.15s;
   color: black;
 }
 .world.shown {
-  transform: translateY(-75%);
-  height: 400%;
+  height: calc(min(62.5vw, 100vh) * 4 / 25);
   color: white;
 }
 .worldbox {
   position: absolute;
   top: 0;
   left: 0;
+  width: min(10vw, 16vh);
+  height: min(10vw, 16vh);
+}
+.portrait {
+  width: calc(min(62.5vw, 100vh) * 9 / 250);
+  height: calc(min(62.5vw, 100vh) * 9 / 250);
+  border-radius: 50%;
+  overflow: hidden;
+  z-index: 5;
+  position: relative;
+  transition: opacity 0.5s;
+}
+.world:hover .portrait {
+  opacity: 0;
+  transition-delay: 0.15s;
+}
+.world.shown .portrait {
+  opacity: 0;
+}
+.portraitleft {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 22.5%;
+  width: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+}
+.portraitright {
+  position: absolute;
+  top: 0;
+  right: 0;
+  height: 22.5%;
+  width: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
 }
 .worldchars {
   display: flex;
@@ -340,16 +461,183 @@ button {
   bottom: 0;
   right: 0;
 }
+.worldcnvcontainer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: min(10vw, 16vh);
+  height: min(10vw, 16vh);
+}
 .worldcnv {
   position: absolute;
   top: 0;
   left: 0;
 }
+#currentcard {
+  position: relative;
+  width: 12.5%;
+  min-width: 12.5%;
+  max-width: 12.5%;
+  height: 100%;
+}
+#currentcard.missing {
+  height: 0;
+}
+#globals {
+  width: 12.5%;
+  min-width: 12.5%;
+  max-width: 12.5%;
+  height: 100%;
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-evenly;
+  cursor: zoom-in;
+}
+#globals.zoomed {
+  cursor: zoom-out;
+}
+.mythoscontainer {
+  position: relative;
+  flex: 1 1 auto;
+  width: 87.5%;
+  min-height: 0;
+  height: 100%;
+}
+.mythoscontainer.missing {
+  height: 0;
+}
+.mythoscard {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: calc(min(8.75vw, 14vh));
+  height: calc(min(8.75vw, 14vh) * 3 / 2);
+}
+.mythoscnv {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+.bigmythoscard {
+  position: relative;
+  width: calc(min(15vw, 24vh));
+  height: calc(min(15vw, 24vh) * 3 / 2);
+}
+#ancientandplaces {
+  width: 25%;
+  min-width: 25%;
+  max-width: 25%;
+  height: 100%;
+  max-height: 100%;
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  justify-content: flex-end;
+  background-color: midnightblue;
+}
+#ancientone {
+  flex: 1 1 auto;
+  min-width: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+}
+#slumber {
+  width: 52%;
+  max-width: 52%;
+  height: 100%;
+  max-height: 100%;
+}
+#ancienttracks {
+  width: 48%;
+  max-width: 48%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: space-between;
+}
+#worshippers {
+  width: 100%;
+  height: 72.5%;
+  max-height: 72.5%;
+}
+#tracks {
+  width: 100%;
+  height: 27.5%;
+  max-height: 27.5%;
+  display: flex;
+  flex-direction: row;
+  align-items: flex-end;
+  justify-content: space-between;
+}
+.track {
+  width: 50%;
+  height: 100%;
+}
+#extra {
+  width: calc(min(34.24vw, 21.4vh) / 3);
+  height: 100%;
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: flex-start;
+}
+.misc {
+  width: calc(min(34.24vw, 21.4vh) / 3);
+  min-height: calc(min(34.24vw, 21.4vh) / 3);
+  height: calc(min(34.24vw, 21.4vh) / 3);
+  max-height: calc(min(34.24vw, 21.4vh) / 3);
+  position: relative;
+}
+.placemiscbox {
+  width: 100%;
+  height: 100%;
+}
+.misccnv {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+}
 .monster {
   z-index: 10; /* TODO */
   position: relative;
   min-width: 0;
+  width: calc(min(80vw, 128vh) * 3 / 58);
+  height: calc(min(80vw, 128vh) * 3 / 58);
   overflow: hidden;
+}
+.bigmonster {
+  z-index: 10; /* TODO */
+  position: relative;
+  min-width: 0;
+  width: calc(min(10vw, 16vh));
+  height: calc(min(10vw, 16vh));
+  overflow: hidden;
+}
+#monsterdetailsbox.choosable .bigmonster {
+  cursor: pointer;
+  pointer-events: auto;
+}
+.monstercontainer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: calc(min(80vw, 128vh) * 3 / 58);
+  height: calc(min(80vw, 128vh) * 3 / 58);
+}
+.bigmonstercontainer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: calc(min(10vw, 16vh));
+  height: calc(min(10vw, 16vh));
 }
 .monstercnv {
   position: absolute;
@@ -359,6 +647,16 @@ button {
 .marker {
   z-index: 10; /* TODO */
   position: relative;
+  width: calc(min(80vw, 128vh) / 29);
+  height: calc(min(80vw, 128vh) * 3 / 58);
+  order: 2;
+}
+.markercontainer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: calc(min(80vw, 128vh) / 29);
+  height: calc(min(80vw, 128vh) * 3 / 58);
 }
 .markercnv {
   position: absolute;
@@ -376,6 +674,8 @@ button {
   display: flex;
   align-items: center;
   justify-content: center;
+  width: calc(min(80vw, 128vh) * 2 / 29);
+  height: calc(min(80vw, 128vh) * 2 / 29);
 }
 .placehover {
   position: absolute;
@@ -417,6 +717,7 @@ button {
 }
 .placemonsters {
   flex: 1 1 auto;
+  height: calc(min(80vw, 128vh) * 2 / 29);
   max-width: 100%;
   max-height: 100%;
   min-height: 0;
@@ -452,6 +753,7 @@ button {
   order: 3;
   position: absolute;
   max-width: 100%;
+  height: calc(min(80vw, 128vh) * 2 / 29);
   display: flex;
   transition: all 0.5s;
   justify-content: flex-end;
@@ -480,6 +782,8 @@ button {
   flex: 1 1 auto;
   order: 1;
   display: flex;
+  height: calc(min(80vw, 128vh) * 2 / 29);
+  min-width: calc(min(80vw, 128vh) * 2 / 29);
 }
 .placeleft .placechars {
   flex-direction: row;
@@ -500,11 +804,25 @@ button {
   top: 0;
   order: 3;
   transition: all 0.5s;
+  height: calc(min(80vw, 128vh) * 2 / 29);
+  width: calc(min(80vw, 128vh) * 2 / 29);
+}
+.gatecontainer {
+  position: absolute;
+  top: 0;
+  height: calc(min(80vw, 128vh) * 2 / 29);
+  width: calc(min(80vw, 128vh) * 2 / 29);
 }
 .placeleft .placegate {
   left: 0;
 }
 .placeright .placegate {
+  right: 0;
+}
+.placeleft .gatecontainer {
+  left: 0;
+}
+.placeright .gatecontainer {
   right: 0;
 }
 .placebox:hover .placegatepresent {
@@ -520,6 +838,9 @@ button {
   display: flex;
   justify-content: center;
   align-items: center;
+  height: calc(min(80vw, 128vh) * 2 / 29);
+  width: calc(min(80vw, 128vh) * 2 / 29);
+  font-size: calc(min(1vw, 1.6vh));
 }
 .placebox:hover .placeselect {
   max-width: 100%;
@@ -545,15 +866,58 @@ button {
 .placeleft .gate {
   left: 0;
 }
-.clue {
+.clue, .seal {
   align-self: center;
   position: relative;
+  width: calc(min(80vw, 128vh) * 3 / 118);
+  height: calc(min(80vw, 128vh) * 3 / 118);
+}
+.clue {
+  order: 3;
+}
+.seal {
+  order: 1;
+}
+.cluecontainer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: calc(min(80vw, 128vh) * 3 / 118);
+  height: calc(min(80vw, 128vh) * 3 / 118);
+  z-index: 6;
 }
 .cluecnv {
   position: absolute;
   top: 0;
   left: 0;
   z-index: 6;
+}
+#uidice {
+  display: none;
+  flex-direction: column;
+  justify-content: flex-start:
+  align-items: center;
+}
+#dice {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-around;
+  align-items: center;
+}
+.die {
+  width: 1.25em;
+  height: 1.25em;
+  text-align: center;
+  background: sienna;
+  border: 1px solid black;
+}
+#roll {
+  font-size: calc(min(1.25vw, 2vh));
+}
+.buttonholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 #monsterdetails {
   position: absolute;
@@ -567,8 +931,9 @@ button {
   align-items: center;
   background: sienna;
   color: black;
-  font-size: 3em;
+  font-size: calc(min(2.5vw, 4vh));
   border: 1px solid black;
+  pointer-events: auto;
 }
 #monsterdetailsname {
 }
@@ -577,6 +942,7 @@ button {
   flex-direction: row;
   align-items: center;
   justify-content: center;
+  pointer-events: none;
 }
 #hidemonsters {
 }
@@ -586,8 +952,11 @@ button {
   flex-direction: column;
   justify-content: space-between;
   align-items: center;
-  background: silver;
-  border-top: 1px solid black;
+  background: cornsilk;
+  border-bottom: 1px solid black;
+}
+.player.nochoose {
+  filter: grayscale(70%);
 }
 .playertop {
   width: 100%;
@@ -596,129 +965,158 @@ button {
   justify-content: space-around;
   align-items: center;
 }
-.playerpicouter {
-  flex: 1 1 auto;
-  display: flex;
-  flex-direction: row;
-  justify-content: center;
-  align-items: center;
+.picture {
+  position: relative;
+  width: calc(min(20vw, 32vh) * 2 / 7);
+  height: calc(min(20vw, 32vh) * 2 / 7);
 }
-.playerinfo {
-  width: 70%;
-  flex: 0 1 auto;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  align-items: center;
+.playername {
+  position: relative;
+  width: calc(min(20vw, 32vh) * 3 / 7);
+  height: calc(min(20vw, 32vh) * 2 / 7);
 }
 .playerstats {
+  position: relative;
+  width: calc(min(20vw, 32vh) * 2 / 7);
+  height: calc(min(20vw, 32vh) * 2 / 7);
   display: flex;
   flex-wrap: wrap;
-  flex-direction: row;
-}
-.stat {
-  width: 50%;
-  text-transform: capitalize;
-}
-.stat.clue {
-  cursor: pointer;
-}
-.sliders {
-  width: 100%;
-  align-self: flex-end;
-  display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  align-items: center;
-}
-.collapsed .sliders {
-  display: none;
-}
-.slider {
-  width: 100%;
-  display: flex;
-  flex-direction: row;
   justify-content: space-around;
   align-items: center;
 }
-.sliderspacer {
-  width: 100%;
-  height: 1em;
+.statsbg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: calc(min(20vw, 32vh) * 2 / 7);
+  height: calc(min(20vw, 32vh) * 2 / 7);
 }
-.sliderpair {
-  flex: 0 1 auto;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  align-items: center;
+.stats {
+  position: relative;
+  width: calc(min(20vw, 32vh) / 8);
+  height: calc(min(20vw, 32vh) / 8);
+  z-index: 1;
 }
-.you .slidervaluepair {
+.stats.spendable {
   cursor: pointer;
 }
-.slidernames {
-  align-items: flex-start;
+.stamina {
+  order: 1;
 }
-.slidername {
+.sanity {
+  order: 2;
+}
+.clues {
+  order: 3;
+}
+.dollars {
+  order: 4;
+}
+.slidercont {
+  width: calc(min(20vw, 32vh));
+  height: calc(min(20vw, 32vh) * 7 / 16);
+}
+.collapsed .slidercont {
+  max-height: 0;
+  overflow-y: hidden;
+}
+.sliders {
+  width: calc(min(20vw, 32vh));
+  height: calc(min(20vw, 32vh) * 7 / 16);
+  position: relative;
+}
+.slider {
+  position: absolute;
+  transform: translateX(-50%) translateY(50%);
+  width: calc(min(2.375vw, 3.8vh));
+  height: calc(min(3.3vw, 5.28vh));
+  opacity: 0;
+}
+.you .slider:hover {
+  opacity: 0.5;
+}
+.slider.chosen {
+  opacity: 1;
+}
+.you .slider {
+  cursor: pointer;
+}
+.bag {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+.bagtabs {
+  width: 100%;
   display: flex;
   flex-direction: row;
-  justify-content: flex-start;
-  align-items: center;
-  text-transform: uppercase;
+  background-color: wheat;
+  justify-content: space-evenly;
 }
-.slidervalue {
-  display: flex;
-  flex-direction: row;
-  justify-content: center;
-  align-items: center;
-  font-weight: bold;
-  padding-left: 0.2ch;
-  padding-right: 0.2ch;
-  border-width: 2px;
+.bagtabs.hidden {
+  max-height: 0;
+  overflow-y: hidden;
 }
-.slidertop {
-  color: blue;
-  border-style: solid;
-  border-bottom: unset;
-  border-radius: 50% 50% 0 0;
-  border-color: rgba(0, 0, 0, 0);
+.collapsed .bagtabs {
+  max-height: 0;
+  overflow-y: hidden;
 }
-.sliderbottom {
-  color: red;
-  border-style: solid;
-  border-top: unset;
-  border-radius: 0 0 50% 50%;
-  border-color: rgba(0, 0, 0, 0);
+.bagtab {
+  width: 45%;
+  font-size: calc(min(1vw, 1.6vh));
+  text-align: center;
+  cursor: pointer;
+  background-color: cornsilk;
+  border-radius: 0.5em 0.5em 0 0;
 }
-.you .sliderdeselected:hover .slidertop {
-  border-color: rgba(0, 0, 255, 0.5);
-}
-.you .sliderdeselected:hover .sliderbottom {
-  border-color: rgba(255, 0, 0, 0.5);
-}
-.sliderselected .slidertop {
-  border-color: blue;
-}
-.sliderselected .sliderbottom {
-  border-color: red;
+.bagtab.inactive {
+  background-color: wheat;
 }
 .possessions {
   width: 100%;
   display: flex;
   flex-wrap: wrap;
-  justify-content: flex-start;
+  justify-content: space-evenly;
   align-items: flex-start;
   align-content: flex-start;
+  row-gap: calc(min(0.5vw, 0.8vh));
+  margin-top: calc(min(0.5vw, 0.8vh));
+  margin-bottom: calc(min(0.5vw, 0.8vh));
 }
 .collapsed .possessions {
-  display: none;
+  max-height: 0;
+  margin-top: 0;
+  margin-bottom: 0;
+  overflow-y: hidden;
+}
+.possessions.hidden {
+  max-height: 0;
+  margin-top: 0;
+  margin-bottom: 0;
+  overflow-y: hidden;
 }
 .possession {
   position: relative;
-  border: 2px solid;
-  border-color: rgba(0, 0, 0, 0);
+  width: calc(min(4.5vw, 7.2vh));
+  height: calc(min(4.5vw, 7.2vh) * 25 / 16);
+  transition: all 0.3s;
+  transform-origin: center;
+}
+.possession:hover {
+  transform: scale(2.5);
+  transition-delay: 0.5s;
+}
+.poscnv {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0.4);
+}
+.possession.big {
+  width: calc(min(9.5vw, 15.2vh));
 }
 .possession.active {
-  border-color: green;
 }
 .possessions.use .usable {
   cursor: pointer;
@@ -728,13 +1126,8 @@ button {
 }
 .possessions.choose .possession {
   cursor: pointer;
-  transition: transform 0.2s;
 }
-.possessions.choose .possession.chosen {
-  transform-origin: center;
-  transform: scale(1.2, 1.2);
-}
-.bonus {
+.bonus, .chosencheck {
   position: absolute;
   width: 100%;
   height: 100%;
@@ -743,8 +1136,28 @@ button {
   align-items: center;
   pointer-events: none;
   color: rgba(0, 0, 0, 0);
-  font-size: 2em;
+  font-size: calc(min(1.5vw, 2.4vh));
   font-weight: bold;
+}
+.possession.active .chosencheck {
+  color: black;
+}
+.possessions.choose .possession.chosen .chosencheck {
+  color: black;
+}
+.spent .chosencheck {
+  color: black;
+}
+.trophy {
+  position: relative;
+  width: calc(min(4.5vw, 7.2vh));
+  height: calc(min(4.5vw, 7.2vh));
+  transition: all 0.3s;
+  transform-origin: center;
+}
+.trophy:hover {
+  transform: scale(2.5);
+  transition-delay: 0.5s;
 }
 .bonus.shown {
   color: rgba(0, 0, 0, 1);
