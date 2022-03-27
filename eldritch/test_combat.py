@@ -1623,14 +1623,14 @@ class CombatWithMagicPowderTest(EventTest):
     self.assertEqual(self.char.sanity, 5)
     cultist = monsters.Cultist()
     combat_choice = self.start(cultist)
-    combat_choice.resolve(self.state, "Magic Powder0")
-    combat_choice.resolve(self.state, "done")
-    # Mock shows that we get enough dice to actually need the powder
-    with mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=[1]*8+[5]*100)):
+    self.choose_items(combat_choice, ["Magic Powder0"])
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)) as rand:
       self.resolve_until_done()
+      self.assertEqual(rand.call_count, 14)
     self.assertEqual(self.char.sanity, 4)
     self.assertIn(cultist, self.char.trophies)
     self.assertNotIn(self.powder, self.char.possessions)
+    self.assertIn(self.powder, self.state.unique)
 
   def testUsePowderFail(self):
     self.assertEqual(self.char.sanity, 5)
@@ -1669,8 +1669,9 @@ class CombatWithMagicPowderTest(EventTest):
     combat_choice = self.start(cultist)
     combat_choice.resolve(self.state, "Magic Powder0")
     combat_choice.resolve(self.state, "done")
-    with mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=[1]*8+[5]*100)):
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)) as rand:
       self.resolve_to_usable(0, "Whiskey0")
+      self.assertEqual(rand.call_count, 14)
     self.state.event_stack.append(self.state.usables[0]["Whiskey0"])
     self.resolve_until_done()
     self.assertEqual(self.char.sanity, 5)
