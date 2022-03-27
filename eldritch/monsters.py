@@ -158,7 +158,7 @@ def TentacleTree():
 def DimensionalShambler():
   return Monster(
       "Dimensional Shambler", "fast", "square", {"evade": -3, "horror": -2, "combat": -2},
-      {"horror": 2, "combat": 0}, 1,
+      {"horror": 1, "combat": 0}, 1,
   )
 
 
