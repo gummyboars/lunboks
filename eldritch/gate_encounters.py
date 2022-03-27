@@ -1,4 +1,7 @@
+import operator
+
 from eldritch import events
+from eldritch import values
 
 class GateCard(object):
 
@@ -19,13 +22,13 @@ class GateCard(object):
     return self.encounters[world_name](character)
 
 def Abyss2(char):
-  return = events.Gain(char, {"stamina": 1})
+  return events.Gain(char, {"stamina": 1})
 def Pluto2(char):
   check = events.Check(char, "fight", -2)
-  return = events.PassFail(char, check, events.Nothing(), events.LostInTimeAndSpace(char))
+  return events.PassFail(char, check, events.Nothing(), events.LostInTimeAndSpace(char))
 def Other2(char):
   check = events.Check(char, "speed", -2)
-  return = events.PassFail(char, check, Return(char, char.place.info.name), events.LostInTimeAndSpace(char))
+  return events.PassFail(char, check, events.Return(char, char.place.info.name), events.LostInTimeAndSpace(char))
   #TODO for Ozan: implement "in either event, you automatically close the gate you entered through
 
 def Dreamlands5(char):
@@ -34,11 +37,11 @@ def Abyss5(char):
   check = events.Check(char, "luck", -1)
   gain1 = events.Draw(char, "unique", 1)
   gain2 = events.Gain(char, {"dollars": 3})
-  return = events.PassFail(char, check, events.Sequence([gain1, gain2], char), events.Nothing())
+  return events.PassFail(char, check, events.Sequence([gain1, gain2], char), events.Nothing())
 def Other5(char):
   check = events.Check(char, "luck", -1)
   gain = events.Gain(char, {"clues": values.Calculation(check, "successes", operator.mul, 1)})
-  return = events.PassFail(char, check, gain, events.Nothing())
+  return events.PassFail(char, check, gain, events.Nothing())
 
 def Dreamlands10(char):
   check = events.Check(char, "luck", -1)
