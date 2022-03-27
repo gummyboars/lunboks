@@ -104,7 +104,7 @@ class EventTest(unittest.TestCase):
     # Go through the event loop one more time to make sure compute_choices updates remaining_spend.
     self.resolve_to_choice(SpendMixin)
 
-  def resolve_to_usable(self, char_idx, handle, event_class):
+  def resolve_to_usable(self, char_idx, handle, event_class=events.Event):
     self.resolve_loop()
     self.assertTrue(self.state.event_stack)
     self.assertIn(char_idx, self.state.usables)
