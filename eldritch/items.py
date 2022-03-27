@@ -1,3 +1,5 @@
+import operator
+
 from eldritch.assets import Card, Deputy
 from eldritch import events
 from eldritch import places
@@ -134,6 +136,19 @@ class Tome(Item):
 
   def get_usable_interrupt(self, event, owner, state):
     if not isinstance(event, events.CityMovement) or event.character != owner or event.is_done():
+      return None
+    if self.exhausted:
+      return None
+    if event.character.movement_points < self.movement_cost:
+      return None
+    return events.ReadTome([
+        events.ExhaustAsset(owner, self),
+        events.ChangeMovementPoints(owner, -self.movement_cost),
+        self.read_event(owner),
+    ], owner)
+
+  def get_usable_trigger(self, event, owner, state):
+    if not isinstance(event, events.WagonMove) or event.character != owner:
       return None
     if self.exhausted:
       return None
@@ -537,8 +552,27 @@ class PatrolWagon(Card):
   def __init__(self):
     super().__init__("Patrol Wagon", None, "tradables", {}, {})
 
-  def get_interrupt(self, event, owner, state):
-    return None  # TODO: replacing movement
+  def get_usable_interrupt(self, event, owner, state):
+    if not isinstance(event, events.CityMovement) or event.character != owner:
+      return None
+    if event.is_done() or event.moved:
+      return None
+    choice = events.PlaceChoice(owner, "Move using Patrol Wagon?", none_choice="Cancel")
+    # TODO: add an annotation to the PlaceChoice (e.g. "Move").
+    was_cancelled = values.Calculation(choice, None, operator.methodcaller("is_cancelled"))
+    patrol = events.ForceMovement(owner, choice)
+    cancel = events.CancelEvent(event)
+    move = events.WagonMove([patrol, cancel], owner)
+    cond = events.Conditional(owner, was_cancelled, None, {0: move, 1: events.Nothing()})
+    return events.Sequence([choice, cond], owner)
+
+  def get_trigger(self, event, owner, state):
+    if not isinstance(event, (events.Combat, events.Return)) or event.character != owner:
+      return None
+    die = events.DiceRoll(owner, 1)
+    discard = events.DiscardSpecific(owner, [self], to_box=True)
+    cond = events.Conditional(owner, values.Die(die), None, {0: discard, 2: events.Nothing()})
+    return events.Sequence([die, cond], owner)
 
 
 def CreateCommon():

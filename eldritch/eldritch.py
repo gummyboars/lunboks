@@ -451,7 +451,7 @@ class GameState:
   # TODO: global interrupts/triggers from ancient one, environment, other mythos/encounter cards
   def get_interrupts(self, event):
     interrupts = []
-    if isinstance(event, events.MoveOne):
+    if isinstance(event, (events.MoveOne, events.WagonMove)):
       nearby_monsters = [mon for mon in self.monsters if mon.place == event.character.place]
       if nearby_monsters:
         interrupts.append(events.EvadeOrFightAll(event.character, nearby_monsters))
@@ -490,7 +490,7 @@ class GameState:
         elif event.character.stamina <= 0:
           triggers.append(events.Unconscious(event.character))
     # Must fight monsters when you end your movement.
-    if isinstance(event, (events.CityMovement, events.Return)):
+    if isinstance(event, (events.CityMovement, events.WagonMove, events.Return)):
       # TODO: special handling for the turn that you return from another world
       nearby_monsters = [mon for mon in self.monsters if mon.place == event.character.place]
       if nearby_monsters:

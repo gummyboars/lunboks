@@ -314,6 +314,7 @@ class CityMovement(ChoiceEvent):
   def __init__(self, character):
     self.character = character
     self.routes = {}
+    self.moved = False
     self.none_choice = "done"
     self.done = False
 
@@ -322,6 +323,7 @@ class CityMovement(ChoiceEvent):
       self.done = True
       return
     assert choice in self.routes
+    self.moved = True
     state.event_stack.append(
         Sequence([MoveOne(self.character, dest) for dest in self.routes[choice]], self.character))
 
@@ -381,6 +383,10 @@ class CityMovement(ChoiceEvent):
       for next_place in place.connections:
         queue.append((next_place, route + [place.name]))
     return routes
+
+
+class WagonMove(Sequence):
+  pass
 
 
 class EncounterPhase(Turn):
@@ -2960,7 +2966,7 @@ class EvadeRound(Event):
 
     self.evaded = False
     for event in reversed(state.event_stack):  # Cancel any movement.
-      if isinstance(event, MoveOne):
+      if isinstance(event, (MoveOne, WagonMove)):
         event.cancelled = True
       if isinstance(event, CityMovement):
         event.done = True  # TODO: should this be cancelled instead?
@@ -3042,7 +3048,7 @@ class CombatRound(Event):
   def resolve(self, state):
     if not self.movement_cancelled:  # Cancel any movement.
       for event in reversed(state.event_stack):
-        if isinstance(event, MoveOne):
+        if isinstance(event, (MoveOne, WagonMove)):
           event.cancelled = True
         if isinstance(event, CityMovement):
           event.done = True  # TODO: should this be cancelled instead?
