@@ -758,7 +758,11 @@ class FleshWardTest(EventTest):
     self.assertFalse(self.state.usables)
     self.assertEqual(self.char.stamina, 5)
 
-    # TODO: Discard if ancient one awakens
+  def testDiscardedIfAncientOneAwakens(self):
+    self.state.turn_phase = "mythos"
+    self.state.event_stack.append(AddDoom(count=float("inf")))
+    self.resolve_until_done()
+    self.assertNotIn("Flesh Ward", [card.name for card in self.char.possessions])
 
 
 class HealTest(EventTest):

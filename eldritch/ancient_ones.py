@@ -1,7 +1,7 @@
 import abc
 
 from eldritch import events, places, characters, monsters, values, mythos
-from eldritch.events import AncientOneAttack, AncientOneAwaken
+from eldritch.events import AncientOneAttack
 
 
 class AncientOne(mythos.GlobalEffect, metaclass=abc.ABCMeta):
@@ -10,21 +10,51 @@ class AncientOne(mythos.GlobalEffect, metaclass=abc.ABCMeta):
     self.name = name
     self.max_doom = max_doom
     self.doom = 0
-    self.combat_rating = combat_rating
-    self.attributes = attributes
+    self.health = None
+    self._combat_rating = combat_rating
+    self._attributes = attributes
 
   def awaken(self, state):
-    return AncientOneAwaken([])
+    pass
 
   @abc.abstractmethod
   def attack(self, state):
     raise NotImplementedError
+
+  def escalate(self, state):
+    pass
+
+  # TODO: dedup with monster
+  def attributes(self, state, char):
+    attrs = set()
+    for attr in monsters.Monster.ALL_ATTRIBUTES:
+      if self.has_attribute(attr, state, char):
+        attrs.add(attr)
+    return attrs
+
+  # TODO: dedup with monster
+  def has_attribute(self, attribute, state, char):
+    state_override = state.get_override(self, attribute)
+    char_override = char.get_override(self, attribute) if char else None
+    # Prefer specific overrides (at the item level) over general ones (environment, ancient one).
+    if char_override is not None:
+      return char_override
+    if state_override is not None:
+      return state_override
+    return attribute in self._attributes
+
+  def combat_rating(self, state, char):
+    state_modifier = state.get_modifier(self, "combatdifficulty") or 0
+    char_modifier = char.get_modifier(self, "combatdifficulty") or 0
+    return self._combat_rating + state_modifier + char_modifier
 
   def json_repr(self):
     return {
         "name": self.name,
         "doom": self.doom,
         "max_doom": self.max_doom,
+        "health": self.health,
+        # TODO: combat rating, attributes
     }
 
 
@@ -61,8 +91,7 @@ class YellowKing(AncientOne):
     self.luck_modifier = 1
 
   def awaken(self, state):
-    self.combat_rating = state.terror
-    return AncientOneAwaken([])
+    self._combat_rating = state.terror
 
   def get_modifier(self, thing, attribute):
     if isinstance(thing, monsters.Cultist):
@@ -85,8 +114,10 @@ class YellowKing(AncientOne):
       checks.append(
           events.PassFail(char, check, events.Nothing(), events.Loss(char, {"sanity": 2}))
       )
-    self.luck_modifier -= 1  # TODO: make this an Event to allow it to be canceled
     return AncientOneAttack(checks)
+
+  def escalate(self, state):
+    self.luck_modifier -= 1
 
 
 class ChaosGod(AncientOne):
@@ -94,8 +125,7 @@ class ChaosGod(AncientOne):
     super().__init__("God of Chaos", 14, set(), float("-inf"))
 
   def awaken(self, state):
-    state.game_stage = "defeat"
-    return AncientOneAwaken([])
+    state.game_stage = "defeat"  # TODO: do we want to do this through an event?
 
   def attack(self, state):
     return AncientOneAttack([])
@@ -124,16 +154,15 @@ class Wendigo(AncientOne):
         if isinstance(char.place, places.Street):
           losses.append(events.Loss(char, {"stamina": 1}))
       return events.Sequence(losses)
+    if isinstance(event, events.Awaken):
+      # TODO: Roll a die for each item, discard on a failure
+      pass
     return None
 
   def get_modifier(self, thing, attribute):
     if isinstance(thing, monsters.Cultist):
       return {"toughness": 2}.get(attribute, 0)
     return super().get_modifier(thing, attribute)
-
-  def awaken(self, state):
-    # TODO: Roll a die for each item, discard on a failure
-    return AncientOneAwaken([])
 
   def attack(self, state):
     checks = []
@@ -144,8 +173,10 @@ class Wendigo(AncientOne):
       checks.append(
           events.PassFail(char, check, events.Nothing(), events.Loss(char, {"stamina": 2}))
       )
-    self.fight_modifier -= 1  # TODO: make this an Event to allow it to be canceled
     return AncientOneAttack(checks)
+
+  def escalate(self, state):
+    self.fight_modifier -= 1
 
 
 class BlackPharaoh(AncientOne):
@@ -159,18 +190,16 @@ class BlackPharaoh(AncientOne):
       return True
     return super().get_override(thing, attribute)
 
-  def awaken(self, state):
+  def get_trigger(self, event, state):
+    if not isinstance(event, events.Awaken):
+      return None
     checks = []
     for char in state.characters:
       if char.gone:
         continue
       has_clues = values.AttributePrerequisite(char, "clues", 1, "at least")
-      checks.append(
-          events.PassFail(
-              char, has_clues, events.Nothing(), events.Nothing()
-          )  # TODO: Devoured if no clue tokens
-      )
-    return AncientOneAwaken(checks)
+      checks.append(events.PassFail(char, has_clues, events.Nothing(), events.Devoured(char)))
+    return events.Sequence(checks)
 
   def attack(self, state):
     checks = []
@@ -178,17 +207,21 @@ class BlackPharaoh(AncientOne):
       if char.gone:
         continue
       check = events.Check(char, "lore", self.lore_modifier)
-      has_clues = values.AttributePrerequisite(char, "clues", "at least", 1)
+      has_clues = values.AttributePrerequisite(char, "clues", 1, "at least")
       checks.append(
           events.Sequence([
               events.PassFail(char, check, events.Nothing(), events.Loss(char, {"clues": 1})),
-              events.PassFail(char, has_clues, events.Nothing(), events.Nothing())
-              # TODO: Devoured if no clue tokens
+              events.PassFail(char, has_clues, events.Nothing(), events.Devoured(char))
           ], char)
 
       )
-    self.lore_modifier -= 1  # TODO: make this an Event to allow it to be canceled
     return AncientOneAttack(checks)
+
+  def escalate(self, state):
+    self.lore_modifier -= 1
+
+
+# TODO: Black Goat of the Woods, Serpent God, Key and Gate
 
 
 def AncientOnes():

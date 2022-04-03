@@ -11,6 +11,15 @@ class Place:
     return getattr(self, "unstable", False)
 
 
+class FinalBattle(Place):
+
+  def __init__(self):
+    self.name = "Battle"
+
+  def json_repr(self):
+    return {"name": self.name}
+
+
 class LostInTimeAndSpace(Place):
 
   def __init__(self):
@@ -211,7 +220,7 @@ def CreatePlaces():
           Northside, Downtown, Easttown, Rivertown,
           FrenchHill, Southside, Uptown, University, Merchant,
           # Other
-          Sky(), Outskirts(), LostInTimeAndSpace(),
+          Sky(), Outskirts(), LostInTimeAndSpace(), FinalBattle(),
       ]
   }
 

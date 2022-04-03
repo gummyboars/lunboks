@@ -393,7 +393,7 @@ class FleshWard(Spell):
     self.loss = None
 
   def get_trigger(self, event, owner, state):
-    if isinstance(event, events.AncientOneAwaken):
+    if isinstance(event, events.Awaken):
       return events.DiscardSpecific(owner, [self])
     return None
 
@@ -479,7 +479,7 @@ class RedSign(CombatSpell):
     if not isinstance(interrupt, events.CastSpell):
       return interrupt
 
-    if not hasattr(event, "monster"):
+    if not isinstance(getattr(event, "monster", None), monsters.Monster):
       return None
     attributes = sorted(event.monster.attributes(state, owner) - self.INVALID_ATTRIBUTES)
     choices = attributes + ["none", "Cancel"]

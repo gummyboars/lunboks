@@ -31,12 +31,18 @@ class GameState:
       "event_stack", "interrupt_stack", "trigger_stack", "usables", "mythos", "gate_cards"}
   CUSTOM_ATTRIBUTES = {"characters", "all_characters"}
   TURN_PHASES = ["upkeep", "movement", "encounter", "otherworld", "mythos"]
+  AWAKENED_PHASES = ["upkeep", "attack", "ancient"]
   TURN_TYPES = {
       "upkeep": events.Upkeep,
       "movement": events.Movement,
       "encounter": events.EncounterPhase,
       "otherworld": events.OtherWorldPhase,
       "mythos": events.Mythos,
+  }
+  AWAKENED_TURNS = {
+      "upkeep": events.Upkeep,
+      "attack": events.InvestigatorAttack,
+      "ancient": events.AncientAttack,
   }
 
   def __init__(self):
@@ -59,7 +65,7 @@ class GameState:
     self.monsters = []
     self.monster_cup = monsters.MonsterCup()
     self.game_stage = "setup"  # valid values are setup, slumber, awakened, victory, defeat
-    # valid values are setup, upkeep, movement, encounter, otherworld, mythos, awakened
+    # valid values are setup, upkeep, movement, encounter, otherworld, mythos, attack, ancient
     self.turn_phase = "setup"
     self.event_stack = collections.deque()
     self.interrupt_stack = collections.deque()
@@ -185,6 +191,10 @@ class GameState:
 
   def globals(self):
     return [self.rumor, self.environment, self.ancient_one] + self.other_globals
+
+  def gate_limit(self):
+    limit = 9 - (len(self.characters)+1) // 2
+    return limit + self.get_modifier(self, "gate_limit")
 
   def monster_limit(self):
     # TODO: return infinity when the terror track reaches 10
@@ -354,7 +364,7 @@ class GameState:
   def resolve_loop(self):
     # NOTE: we may produce one message that is identical to the previous state.
     yield None
-    if not self.event_stack and not self.test_mode:
+    if not (self.event_stack or self.test_mode or self.game_stage in ("victory", "defeat")):
       self.next_turn()
     while self.event_stack:
       event = self.event_stack[-1]
@@ -397,7 +407,7 @@ class GameState:
         return
       self.pop_event(event)
       yield None
-      if not self.event_stack and not self.test_mode:
+      if not (self.event_stack or self.test_mode or self.game_stage in ("victory", "defeat")):
         self.next_turn()
 
   def validate_resolve(self, event):
@@ -476,6 +486,12 @@ class GameState:
 
   def get_triggers(self, event):
     triggers = []
+
+    # If the ancient one's doom track is full, it wakes up.
+    if isinstance(event, events.AddDoom) and self.ancient_one.doom == self.ancient_one.max_doom:
+      if self.game_stage != "awakened":
+        triggers.append(events.Awaken())
+
     # Insane/Unconscious after sanity/stamina loss.
     if isinstance(event, (events.GainOrLoss, events.SpendMixin, events.CastSpell)):
       skip = False
@@ -483,12 +499,23 @@ class GameState:
         if isinstance(self.event_stack[-2], events.CastSpell):
           skip = True  # In case of a spell, delay insanity calculations until it's done being cast.
       if not skip:
-        if event.character.sanity <= 0 and event.character.stamina <= 0:
-          triggers.append(events.Devoured(event.character))
-        elif event.character.sanity <= 0:
-          triggers.append(events.Insane(event.character))
-        elif event.character.stamina <= 0:
-          triggers.append(events.Unconscious(event.character))
+        if self.game_stage == "awakened":
+          if event.character.sanity <= 0 or event.character.stamina <= 0:
+            triggers.append(events.Devoured(event.character))
+        else:
+          if event.character.sanity <= 0 and event.character.stamina <= 0:
+            triggers.append(events.Devoured(event.character))
+          elif event.character.sanity <= 0:
+            triggers.append(events.Insane(event.character))
+          elif event.character.stamina <= 0:
+            triggers.append(events.Unconscious(event.character))
+
+    # Lost investigators are devoured when the ancient one awakens.
+    if isinstance(event, events.Awaken):
+      for char in self.characters:
+        if char.place == self.places["Lost"]:
+          triggers.append(events.Devoured(char))
+
     # Must fight monsters when you end your movement.
     if isinstance(event, (events.CityMovement, events.WagonMove, events.Return)):
       # TODO: special handling for the turn that you return from another world
@@ -497,18 +524,27 @@ class GameState:
         triggers.append(events.EvadeOrFightAll(event.character, nearby_monsters))
       if isinstance(event.character.place, places.Location) and event.character.place.clues:
         triggers.append(events.CollectClues(event.character, event.character.place.name))
+
     # Pulled through a gate if it opens on top of you.
+    # Ancient one awakens if gate limit has been hit.
     if isinstance(event, events.OpenGate) and event.opened:
+      open_gates = len([place for place in self.places.values() if getattr(place, "gate", None)])
+      if open_gates >= self.gate_limit():
+        triggers.append(events.Awaken())
       loc = self.places[event.location_name]
       chars = [char for char in self.characters if char.place == loc]
       if chars:
         triggers.append(events.PullThroughGate(chars, loc.gate.name))
+
     # Non-spell items deactivate at the end of a combat round.
-    if isinstance(event, (events.CombatRound, events.InsaneOrUnconscious)):
+    deactivates = (events.CombatRound, events.InvestigatorAttack, events.InsaneOrUnconscious)
+    if isinstance(event, deactivates):
       triggers.append(events.DeactivateItems(event.character))
+
     # Spells deactivate at the end of an entire combat.
-    if isinstance(event, (events.Combat, events.InsaneOrUnconscious)):
+    if isinstance(event, (events.Combat, events.InvestigatorAttack, events.InsaneOrUnconscious)):
       triggers.append(events.DeactivateSpells(event.character))
+
     triggers.extend(sum(
         [char.get_triggers(event, self) for char in self.characters if not char.gone], [],
     ))
@@ -525,6 +561,19 @@ class GameState:
     if isinstance(event, (events.ForceMovement, events.Return)) and self.turn_phase == "movement":
       if len([char for char in self.characters if char.place == event.character.place]) > 1:
         trgs[self.characters.index(event.character)]["trade"] = events.Nothing()
+    # If the ancient one has awakened and this is the end of the last upkeep phase before the
+    # players attack, give all characters a chance to trade.
+    if self.game_stage == "awakened" and isinstance(event, events.Upkeep):
+      if not all(char.gone for char in self.characters):
+        next_player = self.turn_idx + 1
+        next_player %= len(self.characters)
+        while self.characters[next_player].gone:
+          next_player += 1
+          next_player %= len(self.characters)
+        if next_player == self.first_player:
+          for idx, char in enumerate(self.characters):
+            if not char.gone:
+              trgs[idx]["trade"] = events.Nothing()
     return {char_idx: triggers for char_idx, triggers in trgs.items() if triggers}
 
   def handle_ancient(self, ancient):
@@ -684,6 +733,7 @@ class GameState:
         raise InvalidMove("Invalid quantity")
       if amount < 0 or amount > donor.dollars:
         raise InvalidMove("Invaild quantity")
+      # TODO: turn this into an event
       recipient.dollars += amount
       donor.dollars -= amount
       return
@@ -703,9 +753,13 @@ class GameState:
     recipient.possessions.append(donation)
 
   def can_trade(self):
-    if self.turn_phase != "movement":  # TODO: trading during the final battle
-      return False
     if not self.event_stack:
+      return False
+    if self.game_stage == "awakened":
+      if self.turn_phase != "upkeep":
+        return False
+      return any("trade" in usables for usables in self.usables.values())
+    if self.turn_phase != "movement":
       return False
     event = self.event_stack[-1]
     if isinstance(event, (events.CityMovement, events.ForceMovement, events.Return)):
@@ -717,7 +771,10 @@ class GameState:
     return False
 
   def next_turn(self):
-    # TODO: game stages other than slumber
+    if self.game_stage == "awakened":
+      self.next_awaken_turn()
+      return
+
     # Handle the end of the mythos phase separately.
     if self.turn_phase == "mythos":
       # If we have pending players that need to be added, don't start the next turn yet. next_turn
@@ -758,6 +815,34 @@ class GameState:
 
     # We are done updating turn phase, turn number, turn index, and first player.
     self.event_stack.append(self.TURN_TYPES[self.turn_phase](self.characters[self.turn_idx]))
+
+  def next_awaken_turn(self):
+    if all(char.gone for char in self.characters):
+      self.game_stage = "defeat"
+      return
+    if self.turn_phase == "ancient":
+      self.turn_number += 1
+      self.first_player += 1
+      self.first_player %= len(self.characters)
+      while self.characters[self.first_player].gone:
+        self.first_player += 1
+        self.first_player %= len(self.characters)
+      self.turn_idx = self.first_player
+      self.turn_phase = "upkeep"
+      self.event_stack.append(events.Upkeep(self.characters[self.turn_idx]))
+      return
+
+    self.turn_idx += 1
+    self.turn_idx %= len(self.characters)
+    while self.characters[self.turn_idx].gone:
+      self.turn_idx += 1
+      self.turn_idx %= len(self.characters)
+
+    if self.turn_idx == self.first_player:
+      phase_idx = self.AWAKENED_PHASES.index(self.turn_phase)
+      self.turn_phase = self.AWAKENED_PHASES[phase_idx + 1]
+
+    self.event_stack.append(self.AWAKENED_TURNS[self.turn_phase](self.characters[self.turn_idx]))
 
   def add_pending_players(self):
     if not self.pending_chars:

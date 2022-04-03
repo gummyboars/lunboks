@@ -295,6 +295,7 @@ class MonsterSurgeTest(EventTest):
     self.state.monsters[4].place = self.state.places["Cave"]
     self.state.monsters[6].place = self.state.places["Woods"]
     self.state.monsters.append(monsters.Cultist())  # Add one more to make sure we have enough.
+    self.state.monsters[-1].place = self.state.monster_cup
     self.state.event_stack.append(OpenGate("Woods"))
     with mock.patch.object(events.random, "sample", new=mock.MagicMock(return_value=[0, 1, 5, 7])):
       surge = self.resolve_to_choice(MonsterSpawnChoice)
