@@ -38,7 +38,9 @@ def CreateFixedEncounters():
 
   deputize = FixedEncounter(
       name="Deputy",  # Make it the name of the card so it shows up in CardChoice
-      prereq=lambda char: values.ContainsPrerequisite("specials", "Deputy"),
+      prereq=lambda char: values.ContainsPrerequisite(
+          "specials", "Deputy", error_fmt="Someone else is already the deputy",
+      ),
       spend=lambda char: values.ToughnessOrGatesSpend(10),
       encounter=lambda char, state: events.DrawSpecific(char, "specials", "Deputy"),
   )

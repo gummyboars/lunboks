@@ -560,7 +560,7 @@ class CombatWithItems(EventTest):
     choose_weapons = self.resolve_to_choice(CombatChoice)
 
     # Cannot choose the spell - it must be used as a usable.
-    with self.assertRaises(AssertionError):
+    with self.assertRaisesRegex(InvalidMove, "Invalid choice"):
       choose_weapons.resolve(self.state, "Wither0")
 
     self.state.event_stack.append(self.state.usables[0]["Wither0"])  # Cast the spell.
@@ -572,12 +572,12 @@ class CombatWithItems(EventTest):
       choose_weapons = self.resolve_to_choice(CombatChoice)
 
     # Cannot choose the spell after using it.
-    with self.assertRaises(AssertionError):
+    with self.assertRaisesRegex(InvalidMove, "Invalid choice"):
       choose_weapons.resolve(self.state, "Wither0")
 
     self.assertEqual(self.char.hands_available(), 1)
     # Cannot choose a two-handed weapon when one hand is taken by a spell.
-    with self.assertRaises(AssertionError):
+    with self.assertRaisesRegex(InvalidMove, "enough hands"):
       choose_weapons.resolve(self.state, "Tommy Gun0")
 
     choose_weapons.resolve(self.state, ".38 Revolver0")
@@ -607,7 +607,7 @@ class CombatWithItems(EventTest):
 
     self.assertEqual(self.char.hands_available(), 1)
     # Cannot choose a two-handed weapon when one hand is taken by a failed spell.
-    with self.assertRaises(AssertionError):
+    with self.assertRaisesRegex(InvalidMove, "enough hands"):
       choose_weapons.resolve(self.state, "Tommy Gun0")
 
     self.choose_items(choose_weapons, [".38 Revolver0"])
@@ -902,7 +902,7 @@ class AmbushTest(EventTest):
 
     fight_or_flee = self.resolve_to_choice(MultipleChoice)
     # Should not be able to flee - it's an ambush monster.
-    with self.assertRaises(AssertionError):
+    with self.assertRaisesRegex(InvalidMove, "Ambush"):
       fight_or_flee.resolve(self.state, "Flee")
     fight_or_flee.resolve(self.state, "Fight")
     choose_weapons = self.resolve_to_choice(CombatChoice)
@@ -912,7 +912,7 @@ class AmbushTest(EventTest):
       fight_or_flee = self.resolve_to_choice(MultipleChoice)
     self.assertEqual(self.char.stamina, 4)
     # Still should not be able to flee.
-    with self.assertRaises(AssertionError):
+    with self.assertRaisesRegex(InvalidMove, "Ambush"):
       fight_or_flee.resolve(self.state, "Flee")
     fight_or_flee.resolve(self.state, "Fight")
 
@@ -929,7 +929,7 @@ class AmbushTest(EventTest):
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
       fight_or_flee = self.resolve_to_choice(MultipleChoice)
 
-    with self.assertRaises(AssertionError):
+    with self.assertRaisesRegex(InvalidMove, "Ambush"):
       fight_or_flee.resolve(self.state, "Flee")
     fight_or_flee.resolve(self.state, "Fight")
 
@@ -1283,9 +1283,9 @@ class CombatWithEnchantedWeapon(EventTest):
     choose_weapons = self.resolve_to_choice(CombatChoice)
 
     # Cannot choose either a spell or the dark cloak.
-    with self.assertRaises(AssertionError):
+    with self.assertRaisesRegex(InvalidMove, "Invalid choice"):
       choose_weapons.resolve(self.state, "Dark Cloak0")
-    with self.assertRaises(AssertionError):
+    with self.assertRaisesRegex(InvalidMove, "Invalid choice"):
       choose_weapons.resolve(self.state, "Enchant Weapon0")
 
     self.assertCountEqual(self.state.usables[0].keys(), {"Enchant Weapon0"})
@@ -1295,11 +1295,11 @@ class CombatWithEnchantedWeapon(EventTest):
     choose_enchant = self.resolve_to_choice(SinglePhysicalWeaponChoice)
     self.spend("sanity", 1, choose_enchant)
 
-    with self.assertRaises(AssertionError):
+    with self.assertRaisesRegex(InvalidMove, "Invalid choice"):
       choose_enchant.resolve(self.state, "Dark Cloak0")  # Cannot choose dark cloak.
-    with self.assertRaises(AssertionError):
+    with self.assertRaisesRegex(InvalidMove, "Invalid choice"):
       choose_enchant.resolve(self.state, "Enchant Weapon0")  # Cannot choose itself.
-    with self.assertRaises(AssertionError):
+    with self.assertRaisesRegex(InvalidMove, "Invalid choice"):
       choose_enchant.resolve(self.state, "Magic Lamp0")  # Cannot choose a magic weapon.
     self.choose_items(choose_enchant, [".38 Revolver0"])  # Enchant the revolver.
 
@@ -1417,7 +1417,7 @@ class CombatWithEnchantedWeapon(EventTest):
     choose_enchant = self.resolve_to_choice(SinglePhysicalWeaponChoice)
     self.assertFalse(choose_enchant.choices)
     self.spend("sanity", 1, choose_enchant)
-    with self.assertRaises(AssertionError):
+    with self.assertRaisesRegex(InvalidMove, "Invalid choice"):  # Cannot choose the other spell.
       choose_enchant.resolve(self.state, "Enchant Weapon1")
     self.spend("sanity", -1, choose_enchant)
     self.choose_items(choose_enchant, [])
@@ -1459,7 +1459,7 @@ class CombatWithEnchantedWeapon(EventTest):
     choose_enchant = self.resolve_to_choice(SinglePhysicalWeaponChoice)
     self.spend("sanity", 1, choose_enchant)
     # Cannot choose the same item again - it is now magical.
-    with self.assertRaises(AssertionError):
+    with self.assertRaisesRegex(InvalidMove, "Invalid choice"):
       choose_enchant.resolve(self.state, ".38 Revolver0")
     self.choose_items(choose_enchant, [".38 Revolver1"])
 
@@ -1858,7 +1858,7 @@ class CombatWithRedSignTest(EventTest):
     combat = Combat(self.char, ghoul)
     self.state.event_stack.append(combat)
     fight_or_flee = self.resolve_to_choice(MultipleChoice)
-    with self.assertRaises(AssertionError):
+    with self.assertRaisesRegex(InvalidMove, "Ambush"):
       fight_or_flee.resolve(self.state, "Flee")
     fight_or_flee.resolve(self.state, "Fight")
     choose_weapons = self.resolve_to_choice(CombatChoice)
@@ -1868,7 +1868,7 @@ class CombatWithRedSignTest(EventTest):
       fight_or_flee = self.resolve_to_choice(MultipleChoice)
 
     # Cannot flee because of ambush.
-    with self.assertRaises(AssertionError):
+    with self.assertRaisesRegex(InvalidMove, "Ambush"):
       fight_or_flee.resolve(self.state, "Flee")
 
     self.state.event_stack.append(self.state.usables[0]["Red Sign0"])
@@ -2203,7 +2203,7 @@ class BindMonsterTest(EventTest):
     ):
       choice = self.resolve_to_choice(CombatChoice)
 
-    with self.assertRaises(AssertionError):
+    with self.assertRaisesRegex(InvalidMove, "enough hands"):
       # We already used our hands
       choice.resolve(self.state, "Tommy Gun0")
 

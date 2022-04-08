@@ -8,6 +8,8 @@ from typing import List, Dict, Optional, Union, NoReturn
 from eldritch import places
 from eldritch import values
 
+from game import InvalidMove, InvalidInput
+
 
 random = SystemRandom()
 
@@ -222,12 +224,14 @@ class SliderInput(Event):
     self.done = False
 
   def resolve(self, state, name, value):  # pylint: disable=arguments-differ
-    assert isinstance(name, str), "invalid slider name"
-    assert name in self.pending.keys() | {"done", "reset"}
+    if not isinstance(name, str):
+      raise InvalidInput(f"Invalid slider name {name}")
+    if name not in self.pending.keys() | {"done", "reset"}:
+      raise InvalidInput(f"Unknown slider {name}")
     if name == "done":
       if not self.free:
         if self.character.focus_cost(self.pending) > self.character.focus_points:
-          raise AssertionError("You do not have enough focus.")
+          raise InvalidMove("You do not have enough focus.")
         self.character.focus_points -= self.character.focus_cost(self.pending)
       for slider_name, slider_value in self.pending.items():
         setattr(self.character, slider_name + "_slider", slider_value)
@@ -237,14 +241,17 @@ class SliderInput(Event):
       self.pending = self.character.sliders()
       return
 
-    assert isinstance(value, int), "invalid slider value"
-    assert value >= 0, f"invalid slider value {value}"
-    assert value < len(getattr(self.character, "_" + name)), f"invalid slider value {value}"
+    if not isinstance(value, int):
+      raise InvalidMove(f"Invalid slider stop {value}")
+    if value < 0:
+      raise InvalidMove(f"Slider stop {value} must be >= 0")
+    if value >= len(getattr(self.character, "_" + name)):
+      raise InvalidMove(f"Slider stop {value} is too large")
     pending = self.pending.copy()
     pending[name] = value
     if not self.free:
       if self.character.focus_cost(pending) > self.character.focus_points:
-        raise AssertionError("You do not have enough focus.")
+        raise InvalidMove("You do not have enough focus.")
     self.pending = pending
 
   def prompt(self):
@@ -322,7 +329,8 @@ class CityMovement(ChoiceEvent):
     if choice == self.none_choice:
       self.done = True
       return
-    assert choice in self.routes
+    if choice not in self.routes:
+      raise InvalidMove("That is not a valid destination.")
     self.moved = True
     state.event_stack.append(
         Sequence([MoveOne(self.character, dest) for dest in self.routes[choice]], self.character))
@@ -2328,15 +2336,15 @@ class MultipleChoice(ChoiceEvent):
     self.choices = choices
     self.prereqs: List[Optional[values.Value]] = prereqs
     self._annotations = annotations
-    self.invalid_choices = []
+    self.invalid_choices = {}
     self.choice = None
 
   def compute_choices(self, state):
     # Any unsatisfied prerequisite means that choice is invalid.
     self.invalid_choices.clear()
-    for idx in range(len(self.choices)):
+    for idx, choice in enumerate(self.choices):
       if self.prereqs[idx] is not None and self.prereqs[idx].value(state) < 1:
-        self.invalid_choices.append(idx)
+        self.invalid_choices[idx] = self.prereqs[idx].error_str(state, choice)
 
   def resolve(self, state, choice=None):
     assert not self.is_resolved()
@@ -2344,8 +2352,11 @@ class MultipleChoice(ChoiceEvent):
     self.choice = choice
 
   def validate_choice(self, choice):
-    assert choice in self.choices
-    assert self.choices.index(choice) not in self.invalid_choices
+    if choice not in self.choices:
+      raise InvalidMove(f"{choice} is not a valid choice.")
+    prereq_err = self.invalid_choices.get(self.choices.index(choice))
+    if prereq_err:
+      raise InvalidMove(prereq_err)
 
   def is_resolved(self):
     return self.choice is not None
@@ -2406,8 +2417,11 @@ class SpendMixin:
     return handles
 
   def spend_handle(self, handle, spend_map):
-    assert not spend_map.keys() - self.spendable
-    assert handle not in self.spent_handles()
+    invalid_spends = spend_map.keys() - self.spendable
+    if invalid_spends:
+      raise InvalidMove(f"Cannot spend {', '.join(invalid_spends)} from {handle}")
+    if handle in self.spent_handles():
+      raise InvalidMove(f"{handle} has already been spent")
     for key, val in spend_map.items():
       self.spend_map[key][handle] = val
 
@@ -2417,15 +2431,19 @@ class SpendMixin:
         del spend_count[handle]
 
   def spend(self, spend_type):
-    assert spend_type in self.spendable & {"stamina", "sanity", "dollars", "clues"}
+    if spend_type not in self.spendable & {"stamina", "sanity", "dollars", "clues"}:
+      raise InvalidMove(f"Cannot spend {spend_type}")
     already_spent = self.spend_map[spend_type].get(spend_type, 0)
-    assert getattr(self.character, spend_type) - already_spent > 0
+    if getattr(self.character, spend_type) - already_spent <= 0:
+      raise InvalidMove(f"Cannot spend more {spend_type} than you have")
     self.spend_map[spend_type][spend_type] = already_spent + 1
 
   def unspend(self, spend_type):
-    assert spend_type in self.spend_map.keys() & {"stamina", "sanity", "dollars", "clues"}
+    if spend_type not in self.spend_map.keys() & {"stamina", "sanity", "dollars", "clues"}:
+      raise InvalidMove(f"Cannot unspend {spend_type}")
     already_spent = self.spend_map[spend_type].get(spend_type, 0)
-    assert already_spent >= 1
+    if already_spent <= 0:
+      raise InvalidMove(f"Cannot unspend {spend_type} that you have not spent")
     self.spend_map[spend_type][spend_type] -= 1
 
 
@@ -2452,7 +2470,15 @@ class SpendItemChoiceMixin(SpendMixin):
 
   def validate_choice(self, state, chosen, final):
     if len(chosen) > 0:
-      assert not self.spend_prereq.remaining_spend(state)
+      remaining = self.spend_prereq.remaining_spend(state)
+      if remaining:
+        if len(remaining) == 1:
+          spend, count = next(iter(remaining.items()))
+          if count < 0:
+            raise InvalidMove(f"You have overspent {-count} {spend}")
+          raise InvalidMove(f"You must spend an additional {count} {spend}")
+        remaining_str = ", ".join(f"{value} {key}" for key, value in remaining.items())
+        raise InvalidMove(f"You must change your spending by {remaining_str}")
     super().validate_choice(state, chosen, final)
 
   def annotations(self, state):  # pylint: disable=unused-argument
@@ -2482,9 +2508,18 @@ class SpendMultiChoiceMixin(SpendMixin):
     self.remaining_spend = [spend.remaining_spend(state) or False for spend in self.spends]
 
   def resolve(self, state, choice=None):
-    assert choice in self.choices
+    if choice not in self.choices:
+      raise InvalidMove(f"Invalid choice {choice}")
     choice_idx = self.choices.index(choice)
-    assert not self.remaining_spend[choice_idx]
+    remaining_spend = self.remaining_spend[choice_idx]
+    if remaining_spend:
+      if len(remaining_spend) == 1:
+        spend, count = next(iter(remaining_spend.items()))
+        if count < 0:
+          raise InvalidMove(f"You have overspent {-count} {spend}")
+        raise InvalidMove(f"You must spend an additional {count} {spend}")
+      remaining_str = ", ".join(f"{value} {key}" for key, value in remaining_spend.items())
+      raise InvalidMove(f"You must change your spending by {remaining_str}")
     super().resolve(state, choice)
 
   def annotations(self, state):
@@ -2606,7 +2641,8 @@ class ItemChoice(ChoiceEvent):
     self.done = False
 
   def resolve(self, state, choice=None):
-    assert isinstance(choice, str)
+    if not isinstance(choice, str):
+      raise InvalidInput(f"Invalid input {choice}")
     if choice == "done":
       self.validate_choice(state, self.chosen, final=True)
       self.done = True
@@ -2616,13 +2652,16 @@ class ItemChoice(ChoiceEvent):
     chosen_copy = [pos for pos in self.chosen if pos.handle != choice]
     if len(chosen_copy) >= len(self.chosen):  # Otherwise, add it to the list.
       chosen_copy += [pos for pos in self.character.possessions if pos.handle == choice]
-      assert len(chosen_copy) > len(self.chosen)
+      if len(chosen_copy) <= len(self.chosen):
+        raise InvalidMove(f"Unknown card {choice}")
 
     self.validate_choice(state, chosen_copy, final=False)
     self.chosen = chosen_copy
 
   def validate_choice(self, state, chosen, final):  # pylint: disable=unused-argument
-    assert all(pos.handle in self.choices for pos in chosen)
+    invalid_cards = [pos.handle for pos in chosen if pos.handle not in self.choices]
+    if invalid_cards:
+      raise InvalidMove(f"Invalid choices: {', '.join(invalid_cards)}")
 
   def compute_choices(self, state):
     self.choices = [
@@ -2661,10 +2700,13 @@ class CombatChoice(ItemChoice):
   def validate_choice(self, state, chosen, final):
     super().validate_choice(state, chosen, final)
     for pos in chosen:
-      assert getattr(pos, "hands", None) is not None
-      assert getattr(pos, "deck", None) != "spells"
+      if getattr(pos, "hands", None) is None:
+        raise InvalidMove("You must choose a weapon")
+      if getattr(pos, "deck", None) == "spells":
+        raise InvalidMove("That spell cannot be cast during combat")
     hands_used = sum([pos.hands for pos in chosen])
-    assert hands_used <= self.character.hands_available()
+    if hands_used > self.character.hands_available():
+      raise InvalidMove("You do not have enough hands")
 
   def hands_used(self):
     return sum([pos.hands for pos in self.chosen])
@@ -2685,10 +2727,13 @@ class ItemCountChoice(ItemChoice):
     max_count = self.count
     if isinstance(self.count, values.Value):
       max_count = self.count.value(state)
+    if len(chosen) > max_count:
+      raise InvalidMove(f"Too many cards (max {max_count})")
     if final:
-      assert min_count <= len(chosen) <= max_count
-    else:
-      assert len(chosen) <= max_count
+      if len(chosen) < min_count:
+        if math.isinf(min_count):
+          raise InvalidMove("Not enough cards")
+        raise InvalidMove(f"Not enough cards (min {min_count})")
 
 
 class ItemLossChoice(ItemChoice):
@@ -2700,7 +2745,8 @@ class ItemLossChoice(ItemChoice):
   def validate_choice(self, state, chosen, final=False):
     super().validate_choice(state, chosen, final)
     count = self.count.value(state) if isinstance(self.count, values.Value) else self.count
-    assert len(chosen) <= count
+    if len(chosen) > count:
+      raise InvalidMove(f"Too many cards (max {count})")
     if not final:
       return
 
@@ -2708,10 +2754,16 @@ class ItemLossChoice(ItemChoice):
       return
     # If the user has not chosen as many items as they need to lose, go through all of their items
     # and validate that every viable option is either (a) not losable or (b) already chosen.
+    any_losable = False
     for pos in self.character.possessions:
-      if pos.handle not in self.choices:
+      if pos in chosen or pos.handle not in self.choices:
         continue
-      assert pos in chosen or not getattr(pos, "losable", True)
+      if getattr(pos, "losable", True):
+        any_losable = True
+    if any_losable:
+      if math.isinf(count):
+        raise InvalidMove("Not enough cards")
+      raise InvalidMove(f"Not enough cards (min {count})")
 
 
 class SinglePhysicalWeaponChoice(SpendItemChoiceMixin, ItemCountChoice):
@@ -2756,7 +2808,8 @@ class MapChoice(ChoiceEvent, metaclass=abc.ABCMeta):
     if choice is not None and choice == self.none_choice:
       self.cancelled = True
       return
-    assert choice in self.choices
+    if choice not in self.choices:
+      raise InvalidMove(f"Invalid choice {choice}")
     self.choice = choice
 
   def is_resolved(self):
@@ -2870,9 +2923,11 @@ class MonsterOnBoardChoice(ChoiceEvent):
       self.cancelled = True
 
   def resolve(self, state, choice=None):
-    assert choice in self.choices
+    if choice not in self.choices:
+      raise InvalidMove(f"Invalid choice {choice}")
     chosen = [mon for mon in state.monsters if mon.handle == choice]
-    assert len(chosen) == 1
+    if len(chosen) != 1:
+      raise InvalidMove("You must choose exactly one monster")
     self.chosen = chosen[0]
 
   def is_resolved(self):
@@ -3777,23 +3832,51 @@ class MonsterSpawnChoice(ChoiceEvent):
       self.resolve(state, {self.open_gates[0]: self.to_spawn})
 
   def resolve(self, state, choice=None):
-    assert isinstance(choice, dict)
-    assert all(isinstance(val, list) for val in choice.values())
-    assert not set(choice.keys()) - set(self.open_gates) - {"Outskirts"}
-    assert not set(sum(choice.values(), [])) - set(self.to_spawn)
-    assert len(sum(choice.values(), [])) == self.spawn_count + self.outskirts_count
-    assert len(choice.get("Outskirts") or []) == self.outskirts_count
+    # Type validation.
+    if not isinstance(choice, dict):
+      raise InvalidInput(f"{choice} must be a map")
+    if not all(isinstance(val, list) for val in choice.values()):
+      raise InvalidInput(f"{choice} must be a map of string -> list of monster ids (integers)")
+    bad_indexes = [str(idx) for idx in sum(choice.values(), []) if not isinstance(idx, int)]
+    if bad_indexes:
+      raise InvalidInput(f"{choice} must be a map of string -> list of monster ids (integers)")
+
+    # Gate/outskirts placement validation.
+    invalid_places = set(choice.keys()) - set(self.open_gates) - {"Outskirts"}
+    if invalid_places:
+      raise InvalidMove(f"Invalid monster placement: {', '.join(invalid_places)}")
+
+    # Validate that monster indexes have no duplicates and are a subset of the spawn indexes.
+    monster_indexes = sum(choice.values(), [])
+    duplicate_ids = collections.Counter(monster_indexes) - collections.Counter(set(monster_indexes))
+    if duplicate_ids:
+      raise InvalidMove(f"Duplicate ids: {', '.join(str(idx) for idx in duplicate_ids.keys())}")
+    unknown_monsters = [str(idx) for idx in set(monster_indexes) - set(self.to_spawn)]
+    if unknown_monsters:
+      raise InvalidMove(f"Invalid monster ids: {', '.join(unknown_monsters)}")
+
+    # Validate the total number of monsters should equal the board count + the outskirts count.
+    cerr = f"Place {self.spawn_count} monsters on gates and {self.outskirts_count} in the outskirts"
+    if len(monster_indexes) != self.spawn_count + self.outskirts_count:
+      raise InvalidMove(cerr)
+    # Validate that the monsters are correctly distributed between the board and the outskirts.
+    outskirts_count = len(choice.get("Outskirts") or [])
+    if outskirts_count != self.outskirts_count:
+      raise InvalidMove(cerr)
+
+    # We have already validated that the board has received the correct number of monsters. Now,
+    # we must validate that they are distributed evenly amongst the gates.
     city_choices = [choice.get(key, []) for key in self.open_gates]
     if self.max_count > 0:
-      assert len(sum(city_choices, [])) > 0
-      assert max(len(indexes) for indexes in city_choices) == self.max_count
-      assert min(len(indexes) for indexes in city_choices) == self.min_count
+      if max(len(indexes) for indexes in city_choices) != self.max_count:
+        raise InvalidMove(f"You may place a maximum of {self.max_count} monsters on a single gate")
+      if min(len(indexes) for indexes in city_choices) != self.min_count:
+        raise InvalidMove(f"Each gate must have a minimum of {self.min_count} monsters on it")
       if self.location_name:
-        assert self.location_name in choice
-        assert len(choice[self.location_name]) == self.max_count
-    else:
-      assert len(sum(city_choices, [])) == 0
+        if len(choice.get(self.location_name, [])) != self.max_count:
+          raise InvalidMove(f"You must place {self.max_count} monsters on {self.location_name}")
 
+    # Validation complete. Clear the outskirts if necessary, then distribute the monsters.
     if self.num_clears > 0:
       for monster in state.monsters:
         if monster.place == state.places["Outskirts"]:
