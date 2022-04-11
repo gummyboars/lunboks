@@ -19,6 +19,8 @@ from eldritch.mythos import *
 from eldritch import places
 from eldritch.test_events import EventTest, Canceller
 
+from game import InvalidMove, InvalidInput
+
 
 class OpenGateTest(EventTest):
 
@@ -240,13 +242,13 @@ class MonsterSurgeTest(EventTest):
     with mock.patch.object(events.random, "sample", new=mock.MagicMock(return_value=[0, 1, 5])):
       surge = self.resolve_to_choice(MonsterSpawnChoice)
 
-    with self.assertRaises(AssertionError):
+    with self.assertRaisesRegex(InvalidInput, "must be a map"):
       surge.resolve(self.state, 5)
-    with self.assertRaises(AssertionError):
+    with self.assertRaisesRegex(InvalidInput, "must be a map of"):
       surge.resolve(self.state, {5: "Woods", 1: "Square", 0: "WitchHouse"})
-    with self.assertRaises(AssertionError):
+    with self.assertRaisesRegex(InvalidInput, "must be a map of"):
       surge.resolve(self.state, {"Woods": 5, "Square": 1, "WitchHouse": 0})
-    with self.assertRaises(AssertionError):
+    with self.assertRaisesRegex(InvalidInput, "map.*integers"):
       surge.resolve(self.state, {"Woods": ["5"], "Square": [1], "WitchHouse": [0]})
     self.assertFalse(surge.is_resolved())
 
@@ -257,12 +259,18 @@ class MonsterSurgeTest(EventTest):
     with mock.patch.object(events.random, "sample", new=mock.MagicMock(return_value=[0, 1, 5])):
       surge = self.resolve_to_choice(MonsterSpawnChoice)
 
-    with self.assertRaises(AssertionError):
-      surge.resolve(self.state, {"Woods": [5, 1, 0], "Square": [1], "WitchHouse": [0]})
-    with self.assertRaises(AssertionError):
+    with self.assertRaisesRegex(InvalidMove, "Invalid.*Isle"):
+      surge.resolve(self.state, {"Woods": [5], "Square": [1], "Isle": [0]})
+    with self.assertRaisesRegex(InvalidMove, "Place 3 monsters on gates"):
+      surge.resolve(self.state, {"Woods": [5], "Square": [1]})
+    with self.assertRaisesRegex(InvalidMove, "Invalid monster"):
       surge.resolve(self.state, {"Woods": [5], "Square": [1], "WitchHouse": [6]})
-    with self.assertRaises(AssertionError):
+    with self.assertRaisesRegex(InvalidMove, "maximum of 1"):
       surge.resolve(self.state, {"Woods": [0, 1, 5]})
+    with self.assertRaisesRegex(InvalidMove, "Duplicate ids"):
+      surge.resolve(self.state, {"Woods": [5, 1, 0], "Square": [1], "WitchHouse": [0]})
+    with self.assertRaisesRegex(InvalidMove, "Duplicate ids"):
+      surge.resolve(self.state, {"Woods": [5], "Square": [5], "WitchHouse": [5]})
 
   def testMoreGatesThanCharacters(self):
     self.state.places["Square"].gate = gates.Gate("Pluto", 0, -2, "circle")
@@ -327,11 +335,11 @@ class MonsterSurgeTest(EventTest):
     self.assertEqual(len(surge.to_spawn), 4)
     surge.to_spawn = [0, 1, 5, 6]
 
-    with self.assertRaises(AssertionError):
+    with self.assertRaisesRegex(InvalidMove, "minimum of 1"):
       surge.resolve(self.state, {"Woods": [5, 1], "WitchHouse": [0, 6]})
-    with self.assertRaises(AssertionError):
+    with self.assertRaisesRegex(InvalidMove, "place 2 monsters on Woods"):
       surge.resolve(self.state, {"Woods": [5], "Isle": [1], "WitchHouse": [6, 0]})
-    with self.assertRaises(AssertionError):
+    with self.assertRaisesRegex(InvalidMove, "maximum of 2"):
       surge.resolve(self.state, {"Woods": [0, 1, 5, 6]})
 
     self.assertFalse(surge.is_resolved())
@@ -371,11 +379,11 @@ class MonsterSurgeTest(EventTest):
     self.assertEqual(surge.max_count, 0)
     surge.to_spawn = [0, 1]
 
-    with self.assertRaises(AssertionError):
+    with self.assertRaisesRegex(InvalidMove, "2 in the outskirts"):
       surge.resolve(self.state, {"Woods": [0, 1]})
-    with self.assertRaises(AssertionError):
+    with self.assertRaisesRegex(InvalidMove, "2 in the outskirts"):
       surge.resolve(self.state, {"Woods": [0], "Outskirts": [1]})
-    with self.assertRaises(AssertionError):
+    with self.assertRaisesRegex(InvalidMove, "2 in the outskirts"):
       surge.resolve(self.state, {"Outskirts": [1]})
 
     surge.resolve(self.state, {"Outskirts": [0, 1]})
@@ -412,9 +420,9 @@ class MonsterSurgeTest(EventTest):
     self.assertEqual(surge.max_count, 0)
     surge.to_spawn = [0, 1]
 
-    with self.assertRaises(AssertionError):
+    with self.assertRaisesRegex(InvalidMove, "0 in the outskirts"):
       surge.resolve(self.state, {"Woods": [0, 1]})
-    with self.assertRaises(AssertionError):
+    with self.assertRaisesRegex(InvalidMove, "0 in the outskirts"):
       surge.resolve(self.state, {"Outskirts": [0, 1]})
 
     surge.resolve(self.state, {})
@@ -424,6 +432,42 @@ class MonsterSurgeTest(EventTest):
     self.assertEqual(counts["Square"], 5)
     self.assertEqual(counts["Woods"], 0)
     self.assertEqual(counts["cup"], 12)
+
+  def testOnlyCupAndOutskirts(self):
+    # Add 5 monsters to the outskirts.
+    outskirt_monsters = [monsters.Maniac(), monsters.Ghost(), monsters.Witch(), monsters.Ghoul()]
+    self.state.monsters.extend(outskirt_monsters)
+    for monster in outskirt_monsters:
+      monster.place = self.state.places["Outskirts"]
+    # Add 5 monsters to the board.
+    board_monsters = [
+        monsters.Cultist(), monsters.Ghost(), monsters.Maniac(), monsters.Ghost(), monsters.Witch(),
+    ]
+    for monster in board_monsters:
+      monster.place = self.state.places["Square"]
+    self.state.monsters.extend(board_monsters)
+
+    self.state.places["Isle"].gate = gates.Gate("Pluto", 0, -2, "circle")
+    self.state.places["WitchHouse"].gate = gates.Gate("Pluto", 1, -2, "circle")
+    self.state.places["Society"].gate = gates.Gate("Pluto", 1, -2, "circle")
+    self.state.event_stack.append(OpenGate("Woods"))
+    surge = self.resolve_to_choice(MonsterSpawnChoice)
+    self.assertEqual(len(surge.to_spawn), 4)
+    self.assertEqual(surge.spawn_count, 0)
+    self.assertEqual(surge.outskirts_count, 1)
+    self.assertEqual(surge.min_count, 0)
+    self.assertEqual(surge.max_count, 0)
+    surge.to_spawn = [0, 1, 2, 3]
+
+    with self.assertRaisesRegex(InvalidMove, "0 monsters on gates"):
+      surge.resolve(self.state, {"Outskirts": [0], "Woods": [1]})
+    surge.resolve(self.state, {"Outskirts": [0]})
+
+    counts = self.monstersByPlace()
+    self.assertEqual(counts["Outskirts"], 1)
+    self.assertEqual(counts["Square"], 5)
+    self.assertEqual(counts["Woods"], 0)
+    self.assertEqual(counts["cup"], 10)
 
   def testSomeMonstersToEach(self):
     # There are a total of 6 characters
@@ -1507,7 +1551,7 @@ class RumorTest(EventTest):
     self.state.event_stack.append(EncounterPhase(self.char))
     choice = self.resolve_to_choice(SpendChoice)
     self.spend("clues", 4, choice)
-    with self.assertRaises(AssertionError):
+    with self.assertRaisesRegex(InvalidMove, "overspent 1 clues"):
       choice.resolve(self.state, "Spend")  # Cannot overspend
     self.spend("clues", -2, choice)
     choice.resolve(self.state, "Spend")
@@ -1598,7 +1642,7 @@ class RumorTest(EventTest):
     self.char.place = self.state.places["FrenchHill"]
     self.state.event_stack.append(EncounterPhase(self.char))
     choice = self.resolve_to_choice(MultipleChoice)
-    with self.assertRaises(AssertionError):
+    with self.assertRaisesRegex(InvalidMove, "at least 3 spells"):
       choice.resolve(self.state, "Yes")
     choice.resolve(self.state, "No")
     self.resolve_until_done()
@@ -1619,8 +1663,8 @@ class RumorTest(EventTest):
     choice = self.resolve_to_choice(MultipleChoice)
     choice.resolve(self.state, "Yes")
     discard_choice = self.resolve_to_choice(ItemCountChoice)
-    with self.assertRaises(AssertionError):
-      choice.resolve(self.state, "Food0")
+    with self.assertRaisesRegex(InvalidMove, "Invalid choice"):
+      discard_choice.resolve(self.state, "Food0")
     self.choose_items(discard_choice, ["Wither0", "Wither1", "Find Gate1"])
     self.resolve_until_done()
     self.assertIsNone(self.state.rumor)

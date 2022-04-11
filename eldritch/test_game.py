@@ -72,12 +72,12 @@ class RestorationFixedEncounterTest(FixedEncounterBaseTest):
     event = self.state.event_stack[-1]
     self.assertIsInstance(event, events.CardSpendChoice)
     self.assertEqual(event.choices, ["Uptown Card", "Restore 1 Stamina", "Restore All Stamina"])
-    self.assertCountEqual(event.invalid_choices, [1, 2])
+    self.assertCountEqual(event.invalid_choices.keys(), [1, 2])
     self.assertEqual(event.remaining_spend, [False, False, {"dollars": 2}])
     self.char.stamina = 1
     for _ in self.state.resolve_loop():
       pass
-    self.assertCountEqual(event.invalid_choices, [])
+    self.assertCountEqual(event.invalid_choices.keys(), [])
     self.assertEqual(event.remaining_spend, [False, False, {"dollars": 2}])
     event.resolve(self.state, "Restore 1 Stamina")
     for _ in self.state.resolve_loop():
@@ -97,7 +97,7 @@ class RestorationFixedEncounterTest(FixedEncounterBaseTest):
     event = self.state.event_stack[-1]
     self.assertIsInstance(event, events.CardSpendChoice)
     self.assertEqual(event.choices, ["Uptown Card", "Restore 1 Stamina", "Restore All Stamina"])
-    self.assertCountEqual(event.invalid_choices, [])
+    self.assertCountEqual(event.invalid_choices.keys(), [])
     self.assertEqual(event.remaining_spend, [False, False, {"dollars": 2}])
     for _ in range(2):
       event.spend("dollars")
@@ -209,7 +209,7 @@ class DrawCardsFixedEncounterTest(FixedEncounterBaseTest):
     event = self.state.event_stack[-1]
     self.assertIsInstance(event, events.CardSpendChoice)
     self.assertEqual(event.choices, ["Rivertown Card", "common"])
-    self.assertCountEqual(event.invalid_choices, [1])
+    self.assertCountEqual(event.invalid_choices.keys(), [1])
 
 
 class SpendTrophiesEncounterTest(FixedEncounterBaseTest):
@@ -228,7 +228,7 @@ class SpendTrophiesEncounterTest(FixedEncounterBaseTest):
     event = self.state.event_stack[-1]
     self.assertIsInstance(event, events.CardSpendChoice)
     self.assertEqual(event.choices, ["Merchant Card", "Gain $5"])
-    with self.assertRaises(AssertionError):
+    with self.assertRaisesRegex(game.InvalidMove, "additional 5 toughness"):
       event.resolve(self.state, "Gain $5")
 
     self.state.event_stack.append(self.state.usables[0][self.char.trophies[0].handle])
@@ -249,7 +249,7 @@ class SpendTrophiesEncounterTest(FixedEncounterBaseTest):
     event = self.state.event_stack[-1]
     self.assertIsInstance(event, events.CardSpendChoice)
     self.assertEqual(event.choices, ["University Card", "Gain 2 clues"])
-    with self.assertRaises(AssertionError):
+    with self.assertRaisesRegex(game.InvalidMove, "additional 5 toughness"):
       event.resolve(self.state, "Gain 2 clues")
 
     self.state.event_stack.append(self.state.usables[0][self.char.trophies[0].handle])
@@ -270,7 +270,7 @@ class SpendTrophiesEncounterTest(FixedEncounterBaseTest):
     event = self.state.event_stack[-1]
     self.assertIsInstance(event, events.CardSpendChoice)
     self.assertEqual(event.choices, ["Southside Card", "Blessing"])
-    with self.assertRaises(AssertionError):
+    with self.assertRaisesRegex(game.InvalidMove, "additional 5 toughness"):
       event.resolve(self.state, "Blessing")
 
     self.state.event_stack.append(self.state.usables[0][self.char.trophies[0].handle])
@@ -332,7 +332,7 @@ class SpendTrophiesEncounterTest(FixedEncounterBaseTest):
     event = self.state.event_stack[-1]
     self.assertIsInstance(event, events.CardSpendChoice)
     self.assertEqual(event.choices, ["Southside Card", "allies"])
-    with self.assertRaises(AssertionError):
+    with self.assertRaisesRegex(game.InvalidMove, "additional 10 toughness"):
       event.resolve(self.state, "allies")
 
     self.state.event_stack.append(self.state.usables[0][self.char.trophies[0].handle])
@@ -367,7 +367,7 @@ class SpendTrophiesEncounterTest(FixedEncounterBaseTest):
     event = self.state.event_stack[-1]
     self.assertIsInstance(event, events.CardSpendChoice)
     self.assertEqual(event.choices, ["Easttown Card", "Deputy"])
-    with self.assertRaises(AssertionError):
+    with self.assertRaisesRegex(game.InvalidMove, "additional 10 toughness"):
       event.resolve(self.state, "Deputy")
 
     self.state.event_stack.append(self.state.usables[0][self.char.trophies[0].handle])
@@ -404,7 +404,7 @@ class SpendTrophiesEncounterTest(FixedEncounterBaseTest):
     self.state.event_stack.append(self.state.usables[0][self.char.trophies[1].handle])
     for _ in self.state.resolve_loop():
       pass
-    with self.assertRaises(AssertionError):
+    with self.assertRaisesRegex(game.InvalidMove, "already the deputy"):
       event.resolve(self.state, "Deputy")
 
   def testBecomeDeputyMissingDeputyItems(self):
@@ -584,13 +584,13 @@ class TradingTest(TradingTestBase):
   def testGiveInvalidDollars(self):
     self.nun.dollars = 3
     self.gangster.dollars = 2
-    with self.assertRaises(game.InvalidMove):
+    with self.assertRaisesRegex(game.InvalidMove, "Invalid quantity"):
       self.state.handle_give(0, 1, "dollars", 4)
-    with self.assertRaises(game.InvalidMove):
+    with self.assertRaisesRegex(game.InvalidMove, "Invalid quantity"):
       self.state.handle_give(0, 1, "dollars", -1)
-    with self.assertRaises(game.InvalidMove):
+    with self.assertRaisesRegex(game.InvalidMove, "Invalid quantity"):
       self.state.handle_give(0, 1, "dollars", 1.5)
-    with self.assertRaises(game.InvalidMove):
+    with self.assertRaisesRegex(game.InvalidMove, "Invalid quantity"):
       self.state.handle_give(0, 1, "dollars", None)
     self.assertEqual(self.nun.dollars, 3)
     self.state.handle_give(0, 1, "dollars", 3)
@@ -598,25 +598,25 @@ class TradingTest(TradingTestBase):
     self.assertEqual(self.gangster.dollars, 5)
 
   def testGiveInvalidItem(self):
-    with self.assertRaises(game.InvalidMove):
+    with self.assertRaisesRegex(game.InvalidMove, "only trade items"):
       self.state.handle_give(0, 1, "Bravery0", None)
-    with self.assertRaises(game.InvalidMove):
+    with self.assertRaisesRegex(game.InvalidMove, "Invalid card"):
       self.state.handle_give(0, 1, "clues", 1)
-    with self.assertRaises(game.InvalidMove):
+    with self.assertRaisesRegex(game.InvalidMove, "Invalid card"):
       self.state.handle_give(0, 1, "nonsense", None)
-    with self.assertRaises(game.InvalidMove):
+    with self.assertRaisesRegex(game.InvalidMove, "Invalid card"):
       self.state.handle_give(0, 1, 0, None)
     self.assertEqual([pos.name for pos in self.nun.possessions], ["Cross", "Bravery"])
     self.assertEqual([pos.name for pos in self.gangster.possessions], ["Tommy Gun", "Marksman"])
 
   def testGiveInvalidRecipient(self):
-    with self.assertRaises(game.InvalidMove):
+    with self.assertRaisesRegex(game.InvalidMove, "trade with yourself"):
       self.state.handle_give(0, 0, "Cross0", None)
-    with self.assertRaises(game.InvalidPlayer):
+    with self.assertRaisesRegex(game.InvalidPlayer, "Invalid recipient"):
       self.state.handle_give(0, 2, "Cross0", None)
-    with self.assertRaises(game.InvalidPlayer):
+    with self.assertRaisesRegex(game.InvalidPlayer, "Invalid recipient"):
       self.state.handle_give(0, -1, "Cross0", None)
-    with self.assertRaises(game.InvalidPlayer):
+    with self.assertRaisesRegex(game.InvalidPlayer, "Invalid recipient"):
       self.state.handle_give(0, "Gangster", "Cross0", None)
     self.assertEqual([pos.name for pos in self.nun.possessions], ["Cross", "Bravery"])
     self.assertEqual([pos.name for pos in self.gangster.possessions], ["Tommy Gun", "Marksman"])
@@ -632,12 +632,12 @@ class TradingTest(TradingTestBase):
     self.assertTrue(self.state.event_stack)
     self.assertIsInstance(self.state.event_stack[-1], events.MultipleChoice)
     # Cannot trade items during combat.
-    with self.assertRaises(game.InvalidMove):
+    with self.assertRaisesRegex(game.InvalidMove, "at this time"):
       self.state.handle_give(0, 1, "Cross0", None)
 
   def testGiveOtherLocation(self):
     self.nun.place = self.state.places["Church"]
-    with self.assertRaises(game.InvalidMove):
+    with self.assertRaisesRegex(game.InvalidMove, "same place"):
       self.state.handle_give(0, 1, "Cross0", None)
 
 
@@ -1025,7 +1025,7 @@ class TradingWhenAwakenedTest(NextTurnBase):
     for _ in self.state.resolve_loop():
       pass
     # Cannot trade while setting your sliders.
-    with self.assertRaises(game.InvalidMove):
+    with self.assertRaisesRegex(game.InvalidMove, "at this time"):
       self.state.handle_give(0, 1, "dollars", 10)
     self.state.event_stack[-1].done = True
     for _ in self.state.resolve_loop():
@@ -1049,7 +1049,7 @@ class TradingWhenAwakenedTest(NextTurnBase):
     for _ in self.state.resolve_loop():
       pass
 
-    with self.assertRaises(game.InvalidMove):
+    with self.assertRaisesRegex(game.InvalidMove, "at this time"):
       self.state.handle_give(1, 2, "dollars", 1)
 
 
@@ -1637,7 +1637,7 @@ class PlayerJoinTest(PlayerTest):
 
   def testCannotStartWithoutPlayers(self):
     self.game.connect_user("A")
-    with self.assertRaises(game.InvalidMove):
+    with self.assertRaisesRegex(game.InvalidMove, "At least one player"):
       self.handle("A", {"type": "start"})
 
   def testCannotReuseCharacter(self):

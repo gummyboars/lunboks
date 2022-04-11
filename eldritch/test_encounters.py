@@ -19,6 +19,8 @@ from eldritch import items
 from eldritch import monsters
 from eldritch.test_events import EventTest
 
+from game import InvalidMove
+
 
 class EncounterTest(EventTest):
 
@@ -141,7 +143,7 @@ class DinerTest(EncounterTest):
     spend_choice = self.resolve_to_choice(SpendChoice)
     self.assertEqual(spend_choice.choices, ["Spend", "No Thanks"])
     self.spend("dollars", 3, spend_choice)
-    with self.assertRaises(AssertionError):
+    with self.assertRaisesRegex(InvalidMove, "dollars than you have"):
       spend_choice.spend("dollars")
     spend_choice.resolve(self.state, "Spend")
 
@@ -160,7 +162,7 @@ class DinerTest(EncounterTest):
     spend_choice = self.resolve_to_choice(SpendChoice)
     self.assertEqual(spend_choice.choices, ["Spend", "No Thanks"])
     self.spend("dollars", 7, spend_choice)
-    with self.assertRaises(AssertionError):  # You cannot choose to spend seven dollars.
+    with self.assertRaisesRegex(InvalidMove, "overspent 1 dollars"):
       spend_choice.resolve(self.state, "Spend")
     self.spend("dollars", -3, spend_choice)
     spend_choice.resolve(self.state, "Spend")
@@ -179,7 +181,7 @@ class DinerTest(EncounterTest):
     self.state.event_stack.append(encounters.Diner1(self.char))
     spend_choice = self.resolve_to_choice(SpendChoice)
     self.assertEqual(spend_choice.choices, ["Spend", "No Thanks"])
-    with self.assertRaises(AssertionError):
+    with self.assertRaisesRegex(InvalidMove, "dollars than you have"):
       spend_choice.spend("dollars")
     spend_choice.resolve(self.state, "No Thanks")
     self.resolve_until_done()
@@ -205,7 +207,7 @@ class DinerTest(EncounterTest):
     self.char.dollars = 0
     self.state.event_stack.append(encounters.Diner3(self.char))
     choice = self.resolve_to_choice(SpendChoice)
-    with self.assertRaises(AssertionError):
+    with self.assertRaisesRegex(InvalidMove, "additional 1 dollars"):
       choice.resolve(self.state, "Pay $1")
     choice.resolve(self.state, "Go Hungry")
     self.assertEqual(self.char.stamina, 3)
@@ -285,7 +287,7 @@ class RoadhouseTest(EncounterTest):
   def testRoadhouse1Clueless(self):
     self.state.event_stack.append(encounters.Roadhouse1(self.char))
     choice = self.resolve_to_choice(SpendChoice)
-    with self.assertRaises(AssertionError):
+    with self.assertRaisesRegex(InvalidMove, "additional 3 clues"):
       choice.resolve(self.state, "Yes")
     choice.resolve(self.state, "No")
     self.resolve_until_done()
@@ -369,7 +371,7 @@ class RoadhouseTest(EncounterTest):
     self.state.event_stack.append(encounters.Roadhouse6(self.char))
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
       choice = self.resolve_to_choice(MultipleChoice)
-    with self.assertRaises(AssertionError):
+    with self.assertRaisesRegex(InvalidMove, "at least 1 item"):
       choice.resolve(self.state, "Item")  # The ally is not an item that can be lost.
     choice.resolve(self.state, "Money")
     self.resolve_until_done()
@@ -387,7 +389,7 @@ class RoadhouseTest(EncounterTest):
     choice = self.resolve_to_choice(ItemCountChoice)
     # Cannot avoid this even if the derringer is your only item, because you actively chose to lose
     # an item instead of choosing to lose all your money.
-    with self.assertRaises(AssertionError):
+    with self.assertRaisesRegex(InvalidMove, "Not enough"):
       choice.resolve(self.state, "done")
     self.choose_items(choice, [".18 Derringer0"])
     self.resolve_until_done()
@@ -496,7 +498,7 @@ class PoliceTest(EncounterTest):
     choice.resolve(self.state, "Discard Weapons")
     discard = self.resolve_to_choice(ItemChoice)
     discard.resolve(self.state, ".38 Revolver0")
-    with self.assertRaises(AssertionError):
+    with self.assertRaisesRegex(InvalidMove, "Not enough"):
       discard.resolve(self.state, "done")
     discard.resolve(self.state, "Holy Water0")
     discard.resolve(self.state, "done")
@@ -512,7 +514,7 @@ class PoliceTest(EncounterTest):
     choice.resolve(self.state, "Discard Weapons")
     discard = self.resolve_to_choice(ItemChoice)
     discard.resolve(self.state, ".18 Derringer0")
-    with self.assertRaises(AssertionError):
+    with self.assertRaisesRegex(InvalidMove, "Not enough"):
       discard.resolve(self.state, "done")
     discard.resolve(self.state, ".18 Derringer0")  # Deselect
     discard.resolve(self.state, "Holy Water0")
@@ -853,10 +855,10 @@ class LodgeTest(EncounterTest):
     self.char.dollars = 2
     self.state.event_stack.append(encounters.Sanctum4(self.char))
     choice = self.resolve_to_choice(SpendChoice)
-    with self.assertRaises(AssertionError):
+    with self.assertRaisesRegex(InvalidMove, "dollars than you have"):
       self.spend("dollars", 3, choice)
     self.spend("dollars", -2, choice)
-    with self.assertRaises(AssertionError):
+    with self.assertRaisesRegex(InvalidMove, "additional 3 dollars"):
       choice.resolve(self.state, "Spend $3")
     choice.resolve(self.state, "Decline")
     self.resolve_until_done()
@@ -908,9 +910,9 @@ class LodgeTest(EncounterTest):
   def testSanctum7Poor(self):
     self.state.event_stack.append(encounters.Sanctum7(self.char))
     choice = self.resolve_to_choice(SpendChoice)
-    with self.assertRaises(AssertionError):
+    with self.assertRaisesRegex(InvalidMove, "clues than you have"):
       self.spend("clues", 1, choice)
-    with self.assertRaises(AssertionError):
+    with self.assertRaisesRegex(InvalidMove, "(2 clues|1 sanity), (2 clues|1 sanity)"):
       choice.resolve(self.state, "Yes")
     choice.resolve(self.state, "No")
     self.resolve_until_done()
@@ -1165,9 +1167,9 @@ class SocietyTest(EncounterTest):
     self.state.event_stack.append(encounters.Society2(self.char))
     self.char.dollars = 2
     choice = self.resolve_to_choice(SpendChoice)
-    with self.assertRaises(AssertionError):
+    with self.assertRaisesRegex(InvalidMove, "dollars than you have"):
       self.spend("dollars", 3, choice)
-    with self.assertRaises(AssertionError):
+    with self.assertRaisesRegex(InvalidMove, "additional 3 dollars"):
       choice.resolve(self.state, "Yes")
     self.spend("dollars", -2, choice)
     choice.resolve(self.state, "No")
@@ -1299,7 +1301,7 @@ class SocietyTest(EncounterTest):
     self.state.event_stack.append(encounters.Society6(self.char))
     choice = self.resolve_to_choice(SpendChoice)
     self.assertNotIn(0, self.state.usables)
-    with self.assertRaises(AssertionError):
+    with self.assertRaisesRegex(InvalidMove, "additional 1 gates"):
       choice.resolve(self.state, "Yes")
     choice.resolve(self.state, "No")
     self.resolve_until_done()
@@ -1497,7 +1499,7 @@ class HouseTest(EncounterTest):
     self.state.event_stack.append(encounters.House7(self.char))
     self.char.dollars = 2
     choice = self.resolve_to_choice(SpendChoice)
-    with self.assertRaises(AssertionError):
+    with self.assertRaisesRegex(InvalidMove, "additional 3 dollars"):
       choice.resolve(self.state, "Yes")
     choice.resolve(self.state, "No")
     self.resolve_until_done()
@@ -1691,9 +1693,9 @@ class ChurchTest(EncounterTest):
     self.state.event_stack.append(encounters.Church6(self.char))
     self.assertEqual(self.char.clues, 0)
     choice = self.resolve_to_choice(SpendChoice)
-    with self.assertRaises(AssertionError):
+    with self.assertRaisesRegex(InvalidMove, "clues than you have"):
       self.spend("clues", 1, choice)
-    with self.assertRaises(AssertionError):
+    with self.assertRaisesRegex(InvalidMove, "additional 1 clues"):
       choice.resolve(self.state, "Yes")
     choice.resolve(self.state, "No")
     self.resolve_until_done()
@@ -1999,7 +2001,7 @@ class LibraryTest(EncounterTest):
   def testLibrary6Fail(self):
     self.state.event_stack.append(encounters.Library6(self.char))
     choice = self.resolve_to_choice(SpendChoice)
-    with self.assertRaises(AssertionError):
+    with self.assertRaisesRegex(InvalidMove, "dollars than you have"):
       self.spend("dollars", 4, choice)
     self.spend("dollars", -3, choice)
     choice.resolve(self.state, "Oops")
@@ -2348,9 +2350,10 @@ class BankTest(EncounterTest):
     self.state.event_stack.append(encounters.Bank2(self.char))
     self.char.dollars = 1
     choice = self.resolve_to_choice(SpendChoice)
-    with self.assertRaises(AssertionError):
+    with self.assertRaisesRegex(InvalidMove, "dollars than you have"):
       self.spend("dollars", 2, choice)
-    with self.assertRaises(AssertionError):
+    choice = self.resolve_to_choice(SpendChoice)
+    with self.assertRaisesRegex(InvalidMove, "additional 1 dollar"):
       choice.resolve(self.state, "Pay $2")
     self.spend("dollars", -1, choice)
     choice.resolve(self.state, "Let man and his family go hungry")
@@ -2928,9 +2931,9 @@ class TrainTest(EncounterTest):
     self.state.event_stack.append(encounters.Train6(self.char))
     self.char.dollars = 2
     choice = self.resolve_to_choice(SpendChoice)
-    with self.assertRaises(AssertionError):
+    with self.assertRaisesRegex(InvalidMove, "dollars than you have"):
       self.spend("dollars", 3, choice)
-    with self.assertRaises(AssertionError):
+    with self.assertRaisesRegex(InvalidMove, "additional 3 dollars"):
       choice.resolve(self.state, "Yes")
     self.spend("dollars", -2, choice)
     choice.resolve(self.state, "No")
@@ -3868,7 +3871,7 @@ class WoodsTest(EncounterTest):
     self.state.allies.append(assets.Dog())
     self.state.event_stack.append(encounters.Woods5(self.char))
     choice = self.resolve_to_choice(MultipleChoice)
-    with self.assertRaises(AssertionError):
+    with self.assertRaisesRegex(InvalidMove, "at least 1 Food"):
       choice.resolve(self.state, "Yes")
     choice.resolve(self.state, "No")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
@@ -3880,7 +3883,7 @@ class WoodsTest(EncounterTest):
     self.char.speed_sneak_slider = 2
     self.state.event_stack.append(encounters.Woods5(self.char))
     choice = self.resolve_to_choice(MultipleChoice)
-    with self.assertRaises(AssertionError):
+    with self.assertRaisesRegex(InvalidMove, "at least 1 Food"):
       choice.resolve(self.state, "Yes")
     choice.resolve(self.state, "No")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
@@ -3892,7 +3895,7 @@ class WoodsTest(EncounterTest):
     self.char.speed_sneak_slider = 2
     self.state.event_stack.append(encounters.Woods5(self.char))
     choice = self.resolve_to_choice(MultipleChoice)
-    with self.assertRaises(AssertionError):
+    with self.assertRaisesRegex(InvalidMove, "at least 1 Food"):
       choice.resolve(self.state, "Yes")
     choice.resolve(self.state, "No")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=4)):
@@ -4195,7 +4198,7 @@ class CaveTest(EncounterTest):
     self.state.common.extend([items.Food(0), items.Revolver38(0)])
     self.state.event_stack.append(encounters.Cave6(self.char))
     choice = self.resolve_to_choice(MultipleChoice)
-    with self.assertRaises(AssertionError):
+    with self.assertRaisesRegex(InvalidMove, "at least 1 Whiskey"):
       choice.resolve(self.state, "Yes")
     choice.resolve(self.state, "No")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
@@ -4207,7 +4210,7 @@ class CaveTest(EncounterTest):
     self.state.common.extend([items.Food(0), items.Revolver38(0)])
     self.state.event_stack.append(encounters.Cave6(self.char))
     choice = self.resolve_to_choice(MultipleChoice)
-    with self.assertRaises(AssertionError):
+    with self.assertRaisesRegex(InvalidMove, "at least 1 Whiskey"):
       choice.resolve(self.state, "Yes")
     choice.resolve(self.state, "No")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
@@ -4219,7 +4222,7 @@ class CaveTest(EncounterTest):
     self.state.common.extend([items.Food(0), items.Revolver38(0)])
     self.state.event_stack.append(encounters.Cave6(self.char))
     choice = self.resolve_to_choice(MultipleChoice)
-    with self.assertRaises(AssertionError):
+    with self.assertRaisesRegex(InvalidMove, "at least 1 Whiskey"):
       choice.resolve(self.state, "Yes")
     choice.resolve(self.state, "No")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=2)):
@@ -4354,7 +4357,7 @@ class StoreTest(EncounterTest):
     self.char.possessions.append(items.Food(1))
     choice = self.resolve_to_choice(ItemChoice)
     self.assertEqual(choice.choices, ["Food0", "Food1"])
-    with self.assertRaises(AssertionError):
+    with self.assertRaisesRegex(InvalidMove, "Too many"):
       self.choose_items(choice, ["Food0", "Food1"])
 
   def testStore4(self):
@@ -4418,9 +4421,9 @@ class StoreTest(EncounterTest):
     self.char.dollars = 0
     self.state.event_stack.append(encounters.Store6(self.char))
     choice = self.resolve_to_choice(SpendChoice)
-    with self.assertRaises(AssertionError):
+    with self.assertRaisesRegex(InvalidMove, "dollars than you have"):
       self.spend("dollars", 1, choice)
-    with self.assertRaises(AssertionError):
+    with self.assertRaisesRegex(InvalidMove, "additional 1 dollars"):
       choice.resolve(self.state, "Yes")
     choice.resolve(self.state, "No")
     self.resolve_until_done()
@@ -4492,9 +4495,9 @@ class ShoppeTest(EncounterTest):
   def testShoppe3Poor(self):
     self.state.event_stack.append(encounters.Shoppe3(self.char))
     choice = self.resolve_to_choice(SpendChoice)
-    with self.assertRaises(AssertionError):
+    with self.assertRaisesRegex(InvalidMove, "dollars than you have"):
       self.spend("dollars", 5, choice)
-    with self.assertRaises(AssertionError):
+    with self.assertRaisesRegex(InvalidMove, "additional 5 dollars"):
       choice.resolve(self.state, "Yes")
     self.spend("dollars", -3, choice)
     choice.resolve(self.state, "No")

@@ -234,12 +234,12 @@ class SliderTest(EventTest):
     self.assertEqual(self.char.lore_luck_slider, 3)
 
   def testTryOverspendFocus(self):
-    with self.assertRaises(AssertionError):
+    with self.assertRaisesRegex(InvalidMove, "enough focus"):
       self.sliders.resolve(self.state, "speed_sneak", 0)
 
   def testChangeMindOnSliders(self):
     self.sliders.resolve(self.state, "speed_sneak", 1)
-    with self.assertRaises(AssertionError):
+    with self.assertRaisesRegex(InvalidMove, "enough focus"):
       self.sliders.resolve(self.state, "fight_will", 2)
     self.sliders.resolve(self.state, "speed_sneak", 2)
     self.sliders.resolve(self.state, "fight_will", 2)
@@ -663,14 +663,14 @@ class CityMovementTest(EventTest):
     self.assertEqual(self.char.movement_points, 0)
 
   def testChooseFarAway(self):
-    with self.assertRaises(AssertionError):
+    with self.assertRaisesRegex(InvalidMove, "valid destination"):
       self.movement.resolve(self.state, "Woods")
     self.assertFalse(self.movement.is_resolved())
 
   def testCannotWalkPastMonster(self):
     self.state.monsters[0].place = self.state.places["Easttown"]
     self.resolve_to_choice(CityMovement)
-    with self.assertRaises(AssertionError):
+    with self.assertRaisesRegex(InvalidMove, "valid destination"):
       self.movement.resolve(self.state, "Roadhouse")
     self.movement.resolve(self.state, "Easttown")
     self.resolve_to_choice(CityMovement)
@@ -684,15 +684,15 @@ class CityMovementTest(EventTest):
   def testCannotMoveThroughClosedArea(self):
     self.state.event_stack.append(CloseLocation("Easttown"))
     self.resolve_to_choice(CityMovement)
-    with self.assertRaises(AssertionError):
+    with self.assertRaisesRegex(InvalidMove, "valid destination"):
       self.movement.resolve(self.state, "Roadhouse")
-    with self.assertRaises(AssertionError):
+    with self.assertRaisesRegex(InvalidMove, "valid destination"):
       self.movement.resolve(self.state, "Easttown")
 
   def testCannotMoveThroughDistantClosedArea(self):
     self.state.event_stack.append(CloseLocation("Rivertown"))
     self.resolve_to_choice(CityMovement)
-    with self.assertRaises(AssertionError):
+    with self.assertRaisesRegex(InvalidMove, "valid destination"):
       self.movement.resolve(self.state, "Southside")
 
 
@@ -1863,9 +1863,9 @@ class PrereqChoiceTest(EventTest):
     choice = self.resolve_to_choice(MultipleChoice)
 
     self.assertEqual(choice.choices, choices)
-    self.assertEqual(choice.invalid_choices, [0, 2])
+    self.assertCountEqual(choice.invalid_choices.keys(), [0, 2])
 
-    with self.assertRaises(AssertionError):
+    with self.assertRaisesRegex(InvalidMove, "at least 1 clues"):
       choice.resolve(self.state, "Spend 1 clue")
 
     choice.resolve(self.state, "Spend 1 sanity")
@@ -1885,7 +1885,7 @@ class SpendChoiceTest(EventTest):
     self.resolve_to_choice(SpendChoice)
 
     self.assertEqual(choice.remaining_spend, [{"dollars": 1}, False])
-    with self.assertRaises(AssertionError):
+    with self.assertRaisesRegex(InvalidMove, "additional 1 dollars"):
       choice.resolve(self.state, "Food")
     self.assertFalse(choice.is_done())
     self.spend("dollars", 1, choice)
@@ -1900,17 +1900,18 @@ class SpendChoiceTest(EventTest):
     self.resolve_to_choice(SpendChoice)
 
     self.assertEqual(choice.remaining_spend, [{"dollars": 1}, False])
-    with self.assertRaises(AssertionError):
+    with self.assertRaisesRegex(InvalidMove, "additional 1 dollars"):
       choice.resolve(self.state, "Food")
 
     self.spend("dollars", 2, choice)
     self.assertEqual(choice.remaining_spend, [{"dollars": -1}, {"dollars": -2}])
-    with self.assertRaises(AssertionError):
+    with self.assertRaisesRegex(InvalidMove, "overspent 1 dollars"):
       choice.resolve(self.state, "Food")
 
     self.spend("dollars", -1, choice)
     self.assertEqual(choice.remaining_spend, [False, {"dollars": -1}])
-    with self.assertRaises(AssertionError):  # Cannot choose something else if you've spent.
+    # Cannot choose something else if you've spent.
+    with self.assertRaisesRegex(InvalidMove, "overspent 1 dollars"):
       choice.resolve(self.state, "Nothing")
 
     self.spend("dollars", -1, choice)
@@ -1928,11 +1929,11 @@ class SpendChoiceTest(EventTest):
     self.resolve_to_choice(SpendChoice)
 
     self.spend("dollars", 1, choice)
-    with self.assertRaises(AssertionError):
-      self.spend("dollars", 1, choice)  # Cannot spend more dollars than you have.
+    with self.assertRaisesRegex(InvalidMove, "more dollars than you have"):
+      self.spend("dollars", 1, choice)
     self.assertEqual(choice.spend_map["dollars"]["dollars"], 1)
     self.spend("dollars", -1, choice)
-    with self.assertRaises(AssertionError):
+    with self.assertRaisesRegex(InvalidMove, "dollars that you have not spent"):
       self.spend("dollars", -1, choice)  # Cannot unspend something you did not spend.
     self.assertEqual(choice.spend_map["dollars"].get("dollars", 0), 0)
 
@@ -1944,12 +1945,12 @@ class SpendChoiceTest(EventTest):
     self.resolve_to_choice(SpendChoice)
 
     self.assertEqual(choice.remaining_spend, [{"dollars": 2}, False])
-    with self.assertRaises(AssertionError):
+    with self.assertRaisesRegex(InvalidMove, "additional 2 dollars"):
       choice.resolve(self.state, "Yes")
 
     self.spend("dollars", 2, choice)
     self.assertEqual(choice.remaining_spend, [False, {"dollars": -2}])
-    with self.assertRaises(AssertionError):
+    with self.assertRaisesRegex(InvalidMove, "overspent 2 dollars"):
       choice.resolve(self.state, "No")
 
     self.spend("dollars", 2, choice)
@@ -1957,6 +1958,8 @@ class SpendChoiceTest(EventTest):
 
     self.spend("dollars", 2, choice)
     self.assertEqual(choice.remaining_spend, [{"dollars": -2}, {"dollars": -6}])
+    with self.assertRaisesRegex(InvalidMove, "overspent 2 dollars"):
+      choice.resolve(self.state, "Yes")
 
     self.spend("dollars", -3, choice)
     choice.resolve(self.state, "Yes")
@@ -1969,11 +1972,11 @@ class SpendChoiceTest(EventTest):
     self.state.event_stack.append(choice)
     self.resolve_to_choice(SpendChoice)
     self.assertEqual(choice.remaining_spend, [{"stamina": 1, "sanity": 1}, False])
-    with self.assertRaises(AssertionError):
+    with self.assertRaisesRegex(InvalidMove, "1 (stamina|sanity), 1 (stamina|sanity)"):
       choice.resolve(self.state, "Sign")
     self.spend("stamina", 1, choice)
     self.assertEqual(choice.remaining_spend, [{"sanity": 1}, {"stamina": -1}])
-    with self.assertRaises(AssertionError):
+    with self.assertRaisesRegex(InvalidMove, "additional 1 sanity"):
       choice.resolve(self.state, "Sign")
     self.spend("sanity", 1, choice)
     self.assertEqual(choice.remaining_spend, [False, {"sanity": -1, "stamina": -1}])
@@ -2193,7 +2196,7 @@ class ItemChoiceTest(EventTest):
     choice.resolve(self.state, "Holy Water0")
     choice.resolve(self.state, "Food0")
     self.assertFalse(choice.is_resolved())
-    with self.assertRaises(AssertionError):
+    with self.assertRaisesRegex(InvalidMove, "Too many"):
       choice.resolve(self.state, ".38 Revolver0")
     choice.resolve(self.state, "Holy Water0")  # Deselect the holy water
     choice.resolve(self.state, ".38 Revolver0")
@@ -2212,11 +2215,11 @@ class ItemChoiceTest(EventTest):
     # Simulate discarding an item after getting to this choice.
     self.char.possessions.remove(self.char.possessions[0])
 
-    with self.assertRaises(AssertionError):
+    with self.assertRaisesRegex(InvalidMove, "Not enough"):
       choice.resolve(self.state, "done")
     self.assertFalse(choice.is_resolved())
     choice.resolve(self.state, "Food0")
-    with self.assertRaises(AssertionError):
+    with self.assertRaisesRegex(InvalidMove, "Too many"):
       choice.resolve(self.state, "Holy Water0")
     choice.resolve(self.state, "done")
     self.assertTrue(choice.is_resolved())
@@ -2230,20 +2233,20 @@ class ItemChoiceTest(EventTest):
 
     # Test to make sure that you don't get attribute errors when not all your possessions are items.
     choice = self.resolve_to_choice(ItemChoice)
-    with self.assertRaises(AssertionError):
+    with self.assertRaisesRegex(InvalidMove, "Invalid choice"):
       choice.resolve(self.state, "Dog")
-    with self.assertRaises(AssertionError):
+    with self.assertRaisesRegex(InvalidMove, "Invalid choice"):
       choice.resolve(self.state, "Marksman0")
     choice.resolve(self.state, "done")
     self.resolve_until_done()
 
   def testChoiceNotRestrictedToItems(self):
     self.char.possessions.extend([assets.Dog(), abilities.Marksman(0)])
-    choice = ItemChoice(self.char, "", decks={"allies"}, item_type=None)
+    choice = ItemChoice(self.char, "", decks={"allies"})
     self.state.event_stack.append(choice)
 
     choice = self.resolve_to_choice(ItemChoice)
-    with self.assertRaises(AssertionError):
+    with self.assertRaisesRegex(InvalidMove, "Invalid choice"):
       choice.resolve(self.state, "Marksman0")
     choice.resolve(self.state, "Dog")
     choice.resolve(self.state, "done")
@@ -2256,11 +2259,11 @@ class ItemChoiceTest(EventTest):
 
     choice.resolve(self.state, ".38 Revolver0")
     # Cannot use Food in combat.
-    with self.assertRaises(AssertionError):
+    with self.assertRaisesRegex(InvalidMove, "Invalid choice"):
       choice.resolve(self.state, "Food0")
 
     # Cannot use three hands in combat.
-    with self.assertRaises(AssertionError):
+    with self.assertRaisesRegex(InvalidMove, "enough hands"):
       choice.resolve(self.state, "Holy Water0")
 
     # Deselecting the revolver frees up the hand.
@@ -2331,7 +2334,7 @@ class LossChoiceTest(EventTest):
     self.state.event_stack.append(choice)
     choice = self.resolve_to_choice(ItemLossChoice)
     choice.resolve(self.state, ".18 Derringer0")
-    with self.assertRaises(AssertionError):
+    with self.assertRaisesRegex(InvalidMove, "Not enough"):
       choice.resolve(self.state, "done")
     self.assertFalse(choice.is_resolved())
 
@@ -2362,7 +2365,7 @@ class SinglePhysicalWeaponChoiceTest(EventTest):
     choice = self.resolve_to_choice(SinglePhysicalWeaponChoice)
 
     # Cannot choose the revolver before spending.
-    with self.assertRaises(AssertionError):
+    with self.assertRaisesRegex(InvalidMove, "additional 1 sanity"):
       choice.resolve(self.state, ".38 Revolver0")
 
     self.spend("sanity", 1, choice)
@@ -2372,12 +2375,12 @@ class SinglePhysicalWeaponChoiceTest(EventTest):
     self.assertEqual(len(choice.chosen), 1)
 
     # Cannot choose a second item (count choice says max of 1).
-    with self.assertRaises(AssertionError):
+    with self.assertRaisesRegex(InvalidMove, "Too many"):
       choice.resolve(self.state, "Tommy Gun0")
 
     # If you un-spend the sanity, you cannot confirm your choice.
     self.spend("sanity", -1, choice)
-    with self.assertRaises(AssertionError):
+    with self.assertRaisesRegex(InvalidMove, "additional 1 sanity"):
       choice.resolve(self.state, "done")
     self.assertFalse(choice.is_done())
     self.assertEqual(len(choice.chosen), 1)
@@ -2387,7 +2390,7 @@ class SinglePhysicalWeaponChoiceTest(EventTest):
     self.resolve_to_choice(SinglePhysicalWeaponChoice)
 
     # Since you've un-spent, you cannot choose the gun.
-    with self.assertRaises(AssertionError):
+    with self.assertRaisesRegex(InvalidMove, "additional 1 sanity"):
       choice.resolve(self.state, "Tommy Gun0")
 
     # Re-spend the sanity.
@@ -2426,7 +2429,7 @@ class PlaceChoiceTest(EventTest):
     self.state.event_stack.append(choice)
     self.resolve_to_choice(PlaceChoice)
 
-    with self.assertRaises(AssertionError):
+    with self.assertRaisesRegex(InvalidMove, "Invalid choice"):
       choice.resolve(self.state, "nowhere")
 
     choice.resolve(self.state, "Diner")
@@ -2436,7 +2439,7 @@ class PlaceChoiceTest(EventTest):
     self.state.event_stack.append(choice)
     self.resolve_to_choice(PlaceChoice)
 
-    with self.assertRaises(AssertionError):
+    with self.assertRaisesRegex(InvalidMove, "Invalid choice"):
       choice.resolve(self.state, "Bank")
 
     choice.resolve(self.state, "Diner")
@@ -2451,7 +2454,7 @@ class GateChoiceTest(EventTest):
     self.state.places["Isle"].gate = self.state.gates.popleft()
     self.resolve_to_choice(GateChoice)
 
-    with self.assertRaises(AssertionError):
+    with self.assertRaisesRegex(InvalidMove, "Invalid choice"):
       choice.resolve(self.state, "Woods")
 
     choice.resolve(self.state, "Square")
@@ -2488,10 +2491,10 @@ class GateChoiceTest(EventTest):
 
     self.assertEqual(choice.annotations(self.state), ["Return", "Return"])
 
-    with self.assertRaises(AssertionError):
+    with self.assertRaisesRegex(InvalidMove, "Invalid choice"):
       choice.resolve(self.state, None)
 
-    with self.assertRaises(AssertionError):
+    with self.assertRaisesRegex(InvalidMove, "Invalid choice"):
       choice.resolve(self.state, "WitchHouse")
 
     choice.resolve(self.state, "Woods")
@@ -2780,7 +2783,7 @@ class PurchaseTest(EventTest):
     choice = self.resolve_to_choice(CardSpendChoice)
     self.assertEqual(choice.choices, ["Food", "Nothing"])
     self.assertEqual(choice.annotations(self.state), ["1 dollars", ""])
-    with self.assertRaises(AssertionError):
+    with self.assertRaisesRegex(InvalidMove, "additional 1 dollars"):
       choice.resolve(self.state, "Food")
     self.spend("dollars", 1, choice)
     choice.resolve(self.state, "Food")
@@ -2822,11 +2825,11 @@ class PurchaseTest(EventTest):
     self.state.event_stack.append(buy)
     choice = self.resolve_to_choice(CardSpendChoice)
     self.assertEqual(choice.choices, ["Food", "Nothing"])
-    with self.assertRaises(AssertionError):
+    with self.assertRaisesRegex(InvalidMove, "additional 1 dollars"):
       choice.resolve(self.state, "Food")
-    with self.assertRaises(AssertionError):
+    with self.assertRaisesRegex(InvalidMove, "more dollars than you have"):
       choice.spend("dollars")
-    with self.assertRaises(AssertionError):
+    with self.assertRaisesRegex(InvalidMove, "additional 1 dollars"):
       choice.resolve(self.state, "Food")  # Just making extra sure we didn't actually spend money.
     self.resolve_to_choice(CardSpendChoice)
     choice.resolve(self.state, "Nothing")
@@ -3120,7 +3123,7 @@ class SellTest(EventTest):
     sell = Sell(self.char, {"common"}, 1)
     self.state.event_stack.append(sell)
     choice = self.resolve_to_choice(ItemChoice)
-    with self.assertRaises(AssertionError):
+    with self.assertRaisesRegex(InvalidMove, "Invalid choice"):
       choice.resolve(self.state, "Holy Water0")
 
   def testSellChoiceCancelled(self):

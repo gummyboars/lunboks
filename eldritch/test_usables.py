@@ -20,6 +20,8 @@ from eldritch import items
 from eldritch import monsters
 from eldritch.test_events import EventTest, Canceller
 
+from game import InvalidMove
+
 
 class ClueTokenTest(EventTest):
 
@@ -79,7 +81,7 @@ class ClueTokenTest(EventTest):
 
     self.spend("clues", 1, choice)
     choice.resolve(self.state, "Spend")
-    with self.assertRaises(AssertionError):
+    with self.assertRaisesRegex(InvalidMove, "Cannot spend more clues"):
       self.spend("clues", 1, choice)
     self.resolve_until_done()
 

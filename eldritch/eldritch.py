@@ -133,7 +133,7 @@ class GameState:
     all_cards = self.common + self.unique + self.spells + self.skills + self.allies
     all_cards += self.tradables + self.specials
     handles = [card.handle for card in all_cards]
-    assert len(handles) == len(set(handles))
+    assert len(handles) == len(set(handles)), f"Card handles {handles} are not unique"
 
     self.mythos.extend(mythos.CreateMythos())
 
@@ -146,7 +146,7 @@ class GameState:
         place.clues += 1
 
   def give_fixed_possessions(self, char, possessions):
-    assert not possessions.keys() - assets.Card.DECKS
+    assert not possessions.keys() - assets.Card.DECKS, "bad deck(s) {', '.join(possessions.keys())}"
     for deck, names in possessions.items():
       cards = getattr(self, deck)
       keep = []
@@ -163,7 +163,8 @@ class GameState:
       cards.extend(rest)
 
   def give_random_possessions(self, char, possessions):
-    assert not char.random_possessions().keys() - assets.Card.DECKS
+    err_str = ", ".join(char.random_possessions().keys())
+    assert not char.random_possessions().keys() - assets.Card.DECKS, err_str
     for deck, count in possessions.items():
       for _ in range(count):
         char.possessions.append(getattr(self, deck).popleft())
@@ -282,7 +283,7 @@ class GameState:
       if top_event.character == char:
         output["choice"] = {"prompt": top_event.prompt()}
         output["choice"]["annotations"] = top_event.annotations(self)
-        output["choice"]["invalid_choices"] = getattr(top_event, "invalid_choices", [])
+        output["choice"]["invalid_choices"] = list(getattr(top_event, "invalid_choices", {}).keys())
         if isinstance(top_event, events.SpendMixin):
           output["choice"]["spendable"] = list(top_event.spendable)
           output["choice"]["spent"] = top_event.spend_map
@@ -423,19 +424,21 @@ class GameState:
     )
 
   def start_event(self, event):
-    # TODO: what about multiple events added to the stack at the same time? disallow?
     if len(self.interrupt_stack) >= len(self.event_stack):
       return False
     if event.start_str():
       self.event_log.append("  " * len(self.interrupt_stack) + event.start_str())
     self.interrupt_stack.append(self.get_interrupts(event))
     self.trigger_stack.append(None)
-    assert len(self.interrupt_stack) == len(self.event_stack)
+    err_str = f"{len(self.interrupt_stack)} interrupts but {len(self.event_stack)} events"
+    err_str += " (multiple events added simultaneously?)"
+    assert len(self.interrupt_stack) == len(self.event_stack), err_str
     self.clear_usables()
     return True
 
   def finish_event(self, event):
-    assert len(self.trigger_stack) == len(self.event_stack)
+    err_str = f"{len(self.trigger_stack)} triggers, but {len(self.event_stack)} events"
+    assert len(self.trigger_stack) == len(self.event_stack), err_str
     if self.trigger_stack[-1] is None and not event.is_cancelled():
       self.trigger_stack[-1] = self.get_triggers(event)
       self.clear_usables()
@@ -444,9 +447,11 @@ class GameState:
     return False
 
   def pop_event(self, event):
-    assert event == self.event_stack[-1]
-    assert len(self.event_stack) == len(self.trigger_stack)
-    assert len(self.event_stack) == len(self.interrupt_stack)
+    assert event == self.event_stack[-1], f"popped event not on top {event}"
+    err_str = f"{len(self.event_stack)} events, {len(self.trigger_stack)} triggers, "
+    err_str += f"{len(self.interrupt_stack)} interrupts"
+    assert len(self.event_stack) == len(self.trigger_stack), err_str
+    assert len(self.event_stack) == len(self.interrupt_stack), err_str
     self.event_stack.pop()
     self.trigger_stack.pop()
     self.interrupt_stack.pop()
@@ -598,7 +603,7 @@ class GameState:
     seq = self.add_pending_players()
     if any(char.name == "Scientist" for char in self.characters):
       self.places["Science"].clues = 0
-    assert seq.events
+    assert seq.events, "no players?"
     seq.events.append(events.Mythos(None))
     self.event_stack.append(seq)
 
@@ -632,41 +637,57 @@ class GameState:
     self.pending_chars[name] = player_idx
 
   def handle_use(self, char_idx, handle):
-    assert char_idx in self.usables
-    assert handle in self.usables[char_idx]
-    assert handle != "trade"  # "trade" is just a placeholder
+    if char_idx not in self.usables:
+      raise InvalidMove("You cannot use any items or abilities at this time")
+    if handle not in self.usables[char_idx]:
+      raise InvalidMove("{handle} is unknown or unusable at this time")
+    if handle == "trade":  # "trade" is just a placeholder
+      raise InvalidMove("Trade what?")
     self.event_stack.append(self.usables[char_idx].pop(handle))
 
   def handle_done_using(self, char_idx):
-    assert char_idx in self.usables
+    if char_idx not in self.usables:
+      raise InvalidMove("You cannot use any items or abilities at this time")
     self.done_using[char_idx] = True
 
   def handle_choice(self, char_idx, choice):
-    assert self.event_stack
+    if not self.event_stack:
+      raise InvalidMove("You cannot make any choices at this time")
     event = self.event_stack[-1]
-    assert isinstance(event, events.ChoiceEvent)
-    assert event.character == self.characters[char_idx]
+    if not isinstance(event, events.ChoiceEvent):
+      raise InvalidMove("You cannot make any choices at this time")
+    if event.character != self.characters[char_idx]:
+      raise InvalidMove("You cannot make any choices at this time")
     event.resolve(self, choice)
 
   def handle_spend(self, char_idx, spend_type):
-    assert self.event_stack
+    if not self.event_stack:
+      raise InvalidMove("You cannot spend anything at this time")
     event = self.event_stack[-1]
-    assert isinstance(event, events.SpendMixin)
-    assert event.character == self.characters[char_idx]
+    if not isinstance(event, events.SpendMixin):
+      raise InvalidMove("You cannot spend anything at this time")
+    if event.character != self.characters[char_idx]:
+      raise InvalidMove("You cannot spend anything at this time")
     event.spend(spend_type)
 
   def handle_unspend(self, char_idx, spend_type):
-    assert self.event_stack
+    if not self.event_stack:
+      raise InvalidMove("You cannot spend anything at this time")
     event = self.event_stack[-1]
-    assert isinstance(event, events.SpendMixin)
-    assert event.character == self.characters[char_idx]
+    if not isinstance(event, events.SpendMixin):
+      raise InvalidMove("You cannot spend anything at this time")
+    if event.character != self.characters[char_idx]:
+      raise InvalidMove("You cannot spend anything at this time")
     event.unspend(spend_type)
 
   def handle_roll(self, char_idx):
-    assert self.event_stack
+    if not self.event_stack:
+      raise InvalidMove("You cannot roll the dice at this time")
     event = self.event_stack[-1]
-    assert isinstance(event, events.DiceRoll)
-    assert event.character == self.characters[char_idx]
+    if not isinstance(event, events.DiceRoll):
+      raise InvalidMove("You cannot roll the dice at this time")
+    if event.character != self.characters[char_idx]:
+      raise InvalidMove("It is not your turn to roll the dice")
     event.resolve(self)
 
   def handle_check(self, char_idx, check_type, modifier):
@@ -732,17 +753,17 @@ class GameState:
       if not isinstance(amount, int):
         raise InvalidMove("Invalid quantity")
       if amount < 0 or amount > donor.dollars:
-        raise InvalidMove("Invaild quantity")
+        raise InvalidMove("Invalid quantity")
       # TODO: turn this into an event
       recipient.dollars += amount
       donor.dollars -= amount
       return
 
     if not isinstance(handle, str):
-      raise InvalidMove("Invalid possession")
+      raise InvalidMove("Invalid card")
     donations = [pos for pos in donor.possessions if pos.handle == handle]
     if len(donations) != 1:
-      raise InvalidMove("Invalid possession")
+      raise InvalidMove("Invalid card")
     donation = donations[0]
     # TODO: trading the deputy's revolver and patrol wagon
     if getattr(donation, "deck", None) not in {"common", "unique", "spells"}:
