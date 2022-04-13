@@ -14,7 +14,7 @@ class MonsterCup:
 
 class Monster:
 
-  MOVEMENTS = {"normal", "fast", "stationary", "flying", "stalker", "aquatic", "unique"}
+  MOVEMENTS = ["unique", "flying", "stalker", "aquatic", "fast", "stationary", "normal"]
   DIMENSIONS = {"circle", "triangle", "moon", "hex", "square", "diamond", "star", "slash", "plus"}
   DIFFICULTIES = {"horror", "combat", "evade"}
   DAMAGES = {"horror", "combat"}
@@ -42,7 +42,7 @@ class Monster:
     assert len(attributes & {"magical resistance", "magical immunity"}) < 2
     assert len(attributes & {"physical resistance", "physical immunity"}) < 2
     self.name = name
-    self.movement = movement
+    self._movement = movement
     self.dimension = dimension
     self.difficulties = ratings
     self.damages = damages
@@ -67,26 +67,34 @@ class Monster:
       return self.name
     return f"{self.name}{self.idx}"
 
-  def json_repr(self):
+  def json_repr(self, state, char):
     return {
         "name": self.name,
         "handle": self.handle,
-        "movement": self.movement,
+        "movement": self.movement(state),
         "dimension": self.dimension,
         "idx": self.idx,
         "place": getattr(self.place, "name", None),
+        "horror_difficulty": self.difficulty("horror", state, char),
+        "horror_damage": self.damage("horror", state, char),
+        "horror_bypass": self.bypass_damage("horror", state),
+        "combat_difficulty": self.difficulty("combat", state, char),
+        "combat_damage": self.damage("combat", state, char),
+        "combat_bypass": self.bypass_damage("combat", state),
+        "toughness": self.toughness(state, char),
+        "attributes": sorted(self.attributes(state, char)),
     }
 
   def difficulty(self, check_type, state, char):
     state_modifier = state.get_modifier(self, check_type + "difficulty") or 0
-    char_modifier = char.get_modifier(self, check_type + "difficulty") or 0
+    char_modifier = char.get_modifier(self, check_type + "difficulty") or 0 if char else 0
     if state_modifier or char_modifier:
       return (self.difficulties.get(check_type) or 0) + state_modifier + char_modifier
     return self.difficulties.get(check_type)
 
   def damage(self, check_type, state, char):
     state_modifier = state.get_modifier(self, check_type + "damage") or 0
-    char_modifier = char.get_modifier(self, check_type + "damage") or 0
+    char_modifier = char.get_modifier(self, check_type + "damage") or 0 if char else 0
     if state_modifier or char_modifier:
       return max((self.damages.get(check_type) or 0) + state_modifier + char_modifier, 0)
     return self.damages.get(check_type)
@@ -96,7 +104,7 @@ class Monster:
 
   def toughness(self, state, char):
     state_modifier = state.get_modifier(self, "toughness")
-    char_modifier = char.get_modifier(self, "toughness")
+    char_modifier = char.get_modifier(self, "toughness") if char else 0
     return max(self._toughness + (state_modifier or 0) + (char_modifier or 0), 1)
 
   def attributes(self, state, char):
@@ -114,7 +122,13 @@ class Monster:
       return char_override
     if state_override is not None:
       return state_override
-    return attribute in self._attributes or attribute == self.movement
+    return attribute in self._attributes or attribute == self._movement
+
+  def movement(self, state):
+    for movement in self.MOVEMENTS:
+      if self.has_attribute(movement, state, None):
+        return movement
+    return "normal"
 
 
 def GiantInsect():

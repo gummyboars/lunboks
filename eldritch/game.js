@@ -53,7 +53,7 @@ function continueInit(gameId) {
       let monstersDiv = document.createElement("DIV");
       monstersDiv.id = "place" + name + "monsters";
       monstersDiv.classList.add("placemonsters");
-      monstersDiv.onclick = function(e) { showMonsters(monstersDiv, name); };
+      monstersDiv.onclick = function(e) { toggleMonsters(monstersDiv, name); };
       let details = document.createElement("DIV");
       details.id = "place" + name + "details";
       details.classList.add("placedetails");
@@ -138,7 +138,7 @@ function continueInit(gameId) {
     if (extra != "Lost") {
       let box = document.getElementById("place" + extra + "box");
       let monstersDiv = box.getElementsByClassName("placemonsters")[0];
-      monstersDiv.onclick = function(e) { showMonsters(monstersDiv, extra); };
+      monstersDiv.onclick = function(e) { toggleMonsters(monstersDiv, extra); };
     }
   }
   let outskirtsBox = document.getElementById("placeOutskirtsbox");
@@ -147,7 +147,7 @@ function continueInit(gameId) {
   outskirtsBox.ondrop = drop;
   window.addEventListener("resize", function() {
     clearTimeout(statTimeout);
-    statTimeout = setTimeout(updateStats, 255);
+    statTimeout = setTimeout(redrawCustomCanvases, 255);
   });
 }
 
@@ -315,7 +315,11 @@ function confirmMonsterChoice(e) {
 }
 
 function resetMonsterChoice(e) {
+  let monsterDivList = [];
   for (let monsterDiv of document.getElementsByClassName("monster")) {
+    monsterDivList.push(monsterDiv);
+  }
+  for (let monsterDiv of monsterDivList) {
     if (monsterDiv.monsterIdx != null && monsterDiv.draggable) {
       document.getElementById("monsterchoices").appendChild(monsterDiv);
     }
@@ -568,6 +572,19 @@ function updateCharacters(newCharacters) {
   }
 }
 
+function toggleMonsters(placeDiv, name) {
+  let details = document.getElementById("monsterdetails");
+  if (details.style.display != "flex") {
+    showMonsters(placeDiv, name);
+    return;
+  }
+  if (document.getElementById("monsterdetailsname").innerText != name) {
+    showMonsters(placeDiv, name);
+    return;
+  }
+  hideMonsters(null);
+}
+
 function showMonsters(placeDiv, name) {
   let box = document.getElementById("monsterdetailsbox");
   while (box.children.length) {
@@ -577,15 +594,15 @@ function showMonsters(placeDiv, name) {
   document.getElementById("monsterdetails").style.display = "flex";
   for (let monsterDiv of placeDiv.getElementsByClassName("monster")) {
     let container = document.createElement("DIV");
-    let handle = monsterDiv.monsterName + monsterDiv.monsterIdx;
+    let handle = monsterDiv.monsterInfo.handle;
     container.onclick = function(e) { makeChoice(handle) };
-    let frontDiv = createMonsterDiv(monsterDiv.monsterName, "big");
+    let frontDiv = createMonsterDiv(monsterDiv.monsterInfo, false, "big");
     container.appendChild(frontDiv);
-    let backDiv = createMonsterDiv(monsterDiv.monsterName, "big");
+    let backDiv = createMonsterDiv(monsterDiv.monsterInfo, true, "big");
     container.appendChild(backDiv);
     box.appendChild(container);
-    renderAssetToDiv(frontDiv.getElementsByClassName("cnvcontainer")[0], monsterDiv.monsterName);
-    renderAssetToDiv(backDiv.getElementsByClassName("cnvcontainer")[0], monsterDiv.monsterName + " back");
+    renderAssetToDiv(frontDiv.getElementsByClassName("cnvcontainer")[0], monsterDiv.monsterInfo.name);
+    renderMonsterBackToDiv(backDiv.getElementsByClassName("monsterback")[0], monsterDiv.monsterInfo);
   }
 }
 
@@ -614,11 +631,12 @@ function updateMonsters(monster_list) {
       continue;
     }
     if (monsters[i] == null) {
-      monsters[i] = createMonsterDiv(monster.name);
+      monsters[i] = createMonsterDiv(monster);
       monsters[i].monsterIdx = i;
       place.appendChild(monsters[i]);
       renderAssetToDiv(monsters[i].getElementsByClassName("cnvcontainer")[0], monster.name);
     } else {
+      monsters[i].monsterInfo = monster;
       animateMovingDiv(monsters[i], place);
     }
   }
@@ -745,7 +763,7 @@ function updateMonsterChoices(choice, monsterList) {
   uimonsterchoice.style.display = "flex";
   for (let monsterIdx of choice.monsters) {
     if (monsters[monsterIdx] == null) {
-      monsters[monsterIdx] = createMonsterDiv(monsterList[monsterIdx].name);
+      monsters[monsterIdx] = createMonsterDiv(monsterList[monsterIdx]);
       monsters[monsterIdx].monsterIdx = monsterIdx;
       monsters[monsterIdx].draggable = true;
       monsters[monsterIdx].ondragstart = dragStart;
@@ -956,17 +974,18 @@ function updateStatSpending(spendable) {
   }
 }
 
-function createMonsterDiv(name, classPrefix) {
+function createMonsterDiv(monsterInfo, isBack, classPrefix) {
   classPrefix = classPrefix || "";
   let div = document.createElement("DIV");
   div.classList.add(classPrefix + "monster");
   let cnvContainer = document.createElement("DIV");
-  cnvContainer.classList.add(classPrefix + "monstercontainer", "cnvcontainer");
+  let containerClass = isBack ? "monsterback" : "cnvcontainer";
+  cnvContainer.classList.add(classPrefix + "monstercontainer", containerClass);
   let cnv = document.createElement("CANVAS");
   cnv.classList.add("monstercnv");
   cnvContainer.appendChild(cnv);
   div.appendChild(cnvContainer);
-  div.monsterName = name;
+  div.monsterInfo = monsterInfo;
   return div;
 }
 
@@ -1934,9 +1953,11 @@ function updateTrophies(sheet, character, isPlayer, spent) {
 }
 
 function createTrophy(info, isPlayer, tDiv, spent) {
+  let assetName = info.name;
   let handle = info.handle;
   let div = document.createElement("DIV");
-  div.classList.add("trophy", "cnvcontainer");
+  let containerClass = monsterNames.includes(assetName) ? "monsterback" : "cnvcontainer";
+  div.classList.add("trophy", containerClass);
   div.cnvScale = 2.5;
   if (spent[handle] != null) {
     div.classList.add("spent");
@@ -1955,11 +1976,200 @@ function createTrophy(info, isPlayer, tDiv, spent) {
   if (isPlayer) {
     div.onclick = function(e) { useAsset(handle); };
   }
-  let assetName = info.name;
   if (monsterNames.includes(assetName)) {
-    assetName += " back";
+    div.monsterInfo = info;
+    renderMonsterBackToDiv(div, info);
+  } else {
+    renderAssetToDiv(div, assetName);
   }
-  renderAssetToDiv(div, assetName);
+}
+
+function renderMonsterBackToDiv(div, monsterData) {
+  let cnv = div.getElementsByTagName("CANVAS")[0];
+  let cnvScale = div.cnvScale || 1;
+  cnv.width = div.offsetWidth * cnvScale;
+  cnv.height = div.offsetHeight * cnvScale;
+
+  // Movement type border & white center box.
+  let ctx = cnv.getContext("2d");
+  ctx.save();
+  ctx.fillStyle = "whitesmoke";
+  let colors = {
+    "unique": "olivedrab",
+    "flying": "lightblue",
+    "stalker": "purple",
+    "aquatic": "orange",
+    "fast": "red",
+    "stationary": "gold",
+    "normal": "black",
+  };
+  if (colors[monsterData.movement] != null) {
+    ctx.fillStyle = colors[monsterData.movement];
+  }
+  ctx.fillRect(0, 0, cnv.width, cnv.height);
+  ctx.fillStyle = "whitesmoke";
+  ctx.fillRect(cnv.width / 20, cnv.height / 20, 9 * cnv.width / 10, 9 * cnv.height / 10);
+
+  let fontSize;
+
+  // Monster attributes.
+  ctx.textAlign = "left";
+  ctx.textBaseline = "top";
+  ctx.fillStyle = "black";
+  let attributes = {
+    "spawn": "Spawn",
+    "mask": "Mask",
+    "endless": "Endless",
+    "ambush": "Ambush",
+    "elusive": "Elusive",
+    "undead": "Undead",
+    "physical resistance": "Physical Resistance",
+    "magical resistance": "Magical Resistance",
+    "physical immunity": "Physical Immunity",
+    "magical immunity": "Magical Immunity",
+  };
+
+  let offsetHeight = cnv.height / 10;
+  for (let name in attributes) {
+    if (monsterData.attributes.includes(name)) {
+      fontSize = getTextSize(ctx, attributes[name], 4 * cnv.width / 5, cnv.height / 13);
+      ctx.font = /*"bold " +*/ fontSize + "px serif";
+      ctx.fillText(attributes[name], cnv.width / 10, offsetHeight);
+      offsetHeight += cnv.height / 13;
+    }
+  }
+
+  let attrs = [["nightmarish", "Nightmarish", "horror_bypass"], ["overwhelming", "Overwhelming", "combat_bypass"]];
+  for (let [name, text, attr] of attrs) {
+    if (monsterData.attributes.includes(name) && monsterData[attr] != null) {
+      let displayText = text + " " + monsterData[attr];
+      fontSize = getTextSize(ctx, displayText, 4 * cnv.width / 5, cnv.height / 13);
+      ctx.font = /*"bold " +*/ fontSize + "px serif";
+      ctx.fillText(displayText, cnv.width / 10, offsetHeight);
+      offsetHeight += cnv.height / 13;
+    }
+  }
+
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+
+  // Horror modifier
+  let horrorModifier;
+  if (monsterData.horror_difficulty == null) {
+    horrorModifier = "-";
+  } else if (monsterData.horror_difficulty >= 0) {
+    horrorModifier = "+" + monsterData.horror_difficulty;
+  } else {
+    horrorModifier = "" + monsterData.horror_difficulty;
+  }
+  fontSize = getTextSize(ctx, horrorModifier, 2 * cnv.width / 9, 3 * cnv.height / 20);
+  ctx.font = fontSize + "px sans-serif";
+  ctx.fillStyle = "#3366aa";
+  ctx.fillText(horrorModifier, cnv.width / 6, 29 * cnv.height / 40);
+
+  // Combat modifier
+  let combatModifier;
+  if (monsterData.combat_difficulty == null) {
+    combatModifier = "-";
+  } else if (monsterData.combat_difficulty >= 0) {
+    combatModifier = "+" + monsterData.combat_difficulty;
+  } else {
+    combatModifier = "" + monsterData.combat_difficulty;
+  }
+  fontSize = getTextSize(ctx, combatModifier, 2 * cnv.width / 9, 3 * cnv.height / 20);
+  ctx.font = fontSize + "px sans-serif";
+  ctx.fillStyle = "#dd0000";
+  ctx.fillText(combatModifier, 5 * cnv.width / 6, 29 * cnv.height / 40);
+
+  // Toughness
+  fontSize = getTextSize(ctx, "💧", cnv.width / 3, 3 * cnv.height / 20);
+  ctx.font = fontSize + "px sans-serif";
+  ctx.fillStyle = "black";
+  ctx.filter = "hue-rotate(135deg)";
+  let increment = (cnv.width / 3) / Math.max(monsterData.toughness+1, 6);
+  let center = cnv.width / 2;
+  for (let i = monsterData.toughness; i >= 1; i--) {
+    let count = i - (monsterData.toughness+1) / 2;
+    ctx.fillText("💧", cnv.width / 2 + count * increment, 17 * cnv.height / 20);
+  }
+  ctx.restore();
+
+  renderDamage(ctx, monsterData.horror_damage, "horror", "#3366aa", cnv.width, cnv.height);
+  renderDamage(ctx, monsterData.combat_damage, "combat", "#dd0000", cnv.width, cnv.height);
+}
+
+function renderDamage(ctx, damage, damageType, color, cnvWidth, cnvHeight) {
+  if (damage == null || damage <= 0) {
+    return;
+  }
+  let xCenter = (damageType == "horror") ? cnvWidth / 6 : 5 * cnvWidth / 6;
+  let yCenter = 7 * cnvHeight / 8;
+  if (damage == 1) {
+    renderSingleDamage(ctx, damageType, color, xCenter, yCenter, cnvWidth / 5, cnvHeight / 8);
+    return;
+  }
+  if (damage == 2) {
+    renderSingleDamage(ctx, damageType, color, xCenter + cnvWidth / 22, yCenter, cnvWidth / 10, cnvHeight / 8);
+    renderSingleDamage(ctx, damageType, color, xCenter - cnvWidth / 22, yCenter, cnvWidth / 10, cnvHeight / 8);
+    return;
+  }
+  if (damage == 3) {
+    renderSingleDamage(ctx, damageType, color, xCenter + cnvWidth / 25, yCenter + cnvHeight / 33, cnvWidth / 10, cnvHeight / 16);
+    renderSingleDamage(ctx, damageType, color, xCenter - cnvWidth / 25, yCenter + cnvHeight / 33, cnvWidth / 10, cnvHeight / 16);
+    renderSingleDamage(ctx, damageType, color, xCenter, yCenter - cnvHeight / 33, cnvWidth / 10, cnvHeight / 16);
+    return;
+  }
+  if (damage == 4) {
+    renderSingleDamage(ctx, damageType, color, xCenter + cnvWidth / 18, yCenter, cnvWidth / 10, cnvHeight / 16);
+    renderSingleDamage(ctx, damageType, color, xCenter - cnvWidth / 18, yCenter, cnvWidth / 10, cnvHeight / 16);
+    renderSingleDamage(ctx, damageType, color, xCenter, yCenter - cnvHeight / 25, cnvWidth / 10, cnvHeight / 16);
+    renderSingleDamage(ctx, damageType, color, xCenter, yCenter + cnvHeight / 25, cnvWidth / 10, cnvHeight / 16);
+    return;
+  }
+  // All others: just render one, but put a number in it.
+  renderSingleDamage(ctx, damageType, color, xCenter, yCenter, cnvWidth / 5, cnvHeight / 8);
+  ctx.save();
+  ctx.fillStyle = "white";
+  let fontSize = getTextSize(ctx, damage, 3 * cnvWidth / 20, 3 * cnvHeight / 32);
+  ctx.font = "bold " + fontSize + "px sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(damage, xCenter, yCenter);
+  ctx.restore();
+}
+
+function renderSingleDamage(ctx, damageType, color, xCenter, yCenter, maxWidth, maxHeight) {
+  let width = Math.min(maxWidth, 4 * maxHeight / 3);
+  let height = 3 * width / 4;
+  ctx.save();
+  ctx.fillStyle = color;
+  if (damageType == "horror") {
+    ctx.beginPath();
+    ctx.ellipse(xCenter, yCenter, 2 * width / 5, 2 * height / 5, 2 * Math.PI, 0, 2 * Math.PI);
+    ctx.fill();
+  } else {
+    let fontSize = getTextSize(ctx, "❤️", maxWidth, maxHeight);
+    ctx.font = fontSize + "px sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("❤️", xCenter, yCenter);
+  }
+  ctx.restore();
+}
+
+function redrawMonsterBacks() {
+  for (let elem of document.getElementsByClassName("monsterback")) {
+    let monsterInfo = elem.monsterInfo || elem.parentNode.monsterInfo;
+    if (monsterInfo == null) {
+      continue;
+    }
+    renderMonsterBackToDiv(elem, monsterInfo);
+  }
+}
+
+function redrawCustomCanvases() {
+  updateStats();
+  redrawMonsterBacks();
 }
 
 function highlightCheck(e) {

@@ -4008,11 +4008,13 @@ class MoveMonster(Event):
       self.destination = False
       return
 
-    if self.monster.has_attribute("stationary", state, None):
+    movement = self.monster.movement(state)
+
+    if movement == "stationary":
       self.destination = False
       return
 
-    if self.monster.has_attribute("unique", state, None):
+    if movement == "unique":
       if hasattr(self.monster, "get_destination"):
         self.destination = self.monster.get_destination(state)
         if self.destination:
@@ -4031,7 +4033,7 @@ class MoveMonster(Event):
       self.destination = False
       return
 
-    if self.monster.has_attribute("flying", state, None):
+    if movement == "flying":
       if self.monster.place.name == "Sky":
         nearby_streets = [
             street for street in state.places.values() if isinstance(street, places.Street)
@@ -4056,7 +4058,7 @@ class MoveMonster(Event):
       return
 
     num_moves = 1
-    if self.monster.has_attribute("fast", state, None):
+    if movement == "fast":
       num_moves = 2
 
     self.destination = False
@@ -4067,7 +4069,7 @@ class MoveMonster(Event):
       if [char for char in state.characters if char.place == self.monster.place]:
         break
 
-    # TODO: other movement types (unique, stalker, aquatic)
+    # TODO: other movement types (stalker, aquatic)
 
   def is_resolved(self):
     return self.destination is not None
