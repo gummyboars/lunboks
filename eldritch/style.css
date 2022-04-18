@@ -725,7 +725,7 @@ button:disabled {
   display: flex;
   flex-direction: row;
   justify-content: center;
-  cursor: pointer;
+  cursor: zoom-in;
 }
 .placelower .placemonsters {
   top: 0;
@@ -872,10 +872,17 @@ button:disabled {
   width: calc(min(80vw, 128vh) * 3 / 118);
   height: calc(min(80vw, 128vh) * 3 / 118);
 }
+.activity {
+  align-self: center;
+  position: relative;
+  width: calc(min(80vw, 128vh) * 3 / 118);
+  height: calc(min(80vw, 128vh) * 11 / 500);
+  cursor: zoom-in;
+}
 .clue {
   order: 3;
 }
-.seal {
+.seal, .activity {
   order: 1;
 }
 .cluecontainer {
@@ -890,6 +897,14 @@ button:disabled {
   position: absolute;
   top: 0;
   left: 0;
+  z-index: 6;
+}
+.actcontainer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: calc(min(80vw, 128vh) * 3 / 118);
+  height: calc(min(80vw, 128vh) * 11 / 500);
   z-index: 6;
 }
 #uidice {

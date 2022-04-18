@@ -29,15 +29,22 @@ class GlobalEffect:
   def get_usable_trigger(self, event, state):
     return None
 
+  def json_repr(self, state):
+    return {}
+
 
 class MythosCard(GlobalEffect):
 
-  def __init__(self, name, gate_location, clue_location, white_dimensions, black_dimensions):
+  def __init__(
+      self, name, gate_location, clue_location, white_dimensions, black_dimensions,
+      activity_location=None,
+  ):
     self.name = name
     self.gate_location = gate_location
     self.clue_location = clue_location
     self.white_dimensions = white_dimensions
     self.black_dimensions = black_dimensions
+    self.activity_location = activity_location
 
   def create_event(self, state):  # pylint: disable=unused-argument
     seq = []
@@ -48,8 +55,8 @@ class MythosCard(GlobalEffect):
     seq.append(events.MoveMonsters(self.white_dimensions, self.black_dimensions))
     return events.Sequence(seq)
 
-  def json_repr(self):
-    return self.name
+  def json_repr(self, state):  # pylint: disable=unused-argument
+    return {"name": self.name, "activity_location": self.activity_location}
 
 
 class Headline(MythosCard):
@@ -59,8 +66,12 @@ class Headline(MythosCard):
 class Environment(MythosCard):
 
   def __init__(
-          self, name, gate_location, clue_location, white_dimensions, black_dimensions, env_type):
-    super().__init__(name, gate_location, clue_location, white_dimensions, black_dimensions)
+      self, name, gate_location, clue_location, white_dimensions, black_dimensions, env_type,
+      activity_location=None,
+  ):
+    super().__init__(
+        name, gate_location, clue_location, white_dimensions, black_dimensions, activity_location,
+    )
     assert env_type in {"weather", "urban", "mystic"}
     self.environment_type = env_type
 
@@ -73,10 +84,12 @@ class Environment(MythosCard):
 class Rumor(MythosCard):
 
   def __init__(self, name, gate_location, white_dimensions, black_dimensions, activity_location):
-    super().__init__(name, gate_location, None, white_dimensions, black_dimensions)
-    self.activity_location = activity_location
+    super().__init__(
+        name, gate_location, None, white_dimensions, black_dimensions, activity_location,
+    )
     self.start_turn = float("inf")
     self.progress = 0  # Not used for all rumors, but useful to have.
+    self._max_progress = 0
     self.failed = False
 
   def create_event(self, state):
@@ -94,11 +107,22 @@ class Rumor(MythosCard):
       return self.progress_event(state)
     return None
 
-  def json_repr(self):
+  def get_progress(self, state):  # pylint: disable=unused-argument
+    return self.progress
+
+  def max_progress(self, state):  # pylint: disable=unused-argument
+    return self._max_progress
+
+  def should_fail(self, state):
+    return self.get_progress(state) >= self.max_progress(state)
+
+  def json_repr(self, state):
     return {
         "name": self.name,
         "activity_location": self.activity_location if not self.failed else None,
-        "progress": self.progress if not self.failed else None,
+        "annotation": "Failed Rumor" if self.failed else None,
+        "progress": self.get_progress(state) if not self.failed else None,
+        "max_progress": self.max_progress(state) if not self.failed else None,
     }
 
 
@@ -221,6 +245,7 @@ class Mythos27(Rumor):
   def __init__(self):
     super().__init__("Mythos27", "Isle", {"slash", "triangle", "star"}, {"hex"}, "Easttown")
     self.progress = 6
+    self._max_progress = 10
 
   def get_interrupt(self, event, state):
     if not isinstance(event, events.EncounterPhase):
@@ -251,7 +276,7 @@ class Mythos27(Rumor):
     return events.Sequence([dice1, cond1, dice2, cond2])
 
   def get_trigger(self, event, state):
-    if isinstance(event, events.ProgressRumor) and event.rumor == self and self.progress >= 10:
+    if isinstance(event, events.ProgressRumor) and event.rumor == self and self.should_fail(state):
       return events.Sequence([events.EndRumor(self, failed=True), events.RemoveAllSeals()])
     if isinstance(event, events.ProgressRumor) and event.rumor == self and self.progress <= 0:
       draws = [events.Draw(char, "unique", 1) for char in state.characters if not char.gone]
@@ -278,6 +303,7 @@ class Mythos59(Rumor):
 
   def __init__(self):
     super().__init__("Mythos59", "Graveyard", {"slash", "triangle", "star"}, {"hex"}, "FrenchHill")
+    self._max_progress = 5
 
   def get_modifier(self, thing, attribute):
     if self.failed:
@@ -319,7 +345,7 @@ class Mythos59(Rumor):
     )
 
   def get_trigger(self, event, state):
-    if isinstance(event, events.ProgressRumor) and event.rumor == self and self.progress >= 5:
+    if isinstance(event, events.ProgressRumor) and event.rumor == self and self.should_fail(state):
       return events.EndRumor(self, failed=True, add_global=True)
     return super().get_trigger(event, state)
 

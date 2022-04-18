@@ -97,6 +97,9 @@ function renderDefaultToCanvas(cnv, width, height, assetName, variant) {
     ctx.restore();
     return;
   }
+  if (assetName == "Activity") {
+    return renderTextHexagon(cnv, variant, "#002000", "red");
+  }
   if (characterNames.includes(assetName)) {
     return renderTextRectangle(cnv, assetName, "silver", "black");
   }
@@ -347,6 +350,29 @@ function renderTextRectangle(cnv, name, bgColor, fgColor) {
   } else {
     ctx.fillStyle = "black";
   }
+  ctx.fillText(name, cnv.width/2, cnv.height/2);
+  ctx.restore();
+}
+
+function renderTextHexagon(cnv, name, bgColor, shadowColor) {
+  let ctx = cnv.getContext("2d");
+  ctx.save();
+  ctx.fillStyle = bgColor;
+  ctx.beginPath();
+  ctx.moveTo(cnv.width / 4, 0);
+  ctx.lineTo(cnv.width * 3 / 4, 0);
+  ctx.lineTo(cnv.width, cnv.height / 2);
+  ctx.lineTo(cnv.width * 3 / 4, cnv.height);
+  ctx.lineTo(cnv.width / 4, cnv.height);
+  ctx.lineTo(0, cnv.height / 2);
+  ctx.fill();
+  let fontSize = getTextSize(ctx, name, cnv.width, cnv.height);
+  ctx.font = fontSize + "px sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.shadowColor = shadowColor;
+  ctx.shadowBlur = cnv.width/12;
+  ctx.fillStyle = "white";
   ctx.fillText(name, cnv.width/2, cnv.height/2);
   ctx.restore();
 }

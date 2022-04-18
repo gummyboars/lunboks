@@ -28,8 +28,12 @@ class GameState:
 
   DEQUE_ATTRIBUTES = {"common", "unique", "spells", "skills", "allies", "gates"}
   HIDDEN_ATTRIBUTES = {
-      "event_stack", "interrupt_stack", "trigger_stack", "usables", "mythos", "gate_cards"}
-  CUSTOM_ATTRIBUTES = {"characters", "all_characters"}
+      "event_stack", "interrupt_stack", "trigger_stack", "usables", "mythos", "gate_cards",
+  }
+  CUSTOM_ATTRIBUTES = {
+      "characters", "all_characters", "environment", "mythos", "other_globals", "ancient_one",
+      "all_ancients",
+  }
   TURN_PHASES = ["upkeep", "movement", "encounter", "otherworld", "mythos"]
   AWAKENED_PHASES = ["upkeep", "attack", "ancient"]
   TURN_TYPES = {
@@ -222,6 +226,13 @@ class GameState:
     output["all_characters"] = {}
     for name, char in self.all_characters.items():
       output["all_characters"][name] = char.get_json(self)
+
+    for attr in ["environment", "rumor", "ancient_one"]:
+      output[attr] = getattr(self, attr).json_repr(self) if getattr(self, attr) else None
+    output["other_globals"] = [glob.json_repr(self) for glob in self.other_globals]
+    output["all_ancients"] = {
+        name: ancient.json_repr(self) for name, ancient in self.all_ancients.items()
+    }
     return output
 
   def for_player(self, char_idx):
@@ -230,6 +241,17 @@ class GameState:
     # We only return the counts of these items, not the actual items.
     output["monster_cup"] = len([mon for mon in self.monsters if mon.place == self.monster_cup])
     output["gates"] = len(self.gates)
+
+    # Also give a map from location to activity markers. Environment is always 2, rumor is always 3.
+    # Everything else is activity marker 1.
+    output["activity"] = collections.defaultdict(list)
+    for glob in self.other_globals:
+      if getattr(glob, "activity_location", None):
+        output["activity"][glob.activity_location].append((glob.name, "1"))
+    if self.environment and self.environment.activity_location:
+      output["activity"][self.environment.activity_location].append((self.environment.name, "2"))
+    if self.rumor and self.rumor.activity_location:
+      output["activity"][self.rumor.activity_location].append((self.rumor.name, "3"))
 
     char = None
     if char_idx is not None and char_idx < len(self.characters):
