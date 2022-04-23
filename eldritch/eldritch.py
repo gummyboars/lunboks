@@ -322,6 +322,9 @@ class GameState:
         elif isinstance(top_event, (events.MapChoice, events.CityMovement)):
           extra_choices = [top_event.none_choice] if top_event.none_choice is not None else []
           output["choice"]["places"] = (top_event.choices or []) + extra_choices
+        elif isinstance(top_event, events.FightOrEvadeChoice):
+          output["choice"]["choices"] = top_event.choices
+          output["choice"]["monster"] = top_event.monster.json_repr(self, top_event.character)
         elif isinstance(top_event, events.MultipleChoice):
           output["choice"]["choices"] = top_event.choices
         elif isinstance(top_event, events.ItemChoice):

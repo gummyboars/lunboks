@@ -663,9 +663,9 @@ function toggleCards(e) {
 
 function setCardButtonText() {
   if (cardsStyle == "flex") {
-    document.getElementById("togglecards").innerText = "Hide Cards";
+    document.getElementById("togglecards").innerText = "Hide Choices";
   } else {
-    document.getElementById("togglecards").innerText = "Show Cards";
+    document.getElementById("togglecards").innerText = "Show Choices";
   }
 }
 
@@ -712,7 +712,7 @@ function updateChoices(choice) {
   if (!choice.items) {
     uichoice.style.display = "flex";
   }
-  if (choice.cards != null) {
+  if (choice.cards != null || choice.monster != null) {
     document.getElementById("cardchoicescroll").style.display = cardsStyle;
     cardtoggle.style.display = "inline-block";
     setCardButtonText();
@@ -735,6 +735,8 @@ function updateChoices(choice) {
       updatePlaceChoices(uichoice, choice.places, choice.annotations);
     } else if (choice.cards != null) {
       addCardChoices(uichoice, uicardchoice, choice.cards, choice.invalid_choices, choice.remaining_spend, choice.annotations, choice.sort_uniq);
+    } else if (choice.monster != null) {
+      addFightOrEvadeChoices(uichoice, uicardchoice, choice.monster, choice.choices, choice.invalid_choices, choice.remaining_spend, choice.annotations);
     } else {
       addChoices(uichoice, choice.choices, choice.invalid_choices, choice.remaining_spend);
     }
@@ -770,6 +772,47 @@ function updateMonsterChoices(choice, monsterList) {
       monsters[monsterIdx].ondragend = dragEnd;
       choicesBox.appendChild(monsters[monsterIdx]);
       renderAssetToDiv(monsters[monsterIdx].getElementsByClassName("cnvcontainer")[0], monsterList[monsterIdx].name);
+    }
+  }
+}
+
+function addFightOrEvadeChoices(uichoice, cardChoice, monster, choices, invalidChoices, remainingSpend, annotations) {
+  for (let [idx, choice] of choices.entries()) {
+    let holder = document.createElement("DIV");
+    holder.classList.add("cardholder");
+    let div = document.createElement("DIV");
+    div.classList.add("visualchoice", "fightchoice");
+    if (choice == "Fight") {
+      div.classList.add("monsterback");
+      div.monsterInfo = monster;
+    } else {
+      div.classList.add("cnvcontainer");
+    }
+    div.onclick = function(e) { makeChoice(choice); };
+    if (invalidChoices != null && invalidChoices.includes(idx)) {
+      holder.classList.add("unchoosable");
+    } else if (remainingSpend != null && remainingSpend.length > idx && remainingSpend[idx]) {
+      let rem = remainingSpend[idx];
+      holder.classList.add("mustspend");
+      div.onclick = function(e) { defaultSpend(rem); };
+    }
+    let cnv = document.createElement("CANVAS");
+    cnv.classList.add("markercnv");  // TODO: use a better class name for this
+    div.appendChild(cnv);
+    holder.appendChild(div);
+    let desc = document.createElement("DIV");
+    desc.classList.add("desc");
+    if (annotations != null && annotations.length > idx && annotations[idx] != null) {
+      desc.innerText = choice + " (" + annotations[idx] + ")";
+    } else {
+      desc.innerText = choice;
+    }
+    holder.appendChild(desc);
+    cardChoice.appendChild(holder);
+    if (choice == "Fight") {
+      renderMonsterBackToDiv(div, monster);
+    } else {
+      renderAssetToDiv(div, monster.name);
     }
   }
 }
@@ -812,7 +855,7 @@ function addCardChoices(uichoice, cardChoice, cards, invalidChoices, remainingSp
       holder.style.order = cardToOrder[card];
     }
     let div = document.createElement("DIV");
-    div.classList.add("cardchoice", "cnvcontainer");
+    div.classList.add("visualchoice", "cardchoice", "cnvcontainer");
     div.onclick = function(e) { makeChoice(card); };
     if (invalidChoices != null && invalidChoices.includes(idx)) {
       holder.classList.add("unchoosable");
