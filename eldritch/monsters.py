@@ -1,6 +1,7 @@
 from collections import defaultdict
 from eldritch import events
 from eldritch import places
+from eldritch import values
 
 
 class MonsterCup:
@@ -130,6 +131,12 @@ class Monster:
         return movement
     return "normal"
 
+  def get_interrupt(self, event, state):  # pylint: disable=unused-argument
+    return None
+
+  def get_trigger(self, event, state):  # pylint: disable=unused-argument
+    return None
+
 
 def GiantInsect():
   return Monster(
@@ -169,11 +176,28 @@ def TentacleTree():
   )
 
 
-def DimensionalShambler():
-  return Monster(
-      "Dimensional Shambler", "fast", "square", {"evade": -3, "horror": -2, "combat": -2},
-      {"horror": 1, "combat": 0}, 1,
-  )
+class DimensionalShambler(Monster):
+
+  def __init__(self):
+    super().__init__(
+        "Dimensional Shambler", "fast", "square", {"evade": -3, "horror": -2, "combat": -2},
+        {"horror": 1, "combat": 0}, 1,
+    )
+
+  def get_trigger(self, event, state):
+    if not isinstance(event, (events.CombatRound, events.EvadeRound)):
+      return None
+    if getattr(event, "defeated", False) or getattr(event, "evaded", False):
+      return None
+    events_to_cancel = []
+    if len(state.event_stack) >= 4:
+      if isinstance(state.event_stack[-4], (events.Combat, events.EvadeOrCombat)):
+        events_to_cancel.append(state.event_stack[-4])
+        if len(state.event_stack) >= 7 and isinstance(state.event_stack[-7], events.EvadeOrCombat):
+          events_to_cancel.append(state.event_stack[-7])
+    seq = [events.CancelEvent(to_cancel) for to_cancel in events_to_cancel]
+    seq.append(events.LostInTimeAndSpace(event.character))
+    return events.Sequence(seq, event.character)
 
 
 def GiantWorm():
@@ -184,11 +208,16 @@ def GiantWorm():
   )
 
 
-def ElderThing():  # TODO: custom class after adding item discarding
-  return Monster(
-      "Elder Thing", "normal", "diamond", {"evade": -2, "horror": -3, "combat": 0},
-      {"horror": 2, "combat": 1}, 2,
-  )
+class ElderThing(Monster):
+
+  def __init__(self):
+    super().__init__(
+        "Elder Thing", "normal", "diamond", {"evade": -2, "horror": -3, "combat": 0},
+        {"horror": 2, "combat": 1}, 2,
+    )
+
+  def get_trigger(self, event, state):
+    return None  # TODO: discard a weapon or spell
 
 
 def FlameMatrix():
@@ -287,18 +316,54 @@ class Maniac(Monster):
     super().__init__("Maniac", "normal", "moon", {"evade": -1, "combat": 1}, {"combat": 1}, 1)
 
 
-def Pinata():
-  return Monster(
-      "Pinata", "flying", "circle", {"evade": -2, "horror": -1, "combat": 0},
-      {"horror": 2, "combat": 1}, 1,
-  )
+class Pinata(Monster):
+
+  def __init__(self):
+    super().__init__(
+        "Pinata", "flying", "circle", {"evade": -2, "horror": -1, "combat": 0},
+        {"horror": 2, "combat": 1}, 1,
+    )
+
+  def get_interrupt(self, event, state):
+    if not isinstance(event, events.TakeTrophy):
+      return None
+    if len(state.event_stack) < 2 or not isinstance(state.event_stack[-2], events.PassCombatRound):
+      return None
+    return None  # TODO: draw a unique item, return monster to the box
 
 
-def DreamFlier():  # TODO: failing a combat check sends you through a gate
-  return Monster(
-      "Dream Flier", "flying", "slash", {"evade": -2, "horror": -1, "combat": -2},
-      {"horror": 1, "combat": 0}, 2,
-  )
+class DreamFlier(Monster):
+
+  def __init__(self):
+    super().__init__(
+        "Dream Flier", "flying", "slash", {"evade": -2, "horror": -1, "combat": -2},
+        {"horror": 1, "combat": 0}, 2,
+    )
+
+  def get_trigger(self, event, state):
+    if not isinstance(event, (events.CombatRound, events.EvadeRound)):
+      return None
+    if getattr(event, "defeated", False) or getattr(event, "evaded", False):
+      return None
+
+    events_to_cancel = []
+    if len(state.event_stack) >= 4:
+      if isinstance(state.event_stack[-4], (events.Combat, events.EvadeOrCombat)):
+        events_to_cancel.append(state.event_stack[-4])
+        if len(state.event_stack) >= 7 and isinstance(state.event_stack[-7], events.EvadeOrCombat):
+          events_to_cancel.append(state.event_stack[-7])
+    seq = [events.CancelEvent(to_cancel) for to_cancel in events_to_cancel]
+
+    world_name = values.OtherWorldName(event.character)
+    return_city = events.Return(event.character, world_name, get_lost=False)
+    prompt = "Choose the gate you are pulled through"
+    nearest_gate = events.NearestGateChoice(event.character, prompt, "Choose")
+    travel = events.Travel(event.character, nearest_gate)
+    pulled_through = events.Sequence([nearest_gate, travel], event.character)
+    seq.append(events.Conditional(
+        event.character, values.InCity(event.character), None, {0: return_city, 1: pulled_through},
+    ))
+    return events.Sequence(seq, event.character)
 
 
 def GiantAmoeba():
@@ -322,11 +387,20 @@ def Vampire():
   )
 
 
-def Warlock():  # TODO: succeeding at a combat check returns it to the box
-  return Monster(
-      "Warlock", "stationary", "circle", {"evade": -2, "horror": -1, "combat": -3},
-      {"horror": 1, "combat": 1}, 2, {"magical immunity"},
-  )
+class Warlock(Monster):
+
+  def __init__(self):
+    super().__init__(
+        "Warlock", "stationary", "circle", {"evade": -2, "horror": -1, "combat": -3},
+        {"horror": 1, "combat": 1}, 2, {"magical immunity"},
+    )
+
+  def get_interrupt(self, event, state):
+    if not isinstance(event, events.TakeTrophy):
+      return None
+    if len(state.event_stack) < 2 or not isinstance(state.event_stack[-2], events.PassCombatRound):
+      return None
+    return None  # TODO: gain 2 clue tokens, return monster to the box
 
 
 def Witch():
