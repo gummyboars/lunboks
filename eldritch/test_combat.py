@@ -423,6 +423,130 @@ class CombatOrEvadeTest(EventTest):
     self.assertFalse(evade_or_combat.combat.is_resolved())
 
 
+class EvadeOrFightAllTest(EventTest):
+
+  def setUp(self):
+    super().setUp()
+    self.char.speed_sneak_slider = 0
+
+  def testEvadeSingleMonster(self):
+    self.state.monsters[0].place = self.char.place
+    fight_all = EvadeOrFightAll(self.char, self.state.monsters[:1])
+    self.state.event_stack.append(fight_all)
+    # When there is only one monster, it is chosen automatically.
+    fight_or_evade = self.resolve_to_choice(FightOrEvadeChoice)
+    self.assertEqual(fight_or_evade.monster, self.state.monsters[0])
+    fight_or_evade.resolve(self.state, "Evade")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+
+  def testDefeatTwoMonsters(self):
+    self.state.monsters[0].place = self.char.place
+    self.state.monsters[1].place = self.char.place
+    fight_all = EvadeOrFightAll(self.char, self.state.monsters)
+    self.state.event_stack.append(fight_all)
+
+    monster_choice = self.resolve_to_choice(MonsterChoice)
+    self.assertEqual(monster_choice.monsters, self.state.monsters)
+    output = self.state.for_player(0)
+    self.assertEqual(
+        [monster["handle"] for monster in output["choice"]["monsters"]],
+        [monster.handle for monster in self.state.monsters],
+    )
+
+    monster_choice.resolve(self.state, self.state.monsters[0].handle)
+    fight_or_evade = self.resolve_to_choice(FightOrEvadeChoice)
+    self.assertEqual(fight_or_evade.monster, self.state.monsters[0])
+    fight_or_evade.resolve(self.state, "Fight")
+    fight_or_flee = self.resolve_to_choice(FightOrEvadeChoice)
+    fight_or_flee.resolve(self.state, "Fight")
+    combat_choice = self.resolve_to_choice(CombatChoice)
+    self.choose_items(combat_choice, [])
+
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      fight_or_evade = self.resolve_to_choice(FightOrEvadeChoice)
+    self.assertEqual(fight_or_evade.monster, self.state.monsters[1])
+    fight_or_evade.resolve(self.state, "Fight")
+    fight_or_flee = self.resolve_to_choice(FightOrEvadeChoice)
+    fight_or_flee.resolve(self.state, "Fight")
+    combat_choice = self.resolve_to_choice(CombatChoice)
+    self.choose_items(combat_choice, [])
+
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+
+  def testDefeatOneFleeFromOne(self):
+    self.state.monsters.extend([monsters.Witch(), monsters.FlameMatrix()])
+    for idx, monster in enumerate(self.state.monsters):
+      monster.idx = idx
+      monster.place = self.char.place
+    fight_all = EvadeOrFightAll(self.char, self.state.monsters)
+    self.state.event_stack.append(fight_all)
+
+    monster_choice = self.resolve_to_choice(MonsterChoice)
+    self.assertEqual(monster_choice.monsters, self.state.monsters)
+    output = self.state.for_player(0)
+    self.assertEqual(
+        [monster["handle"] for monster in output["choice"]["monsters"]],
+        [monster.handle for monster in self.state.monsters],
+    )
+
+    # Start with the witch.
+    monster_choice.resolve(self.state, self.state.monsters[2].handle)
+    fight_or_evade = self.resolve_to_choice(FightOrEvadeChoice)
+    self.assertEqual(fight_or_evade.monster, self.state.monsters[2])
+    fight_or_evade.resolve(self.state, "Fight")
+    fight_or_flee = self.resolve_to_choice(FightOrEvadeChoice)
+    fight_or_flee.resolve(self.state, "Fight")
+    combat_choice = self.resolve_to_choice(CombatChoice)
+    self.choose_items(combat_choice, [])
+
+    # Defeat the witch, come back to the monster choice.
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      monster_choice = self.resolve_to_choice(MonsterChoice)
+    self.assertEqual(monster_choice.monsters, self.state.monsters[:2] + self.state.monsters[3:])
+
+    # Choose the maniac. Try to fight it, then flee from it.
+    monster_choice.resolve(self.state, self.state.monsters[1].handle)
+    fight_or_evade = self.resolve_to_choice(FightOrEvadeChoice)
+    self.assertEqual(fight_or_evade.monster, self.state.monsters[1])
+    fight_or_evade.resolve(self.state, "Fight")
+    fight_or_flee = self.resolve_to_choice(FightOrEvadeChoice)
+    fight_or_flee.resolve(self.state, "Fight")
+    combat_choice = self.resolve_to_choice(CombatChoice)
+    self.choose_items(combat_choice, [])
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
+      fight_or_flee = self.resolve_to_choice(FightOrEvadeChoice)
+    fight_or_flee.resolve(self.state, "Flee")
+
+    # Flee from the maniac, come back to the monster choice.
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      monster_choice = self.resolve_to_choice(MonsterChoice)
+    # Because we fled from the maniac, it is still listed in the monster choice.
+    self.assertEqual(monster_choice.monsters, self.state.monsters[:2] + self.state.monsters[3:])
+    output = self.state.for_player(0)
+    self.assertEqual(
+        [monster["handle"] for monster in output["choice"]["monsters"]],
+        ["Cultist0", "Maniac1", "Flame Matrix3"],
+    )
+    self.assertCountEqual(output["choice"]["invalid_choices"], [1])
+
+    # Now, the cultist.
+    monster_choice.resolve(self.state, self.state.monsters[0].handle)
+    fight_or_evade = self.resolve_to_choice(FightOrEvadeChoice)
+    self.assertEqual(fight_or_evade.monster, self.state.monsters[0])
+    fight_or_evade.resolve(self.state, "Evade")
+
+    # Once we evade the cultist, there is only one monster left, so we get no choices.
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      fight_or_evade = self.resolve_to_choice(FightOrEvadeChoice)
+
+    self.assertEqual(fight_or_evade.monster, self.state.monsters[3])
+    fight_or_evade.resolve(self.state, "Evade")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+
+
 class LoseCombatTest(EventTest):
 
   def testHorrorInsane(self):
@@ -431,13 +555,15 @@ class LoseCombatTest(EventTest):
     self.char.sanity = 1
     zombie = monsters.Zombie()
     cultist = monsters.Cultist()
-    seq = EvadeOrFightAll(self.char, [zombie, cultist])
-    self.state.event_stack.append(seq)
-    comb1 = seq.events[0]
-    comb2 = seq.events[1]
+    zombie.place = self.char.place
+    cultist.place = self.char.place
+    fight_all = EvadeOrFightAll(self.char, [zombie, cultist])
+    self.state.event_stack.append(fight_all)
 
     self.assertEqual(self.char.place.name, "Diner")
 
+    monster_choice = self.resolve_to_choice(MonsterChoice)
+    monster_choice.resolve(self.state, zombie.handle)
     choice = self.resolve_to_choice(FightOrEvadeChoice)
     choice.resolve(self.state, "Fight")
     # Character auto-fails the horror check.
@@ -445,10 +571,7 @@ class LoseCombatTest(EventTest):
     self.choose_items(choice, [])
     self.resolve_until_done()
     self.assertEqual(self.char.sanity, 1)
-    self.assertFalse(comb2.is_resolved())
-    self.assertFalse(comb1.combat.is_resolved())
-    self.assertTrue(comb1.combat.is_cancelled())
-    self.assertIsNone(comb1.combat.combat)
+    self.assertTrue(fight_all.is_cancelled())
 
     self.assertEqual(self.char.place.name, "Asylum")
 

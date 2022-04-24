@@ -322,6 +322,10 @@ class GameState:
         elif isinstance(top_event, (events.MapChoice, events.CityMovement)):
           extra_choices = [top_event.none_choice] if top_event.none_choice is not None else []
           output["choice"]["places"] = (top_event.choices or []) + extra_choices
+        elif isinstance(top_event, events.MonsterChoice):
+          output["choice"]["monsters"] = [
+              monster.json_repr(self, top_event.character) for monster in top_event.monsters
+          ]
         elif isinstance(top_event, events.FightOrEvadeChoice):
           output["choice"]["choices"] = top_event.choices
           output["choice"]["monster"] = top_event.monster.json_repr(self, top_event.character)
@@ -331,7 +335,7 @@ class GameState:
           output["choice"]["chosen"] = [item.handle for item in top_event.chosen]
           output["choice"]["items"] = True
         elif isinstance(top_event, events.MonsterSpawnChoice):
-          output["choice"]["monsters"] = top_event.to_spawn
+          output["choice"]["to_spawn"] = top_event.to_spawn
         elif isinstance(top_event, events.MonsterOnBoardChoice):
           output["choice"]["board_monster"] = True
         else:

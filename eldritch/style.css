@@ -184,7 +184,12 @@ button:disabled {
   width: calc(min(15vw, 24vh));
   height: calc(min(15vw, 24vh) * 25 / 16);
 }
+.monsterchoice {
+  width: calc(min(15vw, 24vh));
+  height: calc(min(30vw, 48vh));
+}
 .fightchoice {
+  position: relative;
   width: calc(min(15vw, 24vh));
   height: calc(min(15vw, 24vh));
 }

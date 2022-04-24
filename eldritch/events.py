@@ -2387,6 +2387,50 @@ class FightOrEvadeChoice(MultipleChoice):
     self.monster = monster
 
 
+class MonsterChoice(ChoiceEvent):
+
+  def __init__(self, character, prompt, monsters, annotations):
+    assert monsters
+    assert len(monsters) == len(annotations)
+    self.character = character
+    self._prompt = prompt
+    self.monsters = monsters
+    self._annotations = annotations
+    self.invalid_choices = {}
+    self.choice = None
+
+  def compute_choices(self, state):
+    self.invalid_choices = {idx: True for idx, val in enumerate(self._annotations) if val}
+    valid_choices = [idx for idx in range(len(self.monsters)) if idx not in self.invalid_choices]
+    if len(valid_choices) == 1:
+      self.choice = self.monsters[valid_choices[0]]
+
+  def resolve(self, state, choice=None):
+    assert not self.is_resolved()
+    chosen_monsters = [pair for pair in enumerate(self.monsters) if pair[1].handle == choice]
+    if len(chosen_monsters) != 1:
+      raise InvalidMove(f"Unknown monster {choice}")
+    idx, monster = chosen_monsters[0]
+    if idx in self.invalid_choices:
+      raise InvalidMove(f"You have already dealt with that {monster.name}")
+    self.choice = monster
+
+  def is_resolved(self):
+    return self.choice is not None
+
+  def start_str(self):
+    return ""
+
+  def finish_str(self):
+    return f"{self.character.name} chose {self.choice.handle}"
+
+  def prompt(self):
+    return self._prompt
+
+  def annotations(self, state):
+    return self._annotations
+
+
 class SpendMixin:
 
   def __init__(self, *args, **kwargs):
@@ -2950,56 +2994,68 @@ class MonsterOnBoardChoice(ChoiceEvent):
     return self._prompt
 
 
-class EvadeOrFightAll(Sequence):
+class EvadeOrFightAll(Event):
 
   def __init__(self, character, monsters):
-    self.monsters = monsters
+    assert monsters
     self.character = character
-    super().__init__(
-        [
-            EvadeOrCombat(character, monster)
-            for monster in monsters
-            if monster not in character.avoid_monsters
-        ], character)
+    self.monsters = monsters
+    self.done = [False] * len(monsters)
+    self.choice: Optional[MonsterChoice] = None
+    self.combat: Optional[EvadeOrCombat] = None
+    self.place = None
+
+  def resolve(self, state):
+    # Keep track of the character's location. If it changes, then the EvadeOrFightAll ends.
+    # See the Dream Flier or Dimensional Shambler for an example of how this could happen.
+    # Doubles as an initialization flag used to filter monsters from character.avoid_monsters.
+    if self.place is None:
+      self.place = self.character.place
+      for idx, monster in enumerate(self.monsters):
+        if monster in self.character.avoid_monsters:
+          self.done[idx] = True
+    if self.place != self.character.place:
+      self.cancelled = True
+      return
+
+    # If we finished a combat, record that this monster is handled and give another choice.
+    if self.combat is not None:
+      assert self.combat.is_done()
+      idx = self.monsters.index(self.combat.monster)
+      self.done[idx] = True
+      self.combat = None
+    if all(self.done):
+      return
+
+    if self.choice is not None and not self.choice.is_resolved():  # Maybe it got cancelled somehow?
+      self.choice = None
+
+    # Give the user a choice of monsters.
+    if self.choice is None:
+      # This will ignore any monsters that have been taken as trophies.
+      present_monsters = [pair for pair in enumerate(self.monsters) if pair[1].place == self.place]
+      # Annotate all monsters already fought or evaded with "Done".
+      shown_monsters = [monster for _, monster in present_monsters]
+      annotations = ["Done" if self.done[idx] else None for idx, _ in present_monsters]
+      prompt = "Choose a monster to fight or evade"
+      self.choice = MonsterChoice(self.character, prompt, shown_monsters, annotations)
+      state.event_stack.append(self.choice)
+      return
+
+    # When the user chooses a monster, put a EvadeOrCombat on the stack for that monster.
+    # Also be sure to reset the choice so that they can choose again next iteration.
+    self.combat = EvadeOrCombat(self.character, self.choice.choice)
+    self.choice = None
+    state.event_stack.append(self.combat)
+
+  def is_resolved(self):
+    return all(self.done)
 
   def start_str(self):
-    return f"{self.character.name} must evade or fight all of: " \
-           + ", ".join(mon.name for mon in self.monsters)
+    return f"{self.character.name} must evade or fight monsters"
 
-
-# TODO: let the player choose the order in which they fight/evade the monsters
-# class EvadeOrFightAll(Event):
-#
-#   def __init__(self, character, monsters):
-#     assert monsters
-#     self.character = character
-#     self.monsters = monsters
-#     self.result = []
-#
-#   def resolve(self, state):
-#     if not self.result:
-#       self.add_choice(state, self.monsters[0])
-#       return False
-#     if self.result[-1].is_resolved():
-#       if len(self.result) == len(self.monsters):
-#         return True
-#       self.add_choice(state, self.monsters[len(self.result)])
-#       return False
-#     return True
-#
-#   def add_choice(self, state, monster):
-#     choice = EvadeOrCombat(self.character, monster)
-#     self.result.append(choice)
-#     state.event_stack.append(choice)
-#
-#   def is_resolved(self):
-#     return len(self.result) == len(self.monsters) and self.result[-1].is_resolved()
-#
-#   def start_str(self):
-#     return ""
-#
-#   def finish_str(self):
-#     return ""
+  def finish_str(self):
+    return ""
 
 
 class EvadeOrCombat(Event):
