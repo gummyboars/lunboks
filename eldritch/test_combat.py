@@ -384,6 +384,17 @@ class CombatOrEvadeTest(EventTest):
     self.assertEqual(self.char.sanity, 4)
     self.assertEqual(self.char.stamina, 3)
 
+  def testAutoEvadeMonster(self):
+    cultist = monsters.Cultist()
+    choice = EvadeOrCombat(self.char, cultist, auto_evade=True)
+    self.state.event_stack.append(choice)
+
+    fight_or_evade = self.resolve_to_choice(FightOrEvadeChoice)
+    fight_or_evade.resolve(self.state, "Ignore")
+    # Make sure the character cannot pass an evade check to validate they are automatically evading.
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
+      self.resolve_until_done()
+
   def testCancelledEvade(self):
     zombie = monsters.Zombie()
     evade_or_combat = EvadeOrCombat(self.char, zombie)
@@ -544,6 +555,34 @@ class EvadeOrFightAllTest(EventTest):
     self.assertEqual(fight_or_evade.monster, self.state.monsters[3])
     fight_or_evade.resolve(self.state, "Evade")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+
+  def testWithAutoEvade(self):
+    self.state.monsters.extend([monsters.Witch(), monsters.FlameMatrix()])
+    for idx, monster in enumerate(self.state.monsters):
+      monster.idx = idx
+      monster.place = self.char.place
+    fight_all = EvadeOrFightAll(self.char, self.state.monsters, auto_evade=True)
+    self.state.event_stack.append(fight_all)
+
+    monster_choice = self.resolve_to_choice(MonsterChoice)
+    self.assertEqual(monster_choice.monsters, self.state.monsters)
+    output = self.state.for_player(0)
+    self.assertEqual(
+        [monster["handle"] for monster in output["choice"]["monsters"][:4]],
+        [monster.handle for monster in self.state.monsters],
+    )
+    self.assertEqual(output["choice"]["monsters"][4], "Ignore All")
+
+    monster_choice.resolve(self.state, self.state.monsters[0].handle)
+    fight_or_evade = self.resolve_to_choice(FightOrEvadeChoice)
+    fight_or_evade.resolve(self.state, "Ignore")
+    # Make sure the character is actually auto-evading by failing all checks.
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
+      monster_choice = self.resolve_to_choice(MonsterChoice)
+
+    monster_choice.resolve(self.state, "Ignore All")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
       self.resolve_until_done()
 
 
