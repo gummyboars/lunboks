@@ -779,7 +779,12 @@ function updateMonsterChoices(choice, monsterList) {
 }
 
 function addMonsterChoices(uichoice, cardChoice, monsters, invalidChoices, annotations) {
+  let otherChoices = [];
   for (let [idx, monster] of monsters.entries()) {
+    if (typeof(monster) == "string") {
+      otherChoices.push(monster);
+      continue;
+    }
     let holder = document.createElement("DIV");
     holder.classList.add("cardholder");
     let div = document.createElement("DIV");
@@ -822,6 +827,7 @@ function addMonsterChoices(uichoice, cardChoice, monsters, invalidChoices, annot
   } else {
     scrollParent.classList.remove("overflowing");
   }
+  addChoices(uichoice, otherChoices, [], []);
 }
 
 function addFightOrEvadeChoices(uichoice, cardChoice, monster, choices, invalidChoices, remainingSpend, annotations) {

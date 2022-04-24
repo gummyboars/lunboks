@@ -1930,6 +1930,19 @@ class MonsterChoiceTest(EventTest):
     output = self.state.for_player(0)
     self.assertNotIn("magical resistance", output["choice"]["monsters"][0]["attributes"])
 
+  def testMonsterChoiceWithAutoEvade(self):
+    all_monsters = self.state.monsters[:2]
+    choice = MonsterChoice(self.char, "", all_monsters, [None, None], "Ignore All")
+    self.state.event_stack.append(choice)
+    choice = self.resolve_to_choice(MonsterChoice)
+    output = self.state.for_player(0)
+    self.assertEqual(output["choice"]["invalid_choices"], [])
+    self.assertEqual(output["choice"]["annotations"], [None, None])
+    self.assertEqual(output["choice"]["monsters"][2], "Ignore All")
+
+    choice.resolve(self.state, "Ignore All")
+    self.resolve_until_done()
+
 
 class SpendChoiceTest(EventTest):
 

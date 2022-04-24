@@ -326,6 +326,8 @@ class GameState:
           output["choice"]["monsters"] = [
               monster.json_repr(self, top_event.character) for monster in top_event.monsters
           ]
+          if top_event.none_choice is not None:
+            output["choice"]["monsters"] += [top_event.none_choice]
         elif isinstance(top_event, events.FightOrEvadeChoice):
           output["choice"]["choices"] = top_event.choices
           output["choice"]["monster"] = top_event.monster.json_repr(self, top_event.character)
@@ -557,10 +559,10 @@ class GameState:
 
     # Must fight monsters when you end your movement.
     if isinstance(event, (events.CityMovement, events.WagonMove, events.Return)):
-      # TODO: special handling for the turn that you return from another world
       nearby_monsters = [mon for mon in self.monsters if mon.place == event.character.place]
       if nearby_monsters:
-        triggers.append(events.EvadeOrFightAll(event.character, nearby_monsters))
+        auto_evade = isinstance(event, events.Return)
+        triggers.append(events.EvadeOrFightAll(event.character, nearby_monsters, auto_evade))
       if isinstance(event.character.place, places.Location) and event.character.place.clues:
         triggers.append(events.CollectClues(event.character, event.character.place.name))
 
