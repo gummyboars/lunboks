@@ -50,7 +50,7 @@ class Character:
     attrs = [
         "name", "stamina", "sanity", "focus",
         "movement_points", "focus_points",
-        "dollars", "clues", "possessions", "trophies",  # TODO: special cards
+        "dollars", "clues", "possessions",  # TODO: special cards
         "delayed_until", "lose_turn_until", "gone",
     ]
     data = {attr: getattr(self, attr) for attr in attrs}
@@ -63,6 +63,12 @@ class Character:
           "pairs": getattr(self, "_" + slider),
           "selection": getattr(self, slider + "_slider"),
       }
+    data["trophies"] = []
+    for trophy in self.trophies:
+      if isinstance(trophy, monsters.Monster):
+        data["trophies"].append(trophy.json_repr(state, self))
+      else:
+        data["trophies"].append(trophy)
     computed = ["speed", "sneak", "fight", "will", "lore", "luck", "max_sanity", "max_stamina"]
     data.update({attr: getattr(self, attr)(state) for attr in computed})
     data["place"] = self.place.name if self.place is not None else None

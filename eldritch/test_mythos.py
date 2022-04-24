@@ -1590,7 +1590,9 @@ class RumorTest(EventTest):
     self.assertFalse(self.state.rumor.failed)
     self.assertNotIn(self.state.rumor, self.state.mythos)
     cultist = monsters.Cultist()
+    warlock = monsters.Warlock()
     self.assertEqual(cultist.toughness(self.state, self.char), 3)
+    self.assertEqual(warlock.toughness(self.state, self.char), 4)
 
   def testRumor59Progress(self):
     self.state.mythos.append(Mythos59())

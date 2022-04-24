@@ -32,7 +32,7 @@ class GameState:
   }
   CUSTOM_ATTRIBUTES = {
       "characters", "all_characters", "environment", "mythos", "other_globals", "ancient_one",
-      "all_ancients",
+      "all_ancients", "monsters",
   }
   TURN_PHASES = ["upkeep", "movement", "encounter", "otherworld", "mythos"]
   AWAKENED_PHASES = ["upkeep", "attack", "ancient"]
@@ -227,12 +227,17 @@ class GameState:
     for name, char in self.all_characters.items():
       output["all_characters"][name] = char.get_json(self)
 
+    output["monsters"] = []
+    for monster in self.monsters:
+      output["monsters"].append(monster.json_repr(self, None))
+
     for attr in ["environment", "rumor", "ancient_one"]:
       output[attr] = getattr(self, attr).json_repr(self) if getattr(self, attr) else None
     output["other_globals"] = [glob.json_repr(self) for glob in self.other_globals]
     output["all_ancients"] = {
         name: ancient.json_repr(self) for name, ancient in self.all_ancients.items()
     }
+
     return output
 
   def for_player(self, char_idx):
