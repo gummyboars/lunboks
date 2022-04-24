@@ -546,11 +546,12 @@ class MovementTest(EventTest):
     self.char.possessions.append(items.AncientTome(0))
     cultist = next(monster for monster in self.state.monsters if monster.name == "Cultist")
     cultist.place = None  # Take one cultist as a trophy to test CityMovement's get_routes.
-    monster1 = next(monster for monster in self.state.monsters if monster.name == "Maniac")
-    monster1.place = self.state.places["Easttown"]
-    monster2 = monsters.Zombie()
-    self.state.monsters.append(monster2)
-    monster2.place = self.state.places["Easttown"]
+    maniac = next(monster for monster in self.state.monsters if monster.name == "Maniac")
+    maniac.place = self.state.places["Easttown"]
+    zombie = monsters.Zombie()
+    zombie.idx = len(self.state.monsters)
+    self.state.monsters.append(zombie)
+    zombie.place = self.state.places["Easttown"]
 
     self.advance_turn(self.state.turn_number, "movement")
     self.assertEqual(self.char.stamina, 5)
@@ -564,21 +565,25 @@ class MovementTest(EventTest):
     movement = self.resolve_to_choice(CityMovement)
     self.assertIn("Rivertown", movement.choices)
     movement.resolve(self.state, "Rivertown")
-    choice = self.resolve_to_choice(MultipleChoice)
-    # TODO: Choose which one to evade first
-    # For now, Zombie is the first
+
+    monster_choice = self.resolve_to_choice(MonsterChoice)
+    self.assertCountEqual(monster_choice.monsters, [maniac, zombie])
+    monster_choice.resolve(self.state, maniac.handle)
+
+    choice = self.resolve_to_choice(FightOrEvadeChoice)
     self.assertEqual(choice.choices, ["Fight", "Evade"])
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=4)):
       choice.resolve(self.state, "Evade")
-      next_choice = self.resolve_to_choice(MultipleChoice)
+      next_choice = self.resolve_to_choice(FightOrEvadeChoice)
     self.assertCountEqual(next_choice.choices, ["Fight", "Flee"])
     self.assertEqual(self.char.stamina, 4)
     self.assertEqual(self.char.sanity, 5)
     next_choice.resolve(self.state, "Flee")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
-      maniac_choice = self.resolve_to_choice(MultipleChoice)
-      self.assertEqual(maniac_choice.choices, ["Fight", "Evade"])
-      maniac_choice.resolve(self.state, "Evade")
+      zombie_choice = self.resolve_to_choice(FightOrEvadeChoice)
+      self.assertEqual(zombie_choice.monster, zombie)
+      self.assertEqual(zombie_choice.choices, ["Fight", "Evade"])
+      zombie_choice.resolve(self.state, "Evade")
       self.resolve_until_done()
 
     self.assertTrue(movement.is_done())
@@ -1870,6 +1875,60 @@ class PrereqChoiceTest(EventTest):
 
     choice.resolve(self.state, "Spend 1 sanity")
     self.assertEqual(choice.choice_index, 1)
+
+
+class MonsterChoiceTest(EventTest):
+
+  def testChoice(self):
+    all_monsters = self.state.monsters[:2]
+    choice = MonsterChoice(self.char, "", all_monsters, [None, None])
+    self.state.event_stack.append(choice)
+    choice = self.resolve_to_choice(MonsterChoice)
+    output = self.state.for_player(0)
+    self.assertFalse(output["choice"]["invalid_choices"])
+    self.assertEqual(output["choice"]["annotations"], [None, None])
+
+    with self.assertRaisesRegex(InvalidMove, "Unknown monster"):
+      choice.resolve(self.state, "somebody")
+    self.assertFalse(choice.is_resolved())
+    choice.resolve(self.state, self.state.monsters[0].handle)
+    self.assertTrue(choice.is_resolved())
+    self.resolve_until_done()
+
+  def testAutoChoose(self):
+    all_monsters = self.state.monsters[:2]
+    choice = MonsterChoice(self.char, "", all_monsters, [None, "Evaded"])
+    self.state.event_stack.append(choice)
+    self.resolve_until_done()
+
+  def testInvalidChoice(self):
+    self.state.monsters.extend([monsters.Zombie(), monsters.Witch()])
+    for idx, monster in enumerate(self.state.monsters):
+      monster.idx = idx
+    choice = MonsterChoice(self.char, "", self.state.monsters, [None, None, "Evaded", None])
+    self.state.event_stack.append(choice)
+    choice = self.resolve_to_choice(MonsterChoice)
+    output = self.state.for_player(0)
+    self.assertEqual(output["choice"]["invalid_choices"], [2])
+    self.assertEqual(output["choice"]["annotations"], [None, None, "Evaded", None])
+
+    with self.assertRaisesRegex(InvalidMove, "already"):
+      choice.resolve(self.state, "Zombie2")
+    self.assertFalse(choice.is_resolved())
+    choice.resolve(self.state, self.state.monsters[0].handle)
+    self.assertTrue(choice.is_resolved())
+    self.resolve_until_done()
+
+  def testMonsterChoiceIsPlayerSpecific(self):
+    witch = monsters.Witch()
+    choice = MonsterChoice(self.char, "", [witch, self.state.monsters[0]], [None, None])
+    self.state.event_stack.append(choice)
+    choice = self.resolve_to_choice(MonsterChoice)
+    output = self.state.for_player(0)
+    self.assertIn("magical resistance", output["choice"]["monsters"][0]["attributes"])
+    self.char.possessions.append(assets.OldProfessor())
+    output = self.state.for_player(0)
+    self.assertNotIn("magical resistance", output["choice"]["monsters"][0]["attributes"])
 
 
 class SpendChoiceTest(EventTest):
