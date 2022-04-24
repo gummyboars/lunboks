@@ -181,15 +181,21 @@ button:disabled {
   background-color: darkgrey;
 }
 .cardchoice {
-  position: relative;
   width: calc(min(15vw, 24vh));
   height: calc(min(15vw, 24vh) * 25 / 16);
+}
+.fightchoice {
+  width: calc(min(15vw, 24vh));
+  height: calc(min(15vw, 24vh));
+}
+.visualchoice {
+  position: relative;
   cursor: pointer;
 }
-.mustspend .cardchoice {
+.mustspend .visualchoice {
   cursor: not-allowed;
 }
-.unchoosable .cardchoice {
+.unchoosable .visualchoice {
   filter: grayscale(70%) brightness(70%);
   cursor: not-allowed;
 }

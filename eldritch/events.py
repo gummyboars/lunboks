@@ -2380,6 +2380,13 @@ class MultipleChoice(ChoiceEvent):
     return self.choices.index(self.choice)
 
 
+class FightOrEvadeChoice(MultipleChoice):
+
+  def __init__(self, character, prompt, evade_choice, monster, prereqs=None, annotations=None):
+    super().__init__(character, prompt, ["Fight", evade_choice], prereqs, annotations)
+    self.monster = monster
+
+
 class SpendMixin:
 
   def __init__(self, *args, **kwargs):
@@ -3015,8 +3022,9 @@ class EvadeOrCombat(Event):
       self.combat = Combat(self.character, self.monster)
       self.evade = EvadeRound(self.character, self.monster)
       prompt = f"Fight the {self.monster.name} or evade it?"
-      self.choice = BinaryChoice(self.character, prompt, "Fight", "Evade", self.combat, self.evade)
-      self.choice.events[0].monster = self.monster
+      choice = FightOrEvadeChoice(self.character, prompt, "Evade", self.monster)
+      cond = Conditional(self.character, choice, "choice_index", {0: self.combat, 1: self.evade})
+      self.choice = Sequence([choice, cond], self.character)
 
     if not self.choice.is_done():
       state.event_stack.append(self.choice)
@@ -3080,9 +3088,9 @@ class Combat(Event):
     self.evade = EvadeRound(self.character, self.monster)
     no_ambush = values.NoAmbushPrerequisite(self.monster, self.character)
     prompt = f"Fight the {self.monster.name} or flee from it?"
-    self.choice = BinaryChoice(
-        self.character, prompt, "Flee", "Fight", self.evade, self.combat, no_ambush)
-    self.choice.events[0].monster = self.monster  # TODO: this is hacky
+    choice = FightOrEvadeChoice(self.character, prompt, "Flee", self.monster, [None, no_ambush])
+    cond = Conditional(self.character, choice, "choice_index", {0: self.combat, 1: self.evade})
+    self.choice = Sequence([choice, cond], self.character)
     state.event_stack.append(self.choice)
 
   def is_resolved(self):

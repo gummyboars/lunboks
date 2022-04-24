@@ -424,7 +424,7 @@ class MovementTest(EventTest):
     choice.resolve(self.state, "Fight")
 
     next_choice = self.resolve_to_choice(MultipleChoice)
-    self.assertEqual(next_choice.choices, ["Flee", "Fight"])
+    self.assertCountEqual(next_choice.choices, ["Flee", "Fight"])
     next_choice.resolve(self.state, "Fight")
 
     third_choice = self.resolve_to_choice(CombatChoice)
