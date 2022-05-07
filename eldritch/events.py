@@ -2872,8 +2872,7 @@ class MapChoice(ChoiceEvent, metaclass=abc.ABCMeta):
   def is_resolved(self):
     # It is possible to have no choices (e.g. with "gate" when there are no gates on the board).
     # In the case where there are no choices, the choice reader must account for it.
-    # pylint: disable=use-implicit-booleaness-not-comparison
-    return self.choice is not None or self.choices == []
+    return self.choice is not None
 
   def prompt(self):
     return self._prompt
@@ -2916,6 +2915,8 @@ class PlaceChoice(MapChoice):
       if "open" not in self.choice_filters and not getattr(place, "closed", False):
         continue
       self.choices.append(name)
+    if not self.choices:
+      self.cancelled = True
 
   def start_str(self):
     if self.choices:
@@ -2936,6 +2937,12 @@ class GateChoice(MapChoice):
     self.annotation = annotation
 
   def compute_choices(self, state):
+    if isinstance(self.gate_name, values.Value):
+      self.gate_name = self.gate_name.value(state)
+      if self.gate_name is None:
+        self.cancelled = True
+        return
+
     self.choices = []
     for name, place in state.places.items():
       if not isinstance(place, (places.Location, places.Street)):
@@ -2943,6 +2950,9 @@ class GateChoice(MapChoice):
       if getattr(place, "gate", None) is not None:
         if place.gate.name == self.gate_name or self.gate_name is None:
           self.choices.append(name)
+    if not self.choices:
+      self.cancelled = True
+      return
     if len(self.choices) == 1 and self.none_choice is None:
       self.choice = self.choices[0]
 
@@ -2955,6 +2965,55 @@ class GateChoice(MapChoice):
     if self.choice is None:
       return f"there were no open gates to {self.gate_name}"  # TODO
     return f"{self.character.name} chose the gate at {self.choice}"
+
+  def annotations(self, state):
+    if self.annotation and self.choices is not None:
+      return [self.annotation for _ in self.choices]
+    return None
+
+
+class NearestGateChoice(MapChoice):
+
+  def __init__(self, character, prompt, annotation, none_choice=None):
+    super().__init__(character, prompt, none_choice=none_choice)
+    self.annotation = annotation
+
+  def compute_choices(self, state):
+    if not isinstance(self.character.place, places.CityPlace):
+      self.cancelled = True
+      return
+
+    self.choices = []
+    nearest = None
+    distances = {self.character.place.name: 0}
+    queue = [self.character.place]
+    while queue:
+      place = queue.pop(0)
+      distance = distances[place.name]
+      if nearest is not None and distance > nearest:
+        break
+      if getattr(place, "gate", None) is not None:
+        nearest = distance
+        self.choices.append(place.name)
+        continue
+      for nearby in place.connections:
+        if nearby.name not in distances:
+          distances[nearby.name] = distance + 1
+          queue.append(nearby)
+
+    if not self.choices:
+      self.cancelled = True
+      return
+    if len(self.choices) == 1 and self.none_choice is None:
+      self.choice = self.choices[0]
+
+  def start_str(self):
+    return f"{self.character.name} must choose the nearest gate"
+
+  def finish_str(self):
+    if self.choice is None:
+      return "There were no open gates"
+    return f"{self.character.name} chose {self.choice}"
 
   def annotations(self, state):
     if self.annotation and self.choices is not None:
@@ -3358,6 +3417,10 @@ class PassCombatRound(Event):
     self.damage: Optional[Event] = None
     self.done = False
 
+  @property
+  def monster(self):
+    return self.combat_round.monster
+
   def resolve(self, state):
     if self.combat_round.pass_combat is None:
       # Can happen if passing combat is the effect of a spell, e.g. Bind Monster
@@ -3436,10 +3499,18 @@ class Travel(Event):
 
   def __init__(self, character, world_name):
     self.character = character
-    self.world_name = world_name
+    self.world_name: Union[MapChoice, str] = world_name
     self.done = False
 
   def resolve(self, state):
+    if isinstance(self.world_name, MapChoice):
+      if self.world_name.is_cancelled():
+        self.cancelled = True
+        return
+      if getattr(state.places[self.world_name.choice], "gate", None) is None:
+        self.cancelled = True
+        return
+      self.world_name = state.places[self.world_name.choice].gate.name
     self.character.place = state.places[self.world_name + "1"]
     self.character.explored = False  # just in case
     self.done = True
@@ -3456,10 +3527,11 @@ class Travel(Event):
 
 class Return(Event):
 
-  def __init__(self, character, world_name):
+  def __init__(self, character, world_name, get_lost=True):
     self.character = character
     self.world_name = world_name
     self.return_choice: Optional[ChoiceEvent] = None
+    self.get_lost = get_lost
     self.lost: Optional[Event] = None
     self.returned = None
 
@@ -3471,8 +3543,8 @@ class Return(Event):
       return
     assert self.return_choice.is_done()
 
-    if self.return_choice.is_cancelled() or self.return_choice.choice is None:  # Unable to return
-      if self.lost is None:
+    if not self.return_choice.is_resolved():  # Unable to return
+      if self.get_lost and self.lost is None:
         self.lost = LostInTimeAndSpace(self.character)
         state.event_stack.append(self.lost)
         return

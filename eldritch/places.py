@@ -233,6 +233,7 @@ class OtherWorld(Place):
   def __init__(self, info, order):
     self.info = info
     self.order = order
+    self.unstable = True
 
   @property
   def name(self):

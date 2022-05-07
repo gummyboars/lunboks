@@ -2,6 +2,8 @@ import abc
 import collections
 import operator
 
+from eldritch import places
+
 OPER_MAP = {"at least": operator.ge, "at most": operator.le, "exactly": operator.eq}
 
 
@@ -53,6 +55,20 @@ class Calculation(Value):
       right = right.value(state)
 
     return self.operand(left, right)
+
+
+class OtherWorldName(Value):
+
+  def __init__(self, character):
+    super().__init__()
+    self.character = character
+
+  def value(self, state):
+    if self.character.place is None:
+      return None
+    if not isinstance(self.character.place, places.OtherWorld):
+      return None
+    return self.character.place.info.name
 
 
 def Die(die_roll):
@@ -186,6 +202,16 @@ class PlaceUnstable(Value):
 
   def value(self, state):
     return int(self.place.is_unstable(state))
+
+
+class InCity(Value):
+
+  def __init__(self, character):
+    super().__init__()
+    self.character = character
+
+  def value(self, state):
+    return int(isinstance(self.character.place, places.CityPlace))
 
 
 class SpendValue(metaclass=abc.ABCMeta):

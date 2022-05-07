@@ -585,6 +585,30 @@ class EvadeOrFightAllTest(EventTest):
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
       self.resolve_until_done()
 
+  def testStopsWhenLostInTimeAndSpace(self):
+    self.state.monsters.append(monsters.DimensionalShambler())
+    for idx, monster in enumerate(self.state.monsters):
+      monster.idx = idx
+      monster.place = self.char.place
+
+    fight_all = EvadeOrFightAll(self.char, self.state.monsters)
+    self.state.event_stack.append(fight_all)
+
+    monster_choice = self.resolve_to_choice(MonsterChoice)
+    monster_choice.resolve(self.state, self.state.monsters[-1].handle)
+    fight_or_evade = self.resolve_to_choice(FightOrEvadeChoice)
+    fight_or_evade.resolve(self.state, "Fight")
+    fight_or_flee = self.resolve_to_choice(FightOrEvadeChoice)
+    fight_or_flee.resolve(self.state, "Fight")
+    combat_choice = self.resolve_to_choice(CombatChoice)
+    self.choose_items(combat_choice, [])
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
+      self.resolve_until_done()
+
+    self.assertEqual(self.char.place.name, "Lost")
+    self.assertIsNotNone(self.char.lose_turn_until)
+    self.assertEqual(self.char.stamina, 5)
+
 
 class LoseCombatTest(EventTest):
 
@@ -666,6 +690,234 @@ class LoseCombatTest(EventTest):
     self.assertEqual(self.char.stamina, 1)
     self.assertFalse(combat.is_resolved())
     self.assertEqual(self.char.place.name, "Hospital")
+
+  def testLostFromAnotherWorld(self):
+    self.char.place = self.state.places["Dreamlands1"]
+    self.state.monsters.clear()
+    self.state.monsters.append(monsters.DimensionalShambler())
+    self.state.monsters[0].idx = 0
+    self.state.monsters[0].place = self.state.monster_cup
+
+    appears = MonsterAppears(self.char)
+    self.state.event_stack.append(appears)
+    fight_or_evade = self.resolve_to_choice(FightOrEvadeChoice)
+    fight_or_evade.resolve(self.state, "Evade")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
+      self.resolve_until_done()
+
+    self.assertEqual(self.char.place.name, "Lost")
+    self.assertIsNotNone(self.char.lose_turn_until)
+    self.assertEqual(self.char.stamina, 5)
+
+
+class DreamFlierCombatTest(EventTest):
+
+  def setUp(self):
+    super().setUp()
+    self.flier = monsters.DreamFlier()
+    self.state.monsters.append(self.flier)
+    self.state.monsters[-1].idx = len(self.state.monsters)-1
+
+  def testWinCombat(self):
+    self.char.place = self.state.places["Northside"]
+    self.flier.place = self.char.place
+    fight_all = EvadeOrFightAll(self.char, [self.flier])
+    self.state.event_stack.append(fight_all)
+    fight_or_evade = self.resolve_to_choice(FightOrEvadeChoice)
+    fight_or_evade.resolve(self.state, "Fight")
+    fight_or_flee = self.resolve_to_choice(FightOrEvadeChoice)
+    fight_or_flee.resolve(self.state, "Fight")
+    combat_choice = self.resolve_to_choice(CombatChoice)
+    self.choose_items(combat_choice, [])
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+
+    self.assertEqual(self.char.place.name, "Northside")
+    self.assertIn(self.flier, self.char.trophies)
+    self.assertIsNone(self.flier.place)
+
+  def testLoseCombatNoGates(self):
+    self.char.place = self.state.places["Northside"]
+    self.state.monsters[0].place = self.char.place
+    self.flier.place = self.char.place
+    fight_all = EvadeOrFightAll(self.char, [self.flier, self.state.monsters[0]])
+    self.state.event_stack.append(fight_all)
+    monster_choice = self.resolve_to_choice(MonsterChoice)
+    monster_choice.resolve(self.state, self.flier.handle)
+    fight_or_evade = self.resolve_to_choice(FightOrEvadeChoice)
+    fight_or_evade.resolve(self.state, "Fight")
+    fight_or_flee = self.resolve_to_choice(FightOrEvadeChoice)
+    fight_or_flee.resolve(self.state, "Fight")
+    combat_choice = self.resolve_to_choice(CombatChoice)
+    self.choose_items(combat_choice, [])
+    # Lose the combat. The combat should end with no effect.
+    # We should continue by fighting the next monster.
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
+      fight_or_evade = self.resolve_to_choice(FightOrEvadeChoice)
+
+    self.assertEqual(fight_or_evade.monster, self.state.monsters[0])
+    self.assertEqual(self.char.place.name, "Northside")
+    self.assertEqual(self.flier.place.name, "Northside")
+    self.assertFalse(self.char.trophies)
+
+    # Finish fighting the next monster, and validate that the EvadeOrFightAll ends.
+    fight_or_evade.resolve(self.state, "Fight")
+    fight_or_flee = self.resolve_to_choice(FightOrEvadeChoice)
+    fight_or_flee.resolve(self.state, "Fight")
+    combat_choice = self.resolve_to_choice(CombatChoice)
+    self.choose_items(combat_choice, [])
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+
+  def testLoseCombatWithOpenGates(self):
+    self.char.place = self.state.places["Northside"]
+    # Two gates - one to the Abyss, and one to Pluto. The Abyss gate is closer than the Pluto gate.
+    self.state.places["Isle"].gate = [gate for gate in self.state.gates if gate.name == "Abyss"][0]
+    self.state.places["Woods"].gate = [gate for gate in self.state.gates if gate.name == "Pluto"][0]
+    self.state.monsters[0].place = self.char.place
+    self.flier.place = self.char.place
+    fight_all = EvadeOrFightAll(self.char, [self.flier, self.state.monsters[0]])
+    self.state.event_stack.append(fight_all)
+    monster_choice = self.resolve_to_choice(MonsterChoice)
+    monster_choice.resolve(self.state, self.flier.handle)
+    fight_or_evade = self.resolve_to_choice(FightOrEvadeChoice)
+    fight_or_evade.resolve(self.state, "Fight")
+    fight_or_flee = self.resolve_to_choice(FightOrEvadeChoice)
+    fight_or_flee.resolve(self.state, "Fight")
+    combat_choice = self.resolve_to_choice(CombatChoice)
+    self.choose_items(combat_choice, [])
+    # After losing, the character should be pulled through to the Abyss, and should not fight the
+    # rest of the monsters.
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
+      self.resolve_until_done()
+
+    self.assertEqual(self.char.place.name, "Abyss1")
+    self.assertEqual(self.flier.place.name, "Northside")
+    self.assertFalse(self.char.trophies)
+
+  def testFailEvadeCheck(self):
+    self.char.place = self.state.places["Northside"]
+    self.state.places["Isle"].gate = self.state.gates.popleft()
+    self.flier.place = self.char.place
+    self.state.monsters[0].place = self.char.place
+
+    fight_all = EvadeOrFightAll(self.char, [self.flier, self.state.monsters[0]])
+    self.state.event_stack.append(fight_all)
+    monster_choice = self.resolve_to_choice(MonsterChoice)
+    monster_choice.resolve(self.state, self.flier.handle)
+    fight_or_evade = self.resolve_to_choice(FightOrEvadeChoice)
+    fight_or_evade.resolve(self.state, "Evade")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
+      self.resolve_until_done()
+
+    self.assertEqual(self.char.place.name, self.state.places["Isle"].gate.name + "1")
+    self.assertEqual(self.flier.place.name, "Northside")
+    self.assertFalse(self.char.trophies)
+
+  def testMultipleNearestGates(self):
+    self.char.place = self.state.places["Northside"]
+    # Two gates - one to the Abyss, and one to Pluto. The Abyss gate is closer than the Pluto gate.
+    self.state.places["Roadhouse"].gate = [g for g in self.state.gates if g.name == "Abyss"][0]
+    self.state.places["Cave"].gate = [gate for gate in self.state.gates if gate.name == "Pluto"][0]
+    self.flier.place = self.char.place
+    fight_all = EvadeOrFightAll(self.char, [self.flier])
+    self.state.event_stack.append(fight_all)
+    fight_or_evade = self.resolve_to_choice(FightOrEvadeChoice)
+    fight_or_evade.resolve(self.state, "Fight")
+    fight_or_flee = self.resolve_to_choice(FightOrEvadeChoice)
+    fight_or_flee.resolve(self.state, "Fight")
+    combat_choice = self.resolve_to_choice(CombatChoice)
+    self.choose_items(combat_choice, [])
+    # After losing, the character should get a choice of which gate to go through.
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
+      gate_choice = self.resolve_to_choice(NearestGateChoice)
+
+    self.assertCountEqual(gate_choice.choices, ["Roadhouse", "Cave"])
+    self.assertIsNone(gate_choice.none_choice)
+    gate_choice.resolve(self.state, "Cave")
+    self.resolve_until_done()
+
+    self.assertEqual(self.char.place.name, "Pluto1")
+    self.assertEqual(self.flier.place.name, "Northside")
+    self.assertFalse(self.char.trophies)
+
+  def testAsMonsterAppears(self):
+    self.state.places["Cave"].gate = self.state.gates.popleft()
+    self.char.place = self.state.places["Graveyard"]
+    # Make sure there is only the flier in the monster cup.
+    for monster in self.state.monsters:
+      monster.place = None
+    self.flier.place = self.state.monster_cup
+
+    appears = MonsterAppears(self.char)
+    self.state.event_stack.append(appears)
+    fight_or_evade = self.resolve_to_choice(FightOrEvadeChoice)
+    fight_or_evade.resolve(self.state, "Fight")
+    fight_or_flee = self.resolve_to_choice(FightOrEvadeChoice)
+    fight_or_flee.resolve(self.state, "Fight")
+    combat_choice = self.resolve_to_choice(CombatChoice)
+    self.choose_items(combat_choice, [])
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
+      self.resolve_until_done()
+
+    self.assertEqual(self.char.place.name, self.state.places["Cave"].gate.name + "1")
+    self.assertEqual(self.flier.place, self.state.monster_cup)
+
+  def testInAnotherWorld(self):
+    # Open gates to the same place at the Woods and the Isle, and one gate to elsewhere at the Cave.
+    self.state.places["Woods"].gate = self.state.gates.popleft()
+    self.state.places["Isle"].gate = self.state.gates.popleft()
+    self.state.places["Cave"].gate = self.state.gates.popleft()
+    self.assertEqual(self.state.places["Woods"].gate.name, self.state.places["Isle"].gate.name)
+    self.assertNotEqual(self.state.places["Cave"].gate.name, self.state.places["Isle"].gate.name)
+    self.char.place = self.state.places[self.state.places["Woods"].gate.name + "1"]
+    # Make sure there is only the flier in the monster cup.
+    for monster in self.state.monsters:
+      monster.place = None
+    self.flier.place = self.state.monster_cup
+
+    appears = MonsterAppears(self.char)
+    self.state.event_stack.append(appears)
+    fight_or_evade = self.resolve_to_choice(FightOrEvadeChoice)
+    fight_or_evade.resolve(self.state, "Fight")
+    fight_or_flee = self.resolve_to_choice(FightOrEvadeChoice)
+    fight_or_flee.resolve(self.state, "Fight")
+    combat_choice = self.resolve_to_choice(CombatChoice)
+    self.choose_items(combat_choice, [])
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
+      gate_choice = self.resolve_to_choice(GateChoice)
+
+    self.assertCountEqual(gate_choice.choices, ["Woods", "Isle"])
+    self.assertIsNone(gate_choice.none_choice)
+    gate_choice.resolve(self.state, "Woods")
+    self.resolve_until_done()
+
+    self.assertEqual(self.flier.place, self.state.monster_cup)
+    self.assertEqual(self.char.place.name, "Woods")
+
+  def testAnotherWorldNoOpenGates(self):
+    # Make sure there is only the flier in the monster cup.
+    for monster in self.state.monsters:
+      monster.place = None
+    self.flier.place = self.state.monster_cup
+    # Place the character in another world with no open gates.
+    self.state.places["Woods"].gate = self.state.gates.popleft()
+    self.assertNotEqual(self.state.places["Woods"].gate.name, "Pluto")
+    self.char.place = self.state.places["Pluto1"]
+
+    appears = MonsterAppears(self.char)
+    self.state.event_stack.append(appears)
+    fight_or_evade = self.resolve_to_choice(FightOrEvadeChoice)
+    fight_or_evade.resolve(self.state, "Fight")
+    fight_or_flee = self.resolve_to_choice(FightOrEvadeChoice)
+    fight_or_flee.resolve(self.state, "Fight")
+    combat_choice = self.resolve_to_choice(CombatChoice)
+    self.choose_items(combat_choice, [])
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
+      self.resolve_until_done()
+
+    self.assertEqual(self.flier.place, self.state.monster_cup)
+    self.assertEqual(self.char.place.name, "Pluto1")
 
 
 class CombatWithItems(EventTest):
@@ -1052,6 +1304,18 @@ class MonsterAppearsTest(EventTest):
     appears = MonsterAppears(self.char)
     self.state.event_stack.append(appears)
     self.resolve_until_done()
+
+  def testCanAppearInOtherWorlds(self):
+    self.char.place = self.state.places["Dreamlands1"]
+    appears = MonsterAppears(self.char)
+    self.state.event_stack.append(appears)
+    choice = self.resolve_to_choice(FightOrEvadeChoice)
+    self.assertEqual(choice.monster, self.state.monsters[0])
+    choice.resolve(self.state, "Evade")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+    self.assertEqual(self.state.monsters[0].place, self.state.monster_cup)
+    self.assertFalse(self.char.trophies)
 
 
 class AmbushTest(EventTest):

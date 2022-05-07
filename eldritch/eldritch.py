@@ -48,6 +48,10 @@ class GameState:
       "attack": events.InvestigatorAttack,
       "ancient": events.AncientAttack,
   }
+  MONSTER_EVENTS = (
+      events.Combat, events.CombatRound, events.PassCombatRound, events.TakeTrophy,
+      events.EvadeRound,
+  )
 
   def __init__(self):
     self.name = "game"
@@ -511,6 +515,9 @@ class GameState:
     ))
     global_interrupts = [glob.get_interrupt(event, self) for glob in self.globals() if glob]
     interrupts.extend([interrupt for interrupt in global_interrupts if interrupt])
+    if isinstance(event, self.MONSTER_EVENTS) and isinstance(event.monster, monsters.Monster):
+      monster_interrupt = event.monster.get_interrupt(event, self)
+      interrupts.extend([monster_interrupt] if monster_interrupt else [])
     return interrupts
 
   def get_usable_interrupts(self, event):
@@ -591,6 +598,9 @@ class GameState:
     ))
     global_triggers = [glob.get_trigger(event, self) for glob in self.globals() if glob]
     triggers.extend([trigger for trigger in global_triggers if trigger])
+    if isinstance(event, self.MONSTER_EVENTS) and isinstance(event.monster, monsters.Monster):
+      monster_trigger = event.monster.get_trigger(event, self)
+      triggers.extend([monster_trigger] if monster_trigger else [])
     return triggers
 
   def get_usable_triggers(self, event):

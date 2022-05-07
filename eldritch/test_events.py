@@ -2545,7 +2545,8 @@ class GateChoiceTest(EventTest):
     self.state.event_stack.append(choice)
     self.resolve_until_done()
 
-    self.assertTrue(choice.is_resolved())
+    self.assertTrue(choice.is_done())
+    self.assertTrue(choice.is_cancelled())
     self.assertIsNone(choice.choice)
 
   def testChooseSpecificGateLocations(self):
@@ -2571,6 +2572,49 @@ class GateChoiceTest(EventTest):
 
     choice.resolve(self.state, "Woods")
     self.assertTrue(choice.is_resolved())
+
+  def testChooseNearestGate(self):
+    self.char.place = self.state.places["Rivertown"]
+    self.state.places["Square"].gate = self.state.gates.popleft()
+    self.state.places["Science"].gate = self.state.gates.popleft()
+    self.state.places["Society"].gate = self.state.gates.popleft()
+    self.state.places["Woods"].gate = self.state.gates.popleft()
+
+    choice = NearestGateChoice(self.char, "choose place", "choose")
+    self.state.event_stack.append(choice)
+    choice = self.resolve_to_choice(NearestGateChoice)
+    self.assertCountEqual(choice.choices, ["Square", "Science", "Society"])
+
+    with self.assertRaisesRegex(InvalidMove, "Invalid choice"):
+      choice.resolve(self.state, "Woods")
+    with self.assertRaisesRegex(InvalidMove, "Invalid choice"):
+      choice.resolve(self.state, None)
+    self.assertFalse(choice.is_done())
+    choice.resolve(self.state, "Square")
+    self.resolve_until_done()
+    self.assertTrue(choice.is_resolved())
+    self.assertEqual(choice.choice, "Square")
+
+  def testChooseNearestNoGates(self):
+    choice = NearestGateChoice(self.char, "choose place", "choose")
+    self.state.event_stack.append(choice)
+    self.resolve_until_done()
+    self.assertTrue(choice.is_cancelled())
+    self.assertIsNone(choice.choice)
+
+  def testChooseNearestOnlyOneGate(self):
+    self.char.place = self.state.places["Rivertown"]
+    self.state.places["Square"].gate = self.state.gates.popleft()
+    self.state.places["Science"].gate = self.state.gates.popleft()
+    self.state.places["Society"].gate = self.state.gates.popleft()
+    self.state.places["Cave"].gate = self.state.gates.popleft()
+
+    choice = NearestGateChoice(self.char, "choose place", "choose")
+    self.state.event_stack.append(choice)
+    self.resolve_until_done()
+
+    self.assertTrue(choice.is_resolved())
+    self.assertEqual(choice.choice, "Cave")
 
 
 class RefreshItemsTest(EventTest):
