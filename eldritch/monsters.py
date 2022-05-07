@@ -217,7 +217,12 @@ class ElderThing(Monster):
     )
 
   def get_trigger(self, event, state):
-    return None  # TODO: discard a weapon or spell
+    if not isinstance(event, (events.CombatRound, events.EvadeRound)):
+      return None
+    if getattr(event, "defeated", False) or getattr(event, "evaded", False):
+      return None
+    loss = events.WeaponOrSpellLossChoice(event.character, "Choose a weapon or spell to lose", 1)
+    return events.Sequence([loss, events.DiscardSpecific(event.character, loss)], event.character)
 
 
 def FlameMatrix():

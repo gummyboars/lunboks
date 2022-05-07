@@ -2147,6 +2147,9 @@ class DiscardSpecific(Event):
       if item not in self.character.possessions:
         continue
       self.character.possessions.remove(item)
+      item._exhausted = False  # pylint: disable=protected-access
+      if hasattr(item, "_active"):
+        item._active = False  # pylint: disable=protected-access
       if not self.to_box:
         getattr(state, item.deck).append(item)
       self.discarded.append(item)
@@ -2186,6 +2189,9 @@ class DiscardNamed(Event):
     for item in self.character.possessions:
       if item.name == self.item_name:
         self.character.possessions.remove(item)
+        item._exhausted = False  # pylint: disable=protected-access
+        if hasattr(item, "_active"):
+          item._active = False  # pylint: disable=protected-access
         deck = getattr(state, item.deck)
         deck.append(item)
         self.discarded = item
@@ -2960,6 +2966,20 @@ class ItemLossChoice(ItemChoice):
       if math.isinf(count):
         raise InvalidMove("Not enough cards")
       raise InvalidMove(f"Not enough cards (min {count})")
+
+
+class WeaponOrSpellLossChoice(ItemLossChoice):
+
+  def __init__(self, character, prompt, count):
+    super().__init__(character, prompt, count)
+
+  def compute_choices(self, state):
+    self.choices = [
+        pos.handle for pos in self.character.possessions
+        if getattr(pos, "deck", None) == "spells" or getattr(pos, "item_type", None) == "weapon"
+    ]
+    if not self.choices:
+      self.cancelled = True
 
 
 class SinglePhysicalWeaponChoice(SpendItemChoiceMixin, ItemCountChoice):
