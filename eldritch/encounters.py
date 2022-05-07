@@ -72,7 +72,7 @@ def Diner7(char):
 
 
 def Roadhouse1(char):
-  draw2 = events.Sequence([events.Draw(char, "common", 1), events.Draw(char, "common", 1)], char)
+  draw2 = events.Draw(char, "common", 2, keep_count=2)
   draw = events.GainAllyOrReward(char, "Traveling Salesman", draw2)
   return events.BinarySpend(char, "clues", 3, "Spend 3 clues for an ally?", "Yes", "No", draw)
 
@@ -383,7 +383,7 @@ def Cave5(char):
 def Cave6(char):
   prereq = values.ItemPrerequisite(char, "Whiskey")
   check = events.Check(char, "luck", -2)
-  ally = events.GainAllyOrReward(
+  ally = events.GainAllyOrReward(  # TODO: this should be unaffected by the salesman
       char, "Tough Guy", events.Draw(char, "common", draw_count=1, target_type=items.Weapon),
   )
   give_whiskey = events.DiscardNamed(char, "Whiskey")
@@ -702,6 +702,7 @@ def Administration7(char):
 
 def Library1(char):
   check = events.Check(char, "will", -1)
+  # TODO: this should be unaffected by the archaeologist
   tome = events.Draw(char, "unique", 1)  # TODO: this is actually draw the first tome
   move = events.ForceMovement(char, "University")
   return events.PassFail(char, check, tome, move)
@@ -1097,10 +1098,7 @@ def Docks1(char):
 
 
 def Docks2(char):
-  # TODO: you should just be able to draw two items
-  item1 = events.Draw(char, "common", 1)
-  item2 = events.Draw(char, "common", 1)
-  draws = events.Sequence([item1, item2], char)
+  draws = events.Draw(char, "common", 2, keep_count=2)
   check = events.Check(char, "luck", -1)
   success = events.Nothing()
   fail = events.Arrested(char)
@@ -1342,7 +1340,7 @@ def Woods7(char):
       char, "Which would you like to gain?", ["A skill", "2 spells", "4 clues"],
   )
   skill = events.Draw(char, "skills", 1)
-  spells = events.Draw(char, "spells", 2)  # TODO: Implement keep_count
+  spells = events.Draw(char, "spells", 2, keep_count=2)
   clues = events.Gain(char, {"clues": 4})
   gain = events.Conditional(char, choice, "choice_index", {0: skill, 1: spells, 2: clues})
   gains = events.Sequence([choice, gain], char)
@@ -1381,8 +1379,7 @@ def Shoppe3(char):
   luck = events.Check(char, "luck", 0)
   dice = events.DiceRoll(char, 2)
   coins = events.Sequence([dice, events.Gain(char, {"dollars": values.Die(dice)})], char)
-  # TODO: add a keep counter
-  jackpot = events.Draw(char, "unique", 2)
+  jackpot = events.Draw(char, "unique", 2, keep_count=2)
   cond = events.Conditional(char, luck, "successes", {0: events.Nothing(), 1: coins, 2: jackpot})
   buy = events.Sequence([luck, cond], char)
   return events.BinarySpend(char, "dollars", 5, "Buy the locked trunk?", "Yes", "No", buy)

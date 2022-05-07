@@ -1202,19 +1202,19 @@ class DrawItems(Event):
 
 
 class KeepDrawn(Event):
-  def __init__(self, character, draw, prompt="Choose a card", sort_uniq=False):
+  def __init__(self, character, draw, prompt="Choose a card", keep_count=1, sort_uniq=False):
     self.character = character
     self.draw: Union[DrawItems, DrawNamed] = draw
-    self.keep_count = 1  # TODO: allow the player to keep more than one?
+    self.keep_count = keep_count
     self.drawn = None
-    self.kept = None
+    self.kept = []
     self.choice: Optional[ChoiceEvent] = None
     self.prompt = prompt
     self.sort_uniq = sort_uniq
 
   def resolve(self, state):
     if self.draw.is_cancelled():
-      self.kept = []
+      self.cancelled = True
       return
 
     if self.drawn is None:
@@ -1226,27 +1226,31 @@ class KeepDrawn(Event):
       if self.choice.is_cancelled():
         self.cancelled = True
         return
-      kept_cards = [self.drawn[self.choice.choice_index]]
-      self.kept = [card.name for card in kept_cards]
-      for card in kept_cards:
-        getattr(state, self.draw.deck).remove(card)
-      self.character.possessions.extend(kept_cards)
+      kept_card = self.drawn.pop(self.choice.choice_index)
+      self.kept.append(kept_card.name)
+      getattr(state, self.draw.deck).remove(kept_card)
+      self.character.possessions.append(kept_card)
+
+    remaining_keeps = self.keep_count - len(self.kept)
+    if remaining_keeps == 0 or not self.drawn:
       return
 
-    if self.keep_count < len(self.drawn):
+    if remaining_keeps < len(self.drawn):
       self.choice = CardChoice(
           self.character, self.prompt, [card.name for card in self.drawn], sort_uniq=self.sort_uniq,
       )
       state.event_stack.append(self.choice)
       return
 
-    self.kept = [card.name for card in self.drawn]
+    self.kept += [card.name for card in self.drawn]
     for card in self.drawn:
       getattr(state, self.draw.deck).remove(card)
     self.character.possessions.extend(self.drawn)
 
   def is_resolved(self):
-    return self.kept is not None
+    if self.drawn is None:
+      return False
+    return len(self.kept) >= self.keep_count or not self.drawn
 
   def start_str(self):
     return ""
@@ -1255,9 +1259,9 @@ class KeepDrawn(Event):
     return f"{self.character.name} kept " + ", ".join(self.kept)
 
 
-def Draw(character, deck, draw_count, prompt="Choose a card", target_type=None):
+def Draw(character, deck, draw_count, prompt="Choose a card", keep_count=1, target_type=None):
   cards = DrawItems(character, deck, draw_count, target_type=target_type)
-  keep = KeepDrawn(character, cards, prompt, sort_uniq=math.isinf(draw_count))
+  keep = KeepDrawn(character, cards, prompt, keep_count, sort_uniq=math.isinf(draw_count))
   return Sequence([cards, keep], character)
 
 
