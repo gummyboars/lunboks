@@ -4539,20 +4539,18 @@ class ShoppeTest(EncounterTest):
     self.assertEqual(len(self.char.possessions), 0)
 
   def testShoppe3Jackpot(self):
-    # TODO: Drawing multiple items
-    # self.char.dollars = 5
-    # self.char.lore_luck_slider = 1
-    # self.state.unique.extend([items.Cross(0), items.HolyWater(0)])
-    # self.state.event_stack.append(encounters.Shoppe3(self.char))
-    # buy = self.resolve_to_choice(MultipleChoice)
-    # self.assertEqual(buy.choices, ["Yes", "No"])
-    # self.spend("dollars", 5, choice)
-    # buy.resolve(self.state, "Yes")
-    # with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
-    #   self.resolve_until_done()
-    # self.assertEqual(self.char.dollars, 0)
-    # self.assertEqual(len(self.char.possessions), 2)
-    pass
+    self.char.dollars = 5
+    self.char.lore_luck_slider = 1
+    self.state.unique.extend([items.Cross(0), items.HolyWater(0)])
+    self.state.event_stack.append(encounters.Shoppe3(self.char))
+    buy = self.resolve_to_choice(MultipleChoice)
+    self.assertEqual(buy.choices, ["Yes", "No"])
+    self.spend("dollars", 5, buy)
+    buy.resolve(self.state, "Yes")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.dollars, 0)
+    self.assertEqual(len(self.char.possessions), 2)
 
   def testShoppe4Pass(self):
     self.state.event_stack.append(encounters.Shoppe4(self.char))
