@@ -2075,16 +2075,14 @@ class DiscardNamed(Event):
 
 class ReturnMonsterFromBoard(Event):  # TODO: merge the three return monster to cup events
 
-  def __init__(self, character, monster):
+  def __init__(self, character, monster, to_box=False):
     self.character = character
     self.monster = monster
+    self.to_box = to_box
     self.returned = False
 
   def resolve(self, state):
-    if not isinstance(self.monster.place, (places.Outskirts, places.CityPlace)):
-      self.cancelled = True
-      return
-    self.monster.place = state.monster_cup
+    self.monster.place = None if self.to_box else state.monster_cup
     self.returned = True
 
   def is_resolved(self):
@@ -2094,7 +2092,7 @@ class ReturnMonsterFromBoard(Event):  # TODO: merge the three return monster to 
     return ""
 
   def finish_str(self):
-    return f"{self.monster.name} was returned to the cup"
+    return f"{self.monster.name} was returned to the {'box' if self.to_box else 'cup'}"
 
 
 class ReturnMonsterToCup(Event):
@@ -3363,7 +3361,6 @@ class CombatRound(Event):
     self.activate: Optional[Event] = None
     self.check: Optional[Check] = None
     self.defeated = None
-    self.take_trophy: Optional[Event] = None
     self.damage: Optional[Event] = None
     self.pass_combat: Optional[Event] = None
     self.done = False
@@ -3452,6 +3449,7 @@ class PassCombatRound(Event):
       # Can happen if passing combat is the effect of a spell, e.g. Bind Monster
       self.combat_round.pass_combat = self
     self.combat_round.defeated = True
+    self.combat_round.done = True
     if self.combat_round.choice is not None and not self.combat_round.choice.is_resolved():
       self.combat_round.choice.cancelled = True
     char = self.combat_round.character

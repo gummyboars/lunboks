@@ -9,6 +9,7 @@ from unittest import mock
 if os.path.abspath(sys.path[0]) == os.path.dirname(os.path.abspath(__file__)):
   sys.path[0] = os.path.dirname(sys.path[0])
 
+from eldritch import abilities
 from eldritch import assets
 from eldritch import events
 from eldritch.events import *
@@ -918,6 +919,140 @@ class DreamFlierCombatTest(EventTest):
 
     self.assertEqual(self.flier.place, self.state.monster_cup)
     self.assertEqual(self.char.place.name, "Pluto1")
+
+
+class PinataCombatBaseTestMixin:
+
+  def setUp(self):
+    super().setUp()
+    self.state.unique.extend([items.EnchantedKnife(0), items.HolyWater(0), items.MagicLamp(0)])
+    self.char.place = self.state.places["Cave"]
+
+  def testWin(self):
+    combat = EvadeOrCombat(self.char, self.monster)
+    self.state.event_stack.append(combat)
+    fight_or_evade = self.resolve_to_choice(FightOrEvadeChoice)
+    fight_or_evade.resolve(self.state, "Fight")
+    fight_or_flee = self.resolve_to_choice(FightOrEvadeChoice)
+    fight_or_flee.resolve(self.state, "Fight")
+    combat_choice = self.resolve_to_choice(CombatChoice)
+    self.choose_items(combat_choice, [item.handle for item in self.char.possessions])
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+
+    self.assertGains()
+    self.assertIsNone(self.monster.place)
+    self.assertNotIn(self.monster, self.char.trophies)
+
+  def testFromMonsterAppears(self):
+    for monster in self.state.monsters:
+      monster.place = None
+    self.monster.place = self.state.monster_cup
+    appears = MonsterAppears(self.char)
+    self.state.event_stack.append(appears)
+    fight_or_evade = self.resolve_to_choice(FightOrEvadeChoice)
+    fight_or_evade.resolve(self.state, "Fight")
+    fight_or_flee = self.resolve_to_choice(FightOrEvadeChoice)
+    fight_or_flee.resolve(self.state, "Fight")
+    combat_choice = self.resolve_to_choice(CombatChoice)
+    self.choose_items(combat_choice, [item.handle for item in self.char.possessions])
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+
+    self.assertGains()
+    self.assertIsNone(self.monster.place)
+    self.assertNotIn(self.monster, self.char.trophies)
+
+  def testEvaded(self):
+    self.char.speed_sneak_slider = 1
+    combat = EvadeOrCombat(self.char, self.monster)
+    self.state.event_stack.append(combat)
+    fight_or_evade = self.resolve_to_choice(FightOrEvadeChoice)
+    fight_or_evade.resolve(self.state, "Evade")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+
+    self.assertNoGains()
+    self.assertEqual(self.monster.place.name, "Cave")
+    self.assertNotIn(self.monster, self.char.trophies)
+
+
+class PinataCombatTest(PinataCombatBaseTestMixin, EventTest):
+
+  def setUp(self):
+    super().setUp()
+    self.monster = monsters.Pinata()
+    self.state.monsters.append(self.monster)
+    self.state.monsters[-1].idx = len(self.state.monsters)-1
+    self.state.monsters[-1].place = self.char.place
+
+  def assertGains(self):
+    self.assertEqual(self.char.clues, 0)
+    self.assertEqual(len(self.char.possessions), 1)
+    self.assertEqual(self.char.possessions[0].handle, "Enchanted Knife0")
+
+  def assertNoGains(self):
+    self.assertEqual(self.char.clues, 0)
+    self.assertFalse(self.char.possessions)
+
+  def testWithMythosActive(self):
+    self.state.environment = mythos.Mythos2()
+    combat = EvadeOrCombat(self.char, self.monster)
+    self.state.event_stack.append(combat)
+    fight_or_evade = self.resolve_to_choice(FightOrEvadeChoice)
+    fight_or_evade.resolve(self.state, "Fight")
+    fight_or_flee = self.resolve_to_choice(FightOrEvadeChoice)
+    fight_or_flee.resolve(self.state, "Fight")
+    combat_choice = self.resolve_to_choice(CombatChoice)
+    self.choose_items(combat_choice, [])
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+
+    self.assertEqual(len(self.char.possessions), 2)
+    self.assertEqual(self.char.possessions[0].name, "Enchanted Knife")
+    self.assertEqual(self.char.possessions[1].name, "Holy Water")
+    self.assertIsNone(self.monster.place)
+    self.assertNotIn(self.monster, self.char.trophies)
+
+  def testWithExtraDraw(self):
+    self.char.possessions.append(abilities.Archaeology())
+    combat = EvadeOrCombat(self.char, self.monster)
+    self.state.event_stack.append(combat)
+    fight_or_evade = self.resolve_to_choice(FightOrEvadeChoice)
+    fight_or_evade.resolve(self.state, "Fight")
+    fight_or_flee = self.resolve_to_choice(FightOrEvadeChoice)
+    fight_or_flee.resolve(self.state, "Fight")
+    combat_choice = self.resolve_to_choice(CombatChoice)
+    self.choose_items(combat_choice, [])
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      item_choice = self.resolve_to_choice(CardChoice)
+
+    self.assertEqual(item_choice.choices, ["Enchanted Knife", "Holy Water"])
+    item_choice.resolve(self.state, "Holy Water")
+    self.resolve_until_done()
+    self.assertEqual(len(self.char.possessions), 2)
+    self.assertEqual(self.char.possessions[1].handle, "Holy Water0")
+
+
+class WarlockCombatTest(PinataCombatBaseTestMixin, EventTest):
+
+  def setUp(self):
+    super().setUp()
+    self.monster = monsters.Warlock()
+    self.state.monsters.append(self.monster)
+    self.state.monsters[-1].idx = len(self.state.monsters)-1
+    self.state.monsters[-1].place = self.char.place
+    self.char.possessions.append(items.TommyGun(0))
+
+  def assertGains(self):
+    self.assertEqual(self.char.clues, 2)
+    self.assertEqual(len(self.char.possessions), 1)
+    self.assertEqual(self.char.possessions[0].handle, "Tommy Gun0")
+
+  def assertNoGains(self):
+    self.assertEqual(self.char.clues, 0)
+    self.assertEqual(len(self.char.possessions), 1)
+    self.assertEqual(self.char.possessions[0].handle, "Tommy Gun0")
 
 
 class CombatWithItems(EventTest):
@@ -2596,10 +2731,38 @@ class BindMonsterTest(EventTest):
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       self.resolve_until_done()
 
+    # Assert that the rest of the combat was bypassed and not resolved.
+    if self.combat.combat.activate:
+      self.assertFalse(self.combat.combat.activate.is_resolved())
+    if self.combat.combat.check:
+      self.assertFalse(self.combat.combat.check.is_resolved())
+    if self.combat.combat.damage:
+      self.assertFalse(self.combat.combat.damage.is_resolved())
+
     self.assertIn(worm, self.char.trophies)
     self.assertEqual(self.char.sanity, 1)
     self.assertEqual(self.char.stamina, 4)  # overwhelming
     self.assertNotIn(self.bind_monster, self.char.possessions)
+
+  def testSanePassWarlock(self):
+    self.char.sanity = 4
+    self.char.fight_will_slider = 0
+    warlock = monsters.Warlock()
+    self.start(warlock)
+    self.assertEqual(self.char.sanity, 4)
+    self.assertEqual(self.char.stamina, 5)
+    self.state.event_stack.append(self.state.usables[0]["Bind Monster0"])
+    cast_choice = self.resolve_to_choice(SpendChoice)
+    self.spend("sanity", 2, cast_choice)
+    cast_choice.resolve(self.state, "Cast")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+
+    self.assertNotIn(warlock, self.char.trophies)
+    self.assertEqual(self.char.sanity, 2)
+    self.assertEqual(self.char.stamina, 5)
+    self.assertNotIn(self.bind_monster, self.char.possessions)
+    self.assertEqual(self.char.clues, 2)
 
   def testInsanePass(self):
     self.char.sanity = 3
@@ -2616,6 +2779,14 @@ class BindMonsterTest(EventTest):
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       insane_choice = self.resolve_to_choice(ItemLossChoice)
     insane_choice.resolve(self.state, "done")
+
+    # Assert that the rest of the combat was bypassed and not resolved.
+    if self.combat.combat.activate:
+      self.assertFalse(self.combat.combat.activate.is_resolved())
+    if self.combat.combat.check:
+      self.assertFalse(self.combat.combat.check.is_resolved())
+    if self.combat.combat.damage:
+      self.assertFalse(self.combat.combat.damage.is_resolved())
 
     self.resolve_until_done()
     self.assertIn(worm, self.char.trophies)

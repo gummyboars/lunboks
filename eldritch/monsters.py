@@ -329,7 +329,12 @@ class Pinata(Monster):
       return None
     if len(state.event_stack) < 2 or not isinstance(state.event_stack[-2], events.PassCombatRound):
       return None
-    return None  # TODO: draw a unique item, return monster to the box
+    seq = [
+        events.CancelEvent(event),
+        events.ReturnMonsterFromBoard(event.character, self, to_box=True),
+    ]
+    seq += events.Draw(event.character, "unique", 1).events
+    return events.Sequence(seq, event.character)
 
 
 class DreamFlier(Monster):
@@ -400,7 +405,12 @@ class Warlock(Monster):
       return None
     if len(state.event_stack) < 2 or not isinstance(state.event_stack[-2], events.PassCombatRound):
       return None
-    return None  # TODO: gain 2 clue tokens, return monster to the box
+    seq = [
+        events.CancelEvent(event),
+        events.ReturnMonsterFromBoard(event.character, self, to_box=True),
+        events.Gain(event.character, {"clues": 2}),
+    ]
+    return events.Sequence(seq, event.character)
 
 
 def Witch():

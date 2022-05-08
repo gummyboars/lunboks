@@ -101,7 +101,9 @@ class ExtraDraw(assets.Asset):
   def __init__(self, name, draw_type, deck, attribute="draw_count"):
     super().__init__(name)
     self.draw_type = draw_type
-    self.deck = deck
+    # Special note: do not name this attribute "deck". Otherwise, this ability will be returned
+    # to that deck when the investigator is devoured. Also, other bad things will happen.
+    self.deck_name = deck
     self.attribute = attribute
 
   def get_interrupt(self, event, owner, state):
@@ -109,7 +111,7 @@ class ExtraDraw(assets.Asset):
       return None
     if event.character != owner:
       return None
-    if self.deck is not None and event.deck != self.deck:
+    if self.deck_name is not None and event.deck != self.deck_name:
       return None
     return events.ChangeCount(event, self.attribute, 1)
 

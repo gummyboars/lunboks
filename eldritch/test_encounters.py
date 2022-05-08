@@ -779,6 +779,25 @@ class LodgeTest(EncounterTest):
     self.assertEqual(len(self.char.trophies), 1)
     self.assertEqual(self.char.trophies[0].name, "Maniac")
 
+  def testSanctum2PassWarlock(self):
+    self.state.monsters.append(monsters.Warlock())
+    self.state.monsters[-1].place = self.state.places["Uptown"]
+    self.state.monsters[-1].idx = len(self.state.monsters) - 1
+    self.state.event_stack.append(encounters.Sanctum2(self.char))
+    choice = self.resolve_to_choice(SpendChoice)
+    self.spend("sanity", 1, choice)
+    choice.resolve(self.state, "Yes")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      choice = self.resolve_to_choice(MonsterOnBoardChoice)
+    self.assertEqual(choice.choices, ["Warlock2"])
+    choice.resolve(self.state, "Warlock2")
+    self.resolve_until_done()
+    self.assertEqual(self.char.sanity, 2)
+    self.assertIsNone(self.state.monsters[-1].place)
+    self.assertEqual(len(self.char.trophies), 1)
+    self.assertEqual(self.char.trophies[0].name, "Warlock")
+    self.assertEqual(self.char.clues, 0)
+
   def testSanctum2PassNoMonsters(self):
     # TODO: if we decide they cannot choose yes when there are no monters, rewrite this test.
     self.state.event_stack.append(encounters.Sanctum2(self.char))
@@ -4811,6 +4830,16 @@ class GraveyardTest(EncounterTest):
     self.assertEqual(len(self.char.trophies), 1)
     self.assertEqual(self.char.trophies[0], self.state.monsters[1])
     self.assertIsNone(self.state.monsters[1].place)
+
+  def testGraveyard7Warlock(self):
+    self.state.event_stack.append(encounters.Graveyard7(self.char))
+    self.state.monsters.append(monsters.Warlock())
+    with mock.patch.object(events.random, "sample", new=mock.MagicMock(return_value=[2])):
+      self.resolve_until_done()
+    self.assertEqual(len(self.char.trophies), 1)
+    self.assertEqual(self.char.trophies[0], self.state.monsters[2])
+    self.assertIsNone(self.state.monsters[2].place)
+    self.assertEqual(self.char.clues, 0)
 
 
 if __name__ == "__main__":

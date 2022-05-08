@@ -153,14 +153,16 @@ class Mythos2(Environment):
     return 0
 
   def get_interrupt(self, event, state):
-    if not isinstance(event, events.DrawItems) or event.deck != "unique":
+    if len(state.event_stack) < 3:
       return None
-    if len(state.event_stack) < 2:
+    trophy = state.event_stack[-3]
+    if not isinstance(trophy, events.TakeTrophy) or getattr(trophy.monster, "name", "") != "Pinata":
       return None
-    prev_event = state.event_stack[-2]
-    if not isinstance(prev_event, events.Check) or prev_event.check_type != "combat":
-      return None
-    return None  # TODO: draw and keep an extra card
+    if isinstance(event, events.DrawItems):
+      return events.ChangeCount(event, "draw_count", 1)
+    if isinstance(event, events.KeepDrawn):
+      return events.ChangeCount(event, "keep_count", 1)
+    return None
 
 
 class Mythos3(Environment):
