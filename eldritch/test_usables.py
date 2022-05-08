@@ -174,6 +174,16 @@ class RerollTest(EventTest):
     self.assertEqual(self.check.successes, old_successes)
 
 
+class TrustFundTest(EventTest):
+
+  def testGainADollarDuringUpkeep(self):
+    self.char.possessions.append(abilities.TrustFund())
+    self.assertEqual(self.char.dollars, 0)
+    self.state.event_stack.append(Upkeep(self.char))
+    self.resolve_to_choice(SliderInput)
+    self.assertEqual(self.char.dollars, 1)
+
+
 class DeputyTest(EventTest):
 
   def testBecomingDeputyGivesItems(self):
@@ -1026,6 +1036,122 @@ class ExtraDrawTest(EventTest):
     self.assertCountEqual(choice.choices, ["Gate10", "Gate16"])
     choice.resolve(self.state, "Gate16")
     self.resolve_until_done()
+
+
+class PreventionTest(EventTest):
+
+  def testPreventStaminaLoss(self):
+    self.char.possessions.append(abilities.StrongBody())
+    self.char.possessions.append(items.TommyGun(0))
+    beast = monsters.FurryBeast()
+    combat = EvadeOrCombat(self.char, beast)
+    self.state.event_stack.append(combat)
+
+    fight_or_evade = self.resolve_to_choice(FightOrEvadeChoice)
+    fight_or_evade.resolve(self.state, "Fight")
+    # Fail the horror check
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
+      fight_or_flee = self.resolve_to_choice(FightOrEvadeChoice)
+    self.assertEqual(self.char.sanity, 3)  # No reduction of sanity loss.
+    fight_or_flee.resolve(self.state, "Fight")
+    combat_choice = self.resolve_to_choice(CombatChoice)
+    self.choose_items(combat_choice, ["Tommy Gun0"])
+
+    # Fail the combat check. It does 4 damage, so we should take 3 damage.
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
+      fight_or_flee = self.resolve_to_choice(FightOrEvadeChoice)
+    self.assertEqual(self.char.stamina, 2)
+    fight_or_flee.resolve(self.state, "Fight")
+    combat_choice = self.resolve_to_choice(CombatChoice)
+    self.choose_items(combat_choice, ["Tommy Gun0"])
+
+    # Defeat the monster. It is overwhelming.
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.stamina, 2)  # Should not take any loss from overwhelming.
+
+  def testPreventSanityLoss(self):
+    self.char.possessions.append(abilities.StrongMind())
+    self.char.possessions.append(items.TommyGun(0))
+    beast = monsters.FurryBeast()
+    combat = EvadeOrCombat(self.char, beast)
+    self.state.event_stack.append(combat)
+
+    fight_or_evade = self.resolve_to_choice(FightOrEvadeChoice)
+    fight_or_evade.resolve(self.state, "Fight")
+    # Fail the horror check. 2 sanity damage.
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
+      fight_or_flee = self.resolve_to_choice(FightOrEvadeChoice)
+    self.assertEqual(self.char.sanity, 4)  # Reduction of sanity loss to 1 damage.
+    fight_or_flee.resolve(self.state, "Fight")
+    combat_choice = self.resolve_to_choice(CombatChoice)
+    self.choose_items(combat_choice, ["Tommy Gun0"])
+
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.stamina, 4)  # Stamina loss from overwhelming.
+
+  def testSanityLossDoesntApplyToSpells(self):
+    self.char.fight_will_slider = 2
+    self.char.possessions.append(abilities.StrongMind())
+    self.char.possessions.extend([items.TommyGun(0), items.EnchantWeapon(0)])
+    beast = monsters.FurryBeast()
+    combat = EvadeOrCombat(self.char, beast)
+    self.state.event_stack.append(combat)
+
+    fight_or_evade = self.resolve_to_choice(FightOrEvadeChoice)
+    fight_or_evade.resolve(self.state, "Fight")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      fight_or_flee = self.resolve_to_choice(FightOrEvadeChoice)
+    self.assertEqual(self.char.sanity, 5)
+    fight_or_flee.resolve(self.state, "Fight")
+    combat_choice = self.resolve_to_choice(CombatChoice)
+    self.state.event_stack.append(self.state.usables[0]["Enchant Weapon0"])
+    enchant = self.resolve_to_choice(SinglePhysicalWeaponChoice)
+    self.spend("sanity", 1, enchant)
+    self.choose_items(enchant, ["Tommy Gun0"])
+    self.choose_items(combat_choice, ["Tommy Gun0"])
+
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.sanity, 4)  # Spent on the enchant weapon cast.
+
+
+class HunchesTest(EventTest):
+
+  def testAddsBonusDieToAnyCheck(self):
+    self.char.possessions.append(abilities.Hunches())
+    self.char.clues = 2
+
+    self.state.event_stack.append(Check(self.char, "will", 1))
+    choice = self.resolve_to_choice(SpendChoice)
+    self.spend("clues", 1, choice)
+    choice.resolve(self.state, "Spend")
+
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)) as rand:
+      choice = self.resolve_to_choice(SpendChoice)
+      self.assertEqual(rand.call_count, 2)
+    self.spend("clues", 1, choice)
+    choice.resolve(self.state, "Spend")
+
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)) as rand:
+      self.resolve_until_done()
+      self.assertEqual(rand.call_count, 2)
+
+  def testStacksWithOtherSkills(self):
+    self.char.possessions.append(abilities.Hunches())
+    self.char.possessions.append(abilities.Speed(0))
+    self.char.clues = 2
+
+    self.state.event_stack.append(Check(self.char, "speed", 1))
+    choice = self.resolve_to_choice(SpendChoice)
+    self.spend("clues", 1, choice)
+    choice.resolve(self.state, "Spend")
+
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)) as rand:
+      choice = self.resolve_to_choice(SpendChoice)
+      self.assertEqual(rand.call_count, 3)
+    choice.resolve(self.state, "Done")
 
 
 class MistsTest(EventTest):

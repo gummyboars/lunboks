@@ -1,5 +1,6 @@
 from eldritch import assets
 from eldritch import events
+from eldritch import values
 
 
 class BonusSkill(assets.Card):
@@ -135,6 +136,55 @@ def PsychicSensitivity():
 
 def Archaeology():
   return ExtraDraw("Archaeology", events.DrawItems, "unique")
+
+
+class Prevention(assets.Asset):
+
+  def __init__(self, name, attribute):
+    super().__init__(name)
+    self.attribute = attribute
+
+  def get_interrupt(self, event, owner, state):
+    if not isinstance(event, events.GainOrLoss) or owner != event.character:
+      return None
+    if isinstance(event.losses.get(self.attribute), values.Value):
+      if event.losses[self.attribute].value(state) < 1:
+        return None
+    elif event.losses.get(self.attribute, 0) < 1:
+      return None
+    return events.LossPrevention(self, event, self.attribute, 1)
+
+
+def StrongMind():
+  return Prevention("Strong Mind", "sanity")
+
+
+def StrongBody():
+  return Prevention("Strong Body", "stamina")
+
+
+class TrustFund(assets.Asset):
+
+  def __init__(self):
+    super().__init__("Trust Fund")
+
+  def get_trigger(self, event, owner, state):
+    if isinstance(event, events.UpkeepActions) and event.character == owner:
+      return events.Gain(owner, {"dollars": 1})
+    return None
+
+
+class Hunches(assets.Asset):
+
+  def __init__(self):
+    super().__init__("Hunches")
+
+  def get_interrupt(self, event, owner, state):
+    if not isinstance(event, events.BonusDiceRoll) or event.character != owner:
+      return None
+    if len(state.event_stack) < 2 or not isinstance(state.event_stack[-2], events.Check):
+      return None
+    return events.AddExtraDie(owner, event)
 
 
 class Physician(assets.Asset):

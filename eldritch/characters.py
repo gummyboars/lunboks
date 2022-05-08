@@ -362,7 +362,7 @@ class Professor(Character):
     super().__init__("Professor", 3, 7, 3, 5, 3, 3, 6, 4, 2, "Administration")
 
   def abilities(self):
-    return []  # TODO: Mind
+    return [abilities.StrongMind()]
 
   def initial_attributes(self):
     return {"dollars": 5, "clues": 1}
@@ -380,7 +380,7 @@ class Dilettante(Character):
     super().__init__("Dilettante", 4, 6, 3, 4, 4, 5, 4, 5, 1, "Train")
 
   def abilities(self):
-    return []  # TODO: Trust Fund
+    return [abilities.TrustFund()]
 
   def initial_attributes(self):
     return {"dollars": 10}
@@ -398,7 +398,7 @@ class PrivateEye(Character):
     super().__init__("Private Eye", 6, 4, 6, 4, 5, 3, 3, 3, 3, "Police")
 
   def abilities(self):
-    return []  # TODO: Hunches
+    return [abilities.Hunches()]
 
   def initial_attributes(self):
     return {"dollars": 8, "clues": 3}
@@ -506,7 +506,7 @@ class Gangster(Character):
     super().__init__("Gangster", 7, 3, 5, 4, 6, 4, 3, 3, 1, "House")
 
   def abilities(self):
-    return []  # TODO: Body
+    return [abilities.StrongBody()]
 
   def initial_attributes(self):
     return {"dollars": 8}
