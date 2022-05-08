@@ -123,7 +123,11 @@ abilityNames = [
   "Hometown Advantage",
   "Magical Gift",
   "Psychic Sensitivity",
+  "Strong Mind",
+  "Trust Fund",
+  "Hunches",
   "Flux Stabilizer",
+  "Strong Body",
   "Archaeology",
   "Physician",
 ];
