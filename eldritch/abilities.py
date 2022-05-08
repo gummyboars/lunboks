@@ -95,10 +95,52 @@ class FluxStabilizer(assets.Asset):
     super().__init__("Flux Stabilizer")
 
 
-class Medicine(assets.Asset):
+class ExtraDraw(assets.Asset):
+
+  def __init__(self, name, draw_type, deck, attribute="draw_count"):
+    super().__init__(name)
+    self.draw_type = draw_type
+    self.deck = deck
+    self.attribute = attribute
+
+  def get_interrupt(self, event, owner, state):
+    if not isinstance(event, self.draw_type):
+      return None
+    if event.character != owner:
+      return None
+    if self.deck is not None and event.deck != self.deck:
+      return None
+    return events.ChangeCount(event, self.attribute, 1)
+
+
+def Studious():
+  return ExtraDraw("Studious", events.DrawItems, "skills")
+
+
+def ShrewdDealer():
+  return ExtraDraw("Shrewd Dealer", events.DrawItems, "common")
+
+
+def HometownAdvantage():
+  return ExtraDraw("Hometown Advantage", events.DrawEncounter, None, "count")
+
+
+def MagicalGift():
+  return ExtraDraw("Magical Gift", events.DrawItems, "spells")
+
+
+def PsychicSensitivity():
+  return ExtraDraw("Psychic Sensitivity", events.GateEncounter, None)
+
+
+def Archaeology():
+  return ExtraDraw("Archaeology", events.DrawItems, "unique")
+
+
+class Physician(assets.Asset):
 
   def __init__(self):
-    super().__init__("Medicine")
+    super().__init__("Physician")
 
   def get_usable_trigger(self, event, owner, state):
     if not isinstance(event, events.UpkeepActions):

@@ -1734,7 +1734,7 @@ class PlayerJoinTest(PlayerTest):
     self.assertEqual(self.game.game.characters[1].place.name, "Hospital")
     self.assertEqual(self.game.game.characters[2].place.name, "House")
 
-    self.assertIn("Medicine", {pos.name for pos in self.game.game.characters[1].possessions})
+    self.assertIn("Physician", {pos.name for pos in self.game.game.characters[1].possessions})
     self.assertIn("Tommy Gun", {pos.name for pos in self.game.game.characters[2].possessions})
 
     # It is now the doctor's upkeep. They should be able to spend focus to move their sliders.

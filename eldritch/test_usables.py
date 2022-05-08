@@ -16,6 +16,7 @@ from eldritch import encounters
 from eldritch import events
 from eldritch.events import *
 from eldritch import gates
+from eldritch import gate_encounters
 from eldritch import items
 from eldritch import monsters
 from eldritch.test_events import EventTest, Canceller
@@ -870,21 +871,21 @@ class HealTest(EventTest):
     self.assertTrue(self.char.possessions[0].exhausted)
 
 
-class MedicineTest(EventTest):
+class PhysicianTest(EventTest):
 
   def setUp(self):
     super().setUp()
     self.char.place = self.state.places["Uptown"]
-    self.char.possessions.append(abilities.Medicine())
+    self.char.possessions.append(abilities.Physician())
     self.char.stamina = 3
     self.state.turn_phase = "upkeep"
 
-  def testMedicine(self):
+  def testPhysician(self):
     upkeep = events.UpkeepActions(self.char)
     self.state.event_stack.append(upkeep)
-    self.resolve_to_usable(0, "Medicine", Sequence)
+    self.resolve_to_usable(0, "Physician", Sequence)
 
-    self.state.event_stack.append(self.state.usables[0]["Medicine"])
+    self.state.event_stack.append(self.state.usables[0]["Physician"])
     choice = self.resolve_to_choice(MultipleChoice)
     self.assertEqual(choice.choices, ["Dummy", "nobody"])
     choice.resolve(self.state, "Dummy")
@@ -902,9 +903,9 @@ class MedicineTest(EventTest):
 
     upkeep = events.UpkeepActions(self.char)
     self.state.event_stack.append(upkeep)
-    self.resolve_to_usable(0, "Medicine", Sequence)
+    self.resolve_to_usable(0, "Physician", Sequence)
 
-    self.state.event_stack.append(self.state.usables[0]["Medicine"])
+    self.state.event_stack.append(self.state.usables[0]["Physician"])
     choice = self.resolve_to_choice(MultipleChoice)
     self.assertEqual(choice.choices, ["Dummy", "Nun", "nobody"])
     choice.resolve(self.state, "Nun")
@@ -913,6 +914,118 @@ class MedicineTest(EventTest):
     self.assertEqual(nun.stamina, 2)
     self.assertEqual(self.char.stamina, 3)
     self.assertTrue(self.char.possessions[0].exhausted)
+
+
+class ExtraDrawTest(EventTest):
+
+  def testOtherDecksNotAffected(self):
+    self.char.possessions.append(abilities.Studious())
+    self.state.skills.extend([abilities.Marksman(0), abilities.Bravery(0)])
+    self.state.common.extend([items.Food(0), items.DarkCloak(0)])
+    self.state.event_stack.append(Draw(self.char, "skills", 1))
+    choice = self.resolve_to_choice(CardChoice)
+    self.assertEqual(choice.choices, ["Marksman", "Bravery"])
+    choice.resolve(self.state, "Bravery")
+    self.resolve_until_done()
+
+    self.assertEqual(len(self.char.possessions), 2)
+    self.assertEqual(self.char.possessions[1].handle, "Bravery0")
+    self.assertEqual(len(self.state.skills), 1)
+
+    # Should not affect other draw types
+    self.state.event_stack.append(Draw(self.char, "common", 1))
+    self.resolve_until_done()
+    self.assertEqual(len(self.char.possessions), 3)
+    self.assertEqual(self.char.possessions[2].handle, "Food0")
+    self.assertEqual(len(self.state.common), 1)
+
+  def testDraw2Keep2BecomesDraw3(self):
+    self.char.possessions.append(abilities.ShrewdDealer())
+    self.state.common.extend([items.Food(0), items.DarkCloak(0), items.Cross(0), items.Whiskey(0)])
+    self.state.event_stack.append(Draw(self.char, "common", 2, keep_count=2))
+
+    choice = self.resolve_to_choice(CardChoice)
+    self.assertEqual(choice.choices, ["Food", "Dark Cloak", "Cross"])
+    choice.resolve(self.state, "Cross")
+    choice = self.resolve_to_choice(CardChoice)
+    self.assertEqual(choice.choices, ["Food", "Dark Cloak"])
+    choice.resolve(self.state, "Food")
+    self.resolve_until_done()
+
+    self.assertEqual(len(self.char.possessions), 3)
+    self.assertEqual(
+        [item.handle for item in self.char.possessions], ["Shrewd Dealer", "Cross0", "Food0"],
+    )
+    self.assertEqual(len(self.state.common), 2)
+    self.assertEqual(self.state.common[-1].handle, "Dark Cloak0")
+
+  def testDraw2Keep1BecomesDraw3(self):
+    self.char.possessions.append(abilities.MagicalGift())
+    self.state.spells.extend([items.Wither(0), items.Heal(0), items.Voice(0), items.Heal(1)])
+    self.state.event_stack.append(Draw(self.char, "spells", 2, keep_count=1))
+
+    choice = self.resolve_to_choice(CardChoice)
+    self.assertEqual(choice.choices, ["Wither", "Heal", "Voice"])
+    choice.resolve(self.state, "Heal")
+    self.resolve_until_done()
+
+    self.assertEqual(len(self.char.possessions), 2)
+    self.assertEqual([item.handle for item in self.char.possessions], ["Magical Gift", "Heal0"])
+    self.assertEqual(len(self.state.spells), 3)
+    self.assertEqual(self.state.spells[-2].handle, "Wither0")
+    self.assertEqual(self.state.spells[-1].handle, "Voice0")
+
+  def testDraw3Purchase1BecomesDraw4(self):
+    self.char.possessions.append(abilities.Archaeology())
+    self.char.dollars = 12
+    self.state.unique.extend([
+        items.HolyWater(0), items.MagicLamp(0), items.MagicPowder(0), items.SwordOfGlory(1),
+    ])
+    self.state.event_stack.append(Purchase(self.char, "unique", 3, keep_count=1))
+
+    choice = self.resolve_to_choice(CardSpendChoice)
+    self.assertEqual(
+        choice.choices, ["Holy Water", "Magic Lamp", "Magic Powder", "Sword of Glory", "Nothing"],
+    )
+    self.spend("dollars", 4, choice)
+    choice.resolve(self.state, "Holy Water")
+    self.resolve_until_done()
+
+    self.assertEqual(len(self.char.possessions), 2)
+    self.assertEqual([item.name for item in self.char.possessions], ["Archaeology", "Holy Water"])
+    self.assertEqual(len(self.state.unique), 3)
+    self.assertEqual(self.char.dollars, 8)
+
+  def testWithEncounters(self):
+    self.char.possessions.append(abilities.HometownAdvantage())
+    self.state.event_stack.append(EncounterPhase(self.char))
+    self.state.places["Easttown"].encounters.extend([
+        encounters.EncounterCard("Easttown2", {"Diner": encounters.Diner2}),
+        encounters.EncounterCard("Easttown3", {"Diner": encounters.Store7}),
+    ])
+    self.state.common.extend([items.Whiskey(0), items.Food(0)])
+    choice = self.resolve_to_choice(CardChoice)
+    self.assertCountEqual(choice.choices, ["Easttown2", "Easttown3"])
+    choice.resolve(self.state, "Easttown3")
+    self.resolve_until_done()
+
+    self.assertEqual(len(self.char.possessions), 2)
+    self.assertEqual(self.char.possessions[-1].name, "Whiskey")
+
+  def testOtherWorldEncounters(self):
+    self.char.place = self.state.places["Plateau1"]
+    self.char.possessions.append(abilities.PsychicSensitivity())
+    self.state.event_stack.append(OtherWorldPhase(self.char))
+    self.state.gate_cards.extend([
+        gate_encounters.GateCard("Gate10", {"red"}, {"Other": gate_encounters.Other10}),
+        gate_encounters.GateCard("Gate00", {"yellow"}, {"Other": gate_encounters.Dreamlands10}),
+        gate_encounters.GateCard("Gate16", {"green"}, {"Other": gate_encounters.Plateau16}),
+    ])
+    choice = self.resolve_to_choice(CardChoice)
+    # Gate00 is not a choice - wrong color
+    self.assertCountEqual(choice.choices, ["Gate10", "Gate16"])
+    choice.resolve(self.state, "Gate16")
+    self.resolve_until_done()
 
 
 class MistsTest(EventTest):

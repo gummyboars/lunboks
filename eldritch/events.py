@@ -1276,6 +1276,28 @@ def GainAllyOrReward(character, ally: str, reward: Event):
   return PassFail(character, has_ally, gain_ally, reward)
 
 
+class ChangeCount(Event):
+
+  def __init__(self, event, attribute, delta):
+    self.event = event
+    self.attribute = attribute
+    self.delta = delta
+    self.done = False
+
+  def resolve(self, state):
+    setattr(self.event, self.attribute, getattr(self.event, self.attribute) + self.delta)
+    self.done = True
+
+  def is_resolved(self):
+    return self.done
+
+  def start_str(self):
+    return ""
+
+  def finish_str(self):
+    return ""
+
+
 class SellChosen(Event):
 
   def __init__(self, character, choice, discount_type="fixed", discount=0):

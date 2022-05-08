@@ -118,8 +118,14 @@ allyNames = [
 ];
 carefullyAdd(allyNames);
 abilityNames = [
-  "Medicine",
+  "Studious",
+  "Shrewd Dealer",
+  "Hometown Advantage",
+  "Magical Gift",
+  "Psychic Sensitivity",
   "Flux Stabilizer",
+  "Archaeology",
+  "Physician",
 ];
 carefullyAdd(abilityNames);
 otherNames = [
