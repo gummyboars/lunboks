@@ -1949,6 +1949,203 @@ class UndeadTest(EventTest):
       self.assertEqual(rand.call_count, 5)  # Fight 4, +1 combat rating
 
 
+class CombatWithShotgunTest(EventTest):
+
+  def setUp(self):
+    super().setUp()
+    self.shotgun = items.Shotgun(0)
+    self.char.possessions.extend([self.shotgun, items.Axe(0), items.Knife(0)])
+
+  def start(self, monster):
+    # pylint: disable=attribute-defined-outside-init
+    self.combat = Combat(self.char, monster)
+    self.state.event_stack.append(self.combat)
+
+    fight_or_flee = self.resolve_to_choice(FightOrEvadeChoice)
+    fight_or_flee.resolve(self.state, "Fight")
+    choice = self.resolve_to_choice(CombatChoice)
+    self.char.clues = 1
+    return choice
+
+  def testShotgunSixes(self):
+    choice = self.start(monsters.Octopoid())
+    self.choose_items(choice, ["Shotgun0"])
+    # Fight (4) + Octopoid (-3) + Shotgun (4) = roll 5 dice
+    with mock.patch.object(events.random, "randint", new=mock.Mock(side_effect=[6, 1, 1, 1, 1])):
+      spend = self.resolve_to_choice(SpendChoice)
+      spend.resolve(self.state, "Done")
+    check = self.state.event_stack[-2]
+    self.assertIsInstance(check, Check)
+    self.assertEqual(check.successes, 2)
+
+    fight_or_flee = self.resolve_to_choice(FightOrEvadeChoice)
+    self.assertEqual(self.char.stamina, 2)  # Octopoid does 3 damage
+    fight_or_flee.resolve(self.state, "Fight")
+    weapon_choice = self.resolve_to_choice(CombatChoice)
+    self.choose_items(weapon_choice, ["Shotgun0"])
+
+    with mock.patch.object(events.random, "randint", new=mock.Mock(side_effect=[6, 6, 1, 1, 1])):
+      spend = self.resolve_to_choice(SpendChoice)
+      spend.resolve(self.state, "Done")
+    check = self.state.event_stack[-2]
+    self.assertIsInstance(check, Check)
+    self.assertEqual(check.successes, 4)
+    self.resolve_until_done()
+
+  def testShotgunFives(self):
+    choice = self.start(monsters.Octopoid())
+    self.choose_items(choice, ["Shotgun0"])
+    with mock.patch.object(events.random, "randint", new=mock.Mock(side_effect=[5, 1, 1, 1, 1])):
+      spend = self.resolve_to_choice(SpendChoice)
+      spend.resolve(self.state, "Done")
+    check = self.state.event_stack[-2]
+    self.assertIsInstance(check, Check)
+    self.assertEqual(check.successes, 1)
+
+    fight_or_flee = self.resolve_to_choice(FightOrEvadeChoice)
+    self.assertEqual(self.char.stamina, 2)
+    fight_or_flee.resolve(self.state, "Fight")
+    weapon_choice = self.resolve_to_choice(CombatChoice)
+    self.choose_items(weapon_choice, ["Shotgun0"])
+
+    with mock.patch.object(events.random, "randint", new=mock.Mock(side_effect=[5, 4, 6, 1, 1])):
+      spend = self.resolve_to_choice(SpendChoice)
+      spend.resolve(self.state, "Done")
+    check = self.state.event_stack[-2]
+    self.assertIsInstance(check, Check)
+    self.assertEqual(check.successes, 3)
+    self.resolve_until_done()
+
+  def testShotgunBlessed(self):
+    self.char.bless_curse = 1
+    choice = self.start(monsters.Octopoid())
+    self.choose_items(choice, ["Shotgun0"])
+    with mock.patch.object(events.random, "randint", new=mock.Mock(side_effect=[5, 4, 1, 1, 1])):
+      spend = self.resolve_to_choice(SpendChoice)
+      spend.resolve(self.state, "Done")
+    check = self.state.event_stack[-2]
+    self.assertIsInstance(check, Check)
+    self.assertEqual(check.successes, 2)
+
+    fight_or_flee = self.resolve_to_choice(FightOrEvadeChoice)
+    self.assertEqual(self.char.stamina, 2)
+    fight_or_flee.resolve(self.state, "Fight")
+    weapon_choice = self.resolve_to_choice(CombatChoice)
+    self.choose_items(weapon_choice, ["Shotgun0"])
+
+    with mock.patch.object(events.random, "randint", new=mock.Mock(side_effect=[3, 4, 6, 1, 1])):
+      spend = self.resolve_to_choice(SpendChoice)
+      spend.resolve(self.state, "Done")
+    check = self.state.event_stack[-2]
+    self.assertIsInstance(check, Check)
+    self.assertEqual(check.successes, 3)
+    self.resolve_until_done()
+
+  def testShotgunCursed(self):
+    self.char.bless_curse = -1
+    choice = self.start(monsters.Octopoid())
+    self.choose_items(choice, ["Shotgun0"])
+    with mock.patch.object(events.random, "randint", new=mock.Mock(side_effect=[6, 5, 1, 1, 1])):
+      spend = self.resolve_to_choice(SpendChoice)
+      spend.resolve(self.state, "Done")
+    check = self.state.event_stack[-2]
+    self.assertIsInstance(check, Check)
+    self.assertEqual(check.successes, 2)
+
+    fight_or_flee = self.resolve_to_choice(FightOrEvadeChoice)
+    self.assertEqual(self.char.stamina, 2)
+    fight_or_flee.resolve(self.state, "Fight")
+    weapon_choice = self.resolve_to_choice(CombatChoice)
+    self.choose_items(weapon_choice, ["Shotgun0"])
+
+    with mock.patch.object(events.random, "randint", new=mock.Mock(side_effect=[6, 5, 6, 1, 1])):
+      spend = self.resolve_to_choice(SpendChoice)
+      spend.resolve(self.state, "Done")
+    check = self.state.event_stack[-2]
+    self.assertIsInstance(check, Check)
+    self.assertEqual(check.successes, 4)
+    self.resolve_until_done()
+
+  def testNotHoldingShotgun(self):
+    self.char.possessions.append(items.EnchantedBlade(0))
+    choice = self.start(monsters.Octopoid())
+    self.choose_items(choice, ["Enchanted Blade0"])
+    with mock.patch.object(events.random, "randint", new=mock.Mock(side_effect=[6, 5, 4, 1, 1])):
+      spend = self.resolve_to_choice(SpendChoice)
+      spend.resolve(self.state, "Done")
+    check = self.state.event_stack[-2]
+    self.assertIsInstance(check, Check)
+    self.assertEqual(check.successes, 2)
+
+    fight_or_flee = self.resolve_to_choice(FightOrEvadeChoice)
+    self.assertEqual(self.char.stamina, 2)
+    fight_or_flee.resolve(self.state, "Fight")
+    weapon_choice = self.resolve_to_choice(CombatChoice)
+    self.choose_items(weapon_choice, ["Enchanted Blade0"])
+
+    with mock.patch.object(events.random, "randint", new=mock.Mock(side_effect=[6, 5, 6, 1, 1])):
+      spend = self.resolve_to_choice(SpendChoice)
+      spend.resolve(self.state, "Done")
+    check = self.state.event_stack[-2]
+    self.assertIsInstance(check, Check)
+    self.assertEqual(check.successes, 3)
+    self.resolve_until_done()
+
+  def testShotgunPhysicalImmunity(self):
+    choice = self.start(monsters.FormlessSpawn())
+    self.choose_items(choice, ["Shotgun0"])
+    with mock.patch.object(events.random, "randint", new=mock.Mock(side_effect=[5, 4])):
+      spend = self.resolve_to_choice(SpendChoice)
+      spend.resolve(self.state, "Done")
+    check = self.state.event_stack[-2]
+    self.assertIsInstance(check, Check)
+    self.assertEqual(check.successes, 1)
+
+    fight_or_flee = self.resolve_to_choice(FightOrEvadeChoice)
+    self.assertEqual(self.char.stamina, 3)
+    fight_or_flee.resolve(self.state, "Fight")
+    weapon_choice = self.resolve_to_choice(CombatChoice)
+    self.choose_items(weapon_choice, ["Shotgun0"])
+
+    with mock.patch.object(events.random, "randint", new=mock.Mock(side_effect=[6, 4])):
+      spend = self.resolve_to_choice(SpendChoice)
+      spend.resolve(self.state, "Done")
+    check = self.state.event_stack[-2]
+    self.assertIsInstance(check, Check)
+    self.assertEqual(check.successes, 2)
+    self.resolve_until_done()
+
+  def testOtherChecksUnaffectedByShotgun(self):
+    self.char.possessions.append(items.FleshWard(0))
+    choice = self.start(monsters.FormlessSpawn())
+    self.char.clues = 0
+    self.choose_items(choice, ["Shotgun0"])
+
+    # Fail the first combat check, and use flesh ward to avoid some stamina damage.
+    with mock.patch.object(events.random, "randint", new=mock.Mock(side_effect=[5, 4])):
+      self.resolve_to_usable(0, "Flesh Ward0")
+    cast = self.state.usables[0]["Flesh Ward0"]
+    self.state.event_stack.append(cast)
+    choice = self.resolve_to_choice(SpendChoice)
+    self.spend("sanity", 1, choice)
+    choice.resolve(self.state, "Cast")
+
+    # Successfully cast flesh ward by rolling one 6.
+    with mock.patch.object(events.random, "randint", new=mock.Mock(side_effect=[6, 3])):
+      fight_or_flee = self.resolve_to_choice(FightOrEvadeChoice)
+
+    self.assertIsNotNone(cast.check)
+    self.assertEqual(cast.check.successes, 1)  # Shotgun has no effect on the spell check.
+    self.assertEqual(self.char.stamina, 5)
+
+    fight_or_flee.resolve(self.state, "Fight")
+    weapon_choice = self.resolve_to_choice(CombatChoice)
+    self.choose_items(weapon_choice, ["Shotgun0"])
+
+    with mock.patch.object(events.random, "randint", new=mock.Mock(side_effect=[6, 4])):
+      self.resolve_until_done()
+
+
 class CombatWithEnchantedWeapon(EventTest):
 
   def setUp(self):
