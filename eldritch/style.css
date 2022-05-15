@@ -613,10 +613,10 @@ button:disabled {
   justify-content: flex-start;
 }
 .misc {
-  width: calc(min(34.24vw, 21.4vh) / 3);
-  min-height: calc(min(34.24vw, 21.4vh) / 3);
-  height: calc(min(34.24vw, 21.4vh) / 3);
-  max-height: calc(min(34.24vw, 21.4vh) / 3);
+  width: calc(min(13.375vw, 21.4vh) / 3);
+  min-height: calc(min(13.375vw, 21.4vh) / 3);
+  height: calc(min(13.375vw, 21.4vh) / 3);
+  max-height: calc(min(13.375vw, 21.4vh) / 3);
   position: relative;
 }
 .placemiscbox {
