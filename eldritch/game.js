@@ -1867,6 +1867,28 @@ function updateCharacterSheet(sheet, character, order, isPlayer, choice) {
   updateSliders(sheet, character, isPlayer);
   updatePossessions(sheet, character.possessions, isPlayer, spent, chosen);
   updateTrophies(sheet, character, isPlayer, spent);
+  fixTransformOrigins(sheet);
+}
+
+function fixTransformOrigins(sheet) {
+  let toFix = [];
+  for (let pos of sheet.getElementsByClassName("possession")) {
+    toFix.push(pos);
+  }
+  for (let trophy of sheet.getElementsByClassName("trophy")) {
+    toFix.push(trophy);
+  }
+  for (let elem of toFix) {
+    let totalWidth = elem.offsetParent.offsetWidth;
+    let offsetCenter = elem.offsetLeft + (elem.offsetWidth / 2);
+    if (offsetCenter / totalWidth < 0.3) {
+      elem.style.transformOrigin = "left center";
+    } else if (offsetCenter / totalWidth > 0.7) {
+      elem.style.transformOrigin = "right center";
+    } else {
+      elem.style.transformOrigin = "center";
+    }
+  }
 }
 
 function updateInitialStats(sheet, character) {
@@ -1966,39 +1988,51 @@ function updateSliders(sheet, character, isPlayer) {
 }
 
 function updateInitialPossessions(sheet, character) {
+  let pDiv = sheet.getElementsByClassName("possessions")[0];
+  // Clearing out existing children is not strictly necessary, but makes the ordering look better.
+  while (pDiv.children.length) {
+    pDiv.removeChild(pDiv.firstChild);
+  }
   let possessions = [];
-  for (let pos of character.fixed) {
-    possessions.push({name: pos, active: false, handle: null, bonuses: {}});
+  for (let [idx, pos] of character.fixed.entries()) {
+    possessions.push({name: pos, active: false, exhausted: false, handle: pos + idx});
   }
   for (let deck in character.random) {
     for (let i = 0; i < character.random[deck]; i++) {
-      possessions.push({name: deck, active: false, handle: null, bonuses: {}});
+      possessions.push({name: deck, active: false, exhausted: false, handle: deck + i});
     }
   }
   updatePossessions(sheet, possessions, false, {}, []);
 }
 
 function updatePossessions(sheet, possessions, isPlayer, spent, chosen) {
-  // TODO: figure out which possessions to add/remove based on handle
   let pDiv = sheet.getElementsByClassName("possessions")[0];
-  while (pDiv.firstChild) {
-    pDiv.removeChild(pDiv.firstChild);
-  }
+  let handleToInfo = {};
+  let toRemove = [];
   for (let pos of possessions) {
-    createPossession(pos, isPlayer, pDiv, spent, chosen);
+    handleToInfo[pos.handle] = pos;
+  }
+  for (let div of pDiv.getElementsByClassName("possession")) {
+    if (handleToInfo[div.handle] == null) {
+      toRemove.push(div);
+      continue;
+    }
+    updatePossession(div, handleToInfo[div.handle], isPlayer, spent, chosen);
+    delete handleToInfo[div.handle];
+  }
+  for (let div of toRemove) {
+    pDiv.removeChild(div);
+  }
+  for (let handle in handleToInfo) {
+    let div = createPossession(handleToInfo[handle], isPlayer, pDiv);
+    updatePossession(div, handleToInfo[div.handle], isPlayer, spent, chosen);
   }
 }
 
-function createPossession(info, isPlayer, sheet, spent, chosen) {
+function createPossession(info, isPlayer, sheet) {
   let div = document.createElement("DIV");
   div.classList.add("possession", "cnvcontainer");
   div.cnvScale = 2.5;
-  if (info.active) {
-    div.classList.add("active");
-  }
-  if (spent[info.handle] != null) {
-    div.classList.add("spent");
-  }
   div.handle = info.handle;
   if (abilityNames.includes(info.handle)) {
     div.classList.add("big");
@@ -2006,31 +2040,14 @@ function createPossession(info, isPlayer, sheet, spent, chosen) {
   let cnv = document.createElement("CANVAS");
   cnv.classList.add("poscnv");
   div.appendChild(cnv);
-  let cascade = {"sneak": "evade", "fight": "combat", "will": "horror", "lore": "spell"};
-  for (let attr in info.bonuses) {
-    if (!info.bonuses[attr]) {
-      continue;
-    }
-    let highlightDiv = document.createElement("DIV");
-    highlightDiv.classList.add("bonus", "bonus" + attr);
-    highlightDiv.innerText = (info.bonuses[attr] >= 0 ? "+" : "") + info.bonuses[attr];
-    if (cascade[attr]) {
-      highlightDiv.classList.add("bonus" + cascade[attr]);
-    }
-    div.appendChild(highlightDiv);
-  }
   let chosenDiv = document.createElement("DIV");
   chosenDiv.classList.add("chosencheck");
   chosenDiv.innerText = "✔️";
   div.appendChild(chosenDiv);
-  // TODO: show some information about bonuses that aren't active right now
-  let handle = info.handle;
   div.onmouseenter = bringTop;
   div.onmouseleave = returnBottom;
+  let handle = info.handle;
   if (isPlayer) {
-    if (chosen.includes(handle)) {
-      div.classList.add("chosen");
-    }
     div.onclick = function(e) { clickAsset(div, handle); };
     div.draggable = true;
     div.ondragstart = dragStart;
@@ -2038,28 +2055,49 @@ function createPossession(info, isPlayer, sheet, spent, chosen) {
   }
   sheet.appendChild(div);
   renderAssetToDiv(div, info.name);
+  return div;
+}
+
+function updatePossession(div, info, isPlayer, spent, chosen) {
+  div.classList.toggle("active", Boolean(info.active));
+  div.classList.toggle("exhausted", Boolean(info.exhausted));
+  div.classList.toggle("spent", spent[info.handle] != null);
+  if (isPlayer) {
+    div.classList.toggle("chosen", chosen.includes(info.handle));
+  }
 }
 
 function updateTrophies(sheet, character, isPlayer, spent) {
   let tDiv = sheet.getElementsByClassName("possessions")[1];
-  while (tDiv.firstChild) {
-    tDiv.removeChild(tDiv.firstChild);
-  }
+  let handleToInfo = {};
+  let toRemove = [];
   for (let trophy of character.trophies) {
-    createTrophy(trophy, isPlayer, tDiv, spent);
+    handleToInfo[trophy.handle] = trophy;
+  }
+  for (let div of tDiv.getElementsByClassName("trophy")) {
+    if (handleToInfo[div.handle] == null) {
+      toRemove.push(div);
+      continue;
+    }
+    updateTrophy(div, spent);
+    delete handleToInfo[div.handle];
+  }
+  for (let div of toRemove) {
+    tDiv.removeChild(div);
+  }
+  for (let handle in handleToInfo) {
+    let div = createTrophy(handleToInfo[handle], isPlayer, tDiv);
+    updateTrophy(div, spent);
   }
 }
 
-function createTrophy(info, isPlayer, tDiv, spent) {
+function createTrophy(info, isPlayer, tDiv) {
   let assetName = info.name;
   let handle = info.handle;
   let div = document.createElement("DIV");
   let containerClass = monsterNames.includes(assetName) ? "monsterback" : "cnvcontainer";
   div.classList.add("trophy", containerClass);
   div.cnvScale = 2.5;
-  if (spent[handle] != null) {
-    div.classList.add("spent");
-  }
   div.handle = handle;
   let cnv = document.createElement("CANVAS");
   cnv.classList.add("poscnv");
@@ -2076,9 +2114,16 @@ function createTrophy(info, isPlayer, tDiv, spent) {
   }
   if (monsterNames.includes(assetName)) {
     div.monsterInfo = info;
-    renderMonsterBackToDiv(div, info);
   } else {
     renderAssetToDiv(div, assetName);
+  }
+  return div;
+}
+
+function updateTrophy(div, spent) {
+  div.classList.toggle("spent", spent[div.handle] != null);
+  if (div.monsterInfo != null) {
+    renderMonsterBackToDiv(div, div.monsterInfo);
   }
 }
 

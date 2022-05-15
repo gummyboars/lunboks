@@ -1151,6 +1151,14 @@ button:disabled {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%) scale(0.4);
+  transition: transform 0.3s;
+}
+.exhausted .poscnv {
+  transform: translate(-50%, -50%) scale(0.4) rotate(180deg);
+}
+.possession:hover .poscnv {
+  transform: translate(-50%, -50%) scale(0.4);
+  transition-delay: 0.5s;
 }
 .possession.big {
   width: calc(min(9.5vw, 15.2vh));
