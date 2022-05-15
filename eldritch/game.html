@@ -104,25 +104,6 @@
             <div id="uiuse"><span id="usetext">Use Items or Abilities</span><div class="spacer"></div><button onclick="doneUsing(event)" id="doneusing">Done Using</button></div>
             <div id="uispend"></div>
           </div>
-          <div style="display: none">
-            <select id="monsterchoice"></select>
-            <select id="placechoice"></select>
-            <button onclick="spawnMonster(event)">Spawn Monster</button>
-            <button onclick="spawnGate(event)">Spawn Gate</button>
-            <button onclick="spawnClue(event)">Spawn Clue</button>
-            <div id="checks">
-              <button onclick="makeCheck(event)" onmouseenter="highlightCheck(event)" onmouseleave="endHighlight(event)" value="speed">Speed</button>
-              <button onclick="makeCheck(event)" onmouseenter="highlightCheck(event)" onmouseleave="endHighlight(event)" value="sneak">Sneak</button>
-              <button onclick="makeCheck(event)" onmouseenter="highlightCheck(event)" onmouseleave="endHighlight(event)" value="fight">Fight</button>
-              <button onclick="makeCheck(event)" onmouseenter="highlightCheck(event)" onmouseleave="endHighlight(event)" value="will">Will</button>
-              <button onclick="makeCheck(event)" onmouseenter="highlightCheck(event)" onmouseleave="endHighlight(event)" value="lore">Lore</button>
-              <button onclick="makeCheck(event)" onmouseenter="highlightCheck(event)" onmouseleave="endHighlight(event)" value="luck">Luck</button>
-              <button onclick="makeCheck(event)" onmouseenter="highlightCheck(event)" onmouseleave="endHighlight(event)" value="evade">Evade</button>
-              <button onclick="makeCheck(event)" onmouseenter="highlightCheck(event)" onmouseleave="endHighlight(event)" value="combat">Combat</button>
-              <button onclick="makeCheck(event)" onmouseenter="highlightCheck(event)" onmouseleave="endHighlight(event)" value="horror">Horror</button>
-              <button onclick="makeCheck(event)" onmouseenter="highlightCheck(event)" onmouseleave="endHighlight(event)" value="spell">Spell</button>
-            </div>
-          </div>
           <div id="ancientandplaces">
             <div id="ancientone">
               <div id="ancienttracks">
@@ -158,7 +139,68 @@
         </div>
       </div>
       <div id="uiright">
-        <div id="eventlog"></div>
+        <div id="uichars" class="rightelem shown"></div>
+        <div id="eventlog" class="rightelem notshown"></div>
+        <div id="admin" class="rightelem notshown">
+          <div class="admincategory">
+            Ancient One<br />
+            <button onclick="addDoom(event)">Add Doom</button><br />
+            <button onclick="removeDoom(event)">Remove Doom</button><br />
+            <button onclick="awaken(event)">Awaken</button>
+          </div>
+          <div class="admincategory">
+            Places<br />
+            <select id="placechoice" onchange="changePlaceChoice(event)"></select><br />
+            <button onclick="spawnClue(event)">Spawn Clue</button>
+            <button onclick="removeClue(event)">Remove Clue</button><br />
+            <button onclick="removeGate(event)">Remove Gate</button>
+            <button onclick="toggleSeal(event)">Toggle Seal</button>
+          </div>
+          <div class="admincategory">
+            Monsters<br />
+            <select id="monsterchoice"></select><br />
+            <button onclick="spawnMonster(event)">Spawn Monster</button> at <span class="placetext"></span>
+            <button onclick="removeMonster(event)">Remove Monster</button> from <span class="placetext"></span>
+          </div>
+          <div class="admincategory">
+            Other Worlds<br />
+            <select id="gatechoice" onchange="changeOtherChoice(event)"></select><br />
+            <button onclick="spawnGate(event)">Spawn Gate</button> at <span class="placetext"></span>
+          </div>
+          <div class="admincategory">
+            Players<br />
+            <select id="playerchoice" onchange="changePlayerChoice(event)"></select><br />
+            Stamina <input type="number" id="staminachoice" style="width: 6ch"></input>
+            Clues <input type="number" id="clueschoice" style="width: 6ch"></input><br />
+            Sanity <input type="number" id="sanitychoice" style="width: 6ch"></input>
+            Dollars <input type="number" id="dollarschoice" style="width: 6ch"></input><br />
+            <button onclick="setStats(event)">Set Stats</button><br />
+            <button onclick="redoSliders(event)">Redo Sliders</button><br />
+            <button onclick="goInsane(event)">Insane</button>
+            <button onclick="goUnconscious(event)">Unconscious</button>
+            <button onclick="beDevoured(event)">Devoured</button><br />
+            Move to <button onclick="moveChar(event, null)" class="placetext"></button>
+            <button onclick="moveChar(event, '1')" class="othertext1"></button>
+            <button onclick="moveChar(event, '2')" class="othertext2"></button>
+          </div>
+          <div class="admincategory">
+            Stuff<br />
+            <button onclick="giveItem(event)">Give</button> <select id="itemchoice"></select> to <span class="playertext"></span><br />
+            <select id="handlechoice"></select><br />
+            <button onclick="removeItem(event)">Remove</button>
+            <button onclick="exhaustItem(event)">Exhaust</button>
+            <button onclick="refreshItem(event)">Refresh</button><br />
+            <button onclick="giveTrophy(event, false)">Give</button> <span class="othertext"></span> gate trophy.<br />
+            <button onclick="giveTrophy(event, true)">Give</button> <select id="trophychoice"></select> trophy.<br />
+            <select id="trophyhandlechoice"></select><br />
+            <button onclick="removeTrophy(event)">Remove</button>
+          </div>
+        </div>
+        <div id="tabs">
+          <div id="tabplayers" class="righttab shown" onclick="switchTab('players')"><div class="tabcenter">👥</div></div>
+          <div id="tablog" class="righttab" onclick="switchTab('log')"><div class="tabcenter">📜</div></div>
+          <div id="tabadmin" class="righttab" onclick="switchTab('admin')"><div class="tabcenter">✏️</div></div>
+        </div>
       </div>
     </div>
     <div id="assets" style="display: none"></div>
