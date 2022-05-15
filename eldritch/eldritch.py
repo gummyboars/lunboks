@@ -377,14 +377,6 @@ class GameState:
       self.handle_slider(char_idx, data.get("name"), data.get("value"))
     elif data.get("type") == "give":
       self.handle_give(char_idx, data.get("recipient"), data.get("handle"), data.get("amount"))
-    elif data.get("type") == "check":  # TODO: remove
-      self.handle_check(char_idx, data.get("check_type"), data.get("modifier"))
-    elif data.get("type") == "monster":  # TODO: remove
-      self.handle_spawn_monster(data.get("monster"), data.get("place"))
-    elif data.get("type") == "gate":  # TODO: remove
-      self.handle_spawn_gate(data.get("place"))
-    elif data.get("type") == "clue":  # TODO: remove
-      self.handle_spawn_clue(data.get("place"))
     elif data.get("type") == "choice":
       self.handle_choice(char_idx, data.get("choice"))
     elif data.get("type") == "spend":
@@ -397,6 +389,49 @@ class GameState:
       self.handle_use(char_idx, data.get("handle"))
     elif data.get("type") == "done_using":
       self.handle_done_using(char_idx)
+    # Begin debugging commands here.
+    elif data.get("type") == "add_doom":
+      self.handle_add_doom()
+    elif data.get("type") == "remove_doom":
+      self.handle_remove_doom()
+    elif data.get("type") == "clue":
+      self.handle_spawn_clue(data.get("place"))
+    elif data.get("type") == "remove_clue":
+      self.handle_remove_clue(data.get("place"))
+    elif data.get("type") == "remove_gate":
+      self.handle_remove_gate(data.get("place"))
+    elif data.get("type") == "seal":
+      self.handle_toggle_seal(data.get("place"))
+    elif data.get("type") == "monster":
+      self.handle_spawn_monster(data.get("monster"), data.get("place"))
+    elif data.get("type") == "remove_monster":
+      self.handle_remove_monster(data.get("monster"), data.get("place"))
+    elif data.get("type") == "gate":
+      self.handle_spawn_gate(data.get("gate"), data.get("place"))
+    elif data.get("type") == "set_stats":
+      self.handle_set_stats(data)
+    elif data.get("type") == "insane":
+      self.handle_insane(data.get("char"))
+    elif data.get("type") == "unconscious":
+      self.handle_unconscious(data.get("char"))
+    elif data.get("type") == "devoured":
+      self.handle_devoured(data.get("char"))
+    elif data.get("type") == "move_char":
+      self.handle_move_char(data.get("char"), data.get("place"))
+    elif data.get("type") == "give_item":
+      self.handle_give_item(data.get("char"), data.get("item"))
+    elif data.get("type") == "remove_item":
+      self.handle_remove_item(data.get("char"), data.get("handle"))
+    elif data.get("type") == "exhaust_item":
+      self.handle_exhaust_item(data.get("char"), data.get("handle"))
+    elif data.get("type") == "refresh_item":
+      self.handle_refresh_item(data.get("char"), data.get("handle"))
+    elif data.get("type") == "give_trophy":
+      self.handle_give_trophy(data.get("char"), data.get("trophy"))
+    elif data.get("type") == "remove_trophy":
+      self.handle_remove_trophy(data.get("char"), data.get("handle"))
+    elif data.get("type") == "redo_sliders":
+      self.handle_redo_sliders(data.get("char"))
     else:
       raise UnknownMove(data.get("type"))
 
@@ -736,18 +771,48 @@ class GameState:
       raise InvalidMove("It is not your turn to roll the dice")
     event.resolve(self)
 
-  def handle_check(self, char_idx, check_type, modifier):
-    if check_type is None:
-      raise InvalidInput("no check type")
-    if check_type not in assets.CHECK_TYPES:
-      raise InvalidInput("unknown check type")
-    try:
-      modifier = int(modifier)
-    except (ValueError, TypeError):
-      raise InvalidInput("invalid difficulty")  # pylint: disable=raise-missing-from
-    if self.event_stack:
-      raise InvalidInput("there are events on the stack")
-    self.event_stack.append(events.Check(self.characters[char_idx], check_type, modifier))
+  def handle_add_doom(self):
+    self.ancient_one.doom += 1
+    self.ancient_one.doom = min(self.ancient_one.doom, self.ancient_one.max_doom)
+
+  def handle_remove_doom(self):
+    self.ancient_one.doom -= 1
+    self.ancient_one.doom = max(self.ancient_one.doom, 0)
+
+  def handle_awaken(self):
+    self.event_stack.append(events.Awaken())
+
+  def handle_spawn_clue(self, place):
+    assert place in self.places
+    assert hasattr(self.places[place], "clues")
+    self.places[place].clues += 1
+
+  def handle_remove_clue(self, place):
+    assert place in self.places
+    assert hasattr(self.places[place], "clues")
+    self.places[place].clues -= 1
+    self.places[place].clues = max(self.places[place].clues, 0)
+
+  def handle_remove_gate(self, place):
+    assert place in self.places
+    assert getattr(self.places[place], "gate", None) is not None
+    self.gates.append(self.places[place].gate)
+    self.places[place].gate = None
+
+  def handle_toggle_seal(self, place):
+    assert place in self.places
+    assert hasattr(self.places[place], "sealed")
+    self.places[place].sealed = not self.places[place].sealed
+
+  def handle_spawn_gate(self, gate_name, place):
+    assert place in self.places
+    assert getattr(self.places[place], "gate", True) is None
+    for gate in self.gates:
+      if gate.name == gate_name:
+        self.places[place].gate = gate
+        self.gates.remove(gate)
+        return
+    raise InvalidMove("No gates of that type left in the stack.")
 
   def handle_spawn_monster(self, monster_name, place):
     assert place in self.places
@@ -755,19 +820,135 @@ class GameState:
     for monster in self.monsters:
       if monster.name == monster_name and monster.place == self.monster_cup:
         monster.place = self.places[place]
-        break
+        return
+    raise InvalidMove("No monsters of that type left in the cup.")
+
+  def handle_remove_monster(self, monster_name, place):
+    assert place in self.places
+    assert monster_name in monsters.MONSTERS
+    for monster in self.monsters:
+      if monster.name == monster_name and monster.place == self.places[place]:
+        monster.place = self.monster_cup
+        return
+    raise InvalidMove("No monsters of that type in that place.")
+
+  def handle_set_stats(self, data):
+    name = data.get("name")
+    stats = ["stamina", "sanity", "clues", "dollars"]
+    chars = [char for char in self.characters if char.name == name]
+    assert len(chars) == 1
+    assert all(isinstance(data.get(stat), int) for stat in stats)
+    char = chars[0]
+    for stat in stats:
+      setattr(char, stat, max(data[stat], 0))
+    char.stamina = min(char.stamina, char.max_stamina(self))
+    char.sanity = min(char.sanity, char.max_sanity(self))
+
+  def handle_insane(self, name):
+    chars = [char for char in self.characters if char.name == name]
+    assert len(chars) == 1
+    self.event_stack.append(events.Insane(chars[0]))
+
+  def handle_unconscious(self, name):
+    chars = [char for char in self.characters if char.name == name]
+    assert len(chars) == 1
+    self.event_stack.append(events.Unconscious(chars[0]))
+
+  def handle_devoured(self, name):
+    chars = [char for char in self.characters if char.name == name]
+    assert len(chars) == 1
+    self.event_stack.append(events.Devoured(chars[0]))
+
+  def handle_move_char(self, name, place):
+    chars = [char for char in self.characters if char.name == name]
+    assert len(chars) == 1
+    char = chars[0]
+    if place in self.places:
+      char.place = self.places[place]
+    elif place + "1" in self.places:
+      char.place = self.places[place + "1"]
     else:
-      raise InvalidMove("No monsters of that type left in the cup.")
+      raise InvalidMove(f"Unknown place {place}")
 
-  def handle_spawn_gate(self, place):
-    assert place in self.places
-    assert self.places[place].is_unstable(self)
-    self.event_stack.append(events.OpenGate(place))
+  def handle_give_item(self, char_name, item_name):
+    chars = [char for char in self.characters if char.name == char_name]
+    assert len(chars) == 1
+    char = chars[0]
+    for deck in ["common", "unique", "spells", "skills", "allies", "specials", "tradables"]:
+      found = [item for item in getattr(self, deck) if item.name == item_name]
+      if found:
+        getattr(self, deck).remove(found[0])
+        char.possessions.append(found[0])
+        return
+    raise InvalidMove(f"Could not find {item_name} in any deck")
 
-  def handle_spawn_clue(self, place):
-    assert place in self.places
-    assert self.places[place].is_unstable(self)
-    self.event_stack.append(events.SpawnClue(place))
+  def handle_remove_item(self, char_name, handle):
+    chars = [char for char in self.characters if char.name == char_name]
+    assert len(chars) == 1
+    char = chars[0]
+    found = [pos for pos in char.possessions if pos.handle == handle]
+    assert len(found) == 1
+    pos = found[0]
+    assert hasattr(pos, "deck")
+    char.possessions.remove(pos)
+    getattr(self, pos.deck).append(pos)
+
+  def handle_exhaust_item(self, char_name, handle):
+    chars = [char for char in self.characters if char.name == char_name]
+    assert len(chars) == 1
+    char = chars[0]
+    found = [pos for pos in char.possessions if pos.handle == handle]
+    assert len(found) == 1
+    pos = found[0]
+    assert hasattr(pos, "_exhausted")
+    pos._exhausted = True  # pylint: disable=protected-access
+
+  def handle_refresh_item(self, char_name, handle):
+    chars = [char for char in self.characters if char.name == char_name]
+    assert len(chars) == 1
+    char = chars[0]
+    found = [pos for pos in char.possessions if pos.handle == handle]
+    assert len(found) == 1
+    pos = found[0]
+    assert hasattr(pos, "_exhausted")
+    pos._exhausted = False  # pylint: disable=protected-access
+
+  def handle_give_trophy(self, char_name, monster_or_gate):
+    chars = [char for char in self.characters if char.name == char_name]
+    assert len(chars) == 1
+    char = chars[0]
+    for monster in self.monsters:
+      if monster.place == self.monster_cup and monster.name == monster_or_gate:
+        monster.place = None
+        char.trophies.append(monster)
+        return
+    for gate in self.gates:
+      if gate.name == monster_or_gate:
+        self.gates.remove(gate)
+        char.trophies.append(gate)
+        return
+    raise InvalidMove(f"Monster or gate {monster_or_gate} not found.")
+
+  def handle_remove_trophy(self, char_name, handle):
+    chars = [char for char in self.characters if char.name == char_name]
+    assert len(chars) == 1
+    char = chars[0]
+    found = [trophy for trophy in char.trophies if trophy.handle == handle]
+    assert len(found) == 1
+    trophy = found[0]
+    if isinstance(trophy, monsters.Monster):
+      char.trophies.remove(trophy)
+      trophy.place = self.monster_cup
+    elif isinstance(trophy, gates.Gate):
+      char.trophies.remove(trophy)
+      self.gates.append(trophy)
+    else:
+      raise InvalidMove("Unknown trophy type")
+
+  def handle_redo_sliders(self, name):
+    chars = [char for char in self.characters if char.name == name]
+    assert len(chars) == 1
+    self.event_stack.append(events.SliderInput(chars[0], free=True))
 
   def handle_slider(self, char_idx, name, value):
     assert self.event_stack

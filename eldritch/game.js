@@ -19,6 +19,22 @@ statTimeout = null;
 cardsStyle = "flex";
 statNames = {"stamina": "Stamina", "sanity": "Sanity", "clues": "Clue", "dollars": "Dollar"};
 
+function addOptionToSelect(id, val) {
+  let opt = document.createElement("OPTION");
+  opt.value = val;
+  opt.text = val;
+  document.getElementById(id).appendChild(opt);
+}
+
+function removeOptionFromSelect(id, val) {
+  for (let elem of document.getElementById(id).getElementsByTagName("OPTION")) {
+    if (elem.value == val) {
+      document.getElementById(id).removeChild(elem);
+      break;
+    }
+  }
+}
+
 function init() {
   let params = new URLSearchParams(window.location.search);
   if (!params.has("game_id")) {
@@ -97,18 +113,12 @@ function continueInit(gameId) {
       details.appendChild(select);
       cont.appendChild(div);
 
-      let opt = document.createElement("OPTION");
-      opt.value = name;
-      opt.text = name;
-      document.getElementById("placechoice").appendChild(opt);
+      addOptionToSelect("placechoice", name);
     }
   }
   placeLocations();
   for (let name of monsterNames) {
-    let opt = document.createElement("OPTION");
-    opt.value = name;
-    opt.text = name;
-    document.getElementById("monsterchoice").appendChild(opt);
+    addOptionToSelect("monsterchoice", name);
   }
   for (let name of otherWorlds) {
     let div = document.createElement("DIV");
@@ -136,6 +146,8 @@ function continueInit(gameId) {
     div.appendChild(cnvContainer);
     document.getElementById("worlds").appendChild(div);
     renderAssetToDiv(cnvContainer, name);
+
+    addOptionToSelect("gatechoice", name);
   }
   for (let extra of ["Lost", "Sky", "Outskirts"]) {
     renderAssetToDiv(document.getElementById("place" + extra), extra);
@@ -149,6 +161,19 @@ function continueInit(gameId) {
   outskirtsBox.ondragenter = dragEnter;
   outskirtsBox.ondragover = dragOver;
   outskirtsBox.ondrop = drop;
+
+  // Debug menu stuff
+  changeOtherChoice(null);
+  changePlaceChoice(null);
+  for (let arr of [commonNames, uniqueNames, spellNames, skillNames, allyNames, abilityNames, otherNames]) {
+    for (let name of arr) {
+      addOptionToSelect("itemchoice", name);
+    }
+  }
+  for (let name of monsterNames) {
+    addOptionToSelect("trophychoice", name);
+  }
+
   window.addEventListener("resize", function() {
     clearTimeout(statTimeout);
     statTimeout = setTimeout(redrawCustomCanvases, 255);
@@ -261,20 +286,190 @@ function roll(e) {
   ws.send(JSON.stringify({"type": "roll"}));
 }
 
+function changePlaceChoice(e) {
+  let name = document.getElementById("placechoice").value;
+  for (let elem of document.getElementsByClassName("placetext")) {
+    elem.innerText = name;
+  }
+}
+
+function changeOtherChoice(e) {
+  let name = document.getElementById("gatechoice").value;
+  for (let elem of document.getElementsByClassName("othertext")) {
+    elem.innerText = name;
+  }
+  for (let elem of document.getElementsByClassName("othertext1")) {
+    elem.innerText = name + " 1";
+  }
+  for (let elem of document.getElementsByClassName("othertext2")) {
+    elem.innerText = name + " 2";
+  }
+}
+
+function changePlayerChoice(e) {
+  let name = document.getElementById("playerchoice").value;
+  let sheet = characterSheets[name];
+  if (sheet == null) {
+    return;
+  }
+  for (let stat of ["stamina", "sanity", "clues", "dollars"]) {
+    let statDiv = sheet.getElementsByClassName(stat)[0];
+    if (statDiv == null) {
+      continue;
+    }
+    document.getElementById(stat + "choice").value = statDiv.statValue;
+  }
+  let handleChoice = document.getElementById("handlechoice");
+  while (handleChoice.children.length) {
+    handleChoice.removeChild(handleChoice.firstChild);
+  }
+  for (let elem of sheet.getElementsByClassName("possession")) {
+    addOptionToSelect("handlechoice", elem.handle);
+  }
+  let trophyHandleChoice = document.getElementById("trophyhandlechoice");
+  while (trophyHandleChoice.children.length) {
+    trophyHandleChoice.removeChild(trophyHandleChoice.firstChild);
+  }
+  for (let elem of sheet.getElementsByClassName("trophy")) {
+    addOptionToSelect("trophyhandlechoice", elem.handle);
+  }
+  for (let elem of document.getElementsByClassName("playertext")) {
+    elem.innerText = name;
+  }
+}
+
+function addDoom(e) {
+  ws.send(JSON.stringify({"type": "add_doom"}));
+}
+
+function removeDoom(e) {
+  ws.send(JSON.stringify({"type": "remove_doom"}));
+}
+
+function awaken(e) {
+  ws.send(JSON.stringify({"type": "awaken"}));
+}
+
+function spawnClue(e) {
+  let place = document.getElementById("placechoice").value;
+  ws.send(JSON.stringify({"type": "clue", "place": place}));
+}
+
+function removeClue(e) {
+  let place = document.getElementById("placechoice").value;
+  ws.send(JSON.stringify({"type": "remove_clue", "place": place}));
+}
+
+function removeGate(e) {
+  let place = document.getElementById("placechoice").value;
+  ws.send(JSON.stringify({"type": "remove_gate", "place": place}));
+}
+
+function toggleSeal(e) {
+  let place = document.getElementById("placechoice").value;
+  ws.send(JSON.stringify({"type": "seal", "place": place}));
+}
+
 function spawnMonster(e) {
   let monster = document.getElementById("monsterchoice").value;
   let place = document.getElementById("placechoice").value;
   ws.send(JSON.stringify({"type": "monster", "place": place, "monster": monster}));
 }
 
-function spawnGate(e) {
+function removeMonster(e) {
+  let monster = document.getElementById("monsterchoice").value;
   let place = document.getElementById("placechoice").value;
-  ws.send(JSON.stringify({"type": "gate", "place": place}));
+  ws.send(JSON.stringify({"type": "remove_monster", "place": place, "monster": monster}));
 }
 
-function spawnClue(e) {
+function spawnGate(e) {
+  let gate = document.getElementById("gatechoice").value;
   let place = document.getElementById("placechoice").value;
-  ws.send(JSON.stringify({"type": "clue", "place": place}));
+  ws.send(JSON.stringify({"type": "gate", "gate": gate, "place": place}));
+}
+
+function setStats(e) {
+  let name = document.getElementById("playerchoice").value;
+  let msg = {
+    "type": "set_stats",
+    "name": name,
+  };
+  for (let stat of ["stamina", "sanity", "clues", "dollars"]) {
+    msg[stat] = parseInt(document.getElementById(stat + "choice").value);
+  }
+  ws.send(JSON.stringify(msg));
+}
+
+function goInsane(e) {
+  let name = document.getElementById("playerchoice").value;
+  ws.send(JSON.stringify({"type": "insane", "char": name}));
+}
+
+function goUnconscious(e) {
+  let name = document.getElementById("playerchoice").value;
+  ws.send(JSON.stringify({"type": "unconscious", "char": name}));
+}
+
+function beDevoured(e) {
+  let name = document.getElementById("playerchoice").value;
+  ws.send(JSON.stringify({"type": "devoured", "char": name}));
+}
+
+function moveChar(e, suffix) {
+  let place;
+  let name = document.getElementById("playerchoice").value;
+  if (suffix == null) {
+    place = document.getElementById("placechoice").value;
+  } else {
+    place = document.getElementById("gatechoice").value + suffix;
+  }
+  ws.send(JSON.stringify({"type": "move_char", "char": name, "place": place}));
+}
+
+function giveItem(e) {
+  let charName = document.getElementById("playerchoice").value;
+  let itemName = document.getElementById("itemchoice").value;
+  ws.send(JSON.stringify({"type": "give_item", "char": charName, "item": itemName}));
+}
+
+function removeItem(e) {
+  let charName = document.getElementById("playerchoice").value;
+  let handle = document.getElementById("handlechoice").value;
+  ws.send(JSON.stringify({"type": "remove_item", "char": charName, "handle": handle}));
+}
+
+function exhaustItem(e) {
+  let charName = document.getElementById("playerchoice").value;
+  let handle = document.getElementById("handlechoice").value;
+  ws.send(JSON.stringify({"type": "exhaust_item", "char": charName, "handle": handle}));
+}
+
+function refreshItem(e) {
+  let charName = document.getElementById("playerchoice").value;
+  let handle = document.getElementById("handlechoice").value;
+  ws.send(JSON.stringify({"type": "refresh_item", "char": charName, "handle": handle}));
+}
+
+function giveTrophy(e, isMonster) {
+  let charName = document.getElementById("playerchoice").value;
+  let trophyName;
+  if (isMonster) {
+    trophyName = document.getElementById("trophychoice").value;
+  } else {
+    trophyName = document.getElementById("gatechoice").value;
+  }
+  ws.send(JSON.stringify({"type": "give_trophy", "char": charName, "trophy": trophyName}));
+}
+
+function removeTrophy(e) {
+  let charName = document.getElementById("playerchoice").value;
+  let handle = document.getElementById("trophyhandlechoice").value;
+  ws.send(JSON.stringify({"type": "remove_trophy", "char": charName, "handle": handle}));
+}
+
+function redoSliders(e) {
+  let charName = document.getElementById("playerchoice").value;
+  ws.send(JSON.stringify({"type": "redo_sliders", "char": charName}));
 }
 
 function bringTop(e) {
@@ -484,13 +679,6 @@ function finishGive(e) {
     "amount": parseInt(document.getElementById("giveslider").value, 10),
   };
   ws.send(JSON.stringify(msg));
-}
-
-function makeCheck(e) {
-  let t = e.currentTarget;
-  let check_type = t.value;
-  let modifier = document.getElementById("modifier").value;
-  ws.send(JSON.stringify({"type": "check", "modifier": modifier, "check_type": check_type}));
 }
 
 function prevAncient(e) {
@@ -1654,7 +1842,7 @@ function drawChosenChar(character) {
 }
 
 function updateCharacterSheets(characters, pendingCharacters, playerIdx, firstPlayer, choice) {
-  let rightUI = document.getElementById("uiright");
+  let rightUI = document.getElementById("uichars");
   let toKeep = Object.keys(pendingCharacters);
   // If no characters have been chosen yet, draw the characters players have selected.
   if (!characters.length) {
@@ -1663,6 +1851,7 @@ function updateCharacterSheets(characters, pendingCharacters, playerIdx, firstPl
       if (sheet == null) {
         sheet = createCharacterSheet(null, allCharacters[charName], rightUI, false);
         characterSheets[charName] = sheet;
+        addOptionToSelect("playerchoice", charName);
       }
       updateInitialStats(sheet, allCharacters[charName]);
       updateSliders(sheet, allCharacters[charName], false);
@@ -1680,6 +1869,7 @@ function updateCharacterSheets(characters, pendingCharacters, playerIdx, firstPl
     if (sheet == null) {
       sheet = createCharacterSheet(idx, character, rightUI, playerIdx == idx);
       characterSheets[character.name] = sheet;
+      addOptionToSelect("playerchoice", character.name);
     }
     // If this sheet is left over from before the game started, destroy and recreate it so that
     // it gets the proper onclick, ondrag, etc. handlers.
@@ -1704,6 +1894,7 @@ function updateCharacterSheets(characters, pendingCharacters, playerIdx, firstPl
   for (let charName of toDestroy) {
     rightUI.removeChild(characterSheets[charName]);
     delete characterSheets[charName];
+    removeOptionFromSelect("playerchoice", charName);
   }
   // Finally, if all character sheets are currently collapsed, uncollapse the player's own sheet.
   let unCollapsed = false;
@@ -1716,6 +1907,8 @@ function updateCharacterSheets(characters, pendingCharacters, playerIdx, firstPl
   if (!unCollapsed && document.getElementsByClassName("you").length) {
     document.getElementsByClassName("you")[0].classList.remove("collapsed");
   }
+  // Debug menu
+  changePlayerChoice(null);
 }
 
 function createCharacterSheet(idx, character, rightUI, isPlayer) {
@@ -1839,7 +2032,7 @@ function createCharacterSheet(idx, character, rightUI, isPlayer) {
 }
 
 function expandSheet(sheetDiv) {
-  for (let sheet of document.getElementById("uiright").getElementsByClassName("player")) {
+  for (let sheet of document.getElementById("uichars").getElementsByClassName("player")) {
     if (sheet == sheetDiv) {
       sheet.classList.remove("collapsed");
     } else {
@@ -1868,6 +2061,29 @@ function showTrophies(bag) {
   trophies.classList.remove("hidden");
   posTab.classList.add("inactive");
   trophyTab.classList.remove("inactive");
+}
+
+function switchTab(tabName) {
+  for (let elem of document.getElementsByClassName("rightelem")) {
+    elem.classList.remove("shown");
+    elem.classList.add("notshown");
+  }
+  for (let elem of document.getElementsByClassName("righttab")) {
+    elem.classList.remove("shown");
+  }
+  if (tabName == "players") {
+    document.getElementById("uichars").classList.add("shown");
+    document.getElementById("uichars").classList.remove("notshown");
+    document.getElementById("tabplayers").classList.add("shown");
+  } else if (tabName == "log") {
+    document.getElementById("eventlog").classList.add("shown");
+    document.getElementById("eventlog").classList.remove("notshown");
+    document.getElementById("tablog").classList.add("shown");
+  } else {
+    document.getElementById("admin").classList.add("shown");
+    document.getElementById("admin").classList.remove("notshown");
+    document.getElementById("tabadmin").classList.add("shown");
+  }
 }
 
 function updateCharacterSheet(sheet, character, order, isPlayer, choice) {
@@ -2332,18 +2548,4 @@ function redrawMonsterBacks() {
 function redrawCustomCanvases() {
   updateStats();
   redrawMonsterBacks();
-}
-
-function highlightCheck(e) {
-  let check_type = e.currentTarget.value;
-  for (let hDiv of document.getElementsByClassName("bonus" + check_type)) {
-    hDiv.classList.add("shown");
-  }
-}
-
-// TODO: figure out why this gets called when a button is clicked
-function endHighlight(e) {
-  for (let hDiv of document.getElementsByClassName("bonus")) {
-    hDiv.classList.remove("shown");
-  }
 }

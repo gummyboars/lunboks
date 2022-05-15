@@ -306,27 +306,89 @@ button:disabled {
   flex-direction: row;
 }
 #uiright {
+  position: relative;
   width: 20%;
   max-width: 20%;
-  background: blue;
+  background: cornsilk;
   height: 100%;
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
   align-items: center;
   max-height: min(62.5vw, 100vh);
+  overflow-x: hidden;
 }
-#eventlog {
-  min-height: 0;
+#tabs {
+  height: 5%;
+  width: 100%;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-evenly;
+  align-items: center;
+  font-size: calc(min(2vw, 3.2vh));
+  background: wheat;
+}
+.righttab {
   height: 100%;
-  flex: 1 1 100%;
-  order: 20;
+  flex: 1 1 auto;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.righttab:hover {
+  background: cornsilk;
+}
+.righttab.shown {
+  background: cornsilk;
+}
+.rightelem {
+  min-height: 0;
+  height: 95%;
+  width: 100%;
+  transition: transform 0.5s;
+}
+.rightelem.shown {
+  position: relative;
+  transform: none;
+}
+.rightelem.notshown {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform: translate(105%, 0);
+}
+#uichars {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   justify-content: flex-start;
   width: 100%;
+}
+#uichars.notshown {
+  transform: translate(-105%, 0);
+}
+#eventlog {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-start;
   overflow-y: scroll;
+}
+#admin {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-start;
+  row-gap: calc(min(1vw, 1.6vh));
+  font-size: calc(min(1vw, 1.6vh));
+}
+#admin button {
+  font-size: calc(min(1vw, 1.6vh));
+}
+.admincategory {
+  border-top: 1px solid black;
+  width: 100%;
 }
 .logevent {
   white-space: pre;
