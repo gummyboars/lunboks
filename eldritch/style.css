@@ -630,12 +630,16 @@ button:disabled {
   pointer-events: none;
 }
 .monster {
+  flex: 0 1 calc(min(80vw, 128vh) * 3 / 58);
   z-index: 10; /* TODO */
   position: relative;
   min-width: 0;
   width: calc(min(80vw, 128vh) * 3 / 58);
   height: calc(min(80vw, 128vh) * 3 / 58);
   overflow: hidden;
+}
+.monster:last-child {
+  flex: 0 0 calc(min(80vw, 128vh) * 3 / 58);
 }
 .bigmonster {
   z-index: 10; /* TODO */
@@ -669,7 +673,7 @@ button:disabled {
   left: 0;
 }
 .marker {
-  z-index: 10; /* TODO */
+  z-index: 12; /* TODO */
   position: relative;
   width: calc(min(80vw, 128vh) / 29);
   height: calc(min(80vw, 128vh) * 3 / 58);
@@ -722,10 +726,22 @@ button:disabled {
 .placebox:hover {
   max-width: none;
   max-height: 175%;
-  min-height: 175%;
-  min-width: 300%;
+  min-height: 100%;
+  min-width: 100%;
   display: flex;
   flex-direction: column;
+}
+.withgate.placebox:hover {
+  min-width: 200%;
+}
+.withdetails.placebox:hover {
+  min-width: 200%;
+}
+.withdetails.withgate.placebox:hover {
+  min-width: 300%;
+}
+.withmonsters.placebox:hover {
+  min-height: 175%;
 }
 .placeupper {
   top: 0;
@@ -750,6 +766,7 @@ button:disabled {
   flex-direction: row;
   justify-content: center;
   cursor: zoom-in;
+  transition: all 0.5s;
 }
 .placelower .placemonsters {
   top: 0;
@@ -769,8 +786,9 @@ button:disabled {
   align-self: flex-end;
   right: 0;
 }
-.placebox:hover .placemonsters {
+.withmonsters.placebox:hover .placemonsters {
   position: relative;
+  max-width: 200%;
 }
 .placedetails {
   flex: 1 0 auto;
@@ -807,7 +825,6 @@ button:disabled {
   order: 1;
   display: flex;
   height: calc(min(80vw, 128vh) * 2 / 29);
-  min-width: calc(min(80vw, 128vh) * 2 / 29);
 }
 .placeleft .placechars {
   flex-direction: row;
@@ -859,12 +876,30 @@ button:disabled {
   max-width: 0;
   position: relative;
   transition: all 0.5s;
+  height: calc(min(80vw, 128vh) * 2 / 29);
+  width: calc(min(80vw, 128vh) * 2 / 29);
+}
+.placeinnerselect {
+  height: calc(min(80vw, 128vh) * 2 / 29);
+  width: calc(min(80vw, 128vh) * 2 / 29);
+  position: absolute;
   display: flex;
   justify-content: center;
   align-items: center;
-  height: calc(min(80vw, 128vh) * 2 / 29);
-  width: calc(min(80vw, 128vh) * 2 / 29);
   font-size: calc(min(1vw, 1.6vh));
+  transition: all 0.2s;
+}
+.placeleft .placeinnerselect {
+  left: 0;
+}
+.placeright .placeinnerselect {
+  right: 0;
+}
+.placeupper .placeinnerselect {
+  top: 0;
+}
+.placelower .placeinnerselect {
+  bottom: 0;
 }
 .placebox:hover .placeselect {
   max-width: 100%;
@@ -915,13 +950,13 @@ button:disabled {
   left: 0;
   width: calc(min(80vw, 128vh) * 3 / 118);
   height: calc(min(80vw, 128vh) * 3 / 118);
-  z-index: 6;
+  z-index: 11;
 }
 .cluecnv {
   position: absolute;
   top: 0;
   left: 0;
-  z-index: 6;
+  z-index: 11;
 }
 .actcontainer {
   position: absolute;
@@ -929,7 +964,7 @@ button:disabled {
   left: 0;
   width: calc(min(80vw, 128vh) * 3 / 118);
   height: calc(min(80vw, 128vh) * 11 / 500);
-  z-index: 6;
+  z-index: 11;
 }
 #uidice {
   display: none;
