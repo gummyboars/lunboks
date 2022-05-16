@@ -9,7 +9,6 @@ chosenAncient = null;
 allCharacters = {};
 availableChars = [];
 pendingName = null;
-scale = 1;
 monsterChoice = {};
 charChoice = null;
 ancientChoice = null;
@@ -264,7 +263,6 @@ function handleData(data) {
   updateMonsterChoices(data.choice, data.monsters);
   updatePlaceBoxes(data.places, data.activity);
   updateUsables(data.usables, data.choice);
-  updateSpending(data.choice);
   updateDice(data.dice, data.roll, data.roller == data.player_idx);
   updateEventLog(data.event_log);
   if (messageQueue.length && !runningAnim.length) {
@@ -474,13 +472,12 @@ function redoSliders(e) {
 
 function bringTop(e) {
   let node = e.currentTarget;
-  node.origZ = node.style.zIndex;
   node.style.zIndex = 5;
 }
 
 function returnBottom(e) {
   let node = e.currentTarget;
-  node.style.zIndex = node.origZ || 0;
+  node.style.removeProperty("z-index");
 }
 
 function makeChoice(val) {
@@ -888,6 +885,9 @@ function updateChoices(choice) {
     place.classList.remove("unselectable");
     place.innerText = "";
   }
+  for (let pos of pDiv.getElementsByClassName("possession")) {
+    pos.classList.remove("choosable");
+  }
   uichoice.style.display = "none";
   document.getElementById("cardchoicescroll").style.display = "none";
   btn.style.display = "none";
@@ -898,11 +898,11 @@ function updateChoices(choice) {
     monsterBox.classList.remove("choosable");
   }
   if (choice == null || choice.to_spawn != null || choice.board_monster != null) {
-    pDiv.classList.remove("choose");
+    document.getElementById("charoverlay").classList.remove("shown");
     return;
   }
   // Set display style for uichoice div.
-  if (!choice.items) {
+  if (choice.items == null) {
     uichoice.style.display = "flex";
   }
   if (choice.cards != null || choice.monster != null || choice.monsters != null) {
@@ -919,11 +919,13 @@ function updateChoices(choice) {
   }
   // Set prompt.
   document.getElementById("uiprompt").innerText = choice.prompt;
-  if (choice.items) {
-    pDiv.classList.add("choose");
+  document.getElementById("charoverlay").classList.toggle("shown", choice.items != null || choice.spendable != null);
+  if (choice.items != null) {
+    for (let pos of pDiv.getElementsByClassName("possession")) {
+      pos.classList.toggle("choosable", choice.items.includes(pos.handle));
+    }
     btn.style.display = "inline-block";
   } else {
-    pDiv.classList.remove("choose");
     if (choice.places != null) {
       updatePlaceChoices(uichoice, choice.places, choice.annotations);
     } else if (choice.cards != null) {
@@ -1154,37 +1156,43 @@ function addChoices(uichoice, choices, invalidChoices, remainingSpend) {
 
 function updateUsables(usables, choice) {
   let uiuse = document.getElementById("uiuse");
-  let pDiv, tDiv;
+  let pDiv, tDiv, pTab, tTab;
   if (!document.getElementsByClassName("you").length) {
     pDiv = document.createElement("DIV");  // Dummy div.
     tDiv = pDiv;
+    pTab = pDiv;
+    tTab = pDiv;
   } else {
     [pDiv, tDiv] = document.getElementsByClassName("you")[0].getElementsByClassName("possessions");
+    [pTab, tTab] = document.getElementsByClassName("you")[0].getElementsByClassName("bagtab");
   }
-  uiuse.style.display = "none";
-  if (usables == null) {
-    pDiv.classList.remove("use");
-    tDiv.classList.remove("use");
-    return;
-  }
-  if (choice == null) {
-    uiuse.style.display = "flex";
-  }
-  pDiv.classList.add("use");
-  tDiv.classList.add("use");
   let posList = pDiv.getElementsByClassName("possession");
   let trophyList = tDiv.getElementsByClassName("trophy");
-  let allList = Array.from(posList).concat(Array.from(trophyList));
-  for (let pos of allList) {
-    if (usables.includes(pos.handle)) {
-      pos.classList.add("usable");
-      pos.classList.remove("unusable");
-    } else {
-      pos.classList.remove("usable");
-      if (choice == null) {  // TODO: this is hacky.
-        pos.classList.add("unusable");
-      }
+  let usableList = usables || [];
+  let anyPosUsable = false;
+  let anyTrophyUsable = false;
+  for (let pos of posList) {
+    let isUsable = usableList.includes(pos.handle);
+    pos.classList.toggle("usable", isUsable);
+    anyPosUsable = anyPosUsable || isUsable;
+  }
+  for (let pos of trophyList) {
+    let isUsable = usableList.includes(pos.handle);
+    pos.classList.toggle("usable", isUsable);
+    anyTrophyUsable = anyTrophyUsable || isUsable;
+  }
+  pTab.classList.toggle("usable", anyPosUsable);
+  tTab.classList.toggle("usable", anyTrophyUsable);
+  uiuse.style.display = "none";
+  if (usables == null) {
+    if (choice == null) {
+      document.getElementById("charoverlay").classList.remove("shown");
     }
+    return;
+  }
+  document.getElementById("charoverlay").classList.add("shown");
+  if (choice == null) {
+    uiuse.style.display = "flex";
   }
   let tradeOnly = true;
   for (let val of usables) {
@@ -1201,33 +1209,17 @@ function updateUsables(usables, choice) {
   }
 }
 
-function updateSpending(choice) {
-  let spendable = null;
-  let spent = {};
-  if (choice != null) {
-    spendable = choice.spendable;
-    for (let key in choice.spent) {
-      for (let handle in choice.spent[key]) {
-        spent[handle] = (spent[handle] || 0) + choice.spent[key][handle];
-      }
-    }
-  }
-  updateSpendList(spendable, spent);
-  updateStatSpending(spendable);
-}
-
 function updateSpendList(spendable, spent) {
   let spendDiv = document.getElementById("uispend");
-  if (spendable == null) {
-    spendDiv.style.display = "none";
-    return;
-  }
-  spendDiv.style.display = "flex";
   for (let stat in statNames) {
     let count = spent[stat] || 0;
+
+    // Remove elements from the spend list.
     while (spendDiv.getElementsByClassName(stat).length > count) {
       spendDiv.removeChild(spendDiv.getElementsByClassName(stat)[0]);
     }
+
+    // Add elements to the spend list.
     while (spendDiv.getElementsByClassName(stat).length < count) {
       let statDiv = document.createElement("DIV");
       statDiv.classList.add("stats", "cnvcontainer", stat, "spendable");
@@ -1356,15 +1348,26 @@ function animateMovingDiv(div, destParent) {
   divToShow.classList.add("shown");
 }
 
-function moveAndTranslateNode(div, destParent) {
+function moveAndTranslateNode(div, destParent, classToggle) {
   let oldRect = div.getBoundingClientRect();
   div.parentNode.removeChild(div);
+  if (classToggle != null) {
+    div.classList.toggle(classToggle);
+  }
   destParent.appendChild(div);
   let newRect = div.getBoundingClientRect();
-  let diffX = Math.floor((oldRect.left - newRect.left) / scale);
-  let diffY = Math.floor((oldRect.top - newRect.top) / scale);
+  let diffX = Math.floor(oldRect.left - newRect.left);
+  let diffY = Math.floor(oldRect.top - newRect.top);
   // TODO: also transition the destination characters.
   div.style.transform = "translateX(" + diffX + "px) translateY(" + diffY + "px)";
+}
+
+function getNodeTranslation(div, destParent) {
+  let oldRect = div.getBoundingClientRect();
+  let newRect = destParent.getBoundingClientRect();
+  let diffX = Math.floor(newRect.left - oldRect.left);
+  let diffY = Math.floor(newRect.top - oldRect.top);
+  return "translateX(" + diffX + "px) translateY(" + diffY + "px)";
 }
 
 function updatePlaces(places, activity) {
@@ -1842,6 +1845,21 @@ function drawChosenChar(character) {
 }
 
 function updateCharacterSheets(characters, pendingCharacters, playerIdx, firstPlayer, choice) {
+  // We're going to fix the visibility of the spendDiv first so that animations of the player
+  // (un)spending their stats works correctly.
+  let spendable = null;
+  let spent = {};
+  if (choice != null) {
+    spendable = choice.spendable;
+    for (let key in choice.spent) {
+      for (let handle in choice.spent[key]) {
+        spent[handle] = (spent[handle] || 0) + choice.spent[key][handle];
+      }
+    }
+  }
+  let spendDiv = document.getElementById("uispend");
+  spendDiv.style.display = spendable == null ? "none" : "flex";
+
   let rightUI = document.getElementById("uichars");
   let toKeep = Object.keys(pendingCharacters);
   // If no characters have been chosen yet, draw the characters players have selected.
@@ -1859,6 +1877,7 @@ function updateCharacterSheets(characters, pendingCharacters, playerIdx, firstPl
       // TODO: some characters may start with trophies.
     }
   }
+
   // Draw the characters currently in the game.
   for (let [idx, character] of characters.entries()) {
     if (character.gone) {
@@ -1882,8 +1901,9 @@ function updateCharacterSheets(characters, pendingCharacters, playerIdx, firstPl
     if (order < 0) {
       order += characters.length;
     }
-    updateCharacterSheet(sheet, character, order, playerIdx == idx, choice);
+    updateCharacterSheet(sheet, character, order, playerIdx == idx, choice, spent);
   }
+
   // Remove any sheets that are no longer needed.
   let toDestroy = [];
   for (let charName in characterSheets) {
@@ -1896,6 +1916,7 @@ function updateCharacterSheets(characters, pendingCharacters, playerIdx, firstPl
     delete characterSheets[charName];
     removeOptionFromSelect("playerchoice", charName);
   }
+
   // Finally, if all character sheets are currently collapsed, uncollapse the player's own sheet.
   let unCollapsed = false;
   for (let sheet of rightUI.getElementsByClassName("player")) {
@@ -1907,6 +1928,9 @@ function updateCharacterSheets(characters, pendingCharacters, playerIdx, firstPl
   if (!unCollapsed && document.getElementsByClassName("you").length) {
     document.getElementsByClassName("you")[0].classList.remove("collapsed");
   }
+  // Fix any spending.
+  updateSpendList(spendable, spent);
+  updateStatSpending(spendable);
   // Debug menu
   changePlayerChoice(null);
 }
@@ -2086,19 +2110,15 @@ function switchTab(tabName) {
   }
 }
 
-function updateCharacterSheet(sheet, character, order, isPlayer, choice) {
+function updateCharacterSheet(sheet, character, order, isPlayer, choice, spent) {
   sheet.style.order = order;
-  let spent = {};
   let chosen = [];
+  let spendable = null;
   if (choice != null) {
-    for (let key in choice.spent) {
-      for (let handle in choice.spent[key]) {
-        spent[handle] = (spent[handle] || 0) + choice.spent[key][handle];
-      }
-    }
     chosen = choice.chosen || [];
+    spendable = choice.spendable;
   }
-  updateCharacterStats(sheet, character, isPlayer, spent);
+  updateCharacterStats(sheet, character, isPlayer, spent, spendable);
   updateSliders(sheet, character, isPlayer);
   updatePossessions(sheet, character.possessions, isPlayer, spent, chosen);
   updateTrophies(sheet, character, isPlayer, spent);
@@ -2147,22 +2167,51 @@ function updateInitialStats(sheet, character) {
   // updateStats() will get called to render numbers at the end of handleData()
 }
 
-function updateCharacterStats(sheet, character, isPlayer, spent) {
+function updateCharacterStats(sheet, character, isPlayer, spent, spendable) {
+  let spendDiv = document.getElementById("uispend");
   let stats = sheet.getElementsByClassName("playerstats")[0];
   let cfgs = [
     ["Stamina", "stamina", "white", "max_stamina"], ["Sanity", "sanity", "white", "max_sanity"],
-    ["Clue", "clues", "white"], ["Dollar", "dollars", "black"],
+    ["Clue", "clues", "white", null], ["Dollar", "dollars", "black", null],
   ];
-  for (let cfg of cfgs) {
-    let statDiv = sheet.getElementsByClassName(cfg[1])[0];
-    renderAssetToDiv(statDiv, cfg[0]);
-    let statSpent = isPlayer ? (spent[cfg[1]] || 0) : 0;
-    statDiv.statValue = character[cfg[1]] - statSpent;
-    statDiv.textColor = cfg[2];
-    if (cfg.length > 3) {
-      statDiv.maxValue = character[cfg[3]];
-    } else {
-      statDiv.maxValue = null;
+  for (let [assetName, name, color, maxName] of cfgs) {
+    let statDiv = sheet.getElementsByClassName(name)[0];
+    renderAssetToDiv(statDiv, assetName);
+    let oldValue = statDiv.statValue;
+    let statSpent = isPlayer ? (spent[name] || 0) : 0;
+    let newValue = character[name] - statSpent;
+    statDiv.statValue = newValue;
+    statDiv.textColor = color;
+    statDiv.maxValue = maxName == null ? null : character[maxName];
+    if (isPlayer && spendable != null) {
+      for (let i = 0; i < oldValue - newValue; i++) {
+        let movingStat = document.createElement("DIV");
+        movingStat.classList.add("stats", "cnvcontainer", name, "spendable", "abs");
+        let cnv = document.createElement("CANVAS");
+        cnv.classList.add("cluecnv");
+        movingStat.appendChild(cnv);
+        movingStat.onclick = function(e) { unspend(name); };
+        statDiv.appendChild(movingStat);
+        renderAssetToDiv(movingStat, assetName);
+        moveAndTranslateNode(movingStat, spendDiv, "abs");
+        runningAnim.push(true);
+        movingStat.ontransitionend = function() { movingStat.classList.remove("moving"); doneAnimating(movingStat); finishAnim(); };
+        movingStat.ontransitioncancel = function() { movingStat.classList.remove("moving"); doneAnimating(movingStat); finishAnim(); };
+        setTimeout(function() { movingStat.classList.add("moving"); movingStat.style.transform = "none"; }, 10);
+      }
+      let removable = [];
+      let maxRemovable = spendDiv.getElementsByClassName(name).length;
+      for (let i = 0; (i < newValue - oldValue) && (i < maxRemovable); i++) {
+        removable.push(spendDiv.getElementsByClassName(name)[i]);
+      }
+      for (let toRemove of removable) {
+        // TODO: find some way to make it visible for the whole journey
+        moveAndTranslateNode(toRemove, statDiv, "abs");
+        runningAnim.push(true);
+        toRemove.ontransitionend = function() { toRemove.parentNode.removeChild(toRemove); finishAnim(); };
+        toRemove.ontransitioncancel = function() { toRemove.parentNode.removeChild(toRemove); finishAnim(); };
+        setTimeout(function() { toRemove.classList.add("moving"); toRemove.style.transform = "none"; }, 10);
+      }
     }
   }
   // updateStats() will get called to render numbers at the end of handleData()
@@ -2271,6 +2320,7 @@ function createPossession(info, isPlayer, sheet) {
   div.handle = info.handle;
   if (abilityNames.includes(info.handle)) {
     div.classList.add("big");
+    div.cnvScale = 2;
   }
   let cnv = document.createElement("CANVAS");
   cnv.classList.add("poscnv");

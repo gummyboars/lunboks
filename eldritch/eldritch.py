@@ -339,7 +339,7 @@ class GameState:
           output["choice"]["choices"] = top_event.choices
         elif isinstance(top_event, events.ItemChoice):
           output["choice"]["chosen"] = [item.handle for item in top_event.chosen]
-          output["choice"]["items"] = True
+          output["choice"]["items"] = top_event.choices or []
         elif isinstance(top_event, events.MonsterSpawnChoice):
           output["choice"]["to_spawn"] = top_event.to_spawn
         elif isinstance(top_event, events.MonsterOnBoardChoice):
