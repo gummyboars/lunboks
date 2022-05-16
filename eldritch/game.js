@@ -89,7 +89,11 @@ function continueInit(gameId) {
       let select = document.createElement("DIV");
       select.id = "place" + name + "select";
       select.classList.add("placeselect", placeType);
-      select.onclick = function(e) { clickPlace(name); };
+      let innerSelect = document.createElement("DIV");
+      innerSelect.id = "place" + name + "innerselect";
+      innerSelect.classList.add("placeinnerselect", placeType);
+      innerSelect.onclick = function(e) { clickPlace(name); };
+      select.appendChild(innerSelect);
       details.appendChild(select);
       cont.appendChild(div);
 
@@ -233,6 +237,7 @@ function handleData(data) {
   updateChoices(data.choice);
   updateMonsters(data.monsters);
   updateMonsterChoices(data.choice, data.monsters);
+  updatePlaceBoxes(data.places, data.activity);
   updateUsables(data.usables, data.choice);
   updateSpending(data.choice);
   updateDice(data.dice, data.roll, data.roller == data.player_idx);
@@ -690,7 +695,7 @@ function updateChoices(choice) {
   } else {
     pDiv = document.getElementsByClassName("you")[0].getElementsByClassName("possessions")[0];
   }
-  for (let place of document.getElementsByClassName("placeselect")) {
+  for (let place of document.getElementsByClassName("placeinnerselect")) {
     place.classList.remove("selectable");
     place.classList.remove("unselectable");
     place.innerText = "";
@@ -1191,8 +1196,22 @@ function updatePlaces(places, activity) {
   }
 }
 
+function updatePlaceBoxes(places, activity) {
+  for (let placeName in places) {
+    let place = places[placeName];
+    let placeBox = document.getElementById("place" + placeName + "box");
+    if (placeBox == null) {
+      continue;
+    }
+    let placeChars = document.getElementById("place" + placeName + "chars");
+    let placeMonsters = document.getElementById("place" + placeName + "monsters");
+    placeBox.classList.toggle("withmonsters", placeMonsters && placeMonsters.children.length > 0);
+    placeBox.classList.toggle("withdetails", placeChars && placeChars.children.length > 0);
+    placeBox.classList.toggle("withgate", place.gate != null);
+  }
+}
+
 function updateClues(place) {
-  // TODO: maybe put them somewhere else?
   let charsDiv = document.getElementById("place" + place.name + "chars");
   let numClues = charsDiv.getElementsByClassName("clue").length;
   while (numClues > place.clues) {
@@ -1270,7 +1289,7 @@ function updateActivity(placeName, activity) {
 
 function updateGate(place, gateDiv) {
   let gateCont = gateDiv.getElementsByClassName("gatecontainer")[0];
-  if (place.gate) {  // TODO: sealed
+  if (place.gate) {
     gateDiv.classList.add("placegatepresent");
     renderAssetToDiv(gateCont, place.gate.name);
   } else {
@@ -1281,13 +1300,13 @@ function updateGate(place, gateDiv) {
 
 function updatePlaceChoices(uichoice, places, annotations) {
   let notFound = [];
-  for (let place of document.getElementsByClassName("placeselect")) {
+  for (let place of document.getElementsByClassName("placeinnerselect")) {
     place.classList.remove("selectable");
     place.classList.add("unselectable");
     place.innerText = "❌";
   }
   for (let [idx, placeName] of places.entries()) {
-    let place = document.getElementById("place" + placeName + "select");
+    let place = document.getElementById("place" + placeName + "innerselect");
     if (place == null) {
       notFound.push(placeName);
       continue;
