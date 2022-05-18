@@ -1395,6 +1395,7 @@ function updateCurrentCard(current) {
     return;
   }
   currDiv.classList.remove("missing");
+  currDiv.cnvScale = 2;
   renderAssetToDiv(currDiv, current);
 }
 
