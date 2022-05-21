@@ -62,6 +62,9 @@ class Asset(metaclass=abc.ABCMeta):
   def get_usable_trigger(self, event, owner, state):
     return None
 
+  def get_spend_amount(self, event, owner, state):
+    return None
+
   def get_spend_event(self, owner):
     return events.Nothing()
 

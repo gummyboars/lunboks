@@ -1319,7 +1319,7 @@ class SocietyTest(EncounterTest):
     self.state.allies.append(assets.OldProfessor())
     self.state.event_stack.append(encounters.Society6(self.char))
     choice = self.resolve_to_choice(SpendChoice)
-    self.assertNotIn(0, self.state.usables)
+    self.assertFalse(self.state.spendables)
     with self.assertRaisesRegex(InvalidMove, "additional 1 gates"):
       choice.resolve(self.state, "Yes")
     choice.resolve(self.state, "No")
@@ -1341,7 +1341,7 @@ class SocietyTest(EncounterTest):
     self.state.allies.append(assets.OldProfessor())
     self.state.event_stack.append(encounters.Society6(self.char))
     choice = self.resolve_to_choice(SpendChoice)
-    self.use_handle(0, self.char.trophies[0].handle)
+    self.toggle_spend(0, self.char.trophies[0].handle, choice)
     choice.resolve(self.state, "Yes")
     self.resolve_until_done()
     self.assertEqual(len(self.char.trophies), 0)
@@ -1352,7 +1352,7 @@ class SocietyTest(EncounterTest):
     self.char.trophies.append(self.state.gates.popleft())
     self.state.event_stack.append(encounters.Society6(self.char))
     choice = self.resolve_to_choice(SpendChoice)
-    self.use_handle(0, self.char.trophies[0].handle)
+    self.toggle_spend(0, self.char.trophies[0].handle, choice)
     choice.resolve(self.state, "Yes")
     self.resolve_until_done()
     self.assertEqual(len(self.char.trophies), 0)
@@ -2442,6 +2442,7 @@ class BankTest(EncounterTest):
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       self.resolve_until_done()
     self.assertEqual(self.char.dollars, 3)
+    self.assertFalse(any(pos.active for pos in self.char.possessions))
 
   def testBank3HandsPass(self):
     self.state.event_stack.append(encounters.Bank3(self.char))
@@ -2471,6 +2472,7 @@ class BankTest(EncounterTest):
     self.assertEqual(self.char.dollars, 3)
     self.assertFalse(self.char.possessions[0].active)
     self.assertFalse(self.char.possessions[0].in_use)
+    self.assertTrue(self.char.possessions[0].exhausted)
 
   def testBank4Pass(self):
     self.state.event_stack.append(encounters.Bank4(self.char))
@@ -3510,6 +3512,41 @@ class HospitalTest(EncounterTest):
     self.assertEqual(self.char.sanity, 2)
     self.assertEqual(self.char.stamina, 3)
     self.assertEqual(self.char.clues, 1)
+
+  def testHospital2Gun(self):
+    self.char.possessions.append(items.TommyGun(0))
+    self.state.event_stack.append(encounters.Hospital2(self.char))
+    choose_weapons = self.resolve_to_choice(CombatChoice)
+    self.choose_items(choose_weapons, ["Tommy Gun0"])
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)) as rand:
+      self.resolve_until_done()
+      self.assertEqual(rand.call_count, 7)
+    self.assertEqual(len(self.char.possessions), 1)
+    self.assertEqual(self.char.sanity, 2)
+    self.assertEqual(self.char.stamina, 3)
+    self.assertEqual(self.char.clues, 1)
+    self.assertFalse(any(pos.active for pos in self.char.possessions))
+
+  def testHospital2Spell(self):
+    self.char.possessions.append(items.Wither(0))
+    self.state.event_stack.append(encounters.Hospital2(self.char))
+    choose_weapons = self.resolve_to_choice(CombatChoice)
+    self.state.event_stack.append(self.state.usables[0]["Wither0"])
+    cast_choice = self.resolve_to_choice(SpendChoice)
+    cast_choice.resolve(self.state, "Cast")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      choose_weapons = self.resolve_to_choice(CombatChoice)
+    self.choose_items(choose_weapons, [])
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)) as rand:
+      self.resolve_until_done()
+      self.assertEqual(rand.call_count, 4)
+    self.assertEqual(len(self.char.possessions), 1)
+    self.assertEqual(self.char.sanity, 2)
+    self.assertEqual(self.char.stamina, 3)
+    self.assertEqual(self.char.clues, 1)
+    self.assertFalse(self.char.possessions[0].active)
+    self.assertFalse(self.char.possessions[0].in_use)
+    self.assertTrue(self.char.possessions[0].exhausted)
 
   def testHospital2Loss(self):
     self.state.event_stack.append(encounters.Hospital2(self.char))
@@ -4739,7 +4776,7 @@ class GraveyardTest(EncounterTest):
   def testGraveyard4NoTrophies(self):
     self.state.event_stack.append(encounters.Graveyard4(self.char))
     choice = self.resolve_to_choice(SpendChoice)
-    self.assertNotIn(0, self.state.usables)
+    self.assertFalse(self.state.spendables)
     self.assertEqual(choice.remaining_spend, [{"toughness": 5}, False])
     choice.resolve(self.state, "No")
     self.resolve_until_done()
@@ -4752,8 +4789,8 @@ class GraveyardTest(EncounterTest):
     self.state.event_stack.append(encounters.Graveyard4(self.char))
     choice = self.resolve_to_choice(SpendChoice)
     self.assertEqual(choice.remaining_spend, [{"toughness": 5}, False])
-    self.use_handle(0, self.char.trophies[0].handle)
-    self.use_handle(0, self.char.trophies[1].handle)
+    self.toggle_spend(0, self.char.trophies[0].handle, choice)
+    self.toggle_spend(0, self.char.trophies[1].handle, choice)
     self.assertEqual(choice.remaining_spend, [False, {"toughness": -5}])
     choice.resolve(self.state, "Yes")
     self.resolve_until_done()
@@ -4767,8 +4804,8 @@ class GraveyardTest(EncounterTest):
     self.state.spells.append(items.Wither(0))
     self.state.event_stack.append(encounters.Graveyard4(self.char))
     choice = self.resolve_to_choice(SpendChoice)
-    self.use_handle(0, self.char.trophies[0].handle)
-    self.use_handle(0, self.char.trophies[1].handle)
+    self.toggle_spend(0, self.char.trophies[0].handle, choice)
+    self.toggle_spend(0, self.char.trophies[1].handle, choice)
     choice.resolve(self.state, "Yes")
     self.resolve_until_done()
 

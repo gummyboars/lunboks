@@ -1012,14 +1012,13 @@ def Bank2(char):
 
 def Bank3(char):
   prep = events.CombatChoice(char, "Choose weapons to fight the bank robbers")
-  activate = events.ActivateChosenItems(char, prep)
   check = events.Check(char, "combat", -1)
   robbed = events.Loss(char, {"dollars": float("inf")})
   nothing = events.Nothing()
   cond = events.Conditional(char, check, "successes", {0: robbed, 1: nothing})
   deactivate = events.DeactivateItems(char)
   de_spell = events.DeactivateSpells(char)
-  return events.Sequence([prep, activate, check, cond, deactivate, de_spell], char)
+  return events.Sequence([prep, check, cond, deactivate, de_spell], char)
 
 
 def Bank4(char):
@@ -1237,14 +1236,15 @@ def Hospital1(char):
 
 
 def Hospital2(char):
-  # TODO: this sequence is missing activation and deactivation steps
   sanity = events.Loss(char, {"sanity": 1})
   prep = events.CombatChoice(char, "Choose weapons to fight the corpse")
   check = events.Check(char, "combat", -1)
   won = events.Gain(char, {"clues": 1})
   lost = events.ForceMovement(char, "Uptown")
   cond = events.Conditional(char, check, "successes", {0: lost, 1: won})
-  return events.Sequence([sanity, prep, check, cond], char)
+  deactivate = events.DeactivateItems(char)
+  de_spell = events.DeactivateSpells(char)
+  return events.Sequence([sanity, prep, check, cond, deactivate, de_spell], char)
 
 
 def Hospital3(char):

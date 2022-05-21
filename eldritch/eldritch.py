@@ -28,11 +28,11 @@ class GameState:
 
   DEQUE_ATTRIBUTES = {"common", "unique", "spells", "skills", "allies", "gates"}
   HIDDEN_ATTRIBUTES = {
-      "event_stack", "interrupt_stack", "trigger_stack", "usables", "mythos", "gate_cards",
+      "event_stack", "interrupt_stack", "trigger_stack", "mythos", "gate_cards",
   }
   CUSTOM_ATTRIBUTES = {
       "characters", "all_characters", "environment", "mythos", "other_globals", "ancient_one",
-      "all_ancients", "monsters",
+      "all_ancients", "monsters", "usables", "spendables",
   }
   TURN_PHASES = ["upkeep", "movement", "encounter", "otherworld", "mythos"]
   AWAKENED_PHASES = ["upkeep", "attack", "ancient"]
@@ -78,6 +78,7 @@ class GameState:
     self.event_stack = collections.deque()
     self.interrupt_stack = collections.deque()
     self.trigger_stack = collections.deque()
+    self.spendables = {}
     self.usables = {}
     self.done_using = {}
     self.event_log = []
@@ -309,43 +310,53 @@ class GameState:
       output["roll"] = roller.roll
       output["roller"] = self.characters.index(roller.character)
 
+    # Figure out the current choice.
+    choice = None
+    for event in reversed(self.event_stack):
+      if isinstance(event, events.ChoiceEvent):
+        # Always show the combat choice even when it's done to avoid flickering of the chosen
+        # items between completion of the combat choice and activation.
+        if isinstance(event, events.CombatChoice) or not event.is_done():
+          choice = event
+        break
+      if not isinstance(event, (events.ActivateChosenItems, events.ActivateItem)):
+        break
     output["choice"] = None
-    if top_event and isinstance(top_event, events.ChoiceEvent) and not top_event.is_done():
-      if top_event.character == char:
-        output["choice"] = {"prompt": top_event.prompt()}
-        output["choice"]["annotations"] = top_event.annotations(self)
-        output["choice"]["invalid_choices"] = list(getattr(top_event, "invalid_choices", {}).keys())
-        if isinstance(top_event, events.SpendMixin):
-          output["choice"]["spendable"] = list(top_event.spendable)
-          output["choice"]["spent"] = top_event.spend_map
-          output["choice"]["remaining_spend"] = top_event.remaining_spend
+    if choice and choice.character == char:
+      output["choice"] = {"prompt": choice.prompt()}
+      output["choice"]["annotations"] = choice.annotations(self)
+      output["choice"]["invalid_choices"] = list(getattr(choice, "invalid_choices", {}).keys())
+      if isinstance(choice, events.SpendMixin):
+        output["choice"]["spendable"] = list(choice.spendable)
+        output["choice"]["spent"] = choice.spend_map
+        output["choice"]["remaining_spend"] = choice.remaining_spend
 
-        if isinstance(top_event, events.CardChoice):
-          output["choice"]["cards"] = top_event.choices
-          output["choice"]["sort_uniq"] = top_event.sort_uniq
-        elif isinstance(top_event, (events.MapChoice, events.CityMovement)):
-          extra_choices = [top_event.none_choice] if top_event.none_choice is not None else []
-          output["choice"]["places"] = (top_event.choices or []) + extra_choices
-        elif isinstance(top_event, events.MonsterChoice):
-          output["choice"]["monsters"] = [
-              monster.json_repr(self, top_event.character) for monster in top_event.monsters
-          ]
-          if top_event.none_choice is not None:
-            output["choice"]["monsters"] += [top_event.none_choice]
-        elif isinstance(top_event, events.FightOrEvadeChoice):
-          output["choice"]["choices"] = top_event.choices
-          output["choice"]["monster"] = top_event.monster.json_repr(self, top_event.character)
-        elif isinstance(top_event, events.MultipleChoice):
-          output["choice"]["choices"] = top_event.choices
-        elif isinstance(top_event, events.ItemChoice):
-          output["choice"]["chosen"] = [item.handle for item in top_event.chosen]
-          output["choice"]["items"] = top_event.choices or []
-        elif isinstance(top_event, events.MonsterSpawnChoice):
-          output["choice"]["to_spawn"] = top_event.to_spawn
-        elif isinstance(top_event, events.MonsterOnBoardChoice):
-          output["choice"]["board_monster"] = True
-        else:
-          raise RuntimeError(f"Unknown choice type {top_event.__class__.__name__}")
+      if isinstance(choice, events.CardChoice):
+        output["choice"]["cards"] = choice.choices
+        output["choice"]["sort_uniq"] = choice.sort_uniq
+      elif isinstance(choice, (events.MapChoice, events.CityMovement)):
+        extra_choices = [choice.none_choice] if choice.none_choice is not None else []
+        output["choice"]["places"] = (choice.choices or []) + extra_choices
+      elif isinstance(choice, events.MonsterChoice):
+        output["choice"]["monsters"] = [
+            monster.json_repr(self, choice.character) for monster in choice.monsters
+        ]
+        if choice.none_choice is not None:
+          output["choice"]["monsters"] += [choice.none_choice]
+      elif isinstance(choice, events.FightOrEvadeChoice):
+        output["choice"]["choices"] = choice.choices
+        output["choice"]["monster"] = choice.monster.json_repr(self, choice.character)
+      elif isinstance(choice, events.MultipleChoice):
+        output["choice"]["choices"] = choice.choices
+      elif isinstance(choice, events.ItemChoice):
+        output["choice"]["chosen"] = [item.handle for item in choice.chosen]
+        output["choice"]["items"] = choice.choices or []
+      elif isinstance(choice, events.MonsterSpawnChoice):
+        output["choice"]["to_spawn"] = choice.to_spawn
+      elif isinstance(choice, events.MonsterOnBoardChoice):
+        output["choice"]["board_monster"] = True
+      else:
+        raise RuntimeError(f"Unknown choice type {choice.__class__.__name__}")
 
     if top_event and isinstance(top_event, events.SliderInput) and not top_event.is_done():
       if top_event.character == char:
@@ -353,10 +364,13 @@ class GameState:
         # TODO: distinguish between pending/current sliders, pending/current focus.
         for name, value in top_event.pending.items():
           output["characters"][char_idx]["sliders"][name]["selection"] = value
+
+    output["spendables"] = None
+    output["usables"] = None
+    if self.spendables.get(char_idx):
+      output["spendables"] = list(self.spendables[char_idx].keys())
     if self.usables.get(char_idx):
       output["usables"] = list(self.usables[char_idx].keys())
-    else:
-      output["usables"] = None
     return output
 
   @classmethod
@@ -455,6 +469,8 @@ class GameState:
       if isinstance(event, events.ChoiceEvent) and not event.is_done():
         event.compute_choices(self)
         if not event.is_done():
+          if isinstance(event, events.SpendMixin):
+            self.spendables = self.get_spendables(event)
           yield None
           return
       if not self.test_mode and isinstance(event, events.DiceRoll) and not event.is_done():
@@ -535,6 +551,7 @@ class GameState:
     self.clear_usables()
 
   def clear_usables(self):
+    self.spendables.clear()
     self.usables.clear()
     self.done_using.clear()
 
@@ -566,6 +583,12 @@ class GameState:
         if len([char for char in self.characters if char.place == event.character.place]) > 1:
           i[self.characters.index(event.character)]["trade"] = events.Nothing()
     return {char_idx: interrupts for char_idx, interrupts in i.items() if interrupts}
+
+  def get_spendables(self, event):
+    return {
+        idx: char.get_spendables(event, self)
+        for idx, char in enumerate(self.characters) if char.get_spendables(event, self)
+    }
 
   def get_triggers(self, event):
     triggers = []
@@ -718,13 +741,24 @@ class GameState:
     self.pending_chars[name] = player_idx
 
   def handle_use(self, char_idx, handle):
-    if char_idx not in self.usables:
+    if char_idx not in self.usables and char_idx not in self.spendables:
       raise InvalidMove("You cannot use any items or abilities at this time")
-    if handle not in self.usables[char_idx]:
-      raise InvalidMove("{handle} is unknown or unusable at this time")
     if handle == "trade":  # "trade" is just a placeholder
       raise InvalidMove("Trade what?")
-    self.event_stack.append(self.usables[char_idx].pop(handle))
+    if char_idx in self.usables and handle in self.usables[char_idx]:
+      use_event = self.usables[char_idx].pop(handle)
+      self.event_stack.append(use_event)
+      return
+    # For now, spending possessions/trophies goes through the same interface as using them.
+    # TODO: split this out into a separate method.
+    if char_idx in self.spendables and handle in self.spendables[char_idx]:
+      spend_event = self.event_stack[-1]
+      if self.spendables[char_idx][handle]:
+        spend_event.spend_handle(handle, self.spendables[char_idx][handle])
+      else:
+        spend_event.unspend_handle(handle)
+      return
+    raise InvalidMove("{handle} is unknown or unusable at this time")
 
   def handle_done_using(self, char_idx):
     if char_idx not in self.usables:

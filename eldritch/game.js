@@ -262,7 +262,7 @@ function handleData(data) {
   updateMonsters(data.monsters);
   updateMonsterChoices(data.choice, data.monsters);
   updatePlaceBoxes(data.places, data.activity);
-  updateUsables(data.usables, data.choice);
+  updateUsables(data.usables, data.spendables, data.choice);
   updateDice(data.dice, data.roll, data.roller == data.player_idx);
   updateEventLog(data.event_log);
   if (messageQueue.length && !runningAnim.length) {
@@ -524,8 +524,15 @@ function resetMonsterChoice(e) {
   monsterChoice = {};
 }
 
-function defaultSpend(spendDict) {
-  for (let spendType of ["sanity", "stamina", "clues", "dollars"]) {
+function defaultSpend(spendDict, choice) {
+  let knownSpends = ["sanity", "stamina", "clues", "dollars"];
+  for (let key in spendDict) {
+    if (spendDict[key] && !knownSpends.includes(key)) {
+      makeChoice(choice);  // Try to make the choice anyway; let the backend throw an error.
+      return;
+    }
+  }
+  for (let spendType of knownSpends) {
     for (let i = 0; i < spendDict[spendType] || 0; i++) {
       spend(spendType);
     }
@@ -1043,7 +1050,7 @@ function addFightOrEvadeChoices(uichoice, cardChoice, monster, choices, invalidC
     } else if (remainingSpend != null && remainingSpend.length > idx && remainingSpend[idx]) {
       let rem = remainingSpend[idx];
       holder.classList.add("mustspend");
-      div.onclick = function(e) { defaultSpend(rem); };
+      div.onclick = function(e) { defaultSpend(rem, choice); };
     }
     let cnv = document.createElement("CANVAS");
     cnv.classList.add("markercnv");  // TODO: use a better class name for this
@@ -1111,7 +1118,7 @@ function addCardChoices(uichoice, cardChoice, cards, invalidChoices, remainingSp
     } else if (remainingSpend != null && remainingSpend.length > idx && remainingSpend[idx]) {
       let rem = remainingSpend[idx];
       holder.classList.add("mustspend");
-      div.onclick = function(e) { defaultSpend(rem); };
+      div.onclick = function(e) { defaultSpend(rem, card); };
     }
     let cnv = document.createElement("CANVAS");
     cnv.classList.add("markercnv");  // TODO: use a better class name for this
@@ -1146,7 +1153,7 @@ function addChoices(uichoice, choices, invalidChoices, remainingSpend) {
     } else if (remainingSpend != null && remainingSpend.length > idx && remainingSpend[idx]) {
       let rem = remainingSpend[idx];
       div.classList.add("mustspend");
-      div.onclick = function(e) { defaultSpend(rem); };
+      div.onclick = function(e) { defaultSpend(rem, c); };
     } else {
       div.classList.add("choosable");
     }
@@ -1154,7 +1161,7 @@ function addChoices(uichoice, choices, invalidChoices, remainingSpend) {
   }
 }
 
-function updateUsables(usables, choice) {
+function updateUsables(usables, spendables, choice) {
   let uiuse = document.getElementById("uiuse");
   let pDiv, tDiv, pTab, tTab;
   if (!document.getElementsByClassName("you").length) {
@@ -1169,6 +1176,7 @@ function updateUsables(usables, choice) {
   let posList = pDiv.getElementsByClassName("possession");
   let trophyList = tDiv.getElementsByClassName("trophy");
   let usableList = usables || [];
+  usableList += (spendables || []);
   let anyPosUsable = false;
   let anyTrophyUsable = false;
   for (let pos of posList) {
@@ -1184,7 +1192,7 @@ function updateUsables(usables, choice) {
   pTab.classList.toggle("usable", anyPosUsable);
   tTab.classList.toggle("usable", anyTrophyUsable);
   uiuse.style.display = "none";
-  if (usables == null) {
+  if (usables == null && spendables == null) {
     if (choice == null) {
       document.getElementById("charoverlay").classList.remove("shown");
     }
@@ -1195,7 +1203,7 @@ function updateUsables(usables, choice) {
     uiuse.style.display = "flex";
   }
   let tradeOnly = true;
-  for (let val of usables) {
+  for (let val of usableList) {
     if (val != "trade") {
       tradeOnly = false;
       break;

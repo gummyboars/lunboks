@@ -310,7 +310,6 @@ class CombatTest(EventTest):
 
     fight_or_flee = self.resolve_to_choice(FightOrEvadeChoice)
     fight_or_flee.resolve(self.state, "Fight")
-    first_combat = combat.combat
     combat_choice = self.resolve_to_choice(CombatChoice)
     self.choose_items(combat_choice, ["Tommy Gun0"])
 
@@ -320,7 +319,7 @@ class CombatTest(EventTest):
       self.resolve_to_choice(FightOrEvadeChoice)
 
     self.assertEqual(self.char.stamina, 3)
-    self.assertTrue(first_combat.activate.is_cancelled())
+    self.assertTrue(combat_choice.activate.is_cancelled())
 
   def testCancelledCombatDamage(self):
     self.assertEqual(self.char.stamina, 5)
@@ -1053,6 +1052,76 @@ class WarlockCombatTest(PinataCombatBaseTestMixin, EventTest):
     self.assertEqual(self.char.clues, 0)
     self.assertEqual(len(self.char.possessions), 1)
     self.assertEqual(self.char.possessions[0].handle, "Tommy Gun0")
+
+
+class CombatOutputTest(EventTest):
+
+  def setUp(self):
+    super().setUp()
+    self.char.possessions.extend([items.EnchantedKnife(0), items.Wither(0), items.Revolver38(0)])
+    cultist = monsters.Cultist()
+    self.combat = Combat(self.char, cultist)
+    self.state.event_stack.append(self.combat)
+
+    fight_or_flee = self.resolve_to_choice(FightOrEvadeChoice)
+    fight_or_flee.resolve(self.state, "Fight")
+
+  def testCombatChoiceWithActivateItems(self):
+    for _ in self.state.resolve_loop():
+      if not isinstance(self.state.event_stack[-1], CombatChoice):
+        data = self.state.for_player(0)
+        self.assertIsNone(data["choice"])
+    choose_weapons = self.state.event_stack[-1]
+    self.assertIsInstance(choose_weapons, CombatChoice)
+    data = self.state.for_player(0)
+    self.assertIsNotNone(data["choice"])
+    self.assertEqual(data["choice"].get("items"), ["Enchanted Knife0", ".38 Revolver0"])
+
+    choose_weapons.resolve(self.state, "Enchanted Knife0")
+    for _ in self.state.resolve_loop():
+      data = self.state.for_player(0)
+      self.assertIsNotNone(data["choice"])
+      self.assertEqual(data["choice"].get("items"), ["Enchanted Knife0", ".38 Revolver0"])
+      self.assertIn("Enchanted Knife0", data["choice"].get("chosen"))
+
+    choose_weapons = self.state.event_stack[-1]
+    self.assertIsInstance(choose_weapons, CombatChoice)
+
+    choose_weapons.resolve(self.state, ".38 Revolver0")
+    for _ in self.state.resolve_loop():
+      data = self.state.for_player(0)
+      self.assertIsNotNone(data["choice"])
+      self.assertEqual(data["choice"].get("items"), ["Enchanted Knife0", ".38 Revolver0"])
+      self.assertIn("Enchanted Knife0", data["choice"].get("chosen"))
+      self.assertIn(".38 Revolver0", data["choice"].get("chosen"))
+
+    choose_weapons = self.state.event_stack[-1]
+    self.assertIsInstance(choose_weapons, CombatChoice)
+
+    choose_weapons.resolve(self.state, "done")
+    generator = self.state.resolve_loop()
+    # These items should show up as chosen until we start processing the combat check.
+    for _ in generator:
+      data = self.state.for_player(0)
+      if isinstance(self.state.event_stack[-1], CombatRound):
+        self.assertIsNone(data["choice"])
+        self.assertTrue(data["characters"][0]["possessions"][0].active)
+        self.assertTrue(data["characters"][0]["possessions"][2].active)
+        self.assertFalse(data["characters"][0]["possessions"][1].active)
+        break
+      self.assertCountEqual(data["choice"]["chosen"], ["Enchanted Knife0", ".38 Revolver0"])
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      for _ in generator:
+        data = self.state.for_player(0)
+        self.assertIsNone(data["choice"])
+        if isinstance(self.state.event_stack[-1], DeactivateItems):
+          break
+        self.assertTrue(data["characters"][0]["possessions"][0].active)
+        self.assertTrue(data["characters"][0]["possessions"][2].active)
+        self.assertFalse(data["characters"][0]["possessions"][1].active)
+    for _ in generator:
+      self.assertIsNone(data["choice"])
+    self.assertFalse(self.state.event_stack)
 
 
 class CombatWithItems(EventTest):
@@ -2720,7 +2789,7 @@ class BindMonsterTest(EventTest):
     self.char.sanity = 4
     self.char.fight_will_slider = 0
     worm = monsters.GiantWorm()
-    self.start(worm)
+    combat_choice = self.start(worm)
     self.assertEqual(self.char.sanity, 3)
     self.assertEqual(self.char.stamina, 5)
     self.state.event_stack.append(self.state.usables[0]["Bind Monster0"])
@@ -2732,8 +2801,8 @@ class BindMonsterTest(EventTest):
       self.resolve_until_done()
 
     # Assert that the rest of the combat was bypassed and not resolved.
-    if self.combat.combat.activate:
-      self.assertFalse(self.combat.combat.activate.is_resolved())
+    if combat_choice.activate:
+      self.assertFalse(combat_choice.activate.is_resolved())
     if self.combat.combat.check:
       self.assertFalse(self.combat.combat.check.is_resolved())
     if self.combat.combat.damage:
@@ -2768,7 +2837,7 @@ class BindMonsterTest(EventTest):
     self.char.sanity = 3
     self.char.fight_will_slider = 0
     worm = monsters.GiantWorm()
-    self.start(worm)
+    combat_choice = self.start(worm)
     self.assertEqual(self.char.sanity, 2)  # Lost one to nightmarish
     self.assertEqual(self.char.stamina, 5)
     self.state.event_stack.append(self.state.usables[0]["Bind Monster0"])
@@ -2781,8 +2850,8 @@ class BindMonsterTest(EventTest):
     insane_choice.resolve(self.state, "done")
 
     # Assert that the rest of the combat was bypassed and not resolved.
-    if self.combat.combat.activate:
-      self.assertFalse(self.combat.combat.activate.is_resolved())
+    if combat_choice.activate:
+      self.assertFalse(combat_choice.activate.is_resolved())
     if self.combat.combat.check:
       self.assertFalse(self.combat.combat.check.is_resolved())
     if self.combat.combat.damage:

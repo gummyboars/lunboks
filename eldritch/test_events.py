@@ -104,6 +104,13 @@ class EventTest(unittest.TestCase):
     # Go through the event loop one more time to make sure compute_choices updates remaining_spend.
     self.resolve_to_choice(SpendMixin)
 
+  def toggle_spend(self, char_idx, handle, choice_event):
+    self.assertIsInstance(choice_event, SpendMixin)
+    self.assertIn(char_idx, self.state.spendables)
+    self.assertIn(handle, self.state.spendables[char_idx])
+    self.state.handle_use(char_idx, handle)
+    self.resolve_to_choice(SpendMixin)
+
   def resolve_to_usable(self, char_idx, handle, event_class=events.Event):
     self.resolve_loop()
     self.assertTrue(self.state.event_stack)
@@ -2084,24 +2091,21 @@ class SpendChoiceTest(EventTest):
     choice = self.resolve_to_choice(SpendChoice)
 
     self.assertEqual(choice.remaining_spend, [{"gates": 1}, False])
-    self.assertIn(0, self.state.usables)
-    self.assertCountEqual(self.state.usables[0].keys(), ["Gate Abyss0", "Gate Abyss1"])
-    self.state.event_stack.append(self.state.usables[0]["Gate Abyss1"])
-    choice = self.resolve_to_choice(SpendChoice)
+    self.assertIn(0, self.state.spendables)
+    self.assertCountEqual(self.state.spendables[0].keys(), ["Gate Abyss0", "Gate Abyss1"])
+    self.toggle_spend(0, "Gate Abyss1", choice)
     self.assertEqual(choice.spent_handles(), {"Gate Abyss1"})
     self.assertEqual(choice.remaining_spend, [False, {"gates": -1}])
 
-    self.assertIn(0, self.state.usables)
-    self.assertCountEqual(self.state.usables[0].keys(), ["Gate Abyss0", "Gate Abyss1"])
-    self.state.event_stack.append(self.state.usables[0]["Gate Abyss0"])
-    choice = self.resolve_to_choice(SpendChoice)
+    self.assertIn(0, self.state.spendables)
+    self.assertCountEqual(self.state.spendables[0].keys(), ["Gate Abyss0", "Gate Abyss1"])
+    self.toggle_spend(0, "Gate Abyss0", choice)
     self.assertEqual(choice.spent_handles(), {"Gate Abyss1", "Gate Abyss0"})
     self.assertEqual(choice.remaining_spend, [{"gates": -1}, {"gates": -2}])
 
-    self.assertIn(0, self.state.usables)
-    self.assertCountEqual(self.state.usables[0].keys(), ["Gate Abyss0", "Gate Abyss1"])
-    self.state.event_stack.append(self.state.usables[0]["Gate Abyss1"])
-    choice = self.resolve_to_choice(SpendChoice)
+    self.assertIn(0, self.state.spendables)
+    self.assertCountEqual(self.state.spendables[0].keys(), ["Gate Abyss0", "Gate Abyss1"])
+    self.toggle_spend(0, "Gate Abyss1", choice)
     self.assertEqual(choice.spent_handles(), {"Gate Abyss0"})
     self.assertEqual(choice.remaining_spend, [False, {"gates": -1}])
 
@@ -2123,20 +2127,17 @@ class SpendChoiceTest(EventTest):
     choice = self.resolve_to_choice(SpendChoice)
 
     self.assertEqual(choice.remaining_spend, [{"toughness": 2}, False])
-    self.assertIn(0, self.state.usables)
-    self.assertEqual(self.state.usables[0].keys(), {"Cultist", "Vampire", "Dream Flier"})
-    self.state.event_stack.append(self.state.usables[0]["Cultist"])
-    choice = self.resolve_to_choice(SpendChoice)
+    self.assertIn(0, self.state.spendables)
+    self.assertEqual(self.state.spendables[0].keys(), {"Cultist", "Vampire", "Dream Flier"})
+    self.toggle_spend(0, "Cultist", choice)
     self.assertEqual(choice.spent_handles(), {"Cultist"})
     self.assertEqual(choice.remaining_spend, [{"toughness": 1}, {"toughness": -1}])
 
-    self.state.event_stack.append(self.state.usables[0]["Vampire"])
-    choice = self.resolve_to_choice(SpendChoice)
+    self.toggle_spend(0, "Vampire", choice)
     self.assertEqual(choice.spent_handles(), {"Cultist", "Vampire"})
     self.assertEqual(choice.remaining_spend, [{"toughness": -1}, {"toughness": -3}])
 
-    self.state.event_stack.append(self.state.usables[0]["Cultist"])
-    choice = self.resolve_to_choice(SpendChoice)
+    self.toggle_spend(0, "Cultist", choice)
     self.assertEqual(choice.spent_handles(), {"Vampire"})
     self.assertEqual(choice.remaining_spend, [False, {"toughness": -2}])
 
@@ -2159,10 +2160,9 @@ class SpendChoiceTest(EventTest):
     choice = self.resolve_to_choice(SpendChoice)
 
     self.assertEqual(choice.remaining_spend, [{"toughness": 2}, False])
-    self.assertIn(0, self.state.usables)
-    self.assertEqual(self.state.usables[0].keys(), {"Maniac"})
-    self.state.event_stack.append(self.state.usables[0]["Maniac"])
-    choice = self.resolve_to_choice(SpendChoice)
+    self.assertIn(0, self.state.spendables)
+    self.assertEqual(self.state.spendables[0].keys(), {"Maniac"})
+    self.toggle_spend(0, "Maniac", choice)
     self.assertEqual(choice.spent_handles(), {"Maniac"})
     self.assertEqual(choice.remaining_spend, [False, {"toughness": -2}])
 
@@ -2179,9 +2179,14 @@ class SpendChoiceTest(EventTest):
     self.state.event_stack.append(choice)
     choice = self.resolve_to_choice(SpendChoice)
 
-    self.assertIn(0, self.state.usables)
-    self.assertNotIn(1, self.state.usables)
-    self.assertEqual(len(self.state.usables[0]), 1)
+    self.assertIn(0, self.state.spendables)
+    self.assertNotIn(1, self.state.spendables)
+    self.assertEqual(len(self.state.spendables[0]), 1)
+
+    with self.assertRaisesRegex(InvalidMove, "at this time"):
+      self.state.handle_use(1, self.char.trophies[0].handle)
+    with self.assertRaisesRegex(InvalidMove, "at this time"):
+      self.state.handle_use(1, buddy.trophies[0].handle)
 
   def testSpendItems(self):
     self.char.possessions.extend([items.ResearchMaterials(0), items.ResearchMaterials(1)])
@@ -2192,23 +2197,20 @@ class SpendChoiceTest(EventTest):
 
     self.assertEqual(choice.choices, ["Spend", "Done"])
     self.assertEqual(choice.remaining_spend, [{"clues": 1}, False])
-    self.assertIn(0, self.state.usables)
-    self.assertEqual(self.state.usables[0].keys(), {"Research Materials0", "Research Materials1"})
+    self.assertIn(0, self.state.spendables)
+    self.assertEqual(self.state.spendables[0].keys(), {f"Research Materials{i}" for i in [0, 1]})
 
-    self.state.event_stack.append(self.state.usables[0]["Research Materials0"])
-    choice = self.resolve_to_choice(SpendChoice)
+    self.toggle_spend(0, "Research Materials0", choice)
     self.assertEqual(choice.spent_handles(), {"Research Materials0"})
     self.assertEqual(choice.remaining_spend, [False, {"clues": -1}])
 
-    self.assertEqual(self.state.usables[0].keys(), {"Research Materials0", "Research Materials1"})
-    self.state.event_stack.append(self.state.usables[0]["Research Materials1"])
-    choice = self.resolve_to_choice(SpendChoice)
+    self.assertEqual(self.state.spendables[0].keys(), {f"Research Materials{i}" for i in [0, 1]})
+    self.toggle_spend(0, "Research Materials1", choice)
     self.assertEqual(choice.spent_handles(), {"Research Materials0", "Research Materials1"})
     self.assertEqual(choice.remaining_spend, [{"clues": -1}, {"clues": -2}])
 
-    self.assertEqual(self.state.usables[0].keys(), {"Research Materials0", "Research Materials1"})
-    self.state.event_stack.append(self.state.usables[0]["Research Materials0"])
-    choice = self.resolve_to_choice(SpendChoice)
+    self.assertEqual(self.state.spendables[0].keys(), {f"Research Materials{i}" for i in [0, 1]})
+    self.toggle_spend(0, "Research Materials0", choice)
     self.assertEqual(choice.spent_handles(), {"Research Materials1"})
     self.assertEqual(choice.remaining_spend, [False, {"clues": -1}])
 
@@ -2231,9 +2233,14 @@ class SpendChoiceTest(EventTest):
     self.state.event_stack.append(choice)
     choice = self.resolve_to_choice(SpendChoice)
 
-    self.assertIn(0, self.state.usables)
-    self.assertNotIn(1, self.state.usables)
-    self.assertEqual(self.state.usables[0].keys(), {"Research Materials0"})
+    self.assertIn(0, self.state.spendables)
+    self.assertNotIn(1, self.state.spendables)
+    self.assertEqual(self.state.spendables[0].keys(), {"Research Materials0"})
+
+    with self.assertRaisesRegex(InvalidMove, "at this time"):
+      self.state.handle_use(1, "Research Materials0")
+    with self.assertRaisesRegex(InvalidMove, "at this time"):
+      self.state.handle_use(1, "Research Materials1")
 
 
 class ItemChoiceTest(EventTest):
@@ -2694,12 +2701,10 @@ class ActivateItemsTest(EventTest):
     self.assertEqual(self.char.combat(self.state, None), 4)
 
     item_choice = CombatChoice(self.char, "choose stuff")
-    activate = ActivateChosenItems(self.char, item_choice)
 
     self.state.event_stack.append(item_choice)
     self.resolve_to_choice(CombatChoice)
     self.choose_items(item_choice, ["Bullwhip0", ".38 Revolver0"])
-    self.state.event_stack.append(activate)
     self.resolve_until_done()
 
     self.assertEqual(self.char.hands_available(), 0)
@@ -2710,18 +2715,16 @@ class ActivateItemsTest(EventTest):
   def testOneItemActivationCancelled(self):
     self.char.possessions.extend([items.Bullwhip(0), items.TommyGun(0), items.Revolver38(0)])
     item_choice = CombatChoice(self.char, "choose stuff")
-    activate = ActivateChosenItems(self.char, item_choice)
     self.char.possessions.append(Canceller(ActivateItem))
 
     self.state.event_stack.append(item_choice)
     self.resolve_to_choice(CombatChoice)
     self.choose_items(item_choice, ["Bullwhip0", ".38 Revolver0"])
-    self.state.event_stack.append(activate)
     self.resolve_until_done()
 
-    self.assertTrue(activate.is_resolved())
-    self.assertFalse(activate.activations[0].is_resolved())
-    self.assertTrue(activate.activations[0].is_cancelled())
+    self.assertTrue(item_choice.activate.is_resolved())
+    self.assertFalse(item_choice.activate.activations[0].is_resolved())
+    self.assertTrue(item_choice.activate.activations[0].is_cancelled())
 
     self.assertEqual(self.char.hands_available(), 1)
     self.assertFalse(self.char.possessions[0].active)
@@ -2731,14 +2734,12 @@ class ActivateItemsTest(EventTest):
   def testActivationChoiceCancelled(self):
     self.char.possessions.extend([items.Bullwhip(0), items.TommyGun(0), items.Revolver38(0)])
     item_choice = CombatChoice(self.char, "choose stuff")
-    activate = ActivateChosenItems(self.char, item_choice)
     self.char.possessions.append(Canceller(CombatChoice))
 
-    self.state.event_stack.append(Sequence([item_choice, activate], self.char))
+    self.state.event_stack.append(item_choice)
     self.resolve_until_done()
 
-    self.assertFalse(activate.is_resolved())
-    self.assertTrue(activate.is_cancelled())
+    self.assertIsNone(item_choice.activate)
 
     self.assertEqual(self.char.hands_available(), 2)
     self.assertFalse(self.char.possessions[0].active)

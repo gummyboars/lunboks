@@ -131,22 +131,28 @@ class Character:
         pos.handle: pos.get_usable_interrupt(event, self, state)
         for pos in self.possessions if pos.get_usable_interrupt(event, self, state)
     }
+    return interrupts
+
+  def get_spendables(self, event, state):
+    spendables = {
+        pos.handle: pos.get_spend_amount(event, self, state)
+        for pos in self.possessions if pos.get_spend_amount(event, self, state) is not None
+    }
     if isinstance(event, events.SpendMixin) and event.character == self and not event.is_done():
       spent_handles = event.spent_handles()
       for trophy in self.trophies:
         handle = trophy.handle
         if handle in spent_handles:
-          interrupts[handle] = events.Unspend(self, event, handle)
+          spendables[handle] = False
           continue
         if isinstance(trophy, monsters.Monster):
           if "toughness" in event.spendable:
-            amount = trophy.toughness(state, self)
-            interrupts[handle] = events.Spend(self, event, handle, {"toughness": amount})
+            spendables[handle] = {"toughness": trophy.toughness(state, self)}
           elif "monsters" in event.spendable:
-            interrupts[handle] = events.Spend(self, event, handle, {"monsters": 1})
+            spendables[handle] = {"monsters": 1}
         elif isinstance(trophy, gates.Gate) and "gates" in event.spendable:
-          interrupts[handle] = events.Spend(self, event, handle, {"gates": 1})
-    return interrupts
+          spendables[handle] = {"gates": 1}
+    return spendables
 
   def get_triggers(self, event, state):
     return [
