@@ -22,9 +22,12 @@ jobs:
         python -m pip install --upgrade pip
         pip install pylint autopep8
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-    - name: Check formatting with autopep8
-      run: |
-        autopep8 --diff --exit-code **/*.py
+    - name: Auto-formatting with autopep8
+      uses: wearerequired/lint-action@v2
+      with:
+        auto-fix: ${{ github.event_name == 'pull_request' }}
+        commit_message: "Fix code style issues with ${linter}"
+        autopep8: true
   lint-check:
     runs-on: ubuntu-latest
     steps:
