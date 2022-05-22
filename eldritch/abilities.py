@@ -46,7 +46,7 @@ def Speed(idx):
 
 
 def Sneak(idx):
-  return BonusSkill("Sneak", idx, "sneak")
+      return BonusSkill('Sneak', idx, "sneak")
 
 
 def Fight(idx):
