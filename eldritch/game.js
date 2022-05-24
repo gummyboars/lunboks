@@ -160,6 +160,11 @@ function continueInit(gameId) {
   outskirtsBox.ondragenter = dragEnter;
   outskirtsBox.ondragover = dragOver;
   outskirtsBox.ondrop = drop;
+  let cupBox = document.getElementById("monsterchoices");
+  cupBox.onclick = function(e) { toggleMonsters(cupBox, "Monster Cup"); };
+  cupBox.ondrop = drop;
+  cupBox.ondragenter = dragEnter;
+  cupBox.ondragover = dragOver;
 
   // Debug menu stuff
   changeOtherChoice(null);
@@ -524,6 +529,20 @@ function resetMonsterChoice(e) {
   monsterChoice = {};
 }
 
+function toOutskirts(e) {
+  let monsterDivList = [];
+  let choicesDiv = document.getElementById("monsterchoices");
+  for (let monsterDiv of choicesDiv.getElementsByClassName("monster")) {
+    monsterDivList.push(monsterDiv);
+  }
+  for (let monsterDiv of monsterDivList) {
+    if (monsterDiv.monsterIdx != null && monsterDiv.draggable && monsterChoice[monsterDiv.monsterIdx] == null) {
+      document.getElementById("placeOutskirtsmonsters").appendChild(monsterDiv);
+      monsterChoice[monsterDiv.monsterIdx] = "Outskirts";
+    }
+  }
+}
+
 function defaultSpend(spendDict, choice) {
   let knownSpends = ["sanity", "stamina", "clues", "dollars"];
   for (let key in spendDict) {
@@ -594,6 +613,12 @@ function drop(e) {
 function dropMonster(e) {
   if (dragged.monsterIdx == null) {
     console.log("dragged monster did not have an id");
+    return;
+  }
+  if (e.currentTarget.id == "monsterchoices") {
+    e.preventDefault();
+    e.currentTarget.appendChild(dragged);
+    delete monsterChoice[dragged.monsterIdx];
     return;
   }
   if (!e.currentTarget.id.startsWith("place") || !e.currentTarget.id.endsWith("box")) {
