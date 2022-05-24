@@ -640,6 +640,24 @@ class TradingTest(TradingTestBase):
     with self.assertRaisesRegex(game.InvalidMove, "same place"):
       self.state.handle_give(0, 1, "Cross0", None)
 
+  def testTradability(self):
+    self.gangster.possessions.extend([items.Deputy(), items.DeputysRevolver(), items.PatrolWagon()])
+    self.assertEqual(len(self.nun.possessions), 2)
+    self.assertEqual(len(self.gangster.possessions), 5)
+    self.state.handle_give(1, 0, "Patrol Wagon", None)
+    self.assertEqual(len(self.nun.possessions), 3)
+    self.assertEqual(len(self.gangster.possessions), 4)
+    self.assertEqual(self.nun.possessions[-1].name, "Patrol Wagon")
+    self.state.handle_give(1, 0, "Deputy's Revolver", None)
+    self.assertEqual(len(self.nun.possessions), 4)
+    self.assertEqual(len(self.gangster.possessions), 3)
+    self.assertEqual(self.nun.possessions[-1].name, "Deputy's Revolver")
+
+    with self.assertRaisesRegex(game.InvalidMove, "only trade items"):
+      self.state.handle_give(1, 0, "Deputy", None)
+    self.assertEqual(len(self.nun.possessions), 4)
+    self.assertEqual(len(self.gangster.possessions), 3)
+
 
 class OtherWorldTradingTest(TradingTestBase):
 

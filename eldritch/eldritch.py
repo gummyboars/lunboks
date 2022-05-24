@@ -992,8 +992,7 @@ class GameState:
     if len(donations) != 1:
       raise InvalidMove("Invalid card")
     donation = donations[0]
-    # TODO: trading the deputy's revolver and patrol wagon
-    if getattr(donation, "deck", None) not in {"common", "unique", "spells"}:
+    if getattr(donation, "deck", None) not in {"common", "unique", "spells", "tradables"}:
       raise InvalidMove("You can only trade items")
 
     # TODO: turn this into an event.
