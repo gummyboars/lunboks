@@ -1144,6 +1144,52 @@ class CombatWithItems(EventTest):
     self.assertEqual(len(self.combat.combat.check.roll), 11)
     self.assertFalse(self.char.possessions[0].active)
 
+  def testCombatWithAxe(self):
+    self.char.possessions.extend([items.Axe(0), items.Axe(1)])
+    choose_weapons = self.resolve_to_choice(CombatChoice)
+    self.choose_items(choose_weapons, ["Axe0", ".38 Revolver0"])
+
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)) as rand:
+      fight_or_flee = self.resolve_to_choice(FightOrEvadeChoice)
+      self.assertEqual(rand.call_count, 10)  # Fight (4) + Axe (2) + Cultist (1) + Revolver (3)
+
+    fight_or_flee.resolve(self.state, "Fight")
+    choose_weapons = self.resolve_to_choice(CombatChoice)
+    self.choose_items(choose_weapons, ["Axe0"])
+
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)) as rand:
+      fight_or_flee = self.resolve_to_choice(FightOrEvadeChoice)
+      self.assertEqual(rand.call_count, 8)  # Fight (4) + Axe (3) + Cultist (1)
+
+    fight_or_flee.resolve(self.state, "Fight")
+    choose_weapons = self.resolve_to_choice(CombatChoice)
+    self.choose_items(choose_weapons, ["Axe0", "Axe1"])
+
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)) as rand:
+      self.resolve_until_done()
+      self.assertEqual(rand.call_count, 9)  # Fight (4) + Axe (2) + Axe (2) + Cultist (1)
+
+    axe = self.char.possessions[-2]
+    self.assertFalse(axe.active)
+    self.assertEqual(axe.hands_used(), 0)
+
+  def testFailedCombatWithAxe(self):
+    self.char.stamina = 1
+    axe = items.Axe(0)
+    self.char.possessions.append(axe)
+    choose_weapons = self.resolve_to_choice(CombatChoice)
+    self.choose_items(choose_weapons, ["Axe0"])
+
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)) as rand:
+      lose_items = self.resolve_to_choice(ItemLossChoice)
+      self.assertEqual(rand.call_count, 8)  # Fight (4) + Axe (3) + Cultist (1)
+
+    self.choose_items(lose_items, [".38 Revolver0", "Wither0"])
+    self.resolve_until_done()
+
+    self.assertFalse(axe.active)
+    self.assertEqual(axe.hands_used(), 0)
+
   def testCombatWithSpell(self):
     self.resolve_to_choice(CombatChoice)
     self.assertIn(0, self.state.usables)

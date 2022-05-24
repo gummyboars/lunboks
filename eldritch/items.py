@@ -96,6 +96,31 @@ class ResearchMaterials(Item):
     return events.DiscardSpecific(owner, [self])
 
 
+class Axe(Weapon):
+
+  def __init__(self, idx):
+    super().__init__("Axe", idx, "common", {"physical": 2}, {}, 1, 3)
+    self._two_handed = False
+
+  def get_bonus(self, check_type, attributes):
+    bonus = super().get_bonus(check_type, attributes)
+    if check_type == "physical" and self._two_handed:
+      bonus += 1
+    return bonus
+
+  def deactivate(self):
+    self._two_handed = False
+
+  def hands_used(self):
+    return sum([self._active, self._two_handed])
+
+  def json_repr(self):
+    data = super().json_repr()
+    if self.active:
+      data["hands"] = self.hands_used()
+    return data
+
+
 class Bullwhip(Weapon):
 
   def __init__(self, idx):
@@ -187,10 +212,6 @@ def Lantern(idx):
 
 def Knife(idx):
   return Weapon("Knife", idx, "common", {"physical": 1}, {}, 1, 2)
-
-
-def Axe(idx):  # TODO: make the extra hand work
-  return Weapon("Axe", idx, "common", {"physical": 2}, {}, 1, 3)
 
 
 def CavalrySaber(idx):
