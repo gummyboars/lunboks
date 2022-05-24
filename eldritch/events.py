@@ -3205,11 +3205,16 @@ class ItemChoice(ChoiceEvent):
   def choice_count(self):
     return len(self.chosen) if self.chosen else 0
 
+  @property
+  def select_type(self):
+    return "check"
+
 
 class CombatChoice(ItemChoice):
 
-  def __init__(self, character, prompt, combat_round=None):
+  def __init__(self, character, prompt, monster=None, combat_round=None):
     super().__init__(character, prompt, decks=None, item_type="weapon")
+    self.monster = monster
     self.combat_round = combat_round
     self.activate = None
 
@@ -3234,13 +3239,20 @@ class CombatChoice(ItemChoice):
   def hands_used(self):
     return sum(pos.hands for pos in self.chosen)
 
+  @property
+  def select_type(self):
+    return "hands"
+
 
 class ItemCountChoice(ItemChoice):
 
-  def __init__(self, character, prompt, count, min_count=None, decks=None, item_type=None):
+  def __init__(
+      self, character, prompt, count, min_count=None, decks=None, item_type=None, select_type=None,
+  ):
     super().__init__(character, prompt, decks=decks, item_type=item_type)
     self.count = count
     self.min_count = count if min_count is None else min_count
+    self._select_type = select_type or "check"
 
   def validate_choice(self, state, chosen, final):
     super().validate_choice(state, chosen, final)
@@ -3257,6 +3269,10 @@ class ItemCountChoice(ItemChoice):
         if math.isinf(min_count):
           raise InvalidMove("Not enough cards")
         raise InvalidMove(f"Not enough cards (min {min_count})")
+
+  @property
+  def select_type(self):
+    return self._select_type
 
 
 class ItemLossChoice(ItemChoice):
@@ -3287,6 +3303,10 @@ class ItemLossChoice(ItemChoice):
       if math.isinf(count):
         raise InvalidMove("Not enough cards")
       raise InvalidMove(f"Not enough cards (min {count})")
+
+  @property
+  def select_type(self):
+    return "x"
 
 
 class WeaponOrSpellLossChoice(ItemLossChoice):
@@ -3857,9 +3877,8 @@ class CombatRound(Event):
     self.monster = monster
     self.movement_cancelled = False
     self.choice: Event = CombatChoice(
-        character, f"Choose weapons to fight the {monster.name}", combat_round=self
+        character, f"Choose weapons to fight the {monster.name}", self.monster, combat_round=self,
     )
-    self.choice.monster = self.monster
     self.check: Optional[Check] = None
     self.defeated = None
     self.damage: Optional[Event] = None

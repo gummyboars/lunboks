@@ -999,6 +999,9 @@ function updateChoices(choice) {
       pos.classList.toggle("choosable", choice.items.includes(pos.handle));
     }
     btn.style.display = "inline-block";
+    if (choice.monster != null) {
+      showMonster(uicardchoice, choice.monster);  // TODO: update show/hide button text
+    }
   } else {
     if (choice.places != null) {
       updatePlaceChoices(uichoice, choice.places, choice.annotations);
@@ -1276,9 +1279,7 @@ function updateUsables(usables, spendables, choice) {
   let posList = pDiv.getElementsByClassName("possession");
   let trophyList = tDiv.getElementsByClassName("trophy");
   let usableList = usables || [];
-  if (spendables) {
-    usableList.concat(spendables);
-  }
+  usableList.concat(spendables || []);
   let anyPosUsable = false;
   let anyTrophyUsable = false;
   for (let pos of posList) {
@@ -2285,13 +2286,15 @@ function updateCharacterSheet(sheet, character, order, isPlayer, choice, spent) 
   sheet.style.order = order;
   let chosen = [];
   let spendable = null;
+  let selectType = null;
   if (choice != null) {
     chosen = choice.chosen || [];
     spendable = choice.spendable;
+    selectType = choice.select_type;
   }
   updateCharacterStats(sheet, character, isPlayer, spent, spendable);
   updateSliders(sheet, character, isPlayer);
-  updatePossessions(sheet, character.possessions, isPlayer, spent, chosen);
+  updatePossessions(sheet, character.possessions, isPlayer, spent, chosen, selectType);
   updateTrophies(sheet, character, isPlayer, spent);
   fixTransformOrigins(sheet);
 }
@@ -2460,10 +2463,10 @@ function updateInitialPossessions(sheet, character) {
       possessions.push({name: deck, active: false, exhausted: false, handle: deck + i});
     }
   }
-  updatePossessions(sheet, possessions, false, {}, []);
+  updatePossessions(sheet, possessions, false, {}, [], null);
 }
 
-function updatePossessions(sheet, possessions, isPlayer, spent, chosen) {
+function updatePossessions(sheet, possessions, isPlayer, spent, chosen, selectType) {
   let pDiv = sheet.getElementsByClassName("possessions")[0];
   let handleToInfo = {};
   let toRemove = [];
@@ -2475,7 +2478,7 @@ function updatePossessions(sheet, possessions, isPlayer, spent, chosen) {
       toRemove.push(div);
       continue;
     }
-    updatePossession(div, handleToInfo[div.handle], isPlayer, spent, chosen);
+    updatePossession(div, handleToInfo[div.handle], spent, chosen, selectType);
     delete handleToInfo[div.handle];
   }
   for (let div of toRemove) {
@@ -2483,7 +2486,7 @@ function updatePossessions(sheet, possessions, isPlayer, spent, chosen) {
   }
   for (let handle in handleToInfo) {
     let div = createPossession(handleToInfo[handle], isPlayer, pDiv);
-    updatePossession(div, handleToInfo[div.handle], isPlayer, spent, chosen);
+    updatePossession(div, handleToInfo[div.handle], spent, chosen, selectType);
   }
 }
 
@@ -2517,13 +2520,43 @@ function createPossession(info, isPlayer, sheet) {
   return div;
 }
 
-function updatePossession(div, info, isPlayer, spent, chosen) {
-  div.classList.toggle("active", Boolean(info.active));
-  div.classList.toggle("exhausted", Boolean(info.exhausted));
-  div.classList.toggle("spent", spent[info.handle] != null);
-  if (isPlayer) {
-    div.classList.toggle("chosen", chosen.includes(info.handle));
+function updatePossession(div, info, spent, chosen, selectType) {
+  // Note that the hands must be recomputed every time (e.g. for the axe).
+  let handsText = "✔️";
+  if (info.hands) {
+    handsText = "✋".repeat(info.hands);
+  } else if (info.hands != null) {
+    handsText = "✊";
   }
+  let selectText = "✔️";
+  if (selectType == "x") {
+    selectText = "❌";
+  } else if (selectType == "hands") {
+    selectText = handsText;
+  }
+  // If there is an item choice active, then selectType should not be null. When selectType is not
+  // null, show the items being selected. If the selectType is hands, then also show any active
+  // items. Otherwise, do not confuse the player by showing the active items as well.
+  // If there is no item choice, then show the active items. When showing the
+  // active items, show the hands text. Possessions that do not use hands (e.g. the voice spell)
+  // will continue to show a checkmark.
+  // Always show spent items with a checkmark.
+  let showText = "✔️";
+  if (selectType != null) {
+    showText = selectText;
+  } else if (info.active) {
+    showText = handsText;
+  }
+  let chosenDiv = div.getElementsByClassName("chosencheck")[0];
+  chosenDiv.innerText = showText;
+  div.classList.toggle("chosen", chosen.includes(info.handle));
+  if (selectType == "hands" || selectType == null) {
+    div.classList.toggle("active", Boolean(info.active));
+  } else {
+    div.classList.remove("active");
+  }
+  div.classList.toggle("spent", spent[info.handle] != null);
+  div.classList.toggle("exhausted", Boolean(info.exhausted));
 }
 
 function updateTrophies(sheet, character, isPlayer, spent) {
