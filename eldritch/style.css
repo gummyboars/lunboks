@@ -604,7 +604,7 @@ button:disabled {
   height: 100%;
 }
 #extra {
-  width: calc(min(34.24vw, 21.4vh) / 3);
+  width: calc(min(13.375vw, 21.4vh) / 3);
   height: 100%;
   max-height: 100%;
   display: flex;
