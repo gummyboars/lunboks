@@ -322,6 +322,55 @@ function saveimg() {
   document.getElementById("sources").value = localStorage.getItem(assetPrefix + "sources");
   document.getElementById("variants").value = localStorage.getItem(assetPrefix + "variants");
   document.getElementById("imageinfo").value = localStorage.getItem(assetPrefix + "imageinfo");
+  writePluginFile();
+}
+function writePluginFile() {
+  let sources = JSON.parse(localStorage.getItem(assetPrefix + "sources"));
+  let variantInfo = JSON.parse(localStorage.getItem(assetPrefix + "variants"));
+  let imageInfo = JSON.parse(localStorage.getItem(assetPrefix + "imageinfo"));
+  let names = JSON.parse(localStorage.getItem(assetPrefix + "names"));
+  let pluginText = `function initSkin() {
+  if (localStorage.getItem("${assetPrefix}sources") != null) {
+    return;
+  }
+  localStorage.setItem("${assetPrefix}sources", JSON.stringify([
+`;
+  for (let src of sources) {
+    let srcText = JSON.stringify(src);
+    pluginText += `    ${srcText},
+`;
+  }
+  pluginText += `  ]));
+  localStorage.setItem("${assetPrefix}variants", JSON.stringify({
+`;
+  for (let variant in variantInfo) {
+    let variantData = JSON.stringify(variantInfo[variant]);
+    pluginText += `    "${variant}": ${variantData},
+`;
+  }
+  pluginText += `  }));
+  localStorage.setItem("${assetPrefix}imageinfo", JSON.stringify({
+`;
+  for (let key in imageInfo) {
+    let imgData = JSON.stringify(imageInfo[key]);
+    let niceData = imgData.replaceAll(":", ": ");
+    let finalData = niceData.replaceAll(",", ", ");
+    pluginText += `    "${key}": ${finalData},
+`;
+  }
+  pluginText += `  }));
+  localStorage.setItem("${assetPrefix}names", JSON.stringify({
+`;
+  for (let name in names) {
+    let nameStr = JSON.stringify(names[name]);
+    pluginText += `    "${name}": ${nameStr},
+`;
+  }
+  pluginText += `  }));
+}
+initSkin();
+`;
+  document.getElementById("pluginlink").href = "data:text/plain;charset=utf-8," + encodeURIComponent(pluginText);
 }
 function compactSources(sources, imageInfo) {
   let usedIdxs = {};
@@ -425,4 +474,5 @@ function savenames(e) {
   localStorage.setItem(assetPrefix + "customnames", JSON.stringify(currentNames));
   localStorage.setItem(assetPrefix + "names", JSON.stringify(currentNames));
   document.getElementById("shownames").value = localStorage.getItem(assetPrefix + "names");
+  writePluginFile();
 }
