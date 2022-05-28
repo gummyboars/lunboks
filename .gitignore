@@ -12,6 +12,7 @@ __pycache__/
 *.svg
 *.wav
 images.zip
+plugin.js
 
 # swp files from vim
 *.swp
