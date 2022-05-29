@@ -656,7 +656,7 @@ def CreateSpells():
       EnchantWeapon: 3,
       FindGate: 4,
       FleshWard: 4,
-      Heal: 3,
+      # Heal: 3,  TODO: add heal to the spell pool when it does not stall upkeep in tests
       Mists: 4,
       RedSign: 2,
       Shrivelling: 5,
