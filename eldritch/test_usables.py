@@ -1110,6 +1110,7 @@ class PreventionTest(EventTest):
     enchant = self.resolve_to_choice(SinglePhysicalWeaponChoice)
     self.spend("sanity", 1, enchant)
     self.choose_items(enchant, ["Tommy Gun0"])
+    combat_choice = self.resolve_to_choice(CombatChoice)
     self.choose_items(combat_choice, ["Tommy Gun0"])
 
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
@@ -1207,6 +1208,55 @@ class MistsTest(EventTest):
     self.resolve_until_done()
 
   # TODO: test Elusive monsters
+
+
+class SpendingOutputTest(EventTest):
+
+  def setUp(self):
+    super().setUp()
+    self.char.possessions.append(items.ResearchMaterials(0))
+    self.char.clues = 2
+    self.char.trophies.append(self.state.gates.popleft())
+
+  def testSpendableItemOutput(self):
+    spend = values.RangeSpendPrerequisite("clues", 1, 6)
+    choice = SpendChoice(self.char, "choose", ["Yes", "No"], spends=[spend, None])
+    self.state.event_stack.append(choice)
+
+    started = False
+    for _ in self.state.resolve_loop():
+      data = self.state.for_player(0)
+      if data["choice"] is not None and data["spendables"]:
+        started = True
+      if started:
+        self.assertIsNotNone(data["choice"])
+        self.assertEqual(data["choice"]["spendable"], ["clues"])
+        self.assertIn("Research Materials0", data["spendables"])
+    self.assertTrue(started, "research materials should be spendable")
+
+    loop = self.state.handle(0, {"type": "spend", "spend_type": "clues"})
+    for _ in loop:
+      data = self.state.for_player(0)
+      self.assertIsNotNone(data["choice"])
+      self.assertEqual(data["choice"]["spendable"], ["clues"])
+      self.assertIsNotNone(data["spendables"])
+      self.assertIn("Research Materials0", data["spendables"])
+
+    loop = self.state.handle(0, {"type": "use", "handle": "Research Materials0"})
+    for _ in loop:
+      data = self.state.for_player(0)
+      self.assertIsNotNone(data["choice"])
+      self.assertEqual(data["choice"]["spendable"], ["clues"])
+      self.assertIsNotNone(data["spendables"])
+      self.assertIn("Research Materials0", data["spendables"])
+
+    loop = self.state.handle(0, {"type": "use", "handle": "Research Materials0"})
+    for _ in loop:
+      data = self.state.for_player(0)
+      self.assertIsNotNone(data["choice"])
+      self.assertEqual(data["choice"]["spendable"], ["clues"])
+      self.assertIsNotNone(data["spendables"])
+      self.assertIn("Research Materials0", data["spendables"])
 
 
 if __name__ == "__main__":

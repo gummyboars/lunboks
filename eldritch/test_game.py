@@ -231,7 +231,7 @@ class SpendTrophiesEncounterTest(FixedEncounterBaseTest):
     with self.assertRaisesRegex(game.InvalidMove, "additional 5 toughness"):
       event.resolve(self.state, "Gain $5")
 
-    self.state.event_stack.append(self.state.usables[0][self.char.trophies[0].handle])
+    self.state.handle_use(0, self.char.trophies[0].handle)
     for _ in self.state.resolve_loop():
       pass
     event.resolve(self.state, "Gain $5")
@@ -252,7 +252,7 @@ class SpendTrophiesEncounterTest(FixedEncounterBaseTest):
     with self.assertRaisesRegex(game.InvalidMove, "additional 5 toughness"):
       event.resolve(self.state, "Gain 2 clues")
 
-    self.state.event_stack.append(self.state.usables[0][self.char.trophies[0].handle])
+    self.state.handle_use(0, self.char.trophies[0].handle)
     for _ in self.state.resolve_loop():
       pass
     event.resolve(self.state, "Gain 2 clues")
@@ -273,7 +273,7 @@ class SpendTrophiesEncounterTest(FixedEncounterBaseTest):
     with self.assertRaisesRegex(game.InvalidMove, "additional 5 toughness"):
       event.resolve(self.state, "Blessing")
 
-    self.state.event_stack.append(self.state.usables[0][self.char.trophies[0].handle])
+    self.state.handle_use(0, self.char.trophies[0].handle)
     for _ in self.state.resolve_loop():
       pass
     event.resolve(self.state, "Blessing")
@@ -305,7 +305,7 @@ class SpendTrophiesEncounterTest(FixedEncounterBaseTest):
       pass
     choice = self.state.event_stack[-1]
     self.assertEqual(choice.choices, ["Southside Card", "Blessing"])
-    self.state.event_stack.append(self.state.usables[0][self.char.trophies[0].handle])
+    self.state.handle_use(0, self.char.trophies[0].handle)
     for _ in self.state.resolve_loop():
       pass
     choice.resolve(self.state, "Blessing")
@@ -335,10 +335,10 @@ class SpendTrophiesEncounterTest(FixedEncounterBaseTest):
     with self.assertRaisesRegex(game.InvalidMove, "additional 10 toughness"):
       event.resolve(self.state, "allies")
 
-    self.state.event_stack.append(self.state.usables[0][self.char.trophies[0].handle])
+    self.state.handle_use(0, self.char.trophies[0].handle)
     for _ in self.state.resolve_loop():
       pass
-    self.state.event_stack.append(self.state.usables[0][self.char.trophies[1].handle])
+    self.state.handle_use(0, self.char.trophies[1].handle)
     for _ in self.state.resolve_loop():
       pass
     event.resolve(self.state, "allies")
@@ -370,10 +370,10 @@ class SpendTrophiesEncounterTest(FixedEncounterBaseTest):
     with self.assertRaisesRegex(game.InvalidMove, "additional 10 toughness"):
       event.resolve(self.state, "Deputy")
 
-    self.state.event_stack.append(self.state.usables[0][self.char.trophies[0].handle])
+    self.state.handle_use(0, self.char.trophies[1].handle)
     for _ in self.state.resolve_loop():
       pass
-    self.state.event_stack.append(self.state.usables[0][self.char.trophies[1].handle])
+    self.state.handle_use(0, self.char.trophies[0].handle)
     for _ in self.state.resolve_loop():
       pass
     event.resolve(self.state, "Deputy")
@@ -398,10 +398,10 @@ class SpendTrophiesEncounterTest(FixedEncounterBaseTest):
     event = self.state.event_stack[-1]
     self.assertIsInstance(event, events.CardSpendChoice)
     self.assertEqual(event.choices, ["Easttown Card", "Deputy"])
-    self.state.event_stack.append(self.state.usables[0][self.char.trophies[0].handle])
+    self.state.handle_use(0, self.char.trophies[0].handle)
     for _ in self.state.resolve_loop():
       pass
-    self.state.event_stack.append(self.state.usables[0][self.char.trophies[1].handle])
+    self.state.handle_use(0, self.char.trophies[1].handle)
     for _ in self.state.resolve_loop():
       pass
     with self.assertRaisesRegex(game.InvalidMove, "already the deputy"):
@@ -419,10 +419,10 @@ class SpendTrophiesEncounterTest(FixedEncounterBaseTest):
     self.assertIsInstance(event, events.CardSpendChoice)
     self.assertEqual(event.choices, ["Easttown Card", "Deputy"])
 
-    self.state.event_stack.append(self.state.usables[0][self.char.trophies[0].handle])
+    self.state.handle_use(0, self.char.trophies[0].handle)
     for _ in self.state.resolve_loop():
       pass
-    self.state.event_stack.append(self.state.usables[0][self.char.trophies[1].handle])
+    self.state.handle_use(0, self.char.trophies[1].handle)
     for _ in self.state.resolve_loop():
       pass
     event.resolve(self.state, "Deputy")

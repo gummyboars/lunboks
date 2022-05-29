@@ -523,7 +523,6 @@ class InvestigatorAttack(Turn):
   def __init__(self, character):
     self.character = character
     self.choice: Event = CombatChoice(character, "Choose weapons to fight the ancient one")
-    self.activate: Optional[Event] = None
     self.check: Optional[Check] = None
     self.damage: Optional[Event] = None
 
@@ -531,10 +530,6 @@ class InvestigatorAttack(Turn):
     if not self.choice.is_done():
       self.choice.monster = state.ancient_one
       state.event_stack.append(self.choice)
-      return
-    if len(self.choice.choices or []) > 0 and self.activate is None:
-      self.activate = ActivateChosenItems(self.character, self.choice)
-      state.event_stack.append(self.activate)
       return
 
     if self.check is None:
@@ -2611,51 +2606,6 @@ class SpendChoice(SpendMultiChoiceMixin, MultipleChoice):
   pass
 
 
-class Spend(Event):
-
-  def __init__(self, character, spend_event, handle, spend_count):
-    self.character = character
-    self.spend_event: Event = spend_event
-    self.handle = handle
-    self.spend_count = spend_count
-    self.done = False
-
-  def resolve(self, state):
-    self.spend_event.spend_handle(self.handle, self.spend_count)
-    self.done = True
-
-  def is_resolved(self):
-    return self.done
-
-  def start_str(self):
-    return ""
-
-  def finish_str(self):
-    return ""
-
-
-class Unspend(Event):
-
-  def __init__(self, character, spend_event, handle):
-    self.character = character
-    self.spend_event: Event = spend_event
-    self.handle = handle
-    self.done = False
-
-  def resolve(self, state):
-    self.spend_event.unspend_handle(self.handle)
-    self.done = True
-
-  def is_resolved(self):
-    return self.done
-
-  def start_str(self):
-    return ""
-
-  def finish_str(self):
-    return ""
-
-
 class ChangeMovementPoints(Event):
 
   def __init__(self, character, count):
@@ -2777,6 +2727,14 @@ class CombatChoice(ItemChoice):
   def __init__(self, character, prompt, combat_round=None):
     super().__init__(character, prompt, decks=None, item_type="weapon")
     self.combat_round = combat_round
+    self.activate = None
+
+  def resolve(self, state, choice=None):
+    super().resolve(state, choice)
+    if not self.is_resolved():
+      return
+    self.activate = ActivateChosenItems(self.character, self)
+    state.event_stack.append(self.activate)
 
   def validate_choice(self, state, chosen, final):
     super().validate_choice(state, chosen, final)
@@ -3358,7 +3316,6 @@ class CombatRound(Event):
         character, f"Choose weapons to fight the {monster.name}", combat_round=self
     )
     self.choice.monster = self.monster
-    self.activate: Optional[Event] = None
     self.check: Optional[Check] = None
     self.defeated = None
     self.damage: Optional[Event] = None
@@ -3377,10 +3334,6 @@ class CombatRound(Event):
 
     if not self.choice.is_done():
       state.event_stack.append(self.choice)
-      return
-    if len(self.choice.choices or []) > 0 and self.activate is None:
-      self.activate = ActivateChosenItems(self.character, self.choice)
-      state.event_stack.append(self.activate)
       return
 
     if self.check is None:
