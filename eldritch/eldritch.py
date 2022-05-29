@@ -1143,9 +1143,10 @@ class GameState:
     self.pending_chars.clear()
 
     # Abilities and fixed possessions.
+    char_specials = abilities.CreateSpecials()
     for char in new_characters:
       char.place = self.places[char.home]
-      char.possessions.extend(char.abilities())
+      char.possessions.extend([char_specials[name] for name in char.abilities()])
       self.give_fixed_possessions(char, char.fixed_possessions())
     # Random possessions.
     for char in new_characters:

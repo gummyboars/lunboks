@@ -2311,6 +2311,9 @@ function updateInitialPossessions(sheet, character) {
     pDiv.removeChild(pDiv.firstChild);
   }
   let possessions = [];
+  for (let ability of character.abilities) {
+    possessions.push({name: ability, active: false, exhausted: false, handle: ability});
+  }
   for (let [idx, pos] of character.fixed.entries()) {
     possessions.push({name: pos, active: false, exhausted: false, handle: pos + idx});
   }

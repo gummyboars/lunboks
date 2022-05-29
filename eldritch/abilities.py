@@ -219,3 +219,12 @@ class Physician(assets.Asset):
         owner, "Choose a character to heal", [char.name for char in eligible] + ["nobody"])
     cond = events.Conditional(owner, choice, "choice_index", gains)
     return events.Sequence([events.ExhaustAsset(owner, self), choice, cond], owner)
+
+
+def CreateSpecials():
+  abilities = [
+      FluxStabilizer(), Studious(), ShrewdDealer(), HometownAdvantage(), MagicalGift(),
+      PsychicSensitivity(), Archaeology(), StrongMind(), StrongBody(), TrustFund(), Hunches(),
+      Physician(),
+  ]
+  return {ability.name: ability for ability in abilities}
