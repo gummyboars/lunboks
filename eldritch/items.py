@@ -181,12 +181,36 @@ def DarkCloak(idx):
   return Item("Dark Cloak", idx, "common", {}, {"evade": 1}, None, 2)
 
 
+def Lantern(idx):
+  return Item("Lantern", idx, "common", {}, {"luck": 1}, None, 3)
+
+
+def Knife(idx):
+  return Weapon("Knife", idx, "common", {"physical": 1}, {}, 1, 2)
+
+
+def Axe(idx):  # TODO: make the extra hand work
+  return Weapon("Axe", idx, "common", {"physical": 2}, {}, 1, 3)
+
+
+def CavalrySaber(idx):
+  return Weapon("Cavalry Saber", idx, "common", {"physical": 2}, {}, 1, 3)
+
+
 def Revolver38(idx):
   return Weapon(".38 Revolver", idx, "common", {"physical": 3}, {}, 1, 4)
 
 
 def Automatic45(idx):
   return Weapon(".45 Automatic", idx, "common", {"physical": 4}, {}, 1, 5)
+
+
+def Shotgun(idx):  # TODO: make the shotgun count 6s as two successes
+  return Weapon("Shotgun", idx, "common", {"physical": 4}, {}, 2, 6)
+
+
+def Rifle(idx):
+  return Weapon("Rifle", idx, "common", {"physical": 5}, {}, 2, 6)
 
 
 def Dynamite(idx):
@@ -602,8 +626,9 @@ class PatrolWagon(Card):
 def CreateCommon():
   common = []
   for item in [
-      AncientTome, Automatic45, DarkCloak, Derringer18, Revolver38, Dynamite,
-      TommyGun, Food, ResearchMaterials, Bullwhip, Cross,
+      AncientTome, Automatic45, DarkCloak, Derringer18, Revolver38, Dynamite, Rifle, Shotgun,
+      TommyGun, Food, ResearchMaterials, Bullwhip, Cross, CavalrySaber, Knife, Whiskey, Axe,
+      Lantern,
   ]:
     common.extend([item(0), item(1)])
   return common
@@ -631,6 +656,7 @@ def CreateSpells():
       EnchantWeapon: 3,
       FindGate: 4,
       FleshWard: 4,
+      # Heal: 3,  TODO: add heal to the spell pool when it does not stall upkeep in tests
       Mists: 4,
       RedSign: 2,
       Shrivelling: 5,
