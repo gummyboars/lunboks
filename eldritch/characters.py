@@ -75,6 +75,7 @@ class Character:
     data["fixed"] = sum(self.fixed_possessions().values(), [])
     data["random"] = self.random_possessions()
     data["initial"] = self.initial_attributes()
+    data["abilities"] = self.abilities()
     return data
 
   def max_stamina(self, state):
@@ -242,7 +243,7 @@ class Student(Character):
     super().__init__("Student", 5, 5, 4, 4, 4, 4, 4, 4, 3, "Bank")
 
   def abilities(self):
-    return [abilities.Studious()]
+    return ["Studious"]
 
   def initial_attributes(self):
     return {"dollars": 1, "clues": 1}
@@ -278,7 +279,7 @@ class Salesman(Character):
     super().__init__("Salesman", 6, 4, 5, 3, 4, 6, 3, 4, 1, "Store")
 
   def abilities(self):
-    return [abilities.ShrewdDealer()]
+    return ["Shrewd Dealer"]
 
   def initial_attributes(self):
     return {"dollars": 9}
@@ -314,7 +315,7 @@ class Photographer(Character):
     super().__init__("Photographer", 6, 4, 5, 3, 5, 4, 3, 4, 2, "Newspaper")
 
   def abilities(self):
-    return [abilities.HometownAdvantage()]
+    return ["Hometown Advantage"]
 
   def initial_attributes(self):
     return {"dollars": 1, "clues": 1, "retainer_start": 0}
@@ -332,7 +333,7 @@ class Magician(Character):
     super().__init__("Magician", 5, 5, 5, 4, 4, 3, 5, 3, 2, "Shoppe")
 
   def abilities(self):
-    return [abilities.MagicalGift()]
+    return ["Magical Gift"]
 
   def initial_attributes(self):
     return {"dollars": 5}
@@ -350,7 +351,7 @@ class Author(Character):
     super().__init__("Author", 4, 6, 4, 3, 3, 5, 4, 5, 2, "Diner")
 
   def abilities(self):
-    return [abilities.PsychicSensitivity()]
+    return ["Psychic Sensitivity"]
 
   def initial_attributes(self):
     return {"dollars": 7, "clues": 2}
@@ -368,7 +369,7 @@ class Professor(Character):
     super().__init__("Professor", 3, 7, 3, 5, 3, 3, 6, 4, 2, "Administration")
 
   def abilities(self):
-    return [abilities.StrongMind()]
+    return ["Strong Mind"]
 
   def initial_attributes(self):
     return {"dollars": 5, "clues": 1}
@@ -386,7 +387,7 @@ class Dilettante(Character):
     super().__init__("Dilettante", 4, 6, 3, 4, 4, 5, 4, 5, 1, "Train")
 
   def abilities(self):
-    return [abilities.TrustFund()]
+    return ["Trust Fund"]
 
   def initial_attributes(self):
     return {"dollars": 10}
@@ -404,7 +405,7 @@ class PrivateEye(Character):
     super().__init__("Private Eye", 6, 4, 6, 4, 5, 3, 3, 3, 3, "Police")
 
   def abilities(self):
-    return [abilities.Hunches()]
+    return ["Hunches"]
 
   def initial_attributes(self):
     return {"dollars": 8, "clues": 3}
@@ -422,7 +423,7 @@ class Scientist(Character):
     super().__init__("Scientist", 4, 6, 4, 5, 4, 3, 5, 4, 1, "Science")
 
   def abilities(self):
-    return [abilities.FluxStabilizer()]
+    return ["Flux Stabilizer"]
 
   def initial_attributes(self):
     return {"dollars": 7, "clues": 2}
@@ -476,7 +477,7 @@ class Doctor(Character):
     super().__init__("Doctor", 5, 5, 3, 5, 3, 4, 5, 4, 2, "Hospital")
 
   def abilities(self):
-    return [abilities.Physician()]
+    return ["Physician"]
 
   def initial_attributes(self):
     return {"dollars": 9, "clues": 1}
@@ -494,7 +495,7 @@ class Archaeologist(Character):
     super().__init__("Archaeologist", 7, 3, 4, 3, 5, 3, 4, 5, 2, "Shop")
 
   def abilities(self):
-    return [abilities.Archaeology()]
+    return ["Archaeology"]
 
   def initial_attributes(self):
     return {"dollars": 7, "clues": 1}
@@ -512,7 +513,7 @@ class Gangster(Character):
     super().__init__("Gangster", 7, 3, 5, 4, 6, 4, 3, 3, 1, "House")
 
   def abilities(self):
-    return [abilities.StrongBody()]
+    return ["Strong Body"]
 
   def initial_attributes(self):
     return {"dollars": 8}
