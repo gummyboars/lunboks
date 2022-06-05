@@ -16,7 +16,44 @@ runningAnim = [];
 messageQueue = [];
 statTimeout = null;
 cardsStyle = "flex";
+stepping = false;
 statNames = {"stamina": "Stamina", "sanity": "Sanity", "clues": "Clue", "dollars": "Dollar"};
+
+function toggleStepping(e) {
+  if (stepping) {
+    stepping = false;
+    updateStepButton();
+    if (messageQueue.length && !runningAnim.length) {
+      let msg = messageQueue.shift();
+      updateStepButton();
+      handleData(msg);
+    }
+  } else {
+    stepping = true;
+    updateStepButton();
+  }
+}
+
+function step(e) {
+  if (messageQueue.length && !runningAnim.length) {
+    let msg = messageQueue.shift();
+    updateStepButton();
+    handleData(msg);
+  }
+}
+
+function updateStepButton() {
+  let btn = document.getElementById("stepbutton");
+  if (!stepping) {
+    btn.style.display = "none";
+  } else if (messageQueue.length) {
+    btn.style.display = "inline-block";
+    btn.disabled = false;
+  } else {
+    btn.style.display = "inline-block";
+    btn.disabled = true;
+  }
+}
 
 function addOptionToSelect(id, val) {
   let opt = document.createElement("OPTION");
@@ -229,8 +266,9 @@ function onmsg(e) {
     setTimeout(clearError, 100);
     return;
   }
-  if (runningAnim.length || messageQueue.length) {
+  if (stepping || runningAnim.length || messageQueue.length) {
     messageQueue.push(data);
+    updateStepButton();
   } else {
     handleData(data);
   }
@@ -241,8 +279,10 @@ function doneAnimating(div) {
 }
 function finishAnim() {
   runningAnim.shift();
-  if (messageQueue.length && !runningAnim.length) {
-    handleData(messageQueue.shift());
+  if (!stepping && messageQueue.length && !runningAnim.length) {
+    let msg = messageQueue.shift();
+    handleData(msg);
+    updateStepButton();
   } else {
     updateStats();  // TODO: this is hacky
   }
@@ -270,8 +310,10 @@ function handleData(data) {
   updateUsables(data.usables, data.spendables, data.choice);
   updateDice(data.dice, data.roll, data.roller == data.player_idx);
   updateEventLog(data.event_log);
-  if (messageQueue.length && !runningAnim.length) {
-    handleData(messageQueue.shift());
+  if (!stepping && messageQueue.length && !runningAnim.length) {
+    let msg = messageQueue.shift();
+    updateStepButton();
+    handleData(msg);
   } else {
     updateStats();  // TODO: this is hacky
   }

@@ -104,6 +104,7 @@
             </div>
             <div id="uiuse"><span id="usetext">Use Items or Abilities</span><div class="spacer"></div><button onclick="doneUsing(event)" id="doneusing">Done Using</button></div>
             <div id="uispend"></div>
+            <button id="stepbutton" onclick="step(event)" style="display: none">Step</button>
           </div>
           <div id="ancientandplaces">
             <div id="ancientone">
@@ -146,8 +147,12 @@
         <div id="eventlog" class="rightelem notshown"></div>
         <div id="admin" class="rightelem notshown">
           <div class="admincategory">
+            Stepping 
+            <input type="checkbox" onclick="toggleStepping(event)"></button>
+          </div>
+          <div class="admincategory">
             Ancient One<br />
-            <button onclick="addDoom(event)">Add Doom</button><br />
+            <button onclick="addDoom(event)">Add Doom</button>
             <button onclick="removeDoom(event)">Remove Doom</button><br />
             <button onclick="awaken(event)">Awaken</button>
           </div>
