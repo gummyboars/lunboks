@@ -1,12 +1,16 @@
 assetPrefix = "eldritch";
 
 assetSet = new Set([]);
-function carefullyAdd(names) {
+nameSet = new Set([]);
+function carefullyAdd(names, isName) {
   for (let name of names) {
     if (assetSet.has(name)) {
       throw "Duplicate name " + name;
     }
     assetSet.add(name);
+    if (isName) {
+      nameSet.add(name);
+    }
   }
 }
 
@@ -29,20 +33,20 @@ characterSliders = {
   "Gangster": [2, 4, 3, 4, 0, 3],
 };
 characterNames = Object.keys(characterSliders);
-carefullyAdd(characterNames);
+carefullyAdd(characterNames, true);
 characterTitles = characterNames.map(name => name + " title");
-carefullyAdd(characterTitles);
+carefullyAdd(characterTitles, false);
 characterPictures = characterNames.map(name => name + " picture");
-carefullyAdd(characterPictures);
+carefullyAdd(characterPictures, false);
 characterSliderNames = characterNames.map(name => name + " sliders");
-carefullyAdd(characterSliderNames);
+carefullyAdd(characterSliderNames, false);
 sliderLocations = [];
 for (let i = 0; i < 4; i++) {
   for (let j = 0; j < 4; j++) {
     sliderLocations.push("Slider " + i + " " + j);
   }
 }
-carefullyAdd(sliderLocations);
+carefullyAdd(sliderLocations, false);
 commonNames = [
   ".18 Derringer",
   ".38 Revolver",
@@ -66,7 +70,7 @@ commonNames = [
   "Tommy Gun",
   "Whiskey",
 ];
-carefullyAdd(commonNames);
+carefullyAdd(commonNames, true);
 uniqueNames = [
   "Alien Statue",
   "Ancient Tablet",
@@ -95,7 +99,7 @@ uniqueNames = [
   "Yellow Play",
   "Warding Statue",
 ];
-carefullyAdd(uniqueNames);
+carefullyAdd(uniqueNames, true);
 spellNames = [
   "Bind Monster",
   "Dread Curse",
@@ -109,7 +113,7 @@ spellNames = [
   "Voice",
   "Wither",
 ];
-carefullyAdd(spellNames);
+carefullyAdd(spellNames, true);
 skillNames = [
   "Speed",
   "Sneak",
@@ -122,7 +126,7 @@ skillNames = [
   "Bravery",
   "Expert Occultist",
 ];
-carefullyAdd(skillNames);
+carefullyAdd(skillNames, true);
 allyNames = [
   "Fortune Teller",
   "Traveling Salesman",
@@ -136,7 +140,7 @@ allyNames = [
   "Old Professor",
   "Dog",
 ];
-carefullyAdd(allyNames);
+carefullyAdd(allyNames, true);
 abilityNames = [
   "Studious",
   "Shrewd Dealer",
@@ -153,7 +157,7 @@ abilityNames = [
   "Psychology",
   "Research",
 ];
-carefullyAdd(abilityNames);
+carefullyAdd(abilityNames, true);
 otherNames = [
   "Deputy",
   "Deputy's Revolver",
@@ -161,7 +165,7 @@ otherNames = [
   "Blessing",
   "Curse",
 ];
-carefullyAdd(otherNames);
+carefullyAdd(otherNames, true);
 monsterNames = [
   "Giant Insect",
   "Land Squid",
@@ -189,11 +193,11 @@ monsterNames = [
   "Witch",
   "Zombie",
 ];
-carefullyAdd(monsterNames);
+carefullyAdd(monsterNames, true);
 monsterBacks = monsterNames.map(name => name + " back");
-carefullyAdd(monsterBacks);
+carefullyAdd(monsterBacks, false);
 monsterTexts = monsterNames.map(name => name + " text");
-carefullyAdd(monsterTexts);
+carefullyAdd(monsterTexts, false);
 otherWorlds = [
   "Abyss",
   "Another Dimension",
@@ -204,11 +208,11 @@ otherWorlds = [
   "Dreamlands",
   "Pluto",
 ];
-carefullyAdd(otherWorlds);
+carefullyAdd(otherWorlds, true);
 gateNames = otherWorlds.map(name => "Gate " + name);
-carefullyAdd(gateNames);
+carefullyAdd(gateNames, false);
 extraNames = ["Lost", "Sky", "Outskirts"];
-carefullyAdd(extraNames);
+carefullyAdd(extraNames, false);
 ancientOneDoomMax = {
   "Squid Face": 13,
   "The Yellow King": 13,
@@ -217,28 +221,23 @@ ancientOneDoomMax = {
   "The Thousand Masks": 11,
 }
 ancientOnes = Object.keys(ancientOneDoomMax);
-carefullyAdd(ancientOnes);
+carefullyAdd(ancientOnes, true);
 ancientOneWorshippers = ancientOnes.map(name => name + " worshippers");
-carefullyAdd(ancientOneWorshippers);
+carefullyAdd(ancientOneWorshippers, false);
 ancientOneSlumbers = ancientOnes.map(name => name + " slumber");
-carefullyAdd(ancientOneSlumbers);
+carefullyAdd(ancientOneSlumbers, false);
 ancientOneDooms = ancientOnes.map(name => name + " max");
-carefullyAdd(ancientOneDooms);
-assetNames = [...assetSet];
-serverNames = {};
-for (let name of assetNames) {
-  serverNames[name] = name;
-}
+carefullyAdd(ancientOneDooms, false);
 gateCards = [];
 for (let i = 1; i <= 50; i++) {
   gateCards.push("Gate" + i);
 }
-carefullyAdd(gateCards);
+carefullyAdd(gateCards, true);
 mythosCards = [];
 for (let i = 1; i <= 67; i++) {
   mythosCards.push("Mythos" + i);
 }
-carefullyAdd(mythosCards);
+carefullyAdd(mythosCards, true);
 neighborhoodNames = [
   "Northside",
   "Downtown",
@@ -250,14 +249,14 @@ neighborhoodNames = [
   "University",
   "Merchant",
 ];
-carefullyAdd(neighborhoodNames);
+carefullyAdd(neighborhoodNames, true);
 encounterCardNames = neighborhoodNames.map(name => name + " Card");
 for (let n of neighborhoodNames) {
   for (let i = 1; i <= 7; i++) {
     encounterCardNames.push(n + i);
   }
 }
-carefullyAdd(encounterCardNames);
+carefullyAdd(encounterCardNames, false);
 locationNames = [
   "Shop",
   "Newspaper",
@@ -286,14 +285,18 @@ locationNames = [
   "Docks",
   "Isle",
 ];
-carefullyAdd(locationNames);
+carefullyAdd(locationNames, true);
 tokens = ["Dollar", "Clue", "Sanity", "Stamina", "Slider", "Seal", "Doom", "Activity"];
-carefullyAdd(tokens);
+carefullyAdd(tokens, false);
 terrors = [];
 for (let i = 0; i < 11; i++) {
   terrors.push("Terror" + i);
 }
-carefullyAdd(terrors);
+carefullyAdd(terrors, false);
 deckNames = ["common", "unique", "spells", "skills", "allies"];
-carefullyAdd(deckNames);
+carefullyAdd(deckNames, false);
 assetNames = ["statsbg", "board"].concat([...assetSet]);
+serverNames = {};
+for (let name of [...nameSet]) {
+  serverNames[name] = name;
+}
