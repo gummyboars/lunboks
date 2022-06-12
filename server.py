@@ -17,6 +17,7 @@ import websockets.server
 
 from eldritch import eldritch
 from islanders import islanders
+from mansion import mansion
 import game as game_handler
 
 
@@ -25,7 +26,7 @@ GLOBAL_LOOP = asyncio.get_event_loop()
 GLOBAL_WS_SERVER = None
 INDEX_WEBSOCKETS = set()
 GAMES = {}
-GAME_TYPES = {"islanders": islanders.IslandersGame, "eldritch": eldritch.EldritchGame}
+GAME_TYPES = {"islanders": islanders.IslandersGame, "eldritch": eldritch.EldritchGame, "mansion": mansion.MansionGame}
 # Check to make sure abstract base classes are satisfied.
 [game_class() for game_class in GAME_TYPES.values()]  # pylint: disable=expression-not-assigned
 
@@ -61,6 +62,7 @@ class MyHandler(BaseHTTPRequestHandler):
         ROOT_DIR + "/islanders",
         ROOT_DIR + "/islanders/images",
         ROOT_DIR + "/islanders/sounds",
+        ROOT_DIR + "/mansion",
         ROOT_DIR,
     ]
     if os.path.dirname(filepath) not in allowable_dirs:

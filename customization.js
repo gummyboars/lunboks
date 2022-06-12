@@ -455,11 +455,14 @@ function changesource(e) {
   initializeAssetNames();
 }
 function changegroup(e) {
+  let chosen = document.getElementById("assetgroup").value;
+  if (!chosen) {
+    return;
+  }
   let old = document.getElementById("assetsource");
   if (old != null) {
     old.parentNode.removeChild(old);
   }
-  let chosen = document.getElementById("assetgroup").value;
   newScript = document.createElement("SCRIPT");
   newScript.onload = changesource;
   newScript.src = chosen;
