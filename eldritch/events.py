@@ -14,11 +14,29 @@ from game import InvalidMove, InvalidInput
 random = SystemRandom()
 
 
-# pylint: disable=attribute-defined-outside-init
-# TODO: turn this back on when all events call super().__init__() to get a cancelled attribute
-
 # TODO: pull this from Card class without creating an import loop
 DECKS = {"common", "unique", "spells", "skills", "allies", "tradables", "specials"}
+
+
+class EventLog:
+
+  def __init__(self, text, flatten):
+    self.text: str = text
+    self.flatten: bool = flatten
+    self.sub_events: List[EventLog] = []
+
+  def __str__(self):
+    results = self.format()
+    return "\n".join(results)
+
+  def format(self, indent=0):
+    results = [indent * "  " + self.text]
+    for sub_event in self.sub_events:
+      results.extend(sub_event.format(indent+1))
+    return results
+
+  def json_repr(self):
+    return {"text": self.text, "sub_events": self.sub_events}
 
 
 class Event(metaclass=abc.ABCMeta):
@@ -42,6 +60,9 @@ class Event(metaclass=abc.ABCMeta):
   decide whether to return True or False; it should not use references to game objects.
   """
 
+  def __init__(self):
+    self.cancelled = False
+
   @abc.abstractmethod
   def resolve(self, state) -> NoReturn:
     # resolve should return True if the event was resolved, False otherwise.
@@ -55,17 +76,16 @@ class Event(metaclass=abc.ABCMeta):
     raise NotImplementedError
 
   def is_cancelled(self) -> bool:
-    return getattr(self, "cancelled", False)
+    return self.cancelled
 
   def is_done(self) -> bool:
     return self.is_cancelled() or self.is_resolved()
 
-  @abc.abstractmethod
-  def start_str(self) -> str:
-    raise NotImplementedError
+  def flatten(self) -> bool:
+    return False
 
   @abc.abstractmethod
-  def finish_str(self) -> str:
+  def log(self, state) -> str:
     raise NotImplementedError
 
 
@@ -89,6 +109,7 @@ class ChoiceEvent(Event):
 class Nothing(Event):
 
   def __init__(self):
+    super().__init__()
     self.done = False
 
   def resolve(self, state):
@@ -97,16 +118,14 @@ class Nothing(Event):
   def is_resolved(self):
     return self.done
 
-  def start_str(self):
+  def log(self, state):
     return ""
-
-  def finish_str(self):
-    return "Nothing happens"
 
 
 class Sequence(Event):
 
   def __init__(self, events, character=None):
+    super().__init__()
     self.events: List[Event] = events
     self.idx = 0
     self.character = character
@@ -121,16 +140,17 @@ class Sequence(Event):
   def is_resolved(self):
     return self.idx == len(self.events)
 
-  def start_str(self):
-    return ""
+  def flatten(self):
+    return True
 
-  def finish_str(self):
+  def log(self, state):
     return ""
 
 
 class CancelEvent(Event):
 
-  def __init__(self, to_cancel):
+  def __init__(self, to_cancel):  # TODO: cancel message?
+    super().__init__()
     self.to_cancel = to_cancel
 
   def resolve(self, state):
@@ -139,23 +159,18 @@ class CancelEvent(Event):
   def is_resolved(self):
     return self.to_cancel.is_cancelled()
 
-  def start_str(self):
+  def log(self, state):
     return ""
 
-  def finish_str(self):
-    return f"{self.to_cancel.__class__.__name__} was cancelled"
 
-
-class Turn(Event):
-
-  # pylint: disable=abstract-method
+class Turn(Event, metaclass=abc.ABCMeta):
 
   def check_lose_turn(self) -> bool:
     char = getattr(self, "character", None)
     if not char:
       return False
     if char.lose_turn_until is not None:
-      self.done = True  # pylint: disable=attribute-defined-outside-init
+      self.cancelled = True
       return True
     return False
 
@@ -163,6 +178,7 @@ class Turn(Event):
 class Upkeep(Turn):
 
   def __init__(self, character):
+    super().__init__()
     self.character = character
     self.focus_given = False
     self.reappear: Optional[Event] = None
@@ -200,11 +216,10 @@ class Upkeep(Turn):
   def is_resolved(self):
     return self.done
 
-  def start_str(self):
+  def log(self, state):
+    if self.cancelled and not self.focus_given:
+      return f"{self.character.name}'s upkeep was skipped"
     return f"{self.character.name}'s upkeep"
-
-  def finish_str(self):
-    return ""
 
 
 class UpkeepActions(Nothing):
@@ -213,10 +228,17 @@ class UpkeepActions(Nothing):
     super().__init__()
     self.character = character
 
+  def flatten(self):
+    return True
+
+  def log(self, state):
+    return ""
+
 
 class SliderInput(Event):
 
   def __init__(self, character, free=False):
+    super().__init__()
     self.character = character
     self.pending = self.character.sliders()
     assert len(self.pending) >= 3
@@ -263,18 +285,21 @@ class SliderInput(Event):
   def is_resolved(self):
     return self.done
 
-  def start_str(self):
-    return ""
-
-  def finish_str(self):
-    return ""
+  def log(self, state):
+    if self.cancelled:
+      return f"{self.character.name} did not get to set sliders"
+    if self.done:
+      return f"{self.character.name} set sliders"
+    return f"{self.character.name} must set sliders"
 
 
 class Movement(Turn):
 
   def __init__(self, character):
+    super().__init__()
     self.character = character
     self.move: Optional[Event] = None
+    self.delayed = False
     self.done = False
 
   def resolve(self, state):
@@ -285,7 +310,8 @@ class Movement(Turn):
       if self.character.delayed_until <= state.turn_number:
         self.character.delayed_until = None
       else:
-        self.done = True
+        self.cancelled = True
+        self.delayed = True
         return
 
     if self.move is None:
@@ -299,7 +325,7 @@ class Movement(Turn):
         self.character.movement_points = self.character.speed(state)
         self.move = CityMovement(self.character)
       else:
-        self.move = Nothing()  # TODO: handle lost in time and space?
+        self.move = Nothing()
       state.event_stack.append(self.move)
       return
 
@@ -309,16 +335,17 @@ class Movement(Turn):
   def is_resolved(self):
     return self.done
 
-  def start_str(self):
+  def log(self, state):
+    if self.cancelled:
+      suffix = " (delayed)" if self.delayed else ""
+      return f"{self.character.name}'s movement was skipped{suffix}"
     return f"{self.character.name}'s movement"
-
-  def finish_str(self):
-    return ""
 
 
 class CityMovement(ChoiceEvent):
 
   def __init__(self, character):
+    super().__init__()
     self.character = character
     self.routes = {}
     self.moved = False
@@ -338,11 +365,16 @@ class CityMovement(ChoiceEvent):
   def is_resolved(self):
     return self.done
 
-  def start_str(self):
-    return ""
+  def flatten(self):
+    return True
 
-  def finish_str(self):
+  def log(self, state):
     return ""
+    # if not self.done:
+    #   return f"{self.character.name} to move"
+    # if self.moved:
+    #   return f"{self.character.name} moved"
+    # return f"{self.character.name} did not move"
 
   def prompt(self):
     return f"{self.character.name} to move ({self.character.movement_points} move remaining)"
@@ -400,6 +432,7 @@ class WagonMove(Sequence):
 class EncounterPhase(Turn):
 
   def __init__(self, character):
+    super().__init__()
     self.character = character
     self.action: Optional[Event] = None
     self.done = False
@@ -409,6 +442,8 @@ class EncounterPhase(Turn):
       return
     if self.action is None:
       if not isinstance(self.character.place, places.Location):
+        self.action = Nothing()
+        self.action.done = True
         self.done = True
         return
       if self.character.place.gate and self.character.explored:
@@ -439,16 +474,16 @@ class EncounterPhase(Turn):
   def is_resolved(self):
     return self.done
 
-  def start_str(self):
+  def log(self, state):
+    if self.cancelled and self.action is None:
+      return f"{self.character.name}'s encounter phase was skipped"
     return f"{self.character.name}'s encounter phase"
-
-  def finish_str(self):
-    return ""
 
 
 class OtherWorldPhase(Turn):
 
   def __init__(self, character):
+    super().__init__()
     self.character = character
     self.action: Optional[Event] = None
     self.done = False
@@ -458,6 +493,8 @@ class OtherWorldPhase(Turn):
       return
     if self.action is None:
       if not isinstance(self.character.place, places.OtherWorld):
+        self.action = Nothing()
+        self.action.done = True
         self.done = True
         return
       self.action = GateEncounter(
@@ -471,16 +508,16 @@ class OtherWorldPhase(Turn):
   def is_resolved(self):
     return self.done
 
-  def start_str(self):
+  def log(self, state):
+    if self.cancelled and self.action is None:
+      return f"{self.character.name}'s other world phase was skipped"
     return f"{self.character.name}'s other world phase"
-
-  def finish_str(self):
-    return ""
 
 
 class Mythos(Turn):
 
   def __init__(self, _):
+    super().__init__()
     self.draw: Optional[Event] = None
     self.action: Optional[Event] = None
     self.done = False
@@ -511,16 +548,15 @@ class Mythos(Turn):
   def is_resolved(self):
     return self.done
 
-  def start_str(self):
-    return "Mythos phase"
-
-  def finish_str(self):
-    return ""
+  def log(self, state):
+    first_player = state.characters[state.first_player]
+    return f"{first_player.name}'s mythos phase"
 
 
 class InvestigatorAttack(Turn):
 
   def __init__(self, character):
+    super().__init__()
     self.character = character
     self.choice: Event = CombatChoice(character, "Choose weapons to fight the ancient one")
     self.check: Optional[Check] = None
@@ -552,16 +588,14 @@ class InvestigatorAttack(Turn):
       return True
     return self.damage is not None and self.damage.is_done()
 
-  def start_str(self):
-    return ""
-
-  def finish_str(self):
-    return ""
+  def log(self, state):
+    return f"{self.character.name}'s attack"
 
 
 class DamageAncientOne(Event):
 
   def __init__(self, character, successes):
+    super().__init__()
     self.character = character
     self.successes = successes
     self.done = False
@@ -576,16 +610,14 @@ class DamageAncientOne(Event):
   def is_resolved(self):
     return self.done
 
-  def start_str(self):
-    return ""
-
-  def finish_str(self):
-    return ""
+  def log(self, state):
+    return f"{self.character.name} had {self.successes} successes against {state.ancient_one.name}"
 
 
 class AncientAttack(Turn):
 
   def __init__(self, _):
+    super().__init__()
     self.attack: Optional[Event] = None
     self.escalated = False
     self.done = False
@@ -605,16 +637,14 @@ class AncientAttack(Turn):
   def is_resolved(self):
     return self.done
 
-  def start_str(self):
-    return ""
-
-  def finish_str(self):
-    return ""
+  def log(self, state):
+    return f"{state.ancient_one.name}'s attack"
 
 
 class DiceRoll(Event):
 
   def __init__(self, character, count):
+    super().__init__()
     self.character = character
     self.count = count
     self.roll = None
@@ -630,14 +660,14 @@ class DiceRoll(Event):
   def is_resolved(self):
     return self.roll is not None
 
-  def start_str(self):
-    return ""
-
-  def finish_str(self):
+  def log(self, state):
+    if self.roll is None:
+      if self.cancelled:
+        return f"{self.character.name} did not roll dice"
+      return f"{self.character.name} rolls {self.count} dice"
     if not self.roll:
       return f"{self.character.name} rolled no dice"
-    # pylint: disable=consider-using-f-string
-    return "%s rolled %s" % (self.character.name, " ".join([str(x) for x in self.roll]))
+    return f"{self.character.name} rolled {' '.join(str(x) for x in self.roll)}"
 
 
 class BonusDiceRoll(DiceRoll):
@@ -647,6 +677,7 @@ class BonusDiceRoll(DiceRoll):
 class MoveOne(Event):
 
   def __init__(self, character, dest):
+    super().__init__()
     self.character = character
     self.dest = dest
     self.done = False
@@ -654,7 +685,7 @@ class MoveOne(Event):
 
   def resolve(self, state):
     if self.character.movement_points <= 0:
-      self.done = True
+      self.cancelled = True
       self.moved = False
       return
     assert self.dest in [conn.name for conn in self.character.place.connections]
@@ -669,13 +700,14 @@ class MoveOne(Event):
   def is_resolved(self):
     return self.done
 
-  def start_str(self):
-    return f"{self.character.name} moving from {self.character.place.name}"
-
-  def finish_str(self):
+  def log(self, state):
+    if self.cancelled and not self.moved:
+      return f"{self.character.name} could not move to {self.dest}"
+    if self.moved is None:
+      return f"{self.character.name} moving from {self.character.place.name} to {self.dest}"
     if self.moved:
       return f"{self.character.name} moved to {self.dest}"
-    return f"{self.character.name} stayed in {self.character.place.name}"
+    return f"{self.character.name} could not move from {self.character.place.name} to {self.dest}"
 
 
 class GainOrLoss(Event):
@@ -686,6 +718,7 @@ class GainOrLoss(Event):
     assert not gains.keys() & losses.keys()
     assert all(isinstance(val, (int, values.Value)) or math.isinf(val) for val in gains.values())
     assert all(isinstance(val, (int, values.Value)) or math.isinf(val) for val in losses.values())
+    super().__init__()
     self.character = character
     self.gains = gains
     self.losses = losses
@@ -718,21 +751,49 @@ class GainOrLoss(Event):
   def is_resolved(self):
     return self.final_adjustments is not None
 
-  def start_str(self):
-    return ""
+  def log(self, state):
+    # The whole thing was cancelled.
+    if self.cancelled and not self.final_adjustments:
+      gains = "/".join(self.gains.keys())
+      losses = "/".join(self.losses.keys())
+      if self.gains and self.losses:
+        return f"{self.character.name} did not gain {gains} or lose {losses}"
+      if self.gains:
+        return f"{self.character.name} did not gain {gains}"
+      if self.losses:
+        return f"{self.character.name} did not lose {losses}"
+      return f"nothing changed for {self.character.name}"
 
-  def finish_str(self):
+    # Has not yet finished.
+    if self.final_adjustments is None:
+      gains = ", ".join(
+          str(gain.value(state) if isinstance(gain, values.Value) else gain) + f" {attr}"
+          for attr, gain in self.gains.items()
+      )
+      losses = ", ".join(
+          str(loss.value(state) if isinstance(loss, values.Value) else loss) + f" {attr}"
+          for attr, loss in self.losses.items()
+      )
+      if self.gains and self.losses:
+        return f"{self.character.name} will gain {gains} and lose {losses}"
+      if self.gains:
+        return f"{self.character.name} will gain {gains}"
+      if self.losses:
+        return f"{self.character.name} will lose {losses}"
+      return f"nothing will change for {self.character.name}"
+
+    # Finished.
     gains = ", ".join([
         f"{count} {attr}" for attr, count in self.final_adjustments.items() if count > 0])
     losses = ", ".join([
         f"{-count} {attr}" for attr, count in self.final_adjustments.items() if count < 0])
-    if not gains and not losses:
-      return ""
-    # pylint: disable=consider-using-f-string
-    result = "gained %s" % gains if gains else ""
-    result += " and " if (gains and losses) else ""
-    result += "lost %s" % losses if losses else ""
-    return self.character.name + " " + result
+    if gains and losses:
+      return f"{self.character.name} gained {gains} and lost {losses}"
+    if gains:
+      return f"{self.character.name} gained {gains}"
+    if losses:
+      return f"{self.character.name} lost {losses}"
+    return f"nothing changed for {self.character.name}"
 
 
 def Gain(character, gains):
@@ -747,6 +808,7 @@ class SplitGain(Event):
 
   def __init__(self, character, attr1, attr2, amount):
     assert isinstance(amount, (int, values.Value))
+    super().__init__()
     self.character = character
     self.attr1 = attr1
     self.attr2 = attr2
@@ -779,10 +841,10 @@ class SplitGain(Event):
   def is_resolved(self):
     return self.gain is not None and self.gain.is_done()
 
-  def start_str(self):
-    return ""
+  def flatten(self):
+    return True
 
-  def finish_str(self):
+  def log(self, state):
     return ""
 
 
@@ -792,6 +854,7 @@ class LossPrevention(Event):
     assert isinstance(source_event, GainOrLoss)
     assert isinstance(amount, (int, values.Value)) or math.isinf(amount)
     assert attribute in source_event.losses
+    super().__init__()
     self.prevention_source = prevention_source
     self.source_event: Event = source_event
     self.attribute = attribute
@@ -809,10 +872,10 @@ class LossPrevention(Event):
   def is_resolved(self):
     return self.prevented is not None
 
-  def start_str(self):
-    return ""
-
-  def finish_str(self):
+  def log(self, state):
+    if self.prevented is None:
+      amount = self.amount.value(state) if isinstance(self.amount, values.Value) else self.amount
+      return f"{self.prevention_source.name} will prevent {amount} {self.attribute} loss"
     if not self.prevented:
       return ""
     return f"{self.prevention_source.name} prevented {self.prevented} {self.attribute} loss"
@@ -821,6 +884,7 @@ class LossPrevention(Event):
 class CollectClues(Event):
 
   def __init__(self, character, place):
+    super().__init__()
     self.character = character
     self.place = place
     self.gain: Optional[Event] = None
@@ -830,7 +894,7 @@ class CollectClues(Event):
   def resolve(self, state):
     if self.picked_up is None:
       if self.character.place.name != self.place:
-        self.done = True
+        self.cancelled = True
         return
       self.picked_up = state.places[self.place].clues
 
@@ -854,13 +918,18 @@ class CollectClues(Event):
   def is_resolved(self):
     return self.done
 
-  def start_str(self):
-    return ""
-
-  def finish_str(self):
+  def log(self, state):
+    if self.cancelled and (self.gain is None or self.gain.is_cancelled()):
+      return f"{self.character.name} did not pick up clues at {self.place}"
+    if self.done:
+      if self.picked_up:
+        return f"{self.character.name} picked up {self.picked_up} clues at {self.place}"
+      return f"no clues for {self.character.name} at {self.place}"
     if self.picked_up is None:
-      return ""
-    return f"{self.character.name} picked up {self.picked_up} clues at {self.place}"
+      return f"{self.character.name} will pick up clues at {self.place}"
+    if not self.picked_up:
+      return f"no clues for {self.character.name} at {self.place}"
+    return f"{self.character.name} will pick up {self.picked_up} clues at {self.place}"
 
 
 class StackClearMixin:
@@ -868,6 +937,7 @@ class StackClearMixin:
   def clear_stack(self, state):
     saved_interrupts = state.interrupt_stack[-1]
     saved_triggers = state.trigger_stack[-1]
+    saved_log = state.log_stack[-1]
     while state.event_stack:
       event = state.event_stack[-1]
       if hasattr(event, "character") and event.character == self.character:
@@ -881,15 +951,18 @@ class StackClearMixin:
     # and triggers) back on the stack.
     state.interrupt_stack.append(saved_interrupts)
     state.trigger_stack.append(saved_triggers)
+    state.log_stack.append(saved_log)
     state.event_stack.append(self)
     assert len(state.event_stack) == len(state.trigger_stack)
     assert len(state.event_stack) == len(state.interrupt_stack)
+    assert len(state.event_stack) == len(state.log_stack)
 
 
 class InsaneOrUnconscious(StackClearMixin, Event):
 
   def __init__(self, character, attribute, desc):
     assert attribute in {"sanity", "stamina"}
+    super().__init__()
     self.character = character
     self.attribute = attribute
     self.desc = desc
@@ -935,13 +1008,13 @@ class InsaneOrUnconscious(StackClearMixin, Event):
     steps = [self.lose_clues, self.lose_items, self.lose_turn, self.force_move]
     return all(steps) and all(step.is_done() for step in steps)
 
-  def start_str(self):
-    return f"{self.character.name} {self.desc}"
-
-  def finish_str(self):
+  def log(self, state):
+    if self.cancelled and not self.stack_cleared:
+      neg_desc = self.desc.replace("went", "go").replace("passed", "pass")
+      return f"{self.character.name} did not {neg_desc}"
     if isinstance(self.force_move, ForceMovement):
-      return f"{self.character.name} woke up in the {self.force_move.location_name}"
-    return ""
+      return f"{self.character.name} {self.desc} and woke up in the {self.force_move.location_name}"
+    return f"{self.character.name} {self.desc}"
 
 
 def Insane(character):
@@ -955,6 +1028,7 @@ def Unconscious(character):
 class Devoured(StackClearMixin, Event):
 
   def __init__(self, character):
+    super().__init__()
     self.character = character
     self.stack_cleared = False
 
@@ -976,10 +1050,9 @@ class Devoured(StackClearMixin, Event):
   def is_resolved(self):
     return self.stack_cleared
 
-  def start_str(self):
-    return ""
-
-  def finish_str(self):
+  def log(self, state):
+    if self.cancelled and not self.stack_cleared:
+      return f"{self.character.name} was not devoured"
     return f"{self.character.name} was devoured"
 
 
@@ -988,6 +1061,7 @@ class DelayOrLoseTurn(Event):
   def __init__(self, character, status, which="next"):
     assert status in {"delayed", "lose_turn"}
     assert which in {"this", "next"}
+    super().__init__()
     self.character = character
     self.attr = status + "_until"
     self.num_turns = 2 if which == "next" else 1
@@ -1001,15 +1075,23 @@ class DelayOrLoseTurn(Event):
   def is_resolved(self):
     return self.until is not None
 
-  def start_str(self):
-    return ""
+  def log(self, state):
+    if self.cancelled and self.until is None:
+      if self.attr == "delayed_until":
+        return f"{self.character.name} was not delayed"
+      return f"{self.character.name} did not lose their turn"
+    if self.until is None:
+      if self.attr == "delayed_until":
+        return f"{self.character.name} will be delayed"
+      if self.num_turns == 1:
+        return f"{self.character.name} will lose the remainder of their turn"
+      return f"{self.character.name} will lose a turn"
 
-  def finish_str(self):
     if self.attr == "delayed_until":
-      return f"{self.character.name} is delayed"
+      return f"{self.character.name} was delayed"
     if self.num_turns == 1:
-      return f"{self.character.name} loses the remainder of their turn"
-    return f"{self.character.name} loses their next turn"
+      return f"{self.character.name} lost the remainder of their turn"
+    return f"{self.character.name} lost their next turn"
 
 
 def Delayed(character):
@@ -1029,6 +1111,7 @@ class LostInTimeAndSpace(Sequence):
 class BlessCurse(Event):
 
   def __init__(self, character, positive):
+    super().__init__()
     self.character = character
     self.adjustment = 1 if positive else -1
     self.change = None
@@ -1046,12 +1129,13 @@ class BlessCurse(Event):
   def is_resolved(self):
     return self.change is not None
 
-  def start_str(self):
-    return ""
-
-  def finish_str(self):
+  def log(self, state):
+    if self.cancelled and self.change is None:
+      return f"{self.character.name} was not " + ("blessed" if self.adjustment > 0 else "cursed")
+    if self.change is None:
+      return f"{self.character.name} will be " + ("blessed" if self.adjustment > 0 else "cursed")
     if not self.change:
-      return ""
+      return f"nothing changed for {self.character.name}"
     if self.character.bless_curse:
       return f"{self.character.name} became " + ("blessed" if self.change > 0 else "cursed")
     return f"{self.character.name} lost their " + ("blessing" if self.change < 0 else "curse")
@@ -1068,6 +1152,7 @@ def Curse(character):
 class MembershipChange(Event):
 
   def __init__(self, character, positive):
+    super().__init__()
     self.character = character
     self.positive = positive
     self.change = None
@@ -1081,20 +1166,25 @@ class MembershipChange(Event):
     return self.change is not None
 
   def start_str(self):
-    return ""
+    return ""  # TODO
 
-  def finish_str(self):
-    if not self.change:
-      return ""
-    if self.change < 0:
-      return f"{self.character.name} lost their Lodge membership"
-    return f"{self.character.name} became a member of the Silver Twilight Lodge"
+  def log(self, state):
+    if self.cancelled and self.change is None:
+      return f"nothing changed for {self.character.name}"
+    if self.change is not None:
+      if self.change < 0:
+        return f"{self.character.name} lost their Lodge membership"
+      return f"{self.character.name} became a member of the Silver Twilight Lodge"
+    if self.positive:
+      return f"{self.character.name} will become a member of the Silver Twilight Lodge"
+    return f"{self.character.name} will lose their Lodge membership"
 
 
 class StatusChange(Event):
 
   def __init__(self, character, status, positive=True):
     assert status in {"retainer", "bank_loan"}
+    super().__init__()
     self.character = character
     self.attr = status + "_start"
     self.positive = positive
@@ -1109,12 +1199,9 @@ class StatusChange(Event):
   def is_resolved(self):
     return self.change is not None
 
-  def start_str(self):
-    return ""
-
-  def finish_str(self):
+  def log(self, state):  # TODO: rewrite
     if not self.change:
-      return ""
+      return "nothing changed"
     status_map = {
         "retainer_start": {-1: " lost their retainer", 1: " received a retainer"},
         "bank_loan_start": {-1: " lost their bank loan??", 1: " received a bank loan"},
@@ -1125,6 +1212,7 @@ class StatusChange(Event):
 class ForceMovement(Event):
 
   def __init__(self, character, location_name):
+    super().__init__()
     self.character = character
     self.location_name: Union[MapChoice, str] = location_name
     self.done = False
@@ -1145,17 +1233,22 @@ class ForceMovement(Event):
   def is_resolved(self):
     return self.done
 
-  def start_str(self):
-    return ""
-
-  def finish_str(self):
-    return self.character.name + " moved to " + self.character.place.name
+  def log(self, state):
+    name = self.location_name
+    if isinstance(self.location_name, MapChoice):
+      name = self.location_name.choice or "nowhere"
+    if self.cancelled and not self.done:
+      return f"{self.character.name} did not move to {name}"
+    if not self.done:
+      return f"{self.character.name} will move to {name}"
+    return f"{self.character.name} moved to {name}"
 
 
 class DrawItems(Event):
 
   def __init__(self, character, deck, draw_count, prompt="Choose a card", target_type=None):
     assert deck in DECKS
+    super().__init__()
     self.character = character
     self.deck = deck
     self.prompt = prompt
@@ -1186,18 +1279,20 @@ class DrawItems(Event):
   def is_resolved(self):
     return self.drawn is not None
 
-  def start_str(self):
-    if self.target_type is None:
-      return f"{self.character.name} draws {self.draw_count} cards from the {self.deck} deck"
-    return (f"{self.character.name} draws {self.draw_count} {self.target_type} "
-            + f"cards from the {self.deck} deck")
-
-  def finish_str(self):
+  def log(self, state):
+    if self.cancelled and self.drawn is None:
+      return f"{self.character.name} did not draw cards from the {self.deck} deck"
+    if self.drawn is None:
+      if self.target_type is None:
+        return f"{self.character.name} draws {self.draw_count} cards from the {self.deck} deck"
+      return (f"{self.character.name} draws {self.draw_count} {self.target_type} "
+              + f"cards from the {self.deck} deck")
     return f"{self.character.name} drew " + ", ".join(c.name for c in self.drawn)
 
 
 class KeepDrawn(Event):
   def __init__(self, character, draw, prompt="Choose a card", keep_count=1, sort_uniq=False):
+    super().__init__()
     self.character = character
     self.draw: Union[DrawItems, DrawNamed] = draw
     self.keep_count = keep_count
@@ -1247,10 +1342,11 @@ class KeepDrawn(Event):
       return False
     return len(self.kept) >= self.keep_count or not self.drawn
 
-  def start_str(self):
-    return ""
-
-  def finish_str(self):
+  def log(self, state):
+    if self.cancelled and self.drawn is None:
+      return f"{self.character.name} did not get to keep any cards"
+    if not self.is_resolved():
+      return f"{self.character.name} chooses {self.keep_count} cards to keep"
     return f"{self.character.name} kept " + ", ".join(self.kept)
 
 
@@ -1274,6 +1370,7 @@ def GainAllyOrReward(character, ally: str, reward: Event):
 class ChangeCount(Event):
 
   def __init__(self, event, attribute, delta):
+    super().__init__()
     self.event = event
     self.attribute = attribute
     self.delta = delta
@@ -1286,17 +1383,15 @@ class ChangeCount(Event):
   def is_resolved(self):
     return self.done
 
-  def start_str(self):
-    return ""
-
-  def finish_str(self):
-    return ""
+  def log(self, state):
+    return f"{self.delta} extra"  # TODO: add a source? card type? more descriptive in general?
 
 
 class SellChosen(Event):
 
   def __init__(self, character, choice, discount_type="fixed", discount=0):
     assert discount_type in {"fixed", "rate"}
+    super().__init__()
     self.character = character
     self.choice: ChoiceEvent = choice
     self.discount_type = discount_type
@@ -1323,15 +1418,14 @@ class SellChosen(Event):
   def is_resolved(self):
     return self.resolved
 
-  def start_str(self):
+  def log(self, state):
+    if self.cancelled and not self.sold:
+      return f"{self.character.name} could not sell anything"
     if not self.choice.chosen:
-      return ""
-    return f"{self.character.name} selling " + ", ".join(i.name for i in self.choice.chosen)
-
-  def finish_str(self):
-    if not self.sold:
       return f"{self.character.name} sold nothing"
-    return f"{self.character.name} sold " + ", ".join(self.sold)
+    if self.sold:
+      return f"{self.character.name} sold {', '.join(self.sold)} for {sum(self.prices)}"
+    return f"{self.character.name} selling " + ", ".join(i.name for i in self.choice.chosen)
 
   def discounted_price(self, card):
     if self.discount_type == "fixed":
@@ -1353,6 +1447,7 @@ class PurchaseDrawn(Event):
   ):
     # TODO: draw could be something other than DrawItems (Northside 5)
     assert discount_type in {"fixed", "rate"}
+    super().__init__()
     self.character = character
     self.prompt = prompt
     self.sort_uniq = sort_uniq
@@ -1408,12 +1503,13 @@ class PurchaseDrawn(Event):
   def is_resolved(self):
     return self.resolved
 
-  def start_str(self):
-    return f"{self.character.name} chooses among cards to buy"
-
-  def finish_str(self):
+  def log(self, state):
+    if self.cancelled and self.drawn is None:
+      return f"{self.character.name} did not get to buy any cards"
+    if not self.resolved:
+      return f"{self.character.name} chooses among cards to buy"
     if not self.kept:
-      return f"{self.character.name} kept nothing"
+      return f"{self.character.name} bought nothing"
     return f"{self.character.name} bought " + ", ".join(self.kept)
 
   def discounted_price(self, card):
@@ -1436,6 +1532,7 @@ def Purchase(char, deck, draw_count, discount_type="fixed", discount=0, keep_cou
 class Encounter(Event):
 
   def __init__(self, character, location_name, count=1):
+    super().__init__()
     self.character = character
     self.location_name: Union[MapChoice, str] = location_name
     self.draw: Optional[DrawEncounter] = None
@@ -1489,17 +1586,19 @@ class Encounter(Event):
   def is_resolved(self):
     return self.encounter and self.encounter.is_done()
 
-  def start_str(self):
-    return ""
-
-  def finish_str(self):
-    return ""
+  def log(self, state):
+    if self.cancelled and self.draw is None:
+      return f"{self.character.name} did not have an encounter"
+    if self.draw is None:
+      return f"{self.character.name} has an encounter"
+    return f"{self.character.name} had an encounter at {self.location_name}"
 
 
 class DrawEncounter(Event):
 
   def __init__(self, character, neighborhood, count):
     assert count > 0
+    super().__init__()
     self.character = character
     self.neighborhood = neighborhood
     self.count = count
@@ -1513,16 +1612,18 @@ class DrawEncounter(Event):
   def is_resolved(self):
     return len(self.cards) == self.count
 
-  def start_str(self):
-    return f"{self.character.name} draws {self.count} encounter cards"
-
-  def finish_str(self):
+  def log(self, state):
+    if self.cancelled and not self.cards:
+      return f"{self.character.name} did not draw encounter cards"
+    if not self.cards:
+      return f"{self.character.name} draws {self.count} encounter cards"
     return f"{self.character.name} drew " + ", ".join([card.name for card in self.cards])
 
 
 class GateEncounter(Event):
 
   def __init__(self, character, name, colors):
+    super().__init__()
     self.character = character
     self.world_name = name
     self.colors = colors
@@ -1567,16 +1668,18 @@ class GateEncounter(Event):
   def is_resolved(self):
     return self.encounter is not None and self.encounter.is_done() and not self.cards
 
-  def start_str(self):
-    return ""
-
-  def finish_str(self):
-    return ""
+  def log(self, state):
+    if self.cancelled and not self.cards:
+      return f"{self.character.name} did not have an other world encounter"
+    if self.encounter is None:
+      return f"{self.character.name} has an other world encounter"
+    return f"{self.character.name} had an other world encounter"
 
 
 class DrawGateCard(Event):
 
   def __init__(self, character, colors):
+    super().__init__()
     self.character = character
     self.colors = colors
     self.shuffled = False
@@ -1596,10 +1699,11 @@ class DrawGateCard(Event):
   def is_resolved(self):
     return self.card is not None
 
-  def start_str(self):
-    return f"{self.character.name} must draw a " + " or ".join(self.colors) + " gate card"
-
-  def finish_str(self):
+  def log(self, state):
+    if self.cancelled and self.card is None:
+      return f"{self.character.name} did not draw a gate card"
+    if self.card is None:
+      return f"{self.character.name} must draw a " + " or ".join(self.colors) + " gate card"
     if self.shuffled:
       return f"{self.character.name} shuffled the deck and then drew {self.card.name}"
     return f"{self.character.name} drew {self.card.name}"
@@ -1609,6 +1713,7 @@ class DrawNamed(Event):
 
   def __init__(self, character, deck, item_name):
     assert deck in DECKS
+    super().__init__()
     self.character = character
     self.deck = deck
     self.item_name = item_name
@@ -1628,19 +1733,21 @@ class DrawNamed(Event):
   def is_resolved(self):
     return self.drawn is not None
 
-  def start_str(self):
-    return self.character.name + " searches the " + self.deck + " deck for a " + self.item_name
-
-  def finish_str(self):
+  def log(self, state):
+    if self.cancelled and self.drawn is None:
+      return f"{self.character.name} could not draw a {self.item_name}"
+    if self.drawn is None:
+      return f"{self.character.name} searches the {self.deck} deck for a {self.item_name}"
     if self.drawn:
-      return self.character.name + " drew a " + self.item_name + " from the " + self.deck + " deck"
-    return "There were no " + self.item_name + "s left in the " + self.deck + " deck"
+      return f"{self.character.name} drew a {self.item_name} from the {self.deck} deck"
+    return f"There were no {self.item_name}s left in the {self.deck} deck"
 
 
 class ExhaustAsset(Event):
 
   def __init__(self, character, item):
     assert item in character.possessions
+    super().__init__()
     self.character = character
     self.item = item
     self.exhausted = None
@@ -1655,12 +1762,13 @@ class ExhaustAsset(Event):
   def is_resolved(self):
     return self.exhausted is not None
 
-  def start_str(self):
-    return ""
-
-  def finish_str(self):
+  def log(self, state):
+    if self.cancelled and self.exhausted is None:
+      return f"{self.character.name} could not exhaust their {self.item.name}"
+    if self.exhausted is None:
+      return f"{self.character.name} exhausts their {self.item.name}"
     if not self.exhausted:
-      return ""
+      return f"{self.character.name} did not exhaust their {self.item.name}"
     return f"{self.character.name} exhausted their {self.item.name}"
 
 
@@ -1668,6 +1776,7 @@ class RefreshAsset(Event):
 
   def __init__(self, character, item):
     assert item in character.possessions
+    super().__init__()
     self.character = character
     self.item = item
     self.refreshed = None
@@ -1682,18 +1791,20 @@ class RefreshAsset(Event):
   def is_resolved(self):
     return self.refreshed is not None
 
-  def start_str(self):
-    return ""
-
-  def finish_str(self):
+  def log(self, state):
+    if self.cancelled and self.refreshed is None:
+      return f"{self.character.name} could not refresh their {self.item.name}"
+    if self.refreshed is None:
+      return f"{self.character.name} refreshes their {self.item.name}"
     if not self.refreshed:
-      return ""
+      return f"{self.character.name} did not refresh their {self.item.name}"
     return f"{self.character.name} refreshed their {self.item.name}"
 
 
 class RefreshAssets(Event):
 
   def __init__(self, character):
+    super().__init__()
     self.character = character
     self.refreshes: Optional[List[Event]] = None
     self.idx = 0
@@ -1711,10 +1822,10 @@ class RefreshAssets(Event):
   def is_resolved(self):
     return self.refreshes is not None and all(refresh.is_done() for refresh in self.refreshes)
 
-  def start_str(self):
-    return ""
+  def flatten(self):
+    return True
 
-  def finish_str(self):
+  def log(self, state):
     return ""
 
 
@@ -1722,6 +1833,7 @@ class ActivateItem(Event):
 
   def __init__(self, character, item):
     assert item in character.possessions
+    super().__init__()
     self.character = character
     self.item = item
     self.activated = None
@@ -1738,18 +1850,20 @@ class ActivateItem(Event):
   def is_resolved(self):
     return self.activated is not None
 
-  def start_str(self):
-    return ""
-
-  def finish_str(self):
+  def log(self, state):
+    if self.cancelled and self.activated is None:
+      return f"{self.character.name} could not use their {self.item.name}"
+    if self.activated is None:
+      return f"{self.character.name} is using their {self.item.name}"
     if not self.activated:
-      return ""
-    return f"{self.character.name} is using their {self.item.name}"
+      return f"{self.character.name} did not use their {self.item.name}"
+    return f"{self.character.name} used their {self.item.name}"
 
 
 class ActivateChosenItems(Event):
 
   def __init__(self, character, item_choice):
+    super().__init__()
     self.character = character
     self.item_choice = item_choice
     self.activations: Optional[List[Event]] = None
@@ -1772,10 +1886,10 @@ class ActivateChosenItems(Event):
   def is_resolved(self):
     return self.item_choice.is_resolved() and self.idx == len(self.item_choice.chosen)
 
-  def start_str(self):
-    return ""
+  def flatten(self):
+    return True
 
-  def finish_str(self):
+  def log(self, state):
     return ""
 
 
@@ -1783,6 +1897,7 @@ class DeactivateItem(Event):
 
   def __init__(self, character, item):
     assert item in character.possessions
+    super().__init__()
     self.character = character
     self.item = item
     self.deactivated = None
@@ -1799,16 +1914,20 @@ class DeactivateItem(Event):
   def is_resolved(self):
     return self.deactivated is not None
 
-  def start_str(self):
-    return ""
-
-  def finish_str(self):
-    return ""
+  def log(self, state):
+    if self.cancelled and self.deactivated is None:
+      return f"{self.character.name} could not stop using their {self.item.name}"
+    if self.deactivated is None:
+      return f"{self.character.name} will stop using their {self.item.name}"
+    if not self.deactivated:
+      return f"{self.character.name} did not stop using their {self.item.name}"
+    return f"{self.character.name} stopped using their {self.item.name}"
 
 
 class DeactivateItems(Event):
 
   def __init__(self, character):
+    super().__init__()
     self.character = character
     self.deactivations: Optional[List[Event]] = None
     self.idx = 0
@@ -1829,10 +1948,10 @@ class DeactivateItems(Event):
   def is_resolved(self):
     return self.deactivations is not None and all(event.is_done() for event in self.deactivations)
 
-  def start_str(self):
-    return ""
+  def flatten(self):
+    return True
 
-  def finish_str(self):
+  def log(self, state):
     return ""
 
 
@@ -1840,6 +1959,7 @@ class CastSpell(Event):
 
   def __init__(self, character, spell, choice=None):
     assert spell in character.possessions
+    super().__init__()
     self.character = character
     self.spell = spell
     self.choice: Optional[SpendMixin] = choice
@@ -1899,10 +2019,11 @@ class CastSpell(Event):
       return True
     return self.success is not None and self.activation.is_done()
 
-  def start_str(self):
-    return f"{self.character.name} is casting {self.spell.name}"
-
-  def finish_str(self):
+  def log(self, state):
+    if self.cancelled and (self.check is None or self.success is None):
+      return f"{self.character.name} did not cast {self.spell.name}"
+    if self.success is None:
+      return f"{self.character.name} is casting {self.spell.name}"
     if self.success:
       return f"{self.character.name} successfully cast {self.spell.name}"
     return f"{self.character.name} failed to cast {self.spell.name} {self.fail_message}"
@@ -1912,6 +2033,7 @@ class MarkDeactivatable(Event):
 
   def __init__(self, character, spell):
     assert spell in character.possessions
+    super().__init__()
     self.character = character
     self.spell = spell
     self.done = False
@@ -1923,10 +2045,10 @@ class MarkDeactivatable(Event):
   def is_resolved(self):
     return self.done
 
-  def start_str(self):
-    return ""
+  def flatten(self):
+    return True
 
-  def finish_str(self):
+  def log(self, state):
     return ""
 
 
@@ -1934,6 +2056,7 @@ class DeactivateSpell(Event):
 
   def __init__(self, character, spell):
     assert spell in character.possessions
+    super().__init__()
     self.character = character
     self.spell = spell
     self.done = False
@@ -1949,16 +2072,18 @@ class DeactivateSpell(Event):
   def is_resolved(self):
     return self.done
 
-  def start_str(self):
-    return ""
-
-  def finish_str(self):
-    return f"{self.spell.name} deactivated"
+  def log(self, state):
+    if self.cancelled and not self.done:
+      return f"{self.character.name} could not stop using their {self.spell.name}"
+    if not self.done:
+      return f"{self.character.name} will stop using their {self.spell.name}"
+    return f"{self.character.name} stopped using their {self.spell.name}"
 
 
 class DeactivateSpells(Event):
 
   def __init__(self, character):
+    super().__init__()
     self.character = character
     self.deactivations: Optional[List[Event]] = None
     self.idx = 0
@@ -1978,10 +2103,10 @@ class DeactivateSpells(Event):
   def is_resolved(self):
     return self.deactivations is not None and all(event.is_done() for event in self.deactivations)
 
-  def start_str(self):
-    return ""
+  def flatten(self):
+    return True
 
-  def finish_str(self):
+  def log(self, state):
     return ""
 
 
@@ -1995,6 +2120,7 @@ def LoseItems(character, count, prompt=None, decks=None, item_type=None):
 class DiscardSpecific(Event):
 
   def __init__(self, character, items, to_box=False):
+    super().__init__()
     self.character = character
     self.items = items
     self.to_box = to_box
@@ -2020,16 +2146,17 @@ class DiscardSpecific(Event):
   def is_resolved(self):
     return self.discarded is not None
 
-  def start_str(self):
-    if isinstance(self.items, ItemChoice):
-      text = f"{self.character.name} will discard the chosen items"
-    else:
-      text = f"{self.character.name} will discard " + ", ".join(item.name for item in self.items)
-    if not self.to_box:
-      return text
-    return text + " to the box"
-
-  def finish_str(self):
+  def log(self, state):
+    if self.cancelled and self.discarded is None:
+      return f"{self.character.name} could not discard the items"
+    if self.discarded is None:
+      if isinstance(self.items, ItemChoice):
+        text = f"{self.character.name} will discard the chosen items"
+      else:
+        text = f"{self.character.name} will discard " + ", ".join(item.name for item in self.items)
+      if not self.to_box:
+        return text
+      return text + " to the box"
     if not self.discarded:
       text = f"{self.character.name} did not have items to discard"
     else:
@@ -2042,6 +2169,7 @@ class DiscardSpecific(Event):
 class DiscardNamed(Event):
 
   def __init__(self, character, item_name):
+    super().__init__()
     self.character = character
     self.item_name = item_name
     self.discarded = None
@@ -2059,10 +2187,11 @@ class DiscardNamed(Event):
   def is_resolved(self):
     return self.discarded is not None
 
-  def start_str(self):
-    return f"{self.character.name} will discard a {self.item_name}"
-
-  def finish_str(self):
+  def log(self, state):
+    if self.cancelled and self.discarded is None:
+      return f"{self.character.name} could not discard their {self.item_name}"
+    if self.discarded is None:
+      return f"{self.character.name} will discard a {self.item_name}"
     if not self.discarded:
       return f"{self.character.name} did not have a {self.item_name} to discard"
     return f"{self.character.name} discarded their {self.item_name}"
@@ -2071,6 +2200,7 @@ class DiscardNamed(Event):
 class ReturnMonsterFromBoard(Event):  # TODO: merge the three return monster to cup events
 
   def __init__(self, character, monster, to_box=False):
+    super().__init__()
     self.character = character
     self.monster = monster
     self.to_box = to_box
@@ -2083,16 +2213,18 @@ class ReturnMonsterFromBoard(Event):  # TODO: merge the three return monster to 
   def is_resolved(self):
     return self.returned
 
-  def start_str(self):
-    return ""
-
-  def finish_str(self):
+  def log(self, state):
+    if self.cancelled and not self.returned:
+      return f"{self.monster.name} was not returned to the {'box' if self.to_box else 'cup'}"
+    if not self.returned:
+      return f"{self.monster.name} is returned to the {'box' if self.to_box else 'cup'}"
     return f"{self.monster.name} was returned to the {'box' if self.to_box else 'cup'}"
 
 
 class ReturnMonsterToCup(Event):
 
   def __init__(self, character, handle):
+    super().__init__()
     self.character = character
     self.handle = handle
     self.returned = None
@@ -2108,16 +2240,18 @@ class ReturnMonsterToCup(Event):
   def is_resolved(self):
     return self.returned is not None
 
-  def start_str(self):
-    return ""
-
-  def finish_str(self):
+  def log(self, state):
+    if self.cancelled and self.returned is None:
+      return f"{self.character.name} could not return {self.handle} to the cup"
+    if self.returned is None:
+      return f"{self.character.name} returns {self.handle} to the cup"
     return f"{self.character.name} returned " + ", ".join(self.returned) + " to the cup"
 
 
 class ReturnGateToStack(Event):
 
   def __init__(self, character, handle):
+    super().__init__()
     self.character = character
     self.handle = handle
     self.returned = None
@@ -2133,10 +2267,11 @@ class ReturnGateToStack(Event):
   def is_resolved(self):
     return self.returned is not None
 
-  def start_str(self):
-    return ""
-
-  def finish_str(self):
+  def log(self, state):
+    if self.cancelled and self.returned is None:
+      return f"{self.character.name} could not return {self.handle}"
+    if self.returned is None:
+      return f"{self.character.name} returns {self.handle}"
     return f"{self.character.name} returned " + ", ".join(self.returned)
 
 
@@ -2144,6 +2279,7 @@ class Check(Event):
 
   def __init__(self, character, check_type, modifier, attributes=None):
     # TODO: assert on check type
+    super().__init__()
     self.character = character
     self.check_type = check_type
     self.modifier = modifier
@@ -2216,10 +2352,11 @@ class Check(Event):
   def check_str(self):
     return f"{self.check_type} {self.modifier:+d} check"
 
-  def start_str(self):
-    return self.character.name + " makes a " + self.check_str()
-
-  def finish_str(self):
+  def log(self, state):
+    if self.cancelled and self.roll is None:
+      return f"{self.character.name} did not make a {self.check_str()}"
+    if self.roll is None:
+      return f"{self.character.name} makes a {self.check_str()}"
     if not self.successes:
       return f"{self.character.name} failed a {self.check_str()}"
     return f"{self.character.name} had {self.successes} successes on a {self.check_str()}"
@@ -2229,6 +2366,7 @@ class AddExtraDie(Event):
 
   def __init__(self, character, event):
     assert isinstance(event, BonusDiceRoll)
+    super().__init__()
     self.character = character
     self.dice: BonusDiceRoll = event
     self.done = False
@@ -2241,17 +2379,15 @@ class AddExtraDie(Event):
   def is_resolved(self):
     return self.done
 
-  def start_str(self):
+  def log(self, state):
     return f"{self.character.name} gets an extra die from their skill"
-
-  def finish_str(self):
-    return ""
 
 
 class RerollCheck(Event):
 
   def __init__(self, character, check):
     assert isinstance(check, Check)
+    super().__init__()
     self.character = character
     self.check: Check = check
     self.dice: Optional[DiceRoll] = None
@@ -2274,11 +2410,12 @@ class RerollCheck(Event):
   def is_resolved(self):
     return self.done
 
-  def start_str(self):
-    return f"{self.character.name} rerolls a {self.check.check_type} check"
-
-  def finish_str(self):
-    return ""
+  def log(self, state):
+    if self.cancelled and not self.done:
+      return f"{self.character.name} could not reroll a {self.check.check_type} check"
+    if not self.done:
+      return f"{self.character.name} rerolls a {self.check.check_type} check"
+    return f"{self.character.name} rerolled a {self.check.check_type} check"
 
 
 class Conditional(Event):
@@ -2287,6 +2424,7 @@ class Conditional(Event):
     assert isinstance(condition, values.Value) or hasattr(condition, attribute)
     assert all(isinstance(key, int) for key in result_map)
     assert min(result_map.keys()) == 0
+    super().__init__()
     self.character = character
     self.condition: Union[values.Value, Event] = condition
     self.attribute = attribute
@@ -2320,10 +2458,10 @@ class Conditional(Event):
   def is_resolved(self):
     return self.result is not None and self.result.is_done()
 
-  def start_str(self):
-    return ""
+  def flatten(self):
+    return True
 
-  def finish_str(self):
+  def log(self, state):
     return ""
 
 
@@ -2350,6 +2488,7 @@ class MultipleChoice(ChoiceEvent):
       prereqs = [None] * len(choices)
     assert len(choices) == len(prereqs)
     assert all(prereq is None or isinstance(prereq, values.Value) for prereq in prereqs)
+    super().__init__()
     self.character = character
     self._prompt = prompt
     self.choices = choices
@@ -2380,10 +2519,11 @@ class MultipleChoice(ChoiceEvent):
   def is_resolved(self):
     return self.choice is not None
 
-  def start_str(self):
-    return f"{self.character.name} must choose one of " + ", ".join([str(c) for c in self.choices])
-
-  def finish_str(self):
+  def log(self, state):
+    if self.cancelled and self.choice is None:
+      return f"{self.character.name} did not get to choose"
+    if self.choice is None:
+      return f"{self.character.name} must choose one of " + ", ".join(str(c) for c in self.choices)
     return f"{self.character.name} chose {str(self.choice)}"
 
   def prompt(self):
@@ -2411,6 +2551,7 @@ class MonsterChoice(ChoiceEvent):
   def __init__(self, character, prompt, monsters, annotations, none_choice=None):
     assert monsters
     assert len(monsters) == len(annotations)
+    super().__init__()
     self.character = character
     self._prompt = prompt
     self.monsters = monsters
@@ -2441,10 +2582,11 @@ class MonsterChoice(ChoiceEvent):
   def is_resolved(self):
     return self.choice is not None
 
-  def start_str(self):
-    return ""
-
-  def finish_str(self):
+  def log(self, state):
+    if self.cancelled and self.choice is None:
+      return f"{self.character.name} did not get to choose a monster"
+    if self.choice is None:
+      return f"{self.character.name} must choose a monster"
     if isinstance(self.choice, str):
       return f"{self.character.name} chose {self.choice}"
     return f"{self.character.name} chose {self.choice.handle}"
@@ -2609,6 +2751,7 @@ class SpendChoice(SpendMultiChoiceMixin, MultipleChoice):
 class ChangeMovementPoints(Event):
 
   def __init__(self, character, count):
+    super().__init__()
     self.character = character
     self.count = count
     self.change = None
@@ -2622,11 +2765,14 @@ class ChangeMovementPoints(Event):
   def is_resolved(self):
     return self.change is not None
 
-  def start_str(self):
-    return ""
-
-  def finish_str(self):
-    return ""
+  def log(self, state):
+    if self.cancelled and self.change is None:
+      return f"{self.character.name} did not gain or lose movement points"
+    if self.change is None:
+      text = f"gains {self.count}" if self.count > 0 else f"loses {-self.count}"
+    else:
+      text = f"gained {self.count}" if self.count > 0 else f"lost {-self.count}"
+    return f"{self.character.name} {text} movement points"
 
 
 class ReadTome(Sequence):
@@ -2659,6 +2805,7 @@ def BinarySpend(
 class ItemChoice(ChoiceEvent):
 
   def __init__(self, character, prompt, decks=None, item_type=None):
+    super().__init__()
     self.character = character
     self._prompt = prompt
     self.choices = None
@@ -2708,11 +2855,12 @@ class ItemChoice(ChoiceEvent):
   def is_resolved(self):
     return self.done
 
-  def start_str(self):
-    return f"{self.character.name} must " + self.prompt()
-
-  def finish_str(self):
-    return f"{self.character.name} chose some stuff"
+  def log(self, state):
+    if self.cancelled:
+      return f"{self.character.name} did not choose anything"
+    if not self.done:
+      return f"{self.character.name} must {self.prompt()}"
+    return f"{self.character.name} chose {', '.join(item.name for item in self.chosen)}"
 
   def prompt(self):
     return self._prompt
@@ -2833,6 +2981,7 @@ class CardSpendChoice(SpendMultiChoiceMixin, CardChoice):
 class MapChoice(ChoiceEvent, metaclass=abc.ABCMeta):
 
   def __init__(self, character, prompt, none_choice=None):
+    super().__init__()
     self.character = character
     self._prompt = prompt
     self.choices = None
@@ -2852,8 +3001,6 @@ class MapChoice(ChoiceEvent, metaclass=abc.ABCMeta):
     self.choice = choice
 
   def is_resolved(self):
-    # It is possible to have no choices (e.g. with "gate" when there are no gates on the board).
-    # In the case where there are no choices, the choice reader must account for it.
     return self.choice is not None
 
   def prompt(self):
@@ -2900,15 +3047,18 @@ class PlaceChoice(MapChoice):
     if not self.choices:
       self.cancelled = True
 
-  def start_str(self):
-    if self.choices:
-      return f"{self.character.name} must choose one of " + ", ".join(self.choices)
-    return ""  # TODO
-
-  def finish_str(self):
-    if self.choice is None:
-      return f"there were no valid choices, or {self.character.name} chose none"  # TODO
-    return f"{self.character.name} chose {self.choice}"
+  def log(self, state):
+    if self.cancelled:
+      return f"{self.character.name} did not choose anything"
+    if self.choice is not None:
+      return f"{self.character.name} chose {self.choice}"
+    if self.fixed_choices:
+      return f"{self.character.name} must choose one of " + ", ".join(self.fixed_choices)
+    if len(self.choice_filters & {"streets", "locations"}) > 1:
+      return f"{self.character.name} may choose any street or location"
+    if "streets" in self.choice_filters:
+      return f"{self.character.name} may choose any street"
+    return f"{self.character.name} may choose any location"
 
 
 class GateChoice(MapChoice):
@@ -2938,15 +3088,14 @@ class GateChoice(MapChoice):
     if len(self.choices) == 1 and self.none_choice is None:
       self.choice = self.choices[0]
 
-  def start_str(self):
+  def log(self, state):
+    if self.cancelled:
+      return f"{self.character.name} did not choose a gate"
+    if self.choice is not None:
+      return f"{self.character.name} chose the gate at {self.choice}"
     if self.gate_name is not None:
       return f"{self.character.name} must choose a gate to {self.gate_name}"
     return f"{self.character.name} must choose a gate"
-
-  def finish_str(self):
-    if self.choice is None:
-      return f"there were no open gates to {self.gate_name}"  # TODO
-    return f"{self.character.name} chose the gate at {self.choice}"
 
   def annotations(self, state):
     if self.annotation and self.choices is not None:
@@ -2989,13 +3138,12 @@ class NearestGateChoice(MapChoice):
     if len(self.choices) == 1 and self.none_choice is None:
       self.choice = self.choices[0]
 
-  def start_str(self):
-    return f"{self.character.name} must choose the nearest gate"
-
-  def finish_str(self):
-    if self.choice is None:
+  def log(self, state):
+    if self.cancelled and self.choice is None:
       return "There were no open gates"
-    return f"{self.character.name} chose {self.choice}"
+    if self.choice is None:
+      return f"{self.character.name} must choose the nearest gate"
+    return f"{self.character.name} chose the gate at {self.choice}"
 
   def annotations(self, state):
     if self.annotation and self.choices is not None:
@@ -3006,6 +3154,7 @@ class NearestGateChoice(MapChoice):
 class MonsterOnBoardChoice(ChoiceEvent):
 
   def __init__(self, character, prompt):
+    super().__init__()
     self.character = character
     self._prompt = prompt
     self.choices = []
@@ -3031,11 +3180,12 @@ class MonsterOnBoardChoice(ChoiceEvent):
   def is_resolved(self):
     return self.chosen is not None
 
-  def start_str(self):
-    pass
-
-  def finish_str(self):
-    pass
+  def log(self, state):
+    if self.cancelled and self.chosen is None:
+      return "There were no monsters on the board"
+    if self.chosen is None:
+      return f"{self.character.name} must choose a monster on the board"
+    return f"{self.character.name} chose {self.chosen.name} at {self.chosen.place.name}"
 
   def prompt(self):
     return self._prompt
@@ -3045,6 +3195,7 @@ class EvadeOrFightAll(Event):
 
   def __init__(self, character, monsters, auto_evade=False):
     assert monsters
+    super().__init__()
     self.character = character
     self.monsters = monsters
     self.done = [False] * len(monsters)
@@ -3105,16 +3256,20 @@ class EvadeOrFightAll(Event):
   def is_resolved(self):
     return all(self.done)
 
-  def start_str(self):
-    return f"{self.character.name} must evade or fight monsters"
-
-  def finish_str(self):
-    return ""
+  def log(self, state):
+    if not self.is_done():
+      if self.auto_evade:
+        return f"{self.character.name} may choose to fight monsters"
+      return f"{self.character.name} must evade or fight monsters"
+    if getattr(self.choice, "choice", None) == "Ignore All":
+      return f"{self.character.name} chose not to fight monsters"
+    return f"{self.character.name} evaded or fought monsters"
 
 
 class EvadeOrCombat(Event):
 
   def __init__(self, character, monster, auto_evade=False):
+    super().__init__()
     self.character = character
     self.monster = monster
     self.combat: Optional[Combat] = None
@@ -3154,16 +3309,22 @@ class EvadeOrCombat(Event):
       return True
     return self.combat.is_done()
 
-  def start_str(self):
-    return ""
-
-  def finish_str(self):
-    return ""
+  def log(self, state):
+    if self.cancelled and self.choice is None:
+      return f"{self.character.name} did not fight or evade the monster"
+    if not self.is_done():
+      evade_text = "evade" if not self.auto_evade else "ignore"
+      return f"{self.character.name} must either fight or {evade_text} the monster"
+    if self.evade.is_resolved() and getattr(self.evade, "evaded", self.auto_evade):
+      evade_text = "evaded" if not self.auto_evade else "ignored"
+      return f"{self.character.name} {evade_text} the {self.monster.name}"
+    return f"{self.character.name} fought the {self.monster.name}"
 
 
 class Combat(Event):
 
   def __init__(self, character, monster):
+    super().__init__()
     self.character = character
     self.monster = monster
     self.horror: Optional[Event] = None
@@ -3212,16 +3373,18 @@ class Combat(Event):
       return False
     return self.evade.evaded or self.combat.defeated
 
-  def start_str(self):
-    return f"{self.character.name} entered combat with a {self.monster.name}"
-
-  def finish_str(self):
-    return ""
+  def log(self, state):
+    if self.cancelled and self.horror is None and self.combat is None:
+      return f"{self.character.name} did not enter combat with a {self.monster.name}"
+    if self.is_done():
+      return f"{self.character.name} fought a {self.monster.name}"
+    return f"{self.character.name} is fighting a {self.monster.name}"
 
 
 class EvadeRound(Event):
 
   def __init__(self, character, monster):
+    super().__init__()
     self.character = character
     self.monster = monster
     self.check: Optional[Check] = None
@@ -3257,10 +3420,11 @@ class EvadeRound(Event):
   def is_resolved(self):
     return self.evaded or (self.damage is not None and self.damage.is_done())
 
-  def start_str(self):
-    return f"{self.character.name} attempted to flee from {self.monster.name}"
-
-  def finish_str(self):
+  def log(self, state):
+    if self.cancelled and self.evaded is None:
+      return f"{self.character.name} did not flee from a {self.monster.name}"
+    if self.evaded is None:
+      return f"{self.character.name} is attempting to flee from a {self.monster.name}"
     if self.evaded:
       return f"{self.character.name} evaded a {self.monster.name}"
     return (f"{self.character.name} did not evade the {self.monster.name}"
@@ -3271,6 +3435,7 @@ class PassEvadeRound(Event):
   def __init__(
       self, evade_round, log_message="{char_name} passed an evade round against {monster_name}"
   ):
+    super().__init__()
     self.character = evade_round.character
     self.evade_round = evade_round
     self.log_message = log_message.format(
@@ -3299,16 +3464,14 @@ class PassEvadeRound(Event):
   def is_resolved(self) -> bool:
     return self.done
 
-  def start_str(self):
-    return ""
-
-  def finish_str(self):
+  def log(self, state):
     return self.log_message
 
 
 class CombatRound(Event):
 
   def __init__(self, character, monster):
+    super().__init__()
     self.character = character
     self.monster = monster
     self.movement_cancelled = False
@@ -3367,10 +3530,11 @@ class CombatRound(Event):
       return self.damage.is_done()
     return self.done
 
-  def start_str(self):
-    return f"{self.character.name} started a combat round against a {self.monster.name}"
-
-  def finish_str(self):
+  def log(self, state):
+    if self.cancelled and self.defeated is None:
+      return f"{self.character.name} did not fight a {self.monster.name}"
+    if not self.is_resolved():
+      return f"{self.character.name} is fighting a {self.monster.name}"
     if self.defeated:
       return f"{self.character.name} defeated a {self.monster.name}"
     return f"{self.character.name} did not defeat the {self.monster.name}"
@@ -3382,6 +3546,7 @@ class PassCombatRound(Event):
       combat_round,
       log_message="{char_name} passed a combat round against {monster_name}"
   ):
+    super().__init__()
     self.combat_round = combat_round
     self.character = combat_round.character
     self.log_message = log_message.format(
@@ -3423,16 +3588,14 @@ class PassCombatRound(Event):
   def is_resolved(self) -> bool:
     return self.done
 
-  def start_str(self):
-    return ""
-
-  def finish_str(self):
+  def log(self, state):
     return self.log_message
 
 
 class TakeTrophy(Event):
 
   def __init__(self, character, monster):
+    super().__init__()
     self.character = character
     self.monster = monster
     self.done = False
@@ -3456,10 +3619,11 @@ class TakeTrophy(Event):
   def is_resolved(self):
     return self.done
 
-  def start_str(self):
-    return ""
-
-  def finish_str(self):
+  def log(self, state):
+    if self.cancelled and not self.done:
+      return f"{self.character.name} did not take a monster trophy"
+    if not self.done:
+      return f"{self.character.name} takes a monster trophy"
     return f"{self.character.name} took a {self.monster.name} as a trophy"
 
 
@@ -3471,10 +3635,23 @@ class MonsterAppears(Conditional):
     unstable = values.PlaceUnstable(character.place)
     super().__init__(character, unstable, "", {0: Nothing(), 1: appears})
 
+  def flatten(self):
+    return False
+
+  def log(self, state):
+    if self.cancelled and self.result is None:
+      return "a monster did not appear"
+    if self.result is None:
+      return "a monster appears"
+    if isinstance(self.result, Nothing):
+      return "a monster did not appear"
+    return "a monster appeared"
+
 
 class Travel(Event):
 
   def __init__(self, character, world_name):
+    super().__init__()
     self.character = character
     self.world_name: Union[MapChoice, str] = world_name
     self.done = False
@@ -3495,16 +3672,18 @@ class Travel(Event):
   def is_resolved(self):
     return self.done
 
-  def start_str(self):
-    return ""
-
-  def finish_str(self):
+  def log(self, state):
+    if self.cancelled and not self.done:
+      return f"{self.character.name} did not move to another world"
+    if not self.done:
+      return f"{self.character.name} moves to another world"
     return f"{self.character.name} moved to {self.world_name}"
 
 
 class Return(Event):
 
   def __init__(self, character, world_name, get_lost=True):
+    super().__init__()
     self.character = character
     self.world_name = world_name
     self.return_choice: Optional[ChoiceEvent] = None
@@ -3534,11 +3713,16 @@ class Return(Event):
   def is_resolved(self):
     return self.returned is not None
 
-  def start_str(self):
-    return ""
-
-  def finish_str(self):
-    return f"{self.character.name} returned"
+  def log(self, state):
+    if self.cancelled and self.returned is None:
+      return f"{self.character.name} did not return"
+    if self.returned is None:
+      return f"{self.character.name} returns"
+    if self.lost is not None:
+      return f"{self.character.name} was unable to return"
+    if not self.returned:
+      return f"{self.character.name} did not return"
+    return f"{self.character.name} returned to {state.places[self.return_choice.choice]}"
 
 
 class PullThroughGate(Sequence):
@@ -3552,13 +3736,11 @@ class PullThroughGate(Sequence):
       seq.extend([Travel(char, world_name), Delayed(char)])
     super().__init__(seq)
 
-  def start_str(self):
-    return f"{len(self.chars)} will be pulled through to {self.world_name}"
-
 
 class GateCloseAttempt(Event):
 
   def __init__(self, character, location_name):
+    super().__init__()
     self.character = character
     self.location_name = location_name
     self.choice: Optional[ChoiceEvent] = None
@@ -3599,20 +3781,22 @@ class GateCloseAttempt(Event):
       return False
     return self.closed.is_done()
 
-  def start_str(self):
-    return ""
-
-  def finish_str(self):
+  def log(self, state):
+    if self.cancelled and self.closed is None:
+      return f"{self.character.name} could not close the gate at {self.location_name}"
+    if self.closed is None:
+      return f"{self.character.name} can close the gate at {self.location_name}"
     if self.choice.is_cancelled() or self.choice.choice == "Don't close":
       return f"{self.character.name} chose not to close the gate at {self.location_name}"
     if not self.closed:
       return f"{self.character.name} failed to close the gate at {self.location_name}"
-    return ""
+    return f"{self.character.name} closed the gate at {self.location_name}"
 
 
 class CloseGate(Event):
 
   def __init__(self, character, location_name, can_take, can_seal):
+    super().__init__()
     self.character = character
     self.location_name: Union[MapChoice, str] = location_name
     self.gate = None
@@ -3686,10 +3870,11 @@ class CloseGate(Event):
   def is_resolved(self):
     return self.gate is not None and self.sealed is not None
 
-  def start_str(self):
-    return ""
-
-  def finish_str(self):
+  def log(self, state):
+    if self.cancelled and self.gate is None:
+      return f"{self.character.name} did not close a gate"
+    if self.gate is None:
+      return f"{self.character.name} is closing a gate"
     verb = "closed and sealed" if self.sealed else "closed"
     return f"{self.character.name} {verb} the gate at {self.location_name}"
 
@@ -3697,6 +3882,7 @@ class CloseGate(Event):
 class RemoveAllSeals(Event):
 
   def __init__(self):
+    super().__init__()
     self.done = False
 
   def resolve(self, state):
@@ -3708,16 +3894,14 @@ class RemoveAllSeals(Event):
   def is_resolved(self):
     return self.done
 
-  def start_str(self):
-    return ""
-
-  def finish_str(self):
+  def log(self, state):
     return "All locations were unsealed."
 
 
 class DrawMythosCard(Event):
 
   def __init__(self, character):
+    super().__init__()
     self.character = character
     self.shuffled = False
     self.card = None
@@ -3735,10 +3919,11 @@ class DrawMythosCard(Event):
   def is_resolved(self):
     return self.card is not None
 
-  def start_str(self):
-    return f"{self.character.name} draws a mythos card"
-
-  def finish_str(self):
+  def log(self, state):
+    if self.cancelled and self.card is None:
+      return f"{self.character.name} did not draw a mythos card"
+    if self.card is None:
+      return f"{self.character.name} draws a mythos card"
     if self.shuffled:
       return f"{self.character.name} shuffled the deck and then drew {self.card.name}"
     return f"{self.character.name} drew {self.card.name}"
@@ -3747,6 +3932,7 @@ class DrawMythosCard(Event):
 class OpenGate(Event):
 
   def __init__(self, location_name):
+    super().__init__()
     self.location_name = location_name
     self.opened = None
     self.draw_monsters: Optional[Event] = None
@@ -3805,10 +3991,19 @@ class OpenGate(Event):
       return self.spawn is not None and self.spawn.is_done()
     return (self.opened is False) or (self.opened and self.add_doom)
 
-  def start_str(self):
-    return f"Gate will open at {self.location_name}"
+  def log(self, state):
+    location_name = self.location_name
+    if isinstance(self.location_name, DrawMythosCard):
+      location_name = getattr(self.location_name.card, "gate_location", None)
 
-  def finish_str(self):
+    if self.cancelled and self.opened is None:
+      if location_name is not None:
+        return f"Gate did not open at {location_name}"
+      return "Gate did not open"
+    if self.opened is None:
+      if location_name is not None:
+        return f"Gate will open at {location_name}"
+      return "Gate will not open"
     if self.opened:
       return f"A gate appeared at {self.location_name}."
     if self.spawn:
@@ -3818,36 +4013,34 @@ class OpenGate(Event):
 
 class AddDoom(Event):
   def __init__(self, character=None, count=1):
-    self.added = False
+    super().__init__()
     self.count = count
     self.done = False
     self.character = character
 
   def resolve(self, state):
-    if not self.added:
-      state.ancient_one.doom += self.count
-      state.ancient_one.doom = min(state.ancient_one.doom, state.ancient_one.max_doom)
-      if state.game_stage == "awakened":
-        state.ancient_one.health += len(state.characters) * self.count
-        max_health = state.ancient_one.max_doom * len(state.characters)
-        state.ancient_one.health = min(state.ancient_one.health, max_health)
-    if not self.done:
-      self.done = True
+    state.ancient_one.doom += self.count
+    state.ancient_one.doom = min(state.ancient_one.doom, state.ancient_one.max_doom)
+    if state.game_stage == "awakened":
+      state.ancient_one.health += len(state.characters) * self.count
+      max_health = state.ancient_one.max_doom * len(state.characters)
+      state.ancient_one.health = min(state.ancient_one.health, max_health)
+    self.done = True
 
   def is_resolved(self):
     return self.done
 
-  def start_str(self):
-    return f"{self.count} doom tokens to be added"
-
-  def finish_str(self):
-    if self.done:
-      return f"{self.count} doom tokens were added"
-    return "Doom token was prevented from being added"
+  def log(self, state):
+    if self.cancelled and not self.done:
+      return "Doom token was not added"
+    if not self.done:
+      return f"{self.count} doom tokens will be added"
+    return f"{self.count} doom tokens were added"
 
 
 class RemoveDoom(Event):
   def __init__(self, character=None):
+    super().__init__()
     self.done = False
     self.character = character
 
@@ -3863,20 +4056,21 @@ class RemoveDoom(Event):
   def is_resolved(self):
     return self.done
 
-  def start_str(self):
-    return "Doom token to be removed"
-
-  def finish_str(self):
-    if self.done:
-      return "Doom token was removed"
-    return "Doom token was prevented from being removed"
+  def log(self, state):
+    if self.cancelled and not self.done:
+      return "Doom token was not removed"
+    if not self.done:
+      return "Doom token will be removed"
+    return "Doom token was removed"
 
 
 class DrawMonstersFromCup(Event):
 
   def __init__(self, count=1, character=None):
+    super().__init__()
     self.character = character
     self.count = count
+    self.awaken: Optional[Event] = None
     self.monsters = None
 
   def resolve(self, state):
@@ -3884,23 +4078,30 @@ class DrawMonstersFromCup(Event):
         idx for idx, monster in enumerate(state.monsters) if monster.place == state.monster_cup
     ]
     if len(monster_indexes) < self.count:
-      state.event_stack.append(Awaken())
+      self.awaken = Awaken()
+      state.event_stack.append(self.awaken)
       return
     self.monsters = random.sample(monster_indexes, self.count)
 
   def is_resolved(self):
+    if self.awaken is not None:
+      return self.awaken.is_done()
     return self.monsters is not None
 
-  def start_str(self):
-    return ""
-
-  def finish_str(self):
-    return ""
+  def log(self, state):
+    if self.awaken is not None:
+      return f"there were not enough monsters in the cup ({self.count})"
+    if self.cancelled:
+      return "monsters were not drawn from the cup"
+    if self.monsters is None:
+      return f"{self.count} monsters will be drawn from the cup"
+    return f"{', '.join(state.monsters[idx].name for idx in self.monsters)} were drawn from the cup"
 
 
 class MonsterSpawnChoice(ChoiceEvent):
 
   def __init__(self, draw_monsters, location_name, open_gates):
+    super().__init__()
     self.draw_monsters = draw_monsters
     self.location_name = location_name
     self.open_gates = open_gates
@@ -4022,16 +4223,21 @@ class MonsterSpawnChoice(ChoiceEvent):
   def prompt(self):
     return ""
 
-  def start_str(self):
-    return ""
-
-  def finish_str(self):
-    return ""
+  def log(self, state):
+    first_player = state.characters[state.first_player]
+    if not self.spawned:
+      return f"{first_player.name} to distribute monsters to gates"
+    text = f"{first_player.name} sent {self.spawn_count} monsters to gates and "
+    text += f"{self.outskirts_count} monsters to the outskirts."
+    if self.num_clears:
+      text += f" the outskirts cleared {self.num_clears} times"
+    return text
 
 
 class SpawnClue(Event):
 
   def __init__(self, location_name):
+    super().__init__()
     self.location_name = location_name
     self.spawned = None
     self.eligible = None
@@ -4072,12 +4278,11 @@ class SpawnClue(Event):
   def is_resolved(self):
     return self.spawned is not None
 
-  def start_str(self):
-    return ""
-
-  def finish_str(self):
+  def log(self, state):
+    if self.spawned is None and not self.cancelled:
+      return f"A clue appears at {self.location_name}"
     if not self.spawned:
-      return "Clue does not appear."
+      return f"A Clue does not appear at {self.location_name}"
     if not self.eligible:
       return f"A clue appeared at {self.location_name}."
     if len(self.eligible) == 1:
@@ -4090,6 +4295,7 @@ class SpawnClue(Event):
 class MoveMonsters(Event):
 
   def __init__(self, white_dimensions, black_dimensions):
+    super().__init__()
     self.white_dimensions = white_dimensions
     self.black_dimensions = black_dimensions
     self.moves: Optional[Event] = None
@@ -4114,17 +4320,15 @@ class MoveMonsters(Event):
   def is_resolved(self):
     return self.moves is not None and self.moves.is_done()
 
-  def start_str(self):
-    movement = ", ".join(self.white_dimensions) + " move on white, "
+  def log(self, state):
+    movement = ", ".join(self.white_dimensions) + " move on white; "
     return movement + ", ".join(self.black_dimensions) + " move on black"
-
-  def finish_str(self):
-    return ""
 
 
 class MoveMonster(Event):
 
   def __init__(self, monster, color):
+    super().__init__()
     self.monster = monster
     self.color = color
     self.source = None
@@ -4204,12 +4408,13 @@ class MoveMonster(Event):
   def is_resolved(self):
     return self.destination is not None
 
-  def start_str(self):
-    return ""
-
-  def finish_str(self):
+  def log(self, state):
+    if self.cancelled and self.destination is None:
+      return f"{self.monster.name} did not move"
+    if self.destination is None:
+      return f"{self.monster.name} moves"
     if not self.destination:
-      return ""
+      return f"{self.monster.name} did not move"
     return f"{self.monster.name} moved from {self.source.name} to {self.destination.name}"
 
 
@@ -4218,6 +4423,7 @@ class ReturnToCup(Event):
   def __init__(self, names=None, from_places=None):
     assert names or from_places
     assert not (names and from_places)
+    super().__init__()
     self.names = set(names if names else [])
     self.places = set(from_places if from_places else [])
     self.returned = None
@@ -4255,18 +4461,20 @@ class ReturnToCup(Event):
   def is_resolved(self):
     return self.returned is not None
 
-  def start_str(self):
-    if self.names is not None:
-      return "All " + ", ".join(self.names) + " will be returned to the cup."
-    return "All monsters in " + ", ".join(self.places) + " will be returned to the cup."
-
-  def finish_str(self):
+  def log(self, state):
+    if self.cancelled and self.returned is None:
+      return "monsters were not returned to the cup"
+    if self.returned is None:
+      if self.names:
+        return "All " + ", ".join(self.names) + " will be returned to the cup."
+      return "All monsters in " + ", ".join(self.places) + " will be returned to the cup."
     return f"{self.returned} monsters returned to the cup"
 
 
 class CloseLocation(Event):
 
   def __init__(self, location_name, for_turns=float("inf"), evict=True):
+    super().__init__()
     self.location_name = location_name
     self.for_turns = for_turns
     self.evict = evict
@@ -4296,16 +4504,19 @@ class CloseLocation(Event):
   def is_resolved(self):
     return self.resolved
 
-  def start_str(self):
-    return f"Closing {self.location_name}"
-
-  def finish_str(self):
-    return ""
+  def log(self, state):
+    if self.cancelled and not self.resolved:
+      return f"{self.location_name} was not closed"
+    suffix = f"for {self.for_turns} turns" if not math.isinf(self.for_turns) else "permanently"
+    if not self.resolved:
+      return f"{self.location_name} is closing {suffix}"
+    return f"{self.location_name} was closed {suffix}"
 
 
 class ActivateEnvironment(Event):
 
   def __init__(self, environment):
+    super().__init__()
     self.env = environment
     self.done = False
 
@@ -4319,16 +4530,18 @@ class ActivateEnvironment(Event):
   def is_resolved(self):
     return self.done
 
-  def start_str(self):
-    return ""
-
-  def finish_str(self):
-    return f"{self.env.name} is the new environment"
+  def log(self, state):
+    if self.cancelled and not self.done:
+      return f"{self.env.name} did not become the new environment"
+    if not self.done:
+      return f"{self.env.name} becomes the new environment"
+    return f"{self.env.name} became the new environment"
 
 
 class StartRumor(Event):
 
   def __init__(self, rumor):
+    super().__init__()
     self.rumor = rumor
     self.started = None
 
@@ -4344,18 +4557,20 @@ class StartRumor(Event):
   def is_resolved(self):
     return self.started is not None
 
-  def start_str(self):
-    return ""
-
-  def finish_str(self):
+  def log(self, state):
+    if self.cancelled and not self.started:
+      return f"Rumor {self.rumor.name} did not enter play"
+    if self.started is None:
+      return f"Rumor {self.rumor.name} begins"
     if not self.started:
-      return ""
-    return f"{self.rumor.name} entered play"
+      return f"Rumor {self.rumor.name} did not enter play because a rumor is already in play"
+    return f"Rumor {self.rumor.name} began"
 
 
 class ProgressRumor(Event):
 
   def __init__(self, rumor, amount=1):
+    super().__init__()
     self.rumor = rumor
     self.amount = amount
     self.increase = None
@@ -4369,16 +4584,18 @@ class ProgressRumor(Event):
   def is_resolved(self):
     return self.increase is not None
 
-  def start_str(self):
-    return ""
-
-  def finish_str(self):
-    return ""
+  def log(self, state):
+    if self.cancelled and self.increase is None:
+      return "The rumor did not advance"
+    if self.increase is None:
+      return f"The rumor will advance by {self.amount}"
+    return f"The rumor advanced by {self.increase}"
 
 
 class EndRumor(Event):
 
   def __init__(self, rumor, failed, add_global=False):
+    super().__init__()
     self.rumor = rumor
     self.add_global = add_global
     self.failed = failed
@@ -4394,11 +4611,12 @@ class EndRumor(Event):
   def is_resolved(self):
     return self.done
 
-  def start_str(self):
-    return ""
-
-  def finish_str(self):
-    return ""
+  def log(self, state):
+    if self.cancelled and not self.done:
+      return "The rumor did not end"
+    if self.failed:
+      return "The rumor has failed"
+    return "The rumor has passed"
 
 
 class AncientOneAttack(Sequence):
@@ -4408,6 +4626,7 @@ class AncientOneAttack(Sequence):
 class Awaken(Event):
 
   def __init__(self):
+    super().__init__()
     self.stack_cleared = False
     self.awaken_done = False
     self.doom_maxed = False
@@ -4418,12 +4637,15 @@ class Awaken(Event):
     if not self.stack_cleared:
       saved_interrupts = state.interrupt_stack[-1]
       saved_triggers = state.trigger_stack[-1]
+      saved_log = state.log_stack[-1]
       state.event_stack.clear()
       state.interrupt_stack.clear()
       state.trigger_stack.clear()
+      state.log_stack.clear()
       state.event_stack.append(self)
       state.interrupt_stack.append(saved_interrupts)
       state.trigger_stack.append(saved_triggers)
+      state.log_stack.append(saved_log)
       state.game_stage = "awakened"
       state.turn_phase = "ancient"
       state.environment = None
@@ -4448,8 +4670,9 @@ class Awaken(Event):
   def is_resolved(self):
     return self.done
 
-  def start_str(self):
-    return ""
-
-  def finish_str(self):
-    return ""
+  def log(self, state):
+    if self.cancelled and not self.done:
+      return f"{state.ancient_one.name} did not awaken"
+    if not self.done:
+      return f"{state.ancient_one.name} awakens"
+    return f"{state.ancient_one.name} awakened"

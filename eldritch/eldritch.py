@@ -28,7 +28,7 @@ class GameState:
 
   DEQUE_ATTRIBUTES = {"common", "unique", "spells", "skills", "allies", "gates"}
   HIDDEN_ATTRIBUTES = {
-      "event_stack", "interrupt_stack", "trigger_stack", "mythos", "gate_cards",
+      "event_stack", "interrupt_stack", "trigger_stack", "log_stack", "mythos", "gate_cards",
   }
   CUSTOM_ATTRIBUTES = {
       "characters", "all_characters", "environment", "mythos", "other_globals", "ancient_one",
@@ -78,6 +78,7 @@ class GameState:
     self.event_stack = collections.deque()
     self.interrupt_stack = collections.deque()
     self.trigger_stack = collections.deque()
+    self.log_stack = collections.deque()
     self.spendables = {}
     self.usables = {}
     self.done_using = {}
@@ -456,14 +457,15 @@ class GameState:
     yield None
     if not (self.event_stack or self.test_mode or self.game_stage in ("victory", "defeat")):
       self.next_turn()
+      yield None
     while self.event_stack:
       event = self.event_stack[-1]
-      if self.start_event(event):
-        yield None
+      self.start_event(event)
       if self.interrupt_stack[-1]:
         self.event_stack.append(self.interrupt_stack[-1].pop())
         continue
       # If the event requires the character to make a choice, stop here.
+      # TODO: should we actually be doing the usable calculation after compute_choices?
       self.usables = self.get_usable_interrupts(event)
       # TODO: maybe we can have an Input class. Or a needs_input() method.
       if isinstance(event, events.ChoiceEvent) and not event.is_done():
@@ -498,9 +500,9 @@ class GameState:
         yield None
         return
       self.pop_event(event)
-      yield None
       if not (self.event_stack or self.test_mode or self.game_stage in ("victory", "defeat")):
         self.next_turn()
+        yield None
 
   def validate_resolve(self, event):
     if event.is_done():
@@ -516,38 +518,54 @@ class GameState:
 
   def start_event(self, event):
     if len(self.interrupt_stack) >= len(self.event_stack):
-      return False
-    if event.start_str():
-      self.event_log.append("  " * len(self.interrupt_stack) + event.start_str())
+      return
+
+    # Create a log event and attach it to its parent log event, if any.
+    log = events.EventLog(event.log(self), event.flatten())
+    if not log.flatten:
+      if any(not prev_log.flatten for prev_log in self.log_stack):
+        prev_log = next(prev_log for prev_log in reversed(self.log_stack) if not prev_log.flatten)
+        prev_log.sub_events.append(log)
+      else:
+        self.event_log.append(log)
+
+    # Extend all other stacks to match the event stack. Also initialize any interrupts.
+    self.log_stack.append(log)
     self.interrupt_stack.append(self.get_interrupts(event))
     self.trigger_stack.append(None)
     err_str = f"{len(self.interrupt_stack)} interrupts but {len(self.event_stack)} events"
     err_str += " (multiple events added simultaneously?)"
     assert len(self.interrupt_stack) == len(self.event_stack), err_str
+
+    # Clear out any usables.
     self.clear_usables()
-    return True
 
   def finish_event(self, event):
     err_str = f"{len(self.trigger_stack)} triggers, but {len(self.event_stack)} events"
+    log_err_str = f"{len(self.log_stack)} logs, but {len(self.event_stack)} events"
     assert len(self.trigger_stack) == len(self.event_stack), err_str
-    if self.trigger_stack[-1] is None and not event.is_cancelled():
+    assert len(self.log_stack) == len(self.event_stack), log_err_str
+    if self.trigger_stack[-1] is not None:
+      return False
+
+    if not event.is_cancelled():
       self.trigger_stack[-1] = self.get_triggers(event)
-      self.clear_usables()
-      return True
-    # TODO: we should append to the event log here, then override when we pop it?
-    return False
+    self.log_stack[-1].text = event.log(self)
+    self.clear_usables()
+    return True
 
   def pop_event(self, event):
     assert event == self.event_stack[-1], f"popped event not on top {event}"
     err_str = f"{len(self.event_stack)} events, {len(self.trigger_stack)} triggers, "
-    err_str += f"{len(self.interrupt_stack)} interrupts"
+    err_str += f"{len(self.interrupt_stack)} interrupts, {len(self.log_stack)} logs"
     assert len(self.event_stack) == len(self.trigger_stack), err_str
     assert len(self.event_stack) == len(self.interrupt_stack), err_str
+    assert len(self.event_stack) == len(self.log_stack), err_str
+    self.log_stack[-1].text = event.log(self)
     self.event_stack.pop()
     self.trigger_stack.pop()
     self.interrupt_stack.pop()
-    if event.is_resolved() and event.finish_str():
-      self.event_log.append("  " * len(self.event_stack) + event.finish_str())
+    self.log_stack.pop()
     self.clear_usables()
 
   def clear_usables(self):

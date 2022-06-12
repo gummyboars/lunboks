@@ -45,7 +45,7 @@ class DrawGateEncounter(EventTest):
     self.assertEqual(len(self.state.gate_cards), card_count)
     self.assertEqual(self.state.gate_cards[-1].name, "Gate2")
     self.assertEqual(self.state.gate_cards[-2].name, "Gate1")
-    self.assertFalse(any("shuffled" in log for log in self.state.event_log))
+    self.assertFalse("shuffled" in str(self.state.event_log[0]))
 
   def testDrawMultipleColors(self):
     card_count = len(self.state.gate_cards)
@@ -54,7 +54,7 @@ class DrawGateEncounter(EventTest):
     self.resolve_until_done()
     self.assertEqual(len(self.state.gate_cards), card_count)
     self.assertEqual(self.state.gate_cards[-1].name, "Gate2")
-    self.assertFalse(any("shuffled" in log for log in self.state.event_log))
+    self.assertFalse("shuffled" in str(self.state.event_log[0]))
 
   def testDrawAndShuffle(self):
     card_count = len(self.state.gate_cards)
@@ -63,7 +63,7 @@ class DrawGateEncounter(EventTest):
     self.resolve_until_done()
     self.assertEqual(len(self.state.gate_cards), card_count)
     self.assertEqual(self.state.gate_cards[-1].name, "Gate3")
-    self.assertTrue(any("shuffled" in log for log in self.state.event_log))
+    self.assertTrue("shuffled" in str(self.state.event_log[0]))
 
   def testDrawMultipleColorsWithShuffle(self):
     card_count = len(self.state.gate_cards)
@@ -72,7 +72,7 @@ class DrawGateEncounter(EventTest):
     self.resolve_until_done()
     self.assertEqual(len(self.state.gate_cards), card_count)
     self.assertEqual(self.state.gate_cards[-1].name, "Gate3")
-    self.assertTrue(any("shuffled" in log for log in self.state.event_log))
+    self.assertTrue("shuffled" in str(self.state.event_log[0]))
 
 
 class GateEncounterTest(EventTest):

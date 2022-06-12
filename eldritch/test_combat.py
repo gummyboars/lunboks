@@ -1103,18 +1103,14 @@ class CombatOutputTest(EventTest):
     # These items should show up as chosen until we start processing the combat check.
     for _ in generator:
       data = self.state.for_player(0)
-      if isinstance(self.state.event_stack[-1], CombatRound):
-        self.assertIsNone(data["choice"])
-        self.assertTrue(data["characters"][0]["possessions"][0].active)
-        self.assertTrue(data["characters"][0]["possessions"][2].active)
-        self.assertFalse(data["characters"][0]["possessions"][1].active)
+      if isinstance(self.state.event_stack[-1], CombatChoice) and self.state.event_stack[-1].done:
         break
       self.assertCountEqual(data["choice"]["chosen"], ["Enchanted Knife0", ".38 Revolver0"])
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       for _ in generator:
         data = self.state.for_player(0)
         self.assertIsNone(data["choice"])
-        if isinstance(self.state.event_stack[-1], DeactivateItems):
+        if isinstance(self.state.event_stack[-1], CombatRound) and self.state.event_stack[-1].done:
           break
         self.assertTrue(data["characters"][0]["possessions"][0].active)
         self.assertTrue(data["characters"][0]["possessions"][2].active)
