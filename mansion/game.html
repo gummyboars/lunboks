@@ -1,0 +1,53 @@
+<!DOCTYPE HTML>
+<html>
+  <meta content="text/html;charset=utf-8" http-equiv="Content-Type">
+  <meta content="utf-8" http-equiv="encoding">
+  <head>
+    <link rel="icon" href="data:;base64,iVBORw0KGgo=">
+    <link rel="stylesheet" href="style.css">
+  </head>
+  <script type="text/javascript" src="names.js"></script>
+  <script type="text/javascript" src="/assets.js"></script>
+  <script type="text/javascript" src="game.js"></script>
+  <script type="text/javascript" src="defaults.js"></script>
+  <script type="text/javascript" src="plugin.js"></script>
+  <body onload="init()">
+    <div id="board">
+      <div id="overlay"></div>
+      <div id="hall"></div>
+      <div id="drawing" class="room cnvcontainer"><canvas class="cnv"></canvas></div>
+      <div id="parlor" class="room cnvcontainer"><canvas class="cnv"></canvas></div>
+      <div id="billiard" class="room cnvcontainer"><canvas class="cnv"></canvas></div>
+      <div id="dingha" class="room cnvcontainer"><canvas class="cnv"></canvas></div>
+      <div id="sitting" class="room cnvcontainer"><canvas class="cnv"></canvas></div>
+      <div id="trophy" class="room cnvcontainer"><canvas class="cnv"></canvas></div>
+      <div id="green" class="room cnvcontainer"><canvas class="cnv"></canvas></div>
+      <div id="garden" class="room cnvcontainer"><canvas class="cnv"></canvas></div>
+      <div id="cellar" class="room cnvcontainer"><canvas class="cnv"></canvas></div>
+      <div id="kitchen" class="room cnvcontainer"><canvas class="cnv"></canvas></div>
+      <div id="lancaster" class="room cnvcontainer"><canvas class="cnv"></canvas></div>
+      <div id="master" class="room cnvcontainer"><canvas class="cnv"></canvas></div>
+      <div id="nursery" class="room cnvcontainer"><canvas class="cnv"></canvas></div>
+      <div id="armory" class="room cnvcontainer"><canvas class="cnv"></canvas></div>
+      <div id="gallery" class="room cnvcontainer"><canvas class="cnv"></canvas></div>
+      <div id="balcony" class="room cnvcontainer"><canvas class="cnv"></canvas></div>
+      <div id="library" class="room cnvcontainer"><canvas class="cnv"></canvas></div>
+      <div id="tennessee" class="room cnvcontainer"><canvas class="cnv"></canvas></div>
+      <div id="lilac" class="room cnvcontainer"><canvas class="cnv"></canvas></div>
+      <div id="servants" class="room cnvcontainer"><canvas class="cnv"></canvas></div>
+      <div id="white" class="room cnvcontainer"><canvas class="cnv"></canvas></div>
+      <div id="maze" class="room cnvcontainer"><canvas class="cnv"></canvas></div>
+      <div id="carriage" class="room cnvcontainer"><canvas class="cnv"></canvas></div>
+      <div id="piazza" class="room cnvcontainer"><canvas class="cnv"></canvas></div>
+      <div id="foyer" class="room cnvcontainer"><canvas class="cnv"></canvas></div>
+    </div>
+    <div id="stuff" style="display: inline-block">
+      <div id="visible" onmouseenter="showVisible(event)" onmouseleave="hide(event)">👁️</div>
+      <div id="reachable" onmouseenter="showReachable(event)" onmouseleave="hide(event)">👣</div>
+      <div id="error"></div>
+      <button id="end" onclick="endTurn(event)">End</div>
+      <button id="start" onclick="start(event)">Start</div>
+    </div>
+    <div id="assets" style="display: none"></div>
+  </body>
+</html>
