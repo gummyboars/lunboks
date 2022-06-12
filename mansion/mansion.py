@@ -1,11 +1,16 @@
 import copy
 import json
+from random import SystemRandom
 
 from game import (  # pylint: disable=unused-import
     BaseGame, CustomEncoder, InvalidInput, UnknownMove, InvalidMove, InvalidPlayer, NotYourTurn,
     ValidatePlayer, TooManyPlayers,
 )
+from mansion import cards
 from mansion import rooms
+
+
+random = SystemRandom()
 
 
 class Player:
@@ -13,9 +18,10 @@ class Player:
   def __init__(self, room, color):
     self.room = room
     self.color = color
+    self.cards = []
 
   def json_repr(self):
-    return {"room": self.room.short_name, "color": self.color}
+    return {"room": self.room.short_name, "color": self.color, "cards": self.cards}
 
 
 class GameState:
@@ -27,6 +33,7 @@ class GameState:
     self.turn_phase = "movement"  # valid values are movement, reaction, end
     self.react_idx = 0
     self.rooms = rooms.CreateRooms()
+    self.deck = cards.CreateCards()
     self.doctor = [idx for idx, room in enumerate(self.rooms) if room.name == "Gallery"][0]
 
   def json_repr(self):
@@ -42,7 +49,13 @@ class GameState:
     else:
       data["reachable"] = []
       data["visible"] = []
-    return data  # TODO: cards
+    data["players"] = []
+    for pidx, player in enumerate(self.players):
+      pdata = player.json_repr()
+      if pidx != idx:
+        pdata["cards"] = len(pdata["cards"])
+      data["players"].append(pdata)
+    return data
 
   def handle(self, idx, data):
     if idx is None or idx < 0 or idx >= len(self.players):
@@ -119,6 +132,10 @@ class GameState:
         "blue", "red", "darkgreen", "orange", "blueviolet", "limegreen", "deepskyblue", "violet",
     ]
     self.players = [Player(self.rooms[0], colors[idx]) for idx in range(num_players)]
+    random.shuffle(self.deck)
+    for player in self.players:
+      for _ in range(6):
+        player.cards.append(self.deck.pop())
     self.started = True
 
 
