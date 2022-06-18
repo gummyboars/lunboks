@@ -220,8 +220,8 @@ def Lodge7(char):
   unique1 = events.Draw(char, "unique", 1)
   unique2 = events.Draw(char, "unique", 1)
   rolls = events.DiceRoll(char, 2)
-  two_common = events.Sequence([common1, common2], char)
-  two_unique = events.Sequence([unique1, unique2], char)
+  two_common = events.Draw(char, "common", 2, keep_count=2)
+  two_unique = events.Draw(char, "unique", 2, keep_count=2)
   one_each = events.Sequence([common1, unique1], char)
   cond = events.Conditional(
       char, rolls, "successes", {0: two_common, 1: one_each, 2: two_unique, }

@@ -1358,6 +1358,8 @@ class KeepDrawn(Event):
 
 def Draw(character, deck, draw_count, prompt="Choose a card", keep_count=1, target_type=None):
   cards = DrawItems(character, deck, draw_count, target_type=target_type)
+  if keep_count == 'all':
+    keep_count = draw_count
   keep = KeepDrawn(character, cards, prompt, keep_count, sort_uniq=math.isinf(draw_count))
   return Sequence([cards, keep], character)
 
@@ -3590,6 +3592,22 @@ class CombatRound(Event):
     return f"{self.character.name} did not defeat the {self.monster.name}"
 
 
+class PassCheck(Event):
+  def __init__(self, character, check):
+    self.character = character
+    self.check = check
+    self.done = False
+
+  def is_resolved(self):
+    return self.is_done
+
+  def start_str(self):
+    return ""
+
+  def finish_str(self):
+    return f"{self.character.name} force-passed a {self.check.check_type} check"
+
+
 class PassCombatRound(Event):
   def __init__(
       self,
@@ -4063,6 +4081,80 @@ class OpenGate(Event):
     if self.spawn:
       return f"A monster surge occurred at {self.location_name}."
     return f"A gate did not appear at {self.location_name}."
+
+
+class AddToken(Event):
+  def __init__(self, asset, token_type, character=None, n_tokens=1):
+    self.asset = asset
+    self.token_type = token_type
+    self.character = character
+    self.added = False
+    self.resolved_max = False
+    self.done = False
+    self.n_tokens = n_tokens
+
+  def resolve(self, state):
+    token_type = self.token_type
+    asset = self.asset
+
+    if not self.added:
+      asset.tokens[self.token_type] += self.n_tokens
+      self.added = True
+
+    if not self.resolved_max and asset.tokens[token_type] >= asset.max_tokens.get(token_type, float('inf')):
+      state.event_stack.append(self.asset.get_max_token_event(state, token_type, self.character))
+      self.resolved_max = True
+      return
+
+    self.done = True
+
+  def is_resolved(self):
+    return self.done
+
+  def start_str(self):
+    return f"{self.n_tokens} {self.token_type.title()} token(s) to be added to {self.asset.name}"
+
+  def finish_str(self):
+    if self.done and not self.cancelled:
+      return f"{self.n_tokens} {self.token_type.title()} token(s) added to {self.asset.name}"
+    return f"{self.n_tokens} {self.token_type.title()} token(s) prevented from being added to {self.asset.name}"
+
+
+class AddToken(Event):
+  def __init__(self, asset, token_type, character=None, n_tokens=1):
+    self.asset = asset
+    self.token_type = token_type
+    self.character = character
+    self.added = False
+    self.resolved_max = False
+    self.done = False
+    self.n_tokens = n_tokens
+
+  def resolve(self, state):
+    token_type = self.token_type
+    asset = self.asset
+
+    if not self.added:
+      asset.tokens[self.token_type] += self.n_tokens
+      self.added = True
+
+    if not self.resolved_max and asset.tokens[token_type] >= asset.max_tokens.get(token_type, float('inf')):
+      state.event_stack.append(self.asset.get_max_token_event(state, token_type, self.character))
+      self.resolved_max = True
+      return
+
+    self.done = True
+
+  def is_resolved(self):
+    return self.done
+
+  def start_str(self):
+    return f"{self.n_tokens} {self.token_type.title()} token(s) to be added to {self.asset.name}"
+
+  def finish_str(self):
+    if self.done and not self.cancelled:
+      return f"{self.n_tokens} {self.token_type.title()} token(s) added to {self.asset.name}"
+    return f"{self.n_tokens} {self.token_type.title()} token(s) prevented from being added to {self.asset.name}"
 
 
 class AddDoom(Event):

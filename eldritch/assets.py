@@ -19,6 +19,8 @@ class Asset(metaclass=abc.ABCMeta):
     self._name = name
     self._idx = idx
     self._exhausted = False
+    self.tokens = {}
+    self.max_tokens = {}
 
   @property
   def name(self):
@@ -66,6 +68,9 @@ class Asset(metaclass=abc.ABCMeta):
     return None
 
   def get_spend_event(self, owner):
+    return events.Nothing()
+
+  def get_max_token_event(self, token_type, owner):
     return events.Nothing()
 
   def json_repr(self):
