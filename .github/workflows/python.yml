@@ -33,7 +33,6 @@ jobs:
         auto_fix: ${{ github.event_name == 'pull_request' }}
         commit_message: "Fix code style issues with ${linter}"
         autopep8: true
-        autopep8_auto_fix: true
   lint-check:
     runs-on: ubuntu-latest
     steps:
