@@ -1,6 +1,26 @@
 from eldritch import events
 from .base import Weapon, OneshotWeapon
 
+__all__ = [
+    "CreateUnique", "EnchantedKnife", "EnchantedBlade", "HolyWater", "MagicLamp", "MagicPowder",
+    "SwordOfGlory"
+]
+
+
+def CreateUnique():
+  counts = {
+      HolyWater: 4,
+      EnchantedBlade: 2,
+      EnchantedKnife: 2,
+      MagicLamp: 1,
+      MagicPowder: 2,
+      SwordOfGlory: 1,
+  }
+  uniques = []
+  for item, count in counts.items():
+    uniques.extend([item(idx) for idx in range(count)])
+  return uniques
+
 
 def EnchantedKnife(idx):
   return Weapon("Enchanted Knife", idx, "unique", {"magical": 3}, {}, 1, 5)

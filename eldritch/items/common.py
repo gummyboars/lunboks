@@ -2,6 +2,25 @@ from eldritch import events
 from eldritch import values
 from .base import Item, Weapon, OneshotWeapon, Tome
 
+__all__ = [
+    "CreateCommon",
+    "Automatic45", "Axe", "Bullwhip", "CavalrySaber", "Cross", "Derringer18", "Dynamite",
+    "Knife", "Revolver38", "Rifle", "Shotgun", "TommyGun", "AncientTome", "DarkCloak",
+    "Food", "Lantern", "ResearchMaterials", "Whiskey",
+]
+
+
+def CreateCommon():
+  common = []
+  for item in [
+      AncientTome, Automatic45, DarkCloak, Derringer18, Revolver38, Dynamite, Rifle, Shotgun,
+      TommyGun, Food, ResearchMaterials, Bullwhip, Cross, CavalrySaber, Knife, Whiskey, Axe,
+      Lantern,
+  ]:
+    common.extend([item(0), item(1)])
+  return common
+
+
 # Weapons
 
 

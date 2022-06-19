@@ -4,6 +4,31 @@ from eldritch import places
 from eldritch import values
 from .base import Item
 
+__all__ = [
+  "Spell", "CreateSpells", "BindMonster", "DreadCurse", "EnchantWeapon", "FindGate", "FleshWard",
+  "Heal", "Mists", "RedSign", "Shrivelling", "Voice", "Wither"
+]
+
+
+def CreateSpells():
+  counts = {
+      BindMonster: 2,
+      DreadCurse: 4,
+      EnchantWeapon: 3,
+      FindGate: 4,
+      FleshWard: 4,
+      # Heal: 3,  TODO: add heal to the spell pool when it does not stall upkeep in tests
+      Mists: 4,
+      RedSign: 2,
+      Shrivelling: 5,
+      Voice: 3,
+      Wither: 6,
+  }
+  spells = []
+  for item, count in counts.items():
+    spells.extend([item(idx) for idx in range(count)])
+  return spells
+
 
 class Spell(Item):
 
