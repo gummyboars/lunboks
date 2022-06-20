@@ -5,8 +5,8 @@ from eldritch import values
 from .base import Item
 
 __all__ = [
-  "Spell", "CreateSpells", "BindMonster", "DreadCurse", "EnchantWeapon", "FindGate", "FleshWard",
-  "Heal", "Mists", "RedSign", "Shrivelling", "Voice", "Wither"
+    "Spell", "CreateSpells", "BindMonster", "DreadCurse", "EnchantWeapon", "FindGate", "FleshWard",
+    "Heal", "Mists", "RedSign", "Shrivelling", "Voice", "Wither"
 ]
 
 
