@@ -145,7 +145,7 @@ class EventTest(unittest.TestCase):
 
   def _formatMessage(self, msg, standardMsg):
     ret = super()._formatMessage(msg, standardMsg)
-    return ret + "\n\n\n" + "\n".join(self.state.event_log)
+    return ret + "\n\n" + "\n".join(str(log) for log in self.state.event_log)
 
 
 class SequenceTest(EventTest):
@@ -727,12 +727,12 @@ class EncounterPhaseTest(EventTest):
   def testEncounterInStreet(self):
     self.char.place = self.state.places["Rivertown"]
     self.resolve_until_done()
-    self.assertIsNone(self.encounter.action)
+    self.assertIsInstance(self.encounter.action, events.Nothing)
 
   def testEncounterInOtherWorld(self):
     self.char.place = self.state.places["Dreamlands1"]
     self.resolve_until_done()
-    self.assertIsNone(self.encounter.action)
+    self.assertIsInstance(self.encounter.action, events.Nothing)
 
   def testEncounterWithGate(self):
     self.char.place = self.state.places["Cave"]
@@ -803,7 +803,7 @@ class OtherWoldPhaseTest(EventTest):
 
   def testNotInOtherWorld(self):
     self.resolve_until_done()
-    self.assertIsNone(self.other_world.action)
+    self.assertIsInstance(self.other_world.action, events.Nothing)
 
   def testOtherWorldEncounter(self):
     self.assertEqual(self.char.stamina, 5)
@@ -1538,7 +1538,7 @@ class DiscardNamedTest(EventTest):
     self.assertFalse(discard.is_resolved())
     self.state.event_stack.append(discard)
     self.resolve_until_done()
-    self.assertEqual(discard.finish_str(), "Dummy did not have a Food to discard")
+    self.assertEqual(discard.log(self.state), "Dummy did not have a Food to discard")
 
 
 class TakeTrophyTest(EventTest):

@@ -414,6 +414,15 @@ button:disabled {
   margin-left: 0.5em;
   margin-right: 0.5em;
 }
+.logevent::before {
+  content: "➖ ";
+}
+.collapsed .logevent {
+  display: none;
+}
+.collapsed.logevent::before {
+  content: "➕ ";
+}
 #uimain {
   width: 80%;
   max-width: 80%;

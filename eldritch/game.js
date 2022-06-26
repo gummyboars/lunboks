@@ -1782,16 +1782,41 @@ function updateDice(numDice, roll, yours) {
 
 function updateEventLog(eventLog) {
   let logDiv = document.getElementById("eventlog");
-  while (logDiv.firstChild) {
-    logDiv.removeChild(logDiv.firstChild);
+  if (eventLog.length < 1) {
+    return;
   }
-  for (let e of eventLog) {
-    let textDiv = document.createElement("DIV");
-    textDiv.classList.add("logevent");
-    textDiv.innerText = e;
-    logDiv.appendChild(textDiv);
+  if (logDiv.children.length == eventLog.length) {
+    logDiv.removeChild(logDiv.lastChild);
+  }
+  while (logDiv.children.length < eventLog.length) {
+    if (logDiv.lastChild != null) {
+      logDiv.lastChild.classList.add("collapsed");
+    }
+    createLogDiv(eventLog[logDiv.children.length], logDiv, 0);
+    logDiv.lastChild.onclick = function(e) {
+      let theDiv = e.target;
+      while (theDiv != null && theDiv.tagName != "DIV") {
+        theDiv = theDiv.parentNode;
+      }
+      if (theDiv != null) {
+        theDiv.classList.toggle("collapsed");
+      }
+    };
   }
   logDiv.scrollTop = logDiv.scrollHeight;
+}
+
+function createLogDiv(logEvent, parentNode, depth) {
+  let logDiv = document.createElement("DIV");
+  let textSpan = document.createElement("SPAN");
+  textSpan.innerText = logEvent.text;
+  textSpan.style.marginLeft = depth + "ch";
+  logDiv.append(textSpan);
+  logDiv.classList.add("logevent");
+  for (let childLog of logEvent.sub_events) {
+    createLogDiv(childLog, logDiv, depth+1);
+  }
+  parentNode.appendChild(logDiv);
 }
 
 function updateAvailableCharacters(characters, pendingChars) {
