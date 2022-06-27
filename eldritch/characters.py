@@ -210,9 +210,15 @@ class Character:
     return override
 
   def count_successes(self, roll, check_type):
-    # pylint: disable=unused-argument
     threshold = 5 - self.bless_curse
-    return len([result for result in roll if result >= threshold])
+    successes = len([result for result in roll if result >= threshold])
+    if check_type == "combat":  # HACK: hard-code the Shotgun's functionality here.
+      shotgun_active = any(
+          item.name == "Shotgun" for item in self.possessions if getattr(item, "active", False)
+      )
+      if shotgun_active:
+        successes += roll.count(6)
+    return successes
 
   def hands_available(self):
     return 2 - sum([pos.hands_used() for pos in self.possessions if hasattr(pos, "hands_used")])

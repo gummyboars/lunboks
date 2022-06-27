@@ -2633,7 +2633,8 @@ class SpendMixin:
     #   event to the stack, confusing the event loop. instead, the spend sequence gets picked up
     #   on the next entry into the resolve loop.
     spend_seq = [self.character.get_spend_event(handle) for handle in handles]
-    state.event_stack.append(Sequence(spend_seq, self.character))
+    if spend_seq:
+      state.event_stack.append(Sequence(spend_seq, self.character))
 
   def spent_handles(self):
     # Items that have multiple spend types should only be counted once.

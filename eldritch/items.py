@@ -226,7 +226,7 @@ def Automatic45(idx):
   return Weapon(".45 Automatic", idx, "common", {"physical": 4}, {}, 1, 5)
 
 
-def Shotgun(idx):  # TODO: make the shotgun count 6s as two successes
+def Shotgun(idx):  # NOTE: shotgun's special ability is hard-coded into character's count_successes
   return Weapon("Shotgun", idx, "common", {"physical": 4}, {}, 2, 6)
 
 
