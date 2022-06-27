@@ -1868,6 +1868,7 @@ class ActivateChosenItems(Event):
     self.item_choice = item_choice
     self.activations: Optional[List[Event]] = None
     self.idx = 0
+    self.fix_axe = None
 
   def resolve(self, state):
     assert self.item_choice.is_done()
@@ -1882,9 +1883,16 @@ class ActivateChosenItems(Event):
         state.event_stack.append(self.activations[self.idx])
         return
       self.idx += 1
+    # HACK: allocate an extra hand to an axe if we have an extra hand. Note that you cannot have
+    # two extra hands to allocate to axes, since an axe by definition takes at least one hand.
+    if self.character.hands_available() > 0:
+      axes = [item for item in self.item_choice.chosen if item.name == "Axe"]
+      if axes:
+        axes[0]._two_handed = True  # pylint: disable=protected-access
+    self.fix_axe = True
 
   def is_resolved(self):
-    return self.item_choice.is_resolved() and self.idx == len(self.item_choice.chosen)
+    return self.activations is not None and self.idx == len(self.activations) and self.fix_axe
 
   def flatten(self):
     return True
