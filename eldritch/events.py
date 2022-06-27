@@ -1888,7 +1888,7 @@ class ActivateChosenItems(Event):
     if self.character.hands_available() > 0:
       axes = [item for item in self.item_choice.chosen if item.name == "Axe"]
       if axes:
-        axes[0]._two_handed = True
+        axes[0]._two_handed = True  # pylint: disable=protected-access
     self.fix_axe = True
 
   def is_resolved(self):
