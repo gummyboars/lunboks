@@ -53,7 +53,6 @@ class Axe(Weapon):
     return data
 
 
-
 class Bullwhip(Weapon):
 
   def __init__(self, idx):
