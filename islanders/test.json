@@ -40,6 +40,16 @@
     "game_phase": "main",
     "largest_army_player": null,
     "longest_route_player": null,
+    "options": {
+        "victory_points": {
+            "name": "Victory Points",
+            "forced": false,
+            "default": 10,
+            "choices": [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21],
+            "hidden": false,
+            "value": 10
+        }
+    },
     "pieces": [
         {
             "location": [
@@ -162,10 +172,8 @@
             "road_type": "road"
         }
     ],
-    "rob_at_two": true,
     "rob_players": [],
     "robber": null,
-    "rules": [],
     "scenario": "Test Map",
     "tiles": [
         {
@@ -363,6 +371,5 @@
     ],
     "trade_offer": {},
     "turn_idx": 0,
-    "turn_phase": "main",
-    "victory_points": 10
+    "turn_phase": "main"
 }

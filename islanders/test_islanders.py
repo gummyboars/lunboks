@@ -26,20 +26,23 @@ Road = islanders.Road
 class TestInitBoard(unittest.TestCase):
 
   def testBeginner(self):
-    state = islanders.BeginnerMap()
+    state = islanders.IslandersState()
     state.add_player("red", "player1")
     state.add_player("blue", "player2")
-    state.init({})
+    state.add_player("forestgreen", "player3")
+    islanders.BeginnerMap.mutate_options(state.options)
+    islanders.BeginnerMap.init(state)
 
     self.assertEqual(len(state.tiles), 4 + 5 + 6 + 7 + 6 + 5 + 4, "number of tiles")
     for loc, tile in state.tiles.items():
       self.assertEqual(loc, tile.location.json_repr(), "tiles mapped to location")
 
   def testRandomized(self):
-    state = islanders.RandomMap()
+    state = islanders.IslandersState()
     state.add_player("red", "player1")
     state.add_player("blue", "player2")
-    state.init({})
+    islanders.StandardMap.mutate_options(state.options)
+    islanders.StandardMap.init(state)
     counts = collections.defaultdict(int)
     for card in state.dev_cards:
       counts[card] += 1
@@ -50,10 +53,11 @@ class TestInitBoard(unittest.TestCase):
     self.assertDictEqual(counts, expected)
 
   def testInitNumbers(self):
-    state = islanders.RandomMap()
+    state = islanders.IslandersState()
     state.add_player("red", "player1")
     state.add_player("blue", "player2")
-    state.init({})
+    islanders.StandardMap.mutate_options(state.options)
+    islanders.StandardMap.init(state)
     # Put the desert in a few different spots to test that it gets skipped properly.
     for desert_spot in [(7, 1), (4, 2), (1, 7), (10, 2), (7, 3), (10, 4), (7, 5)]:
       # Reset the tile numbers to None
@@ -63,24 +67,22 @@ class TestInitBoard(unittest.TestCase):
       self.assertEqual(len(desert), 1)
       state.tiles[desert[0][0]].tile_type = state.tiles[desert_spot].tile_type
       state.tiles[desert_spot].tile_type = "norsrc"
-      state._init_numbers((7, 1), islanders.TILE_NUMBERS)
+      state.init_numbers((7, 1), islanders.TILE_NUMBERS)
       nums = [tile.number for tile in state.tiles.values() if tile.is_land]
       self.assertCountEqual(nums, islanders.TILE_NUMBERS + [None])  # None for the desert.
       self.assertIsNone(state.tiles[desert_spot].number)
 
   def testInitLarge(self):
-
-    class LargeMap(islanders.ExtraPlayers, islanders.RandomMap):
-      pass
-
-    state = LargeMap()
+    state = islanders.IslandersState()
     state.add_player("red", "player1")
     state.add_player("blue", "player2")
     state.add_player("green", "player3")
     state.add_player("yellow", "player4")
     state.add_player("brown", "player5")
     state.add_player("cyan", "player6")
-    state.init({})
+    islanders.StandardMap.mutate_options(state.options)
+    state.options["extra_build"].force(True)
+    islanders.StandardMap.init(state)
     counts = collections.defaultdict(int)
     for card in state.dev_cards:
       counts[card] += 1
@@ -94,7 +96,7 @@ class TestInitBoard(unittest.TestCase):
 class TestLoadState(unittest.TestCase):
 
   def testLoadState(self):
-    path = os.path.join(os.path.dirname(__file__), "beginner.json")
+    path = os.path.join(os.path.dirname(__file__), "sample.json")
     with open(path, encoding="ascii") as json_file:
       json_data = json_file.read()
     g = islanders.IslandersGame.parse_json(json_data)
@@ -111,7 +113,6 @@ class TestLoadState(unittest.TestCase):
       json_data = json_file.read()
     g = islanders.IslandersGame.parse_json(json_data)
     c = g.game
-    self.assertIsInstance(c, islanders.Seafarers)
     self.assertTrue(hasattr(c, "built_this_turn"))
     self.assertTrue(hasattr(c, "ships_moved"))
     self.assertEqual(c.built_this_turn, [(2, 4, 3, 5)])
@@ -122,7 +123,7 @@ class TestLoadState(unittest.TestCase):
 
   def testDumpAndLoad(self):
     # TODO: test with different numbers of users
-    scenarios = ["Random Map", "The Four Islands", "Through the Desert"]
+    scenarios = ["Standard Map", "The Four Islands", "Through the Desert"]
     for scenario in scenarios:
       with self.subTest(scenario=scenario):
         g = islanders.IslandersGame()
@@ -132,7 +133,8 @@ class TestLoadState(unittest.TestCase):
         g.handle_join("se0", {"name": "player1"})
         g.handle_join("se1", {"name": "player2"})
         g.handle_join("se2", {"name": "player3"})
-        g.handle_start("se0", {"options": {"Scenario": "Through the Desert", "5-6 Players": False}})
+        g.handle_change_scenario("se0", {"scenario": scenario})
+        g.handle_start("se0", {"options": {}})
         c = g.game
         data = g.json_str()
         d = islanders.IslandersGame.parse_json(data).game
@@ -140,9 +142,7 @@ class TestLoadState(unittest.TestCase):
         self.recursiveAssertEqual(c, d, "")
 
   def recursiveAssertEqual(self, obja, objb, path):
-    if not isinstance(obja, islanders.IslandersState):
-      # Dynamically generated classes are not equal, so skip type comparison.
-      self.assertEqual(type(obja), type(objb), path)
+    self.assertEqual(type(obja), type(objb), path)
     if hasattr(obja, "__dict__"):  # Objects
       self.assertCountEqual(obja.__dict__.keys(), objb.__dict__.keys(), path)
       for key in obja.__dict__:
@@ -184,9 +184,9 @@ class BreakpointTestMixin(unittest.TestCase):
 class CornerComputationTest(unittest.TestCase):
 
   def testIslandCorners(self):
-    c = islanders.SeafarerIslands()
-    c.load_file("islands3.json")
-    c._compute_contiguous_islands()
+    c = islanders.IslandersState()
+    islanders.SeafarerIslands.mutate_options(c.options)
+    islanders.SeafarerIslands.load_file(c, "islands3.json")
     self.assertIn((3, 1), c.corners_to_islands)
     self.assertIn((5, 5), c.corners_to_islands)
     self.assertEqual(c.corners_to_islands[(3, 1)], c.corners_to_islands[(5, 5)])
@@ -198,9 +198,9 @@ class CornerComputationTest(unittest.TestCase):
     self.assertNotEqual(c.corners_to_islands[(3, 1)], c.corners_to_islands[(12, 4)])
 
   def testShoreCorners(self):
-    c = islanders.SeafarerShores()
-    c.load_file("shores4.json")
-    c._compute_contiguous_islands()
+    c = islanders.IslandersState()
+    islanders.SeafarerShores.mutate_options(c.options)
+    islanders.SeafarerShores.load_file(c, "shores4.json")
     self.assertIn((3, 3), c.corners_to_islands)
     self.assertIn((14, 8), c.corners_to_islands)
     self.assertEqual(c.corners_to_islands[(3, 3)], c.corners_to_islands[(14, 8)])
@@ -218,9 +218,9 @@ class CornerComputationTest(unittest.TestCase):
     self.assertEqual(len(islands), len(set(islands)))
 
   def testDesertCorners(self):
-    c = islanders.SeafarerDesert()
-    c.load_file("desert3.json")
-    c._compute_contiguous_islands()
+    c = islanders.IslandersState()
+    islanders.SeafarerDesert.mutate_options(c.options)
+    islanders.SeafarerDesert.load_file(c, "desert3.json")
     self.assertIn((3, 1), c.corners_to_islands)
     self.assertIn((14, 6), c.corners_to_islands)
     self.assertEqual(c.corners_to_islands[(3, 1)], c.corners_to_islands[(14, 6)])
@@ -242,14 +242,14 @@ class CornerComputationTest(unittest.TestCase):
 class PlacementRestrictionsTest(unittest.TestCase):
 
   def testSaveAndLoad(self):
-    c = islanders.SeafarerDesert()
+    c = islanders.IslandersState()
     c.add_player("red", "player1")
     c.add_player("blue", "player2")
     c.add_player("green", "player3")
-    c.init({})
+    islanders.SeafarerDesert.mutate_options(c.options)
+    islanders.SeafarerDesert.init(c)
     self.assertCountEqual(c.placement_islands, [(-1, 3)])
     g = islanders.IslandersGame()
-    g.update_rulesets_and_choices({"Scenario": "The Four Islands", "5-6 Players": False})
     g.game = c
 
     dump = g.json_str()
@@ -258,11 +258,12 @@ class PlacementRestrictionsTest(unittest.TestCase):
     self.assertCountEqual(loaded_game.placement_islands, [(-1, 3)])
 
   def testDesert3Placement(self):
-    c = islanders.SeafarerDesert()
+    c = islanders.IslandersState()
     c.add_player("red", "player1")
     c.add_player("blue", "player2")
     c.add_player("green", "player3")
-    c.init({})
+    islanders.SeafarerDesert.mutate_options(c.options)
+    islanders.SeafarerDesert.init(c)
     self.assertCountEqual(c.placement_islands, [(-1, 3)])
 
     with self.assertRaisesRegex(InvalidMove, "first settlements"):
@@ -281,12 +282,13 @@ class PlacementRestrictionsTest(unittest.TestCase):
     c.handle(1, {"type": "settle", "location": [3, 5]})
 
   def testDesert4Placement(self):
-    c = islanders.SeafarerDesert()
+    c = islanders.IslandersState()
     c.add_player("red", "player1")
     c.add_player("blue", "player2")
     c.add_player("green", "player3")
     c.add_player("violet", "player4")
-    c.init({})
+    islanders.SeafarerDesert.mutate_options(c.options)
+    islanders.SeafarerDesert.init(c)
     self.assertCountEqual(c.placement_islands, [(-1, 5)])
 
     with self.assertRaisesRegex(InvalidMove, "first settlements"):
@@ -306,11 +308,12 @@ class PlacementRestrictionsTest(unittest.TestCase):
     c.handle(1, {"type": "settle", "location": [12, 8]})
 
   def testShores3Placement(self):
-    c = islanders.SeafarerShores()
+    c = islanders.IslandersState()
     c.add_player("red", "player1")
     c.add_player("blue", "player2")
     c.add_player("green", "player3")
-    c.init({})
+    islanders.SeafarerShores.mutate_options(c.options)
+    islanders.SeafarerShores.init(c)
     self.assertCountEqual(c.placement_islands, [(-1, 3)])
 
     with self.assertRaisesRegex(InvalidMove, "first settlements"):
@@ -322,12 +325,13 @@ class PlacementRestrictionsTest(unittest.TestCase):
     c.handle(0, {"type": "settle", "location": [3, 3]})
 
   def testShores4Placement(self):
-    c = islanders.SeafarerShores()
+    c = islanders.IslandersState()
     c.add_player("red", "player1")
     c.add_player("blue", "player2")
     c.add_player("green", "player3")
     c.add_player("violet", "player4")
-    c.init({})
+    islanders.SeafarerShores.mutate_options(c.options)
+    islanders.SeafarerShores.init(c)
     self.assertCountEqual(c.placement_islands, [(-1, 3)])
 
     with self.assertRaisesRegex(InvalidMove, "first settlements"):
@@ -342,11 +346,14 @@ class PlacementRestrictionsTest(unittest.TestCase):
 class TestIslandCalculations(BreakpointTestMixin):
 
   def setUp(self):
-    self.c = islanders.SeafarerIslands()
+    self.c = islanders.IslandersState()
     self.c.add_player("red", "player1")
     self.c.add_player("blue", "player2")
     self.c.add_player("green", "player3")
-    self.c.init({})
+    islanders.SeafarerIslands.mutate_options(self.c.options)
+    islanders.SeafarerIslands.init(self.c)
+    # TODO: we should have a helper to init a game with the default options for a scenario.
+    self.c.options["foreign_island_points"].set(2)
     self.c.handle(0, {"type": "settle", "location": [12, 4]})
     self.c.handle(0, {"type": "ship", "location": [11, 3, 12, 4]})
     self.c.handle(1, {"type": "settle", "location": [5, 5]})
@@ -361,7 +368,6 @@ class TestIslandCalculations(BreakpointTestMixin):
     self.c.turn_phase = "main"
     self.c.pirate = None
     self.g = islanders.IslandersGame()
-    self.g.update_rulesets_and_choices({"Scenario": "The Four Islands", "5-6 Players": False})
     self.g.game = self.c
 
   def testHomeIslands(self):
@@ -437,14 +443,21 @@ class TestIslandCalculations(BreakpointTestMixin):
 class BaseInputHandlerTest(BreakpointTestMixin):
 
   TEST_FILE = "test.json"
-  EXTRA_RULES = []
+  DEBUG = False
 
   def setUp(self):
     path = os.path.join(os.path.dirname(__file__), self.TEST_FILE)
     with open(path, encoding="ascii") as json_file:
       json_data = json.loads(json_file.read())
-    if self.EXTRA_RULES:
-      json_data["rules"].extend(self.EXTRA_RULES)
+    if self.DEBUG:
+      json_data["options"]["debug"] = {
+          "name": "Debug",
+          "forced": False,
+          "default": True,
+          "choices": None,
+          "hidden": False,
+          "value": True,
+      }
     self.g = islanders.IslandersGame.parse_json(json.dumps(json_data))
     self.c = self.g.game
 
@@ -464,32 +477,23 @@ class TestLoadTestData(BaseInputHandlerTest):
 class DebugRulesOffTest(BaseInputHandlerTest):
 
   def testDebugDisabledNormalGame(self):
-    self.assertListEqual(self.g.post_urls(), [])
-
-    handler = mock.MagicMock()
     with mock.patch.object(self.c, "distribute_resources") as dist:
-      self.g.handle_post(handler, "/roll_dice", {"count": ["5"]}, None)
-      self.assertTrue(handler.send_error.called)
-      self.assertFalse(dist.called)
+      with self.assertRaisesRegex(InvalidMove, "debug mode"):
+        self.g.handle("Player1", {"type": "debug_roll_dice", "count": 5})
+        self.assertFalse(dist.called)
 
 
 class DebugRulesOnTest(BaseInputHandlerTest):
 
-  EXTRA_RULES = ["Debug"]
+  DEBUG = True
 
   def testDebugEnabledRollDice(self):
-    self.assertCountEqual(self.g.post_urls(), ["/roll_dice", "/force_dice"])
-    handler = mock.MagicMock()
     with mock.patch.object(self.c, "distribute_resources") as dist:
-      self.g.handle_post(handler, "/roll_dice", {"count": ["5"]}, None)
-      self.assertFalse(handler.send_error.called)
+      self.g.handle("Player1", {"type": "debug_roll_dice", "count": 5})
       self.assertEqual(dist.call_count, 5)
 
   def testDebugEnabledForceDice(self):
-    handler = mock.MagicMock()
-    self.g.handle_post(handler, "/force_dice", {"value": ["5"]}, None)
-    self.assertFalse(handler.send_error.called)
-
+    self.g.handle("Player1", {"type": "force_dice", "value": 5})
     self.c.turn_phase = "dice"
     self.c.handle_roll_dice()
     self.assertTupleEqual(self.c.dice_roll, (2, 3))
@@ -623,7 +627,7 @@ class TestDevCards(BaseInputHandlerTest):
 class TestCollectResources(BaseInputHandlerTest):
 
   TEST_FILE = "sea_test.json"
-  EXTRA_RULES = ["Debug"]
+  DEBUG = True
 
   def setUp(self):
     BaseInputHandlerTest.setUp(self)
@@ -844,12 +848,12 @@ class TestRobberMovement(BaseInputHandlerTest):
       self.c.handle_robber((4, 2), 1)
 
   def testNoRobbingFromTwoPointsRegex(self):
-    self.c.rob_at_two = False
+    self.c.options["friendly_robber"].set(True)
     with self.assertRaisesRegex(InvalidMove, "Robbers refuse to rob such poor people."):
       self.c.handle_robber((4, 6), 0)
 
   def testRobbingFromMoreThanTwoPoints(self):
-    self.c.rob_at_two = False
+    self.c.options["friendly_robber"].set(True)
     self.c.add_piece(islanders.Piece(6, 2, "city", 1))
     self.c.handle_robber((4, 6), 0)
     self.assertEqual(self.c.event_log[-2].event_type, "robber")
@@ -859,7 +863,7 @@ class TestRobberMovement(BaseInputHandlerTest):
     self.assertCountEqual(self.c.event_log[-1].visible_players, [0, 1])
 
   def testRobbingFromTwoPointsMixedPlayerRegex(self):
-    self.c.rob_at_two = False
+    self.c.options["friendly_robber"].set(True)
     self.c.add_piece(islanders.Piece(6, 2, "city", 1))
     self.c.add_player("green", "Player3")
     self.c.add_piece(islanders.Piece(2, 6, "city", 2))
@@ -867,13 +871,13 @@ class TestRobberMovement(BaseInputHandlerTest):
       self.c.handle_robber((4, 6), 0)
 
   def testNoRobbingFromTwoPointsWithHiddenRegex(self):
-    self.c.rob_at_two = False
+    self.c.options["friendly_robber"].set(True)
     self.c.player_data[1].cards.update({"library": 1})
     with self.assertRaisesRegex(InvalidMove, "Robbers refuse to rob such poor people."):
       self.c.handle_robber((4, 6), 0)
 
   def testRobbingFromSelfAtTwoPoints(self):
-    self.c.rob_at_two = False
+    self.c.options["friendly_robber"].set(True)
     self.c.add_piece(islanders.Piece(6, 2, "city", 1))
     self.c.handle_robber((7, 5), 0)
 
@@ -947,6 +951,8 @@ class TestHandleSettleInput(BaseInputHandlerTest):
 
   def setUp(self):
     BaseInputHandlerTest.setUp(self)
+    # Add this to home_corners to avoid getting a landing event.
+    self.c.home_corners[0].append(self.c.corners_to_islands[(5, 3)])
     self.c._add_road(Road([5, 3, 6, 4], "road", 0))
     self.c._add_road(Road([8, 4, 9, 5], "road", 0))
     self.c._add_road(Road([8, 4, 9, 3], "road", 0))
@@ -1086,7 +1092,7 @@ class TestHandleRoadInput(BaseInputHandlerTest):
 
   def testCannotBuildOnWater(self):
     self.c._add_road(Road([8, 4, 9, 3], "road", 0))
-    with self.assertRaisesRegex(InvalidMove, "must be land"):
+    with self.assertRaisesRegex(InvalidMove, "two land tiles"):
       self.c.handle(0, {"type": "road", "location": [9, 3, 11, 3]})
 
   def testCannotBuildAcrossOpponentSettlement(self):
@@ -1813,7 +1819,7 @@ class TestLongestRouteAssignment(BreakpointTestMixin):
 
   def setUp(self):
     # Be sure to call add_road on the last road for each player to recalculate longest road.
-    path = os.path.join(os.path.dirname(__file__), "beginner.json")
+    path = os.path.join(os.path.dirname(__file__), "sample.json")
     with open(path, encoding="ascii") as json_file:
       json_data = json_file.read()
     self.c = islanders.IslandersState.parse_json(json.loads(json_data))
@@ -1832,8 +1838,9 @@ class TestLongestRouteAssignment(BreakpointTestMixin):
     self.c.add_road(Road([9, 9, 11, 9], "road", 2))
     for rsrc in islanders.RESOURCES:
       self.c.player_data[2].cards[rsrc] += 1
+    # Add this island to home_corners to avoid getting a landing event in the event log.
+    self.c.home_corners[2].append(self.c.corners_to_islands[(8, 4)])
     self.g = islanders.IslandersGame()
-    self.g.update_rulesets_and_choices({"Scenario": "Beginner's Map", "5-6 Players": False})
     self.g.game = self.c
 
   def testCreateLongestRoad(self):
@@ -2034,7 +2041,7 @@ class TestExtraBuildPhase(BreakpointTestMixin):
     self.g.host = "player1"
     for u in self.g.connected:
       self.g.handle_join(u, {"name": u})
-    self.g.handle_start("player1", {"options": {"Scenario": "Random Map"}})
+    self.g.handle_start("player1", {"options": {}})
     self.c = self.g.game
 
   def testNoExtraBuildDuringPlacePhase(self):
@@ -2144,6 +2151,17 @@ class TestUnstartedGame(unittest.TestCase):
     self.c.handle_join("four", {"name": "player4"})
     self.assertCountEqual(self.c.player_sessions.keys(), ["one", "four", "three"])
 
+  def testChooseBadScenario(self):
+    self.assertIsNone(self.c.game)
+    self.c.connect_user("one")
+    self.c.connect_user("two")
+    self.c.connect_user("three")
+    self.c.connect_user("four")
+    with self.assertRaises(KeyError):
+      self.c.handle_change_scenario("one", {})
+    with self.assertRaisesRegex(InvalidMove, "Unknown scenario"):
+      self.c.handle_change_scenario("one", {"scenario": "nsaoeu"})
+
   def testStartGame(self):
     self.assertIsNone(self.c.game)
     self.c.connect_user("one")
@@ -2151,27 +2169,23 @@ class TestUnstartedGame(unittest.TestCase):
     self.c.connect_user("three")
     self.c.connect_user("four")
     with self.assertRaisesRegex(InvalidMove, "at least two players"):
-      self.c.handle_start("one", {"options": {"Scenario": "Random Map"}})
+      self.c.handle_start("one", {"options": {"Scenario": "Standard Map"}})
 
     self.c.handle_join("one", {"name": "player1"})
     self.c.handle_join("two", {"name": "player2"})
     self.c.handle_join("three", {"name": "player3"})
     self.c.handle_join("four", {"name": "player4"})
     with self.assertRaisesRegex(InvalidMove, "not the host"):
-      self.c.handle_start("two", {"options": {"Scenario": "Random Map"}})
-    with self.assertRaisesRegex(InvalidMove, "Unknown scenario"):
-      self.c.handle_start("one", {"options": {"Scenario": "nsaoeu"}})
-    with self.assertRaisesRegex(InvalidMove, "must select"):
-      self.c.handle_start("one", {"options": {}})
+      self.c.handle_start("two", {"options": {}})
     self.assertIsNone(self.c.game)
 
-    self.c.handle_start("one", {"options": {"Scenario": "Random Map", "5-6 Players": False}})
+    self.c.handle_start("one", {"options": {}})
     self.assertIsNotNone(self.c.game)
     self.assertIsNone(self.c.host)
     self.assertGreater(len(self.c.game.tiles.keys()), 0)
 
     with self.assertRaisesRegex(InvalidMove, "already started"):
-      self.c.handle_start("one", {"options": {"Scenario": "Random Map"}})
+      self.c.handle_start("one", {"options": {}})
     with self.assertRaisesRegex(islanders.InvalidPlayer, "already started"):
       self.c.handle_join("one", {"name": "troll"})
 
@@ -2187,7 +2201,7 @@ class TestUnstartedGame(unittest.TestCase):
     self.c.handle_join("four", {"name": "player4"})
     self.c.disconnect_user("one")
     self.c.disconnect_user("three")
-    self.c.handle_start(self.c.host, {"options": {"Scenario": "Random Map", "5-6 Players": False}})
+    self.c.handle_start(self.c.host, {"options": {}})
 
     self.assertIsNotNone(self.c.game)
     self.assertEqual(len(self.c.game.player_data), 2)
@@ -2204,64 +2218,60 @@ class TestGameOptions(unittest.TestCase):
     self.c = islanders.IslandersGame()
 
   def testInitialState(self):
-    self.assertDictEqual(self.c.choices, {})
-    self.assertSetEqual(self.c.rules, set())
-    self.assertEqual(self.c.scenario, "Random Map")
-    self.assertTrue(issubclass(self.c.game_class, islanders.RandomMap))
-    self.assertFalse(issubclass(self.c.game_class, islanders.DebugRulesMixin))
+    basic_options = islanders.Options()
+    self.assertCountEqual(self.c.choices.keys(), basic_options.keys())
+    for key, val in self.c.choices.items():
+      self.assertDictEqual(val.__dict__, basic_options[key].__dict__)
+    self.assertEqual(self.c.scenario, "Standard Map")
 
   def testOptions(self):
     self.c.scenario = "Beginner's Map"
     json_for_player = json.loads(self.c.for_player(None))
-    option_data = {option["name"]: option for option in json_for_player["options"]}
-    self.assertIn("Scenario", option_data)
-    self.assertEqual(option_data["Scenario"]["value"], "Beginner's Map")
-    self.assertIn("Debug", option_data)
-    self.assertFalse(option_data["Debug"]["value"])
-    self.assertIsNone(option_data["Debug"]["choices"])
-    self.assertIn("5-6 Players", option_data)
-    self.assertFalse(option_data["5-6 Players"]["value"])
+    option_data = json_for_player["options"]
+    self.assertIn("debug", option_data)
+    self.assertEqual(option_data["debug"]["name"], "Debug")
+    self.assertFalse(option_data["debug"]["value"])
+    self.assertIsNone(option_data["debug"]["choices"])
+    self.assertIn("extra_build", option_data)
+    self.assertEqual(option_data["extra_build"]["name"], "5-6 Players")
+    self.assertFalse(option_data["extra_build"]["value"])
 
   def testModifyOptions(self):
     self.c.host = "a"
-    self.c.handle_select_option(
-        "a", {"options": {"Scenario": "Test Map", "Debug": True, "Friendly Robber": True}})
+    self.c.handle_change_scenario("a", {"scenario": "Test Map"})
+    self.c.handle_select_option("a", {"options": {"debug": True, "friendly_robber": True}})
     self.assertEqual(self.c.scenario, "Test Map")
-    self.assertSetEqual(self.c.rules, {"Debug"})
-    self.assertIn("Friendly Robber", self.c.choices)
-    self.assertTrue(self.c.choices["Friendly Robber"])
+    self.assertTrue(self.c.choices.debug)
+    self.assertTrue(self.c.choices.friendly_robber)
+    self.assertFalse(self.c.choices.seafarers)
 
-    self.c.handle_select_option(
-        "a", {"options": {"Scenario": "Beginner's Map", "Debug": False, "Friendly Robber": True}})
+    self.c.handle_change_scenario("a", {"scenario": "Beginner's Map"})
     self.assertEqual(self.c.scenario, "Beginner's Map")
-    self.assertSetEqual(self.c.rules, set())
-    self.assertIn("Friendly Robber", self.c.choices)
-    self.assertTrue(self.c.choices["Friendly Robber"])
+    self.assertTrue(self.c.choices.debug)
+    self.assertTrue(self.c.choices.friendly_robber)
+    self.c.handle_select_option("a", {"options": {"debug": False}})
+    self.assertEqual(self.c.scenario, "Beginner's Map")
+    self.assertFalse(self.c.choices.debug)
+    self.assertTrue(self.c.choices.friendly_robber)
+    self.assertFalse(self.c.choices.seafarers)
 
-    self.c.handle_select_option(
-        "a", {"options": {"Scenario": "Random Map", "Debug": False, "Friendly Robber": True}})
-    self.assertEqual(self.c.scenario, "Random Map")
-    self.assertSetEqual(self.c.rules, set())
-    self.assertIn("Friendly Robber", self.c.choices)
+    self.c.handle_change_scenario("a", {"scenario": "Standard Map"})
+    self.assertEqual(self.c.scenario, "Standard Map")
     # Friendly robber should be reset to default because the default changed.
-    self.assertFalse(self.c.choices["Friendly Robber"])
-    self.assertIn("Friendly Robber", self.c.choices)
-    self.assertNotIn("Debug", self.c.choices)
-    self.assertNotIn("Scenario", self.c.choices)
+    self.assertFalse(self.c.choices.friendly_robber)
+    self.assertFalse(self.c.choices.debug)
+    self.assertFalse(self.c.choices.seafarers)
 
-    self.c.handle_select_option("a", {"options": {"Scenario": "The Four Islands"}})
+    self.c.handle_change_scenario("a", {"scenario": "The Four Islands"})
     self.assertEqual(self.c.scenario, "The Four Islands")
-    self.assertSetEqual(self.c.rules, set())
     # Should set the option to its default even if it wasn't in the provided options.
-    self.assertIn("Friendly Robber", self.c.choices)
-    self.assertIn("Seafarers", self.c.choices)
-    self.assertFalse(self.c.choices["Friendly Robber"])
-    self.assertTrue(self.c.choices["Seafarers"])
+    self.assertFalse(self.c.choices.friendly_robber)
+    self.assertFalse(self.c.choices.debug)
+    self.assertTrue(self.c.choices.seafarers)
 
-    self.c.handle_select_option(
-        "a", {"options": {"Scenario": "The Four Islands", "Seafarers": False}})
+    self.c.handle_select_option("a", {"options": {"seafarers": False}})
     # You cannot override a forced option.
-    self.assertTrue(self.c.choices["Seafarers"])
+    self.assertTrue(self.c.choices.seafarers)
 
   def testStartWithOptions(self):
     self.c.connect_user("one")
@@ -2271,13 +2281,12 @@ class TestGameOptions(unittest.TestCase):
     self.c.handle_join("two", {"name": "player2"})
     self.c.handle_join("three", {"name": "player3"})
 
-    self.c.handle_select_option("one", {"options": {"Scenario": "Random Map", "Debug": True}})
+    self.c.handle_select_option("one", {"options": {"debug": True}})
     # Completely change the options before starting the game; make sure they're honored.
-    self.c.handle_start(
-        "one", {"options": {"Scenario": "The Four Islands", "Friendly Robber": True}})
-    self.assertIsInstance(self.c.game, islanders.SeafarerIslands)
-    self.assertNotIsInstance(self.c.game, islanders.DebugRulesMixin)
-    self.assertFalse(self.c.game.rob_at_two)
+    self.c.handle_start("one", {"options": {"debug": False, "friendly_robber": True}})
+    self.assertIsNotNone(self.c.game)
+    self.assertTrue(self.c.game.options.friendly_robber)
+    self.assertFalse(self.c.game.options.debug)
 
   def testStartWithFourPlayers(self):
     self.c.connect_user("one")
@@ -2291,14 +2300,14 @@ class TestGameOptions(unittest.TestCase):
     self.c.handle_join("four", {"name": "player4"})
     self.c.handle_join("five", {"name": "player5"})
 
-    self.c.handle_select_option("one", {"options": {"Scenario": "Random Map"}})
-    self.assertIn("5-6 Players", self.c.rules)
+    self.c.handle_change_scenario("one", {"scenario": "Standard Map"})
+    self.assertTrue(self.c.choices.extra_build)
 
     self.c.disconnect_user("two")
-    self.assertNotIn("5-6 Players", self.c.rules)
+    self.assertFalse(self.c.choices.extra_build)
 
-    self.c.handle_start("one", {"options": {"Scenario": "Random Map"}})
-    self.assertNotIsInstance(self.c.game, islanders.ExtraPlayers)
+    self.c.handle_start("one", {"options": {}})
+    self.assertFalse(self.c.game.options.extra_build)
 
   def testStartWithFivePlayers(self):
     self.c.connect_user("one")
@@ -2311,14 +2320,14 @@ class TestGameOptions(unittest.TestCase):
     self.c.handle_join("three", {"name": "player3"})
     self.c.handle_join("four", {"name": "player4"})
 
-    self.c.handle_select_option("one", {"options": {"Scenario": "Random Map"}})
-    self.assertNotIn("5-6 Players", self.c.rules)
+    self.c.handle_change_scenario("one", {"scenario": "Standard Map"})
+    self.assertFalse(self.c.choices.extra_build)
 
     self.c.handle_join("five", {"name": "player5"})
-    self.assertIn("5-6 Players", self.c.rules)
+    self.assertTrue(self.c.choices.extra_build)
 
-    self.c.handle_start("one", {"options": {"Scenario": "Random Map"}})
-    self.assertIsInstance(self.c.game, islanders.ExtraPlayers)
+    self.c.handle_start("one", {"options": {}})
+    self.assertTrue(self.c.game.options.extra_build)
 
 
 if __name__ == "__main__":
