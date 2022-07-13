@@ -59,6 +59,24 @@
     ],
     "largest_army_player": null,
     "longest_route_player": null,
+    "options": {
+        "seafarers": {
+            "name": "Seafarers",
+            "forced": true,
+            "default": true,
+            "choices": null,
+            "hidden": false,
+            "value": true
+        },
+        "victory_points": {
+            "name": "Victory Points",
+            "forced": false,
+            "default": 13,
+            "choices": [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21],
+            "hidden": false,
+            "value": 13
+        }
+    },
     "pieces": [
         {
             "location": [
@@ -121,10 +139,8 @@
         }
     ],
     "roads": [],
-    "rob_at_two": true,
     "rob_players": [],
     "robber": null,
-    "rules": [],
     "scenario": "The Four Islands",
     "ships_moved": 0,
     "shortage_resources": [],
@@ -318,6 +334,5 @@
     ],
     "trade_offer": {},
     "turn_idx": 0,
-    "turn_phase": "main",
-    "victory_points": 13
+    "turn_phase": "main"
 }

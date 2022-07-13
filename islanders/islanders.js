@@ -65,7 +65,8 @@ ws = null;
 
 // Game state.
 gameStarted = false;
-gameOptions = [];
+gameOptions = {};
+gameScenarios = {};
 myIdx = null;
 amHost = false;
 playerData = [];
@@ -977,6 +978,7 @@ function onmsg(event) {
   // data.type should be game_state now - maybe handle more later
   gameStarted = data.started;
   gameOptions = data.options;
+  gameScenarios = data.scenario;
   amHost = data.host;
   playerData = data.player_data;
   gamePhase = data.game_phase;
@@ -1100,15 +1102,28 @@ function updateJoinWindow() {
     document.getElementById("joinnameinput").value = localStorage.getItem("playername") || "";
   }
   uiJoin.style.display = "flex";
+  let scenarioSelect = document.getElementById("scenario");
+  if (!scenarioSelect.children.length) {
+    for (let scenarioName of gameScenarios.choices) {
+      let opt = document.createElement("OPTION");
+      opt.value = scenarioName;
+      opt.text = scenarioName;
+      scenarioSelect.appendChild(opt);
+    }
+  }
+  scenarioSelect.value = gameScenarios.value;
+  scenarioSelect.disabled = !amHost;
   let flagOptionDiv = document.getElementById("flagoptions");
   let choiceOptionDiv = document.getElementById("choiceoptions");
-  let allOptions = [];
-  for (let option of gameOptions) {
-    allOptions.push(option.name);
+  for (let optionName in gameOptions) {
+    let option = gameOptions[optionName];
+    if (option.hidden) {
+      continue;
+    }
     // TODO: yes, this is hacky.
     let found = false;
     for (let elem of document.getElementsByClassName("gameoption")) {
-      if (elem.optionName == option.name) {
+      if (elem.optionName == optionName) {
         found = updateOptionValue(option, elem);
         break;
       }
@@ -1116,17 +1131,11 @@ function updateJoinWindow() {
     if (found) {
       continue;
     }
-    let optDiv = createOption(option);
+    let optDiv = createOption(optionName, option);
     if (option.choices != null) {
       choiceOptionDiv.appendChild(optDiv);
     } else {
       flagOptionDiv.appendChild(optDiv);
-    }
-  }
-  // Remove options that no longer exist.
-  for (let oDiv of document.getElementsByClassName("gameoption")) {
-    if (!allOptions.includes(oDiv.optionName)) {
-      oDiv.parentNode.parentNode.removeChild(oDiv.parentNode);
     }
   }
   if (myIdx != null) {
@@ -1157,7 +1166,7 @@ function updateOptionValue(option, elem) {
   }
   return true;
 }
-function createOption(option) {
+function createOption(optionName, option) {
   let optDiv = document.createElement("DIV");
   let elem;
   if (option.choices != null) {
@@ -1190,7 +1199,7 @@ function createOption(option) {
     optDiv.appendChild(elem);
     optDiv.appendChild(desc);
   }
-  elem.optionName = option.name;
+  elem.optionName = optionName;
   elem.disabled = !amHost || option.forced;
   elem.onchange = sendOptions;
   elem.classList.add("gameoption");
@@ -1203,7 +1212,12 @@ function collectOptions() {
   let options = {};
   for (let elem of document.getElementsByClassName("gameoption")) {
     if (elem.tagName == "SELECT") {
-      options[elem.optionName] = elem.value;
+      let numericVal = parseInt(elem.value);
+      if (Number.isNaN(numericVal)) {
+        options[elem.optionName] = elem.value;
+      } else {
+        options[elem.optionName] = numericVal;
+      }
     } else {
       options[elem.optionName] = !!(elem.checked);
     }
@@ -1214,6 +1228,13 @@ function sendOptions(e) {
   let msg = {
     type: "options",
     options: collectOptions(),
+  };
+  ws.send(JSON.stringify(msg));
+}
+function changeScenario(e) {
+  let msg = {
+    type: "scenario",
+    scenario: document.getElementById("scenario").value,
   };
   ws.send(JSON.stringify(msg));
 }

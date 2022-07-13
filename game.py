@@ -58,18 +58,6 @@ class CustomEncoder(json.JSONEncoder):
 
 class BaseGame(metaclass=abc.ABCMeta):
 
-  def get_urls(self):
-    return []
-
-  def post_urls(self):
-    return []
-
-  def handle_get(self, http_handler, path, args):  # pylint: disable=unused-argument
-    http_handler.send_error(HTTPStatus.NOT_FOUND.value, f"Unknown path {path}")
-
-  def handle_post(self, http_handler, path, args, data):  # pylint: disable=unused-argument
-    http_handler.send_error(HTTPStatus.NOT_FOUND.value, f"Unknown path {path}")
-
   @abc.abstractmethod
   def game_url(self, game_id):
     pass
@@ -118,41 +106,37 @@ class GameHandler:
     return self.game.game_status()
 
   def get_urls(self):
-    valid = set(self.game.get_urls())
-    valid.update(["/dump", "/save", "/json"])
-    return valid
+    return {"/dump", "/save", "/json"}
 
   def post_urls(self):
-    valid = set(self.game.post_urls())
-    valid.update(["/load"])
-    return valid
+    return {"/load"}
 
   def handle_get(self, event_loop, http_handler, path, args):  # pylint: disable=unused-argument
-    if path in ["/dump", "/save", "/json"]:
-      value = self.game.json_str().encode("ascii")
-      http_handler.send_response(HTTPStatus.OK.value)
-      http_handler.end_headers()
-      http_handler.wfile.write(value)
+    if path not in ["/dump", "/save", "/json"]:
+      http_handler.send_error(HTTPStatus.NOT_FOUND.value, f"Unknown path {path}")
       return
-    self.game.handle_get(http_handler, path, args)
+    value = self.game.json_str().encode("ascii")
+    http_handler.send_response(HTTPStatus.OK.value)
+    http_handler.end_headers()
+    http_handler.wfile.write(value)
 
   def handle_post(self, event_loop, http_handler, path, args, data):
-    if path in ["/load"]:
-      try:
-        new_game = self.game_class.parse_json(data)
-      except Exception as err:  # pylint: disable=broad-except
-        print(sys.exc_info()[0])
-        print(sys.exc_info()[1])
-        traceback.print_tb(sys.exc_info()[2])
-        http_handler.send_error(HTTPStatus.BAD_REQUEST.value, str(err))
-        return
-      self.game = new_game
-      for session in self.websockets:
-        self.game.connect_user(session)
-      http_handler.send_response(HTTPStatus.NO_CONTENT.value)
-      http_handler.end_headers()
-    else:
-      self.game.handle_post(http_handler, path, args, data)
+    if path not in ["/load"]:
+      http_handler.send_error(HTTPStatus.NOT_FOUND.value, f"Unknown path {path}")
+      return
+    try:
+      new_game = self.game_class.parse_json(data)
+    except Exception as err:  # pylint: disable=broad-except
+      print(sys.exc_info()[0])
+      print(sys.exc_info()[1])
+      traceback.print_tb(sys.exc_info()[2])
+      http_handler.send_error(HTTPStatus.BAD_REQUEST.value, str(err))
+      return
+    self.game = new_game
+    for session in self.websockets:
+      self.game.connect_user(session)
+    http_handler.send_response(HTTPStatus.NO_CONTENT.value)
+    http_handler.end_headers()
     fut = asyncio.run_coroutine_threadsafe(self.push(), event_loop)
     fut.result(10)
 
