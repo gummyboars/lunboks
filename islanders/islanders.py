@@ -739,7 +739,12 @@ class IslandersState:
       return
     self.check_turn_okay(player_idx, data["type"])
     self.inner_handle(player_idx, data["type"], data)
-    self.post_handle(player_idx, data["type"], data)
+    # NOTE: use turn_idx here, since it is possible for a player to get to 10 points when it is
+    # not their turn (e.g. because someone else's longest road was broken), but the rules say
+    # you can only win on YOUR turn. So we check for victory after we have handled the end of
+    # the previous turn, in case the next player wins at the start of their turn.
+    if self.player_points(self.turn_idx, visible=False) >= self.options.victory_points:
+      self.handle_victory()
 
   def check_turn_okay(self, player_idx, move_type):
     if move_type == "rename":
@@ -811,18 +816,20 @@ class IslandersState:
       return self.handle_end_turn()
     raise UnknownMove(f"Unknown move {move_type}")
 
-  def post_handle(self, player_idx, move_type, data):  # pylint: disable=unused-argument
-    # NOTE: use turn_idx here, since it is possible for a player to get to 10 points when it is
-    # not their turn (e.g. because someone else's longest road was broken), but the rules say
-    # you can only win on YOUR turn. So we check for victory after we have handled the end of
-    # the previous turn, in case the next player wins at the start of their turn.
-    if self.player_points(self.turn_idx, visible=False) >= self.options.victory_points:
-      self.handle_victory()
-
   def _validate_location(self, location, num_entries=2):
-    if isinstance(location, (tuple, list)) and len(location) == num_entries:
-      return
-    raise InvalidMove("location %s should be a tuple of size %s" % (location, num_entries))
+    if not isinstance(location, (tuple, list)) or len(location) != num_entries:
+      raise InvalidMove("location %s should be a tuple of size %s" % (location, num_entries))
+    if not all(isinstance(val, int) for val in location):
+      raise InvalidMove("location %s should be a tuple of ints" % (location,))
+
+  def _validate_selection(self, selection):
+    """Selection should be a dict of rsrc -> count."""
+    if not selection or not isinstance(selection, dict):
+      raise InvalidMove("Invalid resource selection.")
+    if set(selection.keys()) - set(RESOURCES):
+      raise InvalidMove("Invalid resource selection - unknown or untradable resource.")
+    if not all(isinstance(value, int) and value >= 0 for value in selection.values()):
+      raise InvalidMove("Invalid resource selection - must be positive integers.")
 
   def rename_player(self, player_idx, data):
     _validate_name(self.player_data[player_idx].name, [p.name for p in self.player_data], data)
@@ -919,6 +926,141 @@ class IslandersState:
       dist = self.calculate_resource_distribution((red, white))
       self.distribute_resources(dist)
 
+  def remaining_resources(self, rsrc):
+    return 19 - sum([p.cards[rsrc] for p in self.player_data])
+
+  def calculate_resource_distribution(self, dice_roll):
+    # Figure out which players are due how many resources.
+    to_receive = collections.defaultdict(lambda: collections.defaultdict(int))
+    for tile in self.tiles.values():
+      if tile.number != sum(dice_roll):
+        continue
+      if self.robber == tile.location:
+        continue
+      corner_locations = {a.as_tuple() for a in tile.location.get_corner_locations()}
+      for corner_loc in corner_locations:
+        piece = self.pieces.get(corner_loc)
+        if piece and piece.piece_type == "settlement":
+          to_receive[tile.tile_type][piece.player] += 1
+        elif piece and piece.piece_type == "city":
+          to_receive[tile.tile_type][piece.player] += 2
+
+    self.collect_counts = to_receive.pop("anyrsrc", {})
+    return to_receive
+
+  def distribute_resources(self, to_receive):
+    self.shortage_resources = []
+    # Changes the values of to_receive as it iterates through them.
+    for rsrc, receive_players in to_receive.items():
+      remaining = self.remaining_resources(rsrc)
+      # If there are enough resources to go around, no problem.
+      if sum(receive_players.values()) <= remaining:
+        continue
+      # Otherwise, there is a shortage of this resource.
+      self.shortage_resources.append(rsrc)
+      # If there is only one player receiving this resource, they receive all of the
+      # remaining cards for this resources type.
+      if len(receive_players) == 1:
+        the_player = list(receive_players.keys())[0]
+        self.event_log.append(Event(
+            "shortage", "{player%s} was due %s {%s} but only received %s due to a shortage" % (
+                the_player, receive_players[the_player], rsrc, remaining),
+        ))
+        receive_players[the_player] = remaining
+        continue
+      # If there is more than one player receiving this resource, and there is not enough
+      # in the supply, then no players receive any of this resource.
+      receive_players.clear()
+      self.event_log.append(Event(
+          "shortage", "There was a shortage of {%s} - no players received any" % rsrc))
+
+    # Do the actual resource distribution.
+    received = collections.defaultdict(lambda: collections.defaultdict(int))
+    for rsrc, receive_players in to_receive.items():
+      for player, count in receive_players.items():
+        self.player_data[player].cards[rsrc] += count
+        received[player][rsrc] += count
+
+    # Write an event log.
+    for player, rsrcs in received.items():
+      text = "received " + ", ".join(["%s {%s}" % (count, rsrc) for rsrc, count in rsrcs.items()])
+      self.event_log.append(Event("receive", "{player%s} " % player + text))
+
+    self.next_collect_player()
+
+  def next_collect_player(self):
+    # By default, no player is collecting resources.
+    self.collect_idx = None
+    self.turn_phase = "main"
+    total_collect = sum(self.collect_counts.values())
+    if not total_collect:
+      return
+    available = {}
+    for rsrc in set(RESOURCES) - set(self.shortage_resources):
+      available[rsrc] = self.remaining_resources(rsrc)
+    if sum(available.values()) <= 0:
+      self.collect_counts.clear()
+      return
+    min_available = min(available.values())  # The minimum available of any collectible resource.
+    if min_available >= total_collect:
+      # Special case: if there are enough resources available such that no player can deplete
+      # the bank, all players may collect resources at the same time.
+      self.turn_phase = "collect"
+      self.collect_idx = None
+      return
+    num_players = len(self.player_data)
+    collect_players = [idx for idx, count in self.collect_counts.items() if count]
+    collect_players.sort(key=lambda idx: (idx - self.turn_idx + num_players) % num_players)
+    self.collect_idx = collect_players[0]
+    self.turn_phase = "collect"
+    if sum(available.values()) < self.collect_counts[self.collect_idx]:
+      # If there's not enough left in the bank, the player collects everything that remains.
+      self.collect_counts[self.collect_idx] = sum(available.values())
+
+  def handle_collect(self, player_idx, selection):
+    self._validate_selection(selection)
+    if sum(selection.values()) != self.collect_counts[player_idx]:
+      raise InvalidMove("You must select %s resources." % self.collect_counts[player_idx])
+    if selection.keys() & set(self.shortage_resources):
+      raise InvalidMove(
+          "There is a shortage of {%s}; you cannot collect any." % (
+              "}, {".join(self.shortage_resources))
+      )
+    # TODO: dedup with code from year of plenty
+    overdrawn = [rsrc for rsrc in selection if selection[rsrc] > self.remaining_resources(rsrc)]
+    if overdrawn:
+      raise InvalidMove("There is not enough {%s} in the bank." % "}, {".join(overdrawn))
+    for rsrc, value in selection.items():
+      self.player_data[player_idx].cards[rsrc] += value
+    event_text = ", ".join(["%s {%s}" % (count, rsrc) for rsrc, count in selection.items()])
+    self.event_log.append(Event("collect", "{player%s} collected " % player_idx + event_text))
+    del self.collect_counts[player_idx]
+    self.next_collect_player()
+
+  def _get_players_with_too_many_resources(self):
+    return {
+        idx: player.resource_card_count() // 2
+        for idx, player in enumerate(self.player_data) if player.resource_card_count() >= 8
+    }
+
+  def handle_discard(self, selection, player):
+    if self.turn_phase != "discard":
+      raise InvalidMove("You cannot discard cards right now.")
+    self._validate_selection(selection)
+    if not self.discard_players.get(player):
+      raise InvalidMove("You do not need to discard any cards.")
+    discard_count = sum([selection.get(rsrc, 0) for rsrc in RESOURCES])
+    if discard_count != self.discard_players[player]:
+      raise InvalidMove("You have %s resource cards and must discard %s." %
+                        (self.player_data[player].resource_card_count(),
+                         self.discard_players[player]))
+    self._remove_resources(selection.items(), player, "discard those cards")
+    discarded = ", ".join(["%s {%s}" % (count, rsrc) for rsrc, count in selection.items()])
+    self.event_log.append(Event("discard", "{player%s} discarded %s" % (player, discarded)))
+    del self.discard_players[player]
+    if sum(self.discard_players.values()) == 0:
+      self.turn_phase = "robber"
+
   def validate_robber_location(self, location, robber_type, land):
     self._validate_location(location)
     if self.turn_phase != "robber":
@@ -1008,14 +1150,19 @@ class IslandersState:
         [current_player, rob_player],
     ))
 
-  def remaining_resources(self, rsrc):
-    return 19 - sum([p.cards[rsrc] for p in self.player_data])
-
-  def _get_players_with_too_many_resources(self):
-    return {
-        idx: player.resource_card_count() // 2
-        for idx, player in enumerate(self.player_data) if player.resource_card_count() >= 8
-    }
+  def _check_main_phase(self, move_type, text):
+    if self.turn_phase == "extra_build" and move_type in self.EXTRA_BUILD_ACTIONS:
+      return
+    if self.turn_phase != "main":
+      if self.turn_phase == "dice":
+        raise InvalidMove("You must roll the dice first.")
+      if self.turn_phase == "robber":
+        raise InvalidMove("You must move the robber first.")
+      if self.turn_phase == "discard":
+        raise InvalidMove("Waiting for players to discard.")
+      if self.turn_phase == "collect":
+        raise NotYourTurn("Waiting for players to collect resources.")
+      raise InvalidMove("You cannot %s right now." % text)
 
   # TODO: move into the player class?
   def _check_resources(self, resources, player, action_string):
@@ -1026,6 +1173,7 @@ class IslandersState:
     if errors:
       raise InvalidMove("You would need an extra %s to %s." % (", ".join(errors), action_string))
 
+  # TODO: use a dict instead of an iterable of tuples for resources?
   def _remove_resources(self, resources, player, build_type):
     self._check_resources(resources, player, build_type)
     for resource, count in resources:
@@ -1066,6 +1214,50 @@ class IslandersState:
           return
     raise InvalidMove(f"{road_type.capitalize()}s must be connected to your {road_type} network.")
 
+  def _check_edge_type(self, edge_location, road_type):
+    edge_type = self._get_edge_type(edge_location)
+    if edge_type is None:
+      raise InvalidMove(f"Your {road_type} must be between two land tiles.")
+    if edge_type == road_type or edge_type.startswith("coast"):
+      return
+    if road_type == "road":
+      raise InvalidMove("Your road must be between two tiles, one of which must be land.")
+    if road_type == "ship":
+      raise InvalidMove("Your ship must be between two tiles, one of which must be water.")
+    raise InvalidInput(f"Unknown road type {road_type}")
+
+  def _get_edge_type(self, edge_location):
+    # First verify that there are tiles on both sides of this edge.
+    tile_locations = edge_location.get_adjacent_tiles()
+    if len(tile_locations) != 2:
+      return None
+    if not all(loc.as_tuple() in self.tiles for loc in tile_locations):
+      return None
+
+    # If there is a road/ship here, just return the type of that road/ship.
+    if self.roads.get(edge_location.as_tuple()) is not None:
+      return self.roads[edge_location.as_tuple()].road_type
+
+    # Calculate how many of the two tiles are land.
+    are_lands = [self.tiles[loc.as_tuple()].is_land for loc in tile_locations]
+
+    # If we are not playing with seafarers, then only edges next to at least one land are valid.
+    if not self.options.seafarers:
+      if any(are_lands):
+        return "road"
+      return None
+
+    # Seafarers: edges can be road, ship, or coast based on the number of lands.
+    if all(are_lands):
+      return "road"
+    if not any(are_lands):
+      return "ship"
+    # For the coast, it matters whether the sea is on top or on bottom.
+    tile_locations.sort(key=lambda loc: loc.y)
+    if self.tiles[tile_locations[0].as_tuple()].is_land:
+      return "coastdown"
+    return "coastup"
+
   def _check_road_next_to_empty_settlement(self, location, player):
     left_corner = location.corner_left
     right_corner = location.corner_right
@@ -1084,20 +1276,6 @@ class IslandersState:
         break
     else:
       raise InvalidMove("You must put your road next to your settlement.")
-
-  def _check_main_phase(self, move_type, text):
-    if self.turn_phase == "extra_build" and move_type in self.EXTRA_BUILD_ACTIONS:
-      return
-    if self.turn_phase != "main":
-      if self.turn_phase == "dice":
-        raise InvalidMove("You must roll the dice first.")
-      if self.turn_phase == "robber":
-        raise InvalidMove("You must move the robber first.")
-      if self.turn_phase == "discard":
-        raise InvalidMove("Waiting for players to discard.")
-      if self.turn_phase == "collect":
-        raise NotYourTurn("Waiting for players to collect resources.")
-      raise InvalidMove("You cannot %s right now." % text)
 
   def handle_road(self, location, player, road_type, resources):
     self._validate_location(location, num_entries=4)
@@ -1140,6 +1318,236 @@ class IslandersState:
 
     self.event_log.append(Event(road_type, "{player%s} built a %s" % (player, road_type)))
     self.add_road(Road(location, road_type, player))
+
+  def _add_road(self, road):
+    self.roads[road.location.as_tuple()] = road
+
+  def add_road(self, road):
+    if road.road_type == "ship":
+      road.source = self.get_ship_source(road.location, road.player)
+    self._add_road(road)
+
+    # Check for increase in longest road, update longest road player if necessary. Also check
+    # for decrease in longest road, which can happen if a player moves a ship.
+    self.player_data[road.player].longest_route = self._calculate_longest_road(road.player)
+    self._update_longest_route_player()
+
+    if road.road_type == "ship":
+      self.recalculate_ships(road.source, road.player)
+
+  def _update_longest_route_player(self):
+    new_max = max([p.longest_route for p in self.player_data])
+    holder_max = None
+    if self.longest_route_player is not None:
+      holder_max = self.player_data[self.longest_route_player].longest_route
+
+    # If nobody meets the conditions for longest road, nobody takes the card. After this,
+    # we may assume that the longest road has at least 5 segments.
+    if new_max < 5:
+      if self.longest_route_player is not None:
+        self.event_log.append(Event(
+            "longest_route", "{player%s} loses longest route" % self.longest_route_player))
+      self.longest_route_player = None
+      return
+
+    # If the player with the longest road still has the longest road, they keep the longest
+    # road card, even if they are now tied with another player.
+    if holder_max == new_max:
+      return
+
+    # The previous card holder must now give up the longest road card. We calculate any players
+    # that meet the conditions for taking the longest road card.
+    eligible = [idx for idx, data in enumerate(self.player_data) if data.longest_route == new_max]
+    if len(eligible) == 1:
+      event_text = "{player%s} takes longest route" % eligible[0]
+      if self.longest_route_player is not None:
+        event_text += " from {player%s}" % self.longest_route_player
+      # In some cases, the longest route player may have a shorter route than before, but still
+      # maintain the longest route. In those cases, we do not add an event to the log.
+      if eligible[0] != self.longest_route_player:
+        self.event_log.append(Event("longest_route", event_text))
+        self.longest_route_player = eligible[0]
+    else:
+      self.event_log.append(Event(
+          "longest_route", "Nobody receives longest route because of a tie."))
+      self.longest_route_player = None
+
+  def _calculate_longest_road(self, player):
+    # Get all corners of all roads for this player.
+    all_corners = set([])
+    for road in self.roads.values():
+      if road.player != player:
+        continue
+      all_corners.add(road.location.corner_left)
+      all_corners.add(road.location.corner_right)
+
+    # For each corner, do a DFS and find the depth.
+    max_length = 0
+    for corner in all_corners:
+      seen = set([])
+      max_length = max(max_length, self._dfs_depth(player, corner, seen, None))
+
+    return max_length
+
+  def _dfs_depth(self, player, corner, seen_edges, prev_edge):
+    # First, use the type of the piece at this corner to set a baseline. If it belongs to
+    # another player, the route ends. If it belongs to this player, the next edge in the route
+    # may be either a road or a ship. If there is no piece, then the type of the next edge
+    # must match the type of the previous edge (except for the first edge in the DFS).
+    this_piece = self.pieces.get(corner.as_tuple())
+    if prev_edge is None:
+      # First road can be anything. Can also be adjacent to another player's settlement.
+      valid_types = Road.TYPES
+    else:
+      if this_piece is None:
+        if self.roads.get(prev_edge.as_tuple()) is not None:
+          valid_types = [self.roads[prev_edge.as_tuple()].road_type]
+        else:
+          raise RuntimeError("you screwed it up")
+      elif this_piece.player != player:
+        return 0
+      else:
+        valid_types = Road.TYPES
+
+    # Next, get the three corners next to this corner. We can determine an edge from each one,
+    # and we will throw away any edges that either do not belong to the player or that we have
+    # seen before or that do not match our expected edge type.
+    unseen_edges = [edge for edge in corner.get_edges() if edge not in seen_edges]
+    valid_edges = []
+    for edge in unseen_edges:
+      edge_piece = self.roads.get(edge.as_tuple())
+      if edge_piece and edge_piece.player == player and edge_piece.road_type in valid_types:
+        valid_edges.append(edge)
+
+    max_depth = 0
+    for edge in valid_edges:
+      other_corner = edge.corner_left if edge.corner_right == corner else edge.corner_right
+      seen_edges.add(edge)
+      sub_depth = self._dfs_depth(player, other_corner, seen_edges, edge)
+      max_depth = max(max_depth, 1 + sub_depth)
+      seen_edges.remove(edge)
+    return max_depth
+
+  def get_ship_source(self, location, player_idx):
+    edges = []
+    for corner in [location.corner_left, location.corner_right]:
+      maybe_piece = self.pieces.get(corner.as_tuple())
+      if maybe_piece and maybe_piece.player == player_idx:
+        return maybe_piece.location
+      edges.extend(corner.get_edges())
+    for edge in edges:
+      if edge == location:
+        continue
+      maybe_road = self.roads.get(edge.as_tuple())
+      if maybe_road and maybe_road.player == player_idx and maybe_road.road_type == "ship":
+        return maybe_road.source
+    raise InvalidMove("Ships must be connected to your ship network.")
+
+  def recalculate_ships(self, source, player_idx):
+    self._ship_dfs_helper(source, player_idx, [], set(), source, None)
+
+  def _ship_dfs_helper(self, source, player_idx, path, seen, corner, prev):
+    seen.add(corner.as_tuple())
+    edges = corner.get_edges()
+    outgoing_edges = []
+
+    # First, calculate all the outgoing edges.
+    for edge in edges:
+      # This is the edge we just walked down, ignore it.
+      if edge.as_tuple() == prev:
+        continue
+      other_corner = edge.corner_left if edge.corner_right == corner else edge.corner_right
+      # If this edge does not have this player's ship on it, skip it.
+      maybe_ship = self.roads.get(edge.as_tuple())
+      if not maybe_ship or maybe_ship.road_type != "ship" or maybe_ship.player != player_idx:
+        continue
+      # Now we know there is a ship from corner to other_corner.
+      outgoing_edges.append((edge, other_corner))
+
+    # Then, mark this ship as either movable or unmovable based on number of outgoing edges.
+    if path:  # Skipped for the very first corner, since there is no previous edge.
+      if len(outgoing_edges) == 0:
+        self.roads[path[-1]].movable = True
+      else:
+        self.roads[path[-1]].movable = False
+
+    # Lastly, continue the DFS. Order matters: this may mark some ships as movable that were
+    # previous considered unmovable, overriding that decision (because of cycles).
+    for edge, other_corner in outgoing_edges:
+      if other_corner == source:
+        # Here, we have circled back around to the start. We must mark the two edges at the
+        # beginning and end of the path as movable. We do not touch the rest.
+        self.roads[path[0]].movable = True
+        self.roads[edge.as_tuple()].movable = True
+        continue
+      if other_corner.as_tuple() in seen:
+        # Here, we have created a loop. Every ship on this loop may be movable.
+        start_idx = None
+        for idx, rloc in reversed(list(enumerate(path))):
+          if other_corner.as_tuple() in [rloc[:2], rloc[2:]]:
+            start_idx = idx
+            break
+        else:
+          raise RuntimeError("What happened here? This shouldn't be physically possible.")
+        for idx in range(start_idx, len(path)):
+          self.roads[path[idx]].movable = True
+        self.roads[edge.as_tuple()].movable = True
+        continue
+      maybe_piece = self.pieces.get(other_corner.as_tuple())
+      if maybe_piece and maybe_piece.player == player_idx:
+        # Here, we know that there is a shipping route from one of the player's settlements to
+        # another. Every ship on this shipping route is considered closed.
+        for rloc in path + [edge.as_tuple()]:
+          self.roads[rloc].closed = True
+      # Now we know this ship does not create a loop, so we continue to explore the far corner.
+      path.append(edge.as_tuple())
+      self._ship_dfs_helper(source, player_idx, path, seen, other_corner, edge.as_tuple())
+      path.pop()
+    seen.remove(corner.as_tuple())
+
+  def handle_move_ship(self, from_location, to_location, player_idx):
+    self._validate_location(from_location, num_entries=4)
+    self._validate_location(to_location, num_entries=4)
+    # Check that this is the right part of the turn.
+    self._check_main_phase("move_ship", "move a ship")
+    if self.ships_moved:
+      raise InvalidMove("You have already moved a ship this turn.")
+    maybe_ship = self.roads.get(tuple(from_location))
+    if not maybe_ship:
+      raise InvalidMove("You do not have a ship there.")
+    if maybe_ship.road_type != "ship":
+      raise InvalidMove("You may only move ships.")
+    if maybe_ship.player != player_idx:
+      raise InvalidMove("You may only move your ships.")
+    if maybe_ship.closed:
+      raise InvalidMove("You may not move a ship that connects two of your settlements.")
+    if not maybe_ship.movable:
+      raise InvalidMove("You must move a ship at the end of one of your shipping routes.")
+    if tuple(from_location) in self.built_this_turn:
+      raise InvalidMove("You may not move a ship that you built this turn.")
+    maybe_dest = self.roads.get(tuple(to_location))
+    if maybe_dest:
+      raise InvalidMove(f"There is already a {maybe_dest.road_type} at that destination.")
+    adjacent_tiles = EdgeLocation(*from_location).get_adjacent_tiles()
+    if self.pirate in adjacent_tiles:
+      raise InvalidMove("You cannot move a ship that is next to the pirate.")
+
+    # Check that this attaches to their existing network, without the original ship.
+    # To do this, remove the old ship first, but restore it if any exception is thrown.
+    old_ship = self.roads.pop(tuple(from_location))
+    old_source = old_ship.source
+    try:
+      self._check_road_building(EdgeLocation(*to_location), player_idx, "ship")
+      self.add_road(Road(to_location, "ship", player_idx))
+    except:
+      self.roads[old_ship.location.as_tuple()] = old_ship
+      raise
+
+    self.event_log.append(Event("move_ship", "{player%s} moved a ship" % player_idx))
+    # add_road will automatically recalculate from the new source, but we must still recalculate
+    # ships' movable status from the old source in case the two locations are disconnected.
+    self.recalculate_ships(old_source, player_idx)
+    self.ships_moved = 1
 
   def handle_settle(self, location, player):
     self._validate_location(location)
@@ -1187,6 +1595,45 @@ class IslandersState:
     self.event_log.append(Event("settlement", "{player%s} built a settlement" % player))
     self.add_piece(Piece(location[0], location[1], "settlement", player))
 
+  def _add_piece(self, piece):
+    self.pieces[piece.location.as_tuple()] = piece
+
+  def add_piece(self, piece):
+    self._add_piece(piece)
+
+    self._add_player_port(piece.location, piece.player)
+
+    # Check for breaking an existing longest road.
+    # Start by calculating any players with an adjacent road/ship.
+    players_to_check = set()
+    edges = piece.location.get_edges()
+    for edge in edges:
+      maybe_road = self.roads.get(edge.as_tuple())
+      if maybe_road:
+        players_to_check.add(maybe_road.player)
+
+    # Recompute longest road for each of these players.
+    for player_idx in players_to_check:
+      self.player_data[player_idx].longest_route = self._calculate_longest_road(player_idx)
+
+    # Give longest road to the appropriate player.
+    self._update_longest_route_player()
+
+    # Calculate whether ships are open or closed.
+    if piece.piece_type == "settlement":
+      self.recalculate_ships(piece.location, piece.player)
+
+    # Compute home islands / foreign landings for this piece.
+    if self.game_phase.startswith("place"):
+      self.home_corners[piece.player].append(piece.location.as_tuple())
+    else:
+      home_settled = [self.corners_to_islands[loc] for loc in self.home_corners[piece.player]]
+      foreign_landed = [self.corners_to_islands[loc] for loc in self.foreign_landings[piece.player]]
+      current_island = self.corners_to_islands[piece.location.as_tuple()]
+      if current_island not in home_settled + foreign_landed:
+        self.event_log.append(Event("landing", "{player%s} settled on a new island" % piece.player))
+        self.foreign_landings[piece.player].append(piece.location.as_tuple())
+
   def _add_player_port(self, location, player):
     """Sets the trade ratios for a player who built a settlement at this location."""
     port_type = self.port_corners.get(location.as_tuple())
@@ -1197,6 +1644,17 @@ class IslandersState:
     elif port_type:
       new_ratio = min(self.player_data[player].trade_ratios[port_type], 2)
       self.player_data[player].trade_ratios[port_type] = new_ratio
+
+  def give_second_resources(self, player, corner_loc):
+    # TODO: handle collecting resources from the second settlement if on a bonus tile.
+    tile_locs = [loc.as_tuple() for loc in corner_loc.get_tiles() if loc.as_tuple() in self.tiles]
+    received = collections.defaultdict(int)
+    for tile_loc in tile_locs:
+      if self.tiles[tile_loc].number:
+        self.player_data[player].cards[self.tiles[tile_loc].tile_type] += 1
+        received[self.tiles[tile_loc].tile_type] += 1
+    text = ", ".join(["%s {%s}" % (count, rsrc) for rsrc, count in received.items()])
+    self.event_log.append(Event("collect", "{player%s} received %s" % (player, text)))
 
   def handle_city(self, location, player):
     self._validate_location(location)
@@ -1236,32 +1694,11 @@ class IslandersState:
         "{player%s} bought a %s" % (player, card_type), [player],
     ))
 
-  def handle_discard(self, selection, player):
-    if self.turn_phase != "discard":
-      raise InvalidMove("You cannot discard cards right now.")
-    self._validate_selection(selection)
-    if not self.discard_players.get(player):
-      raise InvalidMove("You do not need to discard any cards.")
-    discard_count = sum([selection.get(rsrc, 0) for rsrc in RESOURCES])
-    if discard_count != self.discard_players[player]:
-      raise InvalidMove("You have %s resource cards and must discard %s." %
-                        (self.player_data[player].resource_card_count(),
-                         self.discard_players[player]))
-    self._remove_resources(selection.items(), player, "discard those cards")
-    discarded = ", ".join(["%s {%s}" % (count, rsrc) for rsrc, count in selection.items()])
-    self.event_log.append(Event("discard", "{player%s} discarded %s" % (player, discarded)))
-    del self.discard_players[player]
-    if sum(self.discard_players.values()) == 0:
-      self.turn_phase = "robber"
-
-  def _validate_selection(self, selection):
-    """Selection should be a dict of rsrc -> count."""
-    if not selection or not isinstance(selection, dict):
-      raise InvalidMove("Invalid resource selection.")
-    if set(selection.keys()) - set(RESOURCES):
-      raise InvalidMove("Invalid resource selection - unknown or untradable resource.")
-    if not all(isinstance(value, int) and value >= 0 for value in selection.values()):
-      raise InvalidMove("Invalid resource selection - must be positive integers.")
+  def add_dev_card(self, player):
+    card_type = self.dev_cards.pop()
+    self.player_data[player].cards[card_type] += 1
+    self.player_data[player].unusable[card_type] += 1
+    return card_type
 
   def handle_play_dev(self, card_type, resource_selection, player):
     if card_type not in PLAYABLE_DEV_CARDS:
@@ -1353,12 +1790,6 @@ class IslandersState:
       self.player_data[player].cards[card_type] += opp_count
     event_text = ", ".join(["%s from {player%s}" % (count, opp) for opp, count in counts.items()])
     self.event_log.append(Event("monopoly", "{player%s} took " % player + event_text))
-
-  def add_dev_card(self, player):
-    card_type = self.dev_cards.pop()
-    self.player_data[player].cards[card_type] += 1
-    self.player_data[player].unusable[card_type] += 1
-    return card_type
 
   def _validate_trade(self, offer, player):
     """Validates a well-formed trade & that the player has enough resources."""
@@ -1469,276 +1900,11 @@ class IslandersState:
     for rsrc, give in offer[self.GIVE].items():
       self.player_data[player].cards[rsrc] -= give
 
-  def calculate_resource_distribution(self, dice_roll):
-    # Figure out which players are due how many resources.
-    to_receive = collections.defaultdict(lambda: collections.defaultdict(int))
-    for tile in self.tiles.values():
-      if tile.number != sum(dice_roll):
-        continue
-      if self.robber == tile.location:
-        continue
-      corner_locations = {a.as_tuple() for a in tile.location.get_corner_locations()}
-      for corner_loc in corner_locations:
-        piece = self.pieces.get(corner_loc)
-        if piece and piece.piece_type == "settlement":
-          to_receive[tile.tile_type][piece.player] += 1
-        elif piece and piece.piece_type == "city":
-          to_receive[tile.tile_type][piece.player] += 2
-
-    self.collect_counts = to_receive.pop("anyrsrc", {})
-    return to_receive
-
-  def distribute_resources(self, to_receive):
-    self.shortage_resources = []
-    # Changes the values of to_receive as it iterates through them.
-    for rsrc, receive_players in to_receive.items():
-      remaining = self.remaining_resources(rsrc)
-      # If there are enough resources to go around, no problem.
-      if sum(receive_players.values()) <= remaining:
-        continue
-      # Otherwise, there is a shortage of this resource.
-      self.shortage_resources.append(rsrc)
-      # If there is only one player receiving this resource, they receive all of the
-      # remaining cards for this resources type.
-      if len(receive_players) == 1:
-        the_player = list(receive_players.keys())[0]
-        self.event_log.append(Event(
-            "shortage", "{player%s} was due %s {%s} but only received %s due to a shortage" % (
-                the_player, receive_players[the_player], rsrc, remaining),
-        ))
-        receive_players[the_player] = remaining
-        continue
-      # If there is more than one player receiving this resource, and there is not enough
-      # in the supply, then no players receive any of this resource.
-      receive_players.clear()
-      self.event_log.append(Event(
-          "shortage", "There was a shortage of {%s} - no players received any" % rsrc))
-
-    # Do the actual resource distribution.
-    received = collections.defaultdict(lambda: collections.defaultdict(int))
-    for rsrc, receive_players in to_receive.items():
-      for player, count in receive_players.items():
-        self.player_data[player].cards[rsrc] += count
-        received[player][rsrc] += count
-
-    # Write an event log.
-    for player, rsrcs in received.items():
-      text = "received " + ", ".join(["%s {%s}" % (count, rsrc) for rsrc, count in rsrcs.items()])
-      self.event_log.append(Event("receive", "{player%s} " % player + text))
-
-    self.next_collect_player()
-
-  def next_collect_player(self):
-    # By default, no player is collecting resources.
-    self.collect_idx = None
-    self.turn_phase = "main"
-    total_collect = sum(self.collect_counts.values())
-    if not total_collect:
-      return
-    available = {}
-    for rsrc in set(RESOURCES) - set(self.shortage_resources):
-      available[rsrc] = self.remaining_resources(rsrc)
-    if sum(available.values()) <= 0:
-      self.collect_counts.clear()
-      return
-    min_available = min(available.values())  # The minimum available of any collectible resource.
-    if min_available >= total_collect:
-      # Special case: if there are enough resources available such that no player can deplete
-      # the bank, all players may collect resources at the same time.
-      self.turn_phase = "collect"
-      self.collect_idx = None
-      return
-    num_players = len(self.player_data)
-    collect_players = [idx for idx, count in self.collect_counts.items() if count]
-    collect_players.sort(key=lambda idx: (idx - self.turn_idx + num_players) % num_players)
-    self.collect_idx = collect_players[0]
-    self.turn_phase = "collect"
-    if sum(available.values()) < self.collect_counts[self.collect_idx]:
-      # If there's not enough left in the bank, the player collects everything that remains.
-      self.collect_counts[self.collect_idx] = sum(available.values())
-
-  def handle_collect(self, player_idx, selection):
-    self._validate_selection(selection)
-    if sum(selection.values()) != self.collect_counts[player_idx]:
-      raise InvalidMove("You must select %s resources." % self.collect_counts[player_idx])
-    if selection.keys() & set(self.shortage_resources):
-      raise InvalidMove(
-          "There is a shortage of {%s}; you cannot collect any." % (
-              "}, {".join(self.shortage_resources))
-      )
-    # TODO: dedup with code from year of plenty
-    overdrawn = [rsrc for rsrc in selection if selection[rsrc] > self.remaining_resources(rsrc)]
-    if overdrawn:
-      raise InvalidMove("There is not enough {%s} in the bank." % "}, {".join(overdrawn))
-    for rsrc, value in selection.items():
-      self.player_data[player_idx].cards[rsrc] += value
-    event_text = ", ".join(["%s {%s}" % (count, rsrc) for rsrc, count in selection.items()])
-    self.event_log.append(Event("collect", "{player%s} collected " % player_idx + event_text))
-    del self.collect_counts[player_idx]
-    self.next_collect_player()
-
-  def give_second_resources(self, player, corner_loc):
-    # TODO: handle collecting resources from the second settlement if on a bonus tile.
-    tile_locs = [loc.as_tuple() for loc in corner_loc.get_tiles() if loc.as_tuple() in self.tiles]
-    received = collections.defaultdict(int)
-    for tile_loc in tile_locs:
-      if self.tiles[tile_loc].number:
-        self.player_data[player].cards[self.tiles[tile_loc].tile_type] += 1
-        received[self.tiles[tile_loc].tile_type] += 1
-    text = ", ".join(["%s {%s}" % (count, rsrc) for rsrc, count in received.items()])
-    self.event_log.append(Event("collect", "{player%s} received %s" % (player, text)))
-
   def add_tile(self, tile):
     self.tiles[tile.location.as_tuple()] = tile
 
   def add_port(self, port):
     self.ports[port.location.as_tuple()] = port
-
-  def _add_piece(self, piece):
-    self.pieces[piece.location.as_tuple()] = piece
-
-  def add_piece(self, piece):
-    self._add_piece(piece)
-
-    self._add_player_port(piece.location, piece.player)
-
-    # Check for breaking an existing longest road.
-    # Start by calculating any players with an adjacent road/ship.
-    players_to_check = set()
-    edges = piece.location.get_edges()
-    for edge in edges:
-      maybe_road = self.roads.get(edge.as_tuple())
-      if maybe_road:
-        players_to_check.add(maybe_road.player)
-
-    # Recompute longest road for each of these players.
-    for player_idx in players_to_check:
-      self.player_data[player_idx].longest_route = self._calculate_longest_road(player_idx)
-
-    # Give longest road to the appropriate player.
-    self._update_longest_route_player()
-
-    # Calculate whether ships are open or closed.
-    if piece.piece_type == "settlement":
-      self.recalculate_ships(piece.location, piece.player)
-
-    # Compute home islands / foreign landings for this piece.
-    if self.game_phase.startswith("place"):
-      self.home_corners[piece.player].append(piece.location.as_tuple())
-    else:
-      home_settled = [self.corners_to_islands[loc] for loc in self.home_corners[piece.player]]
-      foreign_landed = [self.corners_to_islands[loc] for loc in self.foreign_landings[piece.player]]
-      current_island = self.corners_to_islands[piece.location.as_tuple()]
-      if current_island not in home_settled + foreign_landed:
-        self.event_log.append(Event("landing", "{player%s} settled on a new island" % piece.player))
-        self.foreign_landings[piece.player].append(piece.location.as_tuple())
-
-  def _update_longest_route_player(self):
-    new_max = max([p.longest_route for p in self.player_data])
-    holder_max = None
-    if self.longest_route_player is not None:
-      holder_max = self.player_data[self.longest_route_player].longest_route
-
-    # If nobody meets the conditions for longest road, nobody takes the card. After this,
-    # we may assume that the longest road has at least 5 segments.
-    if new_max < 5:
-      if self.longest_route_player is not None:
-        self.event_log.append(Event(
-            "longest_route", "{player%s} loses longest route" % self.longest_route_player))
-      self.longest_route_player = None
-      return
-
-    # If the player with the longest road still has the longest road, they keep the longest
-    # road card, even if they are now tied with another player.
-    if holder_max == new_max:
-      return
-
-    # The previous card holder must now give up the longest road card. We calculate any players
-    # that meet the conditions for taking the longest road card.
-    eligible = [idx for idx, data in enumerate(self.player_data) if data.longest_route == new_max]
-    if len(eligible) == 1:
-      event_text = "{player%s} takes longest route" % eligible[0]
-      if self.longest_route_player is not None:
-        event_text += " from {player%s}" % self.longest_route_player
-      if eligible[0] != self.longest_route_player:
-        self.event_log.append(Event("longest_route", event_text))
-        self.longest_route_player = eligible[0]
-    else:
-      self.event_log.append(Event(
-          "longest_route", "Nobody receives longest route because of a tie."))
-      self.longest_route_player = None
-
-  def _add_road(self, road):
-    self.roads[road.location.as_tuple()] = road
-
-  def add_road(self, road):
-    if road.road_type == "ship":
-      road.source = self.get_ship_source(road.location, road.player)
-    self._add_road(road)
-
-    # Check for increase in longest road, update longest road player if necessary. Also check
-    # for decrease in longest road, which can happen if a player moves a ship.
-    self.player_data[road.player].longest_route = self._calculate_longest_road(road.player)
-    self._update_longest_route_player()
-
-    if road.road_type == "ship":
-      self.recalculate_ships(road.source, road.player)
-
-  def _calculate_longest_road(self, player):
-    # Get all corners of all roads for this player.
-    all_corners = set([])
-    for road in self.roads.values():
-      if road.player != player:
-        continue
-      all_corners.add(road.location.corner_left)
-      all_corners.add(road.location.corner_right)
-
-    # For each corner, do a DFS and find the depth.
-    max_length = 0
-    for corner in all_corners:
-      seen = set([])
-      max_length = max(max_length, self._dfs_depth(player, corner, seen, None))
-
-    return max_length
-
-  def _dfs_depth(self, player, corner, seen_edges, prev_edge):
-    # First, use the type of the piece at this corner to set a baseline. If it belongs to
-    # another player, the route ends. If it belongs to this player, the next edge in the route
-    # may be either a road or a ship. If there is no piece, then the type of the next edge
-    # must match the type of the previous edge (except for the first edge in the DFS).
-    this_piece = self.pieces.get(corner.as_tuple())
-    if prev_edge is None:
-      # First road can be anything. Can also be adjacent to another player's settlement.
-      valid_types = Road.TYPES
-    else:
-      if this_piece is None:
-        if self.roads.get(prev_edge.as_tuple()) is not None:
-          valid_types = [self.roads[prev_edge.as_tuple()].road_type]
-        else:
-          raise RuntimeError("you screwed it up")
-      elif this_piece.player != player:
-        return 0
-      else:
-        valid_types = Road.TYPES
-
-    # Next, get the three corners next to this corner. We can determine an edge from each one,
-    # and we will throw away any edges that either do not belong to the player or that we have
-    # seen before or that do not match our expected edge type.
-    unseen_edges = [edge for edge in corner.get_edges() if edge not in seen_edges]
-    valid_edges = []
-    for edge in unseen_edges:
-      edge_piece = self.roads.get(edge.as_tuple())
-      if edge_piece and edge_piece.player == player and edge_piece.road_type in valid_types:
-        valid_edges.append(edge)
-
-    max_depth = 0
-    for edge in valid_edges:
-      other_corner = edge.corner_left if edge.corner_right == corner else edge.corner_right
-      seen_edges.add(edge)
-      sub_depth = self._dfs_depth(player, other_corner, seen_edges, edge)
-      max_depth = max(max_depth, 1 + sub_depth)
-      seen_edges.remove(edge)
-    return max_depth
 
   def _compute_edges(self):
     # Go back and figure out which ones are corners.
@@ -1807,50 +1973,6 @@ class IslandersState:
       for corner in corners:
         self.port_corners[corner.as_tuple()] = port.port_type
 
-  def _check_edge_type(self, edge_location, road_type):
-    edge_type = self._get_edge_type(edge_location)
-    if edge_type is None:
-      raise InvalidMove(f"Your {road_type} must be between two land tiles.")
-    if edge_type == road_type or edge_type.startswith("coast"):
-      return
-    if road_type == "road":
-      raise InvalidMove("Your road must be between two tiles, one of which must be land.")
-    if road_type == "ship":
-      raise InvalidMove("Your ship must be between two tiles, one of which must be water.")
-    raise InvalidInput(f"Unknown road type {road_type}")
-
-  def _get_edge_type(self, edge_location):
-    # First verify that there are tiles on both sides of this edge.
-    tile_locations = edge_location.get_adjacent_tiles()
-    if len(tile_locations) != 2:
-      return None
-    if not all(loc.as_tuple() in self.tiles for loc in tile_locations):
-      return None
-
-    # If there is a road/ship here, just return the type of that road/ship.
-    if self.roads.get(edge_location.as_tuple()) is not None:
-      return self.roads[edge_location.as_tuple()].road_type
-
-    # Calculate how many of the two tiles are land.
-    are_lands = [self.tiles[loc.as_tuple()].is_land for loc in tile_locations]
-
-    # If we are not playing with seafarers, then only edges next to at least one land are valid.
-    if not self.options.seafarers:
-      if any(are_lands):
-        return "road"
-      return None
-
-    # Seafarers: edges can be road, ship, or coast based on the number of lands.
-    if all(are_lands):
-      return "road"
-    if not any(are_lands):
-      return "ship"
-    # For the coast, it matters whether the sea is on top or on bottom.
-    tile_locations.sort(key=lambda loc: loc.y)
-    if self.tiles[tile_locations[0].as_tuple()].is_land:
-      return "coastdown"
-    return "coastup"
-
   def shuffle_land_tiles(self, tile_locs):
     tile_types = [self.tiles[tile_loc].tile_type for tile_loc in tile_locs]
     random.shuffle(tile_types)
@@ -1889,127 +2011,6 @@ class IslandersState:
     random.shuffle(port_types)
     for idx, port in enumerate(self.ports.values()):
       port.port_type = port_types[idx]
-
-  def handle_move_ship(self, from_location, to_location, player_idx):
-    self._validate_location(from_location, num_entries=4)
-    self._validate_location(to_location, num_entries=4)
-    # Check that this is the right part of the turn.
-    self._check_main_phase("move_ship", "move a ship")
-    if self.ships_moved:
-      raise InvalidMove("You have already moved a ship this turn.")
-    maybe_ship = self.roads.get(tuple(from_location))
-    if not maybe_ship:
-      raise InvalidMove("You do not have a ship there.")
-    if maybe_ship.road_type != "ship":
-      raise InvalidMove("You may only move ships.")
-    if maybe_ship.player != player_idx:
-      raise InvalidMove("You may only move your ships.")
-    if maybe_ship.closed:
-      raise InvalidMove("You may not move a ship that connects two of your settlements.")
-    if not maybe_ship.movable:
-      raise InvalidMove("You must move a ship at the end of one of your shipping routes.")
-    if tuple(from_location) in self.built_this_turn:
-      raise InvalidMove("You may not move a ship that you built this turn.")
-    maybe_dest = self.roads.get(tuple(to_location))
-    if maybe_dest:
-      raise InvalidMove(f"There is already a {maybe_dest.road_type} at that destination.")
-    adjacent_tiles = EdgeLocation(*from_location).get_adjacent_tiles()
-    if self.pirate in adjacent_tiles:
-      raise InvalidMove("You cannot move a ship that is next to the pirate.")
-
-    # Check that this attaches to their existing network, without the original ship.
-    # To do this, remove the old ship first, but restore it if any exception is thrown.
-    old_ship = self.roads.pop(tuple(from_location))
-    old_source = old_ship.source
-    try:
-      self._check_road_building(EdgeLocation(*to_location), player_idx, "ship")
-      self.add_road(Road(to_location, "ship", player_idx))
-    except:
-      self.roads[old_ship.location.as_tuple()] = old_ship
-      raise
-
-    self.event_log.append(Event("move_ship", "{player%s} moved a ship" % player_idx))
-    # add_road will automatically recalculate from the new source, but we must still recalculate
-    # ships' movable status from the old source in case the two locations are disconnected.
-    self.recalculate_ships(old_source, player_idx)
-    self.ships_moved = 1
-
-  def get_ship_source(self, location, player_idx):
-    edges = []
-    for corner in [location.corner_left, location.corner_right]:
-      maybe_piece = self.pieces.get(corner.as_tuple())
-      if maybe_piece and maybe_piece.player == player_idx:
-        return maybe_piece.location
-      edges.extend(corner.get_edges())
-    for edge in edges:
-      if edge == location:
-        continue
-      maybe_road = self.roads.get(edge.as_tuple())
-      if maybe_road and maybe_road.player == player_idx and maybe_road.road_type == "ship":
-        return maybe_road.source
-    raise InvalidMove("Ships must be connected to your ship network.")
-
-  def recalculate_ships(self, source, player_idx):
-    self._ship_dfs_helper(source, player_idx, [], set(), source, None)
-
-  def _ship_dfs_helper(self, source, player_idx, path, seen, corner, prev):
-    seen.add(corner.as_tuple())
-    edges = corner.get_edges()
-    outgoing_edges = []
-
-    # First, calculate all the outgoing edges.
-    for edge in edges:
-      # This is the edge we just walked down, ignore it.
-      if edge.as_tuple() == prev:
-        continue
-      other_corner = edge.corner_left if edge.corner_right == corner else edge.corner_right
-      # If this edge does not have this player's ship on it, skip it.
-      maybe_ship = self.roads.get(edge.as_tuple())
-      if not maybe_ship or maybe_ship.road_type != "ship" or maybe_ship.player != player_idx:
-        continue
-      # Now we know there is a ship from corner to other_corner.
-      outgoing_edges.append((edge, other_corner))
-
-    # Then, mark this ship as either movable or unmovable based on number of outgoing edges.
-    if path:  # Skipped for the very first corner, since there is no previous edge.
-      if len(outgoing_edges) == 0:
-        self.roads[path[-1]].movable = True
-      else:
-        self.roads[path[-1]].movable = False
-
-    # Lastly, continue the DFS. Order matters: this may mark some ships as movable that were
-    # previous considered unmovable, overriding that decision (because of cycles).
-    for edge, other_corner in outgoing_edges:
-      if other_corner == source:
-        # Here, we have circled back around to the start. We must mark the two edges at the
-        # beginning and end of the path as movable. We do not touch the rest.
-        self.roads[path[0]].movable = True
-        self.roads[edge.as_tuple()].movable = True
-        continue
-      if other_corner.as_tuple() in seen:
-        # Here, we have created a loop. Every ship on this loop may be movable.
-        start_idx = None
-        for idx, rloc in reversed(list(enumerate(path))):
-          if other_corner.as_tuple() in [rloc[:2], rloc[2:]]:
-            start_idx = idx
-            break
-        else:
-          raise RuntimeError("What happened here? This shouldn't be physically possible.")
-        for idx in range(start_idx, len(path)):
-          self.roads[path[idx]].movable = True
-        self.roads[edge.as_tuple()].movable = True
-        continue
-      maybe_piece = self.pieces.get(other_corner.as_tuple())
-      if maybe_piece and maybe_piece.player == player_idx:
-        # Here, we know that there is a shipping route from one of the player's settlements to
-        # another. Every ship on this shipping route is considered closed.
-        for rloc in path + [edge.as_tuple()]:
-          self.roads[rloc].closed = True
-      # Now we know this ship does not create a loop, so we continue to explore the far corner.
-      path.append(edge.as_tuple())
-      self._ship_dfs_helper(source, player_idx, path, seen, other_corner, edge.as_tuple())
-      path.pop()
-    seen.remove(corner.as_tuple())
 
   def _is_connecting_tile(self, tile):
     if self.options.norsrc_is_connected:
