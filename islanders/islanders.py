@@ -2,6 +2,7 @@ import abc
 import collections
 import json
 from random import SystemRandom
+from typing import List, Dict, Optional, Tuple
 import os
 
 from game import (
@@ -124,37 +125,17 @@ class Options(collections.OrderedDict):
     return self[attr].value
 
 
-class Location:
+class TileLocation(collections.namedtuple("TileLocation", ["x", "y"])):
 
-  def __init__(self, x, y):
-    self.x = x
-    self.y = y
+  __slots__ = ()
 
-  def as_tuple(self):
-    return (self.x, self.y)
-
-  def json_repr(self):
-    return self.as_tuple()
-
-  def __str__(self):
-    return str(self.json_repr())
-
-  def __eq__(self, other):
-    return self.__class__ == other.__class__ and self.json_repr() == other.json_repr()
-
-  def __hash__(self):
-    return hash(self.as_tuple())
-
-
-class TileLocation(Location):
-
-  def __init__(self, x, y):
+  def __new__(cls, x, y):
     assert x % 3 == 1, "tile's x location must be 1 mod 3: %s, %s" % (x, y)
     if x % 6 == 1:
       assert y % 2 == 1, "tiles must line up correctly %s, %s" % (x, y)
     else:
       assert y % 2 == 0, "tiles must line up correctly %s, %s" % (x, y)
-    Location.__init__(self, x, y)
+    return super().__new__(cls, x, y)
 
   def get_upper_left_tile(self):
     return TileLocation(self.x - 3, self.y - 1)
@@ -215,11 +196,14 @@ class TileLocation(Location):
     return edges
 
 
-class CornerLocation(Location):
+class CornerLocation(collections.namedtuple("CornerLocation", ["x", "y"])):
 
-  def __init__(self, x, y):
-    assert x % 3 != 1, "corner location's x must not be 1 mod 3: %s, %s" % (x, y)
-    Location.__init__(self, x, y)
+  __slots__ = ()
+
+  def __new__(cls, x, y):
+    assert x % 3 != 1, f"corner location's x must not be 1 mod 3: {x}, {y}"
+    assert x % 2 == y % 2, f"corners must line up with tiles: {x}, {y}"
+    return super().__new__(cls, x, y)
 
   def get_tiles(self):
     """Returns the tile coordinates of all tiles touching this corner.
@@ -262,55 +246,68 @@ class CornerLocation(Location):
   def get_edge(self, other_corner):
     """Returns edge coordinates linking this corner to the other corner."""
     if other_corner.x < self.x:
-      return EdgeLocation(other_corner, self)
-    return EdgeLocation(self, other_corner)
+      return EdgeLocation(other_corner.x, other_corner.y, self.x, self.y)
+    return EdgeLocation(self.x, self.y, other_corner.x, other_corner.y)
 
   def get_edges(self):
-    """Returns edge coordinates of edges adjacent to this corner.
+    """Returns edge coordinates of edges adjacent to this corner."""
+    # NOTE: this code is on the hot path. A simplified but less efficient implementation is
+    # return [self.get_edge(other_corner) for other_corner in self.get_adjacent_corners()]
+    if self.x % 3 == 0:
+      return [
+          EdgeLocation(self.x, self.y, self.x + 2, self.y),
+          EdgeLocation(self.x - 1, self.y - 1, self.x, self.y),
+          EdgeLocation(self.x - 1, self.y + 1, self.x, self.y),
+      ]
+    return [
+        EdgeLocation(self.x - 2, self.y, self.x, self.y),
+        EdgeLocation(self.x, self.y, self.x + 1, self.y - 1),
+        EdgeLocation(self.x, self.y, self.x + 1, self.y + 1),
+    ]
 
-    Edge coordinates must be given left-to-right.
-    """
-    return [self.get_edge(corner) for corner in self.get_adjacent_corners()]
 
+class EdgeLocation(collections.namedtuple("EdgeLocation", "left_x left_y right_x right_y")):
 
-class EdgeLocation:
+  __slots__ = ()
 
-  def __init__(self, *args):
-    """Can take either two corners or 4 coordinates. Must be left-to-right."""
-    if len(args) == 2:
-      corner_left, corner_right = args
-      assert isinstance(corner_left, CornerLocation)
-      assert isinstance(corner_right, CornerLocation)
-      assert corner_left.x < corner_right.x, "first corner must be left of second corner"
-      self.corner_left = corner_left
-      self.corner_right = corner_right
-    elif len(args) == 4:
-      leftx, lefty, rightx, righty = args
-      assert leftx < rightx, "first corner must be left of second corner"
-      self.corner_left = CornerLocation(leftx, lefty)
-      self.corner_right = CornerLocation(rightx, righty)
+  def __new__(cls, left_x, left_y, right_x, right_y):
+    assert left_x < right_x, "first corner must be left of second corner"
+    # Validate that the two corners are valid and adjacent.
+    # NOTE: this code is on the hot path. A simplified but less efficient implementation would be
+    # assert CornerLocation(right_x, right_y) in CornerLocation(left_x, left_y).get_adjacent_corners
+    assert left_x % 3 != 1, f"corner location's x must not be 1 mod 3: {left_x}, {left_y}"
+    assert left_x % 2 == left_y % 2, f"corners must line up with tiles: {left_x}, {left_y}"
+    assert right_x % 3 != 1, f"corner location's x must not be 1 mod 3: {right_x}, {right_y}"
+    assert right_x % 2 == right_y % 2, f"corners must line up with tiles: {right_x}, {right_y}"
+    if left_x % 3 == 0:
+      assert (right_x, right_y) in [(left_x+2, left_y), (left_x-1, left_y-1), (left_x-1, left_y+1)]
     else:
-      raise ValueError(args)
+      assert (right_x, right_y) in [(left_x-2, left_y), (left_x+1, left_y-1), (left_x+1, left_y+1)]
+    return super().__new__(cls, left_x, left_y, right_x, right_y)
 
-  def as_tuple(self):
-    return (self.corner_left.x, self.corner_left.y, self.corner_right.x, self.corner_right.y)
+  @property
+  def corner_left(self):
+    return CornerLocation(self.left_x, self.left_y)
 
-  def json_repr(self):
-    return self.as_tuple()
-
-  def __str__(self):
-    return str(self.json_repr())
-
-  def __eq__(self, other):
-    return self.__class__ == other.__class__ and self.json_repr() == other.json_repr()
-
-  def __hash__(self):
-    return hash(self.as_tuple())
+  @property
+  def corner_right(self):
+    return CornerLocation(self.right_x, self.right_y)
 
   def get_adjacent_tiles(self):
     """Returns the two TileLocations that share a border at this edge."""
-    right_locations = [tile.as_tuple() for tile in self.corner_right.get_tiles()]
-    return [tile for tile in self.corner_left.get_tiles() if tile.as_tuple() in right_locations]
+    return list(set(self.corner_right.get_tiles()) & set(self.corner_left.get_tiles()))
+
+
+def parse_location(location, location_type):
+  expected_size = len(location_type._fields)
+  if not isinstance(location, (tuple, list)) or len(location) != expected_size:
+    raise InvalidMove("location %s should be a tuple of size %s" % (location, expected_size))
+  if not all(isinstance(val, int) for val in location):
+    raise InvalidMove("location %s should be a tuple of ints" % (location,))
+  if location_type == EdgeLocation:
+    if CornerLocation(*location[:2]) not in CornerLocation(*location[2:]).get_adjacent_corners():
+      raise InvalidMove("%s is not a valid edge" % (location,))
+  return location_type(*location)
 
 
 class Road:
@@ -346,7 +343,7 @@ class Road:
     source = None
     if value["road_type"] == "ship":
       assert value.get("source") is not None
-      source = CornerLocation(value["source"][0], value["source"][1])
+      source = CornerLocation(*value["source"])
     return Road(
         value["location"], value["road_type"], value["player"], value.get("closed", False),
         value.get("movable", True), source,
@@ -509,40 +506,40 @@ class IslandersState:
 
   def __init__(self):
     # Player data is a sequential list of Player objects; players are identified by index.
-    self.player_data = []
+    self.player_data: List[Player] = []
     # Board/Card State
-    self.tiles = {}
-    self.ports = {}
-    self.port_corners = {}
-    self.pieces = {}
-    self.roads = {}  # includes ships
-    self.robber = None
-    self.pirate = None
-    self.dev_cards = []
-    self.largest_army_player = None
-    self.longest_route_player = None
-    self.dice_roll = None
-    self.corners_to_islands = {}  # Map of corner to island (canonical corner location).
-    self.placement_islands = None
+    self.tiles: Dict[TileLocation, Tile] = {}
+    self.ports: Dict[TileLocation, Port] = {}
+    self.port_corners: Dict[CornerLocation, str] = {}
+    self.pieces: Dict[CornerLocation, Piece] = {}
+    self.roads: Dict[EdgeLocation, Road] = {}  # includes ships
+    self.robber: Optional[TileLocation] = None
+    self.pirate: Optional[TileLocation] = None
+    self.dev_cards: List[str] = []
+    self.largest_army_player: Optional[int] = None
+    self.longest_route_player: Optional[int] = None
+    self.dice_roll: Optional[Tuple[int, int]] = None
+    self.corners_to_islands: Dict[CornerLocation, CornerLocation] = {}  # corner -> canonical corner
+    self.placement_islands: Optional[List[CornerLocation]] = None
     # Turn Information
-    self.game_phase = "place1"  # valid values are place1, place2, main, victory
+    self.game_phase: str = "place1"  # valid values are place1, place2, main, victory
     # valid values: settle, road, dice, collect, discard, robber, rob, dev_road, main, extra_build
-    self.turn_phase = "settle"
-    self.turn_idx = 0
-    self.collect_idx = None
-    self.extra_build_idx = None
+    self.turn_phase: str = "settle"
+    self.turn_idx: int = 0
+    self.collect_idx: Optional[int] = None
+    self.extra_build_idx: Optional[int] = None
     # Bookkeeping
-    self.dev_roads_placed = 0
-    self.played_dev = 0
-    self.ships_moved = 0
-    self.built_this_turn = []  # List of location tuples where ships were placed this turn.
-    self.discard_players = {}  # Map of player to number of cards they must discard.
-    self.rob_players = []  # List of players that can be robbed by this robber.
-    self.shortage_resources = []
-    self.collect_counts = collections.defaultdict(int)
-    self.home_corners = collections.defaultdict(list)
-    self.foreign_landings = collections.defaultdict(list)
-    self.next_die_roll = None
+    self.dev_roads_placed: int = 0
+    self.played_dev: int = 0
+    self.ships_moved: int = 0
+    self.built_this_turn: List[EdgeLocation] = []  # Locations where ships were placed this turn.
+    self.discard_players: Dict[int, int] = {}  # Map of player to number of cards they must discard.
+    self.rob_players: List[int] = []  # List of players that can be robbed by this robber.
+    self.shortage_resources: List[str] = []
+    self.collect_counts: Dict[int, int] = collections.defaultdict(int)
+    self.home_corners: Dict[int, List[CornerLocation]] = collections.defaultdict(list)
+    self.foreign_landings: Dict[int, List[CornerLocation]] = collections.defaultdict(list)
+    self.next_die_roll: Optional[int] = None
     # Trade Information
     self.trade_offer = None
     self.counter_offers = {}  # Map of player to counter offer.
@@ -597,19 +594,20 @@ class IslandersState:
     if cstate.pirate is not None:
       cstate.pirate = TileLocation(*cstate.pirate)
 
-    # Built this turn needs to use tuples instead of lists. Same thing for placement_islands.
-    cstate.built_this_turn = [tuple(loc) for loc in cstate.built_this_turn]
+    # Built this turn needs to use locations instead of lists. Same thing for placement_islands.
+    cstate.built_this_turn = [EdgeLocation(*loc) for loc in cstate.built_this_turn]
     if cstate.placement_islands is not None:
-      cstate.placement_islands = [tuple(corner) for corner in cstate.placement_islands]
+      cstate.placement_islands = [CornerLocation(*corner) for corner in cstate.placement_islands]
 
-    # When loading json, these islands get turned into lists. Turn them into tuples instead.
+    # When loading json, these islands get turned into lists. Turn them into locations instead.
     for attr in ["home_corners", "foreign_landings"]:
       mapping = getattr(cstate, attr)
       for idx, corner_list in mapping.items():
         for corner in corner_list:
-          assert cstate.pieces[tuple(corner)].player == idx
+          assert cstate.pieces[CornerLocation(*corner)].player == idx
       mapping.update({
-          idx: [tuple(corner) for corner in corner_list] for idx, corner_list in mapping.items()
+          idx: [CornerLocation(*corner) for corner in corner_list]
+          for idx, corner_list in mapping.items()
       })
 
     cstate.recompute()
@@ -672,25 +670,25 @@ class IslandersState:
     del ret["player_data"]
     ret["dev_cards"] = len(self.dev_cards)
 
-    land_corners = {}
-    all_corners = {}
+    land_corners = set()
+    all_corners = set()
     # TODO: instead of sending a list of corners, we should send something like
     # a list of legal moves for tiles, corners, and edges.
     for tile in self.tiles.values():
       # Triple-count each corner and dedup.
       for corner_loc in tile.location.get_corner_locations():
-        all_corners[corner_loc.as_tuple()] = corner_loc
+        all_corners.add(corner_loc)
         if not tile.is_land:
           continue
-        land_corners[corner_loc.as_tuple()] = {"location": corner_loc}
-    ret["corners"] = list(land_corners.values())
+        land_corners.add(corner_loc)
+    ret["corners"] = [{"location": loc} for loc in land_corners]
     edges = {}
-    for corner in all_corners.values():
+    for corner in all_corners:
       # Double-count each edge and dedup.
       for edge in corner.get_edges():
         edge_type = self._get_edge_type(edge)
         if edge_type is not None:
-          edges[edge.as_tuple()] = {"location": edge, "edge_type": edge_type}
+          edges[edge] = {"location": edge, "edge_type": edge_type}
     ret["edges"] = list(edges.values())
 
     ret["landings"] = []
@@ -789,9 +787,7 @@ class IslandersState:
     if move_type == "road":
       return self.handle_road(location, player_idx, move_type, [("rsrc2", 1), ("rsrc4", 1)])
     if move_type == "ship" and self.options.seafarers:
-      self.handle_road(location, player_idx, move_type, [("rsrc1", 1), ("rsrc2", 1)])
-      self.built_this_turn.append(tuple(location))
-      return None
+      return self.handle_road(location, player_idx, move_type, [("rsrc1", 1), ("rsrc2", 1)])
     if move_type == "move_ship" and self.options.seafarers:
       return self.handle_move_ship(data.get("from"), data.get("to"), player_idx)
     if move_type == "buy_dev":
@@ -815,12 +811,6 @@ class IslandersState:
     if move_type == "end_turn":
       return self.handle_end_turn()
     raise UnknownMove(f"Unknown move {move_type}")
-
-  def _validate_location(self, location, num_entries=2):
-    if not isinstance(location, (tuple, list)) or len(location) != num_entries:
-      raise InvalidMove("location %s should be a tuple of size %s" % (location, num_entries))
-    if not all(isinstance(val, int) for val in location):
-      raise InvalidMove("location %s should be a tuple of ints" % (location,))
 
   def _validate_selection(self, selection):
     """Selection should be a dict of rsrc -> count."""
@@ -937,8 +927,7 @@ class IslandersState:
         continue
       if self.robber == tile.location:
         continue
-      corner_locations = {a.as_tuple() for a in tile.location.get_corner_locations()}
-      for corner_loc in corner_locations:
+      for corner_loc in tile.location.get_corner_locations():
         piece = self.pieces.get(corner_loc)
         if piece and piece.piece_type == "settlement":
           to_receive[tile.tile_type][piece.player] += 1
@@ -1062,17 +1051,16 @@ class IslandersState:
       self.turn_phase = "robber"
 
   def validate_robber_location(self, location, robber_type, land):
-    self._validate_location(location)
+    new_location = parse_location(location, TileLocation)
     if self.turn_phase != "robber":
       if self.turn_phase == "discard":
         raise InvalidMove("Waiting for players to discard.")
       raise InvalidMove("You cannot play the %s right now." % robber_type)
-    chosen_tile = self.tiles.get(tuple(location))
+    chosen_tile = self.tiles.get(new_location)
     if chosen_tile is None or land != chosen_tile.is_land:
       raise InvalidMove(
           "You must play the %s on a valid %s tile." % (robber_type, "land" if land else "{space}")
       )
-    new_location = TileLocation(*location)
     if getattr(self, robber_type) == new_location:
       raise InvalidMove("You must move the %s to a different tile." % robber_type)
     return new_location
@@ -1087,8 +1075,7 @@ class IslandersState:
   def handle_robber(self, location, current_player):
     robber_loc = self.validate_robber_location(location, "robber", land=True)
     adjacent_players = {
-        self.pieces[loc.as_tuple()].player for loc in robber_loc.get_corner_locations()
-        if loc.as_tuple() in self.pieces
+        self.pieces[loc].player for loc in robber_loc.get_corner_locations() if loc in self.pieces
     }
     self.check_friendly_robber(current_player, adjacent_players, "robber")
     self.event_log.append(Event("robber", "{player%s} moved the robber" % current_player))
@@ -1098,8 +1085,8 @@ class IslandersState:
   def handle_pirate(self, player_idx, location):
     pirate_loc = self.validate_robber_location(location, "pirate", land=False)
     adjacent_players = {
-        self.roads[edge.as_tuple()].player for edge in pirate_loc.get_edge_locations()
-        if edge.as_tuple() in self.roads and self.roads[edge.as_tuple()].road_type == "ship"
+        self.roads[edge].player for edge in pirate_loc.get_edge_locations()
+        if edge in self.roads and self.roads[edge].road_type == "ship"
     }
     self.check_friendly_robber(player_idx, adjacent_players, "pirate")
     self.event_log.append(Event("pirate", "{player%s} moved the pirate" % player_idx))
@@ -1182,9 +1169,6 @@ class IslandersState:
   def _check_road_building(self, location, player, road_type):
     left_corner = location.corner_left
     right_corner = location.corner_right
-    # Validate that this is an actual edge.
-    if location.as_tuple() not in [edge.as_tuple() for edge in left_corner.get_edges()]:
-      raise InvalidMove("%s is not a valid edge" % location)
     # Validate that one side of the road is land.
     self._check_edge_type(location, road_type)
     # Validate that ships are not placed next to the pirate.
@@ -1195,7 +1179,7 @@ class IslandersState:
     # Validate that this connects to either a settlement or another road.
     for corner in [left_corner, right_corner]:
       # Check whether this corner has one of the player's settlements.
-      maybe_piece = self.pieces.get(corner.as_tuple())
+      maybe_piece = self.pieces.get(corner)
       if maybe_piece:
         if maybe_piece.player == player:  # pylint: disable=no-else-return
           # They have a settlement/city here - they can build a road.
@@ -1208,7 +1192,7 @@ class IslandersState:
       for edge in other_edges:
         if edge == location:
           continue
-        maybe_road = self.roads.get(edge.as_tuple())
+        maybe_road = self.roads.get(edge)
         if maybe_road and maybe_road.player == player and maybe_road.road_type == road_type:
           # They have a road leading here - they can build another road.
           return
@@ -1231,15 +1215,15 @@ class IslandersState:
     tile_locations = edge_location.get_adjacent_tiles()
     if len(tile_locations) != 2:
       return None
-    if not all(loc.as_tuple() in self.tiles for loc in tile_locations):
+    if not all(loc in self.tiles for loc in tile_locations):
       return None
 
     # If there is a road/ship here, just return the type of that road/ship.
-    if self.roads.get(edge_location.as_tuple()) is not None:
-      return self.roads[edge_location.as_tuple()].road_type
+    if edge_location in self.roads:
+      return self.roads[edge_location].road_type
 
     # Calculate how many of the two tiles are land.
-    are_lands = [self.tiles[loc.as_tuple()].is_land for loc in tile_locations]
+    are_lands = [self.tiles[loc].is_land for loc in tile_locations]
 
     # If we are not playing with seafarers, then only edges next to at least one land are valid.
     if not self.options.seafarers:
@@ -1254,7 +1238,7 @@ class IslandersState:
       return "ship"
     # For the coast, it matters whether the sea is on top or on bottom.
     tile_locations.sort(key=lambda loc: loc.y)
-    if self.tiles[tile_locations[0].as_tuple()].is_land:
+    if self.tiles[tile_locations[0]].is_land:
       return "coastdown"
     return "coastup"
 
@@ -1263,13 +1247,12 @@ class IslandersState:
     right_corner = location.corner_right
     for corner in [left_corner, right_corner]:
       # Check whether this corner has one of the player's settlements.
-      piece = self.pieces.get(corner.as_tuple())
+      piece = self.pieces.get(corner)
       if piece and piece.player == player:
         # They have a settlement/city here - make sure it's not the one that
         # they built before (by checking to see if it has no roads).
-        edges = corner.get_edges()
-        for edge in edges:
-          road = self.roads.get(edge.as_tuple())
+        for edge in corner.get_edges():
+          road = self.roads.get(edge)
           if road and road.player == player:
             # No good - this is the settlement that already has a road.
             raise InvalidMove("You must put your road next to your second settlement.")
@@ -1278,7 +1261,7 @@ class IslandersState:
       raise InvalidMove("You must put your road next to your settlement.")
 
   def handle_road(self, location, player, road_type, resources):
-    self._validate_location(location, num_entries=4)
+    loc = parse_location(location, EdgeLocation)
     # Check that this is the right part of the turn.
     if self.game_phase.startswith("place"):
       if self.turn_phase != "road":
@@ -1286,10 +1269,10 @@ class IslandersState:
     elif self.turn_phase != "dev_road":
       self._check_main_phase(road_type, f"build a {road_type}")
     # Check nothing else is already there.
-    if tuple(location) in self.roads:
-      raise InvalidMove("There is already a %s there." % self.roads[tuple(location)].road_type)
+    if loc in self.roads:
+      raise InvalidMove("There is already a %s there." % self.roads[loc].road_type)
     # Check that this attaches to their existing network.
-    self._check_road_building(EdgeLocation(*location), player, road_type)
+    self._check_road_building(loc, player, road_type)
     # Check that the player has enough roads left.
     road_count = len([
         r for r in self.roads.values() if r.player == player and r.road_type == road_type
@@ -1298,13 +1281,13 @@ class IslandersState:
       raise InvalidMove(f"You have no {road_type}s remaining.")
     # Handle special settlement phase.
     if self.game_phase.startswith("place"):
-      self._check_road_next_to_empty_settlement(EdgeLocation(*location), player)
-      self.add_road(Road(location, road_type, player))
+      self._check_road_next_to_empty_settlement(loc, player)
+      self.add_road(Road(loc, road_type, player))
       self.event_log.append(Event(road_type, "{player%s} built a %s" % (player, road_type)))
       self.end_turn()
       return
     if self.turn_phase == "dev_road":
-      self.add_road(Road(location, road_type, player))
+      self.add_road(Road(loc, road_type, player))
       self.event_log.append(Event(road_type, "{player%s} built a %s" % (player, road_type)))
       self.dev_roads_placed += 1
       # Road building ends if they placed 2 roads or ran out of roads.
@@ -1317,10 +1300,10 @@ class IslandersState:
     self._remove_resources(resources, player, f"build a {road_type}")
 
     self.event_log.append(Event(road_type, "{player%s} built a %s" % (player, road_type)))
-    self.add_road(Road(location, road_type, player))
+    self.add_road(Road(loc, road_type, player))
 
   def _add_road(self, road):
-    self.roads[road.location.as_tuple()] = road
+    self.roads[road.location] = road
 
   def add_road(self, road):
     if road.road_type == "ship":
@@ -1334,6 +1317,7 @@ class IslandersState:
 
     if road.road_type == "ship":
       self.recalculate_ships(road.source, road.player)
+      self.built_this_turn.append(road.location)
 
   def _update_longest_route_player(self):
     new_max = max([p.longest_route for p in self.player_data])
@@ -1374,7 +1358,7 @@ class IslandersState:
 
   def _calculate_longest_road(self, player):
     # Get all corners of all roads for this player.
-    all_corners = set([])
+    all_corners = set()
     for road in self.roads.values():
       if road.player != player:
         continue
@@ -1384,7 +1368,7 @@ class IslandersState:
     # For each corner, do a DFS and find the depth.
     max_length = 0
     for corner in all_corners:
-      seen = set([])
+      seen = set()
       max_length = max(max_length, self._dfs_depth(player, corner, seen, None))
 
     return max_length
@@ -1394,14 +1378,14 @@ class IslandersState:
     # another player, the route ends. If it belongs to this player, the next edge in the route
     # may be either a road or a ship. If there is no piece, then the type of the next edge
     # must match the type of the previous edge (except for the first edge in the DFS).
-    this_piece = self.pieces.get(corner.as_tuple())
+    this_piece = self.pieces.get(corner)
     if prev_edge is None:
       # First road can be anything. Can also be adjacent to another player's settlement.
       valid_types = Road.TYPES
     else:
       if this_piece is None:
-        if self.roads.get(prev_edge.as_tuple()) is not None:
-          valid_types = [self.roads[prev_edge.as_tuple()].road_type]
+        if prev_edge in self.roads:
+          valid_types = [self.roads[prev_edge].road_type]
         else:
           raise RuntimeError("you screwed it up")
       elif this_piece.player != player:
@@ -1415,7 +1399,7 @@ class IslandersState:
     unseen_edges = [edge for edge in corner.get_edges() if edge not in seen_edges]
     valid_edges = []
     for edge in unseen_edges:
-      edge_piece = self.roads.get(edge.as_tuple())
+      edge_piece = self.roads.get(edge)
       if edge_piece and edge_piece.player == player and edge_piece.road_type in valid_types:
         valid_edges.append(edge)
 
@@ -1431,14 +1415,14 @@ class IslandersState:
   def get_ship_source(self, location, player_idx):
     edges = []
     for corner in [location.corner_left, location.corner_right]:
-      maybe_piece = self.pieces.get(corner.as_tuple())
+      maybe_piece = self.pieces.get(corner)
       if maybe_piece and maybe_piece.player == player_idx:
         return maybe_piece.location
       edges.extend(corner.get_edges())
     for edge in edges:
       if edge == location:
         continue
-      maybe_road = self.roads.get(edge.as_tuple())
+      maybe_road = self.roads.get(edge)
       if maybe_road and maybe_road.player == player_idx and maybe_road.road_type == "ship":
         return maybe_road.source
     raise InvalidMove("Ships must be connected to your ship network.")
@@ -1447,18 +1431,18 @@ class IslandersState:
     self._ship_dfs_helper(source, player_idx, [], set(), source, None)
 
   def _ship_dfs_helper(self, source, player_idx, path, seen, corner, prev):
-    seen.add(corner.as_tuple())
+    seen.add(corner)
     edges = corner.get_edges()
     outgoing_edges = []
 
     # First, calculate all the outgoing edges.
     for edge in edges:
       # This is the edge we just walked down, ignore it.
-      if edge.as_tuple() == prev:
+      if edge == prev:
         continue
       other_corner = edge.corner_left if edge.corner_right == corner else edge.corner_right
       # If this edge does not have this player's ship on it, skip it.
-      maybe_ship = self.roads.get(edge.as_tuple())
+      maybe_ship = self.roads.get(edge)
       if not maybe_ship or maybe_ship.road_type != "ship" or maybe_ship.player != player_idx:
         continue
       # Now we know there is a ship from corner to other_corner.
@@ -1478,41 +1462,41 @@ class IslandersState:
         # Here, we have circled back around to the start. We must mark the two edges at the
         # beginning and end of the path as movable. We do not touch the rest.
         self.roads[path[0]].movable = True
-        self.roads[edge.as_tuple()].movable = True
+        self.roads[edge].movable = True
         continue
-      if other_corner.as_tuple() in seen:
+      if other_corner in seen:
         # Here, we have created a loop. Every ship on this loop may be movable.
         start_idx = None
         for idx, rloc in reversed(list(enumerate(path))):
-          if other_corner.as_tuple() in [rloc[:2], rloc[2:]]:
+          if other_corner in [rloc[:2], rloc[2:]]:
             start_idx = idx
             break
         else:
           raise RuntimeError("What happened here? This shouldn't be physically possible.")
         for idx in range(start_idx, len(path)):
           self.roads[path[idx]].movable = True
-        self.roads[edge.as_tuple()].movable = True
+        self.roads[edge].movable = True
         continue
-      maybe_piece = self.pieces.get(other_corner.as_tuple())
+      maybe_piece = self.pieces.get(other_corner)
       if maybe_piece and maybe_piece.player == player_idx:
         # Here, we know that there is a shipping route from one of the player's settlements to
         # another. Every ship on this shipping route is considered closed.
-        for rloc in path + [edge.as_tuple()]:
+        for rloc in path + [edge]:
           self.roads[rloc].closed = True
       # Now we know this ship does not create a loop, so we continue to explore the far corner.
-      path.append(edge.as_tuple())
-      self._ship_dfs_helper(source, player_idx, path, seen, other_corner, edge.as_tuple())
+      path.append(edge)
+      self._ship_dfs_helper(source, player_idx, path, seen, other_corner, edge)
       path.pop()
-    seen.remove(corner.as_tuple())
+    seen.remove(corner)
 
   def handle_move_ship(self, from_location, to_location, player_idx):
-    self._validate_location(from_location, num_entries=4)
-    self._validate_location(to_location, num_entries=4)
+    from_loc = parse_location(from_location, EdgeLocation)
+    to_loc = parse_location(to_location, EdgeLocation)
     # Check that this is the right part of the turn.
     self._check_main_phase("move_ship", "move a ship")
     if self.ships_moved:
       raise InvalidMove("You have already moved a ship this turn.")
-    maybe_ship = self.roads.get(tuple(from_location))
+    maybe_ship = self.roads.get(from_loc)
     if not maybe_ship:
       raise InvalidMove("You do not have a ship there.")
     if maybe_ship.road_type != "ship":
@@ -1523,24 +1507,24 @@ class IslandersState:
       raise InvalidMove("You may not move a ship that connects two of your settlements.")
     if not maybe_ship.movable:
       raise InvalidMove("You must move a ship at the end of one of your shipping routes.")
-    if tuple(from_location) in self.built_this_turn:
+    if from_loc in self.built_this_turn:
       raise InvalidMove("You may not move a ship that you built this turn.")
-    maybe_dest = self.roads.get(tuple(to_location))
+    maybe_dest = self.roads.get(to_loc)
     if maybe_dest:
       raise InvalidMove(f"There is already a {maybe_dest.road_type} at that destination.")
-    adjacent_tiles = EdgeLocation(*from_location).get_adjacent_tiles()
+    adjacent_tiles = from_loc.get_adjacent_tiles()
     if self.pirate in adjacent_tiles:
       raise InvalidMove("You cannot move a ship that is next to the pirate.")
 
     # Check that this attaches to their existing network, without the original ship.
     # To do this, remove the old ship first, but restore it if any exception is thrown.
-    old_ship = self.roads.pop(tuple(from_location))
+    old_ship = self.roads.pop(from_loc)
     old_source = old_ship.source
     try:
-      self._check_road_building(EdgeLocation(*to_location), player_idx, "ship")
-      self.add_road(Road(to_location, "ship", player_idx))
+      self._check_road_building(to_loc, player_idx, "ship")
+      self.add_road(Road(to_loc, "ship", player_idx))
     except:
-      self.roads[old_ship.location.as_tuple()] = old_ship
+      self.roads[old_ship.location] = old_ship
       raise
 
     self.event_log.append(Event("move_ship", "{player%s} moved a ship" % player_idx))
@@ -1550,7 +1534,7 @@ class IslandersState:
     self.ships_moved = 1
 
   def handle_settle(self, location, player):
-    self._validate_location(location)
+    loc = parse_location(location, CornerLocation)
     # Check that this is the right part of the turn.
     if self.game_phase.startswith("place"):
       if self.turn_phase != "settle":
@@ -1558,26 +1542,26 @@ class IslandersState:
     else:
       self._check_main_phase("settle", "build a settlement")
     # Check nothing else is already there.
-    if tuple(location) in self.pieces:
+    if loc in self.pieces:
       raise InvalidMove("You cannot settle on top of another player's settlement.")
-    for adjacent in CornerLocation(*location).get_adjacent_corners():
-      if adjacent.as_tuple() in self.pieces:
+    for adjacent in loc.get_adjacent_corners():
+      if adjacent in self.pieces:
         raise InvalidMove("You cannot place a settlement next to existing settlement.")
     # Handle special settlement phase.
     if self.game_phase.startswith("place"):
       if self.placement_islands is not None:
-        canonical_corner = self.corners_to_islands.get(tuple(location))
+        canonical_corner = self.corners_to_islands.get(loc)
         if canonical_corner not in self.placement_islands:
           raise InvalidMove("You cannot place your first settlements in that area.")
-      self.add_piece(Piece(location[0], location[1], "settlement", player))
+      self.add_piece(Piece(loc.x, loc.y, "settlement", player))
       self.event_log.append(Event("settlement", "{player%s} built a settlement" % player))
       if self.game_phase == "place2":
-        self.give_second_resources(player, CornerLocation(*location))
+        self.give_second_resources(player, loc)
       self.turn_phase = "road"
       return
     # Check connected to one of the player's roads.
-    for edge_loc in CornerLocation(*location).get_edges():
-      maybe_road = self.roads.get(edge_loc.as_tuple())
+    for edge_loc in loc.get_edges():
+      maybe_road = self.roads.get(edge_loc)
       if maybe_road and maybe_road.player == player:
         break
     else:
@@ -1593,10 +1577,10 @@ class IslandersState:
     self._remove_resources(resources, player, "build a settlement")
 
     self.event_log.append(Event("settlement", "{player%s} built a settlement" % player))
-    self.add_piece(Piece(location[0], location[1], "settlement", player))
+    self.add_piece(Piece(loc.x, loc.y, "settlement", player))
 
   def _add_piece(self, piece):
-    self.pieces[piece.location.as_tuple()] = piece
+    self.pieces[piece.location] = piece
 
   def add_piece(self, piece):
     self._add_piece(piece)
@@ -1606,11 +1590,9 @@ class IslandersState:
     # Check for breaking an existing longest road.
     # Start by calculating any players with an adjacent road/ship.
     players_to_check = set()
-    edges = piece.location.get_edges()
-    for edge in edges:
-      maybe_road = self.roads.get(edge.as_tuple())
-      if maybe_road:
-        players_to_check.add(maybe_road.player)
+    for edge in piece.location.get_edges():
+      if edge in self.roads:
+        players_to_check.add(self.roads[edge].player)
 
     # Recompute longest road for each of these players.
     for player_idx in players_to_check:
@@ -1625,18 +1607,18 @@ class IslandersState:
 
     # Compute home islands / foreign landings for this piece.
     if self.game_phase.startswith("place"):
-      self.home_corners[piece.player].append(piece.location.as_tuple())
+      self.home_corners[piece.player].append(piece.location)
     else:
       home_settled = [self.corners_to_islands[loc] for loc in self.home_corners[piece.player]]
       foreign_landed = [self.corners_to_islands[loc] for loc in self.foreign_landings[piece.player]]
-      current_island = self.corners_to_islands[piece.location.as_tuple()]
+      current_island = self.corners_to_islands[piece.location]
       if current_island not in home_settled + foreign_landed:
         self.event_log.append(Event("landing", "{player%s} settled on a new island" % piece.player))
-        self.foreign_landings[piece.player].append(piece.location.as_tuple())
+        self.foreign_landings[piece.player].append(piece.location)
 
   def _add_player_port(self, location, player):
     """Sets the trade ratios for a player who built a settlement at this location."""
-    port_type = self.port_corners.get(location.as_tuple())
+    port_type = self.port_corners.get(location)
     if port_type == "3":
       for rsrc in RESOURCES:
         new_ratio = min(self.player_data[player].trade_ratios[rsrc], 3)
@@ -1647,7 +1629,7 @@ class IslandersState:
 
   def give_second_resources(self, player, corner_loc):
     # TODO: handle collecting resources from the second settlement if on a bonus tile.
-    tile_locs = [loc.as_tuple() for loc in corner_loc.get_tiles() if loc.as_tuple() in self.tiles]
+    tile_locs = [loc for loc in corner_loc.get_tiles() if loc in self.tiles]
     received = collections.defaultdict(int)
     for tile_loc in tile_locs:
       if self.tiles[tile_loc].number:
@@ -1657,11 +1639,11 @@ class IslandersState:
     self.event_log.append(Event("collect", "{player%s} received %s" % (player, text)))
 
   def handle_city(self, location, player):
-    self._validate_location(location)
+    loc = parse_location(location, CornerLocation)
     # Check that this is the right part of the turn.
     self._check_main_phase("city", "build a city")
     # Check this player already owns a settlement there.
-    piece = self.pieces.get(tuple(location))
+    piece = self.pieces.get(loc)
     if not piece:
       raise InvalidMove("You need to build a settlement there first.")
     if piece.player != player:
@@ -1678,7 +1660,7 @@ class IslandersState:
     resources = [("rsrc3", 2), ("rsrc5", 3)]
     self._remove_resources(resources, player, "build a city")
 
-    self.pieces[tuple(location)].piece_type = "city"
+    self.pieces[loc].piece_type = "city"
     self.event_log.append(Event("city", "{player%s} upgraded a settlement to a city" % player))
 
   def handle_buy_dev(self, player):
@@ -1901,17 +1883,17 @@ class IslandersState:
       self.player_data[player].cards[rsrc] -= give
 
   def add_tile(self, tile):
-    self.tiles[tile.location.as_tuple()] = tile
+    self.tiles[tile.location] = tile
 
   def add_port(self, port):
-    self.ports[port.location.as_tuple()] = port
+    self.ports[port.location] = port
 
   def _compute_edges(self):
     # Go back and figure out which ones are corners.
     # TODO: unit test this function.
     for location, tile_data in self.tiles.items():
-      locs = TileLocation(location[0], location[1]).get_adjacent_tiles()
-      exists = [loc.as_tuple() in self.tiles for loc in locs]
+      locs = location.get_adjacent_tiles()
+      exists = [loc in self.tiles for loc in locs]
       tile_rotation = tile_data.rotation
       if exists.count(True) > 4:
         tile_data.variant = ""
@@ -1919,7 +1901,7 @@ class IslandersState:
         tile_data.variant = "corner"
       else:
         # Takes advantage of the return order of get_adjacent_tiles.
-        upper_left = locs[(tile_rotation+2) % 6].as_tuple()
+        upper_left = locs[(tile_rotation+2) % 6]
         if upper_left in self.tiles:
           tile_data.variant = "edgeleft"
         else:
@@ -1929,10 +1911,10 @@ class IslandersState:
     for location, tile_data in self.tiles.items():
       if tile_data.is_land:
         continue
-      locs = TileLocation(location[0], location[1]).get_adjacent_tiles()
-      exists = [loc.as_tuple() in self.tiles for loc in locs]
+      locs = location.get_adjacent_tiles()
+      exists = [loc in self.tiles for loc in locs]
       lands = [
-          idx for idx, loc in enumerate(locs) if exists[idx] and self.tiles[loc.as_tuple()].is_land
+          idx for idx, loc in enumerate(locs) if exists[idx] and self.tiles[loc].is_land
       ]
       tile_data.land_rotations = lands
 
@@ -1971,7 +1953,7 @@ class IslandersState:
       if rotation == 5:
         corners = [port.location.get_lower_right_corner(), port.location.get_right_corner()]
       for corner in corners:
-        self.port_corners[corner.as_tuple()] = port.port_type
+        self.port_corners[corner] = port.port_type
 
   def shuffle_land_tiles(self, tile_locs):
     tile_types = [self.tiles[tile_loc].tile_type for tile_loc in tile_locs]
@@ -2030,9 +2012,8 @@ class IslandersState:
       seen_tiles.add(location)
       islands.append(set())
       for corner_loc in tile.location.get_corner_locations():
-        islands[-1].add(corner_loc.as_tuple())
-      loc_stack = []
-      loc_stack.extend([loc.as_tuple() for loc in tile.location.get_adjacent_tiles()])
+        islands[-1].add(corner_loc)
+      loc_stack = tile.location.get_adjacent_tiles()
       while loc_stack:
         next_loc = loc_stack.pop()
         if next_loc in seen_tiles:
@@ -2042,10 +2023,9 @@ class IslandersState:
         if not self._is_connecting_tile(self.tiles[next_loc]):
           continue
         seen_tiles.add(next_loc)
-        loc = TileLocation(*next_loc)
-        for corner_loc in loc.get_corner_locations():
-          islands[-1].add(corner_loc.as_tuple())
-        loc_stack.extend([x.as_tuple() for x in loc.get_adjacent_tiles()])
+        for corner_loc in next_loc.get_corner_locations():
+          islands[-1].add(corner_loc)
+        loc_stack.extend(next_loc.get_adjacent_tiles())
 
     # Convert a group of sets into a map of corner -> canonical corner.
     for corner_set in islands:
@@ -2292,58 +2272,58 @@ class MapMakerState(IslandersState):
       self.turn_idx = (self.turn_idx + 1) % len(self.player_data)
       return
     loc = TileLocation(*data["location"])
-    if self.turn_idx == 1 and self.tiles[loc.as_tuple()].is_land:
+    if self.turn_idx == 1 and self.tiles[loc].is_land:
       # Numbers
-      num = self.tiles[loc.as_tuple()].number
+      num = self.tiles[loc].number
       if num is None:
         num = 2
       elif num == 12:
         num = None
       else:
         num += 1
-      self.tiles[loc.as_tuple()].number = num
+      self.tiles[loc].number = num
       return
     if self.turn_idx == 1:
       # Ports
       port_order = RESOURCES + ["3"]
       port_rot = 0
-      if self.tiles.get(loc.as_tuple()):
-        port_rot = self.tiles[loc.as_tuple()].rotation
-      maybe_port = self.ports.get(loc.as_tuple())
+      if self.tiles.get(loc):
+        port_rot = self.tiles[loc].rotation
+      maybe_port = self.ports.get(loc)
       if not maybe_port:
         self.add_port(Port(loc.x, loc.y, "rsrc1", port_rot))
         return
       port_idx = port_order.index(maybe_port.port_type)
       if port_idx + 1 == len(port_order):
-        del self.ports[loc.as_tuple()]
+        del self.ports[loc]
         return
-      self.ports[loc.as_tuple()].port_type = port_order[port_idx + 1]
+      self.ports[loc].port_type = port_order[port_idx + 1]
       return
     if self.turn_idx == 2:
       # Rotation
-      self.tiles[loc.as_tuple()].rotation += 1
-      self.tiles[loc.as_tuple()].rotation %= 6
-      if loc.as_tuple() in self.ports:
-        self.ports[loc.as_tuple()].rotation += 1
-        self.ports[loc.as_tuple()].rotation %= 6
+      self.tiles[loc].rotation += 1
+      self.tiles[loc].rotation %= 6
+      if loc in self.ports:
+        self.ports[loc].rotation += 1
+        self.ports[loc].rotation %= 6
       return
     # Change tile types or add tiles.
     tile_order = ["space"] + RESOURCES + ["anyrsrc", "norsrc"]
-    idx = tile_order.index(self.tiles[loc.as_tuple()].tile_type)
+    idx = tile_order.index(self.tiles[loc].tile_type)
     new_type = tile_order[(idx+1) % len(tile_order)]
-    self.tiles[loc.as_tuple()].tile_type = new_type
+    self.tiles[loc].tile_type = new_type
     if new_type == "norsrc":
-      self.tiles[loc.as_tuple()].is_land = True
-      self.tiles[loc.as_tuple()].number = None
+      self.tiles[loc].is_land = True
+      self.tiles[loc].number = None
     elif new_type != "space":
-      self.tiles[loc.as_tuple()].is_land = True
-      if self.tiles[loc.as_tuple()].number is None:
-        self.tiles[loc.as_tuple()].number = 2
+      self.tiles[loc].is_land = True
+      if self.tiles[loc].number is None:
+        self.tiles[loc].number = 2
     else:
-      self.tiles[loc.as_tuple()].is_land = False
-      self.tiles[loc.as_tuple()].number = None
+      self.tiles[loc].is_land = False
+      self.tiles[loc].number = None
     for location in loc.get_adjacent_tiles():
-      if location.as_tuple() not in self.tiles:
+      if location not in self.tiles:
         self.add_tile(Tile(location.x, location.y, "space", False, None))
 
 
