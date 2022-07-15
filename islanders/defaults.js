@@ -11,6 +11,7 @@ function initializeDefaults() {
     {name: "rsrc5", color: "#A7ADA9", text: "⛰️"},
     {name: "norsrc", color: "#D8D393", text: "🌵"},
     {name: "anyrsrc", color: ["#B8860B", "#0000CD"]},
+    {name: "discover", color: "lavender", text: "🌫️"},
     {name: "space", color: "#56A4D8"},
   ];
   let devDatas = [

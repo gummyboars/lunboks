@@ -1,0 +1,918 @@
+{
+  "ports": [
+    {
+      "location": [
+        1,
+        5
+      ],
+      "port_type": "3",
+      "rotation": 4
+    },
+    {
+      "location": [
+        4,
+        2
+      ],
+      "port_type": "3",
+      "rotation": 0
+    },
+    {
+      "location": [
+        7,
+        1
+      ],
+      "port_type": "rsrc5",
+      "rotation": 5
+    },
+    {
+      "location": [
+        13,
+        1
+      ],
+      "port_type": "rsrc2",
+      "rotation": 0
+    },
+    {
+      "location": [
+        25,
+        9
+      ],
+      "port_type": "rsrc1",
+      "rotation": 2
+    },
+    {
+      "location": [
+        25,
+        11
+      ],
+      "port_type": "rsrc3",
+      "rotation": 1
+    },
+    {
+      "location": [
+        22,
+        14
+      ],
+      "port_type": "3",
+      "rotation": 3
+    },
+    {
+      "location": [
+        19,
+        15
+      ],
+      "port_type": "rsrc4",
+      "rotation": 2
+    },
+    {
+      "location": [
+        13,
+        15
+      ],
+      "port_type": "3",
+      "rotation": 2
+    }
+  ],
+  "tiles": [
+    {
+      "location": [
+        4,
+        2
+      ],
+      "tile_type": "space",
+      "is_land": false,
+      "number": null,
+      "rotation": 0,
+      "variant": "",
+      "land_rotations": []
+    },
+    {
+      "location": [
+        4,
+        4
+      ],
+      "tile_type": "rsrc1",
+      "is_land": true,
+      "number": 2,
+      "rotation": 0,
+      "variant": "",
+      "land_rotations": []
+    },
+    {
+      "location": [
+        1,
+        3
+      ],
+      "tile_type": "space",
+      "is_land": false,
+      "number": null,
+      "rotation": 5,
+      "variant": "",
+      "land_rotations": []
+    },
+    {
+      "location": [
+        7,
+        1
+      ],
+      "tile_type": "space",
+      "is_land": false,
+      "number": null,
+      "rotation": 5,
+      "variant": "",
+      "land_rotations": []
+    },
+    {
+      "location": [
+        7,
+        3
+      ],
+      "tile_type": "rsrc4",
+      "is_land": true,
+      "number": 9,
+      "rotation": 0,
+      "variant": "",
+      "land_rotations": []
+    },
+    {
+      "location": [
+        4,
+        6
+      ],
+      "tile_type": "rsrc2",
+      "is_land": true,
+      "number": 5,
+      "rotation": 0,
+      "variant": "",
+      "land_rotations": []
+    },
+    {
+      "location": [
+        1,
+        5
+      ],
+      "tile_type": "space",
+      "is_land": false,
+      "number": null,
+      "rotation": 4,
+      "variant": "",
+      "land_rotations": []
+    },
+    {
+      "location": [
+        7,
+        5
+      ],
+      "tile_type": "rsrc1",
+      "is_land": true,
+      "number": 6,
+      "rotation": 0,
+      "variant": "",
+      "land_rotations": []
+    },
+    {
+      "location": [
+        4,
+        8
+      ],
+      "tile_type": "space",
+      "is_land": false,
+      "number": null,
+      "rotation": 4,
+      "variant": "",
+      "land_rotations": []
+    },
+    {
+      "location": [
+        1,
+        7
+      ],
+      "tile_type": "space",
+      "is_land": false,
+      "number": null,
+      "rotation": 4,
+      "variant": "",
+      "land_rotations": []
+    },
+    {
+      "location": [
+        7,
+        7
+      ],
+      "tile_type": "space",
+      "is_land": false,
+      "number": null,
+      "rotation": 3,
+      "variant": "",
+      "land_rotations": []
+    },
+    {
+      "location": [
+        10,
+        2
+      ],
+      "tile_type": "rsrc3",
+      "is_land": true,
+      "number": 6,
+      "rotation": 0,
+      "variant": "",
+      "land_rotations": []
+    },
+    {
+      "location": [
+        10,
+        4
+      ],
+      "tile_type": "rsrc2",
+      "is_land": true,
+      "number": 4,
+      "rotation": 0,
+      "variant": "",
+      "land_rotations": []
+    },
+    {
+      "location": [
+        10,
+        0
+      ],
+      "tile_type": "space",
+      "is_land": false,
+      "number": null,
+      "rotation": 0,
+      "variant": "",
+      "land_rotations": []
+    },
+    {
+      "location": [
+        13,
+        1
+      ],
+      "tile_type": "space",
+      "is_land": false,
+      "number": null,
+      "rotation": 0,
+      "variant": "",
+      "land_rotations": []
+    },
+    {
+      "location": [
+        13,
+        3
+      ],
+      "tile_type": "rsrc5",
+      "is_land": true,
+      "number": 3,
+      "rotation": 0,
+      "variant": "",
+      "land_rotations": []
+    },
+    {
+      "location": [
+        10,
+        6
+      ],
+      "tile_type": "space",
+      "is_land": false,
+      "number": null,
+      "rotation": 3,
+      "variant": "",
+      "land_rotations": []
+    },
+    {
+      "location": [
+        13,
+        5
+      ],
+      "tile_type": "space",
+      "is_land": false,
+      "number": null,
+      "rotation": 2,
+      "variant": "",
+      "land_rotations": []
+    },
+    {
+      "location": [
+        16,
+        2
+      ],
+      "tile_type": "space",
+      "is_land": false,
+      "number": null,
+      "rotation": 1,
+      "variant": "",
+      "land_rotations": []
+    },
+    {
+      "location": [
+        16,
+        4
+      ],
+      "tile_type": "space",
+      "is_land": false,
+      "number": null,
+      "rotation": 2,
+      "variant": "",
+      "land_rotations": []
+    },
+    {
+      "location": [
+        4,
+        10
+      ],
+      "tile_type": "discover",
+      "is_land": true,
+      "number": null,
+      "rotation": 0,
+      "variant": "",
+      "land_rotations": []
+    },
+    {
+      "location": [
+        1,
+        9
+      ],
+      "tile_type": "space",
+      "is_land": false,
+      "number": null,
+      "rotation": 4,
+      "variant": "",
+      "land_rotations": []
+    },
+    {
+      "location": [
+        7,
+        9
+      ],
+      "tile_type": "discover",
+      "is_land": true,
+      "number": null,
+      "rotation": 0,
+      "variant": "",
+      "land_rotations": []
+    },
+    {
+      "location": [
+        10,
+        8
+      ],
+      "tile_type": "discover",
+      "is_land": true,
+      "number": null,
+      "rotation": 0,
+      "variant": "",
+      "land_rotations": []
+    },
+    {
+      "location": [
+        13,
+        7
+      ],
+      "tile_type": "discover",
+      "is_land": true,
+      "number": null,
+      "rotation": 0,
+      "variant": "",
+      "land_rotations": []
+    },
+    {
+      "location": [
+        16,
+        6
+      ],
+      "tile_type": "discover",
+      "is_land": true,
+      "number": null,
+      "rotation": 0,
+      "variant": "",
+      "land_rotations": []
+    },
+    {
+      "location": [
+        19,
+        3
+      ],
+      "tile_type": "discover",
+      "is_land": true,
+      "number": null,
+      "rotation": 0,
+      "variant": "",
+      "land_rotations": []
+    },
+    {
+      "location": [
+        19,
+        5
+      ],
+      "tile_type": "discover",
+      "is_land": true,
+      "number": null,
+      "rotation": 0,
+      "variant": "",
+      "land_rotations": []
+    },
+    {
+      "location": [
+        4,
+        12
+      ],
+      "tile_type": "discover",
+      "is_land": true,
+      "number": null,
+      "rotation": 0,
+      "variant": "",
+      "land_rotations": []
+    },
+    {
+      "location": [
+        1,
+        11
+      ],
+      "tile_type": "space",
+      "is_land": false,
+      "number": null,
+      "rotation": 4,
+      "variant": "",
+      "land_rotations": []
+    },
+    {
+      "location": [
+        7,
+        11
+      ],
+      "tile_type": "discover",
+      "is_land": true,
+      "number": null,
+      "rotation": 0,
+      "variant": "",
+      "land_rotations": []
+    },
+    {
+      "location": [
+        10,
+        10
+      ],
+      "tile_type": "discover",
+      "is_land": true,
+      "number": null,
+      "rotation": 0,
+      "variant": "",
+      "land_rotations": []
+    },
+    {
+      "location": [
+        13,
+        9
+      ],
+      "tile_type": "discover",
+      "is_land": true,
+      "number": null,
+      "rotation": 0,
+      "variant": "",
+      "land_rotations": []
+    },
+    {
+      "location": [
+        16,
+        8
+      ],
+      "tile_type": "space",
+      "is_land": false,
+      "number": null,
+      "rotation": 5,
+      "variant": "",
+      "land_rotations": []
+    },
+    {
+      "location": [
+        19,
+        7
+      ],
+      "tile_type": "space",
+      "is_land": false,
+      "number": null,
+      "rotation": 0,
+      "variant": "",
+      "land_rotations": []
+    },
+    {
+      "location": [
+        22,
+        4
+      ],
+      "tile_type": "discover",
+      "is_land": true,
+      "number": null,
+      "rotation": 0,
+      "variant": "",
+      "land_rotations": []
+    },
+    {
+      "location": [
+        22,
+        6
+      ],
+      "tile_type": "space",
+      "is_land": false,
+      "number": null,
+      "rotation": 0,
+      "variant": "",
+      "land_rotations": []
+    },
+    {
+      "location": [
+        22,
+        2
+      ],
+      "tile_type": "space",
+      "is_land": false,
+      "number": null,
+      "rotation": 1,
+      "variant": "",
+      "land_rotations": []
+    },
+    {
+      "location": [
+        25,
+        3
+      ],
+      "tile_type": "space",
+      "is_land": false,
+      "number": null,
+      "rotation": 1,
+      "variant": "",
+      "land_rotations": []
+    },
+    {
+      "location": [
+        25,
+        5
+      ],
+      "tile_type": "space",
+      "is_land": false,
+      "number": null,
+      "rotation": 1,
+      "variant": "",
+      "land_rotations": []
+    },
+    {
+      "location": [
+        19,
+        1
+      ],
+      "tile_type": "space",
+      "is_land": false,
+      "number": null,
+      "rotation": 1,
+      "variant": "",
+      "land_rotations": []
+    },
+    {
+      "location": [
+        4,
+        14
+      ],
+      "tile_type": "space",
+      "is_land": false,
+      "number": null,
+      "rotation": 4,
+      "variant": "",
+      "land_rotations": []
+    },
+    {
+      "location": [
+        1,
+        13
+      ],
+      "tile_type": "space",
+      "is_land": false,
+      "number": null,
+      "rotation": 4,
+      "variant": "",
+      "land_rotations": []
+    },
+    {
+      "location": [
+        7,
+        13
+      ],
+      "tile_type": "space",
+      "is_land": false,
+      "number": null,
+      "rotation": 5,
+      "variant": "",
+      "land_rotations": []
+    },
+    {
+      "location": [
+        10,
+        12
+      ],
+      "tile_type": "space",
+      "is_land": false,
+      "number": null,
+      "rotation": 5,
+      "variant": "",
+      "land_rotations": []
+    },
+    {
+      "location": [
+        13,
+        11
+      ],
+      "tile_type": "space",
+      "is_land": false,
+      "number": null,
+      "rotation": 5,
+      "variant": "",
+      "land_rotations": []
+    },
+    {
+      "location": [
+        16,
+        10
+      ],
+      "tile_type": "space",
+      "is_land": false,
+      "number": null,
+      "rotation": 5,
+      "variant": "",
+      "land_rotations": []
+    },
+    {
+      "location": [
+        7,
+        15
+      ],
+      "tile_type": "space",
+      "is_land": false,
+      "number": null,
+      "rotation": 4,
+      "variant": "",
+      "land_rotations": []
+    },
+    {
+      "location": [
+        10,
+        14
+      ],
+      "tile_type": "rsrc2",
+      "is_land": true,
+      "number": 5,
+      "rotation": 0,
+      "variant": "",
+      "land_rotations": []
+    },
+    {
+      "location": [
+        10,
+        16
+      ],
+      "tile_type": "space",
+      "is_land": false,
+      "number": null,
+      "rotation": 3,
+      "variant": "",
+      "land_rotations": []
+    },
+    {
+      "location": [
+        13,
+        13
+      ],
+      "tile_type": "rsrc3",
+      "is_land": true,
+      "number": 11,
+      "rotation": 0,
+      "variant": "",
+      "land_rotations": []
+    },
+    {
+      "location": [
+        13,
+        15
+      ],
+      "tile_type": "space",
+      "is_land": false,
+      "number": null,
+      "rotation": 2,
+      "variant": "",
+      "land_rotations": []
+    },
+    {
+      "location": [
+        16,
+        12
+      ],
+      "tile_type": "rsrc1",
+      "is_land": true,
+      "number": 10,
+      "rotation": 0,
+      "variant": "",
+      "land_rotations": []
+    },
+    {
+      "location": [
+        16,
+        14
+      ],
+      "tile_type": "rsrc4",
+      "is_land": true,
+      "number": 12,
+      "rotation": 0,
+      "variant": "",
+      "land_rotations": []
+    },
+    {
+      "location": [
+        19,
+        11
+      ],
+      "tile_type": "rsrc2",
+      "is_land": true,
+      "number": 8,
+      "rotation": 0,
+      "variant": "",
+      "land_rotations": []
+    },
+    {
+      "location": [
+        19,
+        13
+      ],
+      "tile_type": "rsrc5",
+      "is_land": true,
+      "number": 8,
+      "rotation": 0,
+      "variant": "",
+      "land_rotations": []
+    },
+    {
+      "location": [
+        19,
+        9
+      ],
+      "tile_type": "rsrc1",
+      "is_land": true,
+      "number": 9,
+      "rotation": 0,
+      "variant": "",
+      "land_rotations": []
+    },
+    {
+      "location": [
+        22,
+        10
+      ],
+      "tile_type": "rsrc3",
+      "is_land": true,
+      "number": 6,
+      "rotation": 0,
+      "variant": "",
+      "land_rotations": []
+    },
+    {
+      "location": [
+        22,
+        12
+      ],
+      "tile_type": "rsrc5",
+      "is_land": true,
+      "number": 11,
+      "rotation": 0,
+      "variant": "",
+      "land_rotations": []
+    },
+    {
+      "location": [
+        22,
+        8
+      ],
+      "tile_type": "rsrc4",
+      "is_land": true,
+      "number": 4,
+      "rotation": 0,
+      "variant": "",
+      "land_rotations": []
+    },
+    {
+      "location": [
+        25,
+        9
+      ],
+      "tile_type": "space",
+      "is_land": false,
+      "number": null,
+      "rotation": 2,
+      "variant": "",
+      "land_rotations": []
+    },
+    {
+      "location": [
+        25,
+        11
+      ],
+      "tile_type": "space",
+      "is_land": false,
+      "number": null,
+      "rotation": 1,
+      "variant": "",
+      "land_rotations": []
+    },
+    {
+      "location": [
+        25,
+        7
+      ],
+      "tile_type": "space",
+      "is_land": false,
+      "number": null,
+      "rotation": 1,
+      "variant": "",
+      "land_rotations": []
+    },
+    {
+      "location": [
+        22,
+        14
+      ],
+      "tile_type": "space",
+      "is_land": false,
+      "number": null,
+      "rotation": 3,
+      "variant": "",
+      "land_rotations": []
+    },
+    {
+      "location": [
+        25,
+        13
+      ],
+      "tile_type": "space",
+      "is_land": false,
+      "number": null,
+      "rotation": 2,
+      "variant": "",
+      "land_rotations": []
+    },
+    {
+      "location": [
+        19,
+        15
+      ],
+      "tile_type": "space",
+      "is_land": false,
+      "number": null,
+      "rotation": 2,
+      "variant": "",
+      "land_rotations": []
+    },
+    {
+      "location": [
+        16,
+        16
+      ],
+      "tile_type": "space",
+      "is_land": false,
+      "number": null,
+      "rotation": 3,
+      "variant": "",
+      "land_rotations": []
+    },
+    {
+      "location": [
+        13,
+        -1
+      ],
+      "tile_type": "space",
+      "is_land": false,
+      "number": null,
+      "rotation": 0,
+      "variant": "",
+      "land_rotations": []
+    },
+    {
+      "location": [
+        16,
+        0
+      ],
+      "tile_type": "space",
+      "is_land": false,
+      "number": null,
+      "rotation": 0,
+      "variant": "",
+      "land_rotations": []
+    },
+    {
+      "location": [
+        13,
+        17
+      ],
+      "tile_type": "space",
+      "is_land": false,
+      "number": null,
+      "rotation": 3,
+      "variant": "",
+      "land_rotations": []
+    }
+  ]
+}
