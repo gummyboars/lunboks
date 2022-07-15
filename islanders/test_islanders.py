@@ -35,7 +35,7 @@ class TestInitBoard(unittest.TestCase):
 
     self.assertEqual(len(state.tiles), 4 + 5 + 6 + 7 + 6 + 5 + 4, "number of tiles")
     for loc, tile in state.tiles.items():
-      self.assertEqual(loc, tile.location.json_repr(), "tiles mapped to location")
+      self.assertEqual(loc, tile.location, "tiles mapped to location")
 
   def testRandomized(self):
     state = islanders.IslandersState()
@@ -825,19 +825,19 @@ class TestRobberMovement(BaseInputHandlerTest):
 
   def testRobberInvalidMove(self):
     with self.assertRaises(InvalidMove):
-      self.c.handle_robber((0, 0), 1)
+      self.c.handle_robber((1, 1), 1)
 
   def testRobberInvalidMoveRegex(self):
     with self.assertRaisesRegex(InvalidMove, "valid land tile"):
-      self.c.handle_robber((0, 0), 1)
+      self.c.handle_robber((1, 1), 1)
 
   def testRobberStationaryMove(self):
     with self.assertRaises(InvalidMove):
-      self.c.handle_robber(self.c.robber.as_tuple(), 1)
+      self.c.handle_robber(self.c.robber, 1)
 
   def testRobberStationaryMoveRegex(self):
     with self.assertRaisesRegex(InvalidMove, "You must move the robber."):
-      self.c.handle_robber(self.c.robber.as_tuple(), 1)
+      self.c.handle_robber(self.c.robber, 1)
 
   def testRobberLandMove(self):
     with self.assertRaises(InvalidMove):
@@ -1207,16 +1207,16 @@ class TestShipOpenClosedCalculation(BaseInputHandlerTest):
     self.c.add_road(Road(road1_loc, "ship", 0))
     self.assertTrue(self.c.roads[road1_loc].movable)
     self.assertFalse(self.c.roads[road1_loc].closed)
-    self.assertEqual(self.c.roads[road1_loc].source.as_tuple(), (3, 5))
+    self.assertEqual(self.c.roads[road1_loc].source, (3, 5))
 
     road2_loc = (5, 5, 6, 6)
     self.c.add_road(Road(road2_loc, "ship", 0))
     self.assertFalse(self.c.roads[road1_loc].movable)  # Original no longer movable
     self.assertFalse(self.c.roads[road1_loc].closed)  # Should still be open
-    self.assertEqual(self.c.roads[road1_loc].source.as_tuple(), (3, 5))
+    self.assertEqual(self.c.roads[road1_loc].source, (3, 5))
     self.assertTrue(self.c.roads[road2_loc].movable)
     self.assertFalse(self.c.roads[road2_loc].closed)
-    self.assertEqual(self.c.roads[road2_loc].source.as_tuple(), (3, 5))
+    self.assertEqual(self.c.roads[road2_loc].source, (3, 5))
 
   def testBasicOpenClosed(self):
     road1_loc = (2, 6, 3, 5)
@@ -1285,7 +1285,7 @@ class TestShipOpenClosedCalculation(BaseInputHandlerTest):
     self.assertTrue(self.c.roads[road3_loc].closed)
     self.assertFalse(self.c.roads[road4_loc].closed)
     self.assertTrue(self.c.roads[road4_loc].movable)
-    self.assertEqual(self.c.roads[road4_loc].source.as_tuple(), (8, 6))
+    self.assertEqual(self.c.roads[road4_loc].source, (8, 6))
 
     # The settlement: after settling the third island, all roads should be closed.
     self.c.add_piece(islanders.Piece(5, 7, "settlement", 0))
@@ -1300,12 +1300,12 @@ class TestShipOpenClosedCalculation(BaseInputHandlerTest):
 
     for loc in locs[:-1]:
       with self.subTest(loc=loc):
-        self.assertEqual(self.c.roads[loc].source.as_tuple(), (3, 5))
+        self.assertEqual(self.c.roads[loc].source, (3, 5))
 
     self.c.add_piece(islanders.Piece(3, 3, "settlement", 0))
     for loc in locs[:-1]:
       with self.subTest(loc=loc):
-        self.assertEqual(self.c.roads[loc].source.as_tuple(), (3, 5))
+        self.assertEqual(self.c.roads[loc].source, (3, 5))
     self.assertTrue(self.c.roads[locs[-2]].movable)
 
     self.c.add_road(Road(locs[-1], "ship", 0))
@@ -1429,16 +1429,16 @@ class TestShipOpenClosedCalculation(BaseInputHandlerTest):
     self.assertTrue(self.c.roads[roads[0]].movable)
     self.assertTrue(self.c.roads[roads[2]].movable)
     self.assertFalse(self.c.roads[roads[1]].movable)
-    self.assertEqual(self.c.roads[roads[0]].source.as_tuple(), (3, 5))
-    self.assertEqual(self.c.roads[roads[1]].source.as_tuple(), (9, 5))
-    self.assertEqual(self.c.roads[roads[2]].source.as_tuple(), (9, 5))
+    self.assertEqual(self.c.roads[roads[0]].source, (3, 5))
+    self.assertEqual(self.c.roads[roads[1]].source, (9, 5))
+    self.assertEqual(self.c.roads[roads[2]].source, (9, 5))
 
     # Move the outermost ship to attach to 3, 5. Its source should change. Also,
     # the ship that remains attached to 9, 5 should become movable again.
     new_loc = (0, 6, 2, 6)
     self.c.built_this_turn.clear()
     self.c.handle(0, {"type": "move_ship", "from": roads[2], "to": new_loc})
-    self.assertEqual(self.c.roads[new_loc].source.as_tuple(), (3, 5))
+    self.assertEqual(self.c.roads[new_loc].source, (3, 5))
     self.assertTrue(self.c.roads[new_loc].movable)
     self.assertFalse(self.c.roads[new_loc].closed)
     self.assertFalse(self.c.roads[roads[0]].movable)
@@ -1451,7 +1451,7 @@ class TestShipOpenClosedCalculation(BaseInputHandlerTest):
     last_loc = (2, 6, 3, 7)
     self.c.ships_moved = 0
     self.c.handle(0, {"type": "move_ship", "from": roads[1], "to": last_loc})
-    self.assertIn(self.c.roads[last_loc].source.as_tuple(), [(3, 5), (3, 7)])
+    self.assertIn(self.c.roads[last_loc].source, [(3, 5), (3, 7)])
     self.assertTrue(self.c.roads[last_loc].closed)
     self.assertTrue(self.c.roads[roads[0]].closed)
     self.assertFalse(self.c.roads[new_loc].closed)
@@ -1467,6 +1467,7 @@ class TestShipMovement(BaseInputHandlerTest):
     self.c.add_road(Road([3, 5, 5, 5], "ship", 0))
 
   def testMoveShip(self):
+    self.c.built_this_turn.clear()
     self.c.handle(0, {"type": "move_ship", "from": [3, 5, 5, 5], "to": [2, 4, 3, 5]})
     self.assertEqual(self.c.event_log[-1].event_type, "move_ship")
 
@@ -1482,6 +1483,7 @@ class TestShipMovement(BaseInputHandlerTest):
 
   def testNewLocationMustConnectToNetwork(self):
     self.c.add_road(Road([5, 5, 6, 4], "ship", 0))
+    self.c.built_this_turn.clear()
     # Extra check: the new location is a location that would be connected to the network
     # if the ship were not moving.
     with self.assertRaisesRegex(InvalidMove, "must be connected"):
@@ -1491,17 +1493,20 @@ class TestShipMovement(BaseInputHandlerTest):
 
   def testCannotMoveOnTopOfExistingShip(self):
     self.c.add_road(Road([2, 4, 3, 5], "ship", 0))
+    self.c.built_this_turn.clear()
     with self.assertRaisesRegex(InvalidMove, "already a ship"):
       self.c.handle(0, {"type": "move_ship", "from": [3, 5, 5, 5], "to": [2, 4, 3, 5]})
 
   def testCannotMoveRoads(self):
     self.c.add_road(Road([2, 4, 3, 5], "road", 0))
+    self.c.built_this_turn.clear()
     with self.assertRaisesRegex(InvalidMove, "only move ships"):
       self.c.handle(0, {"type": "move_ship", "from": [2, 4, 3, 5], "to": [2, 6, 3, 5]})
 
   def testCannotMoveOtherPlayersShips(self):
     self.c.add_piece(islanders.Piece(9, 5, "settlement", 1))
     self.c.add_road(Road([8, 4, 9, 5], "ship", 1))
+    self.c.built_this_turn.clear()
     with self.assertRaisesRegex(InvalidMove, "only move your"):
       self.c.handle(0, {"type": "move_ship", "from": [8, 4, 9, 5], "to": [2, 4, 3, 5]})
 
@@ -1509,6 +1514,7 @@ class TestShipMovement(BaseInputHandlerTest):
     self.c.add_piece(islanders.Piece(3, 7, "settlement", 0))
     self.c.add_road(Road([2, 6, 3, 5], "ship", 0))
     self.c.add_road(Road([2, 6, 3, 7], "ship", 0))
+    self.c.built_this_turn.clear()
     with self.assertRaisesRegex(InvalidMove, "that connects two"):
       self.c.handle(0, {"type": "move_ship", "from": [2, 6, 3, 7], "to": [2, 4, 3, 5]})
     # Validate that moving a different ship here will work.
@@ -1516,6 +1522,7 @@ class TestShipMovement(BaseInputHandlerTest):
 
   def testMustMoveShipAtEndOfRoute(self):
     self.c.add_road(Road([5, 5, 6, 4], "ship", 0))
+    self.c.built_this_turn.clear()
     with self.assertRaisesRegex(InvalidMove, "at the end"):
       self.c.handle(0, {"type": "move_ship", "from": [3, 5, 5, 5], "to": [2, 4, 3, 5]})
     # Validate that moving a ship at the end of the network will work.
@@ -1523,6 +1530,7 @@ class TestShipMovement(BaseInputHandlerTest):
 
   def testCannotMoveTwoShipsInOneTurn(self):
     self.c.add_road(Road([5, 5, 6, 4], "ship", 0))
+    self.c.built_this_turn.clear()
     self.c.handle(0, {"type": "move_ship", "from": [5, 5, 6, 4], "to": [2, 4, 3, 5]})
     with self.assertRaisesRegex(InvalidMove, "already moved a ship"):
       self.c.handle(0, {"type": "move_ship", "from": [3, 5, 5, 5], "to": [2, 6, 3, 5]})
@@ -1561,6 +1569,7 @@ class TestShipMovementLongestRoute(BaseInputHandlerTest):
 
   def testCanMoveShipToMakeLongerRoute(self):
     self.c.add_road(Road((6, 2, 8, 2), "ship", 1))
+    self.c.built_this_turn.clear()
     self.assertEqual(self.c.player_data[1].longest_route, 5)
     self.assertEqual(self.c.longest_route_player, 0)
     self.c.handle_move_ship([9, 5, 11, 5], [6, 6, 8, 6], 1)
