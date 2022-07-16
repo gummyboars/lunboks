@@ -94,6 +94,10 @@ div {
   transform: translate(-50%, -50%);
   flex-direction: column;
   z-index: 30; /* show over other elements */
+}
+#joininner {
+  display: flex;
+  flex-direction: column;
   border-right: 1px solid black;
   border-radius: 15px;
   background: khaki;

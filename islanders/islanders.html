@@ -23,21 +23,23 @@
           <span id="loadcount">&nbsp;</span>
         </div>
       </div>
-      <div id="uijoin" class="clickable">
-        <div id="options">
-          <div id="flagoptions" class="suboptions"></div>
-          <div id="choiceoptions" class="suboptions">
-            <div><span>Scenario </span><select id="scenario" onchange="changeScenario(event)"></select></div>
+      <div id="uijoin" class="noclick">
+        <div id="joininner" class="clickable" onmousedown="windown(event)">
+          <div id="options">
+            <div id="flagoptions" class="suboptions"></div>
+            <div id="choiceoptions" class="suboptions">
+              <div><span>Scenario </span><select id="scenario" onchange="changeScenario(event)"></select></div>
+            </div>
           </div>
-        </div>
-        <div id="joinname" class="clickable">
-          <div>Name:</div>
-          <input type="text" id="joinnameinput" class="clickable" maxlength="16"></input>
-        </div>
-        <div id="joinbuttons" class="clickable">
-          <div class="leftbutton noclick"><button id="observe" class="selectbutton button clickable" onclick="observe(event)">Observe</button></div>
-          <div class="centerbutton noclick"><button id="start" disabled="true" class="selectbutton button clickable disabled" onclick="startGame(event)">Start</button></div>
-          <div class="rightbutton noclick"><button id="join" class="selectbutton button clickable" onclick="joinGame(event)">Join</button></div>
+          <div id="joinname" class="clickable">
+            <div>Name:</div>
+            <input type="text" id="joinnameinput" class="clickable" maxlength="16"></input>
+          </div>
+          <div id="joinbuttons" class="clickable">
+            <div class="leftbutton noclick"><button id="observe" class="selectbutton button clickable" onclick="observe(event)">Observe</button></div>
+            <div class="centerbutton noclick"><button id="start" disabled="true" class="selectbutton button clickable disabled" onclick="startGame(event)">Start</button></div>
+            <div class="rightbutton noclick"><button id="join" class="selectbutton button clickable" onclick="joinGame(event)">Join</button></div>
+          </div>
         </div>
       </div>
       <div id="uioverlay" class="noclick">
