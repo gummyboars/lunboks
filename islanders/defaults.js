@@ -12,6 +12,7 @@ function initializeDefaults() {
     {name: "norsrc", color: "#D8D393", text: "🌵"},
     {name: "anyrsrc", color: ["#B8860B", "#0000CD"]},
     {name: "discover", color: "lavender", text: "🌫️"},
+    {name: "randomized", color: "#EDCF8D", text: "❓"},
     {name: "space", color: "#56A4D8"},
   ];
   let devDatas = [
@@ -39,6 +40,9 @@ function initializeDefaults() {
   }
   let threeport = createPort("white", "default3port", "3:1");
   assets.appendChild(threeport);
+  assets.removeChild(document.getElementById("defaultrandomizedport"));
+  let randomport = createPort("white", "defaultrandomizedport", " ? ");
+  assets.appendChild(randomport);
   let longestRoute = createCard("green", "defaultlongestroute", cardHeight * 4 / 5, cardHeight, "Route");
   assets.appendChild(longestRoute);
   let largestArmy = createCard("indianred", "defaultlargestarmy", cardHeight * 4 / 5, cardHeight, "Army");

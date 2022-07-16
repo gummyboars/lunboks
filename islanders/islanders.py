@@ -2130,13 +2130,16 @@ class StandardMap(Scenario):
 
   @classmethod
   def preview(cls, state):
-    if len(state.player_data) < 2 or len(state.player_data) > 6:
-      raise InvalidPlayer("Must have between 2 and 6 players.")
     if len(state.player_data) <= 4:
       cls.load_file(state, "standard4.json")
     else:
       cls.load_file(state, "standard6.json")
-    # TODO: set all land types to "random" or something the UI can render, set numbers to "?"
+    for tile in state.tiles.values():
+      if tile.is_land:
+        tile.tile_type = "randomized"
+    for port in state.ports.values():
+      port.port_type = "randomized"
+    state.recompute()
 
   @classmethod
   def init(cls, state):
@@ -2163,7 +2166,14 @@ class BeginnerMap(Scenario):
 
   @classmethod
   def preview(cls, state):
-    pass
+    filename = "beginner4.json" if len(state.player_data) >= 4 else "beginner3.json"
+    with open(os.path.join(os.path.dirname(__file__), filename), encoding="ascii") as data:
+      json_data = json.load(data)
+      state.parse_tiles(json_data["tiles"])
+      state.parse_ports(json_data["ports"])
+      state.parse_pieces(json_data["pieces"])
+      state.parse_roads(json_data["roads"])
+    state.recompute()
 
   @classmethod
   def init(cls, state):
@@ -2196,7 +2206,8 @@ class TestMap(Scenario):
 
   @classmethod
   def preview(cls, state):
-    pass
+    cls.load_file(state, "test.json")
+    state.recompute()
 
   @classmethod
   def init(cls, state):
@@ -2224,7 +2235,17 @@ class SeafarerShores(SeafarerScenario):
 
   @classmethod
   def preview(cls, state):
-    pass
+    if len(state.player_data) <= 3:
+      cls.load_file(state, "shores3.json")
+      state.robber = TileLocation(19, 3)
+      state.pirate = TileLocation(10, 12)
+    else:
+      cls.load_file(state, "shores4.json")
+      state.robber = TileLocation(7, 5)
+      state.pirate = TileLocation(10, 14)
+      for port in state.ports.values():
+        port.port_type = "randomized"
+    state.recompute()
 
   @classmethod
   def init(cls, state):
@@ -2254,7 +2275,15 @@ class SeafarerIslands(SeafarerScenario):
 
   @classmethod
   def preview(cls, state):
-    pass
+    if len(state.player_data) <= 3:
+      cls.load_file(state, "islands3.json")
+      state.robber = TileLocation(1, 3)
+      state.pirate = TileLocation(10, 6)
+    else:
+      cls.load_file(state, "islands4.json")
+      state.robber = TileLocation(16, 8)
+      state.pirate = TileLocation(10, 12)
+    state.recompute()
 
   @classmethod
   def init(cls, state):
@@ -2282,7 +2311,15 @@ class SeafarerDesert(SeafarerScenario):
 
   @classmethod
   def preview(cls, state):
-    pass
+    if len(state.player_data) <= 3:
+      cls.load_file(state, "desert3.json")
+      state.robber = TileLocation(16, 4)
+      state.pirate = TileLocation(10, 12)
+    else:
+      cls.load_file(state, "desert4.json")
+      state.robber = TileLocation(16, 4)
+      state.pirate = TileLocation(10, 14)
+    state.recompute()
 
   @classmethod
   def init(cls, state):
@@ -2312,7 +2349,15 @@ class SeafarerFog(SeafarerScenario):
 
   @classmethod
   def preview(cls, state):
-    pass
+    if len(state.player_data) <= 3:
+      cls.load_file(state, "fog3.json")
+      state.robber = TileLocation(4, 6)
+      state.pirate = TileLocation(13, 1)
+    else:
+      cls.load_file(state, "fog4.json")
+      state.robber = TileLocation(16, 14)
+      state.pirate = TileLocation(13, 1)
+    state.recompute()
 
   @classmethod
   def init(cls, state):
@@ -2495,14 +2540,19 @@ class IslandersGame(BaseGame):
         player_idx = list(self.player_sessions.keys()).index(session)
       # TODO: update the javascript to handle undefined values for all of the attributes of
       # the state object that we don't have before the game starts.
-      over = False
-      data = self.game_class().for_player(None)
+      tmp_game = self.game_class()
+      tmp_game.player_data = list(self.player_sessions.values())
+      try:
+        self.SCENARIOS[self.scenario].mutate_options(tmp_game.options)
+        self.SCENARIOS[self.scenario].preview(tmp_game)
+      except Exception:  # pylint: disable=broad-except
+        tmp_game.add_tile(Tile(1, 1, "randomized", True, None))
+      data = tmp_game.for_player(None)
       data.update({
           "type": "game_state",
           "host": self.host == session,
           "you": player_idx,
           "started": False,
-          "player_data": [player.json_for_player(over) for player in self.player_sessions.values()],
       })
 
       data["options"] = collections.OrderedDict([(key, self.choices[key]) for key in self.choices])
