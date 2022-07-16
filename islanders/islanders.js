@@ -49,10 +49,6 @@ resourceSelectionUI = {
     okText: "OK",
     cancelText: "Cancel",
   },
-  discard: {
-    bottomPanelText: "Choose {} cards to discard.",
-    okText: "Discard",
-  },
   collect: {
     bottomPanelText: "Choose {} resources to collect.",
     okText: "OK",
@@ -97,11 +93,13 @@ largestArmyPlayer = null;
 // Local state.
 debug = false;
 resourceSelectorActive = false;
-resourceSelectorType = null;  // values are tradeOffer, tradeBank, tradeCounterOffer, dev, and discard
+resourceSelectorType = null;  // values are tradeOffer, tradeBank, tradeCounterOffer, and dev
 resourceSelection = {"top": {}, "bottom": {}};
 tradeActiveOffer = {"want": {}, "give": {}};  // null until someone makes an offer.
 counterOffers = [];
+handSelection = {};
 devCardType = null;  // knight, yearofplenty, roadbuilding, monopoly
+draggedWin = null;
 
 
 function formatServerString(serverString) {
@@ -184,13 +182,6 @@ function confirmSelection(event) {
     };
     ws.send(JSON.stringify(msg));
     return;
-  } else if (resourceSelectorType == "discard") {
-    let msg = {
-      type: "discard",
-      selection: resourceSelection["bottom"],
-    };
-    ws.send(JSON.stringify(msg));
-    return;
   } else if (resourceSelectorType == "collect") {
     let msg = {
       type: "collect",
@@ -224,8 +215,8 @@ function cancelSelection(event) {
     ws.send(JSON.stringify(msg));
     hideSelectorWindow();
     return;
-  } else if (resourceSelectorType == "discard" || resourceSelectorType == "collect") {
-    // You can't cancel discarding or collecting resources.
+  } else if (resourceSelectorType == "collect") {
+    // You can't cancel collecting resources.
     return;
   } else if (resourceSelectorType == "tradeOffer") {
     clearResourceSelection("top");
@@ -239,6 +230,30 @@ function cancelSelection(event) {
   } else {
     hideSelectorWindow();
   }
+}
+function toggleSelect(e, elemName) {
+  if (discardPlayers[myIdx] == null) {
+    return;
+  }
+  let cardType = elemName.substring(0, elemName.length - 4);
+  let cardTarget = e.currentTarget;
+  let count = 1;
+  if (cardTarget.classList.contains("chosen")) {
+    count = -1;
+    cardTarget.classList.remove("chosen");
+    cardTarget.classList.add("unchosen");
+  } else {
+    cardTarget.classList.add("chosen");
+  }
+  handResourceHelper(cardType, count);
+}
+function handResourceHelper(cardType, count) {
+  let current = handSelection[cardType] || 0;
+  handSelection[cardType] = current + count;
+  if (handSelection[cardType] < 0) {
+    handSelection[cardType] = 0;
+  }
+  updateHandSelection();
 }
 function selectResource(event, windowName, rsrc) {
   // Ignore right/middle-click.
@@ -638,16 +653,66 @@ function maybeShowCollectWindow(oldPhase) {
 }
 function maybeShowDiscardWindow() {
   if (turnPhase == "discard" && discardPlayers[myIdx]) {
-    if (resourceSelectorType != "discard") {
-      // Clear selection counts only if we just popped the window up.
-      clearResourceSelection("bottom");
-      updateSelectCounts();
-    }
-    resourceSelectorType = "discard";
-    showResourceUI(resourceSelectorType, discardPlayers[myIdx]);
-  } else if (turnPhase == "discard" || turnPhase == "robber") {
-    hideSelectorWindow();
+    showHandSelect(discardPlayers[myIdx]);
+  } else {
+    handSelection = {};
+    hideHandSelect();
   }
+}
+function showHandSelect(count) {
+  let topText = formatStringWithParam("Choose {} cards to discard.", count);
+  document.getElementById("handselecttitle").innerText = topText;
+  document.getElementById("handpopup").style.display = "flex";
+  updateHandSelection();
+}
+function hideHandSelect() {
+  document.getElementById("handpopup").style.display = "none";
+  let toDeselect = [];
+  for (let elem of document.getElementsByClassName("chosen")) {
+    toDeselect.push(elem);
+  }
+  for (let elem of toDeselect) {
+    elem.classList.remove("chosen");
+  }
+}
+function updateHandSelection() {
+  let container = document.getElementById("handselectcards");
+  while (container.children.length) {
+    container.removeChild(container.firstChild);
+  }
+  let total = 0;
+  for (let [ordering, rsrc] of cardResources.entries()) {
+    for (let i = 0; i < handSelection[rsrc] || 0; i++) {
+      addHandCard(container, rsrc, ordering);
+      total++;
+    }
+  }
+  if (total == discardPlayers[myIdx]) {
+    enableButton(document.getElementById("handok"));
+  } else {
+    disableButton(document.getElementById("handok"));
+  }
+}
+function addHandCard(parentNode, rsrc, ordering) {
+  let cnv = document.createElement("CANVAS");
+  cnv.width = selectCardWidth;
+  cnv.height = selectCardHeight;
+  cnv.style.display = "block";
+  cnv.classList.add("selector");
+  let div = document.createElement("DIV");
+  div.style.width = cnv.width + "px";
+  div.style.height = cnv.height + "px";
+  div.style.order = ordering;
+  div.appendChild(cnv);
+  parentNode.appendChild(div);
+  renderAssetToCanvas(cnv, rsrc + "card", "");
+}
+function okHandSelection(e) {
+  let msg = {
+    type: "discard",
+    selection: handSelection,
+  };
+  ws.send(JSON.stringify(msg));
 }
 function maybeShowRobWindow() {
   let playerpopup = document.getElementById("playerpopup");
@@ -769,20 +834,20 @@ function updateCards() {
   if (cards == null) {
     return;
   }
-  let container = document.getElementById("uibottom").firstChild;
+  let container = document.getElementById("uicards");
   cfgs = [
     {
       clist: cardResources,
-      clickable: false,
+      clickAction: toggleSelect,
       suffix: "card",
     },
     {
       clist: devCards,
-      clickable: true,
+      clickAction: playDevCard,
       suffix: "",
     }
   ];
-  for (child of container.children) {
+  for (let child of container.children) {
     child.classList.remove("shown");
   }
   let oldCards = {};
@@ -794,25 +859,31 @@ function updateCards() {
       }
       oldCards[cardType] = countOldCards(container, cardType + cfg.suffix);
       for (i = 0; i < cards[cardType] - oldCards[cardType]; i++) {
-        addCard(container, cardType + cfg.suffix, ordering, cfg.clickable);
+        addCard(container, cardType + cfg.suffix, ordering, cfg.clickAction);
       }
       removeCards(container, oldCards[cardType] - cards[cardType], cardType + cfg.suffix);
       ordering++;
     }
   }
-  for (child of container.children) {
+  for (let child of container.children) {
     updateCard(child);
   }
-  let maxOrder = 0;
-  let maxChild = null;
-  for (child of container.children) {
-    if (parseInt(child.style.order) >= maxOrder && !child.classList.contains("leave")) {
-      maxOrder = parseInt(child.style.order);
-      maxChild = child;
+  let maxOrder = {"card": 0, "dev": 0};
+  let maxChild = {"card": null, "dev": null};
+  for (let child of container.children) {
+    let cardType = "card";
+    if (parseInt(child.style.order) >= cardResources.length) {
+      cardType = "dev";
+    }
+    if (parseInt(child.style.order) >= maxOrder[cardType] && !child.classList.contains("leave")) {
+      maxOrder[cardType] = parseInt(child.style.order);
+      maxChild[cardType] = child;
     }
   }
-  if (maxChild != null) {
-    maxChild.classList.add("shown");
+  for (let cardType in maxChild) {
+    if (maxChild[cardType] != null) {
+      maxChild[cardType].classList.add("shown");
+    }
   }
 }
 function countOldCards(container, elemID) {
@@ -824,7 +895,7 @@ function countOldCards(container, elemID) {
   }
   return count;
 }
-function addCard(cardContainer, elemId, ordering, usable) {
+function addCard(cardContainer, elemId, ordering, clickAction) {
   let cnv = document.createElement("CANVAS");
   cnv.width = cardWidth;
   cnv.height = cardHeight;
@@ -845,9 +916,9 @@ function addCard(cardContainer, elemId, ordering, usable) {
   div.onmouseenter = bringforward;
   div.onmouseleave = pushbackward;
   div.cardType = elemId;
-  if (usable) {
+  if (clickAction) {
     div.onclick = function(e) {
-      playDevCard(elemId);
+      clickAction(e, elemId);
     }
     div.classList.add("resourceselector");
   }
@@ -863,6 +934,19 @@ function updateCard(div) {
 }
 function removeCards(cardContainer, count, cardType) {
   let removed = 0;
+  // Prioritize removing the chosen cards over random cards. This happens for trades, playing
+  // dev cards, and discarding cards.
+  for (let child of cardContainer.children) {
+    if (removed >= count) {
+      break;
+    }
+    if (child.cardType == cardType && child.classList.contains("chosen")) {
+      removeCard(cardContainer, child);
+      removed++;
+    }
+  }
+  // Remove the first card(s) of the given type. Happens when the player is robbed, or loses
+  // cards to a monopoly, or buys something.
   for (let child of cardContainer.children) {
     if (removed >= count) {
       break;
@@ -880,18 +964,22 @@ function removeCard(cardContainer, div) {
   div.addEventListener('transitionend', function() { cardContainer.removeChild(div) }, {once: true});
 }
 function bringforward(e) {
-  e.currentTarget.classList.add("selected");
+  if (e.currentTarget.classList.contains("unchosen")) {
+    e.currentTarget.classList.remove("unchosen");
+  }
+  // TODO: change z-index only when player is not selecting cards.
+  e.currentTarget.classList.add("hovered");
   e.currentTarget.oldZ = e.currentTarget.style.zIndex;
   e.currentTarget.style.zIndex = 15;
 }
 function pushbackward(e) {
-  e.currentTarget.classList.remove("selected");
+  e.currentTarget.classList.remove("hovered");
   e.currentTarget.style.zIndex = e.currentTarget.oldZ;
 }
 function buyDevCard() {
   ws.send(JSON.stringify({type: "buy_dev"}));
 }
-function playDevCard(cardType) {
+function playDevCard(e, cardType) {
   devCardType = cardType;
   let selectInfo = resourceSelectionUI[cardType];
   if (selectInfo) {
@@ -1561,6 +1649,43 @@ function addBonusCard(cardContainer, order, cardName) {
   itemDiv.appendChild(cnv);
   renderAssetToCanvas(cnv, cardName, "");
 }
+function windown(e) {
+  if (e.button != 0) {
+    return;
+  }
+  if (["SELECT", "OPTION", "INPUT", "BUTTON"].includes(e.target.tagName)) {
+    return;
+  }
+  draggedWin = e.currentTarget;
+  if (e.currentTarget.dX == null) {
+    e.currentTarget.dX = 0;
+    e.currentTarget.dY = 0;
+  }
+  e.currentTarget.startX = e.clientX - e.currentTarget.dX;
+  e.currentTarget.startY = e.clientY - e.currentTarget.dY;
+}
+function bodyup(e) {
+  if (e.button != 0) {
+    return;
+  }
+  if (draggedWin == null) {
+    return;
+  }
+  let offsetX = e.clientX - draggedWin.startX;
+  let offsetY = e.clientY - draggedWin.startY;
+  draggedWin.dX = offsetX;
+  draggedWin.dY = offsetY;
+  draggedWin.style.transform = "translate(" + offsetX + "px, " + offsetY + "px)"
+  draggedWin = null;
+}
+function winmove(e) {
+  if (draggedWin == null) {
+    return;
+  }
+  let offsetX = e.clientX - draggedWin.startX;
+  let offsetY = e.clientY - draggedWin.startY;
+  draggedWin.style.transform = "translate(" + offsetX + "px, " + offsetY + "px)"
+}
 function createSelectors() {
   for (selectBox of ["top", "bottom"]) {
     let box = document.getElementById(selectBox + "selectbox");
@@ -1686,6 +1811,7 @@ function chooseSkin(e) {
 function refreshUI() {
   createSelectors();
   updateCards();
+  updateHandSelection();
   updateCostCard();
   updatePlayerData();
   updateBuyDev();
@@ -1733,7 +1859,7 @@ function onBodyClick(event) {
     return;
   }
   let hideSelector = true;
-  if (resourceSelectorType == "discard" || resourceSelectorType == "collect") {
+  if (resourceSelectorType == "collect") {
     return;
   }
   if (resourceSelectorActive) {
