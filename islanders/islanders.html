@@ -44,10 +44,10 @@
       </div>
       <div id="uioverlay" class="noclick">
         <div id="uimain" class="noclick">
-          <div id="playerpopup" class="clickable uiselect">
-          </div>
-          <div id="handpopup" class="clickable selectpopup">
-            <div id="handselect" class="selectinner" onmousedown="windown(event)">
+          <div id="centerizer" class="noclick">
+            <div id="playerpopup" class="clickable uiselect" onmousedown="windown(event)">
+            </div>
+            <div id="handpopup" class="clickable selectinner" onmousedown="windown(event)">
               <div id="handselecttop">
                 <div id="handselecttitle"></div>
                 <div class="rightbutton"><button id="handok" class="takeoverbutton button clickable" onclick="okHandSelection(event)">Discard</button></div>
@@ -56,38 +56,38 @@
                 <div id="handselectcards" class="selectsummary"></div>
               </div>
             </div>
-          </div>
-          <div id="resourcepopup" class="clickable selectpopup">
-            <div id="resourceselect" class="selectinner">
-              <div id="topselect" class="uiselect">
-                <div id="topselecttitle" class="selecttitle">You Want</div>
-                <div id="topselectbox" class="resourceselectbox"></div>
-              </div>
-              <div id="bottomselect" class="uiselect">
-                <div id="bottomselecttitle" class="selecttitle">You Give</div>
-                <div id="bottomselectbox" class="resourceselectbox"></div>
-              </div>
-              <div id="tradesummary" class="uiselect">
-                <div id="selfsummary" class="selectsummary">
-                  <div class="summaryfixed"><p>You Want</p></div>
-                  <div class="summaryleft summarypanel"></div>
-                  <div class="summaryfixed"><p>🔄</p></div>
-                  <div class="summaryright summarypanel"></div>
-                  <div class="summaryfixed"><p>You Give</p></div>
+            <div id="resourcepopup" class="clickable selectpopup" onmousedown="windown(event)">
+              <div id="resourceselect" class="selectinner">
+                <div id="topselect" class="uiselect">
+                  <div id="topselecttitle" class="selecttitle">You Want</div>
+                  <div id="topselectbox" class="resourceselectbox"></div>
+                </div>
+                <div id="bottomselect" class="uiselect">
+                  <div id="bottomselecttitle" class="selecttitle">You Give</div>
+                  <div id="bottomselectbox" class="resourceselectbox"></div>
+                </div>
+                <div id="tradesummary" class="uiselect">
+                  <div id="selfsummary" class="selectsummary">
+                    <div class="summaryfixed"><p>You Want</p></div>
+                    <div class="summaryleft summarypanel"></div>
+                    <div class="summaryfixed"><p>🔄</p></div>
+                    <div class="summaryright summarypanel"></div>
+                    <div class="summaryfixed"><p>You Give</p></div>
+                  </div>
+                </div>
+                <div id="selectbuttons">
+                  <div class="leftbutton"><button id="selectconfirm" class="selectbutton button clickable" onclick="confirmSelection(event)">Confirm</button></div>
+                  <div class="centerbutton"><button id="selectreset" class="selectbutton button clickable" onclick="resetSelection(event)">Reset</button></div>
+                  <div class="rightbutton"><button id="selectcancel" class="selectbutton button clickable" onclick="cancelSelection(event)">Cancel</button></div>
                 </div>
               </div>
-              <div id="selectbuttons">
-                <div class="leftbutton"><button id="selectconfirm" class="selectbutton button clickable" onclick="confirmSelection(event)">Confirm</button></div>
-                <div class="centerbutton"><button id="selectreset" class="selectbutton button clickable" onclick="resetSelection(event)">Reset</button></div>
-                <div class="rightbutton"><button id="selectcancel" class="selectbutton button clickable" onclick="cancelSelection(event)">Cancel</button></div>
-              </div>
             </div>
-          </div>
-          <div id="coastpopup" class="clickable">
-            <div id="coastbuttons">
-              <div class="leftbutton"><button id="selectroad" class="selectbutton button clickable" onclick="coastSelect('road')">Road</button></div>
-              <div class="centerbutton"><button id="cancelcoast" class="selectbutton button clickable" onclick="cancelCoast()">Cancel</button></div>
-              <div class="rightbutton"><button id="selectship" class="selectbutton button clickable" onclick="coastSelect('ship')">Ship</button></div>
+            <div id="coastpopup" class="clickable" onmousedown="windown(event)">
+              <div id="coastbuttons">
+                <div class="leftbutton"><button id="selectroad" class="selectbutton button clickable" onclick="coastSelect('road')">Road</button></div>
+                <div class="centerbutton"><button id="cancelcoast" class="selectbutton button clickable" onclick="cancelCoast()">Cancel</button></div>
+                <div class="rightbutton"><button id="selectship" class="selectbutton button clickable" onclick="coastSelect('ship')">Ship</button></div>
+              </div>
             </div>
           </div>
           <div id="uileft" class="noclick">

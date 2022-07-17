@@ -1653,8 +1653,18 @@ function windown(e) {
   if (e.button != 0) {
     return;
   }
-  if (["SELECT", "OPTION", "INPUT", "BUTTON"].includes(e.target.tagName)) {
+  if (["SELECT", "OPTION", "INPUT", "BUTTON", "CANVAS"].includes(e.target.tagName)) {
     return;
+  }
+  let current = e.target;
+  while (current != null) {
+    if (!current.classList) {
+      break;
+    }
+    if (current.classList.contains("selectsummary")) {
+      return;
+    }
+    current = current.parentNode;
   }
   draggedWin = e.currentTarget;
   if (e.currentTarget.dX == null) {
