@@ -1,4 +1,5 @@
 {
+    "action_stack": [],
     "counter_offers": [
         null,
         null
@@ -370,6 +371,5 @@
         }
     ],
     "trade_offer": {},
-    "turn_idx": 0,
-    "turn_phase": "main"
+    "turn_idx": 0
 }
