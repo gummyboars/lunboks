@@ -50,7 +50,7 @@ resourceSelectionUI = {
     cancelText: "Cancel",
   },
   collect: {
-    bottomPanelText: "Choose {} resources to collect.",
+    bottomPanelText: "Choose {} to collect.",
     okText: "OK",
   },
 };
@@ -72,6 +72,7 @@ ports = [];
 corners = [];
 pieces = [];
 landings = [];
+treasures = [];
 edges = [];
 roads = [];
 cards = {};
@@ -640,15 +641,28 @@ function enableButton(elem) {
   elem.disabled = false;
 }
 function maybeShowCollectWindow(oldPhase) {
+  let collectText = null;
   if (turnPhase == "collect" && (collectTurn == myIdx || (collectTurn == null && collectCounts[myIdx]))) {
+    collectText = collectCounts[myIdx] + " resources";
+  }
+  if (turn == myIdx) {
+    if (turnPhase == "collect1") {
+      collectText = "1 resource";
+    } else if (turnPhase == "collect2") {
+      collectText = "2 resources";
+    } else if (turnPhase == "collectpi") {
+      collectText = "1 " + serverNames["rsrc1"] + ", " + serverNames["rsrc3"] + ", or " + serverNames["rsrc4"];
+    }
+  }
+  if (collectText != null) {
     if (resourceSelectorType != "collect") {
       // Clear selection counts only if we just popped the window up.
       clearResourceSelection("bottom");
       updateSelectCounts();
     }
     resourceSelectorType = "collect";
-    showResourceUI(resourceSelectorType, collectCounts[myIdx]);
-  } else if (oldPhase == "collect") {
+    showResourceUI(resourceSelectorType, collectText);
+  } else if (["collect1", "collect2", "collectpi", "collect"].includes(oldPhase)) {
     hideSelectorWindow();
   }
 }
@@ -1085,6 +1099,7 @@ function onmsg(event) {
   diceRoll = data.dice_roll;
   pieces = data.pieces;
   landings = data.landings;
+  treasures = data.treasures;
   roads = data.roads;
   let oldTurn = turn;
   turn = data.turn;

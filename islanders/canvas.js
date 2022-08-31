@@ -92,6 +92,11 @@ function draw() {
   }
   context.restore();
   context.save();
+  for (let i = 0; i < treasures.length; i++) {
+    drawTreasure(treasures[i].location, context);
+  }
+  context.restore();
+  context.save();
   drawHover(context);
   context.restore();
   context.save();
@@ -265,6 +270,29 @@ function drawPiece(pieceLoc, style, pieceType, ctx) {
     ctx.strokeStyle = "black";
     ctx.stroke();
   }
+}
+function drawTreasure(loc, ctx) {
+  let canvasLoc = coordToCanvasLoc(loc);
+  ctx.fillStyle = "maroon";
+  ctx.strokeStyle = "black";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(canvasLoc.x - pieceRadius * 3/2, canvasLoc.y + pieceRadius * 4/3);
+  ctx.lineTo(canvasLoc.x - pieceRadius * 3/2, canvasLoc.y - pieceRadius * 1/3);
+  ctx.arcTo(canvasLoc.x - pieceRadius * 3/2, canvasLoc.y - pieceRadius, canvasLoc.x - pieceRadius * 5/6, canvasLoc.y - pieceRadius, pieceRadius * 2/3);
+  ctx.lineTo(canvasLoc.x + pieceRadius * 5/6, canvasLoc.y - pieceRadius);
+  ctx.arcTo(canvasLoc.x + pieceRadius * 3/2, canvasLoc.y - pieceRadius, canvasLoc.x + pieceRadius * 3/2, canvasLoc.y - pieceRadius * 1/3, pieceRadius * 2/3);
+  ctx.lineTo(canvasLoc.x + pieceRadius * 3/2, canvasLoc.y + pieceRadius * 4/3);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  ctx.moveTo(canvasLoc.x + pieceRadius * 5/6, canvasLoc.y - pieceRadius);
+  ctx.arcTo(canvasLoc.x + pieceRadius * 1/6, canvasLoc.y - pieceRadius, canvasLoc.x + pieceRadius * 1/6, canvasLoc.y - pieceRadius * 1/3, pieceRadius * 2/3);
+  ctx.lineTo(canvasLoc.x + pieceRadius * 1/6, canvasLoc.y + pieceRadius * 4/3);
+  ctx.stroke();
+  ctx.moveTo(canvasLoc.x + pieceRadius * 3/2, canvasLoc.y - pieceRadius * 1/3);
+  ctx.lineTo(canvasLoc.x - pieceRadius * 3/2, canvasLoc.y - pieceRadius * 1/3);
+  ctx.stroke();
 }
 function drawTile(tileData, ctx) {
   let img = getAsset(tileData.tile_type + "tile", tileData.variant);

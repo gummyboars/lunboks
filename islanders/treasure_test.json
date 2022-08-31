@@ -1,0 +1,420 @@
+{
+    "action_stack": [],
+    "built_this_turn": [
+        [
+            2,
+            4,
+            3,
+            5
+        ]
+    ],
+    "collect_counts": [
+        null,
+        null
+    ],
+    "collect_idx": null,
+    "counter_offers": [
+        null,
+        null
+    ],
+    "dev_cards": [
+        "knight",
+        "knight",
+        "knight",
+        "knight",
+        "monopoly",
+        "roadbuilding",
+        "knight",
+        "knight",
+        "knight",
+        "knight",
+        "palace",
+        "library",
+        "monopoly",
+        "knight",
+        "knight",
+        "yearofplenty",
+        "knight",
+        "roadbuilding",
+        "knight",
+        "market",
+        "yearofplenty",
+        "chapel",
+        "knight",
+        "knight",
+        "university"
+    ],
+    "dev_roads_placed": 0,
+    "dice_roll": [
+        6,
+        6
+    ],
+    "discard_players": [
+        0,
+        0
+    ],
+    "discoverable_treasures": [
+        "collectpi",
+        "collect2",
+        "devcard"
+    ],
+    "event_log": [],
+    "foreign_landings": [
+        [],
+        []
+    ],
+    "game_phase": "main",
+    "home_corners": [
+        [
+            [
+                3,
+                5
+            ]
+        ],
+        []
+    ],
+    "largest_army_player": null,
+    "longest_route_player": null,
+    "options": {
+        "seafarers": {
+            "name": "Seafarers",
+            "forced": true,
+            "default": true,
+            "choices": null,
+            "hidden": false,
+            "value": true
+        },
+        "victory_points": {
+            "name": "Victory Points",
+            "forced": false,
+            "default": 13,
+            "choices": [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21],
+            "hidden": false,
+            "value": 13
+        }
+    },
+    "pieces": [
+        {
+            "location": [
+                3,
+                5
+            ],
+            "piece_type": "settlement",
+            "player": 0
+        }
+    ],
+    "pirate": null,
+    "placement_islands": null,
+    "played_dev": 0,
+    "player_data": [
+        {
+            "cards": {
+                "chapel": 0,
+                "knight": 0,
+                "library": 0,
+                "market": 0,
+                "monopoly": 0,
+                "palace": 0,
+                "roadbuilding": 0,
+                "rsrc1": 3,
+                "rsrc2": 3,
+                "rsrc3": 1,
+                "rsrc4": 2,
+                "rsrc5": 2,
+                "university": 0,
+                "yearofplenty": 0
+            },
+            "color": "red",
+            "knights_played": 0,
+            "longest_route": 2,
+            "name": "Casey",
+            "trade_ratios": {
+                "rsrc1": 2
+            },
+            "unusable": {}
+        },
+        {
+            "cards": {
+                "chapel": 0,
+                "knight": 0,
+                "library": 0,
+                "market": 0,
+                "monopoly": 0,
+                "palace": 0,
+                "roadbuilding": 0,
+                "rsrc1": 3,
+                "rsrc2": 3,
+                "rsrc3": 2,
+                "rsrc4": 1,
+                "rsrc5": 5,
+                "university": 0,
+                "yearofplenty": 0
+            },
+            "color": "blue",
+            "knights_played": 0,
+            "longest_route": 1,
+            "name": "Andy",
+            "trade_ratios": {},
+            "unusable": {}
+        }
+    ],
+    "player_sessions": {
+        "45beb013-7dd6-4ee1-86e3-0e7656b1c1f3": 0,
+        "5a4cf184-63fd-4e0e-976d-11e4b1bada79": 1
+    },
+    "ports": [
+        {
+            "location": [
+                10,
+                4
+            ],
+            "port_type": "3",
+            "rotation": 0
+        }
+    ],
+    "roads": [
+        {
+            "closed": false,
+            "location": [
+                2,
+                6,
+                3,
+                5
+            ],
+            "movable": true,
+            "player": 0,
+            "road_type": "ship",
+            "source": [
+                3,
+                5
+            ]
+        },
+        {
+            "closed": false,
+            "location": [
+                2,
+                4,
+                3,
+                5
+            ],
+            "movable": true,
+            "player": 0,
+            "road_type": "ship",
+            "source": [
+                3,
+                5
+            ]
+        }
+    ],
+    "rob_players": [],
+    "robber": null,
+    "scenario": "The Treasure Islands",
+    "ships_moved": 1,
+    "shortage_resources": [],
+    "tiles": [
+        {
+            "is_land": false,
+            "land_rotations": [
+                1,
+                2
+            ],
+            "location": [
+                4,
+                4
+            ],
+            "number": null,
+            "rotation": 0,
+            "tile_type": "space",
+            "variant": ""
+        },
+        {
+            "is_land": false,
+            "land_rotations": [],
+            "location": [
+                7,
+                3
+            ],
+            "number": null,
+            "rotation": 0,
+            "tile_type": "space",
+            "variant": ""
+        },
+        {
+            "is_land": false,
+            "land_rotations": [
+                0,
+                2
+            ],
+            "location": [
+                4,
+                6
+            ],
+            "number": null,
+            "rotation": 0,
+            "tile_type": "space",
+            "variant": ""
+        },
+        {
+            "is_land": false,
+            "land_rotations": [
+                5
+            ],
+            "location": [
+                7,
+                5
+            ],
+            "number": null,
+            "rotation": 0,
+            "tile_type": "space",
+            "variant": ""
+        },
+        {
+            "is_land": false,
+            "land_rotations": [
+                1
+            ],
+            "location": [
+                4,
+                2
+            ],
+            "number": null,
+            "rotation": 0,
+            "tile_type": "space",
+            "variant": ""
+        },
+        {
+            "is_land": false,
+            "land_rotations": [],
+            "location": [
+                7,
+                1
+            ],
+            "number": null,
+            "rotation": 0,
+            "tile_type": "space",
+            "variant": ""
+        },
+        {
+            "is_land": false,
+            "land_rotations": [],
+            "location": [
+                10,
+                2
+            ],
+            "number": null,
+            "rotation": 1,
+            "tile_type": "space",
+            "variant": ""
+        },
+        {
+            "is_land": false,
+            "land_rotations": [
+                0
+            ],
+            "location": [
+                10,
+                4
+            ],
+            "number": null,
+            "rotation": 1,
+            "tile_type": "space",
+            "variant": ""
+        },
+        {
+            "is_land": true,
+            "land_rotations": [],
+            "location": [
+                10,
+                6
+            ],
+            "number": 8,
+            "rotation": 0,
+            "tile_type": "rsrc4",
+            "variant": ""
+        },
+        {
+            "is_land": false,
+            "land_rotations": [
+                1,
+                4
+            ],
+            "location": [
+                7,
+                7
+            ],
+            "number": null,
+            "rotation": 3,
+            "tile_type": "space",
+            "variant": ""
+        },
+        {
+            "is_land": true,
+            "land_rotations": [],
+            "location": [
+                4,
+                8
+            ],
+            "number": 6,
+            "rotation": 0,
+            "tile_type": "rsrc3",
+            "variant": ""
+        },
+        {
+            "is_land": false,
+            "land_rotations": [
+                3,
+                5
+            ],
+            "location": [
+                1,
+                7
+            ],
+            "number": null,
+            "rotation": 4,
+            "tile_type": "space",
+            "variant": ""
+        },
+        {
+            "is_land": true,
+            "land_rotations": [],
+            "location": [
+                1,
+                5
+            ],
+            "number": 5,
+            "rotation": 0,
+            "tile_type": "rsrc1",
+            "variant": ""
+        },
+        {
+            "is_land": true,
+            "land_rotations": [],
+            "location": [
+                1,
+                3
+            ],
+            "number": 9,
+            "rotation": 0,
+            "tile_type": "rsrc2",
+            "variant": ""
+        }
+    ],
+    "trade_offer": {},
+    "treasures": [
+        {
+            "location": [
+                8,
+                6
+            ],
+            "treasure_type": "devcard"
+        },
+        {
+            "location": [
+                5,
+                7
+            ],
+            "treasure_type": "roadbuilding"
+        }
+    ],
+    "turn_idx": 0
+}
