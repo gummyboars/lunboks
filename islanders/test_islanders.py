@@ -92,6 +92,17 @@ class TestInitBoard(unittest.TestCase):
     }
     self.assertDictEqual(counts, expected)
 
+  def testRobberNotOnFog(self):
+    state = islanders.IslandersState()
+    state.add_player("red", "player1")
+    state.add_player("blue", "player2")
+    state.add_player("forestgreen", "player3")
+    islanders.TreasureIslands.mutate_options(state.options)
+    islanders.TreasureIslands.init(state)
+
+    self.assertTrue(state.robber)
+    self.assertEqual(state.tiles[state.robber].tile_type, "norsrc")
+
 
 class TestLoadState(unittest.TestCase):
 
@@ -121,9 +132,26 @@ class TestLoadState(unittest.TestCase):
     self.assertEqual(list(c.roads.values())[0].road_type, "ship")
     self.assertIsInstance(list(c.roads.values())[0].source, islanders.CornerLocation)
 
+  def testLoadTreasures(self):
+    path = os.path.join(os.path.dirname(__file__), "treasure_test.json")
+    with open(path, encoding="ascii") as json_file:
+      json_data = json_file.read()
+    g = islanders.IslandersGame.parse_json(json_data)
+    c = g.game
+    self.assertEqual(len(c.treasures), 2)
+    self.assertIn(islanders.CornerLocation(8, 6), c.treasures)
+    self.assertIn(islanders.CornerLocation(5, 7), c.treasures)
+    self.assertEqual(c.treasures[(8, 6)], "devcard")
+    self.assertEqual(c.treasures[(5, 7)], "roadbuilding")
+
+    self.assertListEqual(c.discoverable_treasures, ["collectpi", "collect2", "devcard"])
+
   def testDumpAndLoad(self):
     # TODO: test with different numbers of users
-    scenarios = ["Standard Map", "The Four Islands", "Through the Desert"]
+    scenarios = [
+        "Standard Map", "The Four Islands", "Through the Desert", "The Fog Islands",
+        "The Treasure Islands",
+    ]
     for scenario in scenarios:
       with self.subTest(scenario=scenario):
         g = islanders.IslandersGame()
@@ -237,6 +265,42 @@ class CornerComputationTest(unittest.TestCase):
 
     # Desert corner that doesn't touch any other land should not have an island number.
     self.assertNotIn((21, 5), c.corners_to_islands)
+
+  def testFogCorners(self):
+    c = islanders.IslandersState()
+    islanders.SeafarerFog.mutate_options(c.options)
+    islanders.SeafarerFog.load_file(c, "fog3.json")
+    self.assertIn((5, 7), c.corners_to_islands)
+    self.assertIn((14, 4), c.corners_to_islands)
+    self.assertEqual(c.corners_to_islands[(5, 7)], c.corners_to_islands[(14, 4)])
+
+    self.assertIn((17, 7), c.corners_to_islands)
+    self.assertIn((5, 11), c.corners_to_islands)
+    self.assertEqual(c.corners_to_islands[(17, 7)], c.corners_to_islands[(5, 11)])
+
+    self.assertIn((23, 9), c.corners_to_islands)
+    self.assertIn((15, 13), c.corners_to_islands)
+    self.assertEqual(c.corners_to_islands[(23, 9)], c.corners_to_islands[(15, 13)])
+
+    # Assert that the island number for each of these corners is unique.
+    islands = [c.corners_to_islands[loc] for loc in [(5, 7), (5, 11), (23, 9)]]
+    self.assertEqual(len(islands), len(set(islands)))
+
+  def testTreasureCorners(self):
+    c = islanders.IslandersState()
+    islanders.TreasureIslands.mutate_options(c.options)
+    islanders.TreasureIslands.load_file(c, "treasure4.json")
+    self.assertIn((5, 9), c.corners_to_islands)
+    self.assertIn((11, 5), c.corners_to_islands)
+    self.assertEqual(c.corners_to_islands[(5, 9)], c.corners_to_islands[(11, 5)])
+
+    self.assertIn((2, 6), c.corners_to_islands)
+    self.assertIn((3, 11), c.corners_to_islands)
+    self.assertEqual(c.corners_to_islands[(2, 6)], c.corners_to_islands[(3, 11)])
+
+    # Assert that the island number for each of these corners is unique.
+    islands = [c.corners_to_islands[loc] for loc in [(5, 9), (3, 11), (12, 2)]]
+    self.assertEqual(len(islands), len(set(islands)))
 
 
 class PlacementRestrictionsTest(unittest.TestCase):
@@ -383,6 +447,23 @@ class PlacementRestrictionsTest(unittest.TestCase):
     c.turn_idx = 1
     c.handle(1, {"type": "settle", "location": [20, 10]})
 
+  def testTreasurePlacement(self):
+    c = islanders.IslandersState()
+    c.add_player("red", "player1")
+    c.add_player("blue", "player2")
+    c.add_player("green", "player3")
+    islanders.TreasureIslands.mutate_options(c.options)
+    islanders.TreasureIslands.init(c)
+    self.assertCountEqual(c.placement_islands, [(5, 7)])
+
+    with self.assertRaisesRegex(InvalidMove, "first settlements"):
+      c.handle(0, {"type": "settle", "location": [2, 4]})
+    with self.assertRaisesRegex(InvalidMove, "first settlements"):
+      c.handle(0, {"type": "settle", "location": [3, 11]})
+    with self.assertRaisesRegex(InvalidMove, "first settlements"):
+      c.handle(0, {"type": "settle", "location": [15, 15]})
+    c.handle(0, {"type": "settle", "location": [18, 6]})
+
 
 class TestIslandCalculations(BreakpointTestMixin):
 
@@ -476,9 +557,69 @@ class TestIslandCalculations(BreakpointTestMixin):
     self.assertCountEqual(loaded_game.home_corners[0], [(12, 4)])
     self.assertCountEqual(loaded_game.home_corners[1], [(5, 5), (9, 1)])
     self.assertCountEqual(loaded_game.home_corners[2], [(8, 8), (18, 8)])
-    self.assertCountEqual(self.c.foreign_landings[0], [(9, 3)])
-    self.assertCountEqual(self.c.foreign_landings[1], [(12, 2), (5, 7)])
-    self.assertCountEqual(self.c.foreign_landings[2], [(8, 6)])
+    self.assertCountEqual(loaded_game.foreign_landings[0], [(9, 3)])
+    self.assertCountEqual(loaded_game.foreign_landings[1], [(12, 2), (5, 7)])
+    self.assertCountEqual(loaded_game.foreign_landings[2], [(8, 6)])
+
+
+class TestFogLandingCalculations(BreakpointTestMixin):
+
+  def setUp(self):
+    self.c = islanders.IslandersState()
+    self.c.add_player("red", "player1")
+    self.c.add_player("blue", "player2")
+    self.c.add_player("green", "player3")
+    islanders.TreasureIslands.mutate_options(self.c.options)
+    islanders.TreasureIslands.init(self.c)
+    # TODO: we should have a helper to init a game with the default options for a scenario.
+    self.c.options["foreign_island_points"].set(1)
+
+    self.c.handle(0, {"type": "settle", "location": [6, 8]})
+    self.c.handle(0, {"type": "ship", "location": [5, 7, 6, 8]})
+    self.c.game_phase = "main"
+    self.c.turn_idx = 0
+    self.c.action_stack.clear()
+    self.g = islanders.IslandersGame()
+    self.g.game = self.c
+    self.g.scenario = "The Treasure Islands"
+
+  def discoverAndLand(self):
+    for rsrc in islanders.RESOURCES:
+      self.c.player_data[0].cards[rsrc] += 10
+    # Player will discover a land tile, then sea, then land again.
+    self.c.discoverable_tiles = ["rsrc1", "space", "rsrc2"]
+    self.c.discoverable_numbers = [12, 2]
+    self.c.discoverable_treasures = ["devcard"]  # To be drawn when discovering the sea tile.
+
+    # Discover the first land tile.
+    self.c.handle(0, {"type": "ship", "location": [3, 7, 5, 7]})
+    # Build and check that this counts as a foreign landing.
+    self.c.handle(0, {"type": "settle", "location": [3, 7]})
+    self.assertCountEqual(self.c.foreign_landings[0], [(3, 7)])
+
+    # Discover the next tile, which should be a sea tile.
+    self.c.handle(0, {"type": "ship", "location": [2, 8, 3, 7]})
+    self.assertEqual(self.c.tiles[(1, 9)].tile_type, "space")
+    self.c.handle(0, {"type": "ship", "location": [2, 8, 3, 9]})
+    self.assertCountEqual(self.c.foreign_landings[0], [(3, 7)])
+
+  def testSplitFogIslandIsOnlyOne(self):
+    # Test that if you discover a sea that splits an island, it still only counts as 1.
+    self.discoverAndLand()
+    self.c.handle(0, {"type": "ship", "location": [2, 10, 3, 9]})
+    self.c.handle(0, {"type": "settle", "location": [2, 10]})
+    self.assertCountEqual(self.c.foreign_landings[0], [(3, 7)])
+
+  def testIslandSplitCalculationOnSaveLoad(self):
+    # Test that loading a saved game does not split the original fog island.
+    self.discoverAndLand()
+    dump = self.g.json_str()
+    loaded = islanders.IslandersGame.parse_json(dump)
+    loaded_game = loaded.game
+    loaded_game.handle(0, {"type": "ship", "location": [2, 10, 3, 9]})
+    loaded_game.handle(0, {"type": "settle", "location": [2, 10]})
+    self.assertCountEqual(loaded_game.foreign_landings[0], [(3, 7)])
+    self.assertEqual(loaded_game.tiles[(1, 9)].tile_type, "space")
 
 
 class BaseInputHandlerTest(BreakpointTestMixin):
@@ -1050,6 +1191,125 @@ class TestDiscovery(BaseInputHandlerTest):
     new_rsrcs = collections.Counter(self.c.player_data[0].cards)
     self.assertDictEqual(new_rsrcs - old_rsrcs, {"rsrc5": 1})
     self.assertDictEqual(old_rsrcs - new_rsrcs, {})
+    self.assertEqual(self.c.turn_phase, "main")
+
+
+class TestTreasures(BaseInputHandlerTest):
+
+  TEST_FILE = "treasure_test.json"
+
+  def setUp(self):
+    BaseInputHandlerTest.setUp(self)
+    self.c.tiles[(4, 8)].tile_type = "discover"
+    self.c.tiles[(4, 8)].number = None
+    self.c.discoverable_tiles = ["norsrc"]
+
+  def testDiscoverDevCard(self):
+    self.c.dev_cards.append("market")
+    self.c.discoverable_treasures.append("devcard")
+    old_rsrcs = collections.Counter(self.c.player_data[0].cards)
+    self.c.handle_road([2, 6, 3, 7], 0, "ship", [("rsrc1", 1), ("rsrc2", 1)])
+    new_rsrcs = collections.Counter(self.c.player_data[0].cards)
+    self.assertDictEqual(new_rsrcs - old_rsrcs, {"market": 1})
+    self.assertDictEqual(old_rsrcs - new_rsrcs, {"rsrc1": 1, "rsrc2": 1})
+    self.assertEqual(self.c.turn_phase, "main")
+
+  def testDiscoverCollect(self):
+    self.c.discoverable_treasures.append("collect1")
+    old_rsrcs = collections.Counter(self.c.player_data[0].cards)
+    self.c.handle_road([2, 6, 3, 7], 0, "ship", [("rsrc1", 1), ("rsrc2", 1)])
+    self.assertEqual(self.c.turn_phase, "collect1")
+    with self.assertRaises(game.NotYourTurn):
+      self.c.handle(1, {"type": "collect", "rsrc5": 1})
+    self.c.handle_collect(0, {"rsrc5": 1})
+    new_rsrcs = collections.Counter(self.c.player_data[0].cards)
+    self.assertDictEqual(new_rsrcs - old_rsrcs, {"rsrc5": 1})
+    self.assertDictEqual(old_rsrcs - new_rsrcs, {"rsrc1": 1, "rsrc2": 1})
+
+  def testLimitedCollect(self):
+    self.c.discoverable_treasures.append("collectpi")
+    old_rsrcs = collections.Counter(self.c.player_data[0].cards)
+    self.c.handle_road([2, 6, 3, 7], 0, "ship", [("rsrc1", 1), ("rsrc2", 1)])
+    self.assertEqual(self.c.turn_phase, "collectpi")
+    with self.assertRaisesRegex(InvalidMove, "may only select"):
+      self.c.handle_collect(0, {"rsrc2": 1})
+    self.c.handle_collect(0, {"rsrc3": 1})
+    new_rsrcs = collections.Counter(self.c.player_data[0].cards)
+    self.assertDictEqual(new_rsrcs - old_rsrcs, {"rsrc3": 1})
+    self.assertDictEqual(old_rsrcs - new_rsrcs, {"rsrc1": 1, "rsrc2": 1})
+    self.assertEqual(self.c.turn_phase, "main")
+
+  def testDiscoverRoadbuilding(self):
+    self.c.discoverable_treasures.append("roadbuilding")
+    old_rsrcs = collections.Counter(self.c.player_data[0].cards)
+    self.c.handle_road([2, 6, 3, 7], 0, "ship", [("rsrc1", 1), ("rsrc2", 1)])
+    self.assertEqual(self.c.turn_phase, "dev_road")
+    self.c.handle_road([3, 5, 5, 5], 0, "ship", [("rsrc1", 1), ("rsrc2", 1)])
+    self.c.handle_road([2, 4, 3, 3], 0, "ship", [("rsrc1", 1), ("rsrc2", 1)])
+    new_rsrcs = collections.Counter(self.c.player_data[0].cards)
+    self.assertDictEqual(new_rsrcs - old_rsrcs, {})
+    self.assertDictEqual(old_rsrcs - new_rsrcs, {"rsrc1": 1, "rsrc2": 1})
+    self.assertEqual(self.c.turn_phase, "main")
+
+  def testDiscoverGoldAndCollect(self):
+    self.c.discoverable_tiles = ["anyrsrc"]
+    self.c.treasures[islanders.CornerLocation(5, 7)] = "collect1"
+    old_rsrcs = collections.Counter(self.c.player_data[0].cards)
+    self.c.handle_road([3, 5, 5, 5], 0, "ship", [("rsrc1", 1), ("rsrc2", 1)])
+    self.c.handle_road([5, 5, 6, 6], 0, "ship", [("rsrc1", 1), ("rsrc2", 1)])
+    self.c.handle_road([5, 7, 6, 6], 0, "ship", [("rsrc1", 1), ("rsrc2", 1)])
+    self.assertEqual(self.c.turn_phase, "collect")
+    self.c.handle_collect(0, {"rsrc1": 1})
+    self.assertEqual(self.c.turn_phase, "collect1")
+    self.c.handle_collect(0, {"rsrc2": 1})
+    new_rsrcs = collections.Counter(self.c.player_data[0].cards)
+    self.assertDictEqual(new_rsrcs - old_rsrcs, {})
+    self.assertDictEqual(old_rsrcs - new_rsrcs, {"rsrc1": 2, "rsrc2": 2})
+    self.assertEqual(self.c.turn_phase, "main")
+
+  def testRoadbuildingIntoSecondDiscover(self):
+    self.c.dev_cards.append("market")
+    self.c.treasures[islanders.CornerLocation(5, 5)] = "roadbuilding"
+    old_rsrcs = collections.Counter(self.c.player_data[0].cards)
+    self.c.handle_road([3, 5, 5, 5], 0, "ship", [("rsrc1", 1), ("rsrc2", 1)])
+    self.assertEqual(self.c.turn_phase, "dev_road")
+    self.c.handle_road([5, 5, 6, 6], 0, "ship", [("rsrc1", 1), ("rsrc2", 1)])
+    self.c.handle_road([6, 6, 8, 6], 0, "ship", [("rsrc1", 1), ("rsrc2", 1)])
+    new_rsrcs = collections.Counter(self.c.player_data[0].cards)
+    self.assertDictEqual(new_rsrcs - old_rsrcs, {"market": 1})
+    self.assertDictEqual(old_rsrcs - new_rsrcs, {"rsrc1": 1, "rsrc2": 1})
+    self.assertEqual(self.c.turn_phase, "main")
+
+  def testChainedRoadbuilding(self):
+    self.c.treasures[islanders.CornerLocation(6, 6)] = "roadbuilding"
+    self.c.treasures[islanders.CornerLocation(8, 6)] = "roadbuilding"
+    self.c.handle_road([3, 5, 5, 5], 0, "ship", [("rsrc1", 1), ("rsrc2", 1)])
+    self.c.handle_road([5, 5, 6, 6], 0, "ship", [("rsrc1", 1), ("rsrc2", 1)])
+    self.assertEqual(self.c.turn_phase, "dev_road")
+    self.c.handle_road([6, 6, 8, 6], 0, "ship", [("rsrc1", 1), ("rsrc2", 1)])
+    self.assertEqual(self.c.action_stack, ["dev_road"] * 3)
+    self.c.handle_road([8, 6, 9, 5], 0, "ship", [("rsrc1", 1), ("rsrc2", 1)])
+    self.c.handle_road([8, 4, 9, 5], 0, "ship", [("rsrc1", 1), ("rsrc2", 1)])
+    self.c.handle_road([6, 4, 8, 4], 0, "ship", [("rsrc1", 1), ("rsrc2", 1)])
+    self.assertEqual(self.c.turn_phase, "main")
+
+  def testDiscoverSeaGivesTreasure(self):
+    self.c.discoverable_tiles = ["space"]
+    self.c.discoverable_treasures.append("collect1")
+    self.c.handle_road([2, 6, 3, 7], 0, "ship", [("rsrc1", 1), ("rsrc2", 1)])
+    self.assertEqual(self.c.turn_phase, "collect1")
+
+  def testDiscoverTwoTreasures(self):
+    # build to a treasure while at the same time discovering a sea/desert tile
+    self.c.discoverable_treasures.append("collect1")
+    self.c.treasures[islanders.CornerLocation(5, 7)] = "collect2"
+    self.c.handle_road([3, 5, 5, 5], 0, "ship", [("rsrc1", 1), ("rsrc2", 1)])
+    self.c.handle_road([5, 5, 6, 6], 0, "ship", [("rsrc1", 1), ("rsrc2", 1)])
+    self.c.handle_road([5, 7, 6, 6], 0, "ship", [("rsrc1", 1), ("rsrc2", 1)])
+    self.assertEqual(self.c.turn_phase, "collect1")
+    self.c.handle_collect(0, {"rsrc5": 1})
+    self.assertEqual(self.c.turn_phase, "collect2")
+    self.c.handle_collect(0, {"rsrc4": 1, "rsrc3": 1})
     self.assertEqual(self.c.turn_phase, "main")
 
 

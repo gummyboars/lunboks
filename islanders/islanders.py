@@ -17,6 +17,7 @@ random = SystemRandom()
 RESOURCES = ["rsrc1", "rsrc2", "rsrc3", "rsrc4", "rsrc5"]
 PLAYABLE_DEV_CARDS = ["yearofplenty", "monopoly", "roadbuilding", "knight"]
 VICTORY_CARDS = ["palace", "chapel", "university", "market", "library"]
+TREASURES = ["collect1", "collect2", "collectpi", "roadbuilding", "devcard"]
 TILE_NUMBERS = [5, 2, 6, 3, 8, 10, 9, 12, 11, 4, 8, 10, 9, 4, 5, 6, 3, 11]
 EXTRA_NUMBERS = [
     2, 5, 4, 6, 3, 9, 8, 11, 11, 10, 6, 3, 8, 4, 8, 10, 11, 12, 10, 5, 4, 9, 5, 9, 12, 3, 12, 6]
@@ -492,7 +493,7 @@ class IslandersState:
   WANT = "want"
   GIVE = "give"
   TRADE_SIDES = [WANT, GIVE]
-  LOCATION_ATTRIBUTES = {"tiles", "ports", "pieces", "roads"}
+  LOCATION_ATTRIBUTES = {"tiles", "ports", "pieces", "roads", "treasures"}
   HIDDEN_ATTRIBUTES = {
       "dev_cards", "played_dev", "ships_moved", "built_this_turn",
       "home_corners", "foreign_landings", "placement_islands",
@@ -519,6 +520,7 @@ class IslandersState:
     self.roads: Dict[EdgeLocation, Road] = {}  # includes ships
     self.robber: Optional[TileLocation] = None
     self.pirate: Optional[TileLocation] = None
+    self.treasures: Dict[CornerLocation, str] = {}
     self.dev_cards: List[str] = []
     self.largest_army_player: Optional[int] = None
     self.longest_route_player: Optional[int] = None
@@ -527,6 +529,7 @@ class IslandersState:
     self.placement_islands: Optional[List[CornerLocation]] = None
     self.discoverable_tiles: List[str] = []
     self.discoverable_numbers: List[int] = []
+    self.discoverable_treasures: List[str] = []
     # Turn Information
     self.game_phase: str = "place1"  # valid values are place1, place2, main, victory
     # valid values: settle, road, dice, collect, discard, robber, rob, dev_road, main, extra_build
@@ -592,6 +595,7 @@ class IslandersState:
     cstate.parse_ports(gamedata["ports"])
     cstate.parse_pieces(gamedata["pieces"])
     cstate.parse_roads(gamedata["roads"])
+    cstate.parse_treasures(gamedata.get("treasures", []))
 
     # Location attributes need to be replaced with location objects.
     if cstate.robber is not None:
@@ -638,6 +642,11 @@ class IslandersState:
       road = Road.parse_json(road_json)
       self._add_road(road)
 
+  def parse_treasures(self, treasuredata):
+    for treasure_json in treasuredata:
+      loc = CornerLocation(*treasure_json["location"])
+      self.treasures[loc] = treasure_json["treasure_type"]
+
   def json_repr(self):
     custom = {"player_data", "event_log"}
     ret = {
@@ -646,6 +655,7 @@ class IslandersState:
     }
     ret["turn_phase"] = self.turn_phase
     ret.update({name: list(getattr(self, name).values()) for name in self.LOCATION_ATTRIBUTES})
+    ret["treasures"] = [{"location": loc, "treasure_type": t} for loc, t in self.treasures.items()]
     for attr in self.INDEXED_ATTRIBUTES:
       ret.update({attr: [getattr(self, attr).get(idx) for idx in range(len(self.player_data))]})
     ret["player_data"] = [player.json_repr() for player in self.player_data]
@@ -700,6 +710,8 @@ class IslandersState:
     ret["landings"] = []
     for idx, corner_list in self.foreign_landings.items():
       ret["landings"].extend([{"location": corner, "player": idx} for corner in corner_list])
+
+    ret["treasures"] = [{"location": corner} for corner in self.treasures]
 
     is_over = self.game_phase == "victory"
 
@@ -1053,8 +1065,16 @@ class IslandersState:
 
   def handle_collect(self, player_idx, selection):
     self._validate_selection(selection)
-    if sum(selection.values()) != self.collect_counts[player_idx]:
-      raise InvalidMove("You must select %s resources." % self.collect_counts[player_idx])
+    expected_count = self.collect_counts.get(player_idx, 0)
+    if self.turn_phase in ["collect1", "collectpi"]:
+      expected_count = 1
+    elif self.turn_phase == "collect2":
+      expected_count = 2
+    if sum(selection.values()) != expected_count:
+      raise InvalidMove("You must select %s resources." % expected_count)
+    if self.turn_phase == "collectpi":
+      if sum(selection.get(rsrc, 0) for rsrc in ["rsrc1", "rsrc3", "rsrc4"]) != 1:
+        raise InvalidMove("You may only select {rsrc1}, {rsrc3}, or {rsrc4}")
     if selection.keys() & set(self.shortage_resources):
       raise InvalidMove(
           "There is a shortage of {%s}; you cannot collect any." % (
@@ -1068,7 +1088,10 @@ class IslandersState:
       self.player_data[player_idx].cards[rsrc] += value
     event_text = ", ".join(["%s {%s}" % (count, rsrc) for rsrc, count in selection.items()])
     self.event_log.append(Event("collect", "{player%s} collected " % player_idx + event_text))
-    del self.collect_counts[player_idx]
+    if self.turn_phase in ["collect1", "collect2", "collectpi"]:
+      self.action_stack.pop()
+    else:
+      del self.collect_counts[player_idx]
     self.next_action()
 
   def _get_players_with_too_many_resources(self):
@@ -1347,6 +1370,7 @@ class IslandersState:
       road.source = self.get_ship_source(road.location, road.player)
     self._add_road(road)
 
+    self.discover_treasure(road)
     self.discover_tiles(road)
 
     # Check for increase in longest road, update longest road player if necessary. Also check
@@ -1584,6 +1608,9 @@ class IslandersState:
         event_text = "{player%s} discovered {%s}" % (road.player, tile.tile_type)
         self.event_log.append(Event("discover", event_text))
         if tile.tile_type in ["space", "norsrc"]:
+          # TODO: should this be a game option?
+          if self.discoverable_treasures:
+            self.give_treasure(road.player, self.discoverable_treasures.pop())
           continue
         if tile.number is None and self.discoverable_numbers:
           tile.number = self.discoverable_numbers.pop()
@@ -1595,6 +1622,36 @@ class IslandersState:
       self.collect_counts.update(collect_counts)
       self.action_stack.append("collect")
       self.next_action()
+
+  def discover_treasure(self, road):
+    corners = [road.location.corner_left, road.location.corner_right]
+    treasures = [self.treasures.pop(loc) for loc in corners if loc in self.treasures]
+    if not treasures:
+      return
+    self.give_treasure(road.player, treasures[0])  # Impossible to have a treasure in both corners.
+
+  def give_treasure(self, player, treasure):
+    text = {
+        "collectpi": "collect 1 (limited)",
+        "collect1": "collect 1",
+        "collect2": "collect 2",
+        "devcard": "development card",
+    }
+    event_text = "{player%s} discovered a %s treasure" % (player, text.get(treasure, treasure))
+    self.event_log.append(Event("treasure", event_text))
+    if treasure == "devcard":
+      if self.dev_cards:
+        card_type = self.add_dev_card(player)
+        self.event_log[-1] = Event(
+            "treasure", event_text, "{player%s} discovered a %s" % (player, card_type), [player],
+        )
+      return
+    if treasure == "roadbuilding":
+      self.action_stack.extend(["dev_road", "dev_road"])
+      self.next_action()
+      return
+    self.action_stack.append(treasure)
+    self.next_action()
 
   def handle_settle(self, location, player):
     loc = parse_location(location, CornerLocation)
@@ -2003,7 +2060,7 @@ class IslandersState:
     self.dev_cards = dev_cards
 
   def init_robber(self):
-    empty = [tile for tile in self.tiles.values() if tile.is_land and not tile.number]
+    empty = [tile for tile in self.tiles.values() if tile.tile_type == "norsrc"]
     if empty:
       self.robber = empty[0].location
 
@@ -2133,7 +2190,12 @@ class Scenario(metaclass=abc.ABCMeta):
       json_data = json.load(data)
       state.parse_tiles(json_data["tiles"])
       state.parse_ports(json_data["ports"])
+      state.parse_treasures(json_data.get("treasures", []))
     state.recompute()
+
+  @classmethod
+  def post_load(cls, state):
+    pass
 
 
 class StandardMap(Scenario):
@@ -2402,13 +2464,76 @@ class SeafarerFog(SeafarerScenario):
     options["foreign_island_points"].default = 0
 
 
+class TreasureIslands(SeafarerScenario):
+
+  @classmethod
+  def preview(cls, state):
+    cls.load_file(state, "treasure4.json")
+    for tile in state.tiles.values():
+      if tile.is_land and tile.tile_type != "discover":
+        tile.tile_type = "randomized"
+    for port in state.ports.values():
+      port.port_type = "randomized"
+    state.recompute()
+
+  @classmethod
+  def init(cls, state):
+    super().init(state)
+    cls.load_file(state, "treasure4.json")
+    land = [loc for loc, tile in state.tiles.items() if tile.tile_type not in ["space", "discover"]]
+    state.shuffle_land_tiles(land)
+    state.init_numbers((13, 5), TILE_NUMBERS)
+    state.shuffle_ports()
+    state.recompute()
+    state.placement_islands = [state.corners_to_islands[(5, 7)]]
+    state.init_dev_cards()
+    state.init_robber()
+
+    state.discoverable_tiles = [
+        "space", "space", "space", "anyrsrc", "anyrsrc", "norsrc", "norsrc",
+        "rsrc1", "rsrc2", "rsrc3", "rsrc3", "rsrc4", "rsrc4", "rsrc5", "rsrc5",
+    ]
+    state.discoverable_numbers = [2, 3, 4, 4, 5, 6, 9, 10, 10, 11]
+    random.shuffle(state.discoverable_tiles)
+    random.shuffle(state.discoverable_numbers)
+    treasures = list(collections.Counter({
+        "collect1": 5, "collect2": 4, "devcard": 4, "roadbuilding": 4, "collectpi": 3,
+    }).elements())
+    random.shuffle(treasures)
+    for key in state.treasures:
+      state.treasures[key] = treasures.pop()
+    state.discoverable_treasures = treasures
+
+  @classmethod
+  def mutate_options(cls, options):
+    super().mutate_options(options)
+    options["victory_points"].default = 14
+    options["foreign_island_points"].default = 1
+
+  @classmethod
+  def post_load(cls, state):
+    # Hack to make the island computation stable(ish) across save/load. Sorry.
+    if (1, 9) in state.tiles:
+      is_land = state.tiles[(1, 9)].is_land
+      state.tiles[(1, 9)].is_land = True
+      state._compute_contiguous_islands()  # pylint: disable=protected-access
+      state.tiles[(1, 9)].is_land = is_land
+
+
 class MapMakerState(IslandersState):
 
   def handle(self, player_idx, data):
-    if data["type"] not in ["robber", "pirate", "end_turn"]:
-      raise InvalidMove("This is the mapmaker. You can only change tiles.")
+    if data["type"] not in ["robber", "pirate", "end_turn", "settle", "city"]:
+      raise InvalidMove("This is the mapmaker. You can only change tiles and add treasure.")
     if data["type"] == "end_turn":
       self.turn_idx = (self.turn_idx + 1) % len(self.player_data)
+      return
+    if data["type"] in ["settle", "city"]:
+      loc = CornerLocation(*data["location"])
+      if loc in self.treasures:
+        del self.treasures[loc]
+      else:
+        self.treasures[loc] = "devcard"
       return
     loc = TileLocation(*data["location"])
     if self.turn_idx == 1 and self.tiles[loc].is_land:
@@ -2496,6 +2621,7 @@ class IslandersGame(BaseGame):
       ("The Four Islands", SeafarerIslands),
       ("Through the Desert", SeafarerDesert),
       ("The Fog Islands", SeafarerFog),
+      ("The Treasure Islands", TreasureIslands),
       ("Map Maker", MapMaker),
   ])
   COLORS = {"red", "blue", "limegreen", "darkviolet", "saddlebrown", "darkorange"}
@@ -2532,6 +2658,7 @@ class IslandersGame(BaseGame):
     player_sessions = gamedata.pop("player_sessions")
 
     game_state = game.game_class.parse_json(gamedata)
+    cls.SCENARIOS[game.scenario].post_load(game_state)
     game.game = game_state
     game.player_sessions.update(player_sessions)
     return game
