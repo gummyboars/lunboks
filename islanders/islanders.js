@@ -1457,6 +1457,7 @@ function updatePlayerData() {
     if (playerDiv == null) {
       playerDiv = createPlayerData(i);
     }
+    playerDiv.style.background = playerData[i].color;
     if (i != myIdx) {
       let nameDiv = playerDiv.getElementsByClassName("nametext")[0];
       let joinButton = playerDiv.getElementsByClassName("button")[0];
