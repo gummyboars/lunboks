@@ -330,9 +330,9 @@ class PlacementRestrictionsTest(unittest.TestCase):
     islanders.SeafarerDesert.init(c)
     self.assertCountEqual(c.placement_islands, [(-1, 3)])
 
-    with self.assertRaisesRegex(InvalidMove, "first settlements"):
+    with self.assertRaisesRegex(InvalidMove, "starting settlement"):
       c.handle(0, {"type": "settle", "location": [0, 8]})
-    with self.assertRaisesRegex(InvalidMove, "first settlements"):
+    with self.assertRaisesRegex(InvalidMove, "starting settlement"):
       c.handle(0, {"type": "settle", "location": [12, 0]})
     c.handle(0, {"type": "settle", "location": [3, 3]})
 
@@ -341,7 +341,7 @@ class PlacementRestrictionsTest(unittest.TestCase):
     c.action_stack = ["road", "settle"]
     c.turn_idx = 1
 
-    with self.assertRaisesRegex(InvalidMove, "first settlements"):
+    with self.assertRaisesRegex(InvalidMove, "starting settlement"):
       c.handle(1, {"type": "settle", "location": [9, 9]})
     c.handle(1, {"type": "settle", "location": [3, 5]})
 
@@ -355,9 +355,9 @@ class PlacementRestrictionsTest(unittest.TestCase):
     islanders.SeafarerDesert.init(c)
     self.assertCountEqual(c.placement_islands, [(-1, 5)])
 
-    with self.assertRaisesRegex(InvalidMove, "first settlements"):
+    with self.assertRaisesRegex(InvalidMove, "starting settlement"):
       c.handle(0, {"type": "settle", "location": [0, 8]})
-    with self.assertRaisesRegex(InvalidMove, "first settlements"):
+    with self.assertRaisesRegex(InvalidMove, "starting settlement"):
       c.handle(0, {"type": "settle", "location": [12, 0]})
     c.handle(0, {"type": "settle", "location": [3, 3]})
 
@@ -367,7 +367,7 @@ class PlacementRestrictionsTest(unittest.TestCase):
     c.turn_idx = 1
 
     # It should still validate islands in the second placement round.
-    with self.assertRaisesRegex(InvalidMove, "first settlements"):
+    with self.assertRaisesRegex(InvalidMove, "starting settlement"):
       c.handle(1, {"type": "settle", "location": [12, 12]})
     c.handle(1, {"type": "settle", "location": [12, 8]})
 
@@ -380,11 +380,11 @@ class PlacementRestrictionsTest(unittest.TestCase):
     islanders.SeafarerShores.init(c)
     self.assertCountEqual(c.placement_islands, [(-1, 3)])
 
-    with self.assertRaisesRegex(InvalidMove, "first settlements"):
+    with self.assertRaisesRegex(InvalidMove, "starting settlement"):
       c.handle(0, {"type": "settle", "location": [3, 9]})
-    with self.assertRaisesRegex(InvalidMove, "first settlements"):
+    with self.assertRaisesRegex(InvalidMove, "starting settlement"):
       c.handle(0, {"type": "settle", "location": [18, 4]})
-    with self.assertRaisesRegex(InvalidMove, "first settlements"):
+    with self.assertRaisesRegex(InvalidMove, "starting settlement"):
       c.handle(0, {"type": "settle", "location": [15, 9]})
     c.handle(0, {"type": "settle", "location": [3, 3]})
 
@@ -398,11 +398,11 @@ class PlacementRestrictionsTest(unittest.TestCase):
     islanders.SeafarerShores.init(c)
     self.assertCountEqual(c.placement_islands, [(-1, 3)])
 
-    with self.assertRaisesRegex(InvalidMove, "first settlements"):
+    with self.assertRaisesRegex(InvalidMove, "starting settlement"):
       c.handle(0, {"type": "settle", "location": [3, 11]})
-    with self.assertRaisesRegex(InvalidMove, "first settlements"):
+    with self.assertRaisesRegex(InvalidMove, "starting settlement"):
       c.handle(0, {"type": "settle", "location": [18, 4]})
-    with self.assertRaisesRegex(InvalidMove, "first settlements"):
+    with self.assertRaisesRegex(InvalidMove, "starting settlement"):
       c.handle(0, {"type": "settle", "location": [17, 11]})
     c.handle(0, {"type": "settle", "location": [3, 3]})
 
@@ -415,9 +415,9 @@ class PlacementRestrictionsTest(unittest.TestCase):
     islanders.SeafarerFog.init(c)
     self.assertCountEqual(c.placement_islands, [(2, 6), (11, 13)])
 
-    with self.assertRaisesRegex(InvalidMove, "first settlements"):
+    with self.assertRaisesRegex(InvalidMove, "starting settlement"):
       c.handle(0, {"type": "settle", "location": [17, 3]})
-    with self.assertRaisesRegex(InvalidMove, "first settlements"):
+    with self.assertRaisesRegex(InvalidMove, "starting settlement"):
       c.handle(0, {"type": "settle", "location": [5, 11]})
     c.handle(0, {"type": "settle", "location": [9, 7]})
     c.game_phase = "place2"
@@ -435,11 +435,11 @@ class PlacementRestrictionsTest(unittest.TestCase):
     islanders.SeafarerFog.init(c)
     self.assertCountEqual(c.placement_islands, [(2, 4), (8, 14)])
 
-    with self.assertRaisesRegex(InvalidMove, "first settlements"):
+    with self.assertRaisesRegex(InvalidMove, "starting settlement"):
       c.handle(0, {"type": "settle", "location": [20, 4]})
-    with self.assertRaisesRegex(InvalidMove, "first settlements"):
+    with self.assertRaisesRegex(InvalidMove, "starting settlement"):
       c.handle(0, {"type": "settle", "location": [5, 9]})
-    with self.assertRaisesRegex(InvalidMove, "first settlements"):
+    with self.assertRaisesRegex(InvalidMove, "starting settlement"):
       c.handle(0, {"type": "settle", "location": [9, 7]})
     c.handle(0, {"type": "settle", "location": [9, 5]})
     c.game_phase = "place2"
@@ -456,11 +456,11 @@ class PlacementRestrictionsTest(unittest.TestCase):
     islanders.TreasureIslands.init(c)
     self.assertCountEqual(c.placement_islands, [(5, 7)])
 
-    with self.assertRaisesRegex(InvalidMove, "first settlements"):
+    with self.assertRaisesRegex(InvalidMove, "starting settlement"):
       c.handle(0, {"type": "settle", "location": [2, 4]})
-    with self.assertRaisesRegex(InvalidMove, "first settlements"):
+    with self.assertRaisesRegex(InvalidMove, "starting settlement"):
       c.handle(0, {"type": "settle", "location": [3, 11]})
-    with self.assertRaisesRegex(InvalidMove, "first settlements"):
+    with self.assertRaisesRegex(InvalidMove, "starting settlement"):
       c.handle(0, {"type": "settle", "location": [15, 15]})
     c.handle(0, {"type": "settle", "location": [18, 6]})
 
@@ -1584,6 +1584,87 @@ class TestInitialSettlement(BaseInputHandlerTest):
     received = collections.Counter(self.c.player_data[0].cards)
     self.assertDictEqual(received - expected, {})
     self.assertDictEqual(expected - received, {})
+
+
+class TestSettlementTurnOrder(BreakpointTestMixin):
+
+  def setUp(self):
+    self.c = islanders.IslandersState()
+    self.c.add_player("red", "player0")
+    self.c.add_player("blue", "player1")
+    self.c.add_player("green", "player2")
+    islanders.SeafarerDesert.mutate_options(self.c.options)
+    islanders.SeafarerDesert.init(self.c)
+    self.g = islanders.IslandersGame()
+    self.g.game = self.c
+    self.g.scenario = "Through the Desert"
+
+  def testThreeSettlements(self):
+    self.c.options["placements"].force(("settlement", "settlement", "settlement"))
+    self.c.handle(0, {"type": "settle", "location": [15, 7]})
+    self.c.handle(0, {"type": "ship", "location": [15, 7, 17, 7]})
+    self.c.handle(1, {"type": "settle", "location": [15, 5]})
+    self.c.handle(1, {"type": "road", "location": [15, 5, 17, 5]})
+    self.c.handle(2, {"type": "settle", "location": [12, 6]})
+    self.c.handle(2, {"type": "road", "location": [12, 6, 14, 6]})
+    self.c.handle(2, {"type": "settle", "location": [12, 4]})
+    self.c.handle(2, {"type": "road", "location": [12, 4, 14, 4]})
+    self.c.handle(1, {"type": "settle", "location": [9, 7]})
+    self.c.handle(1, {"type": "ship", "location": [9, 7, 11, 7]})
+    self.c.handle(0, {"type": "settle", "location": [9, 5]})
+    self.c.handle(0, {"type": "road", "location": [9, 5, 11, 5]})
+    self.c.handle(0, {"type": "settle", "location": [9, 3]})
+    self.c.handle(0, {"type": "ship", "location": [9, 3, 11, 3]})
+    self.c.handle(1, {"type": "settle", "location": [6, 6]})
+    self.c.handle(1, {"type": "road", "location": [6, 6, 8, 6]})
+    self.c.handle(2, {"type": "settle", "location": [6, 4]})
+    self.c.handle(2, {"type": "road", "location": [6, 4, 8, 4]})
+
+    self.assertEqual(self.c.game_phase, "main")
+    self.assertEqual(self.c.turn_phase, "dice")
+    self.assertEqual(self.c.turn_idx, 0)
+
+    counts = collections.Counter(piece.piece_type for piece in self.c.pieces.values())
+    self.assertDictEqual(counts, {"settlement": 9})
+
+    counts = collections.Counter(self.c.player_data[0].cards)
+    self.assertDictEqual(+counts - collections.Counter({"rsrc4": 1, "rsrc5": 1}), {})
+    counts = collections.Counter(self.c.player_data[1].cards)
+    self.assertDictEqual(+counts - collections.Counter({"rsrc2": 1, "rsrc3": 1, "rsrc4": 1}), {})
+    counts = collections.Counter(self.c.player_data[2].cards)
+    self.assertDictEqual(+counts - collections.Counter({"rsrc3": 2, "rsrc4": 1}), {})
+
+  def testSettlementCity(self):
+    self.c.options["placements"].force(("settlement", "city"))
+    self.c.handle(0, {"type": "settle", "location": [15, 7]})
+    self.c.handle(0, {"type": "ship", "location": [15, 7, 17, 7]})
+    self.c.handle(1, {"type": "settle", "location": [15, 5]})
+    self.c.handle(1, {"type": "road", "location": [15, 5, 17, 5]})
+    self.c.handle(2, {"type": "settle", "location": [12, 6]})
+    self.c.handle(2, {"type": "road", "location": [12, 6, 14, 6]})
+    self.c.handle(2, {"type": "settle", "location": [12, 4]})
+    self.c.handle(2, {"type": "road", "location": [12, 4, 14, 4]})
+    self.c.handle(1, {"type": "settle", "location": [9, 7]})
+    self.c.handle(1, {"type": "ship", "location": [9, 7, 11, 7]})
+    self.c.handle(0, {"type": "settle", "location": [9, 5]})
+    self.c.handle(0, {"type": "road", "location": [9, 5, 11, 5]})
+
+    self.assertEqual(self.c.game_phase, "main")
+    self.assertEqual(self.c.turn_phase, "dice")
+    self.assertEqual(self.c.turn_idx, 0)
+
+    self.assertEqual(len(self.c.pieces), 6)
+    counts = collections.Counter(self.c.pieces[l].piece_type for l in [(15, 7), (15, 5), (12, 6)])
+    self.assertDictEqual(counts, {"settlement": 3})
+    counts = collections.Counter(self.c.pieces[l].piece_type for l in [(12, 4), (9, 7), (9, 5)])
+    self.assertDictEqual(counts, {"city": 3})
+
+    counts = collections.Counter(self.c.player_data[0].cards)
+    self.assertDictEqual(+counts - collections.Counter({"rsrc2": 1, "rsrc3": 1, "rsrc5": 1}), {})
+    counts = collections.Counter(self.c.player_data[1].cards)
+    self.assertDictEqual(+counts - collections.Counter({"rsrc2": 1, "rsrc4": 1}), {})
+    counts = collections.Counter(self.c.player_data[2].cards)
+    self.assertDictEqual(+counts - collections.Counter({"rsrc4": 1, "rsrc5": 1}), {})
 
 
 def AddThirteenRoads(c):

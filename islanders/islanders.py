@@ -109,6 +109,13 @@ class Options(collections.OrderedDict):
         "", default=0, choices=[0, 1, 2], forced=True, hidden=True,
     )
     self["norsrc_is_connected"] = GameOption("", default=True, forced=True, hidden=True)
+    self["placements"] = GameOption(
+        "", default=("settlement", "settlement"), forced=True, hidden=True,
+        choices=[
+            ("settlement", "settlement"), ("settlement", "city"),
+            ("settlement", "settlement", "settlement"),
+        ]
+    )
     self["extra_build"] = GameOption("5-6 Players", default=False, forced=True)
     self["debug"] = GameOption("Debug", default=False)
 
@@ -493,6 +500,7 @@ class IslandersState:
   WANT = "want"
   GIVE = "give"
   TRADE_SIDES = [WANT, GIVE]
+  PLACEMENTS = ["place1", "place2", "place3"]
   LOCATION_ATTRIBUTES = {"tiles", "ports", "pieces", "roads", "treasures"}
   HIDDEN_ATTRIBUTES = {
       "dev_cards", "played_dev", "ships_moved", "built_this_turn",
@@ -531,7 +539,7 @@ class IslandersState:
     self.discoverable_numbers: List[int] = []
     self.discoverable_treasures: List[str] = []
     # Turn Information
-    self.game_phase: str = "place1"  # valid values are place1, place2, main, victory
+    self.game_phase: str = "place1"  # valid values are place1, place2, place3, main, victory
     # valid values: settle, road, dice, collect, discard, robber, rob, dev_road, main, extra_build
     self.action_stack: List[str] = ["road", "settle"]
     self.turn_idx: int = 0
@@ -917,21 +925,24 @@ class IslandersState:
       self.action_stack.append("dice")
       self.dice_roll = None
       return
-    if self.game_phase == "place1":
-      self.action_stack.extend(["road", "settle"])
-      if self.turn_idx == len(self.player_data) - 1:
-        self.game_phase = "place2"
-        return
-      self.turn_idx += 1
+    if not self.game_phase.startswith("place"):
       return
-    if self.game_phase == "place2":
-      if self.turn_idx == 0:
-        self.game_phase = "main"
-        self.action_stack.append("dice")
-        return
+    direction = 1 - 2 * (self.PLACEMENTS.index(self.game_phase) % 2)  # 1 (forward) or -1 (backward)
+    self.turn_idx += direction
+    if 0 <= self.turn_idx < len(self.player_data):
+      # Default case - continue to the next player.
       self.action_stack.extend(["road", "settle"])
-      self.turn_idx -= 1
       return
+    if self.PLACEMENTS.index(self.game_phase) < len(self.options.placements) - 1:
+      # Next game phase - keep the same player, as turns go in snake order.
+      self.turn_idx -= direction
+      self.game_phase = self.PLACEMENTS[self.PLACEMENTS.index(self.game_phase)+1]
+      self.action_stack.extend(["road", "settle"])
+      return
+    # Begin the main phase of the game.
+    self.turn_idx = 0
+    self.game_phase = "main"
+    self.action_stack.append("dice")
 
   def handle_roll_dice(self):
     if self.turn_phase != "dice":
@@ -1669,15 +1680,16 @@ class IslandersState:
         raise InvalidMove("You cannot place a settlement next to existing settlement.")
     # Handle special settlement phase.
     if self.turn_phase == "settle":
+      piece_type = self.options.placements[self.PLACEMENTS.index(self.game_phase)]
       if self.placement_islands is not None:
         canonical_corner = self.corners_to_islands.get(loc)
         if canonical_corner not in self.placement_islands:
-          raise InvalidMove("You cannot place your first settlements in that area.")
-      self.add_piece(Piece(loc.x, loc.y, "settlement", player))
-      self.event_log.append(Event("settlement", "{player%s} built a settlement" % player))
+          raise InvalidMove("You cannot place your starting %s in that area." % piece_type)
+      self.add_piece(Piece(loc.x, loc.y, piece_type, player))
+      self.event_log.append(Event(piece_type, "{player%s} built a %s" % (player, piece_type)))
       self.action_stack.pop()
       self.next_action()
-      if self.game_phase == "place2":
+      if self.PLACEMENTS.index(self.game_phase) == len(self.options.placements) - 1:
         self.give_second_resources(player, loc)
       return
     # Check connected to one of the player's roads.
