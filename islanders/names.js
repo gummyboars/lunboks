@@ -19,6 +19,8 @@ assetNames = [
   "rsrc5tile",
   "norsrctile",
   "anyrsrctile",
+  "discovertile",
+  "randomizedtile",
   "spacetile",
   "coast",
   "port",
@@ -27,6 +29,7 @@ assetNames = [
   "rsrc3port",
   "rsrc4port",
   "rsrc5port",
+  "randomizedport",
   "3port",
   // Cards
   "rsrc1card",

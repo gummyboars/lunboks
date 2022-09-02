@@ -1805,16 +1805,12 @@ function chooseSkin(e) {
     window.open("/customization.html", "_blank");
     return;
   }
+  if (!skinInitializers[chosen]) {
+    console.log("Unknown skin " + chosen);
+    return;
+  }
   localStorage.removeItem("names");
-  if (chosen == "none") {
-    initializeNone();
-  }
-  if (chosen == "space") {
-    initializeSpace();
-  }
-  if (chosen == "custom") {
-    initializeCustom();
-  }
+  skinInitializers[chosen]();
   initializeNames();
   let promise = renderImages();
   promise.then(refreshUI, showError);
@@ -1826,6 +1822,23 @@ function refreshUI() {
   updateCostCard();
   updatePlayerData();
   updateBuyDev();
+}
+function createSkinOptions() {
+  let select = document.getElementById("skinchoice");
+  let customOption = null;
+  for (let skin in skinInitializers) {
+    let option = document.createElement("OPTION");
+    option.value = skin;
+    option.text = skinNames[skin] ?? skin;
+    select.appendChild(option);
+    if (skin == "custom") {
+      customOption = option;
+    }
+  }
+  // hack: re-append the custom option to put it at the bottom
+  if (customOption) {
+    select.appendChild(customOption);
+  }
 }
 function initDefaultSkin() {
   let sources = localStorage.getItem("sources");
@@ -1841,6 +1854,7 @@ function init() {
   }
   let gameId = params.get("game_id");
   initializeDefaults();
+  createSkinOptions();
   initDefaultSkin();
   initializeNames();
   sizeThings();
@@ -1911,3 +1925,13 @@ function showError(errText) {
   document.getElementById("errorText").style.opacity = 1.0;
   document.getElementById("errorText").innerText = errText;
 }
+skinInitializers = {
+  "none": initializeNone,
+  "space": initializeSpace,
+  "custom": initializeCustom,
+};
+skinNames = {
+  "none": "None",
+  "space": "Space Explorer",
+  "custom": "Custom",
+};
