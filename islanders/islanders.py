@@ -328,7 +328,10 @@ class Road:
 
   TYPES = ["road", "ship"]
 
-  def __init__(self, location, road_type, player, closed=False, movable=True, source=None):
+  def __init__(
+      self, location, road_type, player, *, closed=False, movable=True, source=None,
+      conquered=False,
+  ):
     assert road_type in self.TYPES
     self.location = EdgeLocation(*location)
     self.road_type = road_type
@@ -336,12 +339,14 @@ class Road:
     self.closed = closed
     self.movable = movable
     self.source = source
+    self.conquered = conquered
 
   def json_repr(self):
     data = {
         "location": self.location,
         "road_type": self.road_type,
         "player": self.player,
+        "conquered": self.conquered,
     }
     if self.road_type == "ship":
       data.update({
@@ -359,8 +364,8 @@ class Road:
       assert value.get("source") is not None
       source = CornerLocation(*value["source"])
     return Road(
-        value["location"], value["road_type"], value["player"], value.get("closed", False),
-        value.get("movable", True), source,
+        value["location"], value["road_type"], value["player"], closed=value.get("closed", False),
+        movable=value.get("movable", True), source=source, conquered=value.get("conquered", False),
     )
 
   def __str__(self):
@@ -371,22 +376,27 @@ class Piece:
 
   TYPES = ["settlement", "city"]
 
-  def __init__(self, x, y, piece_type, player):
+  def __init__(self, x, y, piece_type, player, *, conquered=False):
     assert piece_type in self.TYPES
     self.location = CornerLocation(x, y)
     self.piece_type = piece_type
     self.player = player
+    self.conquered = conquered
 
   def json_repr(self):
     return {
         "location": self.location,
         "piece_type": self.piece_type,
         "player": self.player,
+        "conquered": self.conquered,
     }
 
   @staticmethod
   def parse_json(value):
-    return Piece(value["location"][0], value["location"][1], value["piece_type"], value["player"])
+    return Piece(
+        value["location"][0], value["location"][1], value["piece_type"], value["player"],
+        conquered=value.get("conquered", False),
+    )
 
   def __str__(self):
     return str(self.json_repr())
@@ -394,32 +404,30 @@ class Piece:
 
 class Tile:
 
-  def __init__(self, x, y, tile_type, is_land, number, rotation=0, variant="", land_rotations=None):
+  def __init__(
+      self, x, y, tile_type, is_land, number, *, rotation=0, variant="", barbarians=0,
+      conquered=False, land_rotations=None,
+  ):
     self.location = TileLocation(x, y)
     self.tile_type = tile_type
     self.is_land = is_land
     self.number = number
     self.rotation = rotation
     self.variant = variant
+    self.barbarians = barbarians
+    self.conquered = conquered
     self.land_rotations = land_rotations or []
 
   def json_repr(self):
-    return {
-        "location": self.location,
-        "tile_type": self.tile_type,
-        "is_land": self.is_land,
-        "number": self.number,
-        "rotation": self.rotation,
-        "variant": self.variant,
-        "land_rotations": self.land_rotations,
-    }
+    return {attr: getattr(self, attr) for attr in self.__dict__}
 
   @staticmethod
   def parse_json(value):
     return Tile(
         value["location"][0], value["location"][1], value["tile_type"], value["is_land"],
-        value["number"], value["rotation"], value.get("variant") or "",
-        value.get("land_rotations") or [],
+        value["number"], rotation=value["rotation"], variant=value.get("variant", ""),
+        barbarians=value.get("barbarians", 0), conquered=value.get("conquered", False),
+        land_rotations=value.get("land_rotations") or [],
     )
 
   def __str__(self):
@@ -733,7 +741,7 @@ class IslandersState:
   def player_points(self, idx, visible):
     count = 0
     for piece in self.pieces.values():
-      if piece.player == idx:
+      if piece.player == idx and not piece.conquered:
         if piece.piece_type == "settlement":
           count += 1
         elif piece.piece_type == "city":
@@ -998,6 +1006,8 @@ class IslandersState:
       if tile.number != sum(dice_roll):
         continue
       if self.robber == tile.location:
+        continue
+      if tile.conquered:
         continue
       for corner_loc in tile.location.get_corner_locations():
         piece = self.pieces.get(corner_loc)
@@ -1270,6 +1280,10 @@ class IslandersState:
       adjacent_tiles = location.get_adjacent_tiles()
       if self.pirate in adjacent_tiles:
         raise InvalidMove("You cannot place a ship next to the pirate.")
+    # Validate that this road is not surrounded by conquered tiles.
+    # Note that both adjacent tiles are guaranteed to be in self.tiles because of _check_edge_type.
+    if all(self.tiles[loc].conquered for loc in location.get_adjacent_tiles()):
+      raise InvalidMove(f"You cannot place a {road_type} between two conquered tiles.")
     # Validate that this connects to either a settlement or another road.
     for corner in [left_corner, right_corner]:
       # Check whether this corner has one of the player's settlements.
@@ -1286,8 +1300,10 @@ class IslandersState:
       for edge in other_edges:
         if edge == location:
           continue
-        maybe_road = self.roads.get(edge)
-        if maybe_road and maybe_road.player == player and maybe_road.road_type == road_type:
+        if edge not in self.roads:
+          continue
+        road = self.roads[edge]
+        if road.player == player and road.road_type == road_type and not road.conquered:
           # They have a road leading here - they can build another road.
           return
     raise InvalidMove(f"{road_type.capitalize()}s must be connected to your {road_type} network.")
@@ -1490,12 +1506,14 @@ class IslandersState:
 
     # Next, get the three corners next to this corner. We can determine an edge from each one,
     # and we will throw away any edges that either do not belong to the player or that we have
-    # seen before or that do not match our expected edge type.
+    # seen before or that do not match our expected edge type or that are conquered.
     unseen_edges = [edge for edge in corner.get_edges() if edge not in seen_edges]
     valid_edges = []
     for edge in unseen_edges:
-      edge_piece = self.roads.get(edge)
-      if edge_piece and edge_piece.player == player and edge_piece.road_type in valid_types:
+      if edge not in self.roads:
+        continue
+      road = self.roads[edge]
+      if road.player == player and road.road_type in valid_types and not road.conquered:
         valid_edges.append(edge)
 
     max_depth = 0
@@ -1720,6 +1738,9 @@ class IslandersState:
         break
     else:
       raise InvalidMove("You must place your settlement next to one of your roads.")
+    # Check that this is not a conquered corner.
+    if not any(tile in self.tiles and not self.tiles[tile].conquered for tile in loc.get_tiles()):
+      raise InvalidMove("You cannot place your settlement on a conquered corner.")
     # Check player has enough settlements left.
     settle_count = len([
         p for p in self.pieces.values() if p.player == player and p.piece_type == "settlement"
@@ -1810,6 +1831,9 @@ class IslandersState:
       raise InvalidMove("You cannot upgrade another player's %s." % piece.piece_type)
     if piece.piece_type != "settlement":
       raise InvalidMove("You can only upgrade a settlement to a city.")
+    # Check that this is not a conquered corner.
+    if not any(tile in self.tiles and not self.tiles[tile].conquered for tile in loc.get_tiles()):
+      raise InvalidMove("You cannot upgrade a conquered settlement to a city.")
     # Check player has enough cities left.
     city_count = len([
         p for p in self.pieces.values() if p.player == player and p.piece_type == "city"
