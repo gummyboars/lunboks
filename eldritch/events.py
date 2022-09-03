@@ -723,6 +723,10 @@ class GainOrLoss(Event):
     self.gains = gains
     self.losses = losses
     self.final_adjustments = None
+  def __repr__(self):
+    s = str(type(self))[:-1] + ' {}: {}/{}{}>'
+    return s.format(self.character.name, self.gains, self.losses, ' cancelled' if self.cancelled else '')
+
 
   def resolve(self, state):
     assert not self.gains.keys() & self.losses.keys()
@@ -4092,6 +4096,7 @@ class AddToken(Event):
     self.resolved_max = False
     self.done = False
     self.n_tokens = n_tokens
+    super().__init__()
 
   def resolve(self, state):
     token_type = self.token_type
@@ -4111,47 +4116,7 @@ class AddToken(Event):
   def is_resolved(self):
     return self.done
 
-  def start_str(self):
-    return f"{self.n_tokens} {self.token_type.title()} token(s) to be added to {self.asset.name}"
-
-  def finish_str(self):
-    if self.done and not self.cancelled:
-      return f"{self.n_tokens} {self.token_type.title()} token(s) added to {self.asset.name}"
-    return f"{self.n_tokens} {self.token_type.title()} token(s) prevented from being added to {self.asset.name}"
-
-
-class AddToken(Event):
-  def __init__(self, asset, token_type, character=None, n_tokens=1):
-    self.asset = asset
-    self.token_type = token_type
-    self.character = character
-    self.added = False
-    self.resolved_max = False
-    self.done = False
-    self.n_tokens = n_tokens
-
-  def resolve(self, state):
-    token_type = self.token_type
-    asset = self.asset
-
-    if not self.added:
-      asset.tokens[self.token_type] += self.n_tokens
-      self.added = True
-
-    if not self.resolved_max and asset.tokens[token_type] >= asset.max_tokens.get(token_type, float('inf')):
-      state.event_stack.append(self.asset.get_max_token_event(state, token_type, self.character))
-      self.resolved_max = True
-      return
-
-    self.done = True
-
-  def is_resolved(self):
-    return self.done
-
-  def start_str(self):
-    return f"{self.n_tokens} {self.token_type.title()} token(s) to be added to {self.asset.name}"
-
-  def finish_str(self):
+  def log(self, state):
     if self.done and not self.cancelled:
       return f"{self.n_tokens} {self.token_type.title()} token(s) added to {self.asset.name}"
     return f"{self.n_tokens} {self.token_type.title()} token(s) prevented from being added to {self.asset.name}"

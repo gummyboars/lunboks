@@ -1,9 +1,10 @@
-from eldritch import events
+from eldritch import events, values
 from .base import Item, Weapon, OneshotWeapon
 
 __all__ = [
     "CreateUnique", "EnchantedKnife", "EnchantedBlade", "HolyWater", "MagicLamp", "MagicPowder",
-    "SwordOfGlory"
+    "SwordOfGlory",
+  "AlienStatue", "AncientTablet", "EnchantedJewelry",
 ]
 
 
@@ -79,19 +80,30 @@ class AlienStatue(Item):
 
     success_choice = events.BinaryChoice(
         owner,
+        "Gain 1 spell or 2 clues?",
         "Spell?",
         "Clues?",
-        events.Draw(owner, "spells", ),
-        events.Gain(owner, {'clues': 2})
+        events.Draw(owner, "spells", 1),
+        events.Gain(owner, {"clues": 2})
     )
 
+    spend = events.Sequence(
+       [values.ExactSpendPrerequisite({"sanity": 1, "movement": 2})
+    ],
+       owner
+    )
+    spend_choice = events.SpendChoice(
+        owner,
+        "Spend 2 movement and 1 sanity to roll a die?",
+        ["Spend", "Don't"],
+        spends=[spend, None],
+    )
     return events.Sequence([
         event.ExhaustAsset(owner, self),
-        events.ChangeMovementPoints(owner, -movement_cost),
-        events.Spend(owner, event, self.handle, {'sanity': 1}),
+        spend_choice,
         events.PassFail(owner, events.DiceRoll(owner, 1),
                         success_choice,
-                        events.Loss(owner, {'stamina': 2})),
+                        events.Loss(owner, {"stamina": 2})),
     ], owner
     )
 
@@ -113,7 +125,10 @@ class AncientTablet(Item):
 
     rolls = events.DiceRoll(owner, 2)
     two_success = events.Draw(owner, "spells", 2, keep_count=2)
-    one_success = events.Sequence([events.Draw(owner, "spells", 1), events.Gain(owner, {"clues": 2})], owner)
+    one_success = events.Sequence(
+        [events.Draw(owner, "spells", 1), events.Gain(owner, {"clues": 2})],
+        owner
+    )
     no_success = events.Gain(owner, {"clues": 4})
 
     return events.Sequence([
@@ -126,7 +141,7 @@ class AncientTablet(Item):
 
 
 class BluePyramidWatcher(Item):
-  def __init_(self, idx):
+  def __init__(self, idx):
     super().__init__("Blue Gate Watcher", idx, "unique", {}, {}, None, 4)
 
   def get_usable_interrupt(self, event, owner, state):
@@ -156,15 +171,59 @@ class DragonsEye(Item):
 class EnchantedJewelry(Item):
   def __init__(self, idx):
     super().__init__("Enchanted Jewelry", idx, "unique", {}, {}, None, 3)
-    self.tokens['stamina'] = 0
-    self.max_tokens['stamina'] = 3
+    self.tokens["stamina"] = 0
+    self.max_tokens["stamina"] = 3
 
   def get_usable_interrupt(self, event, owner, state):
-    if (not isinstance(event, events.GainOrLoss)) or ("stamina" not in event.losses):
+    if (not isinstance(event, events.GainOrLoss)) or (event.losses.get("stamina", 0) <= 0):
       return None
 
-    if not owner == event.character:
+    if (not owner == event.character):
       return None
+
+    losses = event.losses.copy()
+    print(losses)
+    losses["stamina"] -= 1
+    new_loss = events.GainOrLoss(event.character, event.gains, losses)
+    print(new_loss.gains, new_loss.losses)
+    return events.Sequence(
+        [
+          events.CancelEvent(event),
+          new_loss,
+          events.AddToken(self, "stamina", event.character, n_tokens=1)
+        ],
+        owner
+    )
+
+  def get_trigger(self, event, owner, state):
+    if isinstance(event, events.AddToken) and self.tokens["stamina"] == self.max_tokens["stamina"]:
+      return events.DiscardSpecific(owner, [self])
+    return None
+
+
+class HealingStone(Item):
+  def __init__(self, idx):
+    super().__init__("Healing Stone", idx, "unique", {}, {}, None, 8)
+
+  def get_usable_interrupt(self, event, owner, state):
+    if state.turn_phase == "upkeep" and not self.exhausted:
+      choice = events.BinaryChoice(
+          owner,
+          "Gain 1 Stamina or 1 Sanity?",
+          "1 Stamina",
+          events.Gain(owner, {"stamina": 1}),
+          "1 Sanity",
+          events.Gain(owner, {"sanity": 1}),
+      )
+      # While the text doesn't explicitly say to exhaust, if you don't,
+      # you can keep gaining forever!
+      return events.Sequence([events.ExhaustAsset(owner, self), choice], owner)
+    return super().get_usable_interrupt(event, owner, state)
+
+  def get_trigger(self, event, owner, state):
+    # The original card did not specify "Discard Healing Stone if the Ancient One awakens."
+    if isinstance(event, events.Awaken):
+      return events.DiscardSpecific(owner, [self])
 
 
 class OuterGodlyFlute(Item):
@@ -172,4 +231,6 @@ class OuterGodlyFlute(Item):
     super().__init__("Outer Godly Flute", idx, "unique", {}, {}, None, 8)
 
   def get_usable_trigger(self, event, owner, state):
+    if not isinstance(event, events.Combat):
+      return None
     pass
