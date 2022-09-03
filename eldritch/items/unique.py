@@ -4,7 +4,7 @@ from .base import Item, Weapon, OneshotWeapon
 __all__ = [
     "CreateUnique", "EnchantedKnife", "EnchantedBlade", "HolyWater", "MagicLamp", "MagicPowder",
     "SwordOfGlory",
-  "AlienStatue", "AncientTablet", "EnchantedJewelry",
+    "AlienStatue", "AncientTablet", "EnchantedJewelry",
 ]
 
 
@@ -88,9 +88,9 @@ class AlienStatue(Item):
     )
 
     spend = events.Sequence(
-       [values.ExactSpendPrerequisite({"sanity": 1, "movement": 2})
-    ],
-       owner
+        [values.ExactSpendPrerequisite({"sanity": 1, "movement": 2})
+         ],
+        owner
     )
     spend_choice = events.SpendChoice(
         owner,
@@ -188,9 +188,9 @@ class EnchantedJewelry(Item):
     print(new_loss.gains, new_loss.losses)
     return events.Sequence(
         [
-          events.CancelEvent(event),
-          new_loss,
-          events.AddToken(self, "stamina", event.character, n_tokens=1)
+            events.CancelEvent(event),
+            new_loss,
+            events.AddToken(self, "stamina", event.character, n_tokens=1)
         ],
         owner
     )

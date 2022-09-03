@@ -21,6 +21,7 @@ from eldritch import items
 from eldritch import monsters
 from eldritch.test_events import EventTest, Canceller
 
+
 class EnchantedJewelryTest(EventTest):
   def setUp(self):
     super().setUp()
@@ -37,7 +38,6 @@ class EnchantedJewelryTest(EventTest):
     # self.assertEqual(self.jewelry.tokens["stamina"], 1)
     # self.assertEqual(self.char.stamina, 5)
 
-
   def testMultipleStaminaUnused(self):
     loss = events.Loss(self.char, {"stamina": 2})
     self.state.event_stack.append(loss)
@@ -48,18 +48,17 @@ class EnchantedJewelryTest(EventTest):
     self.assertEqual(self.jewelry.tokens["stamina"], 1)
     self.assertEqual(self.char.stamina, 4)
 
-
   def testMultipleStaminaUsed(self):
-      loss = events.Loss(self.char, {"stamina": 2})
-      self.state.event_stack.append(loss)
-      self.resolve_to_usable(0, "Enchanted Jewelry0")
-      print("appending Enchanted Jewelry")
-      self.state.event_stack.append(self.state.usables[0]["Enchanted Jewelry0"])
-      self.resolve_to_usable(0, "Enchanted Jewelry0")
-      self.state.event_stack.append(self.state.usables[0]["Enchanted Jewelry0"])
-      self.resolve_until_done()
-      self.assertEqual(self.jewelry.tokens["stamina"], 2)
-      self.assertEqual(self.char.stamina, 5)
+    loss = events.Loss(self.char, {"stamina": 2})
+    self.state.event_stack.append(loss)
+    self.resolve_to_usable(0, "Enchanted Jewelry0")
+    print("appending Enchanted Jewelry")
+    self.state.event_stack.append(self.state.usables[0]["Enchanted Jewelry0"])
+    self.resolve_to_usable(0, "Enchanted Jewelry0")
+    self.state.event_stack.append(self.state.usables[0]["Enchanted Jewelry0"])
+    self.resolve_until_done()
+    self.assertEqual(self.jewelry.tokens["stamina"], 2)
+    self.assertEqual(self.char.stamina, 5)
 
   def testSingleStaminaMaxTokens(self):
     self.jewelry.tokens["stamina"] = 2

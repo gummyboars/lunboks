@@ -723,10 +723,10 @@ class GainOrLoss(Event):
     self.gains = gains
     self.losses = losses
     self.final_adjustments = None
+
   def __repr__(self):
     s = str(type(self))[:-1] + ' {}: {}/{}{}>'
     return s.format(self.character.name, self.gains, self.losses, ' cancelled' if self.cancelled else '')
-
 
   def resolve(self, state):
     assert not self.gains.keys() & self.losses.keys()
