@@ -743,6 +743,13 @@ class TestDistributeResources(BaseInputHandlerTest):
     self.assertEqual(self.c.player_data[1].cards["rsrc3"], 9)
     self.assertEqual(self.c.player_data[1].cards["rsrc1"], 2)
 
+  def testConqueredTilesGiveNoResources(self):
+    self.c.tiles[(4, 6)].barbarians = 1
+    self.c.tiles[(4, 6)].conquered = True
+    self.c.distribute_resources((4, 5))
+    self.assertEqual(self.c.player_data[0].cards["rsrc3"], 10)
+    self.assertEqual(self.c.player_data[1].cards["rsrc1"], 0)
+
 
 class TestDevCards(BaseInputHandlerTest):
 
@@ -1577,6 +1584,16 @@ class TestHandleSettleInput(BaseInputHandlerTest):
     with self.assertRaisesRegex(InvalidMove, "cities remaining"):
       self.c.handle(0, {"type": "city", "location": [8, 4]})
 
+  def testCannotBuildConqueredSettlement(self):
+    for loc in [(4, 4), (4, 6), (7, 5)]:
+      self.c.tiles[loc].barbarians = 1
+      self.c.tiles[loc].conquered = True
+    self.c.pieces.pop((5, 5))
+    self.c.turn_idx = 1
+    with self.assertRaisesRegex(InvalidMove, "conquered"):
+      self.c.handle(1, {"type": "settle", "location": [5, 5]})
+    self.c.handle(1, {"type": "settle", "location": [6, 6]})
+
 
 class TestInitialSettlement(BaseInputHandlerTest):
 
@@ -1814,6 +1831,24 @@ class TestHandleRoadInput(BaseInputHandlerTest):
     self.c._add_road(Road([5, 5, 6, 4], "road", 0))
     with self.assertRaisesRegex(InvalidMove, "must be connected"):
       self.c.handle(0, {"type": "road", "location": [3, 5, 5, 5]})
+
+  def testCannotBuildConqueredRoad(self):
+    for loc in [(4, 4), (4, 6), (7, 5)]:
+      self.c.tiles[loc].barbarians = 1
+      self.c.tiles[loc].conquered = True
+    self.c.roads[(5, 5, 6, 6)].conquered = True
+    self.c.turn_idx = 1
+    with self.assertRaisesRegex(InvalidMove, "conquered"):
+      self.c.handle(1, {"type": "road", "location": [3, 5, 5, 5]})
+
+  def testCannotAttachToConqueredRoad(self):
+    for loc in [(4, 4), (4, 6), (7, 5)]:
+      self.c.tiles[loc].barbarians = 1
+      self.c.tiles[loc].conquered = True
+    self.c.roads[(5, 5, 6, 6)].conquered = True
+    self.c.turn_idx = 1
+    with self.assertRaisesRegex(InvalidMove, "must be connected"):
+      self.c.handle(1, {"type": "road", "location": [5, 7, 6, 6]})
 
 
 class TestHandleShipInput(BaseInputHandlerTest):
@@ -2536,6 +2571,15 @@ class TestLongestRouteCalculation(BaseInputHandlerTest):
     val = self.c._dfs_depth(0, islanders.CornerLocation(8, 2), set([]), None)
     self.assertEqual(val, 4, "cannot go through someone else's port")
 
+  def testConqueredRoadsDontCount(self):
+    self.c._add_road(Road([5, 3, 6, 4], "road", 0))
+    for loc in [(4, 4), (7, 3)]:
+      self.c.tiles[loc].barbarians = 1
+      self.c.tiles[loc].conquered = True
+    self.c.roads[(5, 3, 6, 4)].conquered = True
+    val = self.c._dfs_depth(0, islanders.CornerLocation(8, 4), set([]), None)
+    self.assertEqual(val, 1, "conquered road doesn't count")
+
 
 class TestLongestRouteAssignment(BreakpointTestMixin):
 
@@ -2675,6 +2719,32 @@ class TestLargestArmy(BaseInputHandlerTest):
     self.assertEqual(self.c.event_log[-2].event_type, "knight")
     self.assertEqual(self.c.event_log[-1].event_type, "largest_army")
     self.assertIn("{player1} took largest army from {player0}", self.c.event_log[-1].public_text)
+
+
+class TestPlayerPoints(BaseInputHandlerTest):
+
+  def setUp(self):
+    super().setUp()
+    self.c.pieces[(8, 4)].piece_type = "city"
+    self.c.add_piece(islanders.Piece(5, 3, "settlement", 0))
+    self.c.add_piece(islanders.Piece(8, 6, "settlement", 1))
+    for loc in [(4, 4), (4, 6), (7, 5)]:
+      self.c.tiles[loc].barbarians = 1
+      self.c.tiles[loc].conquered = True
+    self.c.player_data[1].cards["market"] = 1
+
+  def testVisiblePlayerPoints(self):
+    self.assertEqual(self.c.player_points(0, visible=True), 3)
+    self.assertEqual(self.c.player_points(1, visible=True), 2)
+
+  def testHiddenPlayerPoints(self):
+    self.assertEqual(self.c.player_points(0, visible=False), 3)
+    self.assertEqual(self.c.player_points(1, visible=False), 3)
+
+  def testConqueredSettlementsDontGivePoints(self):
+    self.c.pieces[(5, 5)].conquered = True
+    self.assertEqual(self.c.player_points(0, visible=True), 3)
+    self.assertEqual(self.c.player_points(1, visible=True), 1)
 
 
 @mock.patch.object(islanders.random, "randint", return_value=3.5)
