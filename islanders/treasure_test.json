@@ -84,6 +84,22 @@
             "hidden": false,
             "value": true
         },
+        "pirate": {
+            "name": "Pirate",
+            "forced": true,
+            "default": true,
+            "choices": null,
+            "hidden": true,
+            "value": true
+        },
+        "robber": {
+            "name": "Robber",
+            "forced": true,
+            "default": true,
+            "choices": null,
+            "hidden": true,
+            "value": true
+        },
         "victory_points": {
             "name": "Victory Points",
             "forced": false,
