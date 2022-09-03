@@ -35,6 +35,14 @@ function locationsEqual(locA, locB) {
   }
   return true;
 }
+function isLand(loc) {
+  for (let tile of tiles) {
+    if (locationsEqual(tile.location, loc)) {
+      return tile.is_land;
+    }
+  }
+  return true;
+}
 
 function draw() {
   var canvas = document.getElementById('myCanvas');
@@ -59,6 +67,7 @@ function draw() {
   for (let i = 0; i < tiles.length; i++) {
     drawTile(tiles[i], context);
     drawNumber(tiles[i], context);
+    drawBarbarians(tiles[i], context);
   }
   context.restore();
   context.save();
@@ -100,16 +109,8 @@ function draw() {
   drawHover(context);
   context.restore();
   context.save();
-  let robberOpacity = 1;
-  if (locationsEqual(robberLoc, hoverTile)) {
-    robberOpacity = 0.5;
-  }
-  drawRobber(context, robberLoc, robberOpacity);
-  let pirateOpacity = 1;
-  if (locationsEqual(pirateLoc, hoverTile)) {
-    pirateOpacity = 0.5;
-  }
-  drawRobber(context, pirateLoc, pirateOpacity);
+  drawRobber(context, [robberLoc[0]+1, robberLoc[1]], 1, true);
+  drawRobber(context, pirateLoc, 1, false);
   context.restore();
   drawDebug(context);
   context.restore();
@@ -312,6 +313,14 @@ function drawTile(tileData, ctx) {
   }
   ctx.restore();
 }
+function drawBarbarians(tileData, ctx) {
+  let offsets = [[1, 0], [-1, 0], [0, -0.5], [0, 0.5], [0.5, -0.25], [-0.5, 0.25]];
+  let barbarians = tileData.barbarians || 0;
+  for (let i = 0; i < barbarians && i < 6; i++) {
+    let newLoc = [tileData.location[0] + offsets[i][0], tileData.location[1] + offsets[i][1]];
+    drawRobber(ctx, newLoc, 1, tileData.is_land);
+  }
+}
 function drawPort(portData, ctx) {
   let portImg = getAsset("port", portData.variant);
   let img = getAsset(portData.port_type + "port", portData.variant);
@@ -392,8 +401,12 @@ function drawHover(ctx) {
   }
   let canvas = document.getElementById("myCanvas");
   if (hoverTile != null) {
-    if (!locationsEqual(robberLoc, hoverTile)) {
-      drawRobber(ctx, hoverTile, 0.5);
+    if (!locationsEqual(robberLoc, hoverTile) && !locationsEqual(pirateLoc, hoverTile)) {
+      if (isLand(hoverTile)) {
+        drawRobber(ctx, [hoverTile[0]+1, hoverTile[1]], 0.5, true);
+      } else {
+        drawRobber(ctx, hoverTile, 0.5, false);
+      }
       canvas.style.cursor = "pointer";
     }
     return;
@@ -419,20 +432,13 @@ function drawHover(ctx) {
   }
   canvas.style.cursor = "auto";
 }
-function drawRobber(ctx, loc, alpha) {
+function drawRobber(ctx, loc, alpha, land) {
   if (loc == null) {
     return;
   }
-  let isLand = true;
-  for (let tile of tiles) {
-    if (locationsEqual(tile.location, loc)) {
-      isLand = tile.is_land;
-      break;
-    }
-  }
   let canvasLoc = coordToCanvasLoc(loc);
   let robimg, robWidth, robHeight;
-  if (isLand) {
+  if (land) {
     robimg = getAsset("robber");
     robwidth = 26;
     robheight = 60;
