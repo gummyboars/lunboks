@@ -103,6 +103,8 @@ class Options(collections.OrderedDict):
 
   def reset(self):
     self["seafarers"] = GameOption("Seafarers", default=False, forced=True)
+    self["robber"] = GameOption("Robber", default=True, forced=True, hidden=True)
+    self["pirate"] = GameOption("Pirate", default=False, forced=True, hidden=True)
     self["friendly_robber"] = GameOption("Friendly Robber", default=False)
     self["victory_points"] = GameOption("Victory Points", default=10, choices=list(range(8, 22)))
     self["foreign_island_points"] = GameOption(
@@ -837,7 +839,7 @@ class IslandersState:
       return self.handle_roll_dice()
     if move_type == "robber":
       return self.handle_robber(location, player_idx)
-    if move_type == "pirate" and self.options.seafarers:
+    if move_type == "pirate":
       return self.handle_pirate(player_idx, location)
     if move_type == "rob":
       return self.handle_rob(data.get("player"), player_idx)
@@ -958,7 +960,14 @@ class IslandersState:
     self.event_log.append(Event("dice", "{player%s} rolled a %s" % (self.turn_idx, red + white)))
     self.action_stack.pop()
     if (red + white) == 7:
-      self.action_stack.extend(["rob", "robber"])
+      self.action_stack.append("rob")
+      if self.options.robber or self.options.pirate:
+        self.action_stack.append("robber")
+      else:
+        self.rob_players = [
+            idx for idx in range(len(self.player_data))
+            if self.player_data[idx].resource_card_count() and idx != self.turn_idx
+        ]
       self.discard_players = self._get_players_with_too_many_resources()
       if sum(self.discard_players.values()):
         self.action_stack.append("discard")
@@ -1155,6 +1164,8 @@ class IslandersState:
       raise InvalidMove("%ss refuse to rob such poor people." % robber_type.capitalize())
 
   def handle_robber(self, location, current_player):
+    if not self.options.robber:
+      raise InvalidMove("The robber is not used in this scenario.")
     robber_loc = self.validate_robber_location(location, "robber", land=True)
     adjacent_players = {
         self.pieces[loc].player for loc in robber_loc.get_corner_locations() if loc in self.pieces
@@ -1165,6 +1176,8 @@ class IslandersState:
     self.activate_robber(current_player, adjacent_players)
 
   def handle_pirate(self, player_idx, location):
+    if not self.options.pirate:
+      raise InvalidMove("The pirate is not used in this scenario.")
     pirate_loc = self.validate_robber_location(location, "pirate", land=False)
     adjacent_players = {
         self.roads[edge].player for edge in pirate_loc.get_edge_locations()
@@ -1186,8 +1199,16 @@ class IslandersState:
 
   def handle_rob(self, rob_player, current_player):
     if self.turn_phase != "rob":
-      raise InvalidMove("You cannot rob without playing the robber.")
+      if self.options.robber or self.options.pirate:
+        raise InvalidMove("You cannot rob without playing the robber/pirate.")
+      raise InvalidMove("You cannot rob anyone right now.")
+    if not isinstance(rob_player, int) or rob_player < 0 or rob_player >= len(self.player_data):
+      raise InvalidMove("Unknown player %s" % rob_player)
+    if rob_player == current_player:
+      raise InvalidMove("You cannot rob from yourself.")
     if rob_player not in self.rob_players:
+      if not self.player_data[rob_player].resource_card_count():
+        raise InvalidMove("You cannot rob from a player that has no cards.")
       raise InvalidMove("You cannot rob from that player with that robber placement.")
     self._rob_player(rob_player, current_player)
 
@@ -2312,6 +2333,7 @@ class SeafarerScenario(Scenario, metaclass=abc.ABCMeta):
   @classmethod
   def mutate_options(cls, options):
     options["seafarers"].force(True)
+    options["pirate"].force(True)
     options["foreign_island_points"].default = 2
 
 

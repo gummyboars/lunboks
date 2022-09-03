@@ -1456,6 +1456,60 @@ class TestPiratePlacement(BaseInputHandlerTest):
     with self.assertRaisesRegex(InvalidMove, "before exploring"):
       self.c.handle_pirate(2, [7, 3])
 
+  def testCannotMovePirateIfDisabled(self):
+    self.c.options["pirate"].force(False)
+    self.c.add_player("green", "Bob")
+    self.c.turn_idx = 2
+    self.c.action_stack = ["rob", "robber"]
+    with self.assertRaisesRegex(InvalidMove, "not used"):
+      self.c.handle_pirate(2, [4, 6])
+
+
+@mock.patch.object(islanders.random, "randint", return_value=3.5)
+class TestRobberDisabled(BreakpointTestMixin):
+
+  def setUp(self):
+    self.c = islanders.IslandersState()
+    self.c.add_player("red", "player0")
+    self.c.add_player("blue", "player1")
+    self.c.add_player("green", "player2")
+    islanders.BeginnerMap.mutate_options(self.c.options)
+    islanders.BeginnerMap.init(self.c)
+    self.c.options["robber"].force(False)
+    self.g = islanders.IslandersGame()
+    self.g.game = self.c
+    self.g.scenario = "Beginner's Map"
+
+  def testCanRobFromAnyoneIfBothDisabled(self, unused_randint):
+    self.c.handle_roll_dice()
+    self.assertEqual(self.c.turn_phase, "rob")
+    self.assertCountEqual(self.c.rob_players, [1, 2])
+    with self.assertRaisesRegex(InvalidMove, "Unknown"):
+      self.c.handle_rob(1.0, 0)
+    with self.assertRaisesRegex(InvalidMove, "Unknown"):
+      self.c.handle_rob(-1, 0)
+    with self.assertRaisesRegex(InvalidMove, "yourself"):
+      self.c.handle_rob(0, 0)
+    self.c.handle_rob(2, 0)
+    self.assertEqual(sum(self.c.player_data[0].cards.values()), 4)
+    self.assertEqual(sum(self.c.player_data[2].cards.values()), 2)
+
+  def testCannotRobFromPlayersWithNoCards(self, unused_randint):
+    self.assertEqual(sum(self.c.player_data[0].cards.values()), 3)
+    self.assertEqual(sum(self.c.player_data[2].cards.values()), 3)
+    self.c.player_data[1].cards.clear()
+    self.c.handle_roll_dice()
+    self.assertEqual(sum(self.c.player_data[0].cards.values()), 4)
+    self.assertEqual(sum(self.c.player_data[2].cards.values()), 2)
+
+  def testNoPlayersHaveCards(self, unused_randint):
+    self.c.player_data[1].cards.clear()
+    self.c.player_data[2].cards.clear()
+    self.c.handle_roll_dice()
+    self.assertEqual(sum(self.c.player_data[0].cards.values()), 3)
+    self.assertEqual(sum(self.c.player_data[1].cards.values()), 0)
+    self.assertEqual(sum(self.c.player_data[2].cards.values()), 0)
+
 
 class TestHandleSettleInput(BaseInputHandlerTest):
 
