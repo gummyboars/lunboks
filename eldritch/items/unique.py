@@ -149,7 +149,7 @@ class BluePyramidWatcher(Item):
       return None
     if not owner == event.character:
       return None
-    #TODO: Pass combat check or gate close check
+    # TODO: Pass combat check or gate close check
     return None
 
 
@@ -237,5 +237,5 @@ class OuterGodlyFlute(Item):
     seq = [events.Loss(owner, {"stamina": 3, "sanity": 3}), ]
     # TODO: Defeat monsters
     return events.Sequence(
-         seq, owner
+        seq, owner
     )
