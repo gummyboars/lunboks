@@ -1201,6 +1201,167 @@ class TestDiscovery(BaseInputHandlerTest):
     self.assertEqual(self.c.turn_phase, "main")
 
 
+class TestDepletion(BaseInputHandlerTest):
+
+  TEST_FILE = "sea_test.json"
+
+  def setUp(self):
+    super().setUp()
+    self.c.placement_islands = [(-1, 3)]
+    self.c.home_corners[1].append(islanders.CornerLocation(3, 3))
+    self.c.tiles[(7, 7)].tile_type = "rsrc5"
+    self.c.tiles[(7, 7)].is_land = True
+    self.c.tiles[(7, 7)].number = 0
+    self.c.tiles[(4, 4)].tile_type = "rsrc4"
+    self.c.tiles[(4, 4)].is_land = True
+    self.c.tiles[(4, 4)].number = 6
+    self.c.tiles[(4, 2)].tile_type = "rsrc3"
+    self.c.tiles[(4, 2)].is_land = True
+    self.c.tiles[(4, 2)].number = 6
+    self.c.recompute()
+    self.c.add_piece(islanders.Piece(3, 3, "city", 1))
+    self.c.add_road(Road([3, 5, 5, 5], "ship", 0))
+
+  def testFirstDiscoverDoesNotDeplete(self):
+    self.c.discoverable_numbers = [2]
+    self.c.add_road(Road([5, 5, 6, 6], "ship", 0))
+    self.assertEqual(self.c.tiles[(7, 7)].number, 2)
+    self.assertEqual(self.c.action_stack, [])
+
+  def testDepleteOne(self):
+    self.c.add_road(Road([5, 5, 6, 6], "ship", 0))
+    self.assertListEqual(self.c.action_stack, ["deplete"])
+    self.c.handle_deplete(islanders.TileLocation(1, 5), 0)
+    self.assertEqual(self.c.tiles[(7, 7)].number, 5)
+    self.assertIsNone(self.c.tiles[(1, 5)].number)
+    self.assertEqual(self.c.action_stack, [])
+
+  def testNothingLeftToDeplete(self):
+    self.c.tiles[(4, 2)].number = None
+    self.c.tiles[(1, 3)].number = None
+    self.c.tiles[(1, 5)].number = None
+    self.c.tiles[(4, 4)].number = None
+    self.c.add_road(Road([5, 5, 6, 6], "ship", 0))
+    self.assertListEqual(self.c.action_stack, [])
+    with self.assertRaisesRegex(InvalidMove, "cannot deplete.*right now"):
+      self.c.handle_deplete(islanders.TileLocation(4, 4), 0)
+
+  def testCannotDepleteForeignIslands(self):
+    self.c.tiles[(7, 7)].number = 9
+    self.c.tiles[(4, 8)].number = 0
+    self.c.add_piece(islanders.Piece(8, 6, "settlement", 0))
+    self.c.add_road(Road([5, 5, 6, 6], "ship", 0))
+    self.c.add_road(Road([5, 7, 6, 6], "ship", 0))
+    self.assertListEqual(self.c.action_stack, ["deplete"])
+    with self.assertRaisesRegex(InvalidMove, "the home island"):
+      self.c.handle_deplete(islanders.TileLocation(7, 7), 0)
+    self.c.handle_deplete(islanders.TileLocation(1, 5), 0)
+
+  def testCannotLeaveSettlementEmpty(self):
+    self.c.tiles[(4, 4)].number = 9
+    self.c.tiles[(1, 3)].number = None
+    self.c.tiles[(4, 2)].number = None
+    self.c.add_road(Road([5, 5, 6, 6], "ship", 0))
+    with self.assertRaisesRegex(InvalidMove, "at least one number next to"):
+      self.c.handle_deplete(islanders.TileLocation(4, 4), 0)
+    self.c.handle_deplete(islanders.TileLocation(1, 5), 0)
+
+  def testMustTakeFromOwnSettlement(self):
+    self.c.tiles[(4, 4)].number = 9
+    self.c.tiles[(4, 2)].number = None
+    self.c.add_road(Road([5, 5, 6, 6], "ship", 0))
+    with self.assertRaisesRegex(InvalidMove, "one of your"):
+      self.c.handle_deplete(islanders.TileLocation(1, 3), 0)
+    self.c.handle_deplete(islanders.TileLocation(4, 4), 0)
+
+  def testCannotPutSixNextToEight(self):
+    self.c.tiles[(4, 2)].number = None
+    self.c.add_road(Road([5, 5, 6, 6], "ship", 0))
+    with self.assertRaisesRegex(InvalidMove, "6 and 8"):
+      self.c.handle_deplete(islanders.TileLocation(4, 4), 0)
+    self.c.tiles[(4, 4)].number = 8
+    with self.assertRaisesRegex(InvalidMove, "6 and 8"):
+      self.c.handle_deplete(islanders.TileLocation(4, 4), 0)
+    self.c.handle_deplete(islanders.TileLocation(1, 5), 0)
+
+  def testPutSixNextToEight(self):
+    self.c.tiles[(1, 5)].number = 8
+    self.c.add_road(Road([5, 5, 6, 6], "ship", 0))
+    with self.assertRaisesRegex(InvalidMove, "one of your"):
+      self.c.handle_deplete(islanders.TileLocation(1, 3), 0)
+    self.c.handle_deplete(islanders.TileLocation(1, 5), 0)
+
+  def testDepleteNotYourOwn(self):
+    self.c.pieces.pop((3, 5))
+    self.c.add_piece(islanders.Piece(5, 5, "settlement", 0))
+    self.c.tiles[(4, 2)].number = None
+    self.c.tiles[(1, 3)].number = None
+    self.c.tiles[(4, 4)].number = 9
+    self.c.add_road(Road([5, 5, 6, 6], "ship", 0))
+    with self.assertRaisesRegex(InvalidMove, "at least one number next to"):
+      self.c.handle_deplete(islanders.TileLocation(4, 4), 0)
+    self.c.handle_deplete(islanders.TileLocation(1, 5), 0)
+
+  def testDepleteNextToAnotherPlayer(self):
+    self.c.pieces.pop((3, 5))
+    self.c.add_piece(islanders.Piece(5, 5, "settlement", 0))
+    self.c.pieces.pop((3, 3))
+    self.c.add_piece(islanders.Piece(5, 3, "city", 1))
+    self.c.add_piece(islanders.Piece(0, 4, "settlement", 1))
+    self.c.tiles[(4, 2)].number = None
+    self.c.tiles[(4, 4)].number = 9
+    self.c.add_road(Road([5, 5, 6, 6], "ship", 0))
+    with self.assertRaisesRegex(InvalidMove, "at least one number next to"):
+      self.c.handle_deplete(islanders.TileLocation(4, 4), 0)
+    self.c.handle_deplete(islanders.TileLocation(1, 5), 0)
+
+  def testNotYourOwnSixNextToEight(self):
+    self.c.pieces.pop((3, 5))
+    self.c.add_piece(islanders.Piece(5, 5, "settlement", 0))
+    self.c.tiles[(4, 2)].number = None
+    self.c.tiles[(1, 3)].number = None
+    self.c.tiles[(4, 4)].number = 9
+    self.c.tiles[(1, 5)].number = 8
+    self.c.add_road(Road([5, 5, 6, 6], "ship", 0))
+    with self.assertRaisesRegex(InvalidMove, "at least one number next to"):
+      self.c.handle_deplete(islanders.TileLocation(4, 4), 0)
+    self.c.handle_deplete(islanders.TileLocation(1, 5), 0)
+
+  def testLeaveEmptySettlement(self):
+    self.c.tiles[(4, 2)].number = None
+    self.c.tiles[(1, 3)].number = None
+    self.c.tiles[(1, 5)].number = None
+    self.c.tiles[(4, 4)].number = 9
+    self.c.add_road(Road([5, 5, 6, 6], "ship", 0))
+    with self.assertRaisesRegex(InvalidMove, "must take a number"):
+      self.c.handle_deplete(islanders.TileLocation(1, 5), 0)
+    self.c.handle_deplete(islanders.TileLocation(4, 4), 0)
+
+  def testLeaveEmptySettlementSixNextToEight(self):
+    self.c.tiles[(4, 2)].number = None
+    self.c.tiles[(1, 3)].number = None
+    self.c.tiles[(1, 5)].number = None
+    self.c.tiles[(4, 4)].number = 8
+    self.c.add_road(Road([5, 5, 6, 6], "ship", 0))
+    self.c.handle_deplete(islanders.TileLocation(4, 4), 0)
+
+  def testLeaveEmptySettlementNotYourOwn(self):
+    self.c.tiles[(4, 2)].number = 9
+    self.c.tiles[(1, 3)].number = None
+    self.c.tiles[(1, 5)].number = None
+    self.c.tiles[(4, 4)].number = None
+    self.c.add_road(Road([5, 5, 6, 6], "ship", 0))
+    self.c.handle_deplete(islanders.TileLocation(4, 2), 0)
+
+  def testBreakAllThreeRules(self):
+    self.c.tiles[(4, 2)].number = 6
+    self.c.tiles[(1, 3)].number = None
+    self.c.tiles[(1, 5)].number = None
+    self.c.tiles[(4, 4)].number = None
+    self.c.add_road(Road([5, 5, 6, 6], "ship", 0))
+    self.c.handle_deplete(islanders.TileLocation(4, 2), 0)
+
+
 class TestTreasures(BaseInputHandlerTest):
 
   TEST_FILE = "treasure_test.json"

@@ -105,6 +105,9 @@ class Options(collections.OrderedDict):
     self["seafarers"] = GameOption("Seafarers", default=False, forced=True)
     self["robber"] = GameOption("Robber", default=True, forced=True, hidden=True)
     self["pirate"] = GameOption("Pirate", default=False, forced=True, hidden=True)
+    self["max_cities"] = GameOption(
+        "Max Cities", default=4, forced=True, hidden=True, choices=[4, 8],
+    )
     self["friendly_robber"] = GameOption("Friendly Robber", default=False)
     self["victory_points"] = GameOption("Victory Points", default=10, choices=list(range(8, 22)))
     self["foreign_island_points"] = GameOption(
@@ -550,7 +553,7 @@ class IslandersState:
     self.discoverable_treasures: List[str] = []
     # Turn Information
     self.game_phase: str = "place1"  # valid values are place1, place2, place3, main, victory
-    # values: settle, road, dice, collect, discard, robber, rob, dev_road, expel, main, extra_build
+    # settle, road, dice, collect, discard, robber, rob, dev_road, deplete, expel, main, extra_build
     self.action_stack: List[str] = ["road", "settle"]
     self.turn_idx: int = 0
     self.collect_idx: Optional[int] = None
@@ -564,6 +567,7 @@ class IslandersState:
     self.rob_players: List[int] = []  # List of players that can be robbed by this robber.
     self.shortage_resources: List[str] = []
     self.collect_counts: Dict[int, int] = collections.defaultdict(int)
+    self.target_tile: Optional[TileLocation] = None
     self.home_corners: Dict[int, List[CornerLocation]] = collections.defaultdict(list)
     self.foreign_landings: Dict[int, List[CornerLocation]] = collections.defaultdict(list)
     self.next_die_roll: Optional[int] = None
@@ -621,6 +625,8 @@ class IslandersState:
       cstate.robber = TileLocation(*cstate.robber)
     if cstate.pirate is not None:
       cstate.pirate = TileLocation(*cstate.pirate)
+    if cstate.target_tile is not None:
+      cstate.target_tile = TileLocation(*cstate.target_tile)
 
     # Built this turn needs to use locations instead of lists. Same thing for placement_islands.
     cstate.built_this_turn = [EdgeLocation(*loc) for loc in cstate.built_this_turn]
@@ -774,7 +780,7 @@ class IslandersState:
     return self.action_stack[-1]
 
   def next_action(self):
-    if self.turn_phase not in ["collect", "rob", "dev_road"]:
+    if self.turn_phase not in ["collect", "rob", "dev_road", "deplete"]:
       return
     if self.turn_phase == "collect":
       self.next_collect_player()
@@ -786,6 +792,12 @@ class IslandersState:
         return
       if len(self.rob_players) == 1:
         self._rob_player(self.rob_players[0], self.turn_idx)
+        return
+    if self.turn_phase == "deplete":
+      if not self._depletable_tiles():
+        self.target_tile = None
+        self.action_stack.pop()
+        self.next_action()
         return
     if self.turn_phase == "dev_road":
       usable = ["road", "ship"] if self.options.seafarers else ["road"]
@@ -860,6 +872,8 @@ class IslandersState:
       return self.handle_road(location, player_idx, move_type, [("rsrc1", 1), ("rsrc2", 1)])
     if move_type == "move_ship" and self.options.seafarers:
       return self.handle_move_ship(data.get("from"), data.get("to"), player_idx)
+    if move_type == "deplete":
+      return self.handle_deplete(location, player_idx)
     if move_type == "buy_dev":
       return self.handle_buy_dev(player_idx)
     if move_type == "play_dev":
@@ -1721,8 +1735,8 @@ class IslandersState:
     self.ships_moved = 1
 
   def discover_tiles(self, road):
-    maybe_tiles = [self.tiles.get(loc) for loc in road.location.get_end_tiles()]
-    discovered = [tile for tile in maybe_tiles if tile is not None and tile.tile_type == "discover"]
+    tiles = [self.tiles[loc] for loc in road.location.get_end_tiles() if loc in self.tiles]
+    discovered = [tile for tile in tiles if tile.tile_type == "discover"]
     collect_counts = collections.defaultdict(int)
     for tile in discovered:
       if self.discoverable_tiles:
@@ -1745,6 +1759,17 @@ class IslandersState:
     if collect_counts:
       self.collect_counts.update(collect_counts)
       self.action_stack.append("collect")
+      self.next_action()
+
+    found = [tile for tile in tiles if tile.number == 0]
+    if not found:
+      return
+    # You can never find more than one tile per road.
+    if self.discoverable_numbers:
+      found[0].number = self.discoverable_numbers.pop()
+    else:
+      self.target_tile = found[0].location
+      self.action_stack.append("deplete")
       self.next_action()
 
   def discover_treasure(self, road):
@@ -1775,6 +1800,70 @@ class IslandersState:
       self.next_action()
       return
     self.action_stack.append(treasure)
+    self.next_action()
+
+  def _depletable_tiles(self):
+
+    def depletable(tloc):
+      return self.corners_to_islands.get(tloc.get_left_corner()) in self.placement_islands
+
+    if self.placement_islands is None:
+      return {loc for loc, tile in self.tiles.items() if tile.number}
+    return {loc for loc, tile in self.tiles.items() if tile.number and depletable(loc)}
+
+  def handle_deplete(self, loc, player_idx):
+    if self.turn_phase != "deplete":
+      raise InvalidMove("You cannot deplete the main island right now.")
+    location = parse_location(loc, TileLocation)
+
+    # Find all tiles on the home island.
+    valid_tiles = self._depletable_tiles()
+
+    if not valid_tiles or not self.target_tile:  # This should never happen.
+      self.action_stack.pop()
+      self.next_action()
+      return
+
+    if location not in valid_tiles:
+      raise InvalidMove("You must take a number from the home island.")
+
+    # Find all settlements/cities next to only one number. Their adjacent tiles cannot be depleted.
+    isolated_corners = []
+    for cloc in self.pieces:
+      numbered_tiles = [tloc in self.tiles and self.tiles[tloc].number for tloc in cloc.get_tiles()]
+      if len([val for val in numbered_tiles if val]) <= 1:
+        isolated_corners.append(cloc)
+    banned_tiles = {tile for cloc in isolated_corners for tile in cloc.get_tiles()}
+    # If breaking this rule would leave you with no possibilities, ignore the rule.
+    if valid_tiles - banned_tiles:
+      if location in banned_tiles:
+        raise InvalidMove("You must leave at least one number next to each settlement/city.")
+      valid_tiles -= banned_tiles
+
+    # Find all tiles next to this player's settlements/cities.
+    player_corners = [cloc for cloc, piece in self.pieces.items() if piece.player == player_idx]
+    player_tiles = {tloc for cloc in player_corners for tloc in cloc.get_tiles()}
+    # If breaking this rule would leave you with no possibilities, ignore the rule.
+    if valid_tiles & player_tiles:
+      if location not in player_tiles:
+        raise InvalidMove("You must deplete a tile next to one of your settlements/cities.")
+      valid_tiles &= player_tiles
+
+    # If the surrounding tiles include 6 or 8, eliminate all home tiles that include 6 or 8.
+    surrounding = [tloc for tloc in self.target_tile.get_adjacent_tiles() if tloc in self.tiles]
+    if any(self.tiles[tloc].number in (6, 8) for tloc in surrounding):
+      invalid_tiles = {tile for tile in valid_tiles if self.tiles[tile].number in (6, 8)}
+      # If breaking this rule would leave you with no possibilities, ignore the rule.
+      if valid_tiles - invalid_tiles:
+        if location in invalid_tiles:
+          raise InvalidMove("The numbers 6 and 8 may not be placed next to eachother.")
+        valid_tiles -= invalid_tiles
+
+    assert location in valid_tiles  # This should never fail.
+    self.tiles[self.target_tile].number = self.tiles[location].number
+    self.tiles[location].number = None
+    self.target_tile = None
+    self.action_stack.pop()
     self.next_action()
 
   def handle_settle(self, location, player):
@@ -1913,7 +2002,7 @@ class IslandersState:
     city_count = len([
         p for p in self.pieces.values() if p.player == player and p.piece_type == "city"
     ])
-    if city_count >= 4:
+    if city_count >= self.options.max_cities:
       raise InvalidMove("You have no cities remaining.")
     # Check resources and deduct from player.
     resources = [("rsrc3", 2), ("rsrc5", 3)]
@@ -2693,6 +2782,63 @@ class TreasureIslands(SeafarerScenario):
       state.tiles[(1, 9)].is_land = is_land
 
 
+class GreaterIslands(SeafarerScenario):
+
+  @classmethod
+  def preview(cls, state):
+    if len(state.player_data) <= 3:
+      cls.load_file(state, "greater3.json")
+    else:
+      cls.load_file(state, "greater4.json")
+    for tile in state.tiles.values():
+      if tile.is_land and tile.number != 0:
+        tile.tile_type = "randomized"
+      elif tile.is_land:
+        tile.tile_type = "discover"
+    for port in state.ports.values():
+      port.port_type = "randomized"
+    state.recompute()
+
+  @classmethod
+  def init(cls, state):
+    super().init(state)
+    if len(state.player_data) == 3:
+      cls.load_file(state, "greater3.json")
+    elif len(state.player_data) == 4:
+      cls.load_file(state, "greater4.json")
+    else:
+      raise InvalidPlayer("Must have 3 or 4 players.")
+    home_lands = [loc for loc, tile in state.tiles.items() if tile.is_land and tile.number != 0]
+    foreign_lands = [loc for loc, tile in state.tiles.items() if tile.is_land and tile.number == 0]
+    state.shuffle_land_tiles(home_lands)
+    state.shuffle_land_tiles(foreign_lands)  # HACK: sea tiles are marked as land in the data
+    for tile in state.tiles.values():
+      if tile.tile_type == "space":
+        tile.is_land = False
+      if tile.tile_type in ["space", "norsrc"]:
+        tile.number = None
+    if len(state.player_data) == 4:
+      state.init_numbers((13, 5), TILE_NUMBERS)
+      state.shuffle_ports()
+    state.recompute()
+    state.placement_islands = [state.corners_to_islands[(6, 6)]]
+    state.init_dev_cards()
+    state.init_robber()
+    state.pirate = TileLocation(10, 0)
+    if len(state.player_data) == 4:
+      state.discoverable_numbers = [3, 4, 5, 9, 10]
+    else:
+      state.discoverable_numbers = [3, 5, 9, 11]
+    random.shuffle(state.discoverable_numbers)
+
+  @classmethod
+  def mutate_options(cls, options):
+    super().mutate_options(options)
+    options["max_cities"].force(8)
+    options["victory_points"].default = 18
+    options["foreign_island_points"].default = 0
+
+
 class DesertRiders(SeafarerScenario):
 
   FIXED_TILES = [(19, 3), (19, 5), (19, 7), (10, 6), (10, 10), (16, 6), (16, 10)]
@@ -2846,6 +2992,7 @@ class IslandersGame(BaseGame):
       ("Through the Desert", SeafarerDesert),
       ("The Fog Islands", SeafarerFog),
       ("The Treasure Islands", TreasureIslands),
+      ("Greater Islands", GreaterIslands),
       ("Desert Riders", DesertRiders),
       ("Map Maker", MapMaker),
   ])
