@@ -13,6 +13,7 @@ eventY = null;
 turned = false;
 
 hoverTile = null;
+hoverNumber = null;
 hoverCorner = null;
 hoverEdge = null;
 clickEdgeLocation = null;
@@ -445,7 +446,11 @@ function drawNumber(tileData, ctx) {
   let textHeightOffset = 12; // Adjust as necessary. TODO: textBaseline = middle?
   let canvasLoc = coordToCanvasLoc(tileData.location);
   ctx.save();
-  if (tileData.number) {
+  let num = tileData.number;
+  if (!num && locationsEqual(targetTile, tileData.location) && hoverNumber != null) {
+    num = hoverNumber;
+  }
+  if (num) {
     // Draw the white circle.
     ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
     if (tileData.conquered) {
@@ -455,7 +460,7 @@ function drawNumber(tileData, ctx) {
     ctx.arc(canvasLoc.x, canvasLoc.y, 28, 0, Math.PI * 2, true);
     ctx.fill();
     // Draw the number.
-    if (tileData.number == '6' || tileData.number == '8') {
+    if (num == '6' || num == '8') {
       ctx.fillStyle = 'red';
       ctx.font = 'bold 36px sans-serif';
     } else {
@@ -465,7 +470,15 @@ function drawNumber(tileData, ctx) {
     if (tileData.conquered) {
       ctx.globalAlpha = 0.25;
     }
-    ctx.fillText(tileData.number + "", canvasLoc.x, canvasLoc.y + textHeightOffset);
+    if (turnPhase == "deplete" && turn == myIdx) {
+      if (locationsEqual(hoverTile, tileData.location)) {
+        ctx.globalAlpha = 0.25;
+      }
+      if (locationsEqual(targetTile, tileData.location)) {
+        ctx.globalAlpha = 0.75;
+      }
+    }
+    ctx.fillText(num + "", canvasLoc.x, canvasLoc.y + textHeightOffset);
   }
   ctx.restore();
 }
@@ -478,7 +491,7 @@ function drawHover(ctx) {
   }
   let canvas = document.getElementById("myCanvas");
   if (hoverTile != null) {
-    if (turnPhase == "expel") {
+    if (["expel", "deplete"].includes(turnPhase)) {
       return;
     }
     if (!locationsEqual(robberLoc, hoverTile) && !locationsEqual(pirateLoc, hoverTile)) {
@@ -591,8 +604,8 @@ function onclick(event) {
   let clickTile = getTile(event.clientX, event.clientY);
   if (clickTile != null) {
     let clickType = (tiles[clickTile].is_land ? "robber" : "pirate");
-    if (turnPhase == "expel") {
-      clickType = "expel";
+    if (["expel", "deplete"].includes(turnPhase)) {
+      clickType = turnPhase;
     }
     let msg = {
       type: clickType,
@@ -665,6 +678,11 @@ function onmove(event) {
     hoverTile = tiles[hoverLoc].location;
   } else {
     hoverTile = null;
+  }
+  if (hoverLoc != null && turn == myIdx) {
+    hoverNumber = tiles[hoverLoc].number;
+  } else {
+    hoverNumber = null;
   }
   hoverLoc = getCorner(event.clientX, event.clientY, corners);
   if (hoverLoc != null) {

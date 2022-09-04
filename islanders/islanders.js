@@ -84,6 +84,7 @@ extraBuildTurn = null;
 diceRoll = null;
 robberLoc = null;
 pirateLoc = null;
+targetTile = null;
 tradeOffer = null;
 gamePhase = null;
 turnPhase = null;
@@ -1094,6 +1095,7 @@ function onmsg(event) {
   edges = data.edges;
   robberLoc = data.robber;
   pirateLoc = data.pirate;
+  targetTile = data.target_tile;
   cards = data.cards;
   devCardCount = data.dev_cards;
   diceRoll = data.dice_roll;
@@ -1574,6 +1576,8 @@ function updatePlayerData() {
         phaseMarker.innerText = "🏆";
       } else if (turnPhase == "robber" || turnPhase == "rob" || turnPhase == "expel") {
         phaseMarker.innerText = "💂";
+      } else if (turnPhase == "deplete") {
+        phaseMarker.innerText = "🔃";
       } else if (turnPhase == "dice") {
         phaseMarker.innerText = "🎲";
       } else if (turnPhase == "main") {
