@@ -725,8 +725,10 @@ class GainOrLoss(Event):
     self.final_adjustments = None
 
   def __repr__(self):
-    s = str(type(self))[:-1] + ' {}: {}/{}{}>'
-    return s.format(self.character.name, self.gains, self.losses, ' cancelled' if self.cancelled else '')
+    repr_str = str(type(self))[:-1] + " {}: {}/{}{}>"
+    return repr_str.format(
+        self.character.name, self.gains, self.losses, " cancelled" if self.cancelled else ""
+    )
 
   def resolve(self, state):
     assert not self.gains.keys() & self.losses.keys()
@@ -1362,7 +1364,7 @@ class KeepDrawn(Event):
 
 def Draw(character, deck, draw_count, prompt="Choose a card", keep_count=1, target_type=None):
   cards = DrawItems(character, deck, draw_count, target_type=target_type)
-  if keep_count == 'all':
+  if keep_count == "all":
     keep_count = draw_count
   keep = KeepDrawn(character, cards, prompt, keep_count, sort_uniq=math.isinf(draw_count))
   return Sequence([cards, keep], character)
@@ -3596,20 +3598,18 @@ class CombatRound(Event):
     return f"{self.character.name} did not defeat the {self.monster.name}"
 
 
-class PassCheck(Event):
-  def __init__(self, character, check):
-    self.character = character
-    self.check = check
-    self.done = False
-
-  def is_resolved(self):
-    return self.is_done
-
-  def start_str(self):
-    return ""
-
-  def finish_str(self):
-    return f"{self.character.name} force-passed a {self.check.check_type} check"
+# class PassCheck(Event):
+#   def __init__(self, character, check):
+#     self.character = character
+#     self.check = check
+#     self.done = False
+#
+#   def is_resolved(self):
+#     return self.is_done
+#
+#
+#   def log(self, state):
+#     return f"{self.character.name} force-passed a {self.check.check_type} check"
 
 
 class PassCombatRound(Event):
@@ -4106,7 +4106,8 @@ class AddToken(Event):
       asset.tokens[self.token_type] += self.n_tokens
       self.added = True
 
-    if not self.resolved_max and asset.tokens[token_type] >= asset.max_tokens.get(token_type, float('inf')):
+    if ((not self.resolved_max)
+        and (asset.tokens[token_type] >= asset.max_tokens.get(token_type, float("inf")))):
       state.event_stack.append(self.asset.get_max_token_event(token_type, self.character))
       self.resolved_max = True
       return
@@ -4119,7 +4120,8 @@ class AddToken(Event):
   def log(self, state):
     if self.done and not self.cancelled:
       return f"{self.n_tokens} {self.token_type.title()} token(s) added to {self.asset.name}"
-    return f"{self.n_tokens} {self.token_type.title()} token(s) prevented from being added to {self.asset.name}"
+    return (f"{self.n_tokens} {self.token_type.title()} token(s) prevented"
+            f" from being added to {self.asset.name}")
 
 
 class AddDoom(Event):

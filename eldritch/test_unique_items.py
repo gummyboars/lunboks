@@ -2,24 +2,24 @@
 
 import os
 import sys
-import unittest
-from unittest import mock
+# import unittest
+# from unittest import mock
 
 # Hack to allow the test to be run directly instead of invoking python from the base dir.
 if os.path.abspath(sys.path[0]) == os.path.dirname(os.path.abspath(__file__)):
   sys.path[0] = os.path.dirname(sys.path[0])
 
-from eldritch import abilities
-from eldritch import assets
-from eldritch import characters
-from eldritch import encounters
+# from eldritch import abilities
+# from eldritch import assets
+# from eldritch import characters
+# from eldritch import encounters
 from eldritch import events
-from eldritch.events import *
-from eldritch import gates
-from eldritch import gate_encounters
+# from eldritch.events import *
+# from eldritch import gates
+# from eldritch import gate_encounters
 from eldritch import items
-from eldritch import monsters
-from eldritch.test_events import EventTest, Canceller
+# from eldritch import monsters
+from eldritch.test_events import EventTest
 
 
 class EnchantedJewelryTest(EventTest):
