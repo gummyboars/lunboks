@@ -1572,7 +1572,7 @@ function updatePlayerData() {
       if (gamePhase == "victory") {
         turnMarker.innerText = "🏆";
         phaseMarker.innerText = "🏆";
-      } else if (turnPhase == "robber") {
+      } else if (turnPhase == "robber" || turnPhase == "rob" || turnPhase == "expel") {
         phaseMarker.innerText = "💂";
       } else if (turnPhase == "dice") {
         phaseMarker.innerText = "🎲";
