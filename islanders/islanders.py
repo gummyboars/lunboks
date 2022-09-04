@@ -550,11 +550,12 @@ class IslandersState:
     self.discoverable_treasures: List[str] = []
     # Turn Information
     self.game_phase: str = "place1"  # valid values are place1, place2, place3, main, victory
-    # valid values: settle, road, dice, collect, discard, robber, rob, dev_road, main, extra_build
+    # values: settle, road, dice, collect, discard, robber, rob, dev_road, expel, main, extra_build
     self.action_stack: List[str] = ["road", "settle"]
     self.turn_idx: int = 0
     self.collect_idx: Optional[int] = None
     self.extra_build_idx: Optional[int] = None
+    self.invasion_countdown: Optional[int] = None
     # Bookkeeping
     self.played_dev: int = 0
     self.ships_moved: int = 0
@@ -863,6 +864,8 @@ class IslandersState:
       return self.handle_buy_dev(player_idx)
     if move_type == "play_dev":
       return self.handle_play_dev(data.get("card_type"), data.get("selection"), player_idx)
+    if move_type == "expel":
+      return self.handle_expel(location, player_idx)
     if move_type == "settle":
       return self.handle_settle(location, player_idx)
     if move_type == "city":
@@ -982,6 +985,7 @@ class IslandersState:
       self.next_action()
       return
     self.distribute_resources(self.dice_roll)
+    self.invade(red + white)
 
   def handle_force_dice(self, value):
     if not self.options.debug:
@@ -995,6 +999,7 @@ class IslandersState:
       red = random.randint(1, 6)
       white = random.randint(1, 6)
       self.distribute_resources((red, white))
+      self.invade(red + white)
 
   def remaining_resources(self, rsrc):
     return 19 - sum(p.cards[rsrc] for p in self.player_data)
@@ -1240,6 +1245,75 @@ class IslandersState:
     self.rob_players = []  # Reset after successful rob.
     self.action_stack.pop()
     self.next_action()
+
+  def hasten_invasion(self):
+    if self.invasion_countdown is None or self.invasion_countdown <= 0:
+      return
+    count = 3 if len(self.player_data) <= 3 else 2
+    deserts = [tile for tile in self.tiles.values() if tile.tile_type == "norsrc"]
+    if not deserts:  # This should never happen.
+      return
+    for _ in range(count):
+      deserts.sort(key=lambda tile: tile.barbarians)
+      deserts[0].barbarians += 1
+      self.invasion_countdown -= 1
+    for tile in deserts:
+      self.check_conquest(tile)
+
+  def invade(self, num):
+    if self.invasion_countdown is None or self.invasion_countdown > 0:
+      return
+    deserts = [tile for tile in self.tiles.values() if tile.tile_type == "norsrc"]
+    supply = sum(tile.barbarians for tile in deserts)
+    if supply <= 0:
+      return
+
+    matching = [tile for tile in self.tiles.values() if tile.number == num and tile.barbarians == 0]
+    eligible = []
+    for tile in matching:
+      adjacents = tile.location.get_adjacent_tiles()
+      if any(adj in self.tiles and self.tiles[adj].barbarians > 0 for adj in adjacents):
+        eligible.append(tile)
+    # In case there are not enough barbarians to distribute, prioritize tiles closer to the desert.
+    eligible.sort(key=lambda t: -t.location.x)
+
+    invaded = []
+    cleared = []
+    for tile in eligible:
+      if supply <= 0:
+        break
+      invaded.append(tile)
+      tile.barbarians += 1
+      deserts.sort(key=lambda t: (-t.barbarians, t.location.y))
+      deserts[0].barbarians -= 1
+      supply -= 1
+      if deserts[0].barbarians == 0:
+        cleared.append(deserts[0])
+    for tile in invaded:
+      self.check_conquest(tile)
+    for tile in cleared:
+      self.check_recapture(tile)
+
+  def check_conquest(self, tile):
+    if tile.barbarians <= 0:
+      return
+    tile.conquered = True
+    pieces = [self.pieces[c] for c in tile.location.get_corner_locations() if c in self.pieces]
+    roads = [self.roads[edge] for edge in tile.location.get_edge_locations() if edge in self.roads]
+    for piece in pieces:
+      surrounding = [self.tiles[tile] for tile in piece.location.get_tiles() if tile in self.tiles]
+      if all(tile.conquered for tile in surrounding):
+        piece.conquered = True
+    players_to_check = set()
+    for road in roads:
+      surrounding = [self.tiles[t] for t in road.location.get_adjacent_tiles() if t in self.tiles]
+      if all(tile.conquered for tile in surrounding):
+        road.conquered = True
+        players_to_check.add(road.player)
+
+    for player in players_to_check:
+      self.player_data[player].longest_route = self._calculate_longest_road(player)
+    self._update_longest_route_player()
 
   def _check_main_phase(self, move_type, text):
     if self.turn_phase == "extra_build" and move_type in self.EXTRA_BUILD_ACTIONS:
@@ -1753,6 +1827,7 @@ class IslandersState:
 
     self.event_log.append(Event("settlement", "{player%s} built a settlement" % player))
     self.add_piece(Piece(loc.x, loc.y, "settlement", player))
+    self.hasten_invasion()
 
   def _add_piece(self, piece):
     self.pieces[piece.location] = piece
@@ -1846,6 +1921,7 @@ class IslandersState:
 
     self.pieces[loc].piece_type = "city"
     self.event_log.append(Event("city", "{player%s} upgraded a settlement to a city" % player))
+    self.hasten_invasion()
 
   def handle_buy_dev(self, player):
     # Check that this is the right part of the turn.
@@ -1898,6 +1974,9 @@ class IslandersState:
     self.played_dev += 1
 
   def _handle_knight(self, player_idx):
+    if self.invasion_countdown is not None:
+      self._handle_repelling_knight()
+      return
     current_max = max(player.knights_played for player in self.player_data)
     self.player_data[player_idx].knights_played += 1
     self.event_log.append(Event("knight", "{player%s} played a knight" % player_idx))
@@ -1911,6 +1990,42 @@ class IslandersState:
       self.largest_army_player = player_idx
     self.action_stack.extend(["rob", "robber"])
     self.next_action()
+
+  def _handle_repelling_knight(self):
+    removable = [tile for tile in self.tiles.values() if tile.number and tile.barbarians]
+    if not removable:
+      raise InvalidMove("There are no barbarians that can be removed.")
+    self.action_stack.append("expel")
+    self.next_action()
+
+  def handle_expel(self, loc, player_idx):  # pylint: disable=unused-argument
+    if self.turn_phase != "expel":
+      raise InvalidMove("You cannot expel any barbarians right now.")
+    location = parse_location(loc, TileLocation)
+    tile = self.tiles.get(location)
+    if tile is None or tile.barbarians <= 0:
+      raise InvalidMove("You must choose a tile with barbarians on it.")
+    tile.barbarians -= 1
+    self.check_recapture(tile)
+    self.action_stack.pop()
+    self.next_action()
+
+  def check_recapture(self, tile):
+    if tile.barbarians > 0:
+      return
+    tile.conquered = False
+    for corner in tile.location.get_corner_locations():
+      if corner in self.pieces:
+        self.pieces[corner].conquered = False
+    players_to_check = set()
+    for edge in tile.location.get_edge_locations():
+      if edge in self.roads:
+        self.roads[edge].conquered = False
+        players_to_check.add(self.roads[edge].player)
+
+    for player in players_to_check:
+      self.player_data[player].longest_route = self._calculate_longest_road(player)
+    self._update_longest_route_player()
 
   def _handle_road_building(self, player):
     # Check that the player has enough roads/ships left.
@@ -2578,6 +2693,57 @@ class TreasureIslands(SeafarerScenario):
       state.tiles[(1, 9)].is_land = is_land
 
 
+class DesertRiders(SeafarerScenario):
+
+  FIXED_TILES = [(19, 3), (19, 5), (19, 7), (10, 6), (10, 10), (16, 6), (16, 10)]
+
+  @classmethod
+  def preview(cls, state):
+    if len(state.player_data) <= 3:
+      cls.load_file(state, "riders3.json")
+    else:
+      cls.load_file(state, "riders4.json")
+    for tile in state.tiles.values():
+      if tile.is_land and tile.location not in cls.FIXED_TILES:
+        if tile.location.x > 7 and tile.location.y < 13:
+          tile.tile_type = "randomized"
+        else:
+          tile.tile_type = "discover"
+    state.recompute()
+
+  @classmethod
+  def init(cls, state):
+    super().init(state)
+    if len(state.player_data) == 3:
+      cls.load_file(state, "riders3.json")
+    elif len(state.player_data) == 4:
+      cls.load_file(state, "riders4.json")
+    else:
+      raise InvalidPlayer("Must have 3 or 4 players.")
+    home_lands = [
+        loc for loc, tile in state.tiles.items()
+        if tile.is_land and loc.x > 7 and loc.y < 13 and loc not in cls.FIXED_TILES
+    ]
+    foreign_lands = [
+        loc for loc, tile in state.tiles.items()
+        if tile.is_land and loc not in home_lands and loc not in cls.FIXED_TILES
+    ]
+    state.shuffle_land_tiles(home_lands)
+    state.shuffle_land_tiles(foreign_lands)
+    state.recompute()
+    state.placement_islands = [state.corners_to_islands[(9, 1)]]
+    state.init_dev_cards()
+    state.invasion_countdown = 18
+
+  @classmethod
+  def mutate_options(cls, options):
+    super().mutate_options(options)
+    options["robber"].force(False)
+    options["pirate"].force(False)
+    options["victory_points"].default = 13
+    options["foreign_island_points"].default = 0
+
+
 class MapMakerState(IslandersState):
 
   def handle(self, player_idx, data):
@@ -2680,6 +2846,7 @@ class IslandersGame(BaseGame):
       ("Through the Desert", SeafarerDesert),
       ("The Fog Islands", SeafarerFog),
       ("The Treasure Islands", TreasureIslands),
+      ("Desert Riders", DesertRiders),
       ("Map Maker", MapMaker),
   ])
   COLORS = {"red", "blue", "limegreen", "darkviolet", "saddlebrown", "darkorange"}

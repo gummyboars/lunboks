@@ -85,14 +85,13 @@ function draw() {
   for (let i = 0; i < roads.length; i++) {
     // Each road does its own context.save() and context.restore();
     drawRoad(roads[i].location, playerData[roads[i].player].color, roads[i].road_type,
-      roads[i].closed, roads[i].movable, context);
+      roads[i].closed, roads[i].movable, roads[i].conquered, context);
   }
-  context.save();
   // Draw pieces over roads.
   for (let i = 0; i < pieces.length; i++) {
-    drawPiece(pieces[i].location, playerData[pieces[i].player].color, pieces[i].piece_type, context);
+    // Each piece does its own context.save() and context.restore();
+    drawPiece(pieces[i].location, playerData[pieces[i].player].color, pieces[i].piece_type, pieces[i].conquered, context);
   }
-  context.restore();
   context.save();
   if (landings != null) {
     for (let i = 0; i < landings.length; i++) {
@@ -109,7 +108,9 @@ function draw() {
   drawHover(context);
   context.restore();
   context.save();
-  drawRobber(context, [robberLoc[0]+1, robberLoc[1]], 1, true);
+  if (robberLoc != null) {
+    drawRobber(context, [robberLoc[0]+1, robberLoc[1]], 1, true);
+  }
   drawRobber(context, pirateLoc, 1, false);
   context.restore();
   drawDebug(context);
@@ -133,7 +134,7 @@ function coordToCanvasLoc(loc) {
   }
   return {x: x, y: y};
 }
-function drawRoad(roadLoc, style, road_type, closed, movable, ctx) {
+function drawRoad(roadLoc, style, road_type, closed, movable, conquered, ctx) {
   if (road_type == null) {
     return;
   }
@@ -176,6 +177,17 @@ function drawRoad(roadLoc, style, road_type, closed, movable, ctx) {
       ctx.strokeStyle = style;
     }
     ctx.stroke();
+    if (conquered) {
+      ctx.fillStyle = "#00000080";
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(-pieceRadius/2, -pieceRadius/2);
+      ctx.lineTo(pieceRadius/2, pieceRadius/2);
+      ctx.stroke();
+      ctx.moveTo(pieceRadius/2, -pieceRadius/2);
+      ctx.lineTo(-pieceRadius/2, pieceRadius/2);
+      ctx.stroke();
+    }
   }
   if (road_type.startsWith("coast")) {
     ctx.translate(0, pieceRadius);
@@ -184,6 +196,17 @@ function drawRoad(roadLoc, style, road_type, closed, movable, ctx) {
     ctx.strokeStyle = "black";
     ctx.fillRect(-rectLength / 2, -pieceRadius / 2, rectLength, pieceRadius);
     ctx.strokeRect(-rectLength / 2, -pieceRadius / 2, rectLength, pieceRadius);
+    if (conquered) {
+      ctx.fillStyle = "#00000080";
+      ctx.fillRect(-rectLength / 2, -pieceRadius / 2, rectLength, pieceRadius);
+      ctx.beginPath();
+      ctx.moveTo(-pieceRadius/2, -pieceRadius/2);
+      ctx.lineTo(pieceRadius/2, pieceRadius/2);
+      ctx.stroke();
+      ctx.moveTo(pieceRadius/2, -pieceRadius/2);
+      ctx.lineTo(-pieceRadius/2, pieceRadius/2);
+      ctx.stroke();
+    }
   }
   ctx.restore();
 }
@@ -239,7 +262,8 @@ function drawLanding(landing, ctx) {
   ctx.fillRect(canvasLoc.x - pieceRadius, canvasLoc.y - 2*pieceRadius, pieceRadius, pieceRadius/2);
   ctx.strokeRect(canvasLoc.x - pieceRadius, canvasLoc.y - 2*pieceRadius, pieceRadius, pieceRadius/2);
 }
-function drawPiece(pieceLoc, style, pieceType, ctx) {
+function drawPiece(pieceLoc, style, pieceType, conquered, ctx) {
+  ctx.save();
   let canvasLoc = coordToCanvasLoc(pieceLoc);
   ctx.fillStyle = style;
   if (pieceType == "settlement") {
@@ -254,6 +278,17 @@ function drawPiece(pieceLoc, style, pieceType, ctx) {
     ctx.lineWidth = 1;
     ctx.strokeStyle = "black";
     ctx.stroke();
+    if (conquered) {
+      ctx.fillStyle = "#00000080";
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(canvasLoc.x - pieceRadius/2, canvasLoc.y - pieceRadius/4);
+      ctx.lineTo(canvasLoc.x + pieceRadius/2, canvasLoc.y + 3*pieceRadius/4);
+      ctx.stroke();
+      ctx.moveTo(canvasLoc.x + pieceRadius/2, canvasLoc.y - pieceRadius/4);
+      ctx.lineTo(canvasLoc.x - pieceRadius/2, canvasLoc.y + 3*pieceRadius/4);
+      ctx.stroke();
+    }
   }
   if (pieceType == "city") {
     let radius = pieceRadius * 1.5;
@@ -270,7 +305,19 @@ function drawPiece(pieceLoc, style, pieceType, ctx) {
     ctx.lineWidth = 1;
     ctx.strokeStyle = "black";
     ctx.stroke();
+    if (conquered) {
+      ctx.fillStyle = "#00000080";
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(canvasLoc.x - pieceRadius/2, canvasLoc.y + pieceRadius/4);
+      ctx.lineTo(canvasLoc.x + pieceRadius/2, canvasLoc.y + 5*pieceRadius/4);
+      ctx.stroke();
+      ctx.moveTo(canvasLoc.x + pieceRadius/2, canvasLoc.y + pieceRadius/4);
+      ctx.lineTo(canvasLoc.x - pieceRadius/2, canvasLoc.y + 5*pieceRadius/4);
+      ctx.stroke();
+    }
   }
+  ctx.restore();
 }
 function drawTreasure(loc, ctx) {
   let canvasLoc = coordToCanvasLoc(loc);
@@ -310,16 +357,38 @@ function drawTile(tileData, ctx) {
   ctx.rotate(rotation);
   if (img != null) {
     ctx.drawImage(img, -tileWidth/2, -tileHeight/2, tileWidth, tileHeight);
+    if (tileData.conquered) {
+      let grad = ctx.createRadialGradient(0, 0, tileWidth/8, 0, 0, 2*tileWidth/3);
+      grad.addColorStop(0, "#00000080");
+      grad.addColorStop(1, "#00000000");
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.moveTo(-tileWidth/2, 0);
+      ctx.lineTo(-tileWidth/4, -tileHeight/2);
+      ctx.lineTo(tileWidth/4, -tileHeight/2);
+      ctx.lineTo(tileWidth/2, 0);
+      ctx.lineTo(tileWidth/4, tileHeight/2);
+      ctx.lineTo(-tileWidth/4, tileHeight/2);
+      ctx.lineTo(-tileWidth/2, 0);
+      ctx.closePath();
+      ctx.fill();
+    }
   }
   ctx.restore();
 }
 function drawBarbarians(tileData, ctx) {
+  ctx.save();
   let offsets = [[1, 0], [-1, 0], [0, -0.5], [0, 0.5], [0.5, -0.25], [-0.5, 0.25]];
   let barbarians = tileData.barbarians || 0;
   for (let i = 0; i < barbarians && i < 6; i++) {
     let newLoc = [tileData.location[0] + offsets[i][0], tileData.location[1] + offsets[i][1]];
-    drawRobber(ctx, newLoc, 1, tileData.is_land);
+    let alpha = 1;
+    if (i == barbarians - 1 && turnPhase == "expel" && locationsEqual(hoverTile, tileData.location)) {
+      alpha = 0.5;
+    }
+    drawRobber(ctx, newLoc, alpha, tileData.is_land);
   }
+  ctx.restore();
 }
 function drawPort(portData, ctx) {
   let portImg = getAsset("port", portData.variant);
@@ -375,9 +444,13 @@ function drawCoast(tileData, portMap, ctx) {
 function drawNumber(tileData, ctx) {
   let textHeightOffset = 12; // Adjust as necessary. TODO: textBaseline = middle?
   let canvasLoc = coordToCanvasLoc(tileData.location);
+  ctx.save();
   if (tileData.number) {
     // Draw the white circle.
     ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+    if (tileData.conquered) {
+      ctx.fillStyle = '#FFFFFF33';
+    }
     ctx.beginPath();
     ctx.arc(canvasLoc.x, canvasLoc.y, 28, 0, Math.PI * 2, true);
     ctx.fill();
@@ -389,8 +462,12 @@ function drawNumber(tileData, ctx) {
       ctx.fillStyle = 'black';
       ctx.font = 'bold 32px sans-serif';
     }
+    if (tileData.conquered) {
+      ctx.globalAlpha = 0.25;
+    }
     ctx.fillText(tileData.number + "", canvasLoc.x, canvasLoc.y + textHeightOffset);
   }
+  ctx.restore();
 }
 function drawHover(ctx) {
   if (extraBuildTurn != null && extraBuildTurn != myIdx) {
@@ -401,6 +478,9 @@ function drawHover(ctx) {
   }
   let canvas = document.getElementById("myCanvas");
   if (hoverTile != null) {
+    if (turnPhase == "expel") {
+      return;
+    }
     if (!locationsEqual(robberLoc, hoverTile) && !locationsEqual(pirateLoc, hoverTile)) {
       if (isLand(hoverTile)) {
         drawRobber(ctx, [hoverTile[0]+1, hoverTile[1]], 0.5, true);
@@ -421,12 +501,12 @@ function drawHover(ctx) {
         break;
       }
     }
-    drawPiece(hoverCorner, 'rgba(127, 127, 127, 0.5)', drawType, ctx);
+    drawPiece(hoverCorner, 'rgba(127, 127, 127, 0.5)', drawType, false, ctx);
     canvas.style.cursor = "pointer";
     return;
   }
   if (hoverEdge != null) {
-    drawRoad(hoverEdge.location, 'rgba(127, 127, 127, 0.5)', hoverEdge.edge_type, null, null, ctx);
+    drawRoad(hoverEdge.location, 'rgba(127, 127, 127, 0.5)', hoverEdge.edge_type, null, null, false, ctx);
     canvas.style.cursor = "pointer";
     return;
   }
@@ -511,6 +591,9 @@ function onclick(event) {
   let clickTile = getTile(event.clientX, event.clientY);
   if (clickTile != null) {
     let clickType = (tiles[clickTile].is_land ? "robber" : "pirate");
+    if (turnPhase == "expel") {
+      clickType = "expel";
+    }
     let msg = {
       type: clickType,
       location: tiles[clickTile].location,

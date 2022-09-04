@@ -1,0 +1,1003 @@
+{
+  "collect_idx": null,
+  "played_dev": 0,
+  "dice_roll": null,
+  "discoverable_tiles": [],
+  "next_die_roll": null,
+  "options": {
+    "seafarers": {
+      "name": "Seafarers",
+      "forced": true,
+      "default": true,
+      "choices": null,
+      "hidden": false,
+      "value": true
+    },
+    "robber": {
+      "name": "Robber",
+      "forced": true,
+      "default": false,
+      "choices": null,
+      "hidden": true,
+      "value": false
+    },
+    "pirate": {
+      "name": "Pirate",
+      "forced": true,
+      "default": false,
+      "choices": null,
+      "hidden": true,
+      "value": false
+    },
+    "friendly_robber": {
+      "name": "Friendly Robber",
+      "forced": false,
+      "default": false,
+      "choices": null,
+      "hidden": false,
+      "value": false
+    },
+    "victory_points": {
+      "name": "Victory Points",
+      "forced": false,
+      "default": 13,
+      "choices": [
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21
+      ],
+      "hidden": false,
+      "value": 10
+    },
+    "foreign_island_points": {
+      "name": "",
+      "forced": true,
+      "default": 0,
+      "choices": [
+        0,
+        1,
+        2
+      ],
+      "hidden": true,
+      "value": 0
+    },
+    "norsrc_is_connected": {
+      "name": "",
+      "forced": true,
+      "default": true,
+      "choices": null,
+      "hidden": true,
+      "value": true
+    },
+    "placements": {
+      "name": "",
+      "forced": true,
+      "default": [
+        "settlement",
+        "settlement"
+      ],
+      "choices": [
+        [
+          "settlement",
+          "settlement"
+        ],
+        [
+          "settlement",
+          "city"
+        ],
+        [
+          "settlement",
+          "settlement",
+          "settlement"
+        ]
+      ],
+      "hidden": true,
+      "value": [
+        "settlement",
+        "settlement"
+      ]
+    },
+    "extra_build": {
+      "name": "5-6 Players",
+      "forced": true,
+      "default": false,
+      "choices": null,
+      "hidden": false,
+      "value": false
+    },
+    "debug": {
+      "name": "Debug",
+      "forced": false,
+      "default": false,
+      "choices": null,
+      "hidden": false,
+      "value": false
+    }
+  },
+  "discoverable_numbers": [],
+  "discoverable_treasures": [],
+  "action_stack": [],
+  "built_this_turn": [],
+  "shortage_resources": [],
+  "placement_islands": [
+    [
+      8,
+      2
+    ]
+  ],
+  "largest_army_player": null,
+  "turn_idx": 0,
+  "extra_build_idx": null,
+  "game_phase": "main",
+  "pirate": null,
+  "counter_offers": [
+    null,
+    null,
+    null
+  ],
+  "dev_cards": [
+    "roadbuilding",
+    "knight",
+    "knight",
+    "palace",
+    "knight",
+    "roadbuilding",
+    "knight",
+    "knight",
+    "knight",
+    "knight",
+    "library",
+    "chapel",
+    "market",
+    "knight",
+    "knight",
+    "monopoly",
+    "knight",
+    "knight",
+    "monopoly",
+    "knight",
+    "yearofplenty",
+    "knight",
+    "knight",
+    "university",
+    "yearofplenty"
+  ],
+  "home_corners": [
+    null,
+    null,
+    null
+  ],
+  "trade_offer": null,
+  "longest_route_player": null,
+  "discard_players": [
+    null,
+    null,
+    null
+  ],
+  "rob_players": [],
+  "foreign_landings": [
+    [],
+    [],
+    []
+  ],
+  "collect_counts": [
+    null,
+    null,
+    null
+  ],
+  "invasion_countdown": 18,
+  "robber": null,
+  "ships_moved": 0,
+  "turn_phase": "main",
+  "treasures": [],
+  "ports": [
+    {
+      "location": [
+        16,
+        12
+      ],
+      "port_type": "3",
+      "rotation": 3
+    },
+    {
+      "location": [
+        10,
+        12
+      ],
+      "port_type": "3",
+      "rotation": 4
+    },
+    {
+      "location": [
+        7,
+        9
+      ],
+      "port_type": "3",
+      "rotation": 5
+    },
+    {
+      "location": [
+        7,
+        5
+      ],
+      "port_type": "3",
+      "rotation": 5
+    }
+  ],
+  "tiles": [
+    {
+      "location": [
+        7,
+        1
+      ],
+      "tile_type": "space",
+      "is_land": false,
+      "number": null,
+      "rotation": 0,
+      "variant": "",
+      "barbarians": 0,
+      "conquered": false,
+      "land_rotations": [
+        5
+      ]
+    },
+    {
+      "location": [
+        7,
+        3
+      ],
+      "tile_type": "space",
+      "is_land": false,
+      "number": null,
+      "rotation": 5,
+      "variant": "",
+      "barbarians": 0,
+      "conquered": false,
+      "land_rotations": [
+        1,
+        4,
+        5
+      ]
+    },
+    {
+      "location": [
+        7,
+        5
+      ],
+      "tile_type": "space",
+      "is_land": false,
+      "number": null,
+      "rotation": 5,
+      "variant": "",
+      "barbarians": 0,
+      "conquered": false,
+      "land_rotations": [
+        1,
+        2,
+        4,
+        5
+      ]
+    },
+    {
+      "location": [
+        7,
+        7
+      ],
+      "tile_type": "space",
+      "is_land": false,
+      "number": null,
+      "rotation": 5,
+      "variant": "",
+      "barbarians": 0,
+      "conquered": false,
+      "land_rotations": [
+        1,
+        2,
+        4,
+        5
+      ]
+    },
+    {
+      "location": [
+        7,
+        9
+      ],
+      "tile_type": "space",
+      "is_land": false,
+      "number": null,
+      "rotation": 5,
+      "variant": "",
+      "barbarians": 0,
+      "conquered": false,
+      "land_rotations": [
+        1,
+        2,
+        4,
+        5
+      ]
+    },
+    {
+      "location": [
+        7,
+        11
+      ],
+      "tile_type": "space",
+      "is_land": false,
+      "number": null,
+      "rotation": 5,
+      "variant": "",
+      "barbarians": 0,
+      "conquered": false,
+      "land_rotations": [
+        1,
+        2,
+        4
+      ]
+    },
+    {
+      "location": [
+        7,
+        13
+      ],
+      "tile_type": "space",
+      "is_land": false,
+      "number": null,
+      "rotation": 4,
+      "variant": "",
+      "barbarians": 0,
+      "conquered": false,
+      "land_rotations": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "location": [
+        13,
+        13
+      ],
+      "tile_type": "space",
+      "is_land": false,
+      "number": null,
+      "rotation": 4,
+      "variant": "",
+      "barbarians": 0,
+      "conquered": false,
+      "land_rotations": [
+        0,
+        3
+      ]
+    },
+    {
+      "location": [
+        16,
+        12
+      ],
+      "tile_type": "space",
+      "is_land": false,
+      "number": null,
+      "rotation": 3,
+      "variant": "",
+      "barbarians": 0,
+      "conquered": false,
+      "land_rotations": [
+        2,
+        3,
+        4
+      ]
+    },
+    {
+      "location": [
+        19,
+        13
+      ],
+      "tile_type": "space",
+      "is_land": false,
+      "number": null,
+      "rotation": 3,
+      "variant": "",
+      "barbarians": 0,
+      "conquered": false,
+      "land_rotations": [
+        3
+      ]
+    },
+    {
+      "location": [
+        7,
+        -1
+      ],
+      "tile_type": "space",
+      "is_land": false,
+      "number": null,
+      "rotation": 0,
+      "variant": "edgeright",
+      "barbarians": 0,
+      "conquered": false,
+      "land_rotations": []
+    },
+    {
+      "location": [
+        10,
+        0
+      ],
+      "tile_type": "space",
+      "is_land": false,
+      "number": null,
+      "rotation": 0,
+      "variant": "",
+      "barbarians": 0,
+      "conquered": false,
+      "land_rotations": [
+        0
+      ]
+    },
+    {
+      "location": [
+        10,
+        2
+      ],
+      "tile_type": "rsrc2",
+      "is_land": true,
+      "number": 10,
+      "rotation": 0,
+      "variant": "",
+      "barbarians": 0,
+      "conquered": false,
+      "land_rotations": []
+    },
+    {
+      "location": [
+        10,
+        4
+      ],
+      "tile_type": "rsrc3",
+      "is_land": true,
+      "number": 4,
+      "rotation": 0,
+      "variant": "",
+      "barbarians": 0,
+      "conquered": false,
+      "land_rotations": []
+    },
+    {
+      "location": [
+        13,
+        1
+      ],
+      "tile_type": "space",
+      "is_land": false,
+      "number": null,
+      "rotation": 0,
+      "variant": "",
+      "barbarians": 0,
+      "conquered": false,
+      "land_rotations": [
+        0,
+        1
+      ]
+    },
+    {
+      "location": [
+        13,
+        3
+      ],
+      "tile_type": "rsrc3",
+      "is_land": true,
+      "number": 3,
+      "rotation": 0,
+      "variant": "",
+      "barbarians": 0,
+      "conquered": false,
+      "land_rotations": []
+    },
+    {
+      "location": [
+        10,
+        6
+      ],
+      "tile_type": "rsrc1",
+      "is_land": true,
+      "number": 8,
+      "rotation": 0,
+      "variant": "",
+      "barbarians": 0,
+      "conquered": false,
+      "land_rotations": []
+    },
+    {
+      "location": [
+        13,
+        5
+      ],
+      "tile_type": "rsrc5",
+      "is_land": true,
+      "number": 10,
+      "rotation": 0,
+      "variant": "",
+      "barbarians": 0,
+      "conquered": false,
+      "land_rotations": []
+    },
+    {
+      "location": [
+        10,
+        8
+      ],
+      "tile_type": "rsrc1",
+      "is_land": true,
+      "number": 9,
+      "rotation": 0,
+      "variant": "",
+      "barbarians": 0,
+      "conquered": false,
+      "land_rotations": []
+    },
+    {
+      "location": [
+        13,
+        7
+      ],
+      "tile_type": "rsrc4",
+      "is_land": true,
+      "number": 2,
+      "rotation": 0,
+      "variant": "",
+      "barbarians": 0,
+      "conquered": false,
+      "land_rotations": []
+    },
+    {
+      "location": [
+        10,
+        10
+      ],
+      "tile_type": "rsrc2",
+      "is_land": true,
+      "number": 6,
+      "rotation": 0,
+      "variant": "",
+      "barbarians": 0,
+      "conquered": false,
+      "land_rotations": []
+    },
+    {
+      "location": [
+        13,
+        9
+      ],
+      "tile_type": "rsrc3",
+      "is_land": true,
+      "number": 11,
+      "rotation": 0,
+      "variant": "",
+      "barbarians": 0,
+      "conquered": false,
+      "land_rotations": []
+    },
+    {
+      "location": [
+        10,
+        12
+      ],
+      "tile_type": "space",
+      "is_land": false,
+      "number": null,
+      "rotation": 4,
+      "variant": "",
+      "barbarians": 0,
+      "conquered": false,
+      "land_rotations": [
+        3,
+        4
+      ]
+    },
+    {
+      "location": [
+        13,
+        11
+      ],
+      "tile_type": "rsrc4",
+      "is_land": true,
+      "number": 5,
+      "rotation": 0,
+      "variant": "",
+      "barbarians": 0,
+      "conquered": false,
+      "land_rotations": []
+    },
+    {
+      "location": [
+        16,
+        2
+      ],
+      "tile_type": "space",
+      "is_land": false,
+      "number": null,
+      "rotation": 0,
+      "variant": "",
+      "barbarians": 0,
+      "conquered": false,
+      "land_rotations": [
+        0,
+        1,
+        5
+      ]
+    },
+    {
+      "location": [
+        16,
+        4
+      ],
+      "tile_type": "rsrc5",
+      "is_land": true,
+      "number": 8,
+      "rotation": 0,
+      "variant": "",
+      "barbarians": 0,
+      "conquered": false,
+      "land_rotations": []
+    },
+    {
+      "location": [
+        16,
+        6
+      ],
+      "tile_type": "rsrc2",
+      "is_land": true,
+      "number": 5,
+      "rotation": 0,
+      "variant": "",
+      "barbarians": 0,
+      "conquered": false,
+      "land_rotations": []
+    },
+    {
+      "location": [
+        16,
+        8
+      ],
+      "tile_type": "rsrc1",
+      "is_land": true,
+      "number": 6,
+      "rotation": 0,
+      "variant": "",
+      "barbarians": 0,
+      "conquered": false,
+      "land_rotations": []
+    },
+    {
+      "location": [
+        16,
+        10
+      ],
+      "tile_type": "rsrc1",
+      "is_land": true,
+      "number": 9,
+      "rotation": 0,
+      "variant": "",
+      "barbarians": 0,
+      "conquered": false,
+      "land_rotations": []
+    },
+    {
+      "location": [
+        19,
+        3
+      ],
+      "tile_type": "norsrc",
+      "is_land": true,
+      "number": null,
+      "rotation": 0,
+      "variant": "",
+      "barbarians": 0,
+      "conquered": false,
+      "land_rotations": []
+    },
+    {
+      "location": [
+        19,
+        5
+      ],
+      "tile_type": "norsrc",
+      "is_land": true,
+      "number": null,
+      "rotation": 0,
+      "variant": "",
+      "barbarians": 0,
+      "conquered": false,
+      "land_rotations": []
+    },
+    {
+      "location": [
+        19,
+        7
+      ],
+      "tile_type": "norsrc",
+      "is_land": true,
+      "number": null,
+      "rotation": 0,
+      "variant": "",
+      "barbarians": 0,
+      "conquered": false,
+      "land_rotations": []
+    },
+    {
+      "location": [
+        19,
+        9
+      ],
+      "tile_type": "rsrc5",
+      "is_land": true,
+      "number": 4,
+      "rotation": 0,
+      "variant": "",
+      "barbarians": 0,
+      "conquered": false,
+      "land_rotations": []
+    },
+    {
+      "location": [
+        19,
+        11
+      ],
+      "tile_type": "rsrc4",
+      "is_land": true,
+      "number": 3,
+      "rotation": 0,
+      "variant": "",
+      "barbarians": 0,
+      "conquered": false,
+      "land_rotations": []
+    },
+    {
+      "location": [
+        19,
+        1
+      ],
+      "tile_type": "space",
+      "is_land": false,
+      "number": null,
+      "rotation": 1,
+      "variant": "edgeright",
+      "barbarians": 0,
+      "conquered": false,
+      "land_rotations": [
+        0
+      ]
+    },
+    {
+      "location": [
+        22,
+        2
+      ],
+      "tile_type": "space",
+      "is_land": false,
+      "number": null,
+      "rotation": 1,
+      "variant": "corner",
+      "barbarians": 0,
+      "conquered": false,
+      "land_rotations": [
+        1
+      ]
+    },
+    {
+      "location": [
+        22,
+        4
+      ],
+      "tile_type": "space",
+      "is_land": false,
+      "number": null,
+      "rotation": 1,
+      "variant": "edgeleft",
+      "barbarians": 0,
+      "conquered": false,
+      "land_rotations": [
+        1,
+        2
+      ]
+    },
+    {
+      "location": [
+        22,
+        6
+      ],
+      "tile_type": "space",
+      "is_land": false,
+      "number": null,
+      "rotation": 1,
+      "variant": "edgeleft",
+      "barbarians": 0,
+      "conquered": false,
+      "land_rotations": [
+        1,
+        2
+      ]
+    },
+    {
+      "location": [
+        22,
+        8
+      ],
+      "tile_type": "space",
+      "is_land": false,
+      "number": null,
+      "rotation": 1,
+      "variant": "edgeleft",
+      "barbarians": 0,
+      "conquered": false,
+      "land_rotations": [
+        1,
+        2
+      ]
+    },
+    {
+      "location": [
+        22,
+        10
+      ],
+      "tile_type": "space",
+      "is_land": false,
+      "number": null,
+      "rotation": 2,
+      "variant": "edgeright",
+      "barbarians": 0,
+      "conquered": false,
+      "land_rotations": [
+        1,
+        2
+      ]
+    },
+    {
+      "location": [
+        22,
+        12
+      ],
+      "tile_type": "space",
+      "is_land": false,
+      "number": null,
+      "rotation": 2,
+      "variant": "edgeright",
+      "barbarians": 0,
+      "conquered": false,
+      "land_rotations": [
+        2
+      ]
+    },
+    {
+      "location": [
+        13,
+        -1
+      ],
+      "tile_type": "space",
+      "is_land": false,
+      "number": null,
+      "rotation": 0,
+      "variant": "edgeleft",
+      "barbarians": 0,
+      "conquered": false,
+      "land_rotations": []
+    },
+    {
+      "location": [
+        16,
+        0
+      ],
+      "tile_type": "space",
+      "is_land": false,
+      "number": null,
+      "rotation": 0,
+      "variant": "edgeleft",
+      "barbarians": 0,
+      "conquered": false,
+      "land_rotations": []
+    },
+    {
+      "location": [
+        10,
+        -2
+      ],
+      "tile_type": "space",
+      "is_land": false,
+      "number": null,
+      "rotation": 0,
+      "variant": "corner",
+      "barbarians": 0,
+      "conquered": false,
+      "land_rotations": []
+    }
+  ],
+  "pieces": [],
+  "roads": [],
+  "player_data": [
+    {
+      "color": "red",
+      "name": "player1",
+      "knights_played": 0,
+      "longest_route": 0,
+      "cards": {
+        "rsrc1": 0,
+        "rsrc2": 0,
+        "rsrc3": 0,
+        "rsrc4": 0,
+        "rsrc5": 0,
+        "yearofplenty": 0,
+        "monopoly": 0,
+        "roadbuilding": 0,
+        "knight": 0,
+        "palace": 0,
+        "chapel": 0,
+        "university": 0,
+        "market": 0,
+        "library": 0
+      },
+      "trade_ratios": {},
+      "unusable": {}
+    },
+    {
+      "color": "blue",
+      "name": "player2",
+      "knights_played": 0,
+      "longest_route": 0,
+      "cards": {
+        "rsrc1": 0,
+        "rsrc2": 0,
+        "rsrc3": 0,
+        "rsrc4": 0,
+        "rsrc5": 0,
+        "yearofplenty": 0,
+        "monopoly": 0,
+        "roadbuilding": 0,
+        "knight": 0,
+        "palace": 0,
+        "chapel": 0,
+        "university": 0,
+        "market": 0,
+        "library": 0
+      },
+      "trade_ratios": {},
+      "unusable": {}
+    },
+    {
+      "color": "green",
+      "name": "player3",
+      "knights_played": 0,
+      "longest_route": 0,
+      "cards": {
+        "rsrc1": 0,
+        "rsrc2": 0,
+        "rsrc3": 0,
+        "rsrc4": 0,
+        "rsrc5": 0,
+        "yearofplenty": 0,
+        "monopoly": 0,
+        "roadbuilding": 0,
+        "knight": 0,
+        "palace": 0,
+        "chapel": 0,
+        "university": 0,
+        "market": 0,
+        "library": 0
+      },
+      "trade_ratios": {},
+      "unusable": {}
+    }
+  ],
+  "event_log": [],
+  "player_sessions": {},
+  "scenario": "Desert Riders"
+}

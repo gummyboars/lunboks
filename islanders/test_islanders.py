@@ -2825,6 +2825,389 @@ class TestBuyDevCard(BaseInputHandlerTest):
     self.assertEqual(self.c.player_data[0].cards["yearofplenty"], 1)
 
 
+class TestHastenInvasion(BaseInputHandlerTest):
+
+  TEST_FILE = "test_riders.json"
+
+  def setUp(self):
+    super().setUp()
+    for rsrc in islanders.RESOURCES:
+      self.c.player_data[0].cards[rsrc] += 3
+    self.c.add_road(Road([17, 9, 18, 8], "road", 0))
+
+  def testSettlementHastensInvasion(self):
+    self.c.handle_settle([18, 8], 0)
+    self.assertEqual(self.c.invasion_countdown, 18-3)
+    num_barbs = sum(tile.barbarians for tile in self.c.tiles.values())
+    self.assertEqual(num_barbs, 3)
+    num_barbs = sum(tile.barbarians for tile in self.c.tiles.values() if tile.tile_type == "norsrc")
+    self.assertEqual(num_barbs, 3)
+    max_barbs = max(tile.barbarians for tile in self.c.tiles.values())
+    self.assertEqual(max_barbs, 1)
+
+  def testCityHastensInvasion(self):
+    self.c.handle_settle([18, 8], 0)
+    self.assertEqual(self.c.invasion_countdown, 18-3)
+    self.c.handle_city([18, 8], 0)
+    self.assertEqual(self.c.invasion_countdown, 18-6)
+    num_barbs = sum(tile.barbarians for tile in self.c.tiles.values())
+    self.assertEqual(num_barbs, 6)
+    max_barbs = max(tile.barbarians for tile in self.c.tiles.values())
+    self.assertEqual(max_barbs, 2)
+
+  def testFourPlayerHastening(self):
+    self.c.add_player("green", "PlayerB")
+    self.c.handle_settle([18, 8], 0)
+    self.assertEqual(self.c.invasion_countdown, 18-2)
+    num_barbs = sum(tile.barbarians for tile in self.c.tiles.values())
+    self.assertEqual(num_barbs, 2)
+    max_barbs = max(tile.barbarians for tile in self.c.tiles.values())
+    self.assertEqual(max_barbs, 1)
+
+    self.c.handle_city([18, 8], 0)
+    self.assertEqual(self.c.invasion_countdown, 18-4)
+    num_barbs = sum(tile.barbarians for tile in self.c.tiles.values())
+    self.assertEqual(num_barbs, 4)
+    max_barbs = max(tile.barbarians for tile in self.c.tiles.values())
+    self.assertEqual(max_barbs, 2)
+
+  def testFirstSettlementDoesNothing(self):
+    self.c.game_phase = "place1"
+    self.c.action_stack = ["road", "settle"]
+    self.c.handle_settle([18, 8], 0)
+    self.assertEqual(self.c.invasion_countdown, 18)
+    num_barbs = sum(tile.barbarians for tile in self.c.tiles.values())
+    self.assertEqual(num_barbs, 0)
+
+  def testRoadDoesNotHasten(self):
+    self.c.handle_settle([18, 8], 0)
+    self.assertEqual(self.c.invasion_countdown, 18-3)
+    self.c.handle_road([17, 7, 18, 8], 0, "road", [("rsrc2", 1), ("rsrc4", 1)])
+    self.assertEqual(self.c.invasion_countdown, 18-3)
+
+  def testNoEffectAfterInvasionStarts(self):
+    self.c.invasion_countdown = 3
+    for tile in self.c.tiles.values():
+      if tile.tile_type != "norsrc":
+        continue
+      tile.barbarians = 5
+
+    self.c.handle_settle([18, 8], 0)
+    self.assertEqual(self.c.invasion_countdown, 0)
+    num_barbs = sum(tile.barbarians for tile in self.c.tiles.values())
+    self.assertEqual(num_barbs, 18)
+    max_barbs = max(tile.barbarians for tile in self.c.tiles.values())
+    self.assertEqual(max_barbs, 6)
+
+    self.c.handle_city([18, 8], 0)
+    self.assertEqual(self.c.invasion_countdown, 0)
+    num_barbs = sum(tile.barbarians for tile in self.c.tiles.values())
+    self.assertEqual(num_barbs, 18)
+    max_barbs = max(tile.barbarians for tile in self.c.tiles.values())
+    self.assertEqual(max_barbs, 6)
+
+
+class TestInvasion(BaseInputHandlerTest):
+
+  TEST_FILE = "test_riders.json"
+
+  def setUp(self):
+    super().setUp()
+    self.c.add_piece(islanders.Piece(18, 8, "settlement", 0))
+    self.c.add_piece(islanders.Piece(15, 9, "settlement", 1))
+    self.c.add_piece(islanders.Piece(15, 5, "settlement", 2))
+    self.c.add_piece(islanders.Piece(15, 3, "settlement", 2))
+    self.c.add_piece(islanders.Piece(15, 7, "settlement", 1))
+    self.c.add_piece(islanders.Piece(18, 10, "settlement", 0))
+    self.c._add_road(Road([17, 9, 18, 8], "road", 0))
+    self.c._add_road(Road([17, 9, 18, 10], "road", 0))
+    self.c._add_road(Road([15, 7, 17, 7], "road", 0))
+    self.c._add_road(Road([17, 7, 18, 8], "road", 0))
+    self.c.add_road(Road([17, 11, 18, 10], "road", 0))
+    self.c._add_road(Road([12, 6, 14, 6], "road", 1))
+    self.c._add_road(Road([14, 6, 15, 7], "road", 1))
+    self.c._add_road(Road([14, 8, 15, 7], "road", 1))
+    self.c._add_road(Road([14, 8, 15, 9], "road", 1))
+    self.c.add_road(Road([15, 9, 17, 9], "road", 1))
+    self.c._add_road(Road([14, 6, 15, 5], "road", 2))
+    self.c._add_road(Road([14, 4, 15, 5], "road", 2))
+    self.c._add_road(Road([14, 4, 15, 3], "road", 2))
+    self.c._add_road(Road([14, 2, 15, 3], "road", 2))
+    self.c.add_road(Road([12, 2, 14, 2], "road", 2))
+    self.c.invasion_countdown = 3
+    for tile in self.c.tiles.values():
+      if tile.tile_type == "norsrc":
+        tile.barbarians = 5
+    self.c.hasten_invasion()  # Sets countdown to 0, adds barbarians,  and marks tiles as conquered.
+    self.c.action_stack = ["dice"]
+
+  def testInvadeNearbyTiles(self):
+    self.c.next_die_roll = 4
+    self.c.handle_roll_dice()
+
+    self.assertEqual(self.c.tiles[(19, 9)].barbarians, 1)
+    self.assertEqual(self.c.tiles[(10, 4)].barbarians, 0)
+    num_barbs = sum(tile.barbarians for tile in self.c.tiles.values() if tile.tile_type == "norsrc")
+    self.assertEqual(num_barbs, 17)
+
+    self.c.action_stack = ["dice"]
+    self.c.next_die_roll = 8
+    self.c.handle_roll_dice()
+    self.assertEqual(self.c.tiles[(16, 4)].barbarians, 1)
+    self.assertEqual(self.c.tiles[(10, 6)].barbarians, 0)
+    num_barbs = sum(tile.barbarians for tile in self.c.tiles.values() if tile.tile_type == "norsrc")
+    self.assertEqual(num_barbs, 16)
+
+    self.c.action_stack = ["dice"]
+    self.c.next_die_roll = 3
+    self.c.handle_roll_dice()
+    self.assertEqual(self.c.tiles[(19, 11)].barbarians, 1)
+    self.assertEqual(self.c.tiles[(13, 3)].barbarians, 1)
+    num_barbs = sum(tile.barbarians for tile in self.c.tiles.values() if tile.tile_type == "norsrc")
+    self.assertEqual(num_barbs, 14)
+    min_barbs = min(tile.barbarians for tile in self.c.tiles.values() if tile.tile_type == "norsrc")
+    self.assertEqual(min_barbs, 4)
+
+  def testTilesCanOnlyBeInvadedOnce(self):
+    self.c.next_die_roll = 8
+    self.c.handle_roll_dice()
+    self.c.action_stack = ["dice"]
+    self.c.next_die_roll = 10
+    self.c.handle_roll_dice()
+    self.c.action_stack = ["dice"]
+    self.c.next_die_roll = 8
+    self.c.handle_roll_dice()
+
+    self.assertEqual(self.c.tiles[(16, 4)].barbarians, 1)
+    self.assertEqual(self.c.tiles[(10, 6)].barbarians, 1)
+    num_barbs = sum(tile.barbarians for tile in self.c.tiles.values() if tile.tile_type == "norsrc")
+    self.assertEqual(num_barbs, 18-3)
+
+  def testConqueredCitiesAfterInvasion(self):
+    self.c.next_die_roll = 4
+    self.c.handle_roll_dice()
+    self.c.action_stack = ["dice"]
+    self.c.next_die_roll = 6
+    self.c.handle_roll_dice()
+    self.c.action_stack = ["dice"]
+    self.c.next_die_roll = 8
+    self.c.handle_roll_dice()
+    self.c.action_stack = ["dice"]
+    self.c.next_die_roll = 3
+    self.c.handle_roll_dice()
+    self.assertTrue(self.c.pieces[(18, 8)].conquered)
+    self.assertFalse(self.c.pieces[(18, 10)].conquered)  # Touching one free tile
+    self.assertFalse(self.c.pieces[(15, 3)].conquered)  # Touching one sea tile
+    self.assertEqual(self.c.player_points(0, True), 1)
+    self.assertEqual(self.c.player_points(2, True), 2)
+
+  def testConqueredRoadsAfterInvasion(self):
+    self.c.next_die_roll = 4
+    self.c.handle_roll_dice()
+    self.c.action_stack = ["dice"]
+    self.c.next_die_roll = 6
+    self.c.handle_roll_dice()
+    self.c.action_stack = ["dice"]
+    self.c.next_die_roll = 8
+    self.c.handle_roll_dice()
+    self.c.action_stack = ["dice"]
+    self.c.next_die_roll = 3
+    self.c.handle_roll_dice()
+    self.assertTrue(self.c.roads[(14, 4, 15, 3)].conquered)
+    self.assertTrue(self.c.roads[(17, 9, 18, 8)].conquered)
+    self.assertFalse(self.c.roads[(14, 2, 15, 3)].conquered)
+    self.assertTrue(self.c.roads[(17, 7, 18, 8)].conquered)
+
+  def testLongestRoadIsRecomputedAfterConquest(self):
+    self.c.next_die_roll = 4
+    self.c.handle_roll_dice()
+    self.c.action_stack = ["dice"]
+    self.c.next_die_roll = 6
+    self.c.handle_roll_dice()
+    self.c.action_stack = ["dice"]
+    self.c.next_die_roll = 8
+    self.c.handle_roll_dice()
+    self.c.action_stack = ["dice"]
+    self.c.next_die_roll = 3
+    self.c.handle_roll_dice()
+
+    self.assertEqual(self.c.player_data[0].longest_route, 2)
+    self.assertEqual(self.c.player_data[1].longest_route, 5)
+    self.assertEqual(self.c.player_data[2].longest_route, 2)
+
+  def testNotEnoughBarbarians(self):
+    for tile in self.c.tiles.values():
+      if tile.tile_type == "norsrc":
+        tile.barbarians = 0
+    self.c.tiles[(19, 7)].barbarians = 1  # Only one barbarian left
+    self.c.tiles[(16, 6)].number = 4  # Two fours next to that desert
+    self.c.next_die_roll = 4
+    self.c.handle_roll_dice()
+
+    self.assertEqual(self.c.tiles[(16, 6)].barbarians, 0)
+    self.assertEqual(self.c.tiles[(19, 9)].barbarians, 1)
+    num_barbs = sum(tile.barbarians for tile in self.c.tiles.values() if tile.tile_type == "norsrc")
+    self.assertEqual(num_barbs, 0)
+
+
+class TestInvasionEdgeCases(BreakpointTestMixin):
+
+  def setUp(self):
+    super().setUp()
+    # Somebody puts their starting road between the two deserts because they think it's funny.
+    # According to the rules, this road should be conquered when the barbarians start gathering.
+    self.c = islanders.IslandersState()
+    self.c.add_player("red", "player1")
+    self.c.add_player("blue", "player2")
+    self.c.add_player("green", "player3")
+    islanders.DesertRiders.mutate_options(self.c.options)
+    islanders.DesertRiders.init(self.c)
+    # TODO: we should have a helper to init a game with the default options for a scenario.
+    self.c.options["foreign_island_points"].set(0)
+
+    self.c.handle(0, {"type": "settle", "location": [18, 6]})
+    self.c.handle(0, {"type": "road", "location": [18, 6, 20, 6]})
+    self.c.handle(1, {"type": "settle", "location": [18, 8]})
+    self.c.handle(1, {"type": "road", "location": [17, 7, 18, 8]})
+    self.c.handle(2, {"type": "settle", "location": [15, 3]})
+    self.c.handle(2, {"type": "road", "location": [14, 2, 15, 3]})
+    self.g = islanders.IslandersGame()
+    self.g.game = self.c
+    self.g.scenario = "Desert Riders"
+    self.c.game_phase = "main"
+
+  def testRoadThatStartsBetweenTwoDeserts(self):
+    self.c.turn_idx = 1
+    self.c.action_stack.clear()
+    self.c.player_data[1].cards["rsrc3"] = 5
+    self.c.player_data[1].cards["rsrc5"] = 5
+    self.c.handle(1, {"type": "city", "location": [18, 8]})
+
+    # Each desert should now have one barbarian
+    min_barbs = min(tile.barbarians for tile in self.c.tiles.values() if tile.tile_type == "norsrc")
+    self.assertEqual(min_barbs, 1)
+    # The road in between the two deserts should now be conquered.
+    self.assertTrue(self.c.roads[(18, 6, 20, 6)].conquered)
+
+
+class TestExpelBarbarians(BaseInputHandlerTest):
+
+  TEST_FILE = "test_riders.json"
+
+  def setUp(self):
+    super().setUp()
+    self.c.add_piece(islanders.Piece(18, 8, "settlement", 0))
+    self.c.add_piece(islanders.Piece(15, 9, "settlement", 1))
+    self.c.add_piece(islanders.Piece(15, 5, "settlement", 2))
+    self.c.add_piece(islanders.Piece(15, 3, "settlement", 2))
+    self.c.add_piece(islanders.Piece(15, 7, "city", 1))
+    self.c.add_piece(islanders.Piece(18, 10, "city", 0))
+    self.c._add_road(Road([17, 9, 18, 8], "road", 0))
+    self.c._add_road(Road([17, 9, 18, 10], "road", 0))
+    self.c._add_road(Road([15, 7, 17, 7], "road", 0))
+    self.c._add_road(Road([17, 7, 18, 8], "road", 0))
+    self.c.add_road(Road([17, 11, 18, 10], "road", 0))
+    self.c._add_road(Road([12, 6, 14, 6], "road", 1))
+    self.c._add_road(Road([14, 6, 15, 7], "road", 1))
+    self.c._add_road(Road([14, 8, 15, 7], "road", 1))
+    self.c._add_road(Road([14, 8, 15, 9], "road", 1))
+    self.c.add_road(Road([15, 9, 17, 9], "road", 1))
+    self.c._add_road(Road([14, 6, 15, 5], "road", 2))
+    self.c._add_road(Road([14, 4, 15, 5], "road", 2))
+    self.c._add_road(Road([14, 4, 15, 3], "road", 2))
+    self.c._add_road(Road([14, 2, 15, 3], "road", 2))
+    self.c.add_road(Road([12, 2, 14, 2], "road", 2))
+    self.c.invasion_countdown = 3
+    for tile in self.c.tiles.values():
+      if tile.tile_type == "norsrc":
+        tile.barbarians = 5
+    self.c.hasten_invasion()  # Sets countdown to 0, adds barbarians,  and marks tiles as conquered.
+    for dice_roll in [4, 9, 5, 6, 8, 3, 10, 2]:
+      self.c.action_stack = ["dice"]
+      self.c.next_die_roll = dice_roll
+      self.c.handle_roll_dice()
+    self.c.player_data[0].cards["knight"] += 5
+
+  def testExpelOneBarbarian(self):
+    self.assertTrue(self.c.tiles[(10, 10)].conquered)
+    self.c.handle_play_dev("knight", None, 0)
+    self.assertListEqual(self.c.action_stack, ["expel"])
+    self.c.handle_expel([10, 10], 0)
+    self.assertEqual(self.c.turn_phase, "main")
+    self.assertFalse(self.c.tiles[(10, 10)].conquered)
+
+  def testExpelFromDesert(self):
+    # Maybe you do this to reclaim a city next to the desert without reclaiming other cities?
+    self.assertTrue(self.c.tiles[(19, 7)].conquered)
+    self.c.handle_play_dev("knight", None, 0)
+    self.c.handle_expel([19, 7], 0)
+    self.assertTrue(self.c.tiles[(19, 7)].conquered)
+    self.assertTrue(self.c.pieces[(18, 8)].conquered)
+    self.c.played_dev = 0
+    self.c.handle_play_dev("knight", None, 0)
+    self.c.handle_expel([19, 7], 0)
+    self.assertFalse(self.c.tiles[(19, 7)].conquered)
+    self.assertFalse(self.c.pieces[(18, 8)].conquered)
+
+  def testExpelBarbarianReclaimsCity(self):
+    self.assertTrue(self.c.tiles[(16, 10)].conquered)
+    self.assertTrue(self.c.pieces[(18, 10)].conquered)
+    self.c.handle_play_dev("knight", None, 0)
+    self.c.handle_expel([16, 10], 0)
+    self.assertFalse(self.c.tiles[(16, 10)].conquered)
+    self.assertFalse(self.c.pieces[(18, 10)].conquered)
+    self.assertEqual(self.c.player_points(0, True), 2)
+
+  def testExpelBarbarianReclaimimingLongestRoad(self):
+    self.assertEqual(self.c.player_data[0].longest_route, 0)
+    self.assertEqual(self.c.player_data[1].longest_route, 1)
+    self.assertIsNone(self.c.longest_route_player)
+    self.c.handle_play_dev("knight", None, 0)
+    self.c.handle_expel([13, 7], 0)
+    self.c.played_dev = 0
+    self.c.handle_play_dev("knight", None, 0)
+    self.c.handle_expel([16, 8], 0)
+    self.assertEqual(self.c.player_data[0].longest_route, 3)
+    self.assertEqual(self.c.player_data[1].longest_route, 5)
+    self.assertEqual(self.c.longest_route_player, 1)
+
+  def testExpelBarbariansTyingLongestRoad(self):
+    self.assertEqual(self.c.player_data[0].longest_route, 0)
+    self.assertEqual(self.c.player_data[1].longest_route, 1)
+    self.assertIsNone(self.c.longest_route_player)
+    self.c.handle_play_dev("knight", None, 0)
+    self.c.handle_expel([16, 6], 0)
+    self.c.played_dev = 0
+    self.c.handle_play_dev("knight", None, 0)
+    self.c.handle_expel([16, 8], 0)
+    self.c.played_dev = 0
+    self.c.handle_play_dev("knight", None, 0)
+    self.c.handle_expel([13, 3], 0)
+    self.assertEqual(self.c.player_data[1].longest_route, 4)
+    self.assertEqual(self.c.player_data[2].longest_route, 3)
+    self.assertIsNone(self.c.longest_route_player)
+    self.c.played_dev = 0
+    self.c.handle_play_dev("knight", None, 0)
+    self.c.handle_expel([13, 5], 0)
+    self.assertEqual(self.c.player_data[1].longest_route, 5)
+    self.assertEqual(self.c.player_data[2].longest_route, 5)
+    self.assertIsNone(self.c.longest_route_player)
+
+  def testThereIsNoLargestArmy(self):
+    self.c.handle_play_dev("knight", None, 0)
+    self.c.handle_expel([16, 6], 0)
+    self.c.played_dev = 0
+    self.c.handle_play_dev("knight", None, 0)
+    self.c.handle_expel([16, 8], 0)
+    self.c.played_dev = 0
+    self.c.handle_play_dev("knight", None, 0)
+    self.c.handle_expel([13, 3], 0)
+    self.assertEqual(self.c.player_data[0].knights_played, 0)
+    self.assertEqual(self.c.player_data[1].knights_played, 0)
+    self.assertEqual(self.c.player_data[2].knights_played, 0)
+    self.assertIsNone(self.c.largest_army_player)
+
+
 class TestExtraBuildPhase(BreakpointTestMixin):
 
   def setUp(self):
