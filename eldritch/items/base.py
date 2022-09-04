@@ -21,7 +21,7 @@ class Item(Card):
     return self.hands if self.active else 0
 
   def get_max_token_event(self, token_type, owner):
-    return events.DiscardSpecific(owner, self)
+    return events.DiscardSpecific(owner, [self])
 
 
 class Weapon(Item):

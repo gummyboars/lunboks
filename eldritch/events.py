@@ -4107,7 +4107,7 @@ class AddToken(Event):
       self.added = True
 
     if not self.resolved_max and asset.tokens[token_type] >= asset.max_tokens.get(token_type, float('inf')):
-      state.event_stack.append(self.asset.get_max_token_event(state, token_type, self.character))
+      state.event_stack.append(self.asset.get_max_token_event(token_type, self.character))
       self.resolved_max = True
       return
 

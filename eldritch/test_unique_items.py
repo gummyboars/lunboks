@@ -34,9 +34,9 @@ class EnchantedJewelryTest(EventTest):
     self.resolve_to_usable(0, "Enchanted Jewelry0")
     print("appending Enchanted Jewelry")
     self.state.event_stack.append(self.state.usables[0]["Enchanted Jewelry0"])
-    # self.resolve_until_done()
-    # self.assertEqual(self.jewelry.tokens["stamina"], 1)
-    # self.assertEqual(self.char.stamina, 5)
+    self.resolve_until_done()
+    self.assertEqual(self.jewelry.tokens["stamina"], 1)
+    self.assertEqual(self.char.stamina, 5)
 
   def testMultipleStaminaUnused(self):
     loss = events.Loss(self.char, {"stamina": 2})
@@ -69,4 +69,4 @@ class EnchantedJewelryTest(EventTest):
     self.state.event_stack.append(self.state.usables[0]["Enchanted Jewelry0"])
     self.resolve_until_done()
     self.assertEqual(self.char.stamina, 5)
-    self.assertNotIn(self.char.possesssions, self.jewelry)
+    self.assertNotIn(self.jewelry, self.char.possessions)

@@ -149,6 +149,8 @@ class BluePyramidWatcher(Item):
       return None
     if not owner == event.character:
       return None
+    #TODO: Pass combat check or gate close check
+    return None
 
 
 class DragonsEye(Item):
@@ -166,6 +168,7 @@ class DragonsEye(Item):
       return None
 
     # TODO: may redraw the current GateCard or EncounterCard
+    return None
 
 
 class EnchantedJewelry(Item):
@@ -175,30 +178,27 @@ class EnchantedJewelry(Item):
     self.max_tokens["stamina"] = 3
 
   def get_usable_interrupt(self, event, owner, state):
-    if (not isinstance(event, events.GainOrLoss)) or (event.losses.get("stamina", 0) <= 0):
+    if not isinstance(event, events.GainOrLoss):
       return None
 
-    if (not owner == event.character):
+    if not owner == event.character:
       return None
 
-    losses = event.losses.copy()
-    print(losses)
-    losses["stamina"] -= 1
-    new_loss = events.GainOrLoss(event.character, event.gains, losses)
-    print(new_loss.gains, new_loss.losses)
+    loss = event.losses.get("stamina", 0)
+    if isinstance(loss, values.Value):
+      loss = loss.value(state)
+
+    if loss <= 0:
+      return None
+
+    reduction = events.LossPrevention(self, event, "stamina", 1)
     return events.Sequence(
         [
-            events.CancelEvent(event),
-            new_loss,
+            reduction,
             events.AddToken(self, "stamina", event.character, n_tokens=1)
         ],
         owner
     )
-
-  def get_trigger(self, event, owner, state):
-    if isinstance(event, events.AddToken) and self.tokens["stamina"] == self.max_tokens["stamina"]:
-      return events.DiscardSpecific(owner, [self])
-    return None
 
 
 class HealingStone(Item):
@@ -224,6 +224,7 @@ class HealingStone(Item):
     # The original card did not specify "Discard Healing Stone if the Ancient One awakens."
     if isinstance(event, events.Awaken):
       return events.DiscardSpecific(owner, [self])
+    return super().get_trigger(event, owner, state)
 
 
 class OuterGodlyFlute(Item):
@@ -233,4 +234,8 @@ class OuterGodlyFlute(Item):
   def get_usable_trigger(self, event, owner, state):
     if not isinstance(event, events.Combat):
       return None
-    pass
+    seq = [events.Loss(owner, {"stamina": 3, "sanity": 3}), ]
+    # TODO: Defeat monsters
+    return events.Sequence(
+         seq, owner
+    )
