@@ -274,7 +274,7 @@ class PlacementRestrictionsTest(unittest.TestCase):
 
     # We're going to skip a bunch of placements.
     c.game_phase = "place2"
-    c.turn_phase = "settle"
+    c.action_stack = ["road", "settle"]
     c.turn_idx = 1
 
     with self.assertRaisesRegex(InvalidMove, "first settlements"):
@@ -299,7 +299,7 @@ class PlacementRestrictionsTest(unittest.TestCase):
 
     # We're going to skip a bunch of placements.
     c.game_phase = "place2"
-    c.turn_phase = "settle"
+    c.action_stack = ["road", "settle"]
     c.turn_idx = 1
 
     # It should still validate islands in the second placement round.
@@ -357,7 +357,7 @@ class PlacementRestrictionsTest(unittest.TestCase):
       c.handle(0, {"type": "settle", "location": [5, 11]})
     c.handle(0, {"type": "settle", "location": [9, 7]})
     c.game_phase = "place2"
-    c.turn_phase = "settle"
+    c.action_stack = ["road", "settle"]
     c.turn_idx = 1
     c.handle(1, {"type": "settle", "location": [17, 13]})
 
@@ -379,7 +379,7 @@ class PlacementRestrictionsTest(unittest.TestCase):
       c.handle(0, {"type": "settle", "location": [9, 7]})
     c.handle(0, {"type": "settle", "location": [9, 5]})
     c.game_phase = "place2"
-    c.turn_phase = "settle"
+    c.action_stack = ["road", "settle"]
     c.turn_idx = 1
     c.handle(1, {"type": "settle", "location": [20, 10]})
 
@@ -406,7 +406,7 @@ class TestIslandCalculations(BreakpointTestMixin):
     self.c.handle(1, {"type": "settle", "location": [9, 1]})
     self.c.handle(1, {"type": "ship", "location": [9, 1, 11, 1]})
     self.c.game_phase = "main"
-    self.c.turn_phase = "main"
+    self.c.action_stack.clear()
     self.c.pirate = None
     self.g = islanders.IslandersGame()
     self.g.game = self.c
@@ -535,11 +535,11 @@ class DebugRulesOnTest(BaseInputHandlerTest):
 
   def testDebugEnabledForceDice(self):
     self.g.handle("Player1", {"type": "force_dice", "value": 5})
-    self.c.turn_phase = "dice"
+    self.c.action_stack = ["dice"]
     self.c.handle_roll_dice()
     self.assertTupleEqual(self.c.dice_roll, (2, 3))
     for _ in range(4):  # 1 in 1.68 million chance of failing.
-      self.c.turn_phase = "dice"
+      self.c.action_stack = ["dice"]
       self.c.handle_roll_dice()
       if self.c.dice_roll != (2, 3):
         break
@@ -588,16 +588,16 @@ class TestDistributeResources(BaseInputHandlerTest):
     self.assertEqual(self.c.remaining_resources("rsrc3"), 2)
 
   def testTooManyResources(self):
-    self.c.distribute_resources(self.c.calculate_resource_distribution((2, 3)))
+    self.c.distribute_resources((2, 3))
     self.assertEqual(self.c.player_data[0].cards["rsrc4"], 8)
     self.assertEqual(self.c.player_data[1].cards["rsrc4"], 9)
 
-    self.c.distribute_resources(self.c.calculate_resource_distribution((3, 3)))
+    self.c.distribute_resources((3, 3))
     self.assertEqual(self.c.player_data[0].cards["rsrc5"], 8)
     self.assertEqual(self.c.player_data[1].cards["rsrc5"], 9)
 
   def testTooManyResourcesOnlyOnePlayer(self):
-    self.c.distribute_resources(self.c.calculate_resource_distribution((4, 5)))
+    self.c.distribute_resources((4, 5))
     self.assertEqual(self.c.player_data[0].cards["rsrc3"], 10)
     self.assertEqual(self.c.player_data[1].cards["rsrc3"], 9)
     self.assertEqual(self.c.player_data[1].cards["rsrc1"], 2)
@@ -687,7 +687,7 @@ class TestCollectResources(BaseInputHandlerTest):
       p.cards["rsrc3"] = 4
 
   def testSimpleCollection(self):
-    self.c.turn_phase = "dice"
+    self.c.action_stack = ["dice"]
     self.c.next_die_roll = 9
     self.c.handle_roll_dice()
     self.assertIn("rolled a 9", self.c.event_log[-2].public_text)
@@ -707,7 +707,7 @@ class TestCollectResources(BaseInputHandlerTest):
 
   def testCollectDepletedResource(self):
     self.c.player_data[0].cards["rsrc3"] = 10
-    self.c.turn_phase = "dice"
+    self.c.action_stack = ["dice"]
     self.c.next_die_roll = 9
     self.c.handle_roll_dice()
     self.assertEqual(self.c.remaining_resources("rsrc3"), 1)
@@ -718,7 +718,7 @@ class TestCollectResources(BaseInputHandlerTest):
     self.c.handle(1, {"type": "collect", "selection": {"rsrc1": 1, "rsrc3": 1}})
 
   def testCollectScarcityForcesOrder(self):
-    self.c.turn_phase = "dice"
+    self.c.action_stack = ["dice"]
     self.c.next_die_roll = 5
     self.c.handle_roll_dice()
     self.assertEqual(self.c.remaining_resources("rsrc3"), 3)
@@ -739,7 +739,7 @@ class TestCollectResources(BaseInputHandlerTest):
     for p in self.c.player_data:
       p.cards["rsrc3"] = 3
     # With more cards available than can be claimed, there should not be a player order.
-    self.c.turn_phase = "dice"
+    self.c.action_stack = ["dice"]
     self.c.next_die_roll = 5
     self.c.handle_roll_dice()
     self.assertEqual(self.c.remaining_resources("rsrc3"), 6)
@@ -750,7 +750,7 @@ class TestCollectResources(BaseInputHandlerTest):
 
   def testCollectScarcityDisappears(self):
     self.c.turn_idx = 2
-    self.c.turn_phase = "dice"
+    self.c.action_stack = ["dice"]
     self.c.next_die_roll = 5
     self.c.handle_roll_dice()
     self.assertEqual(self.c.turn_phase, "collect")
@@ -769,7 +769,7 @@ class TestCollectResources(BaseInputHandlerTest):
   def testResourceShortage(self):
     for p in self.c.player_data:
       p.cards["rsrc3"] = 6
-    self.c.turn_phase = "dice"
+    self.c.action_stack = ["dice"]
     self.c.next_die_roll = 5
     self.c.handle_roll_dice()
     self.assertIn("rolled a 5", self.c.event_log[-2].public_text)
@@ -804,7 +804,7 @@ class TestCollectResources(BaseInputHandlerTest):
     for rsrc in islanders.RESOURCES:
       with self.subTest(rsrc=rsrc):
         self.assertEqual(self.c.remaining_resources(rsrc), 0)
-    self.c.turn_phase = "dice"
+    self.c.action_stack = ["dice"]
     self.c.next_die_roll = 5
     self.c.handle_roll_dice()
     # If there are no cards left, we have to skip collection.
@@ -822,7 +822,7 @@ class TestCollectResources(BaseInputHandlerTest):
     # There are exactly four rsrc3 remaining. After the initial distribution (where players 2 and
     # 3 will receive the remaining 4), nobody should be able to collect from the bonus tiles.
     self.assertEqual(self.c.remaining_resources("rsrc3"), 4)
-    self.c.turn_phase = "dice"
+    self.c.action_stack = ["dice"]
     self.c.next_die_roll = 5
     self.c.handle_roll_dice()
     self.assertDictEqual(self.c.collect_counts, {})
@@ -838,7 +838,7 @@ class TestCollectResources(BaseInputHandlerTest):
     self.c.player_data[0].cards["rsrc1"] -= 2
     # There are exactly two rsrc1 remaining (and nothing else). Player 1 will collect one of them.
     self.assertEqual(self.c.remaining_resources("rsrc1"), 2)
-    self.c.turn_phase = "dice"
+    self.c.action_stack = ["dice"]
     self.c.next_die_roll = 5
     self.c.handle_roll_dice()
     self.assertDictEqual(self.c.collect_counts, {0: 1, 1: 2, 2: 2})
@@ -858,7 +858,7 @@ class TestCollectResources(BaseInputHandlerTest):
   def testCollectDuringSettlementPhase(self):
     self.c.pieces.clear()
     self.c.game_phase = "place2"
-    self.c.turn_phase = "settle"
+    self.c.action_stack = ["road", "settle"]
     self.c.handle_settle([2, 4], 0)
     self.assertEqual(self.c.turn_phase, "collect")
     self.assertDictEqual(self.c.collect_counts, {0: 2})
@@ -964,7 +964,7 @@ class TestDiscovery(BaseInputHandlerTest):
     self.assertEqual(self.c.turn_phase, "main")
 
   def testDiscoverDuringExtraBuild(self):
-    self.c.turn_phase = "extra_build"
+    self.c.action_stack = ["extra_build"]
     self.c.extra_build_idx = 0
     old_rsrcs = collections.Counter(self.c.player_data[0].cards)
     self.c.handle_road([2, 4, 3, 5], 0, "ship", [("rsrc1", 1), ("rsrc2", 1)])
@@ -976,7 +976,7 @@ class TestDiscovery(BaseInputHandlerTest):
 
   def testDiscoverAndCollectExtraBuild(self):
     self.c.discoverable_tiles = ["anyrsrc"]
-    self.c.turn_phase = "extra_build"
+    self.c.action_stack = ["extra_build"]
     self.c.extra_build_idx = 0
     old_rsrcs = collections.Counter(self.c.player_data[0].cards)
     self.c.handle_road([2, 4, 3, 5], 0, "ship", [("rsrc1", 1), ("rsrc2", 1)])
@@ -999,8 +999,7 @@ class TestDiscovery(BaseInputHandlerTest):
     new_rsrcs = collections.Counter(self.c.player_data[0].cards)
     self.assertDictEqual(new_rsrcs - old_rsrcs, {"rsrc3": 1})
     self.assertDictEqual(old_rsrcs - new_rsrcs, {})
-    self.assertEqual(self.c.turn_phase, "dev_road")
-    self.assertEqual(self.c.dev_roads_placed, 1)
+    self.assertEqual(self.c.action_stack, ["dev_road"])
 
   def testDiscoverDuringRoadBuilding2(self):
     old_rsrcs = collections.Counter(self.c.player_data[0].cards)
@@ -1008,8 +1007,7 @@ class TestDiscovery(BaseInputHandlerTest):
     self.c.handle_play_dev("roadbuilding", None, 0)
 
     self.c.handle_road([3, 5, 5, 5], 0, "ship", [("rsrc1", 1), ("rsrc2", 1)])
-    self.assertEqual(self.c.turn_phase, "dev_road")
-    self.assertEqual(self.c.dev_roads_placed, 1)
+    self.assertEqual(self.c.action_stack, ["dev_road"])
     new_rsrcs = collections.Counter(self.c.player_data[0].cards)
     self.assertDictEqual(new_rsrcs - old_rsrcs, {})
 
@@ -1018,7 +1016,6 @@ class TestDiscovery(BaseInputHandlerTest):
     self.assertDictEqual(new_rsrcs - old_rsrcs, {"rsrc3": 1})
     self.assertDictEqual(old_rsrcs - new_rsrcs, {})
     self.assertEqual(self.c.turn_phase, "main")
-    self.assertEqual(self.c.dev_roads_placed, 0)
 
   def testDiscoverAndCollectRoadBuilding1(self):
     self.c.discoverable_tiles = ["anyrsrc"]
@@ -1033,8 +1030,7 @@ class TestDiscovery(BaseInputHandlerTest):
     new_rsrcs = collections.Counter(self.c.player_data[0].cards)
     self.assertDictEqual(new_rsrcs - old_rsrcs, {"rsrc5": 1})
     self.assertDictEqual(old_rsrcs - new_rsrcs, {})
-    self.assertEqual(self.c.turn_phase, "dev_road")
-    self.assertEqual(self.c.dev_roads_placed, 1)
+    self.assertEqual(self.c.action_stack, ["dev_road"])
 
   def testDiscoverAndCollectRoadBuilding2(self):
     self.c.discoverable_tiles = ["anyrsrc"]
@@ -1043,8 +1039,7 @@ class TestDiscovery(BaseInputHandlerTest):
     self.c.handle_play_dev("roadbuilding", None, 0)
 
     self.c.handle_road([3, 5, 5, 5], 0, "ship", [("rsrc1", 1), ("rsrc2", 1)])
-    self.assertEqual(self.c.turn_phase, "dev_road")
-    self.assertEqual(self.c.dev_roads_placed, 1)
+    self.assertEqual(self.c.action_stack, ["dev_road"])
     new_rsrcs = collections.Counter(self.c.player_data[0].cards)
     self.assertDictEqual(new_rsrcs - old_rsrcs, {})
 
@@ -1056,16 +1051,15 @@ class TestDiscovery(BaseInputHandlerTest):
     self.assertDictEqual(new_rsrcs - old_rsrcs, {"rsrc5": 1})
     self.assertDictEqual(old_rsrcs - new_rsrcs, {})
     self.assertEqual(self.c.turn_phase, "main")
-    self.assertEqual(self.c.dev_roads_placed, 0)
 
 
 class TestRobberMovement(BaseInputHandlerTest):
 
   def setUp(self):
     BaseInputHandlerTest.setUp(self)
-    self.c.turn_phase = "robber"
+    self.c.action_stack = ["rob", "robber"]
     self.c.handle_robber((4, 4), 1)
-    self.c.turn_phase = "robber"
+    self.c.action_stack = ["rob", "robber"]
 
   def testRobberInvalidMove(self):
     with self.assertRaises(InvalidMove):
@@ -1169,7 +1163,7 @@ class TestPiratePlacement(BaseInputHandlerTest):
   def testMovePirate(self):
     self.c.add_player("green", "Bob")
     self.c.turn_idx = 2
-    self.c.turn_phase = "robber"
+    self.c.action_stack = ["rob", "robber"]
     old_count = sum([self.c.player_data[0].cards[x] for x in islanders.RESOURCES])
     self.c.handle_pirate(2, [4, 6])
     new_count = sum([self.c.player_data[0].cards[x] for x in islanders.RESOURCES])
@@ -1179,7 +1173,7 @@ class TestPiratePlacement(BaseInputHandlerTest):
   def testMovePirateRobTwoPlayers(self):
     self.c.add_player("green", "Bob")
     self.c.turn_idx = 2
-    self.c.turn_phase = "robber"
+    self.c.action_stack = ["rob", "robber"]
     self.c._add_road(Road([3, 7, 5, 7], "ship", 1))
     self.c.handle_pirate(2, [4, 6])
     self.assertEqual(self.c.event_log[-1].public_text, "{player2} moved the pirate")
@@ -1189,7 +1183,7 @@ class TestPiratePlacement(BaseInputHandlerTest):
   def testPirateDoesNotRobRoads(self):
     self.c.add_player("green", "Bob")
     self.c.turn_idx = 2
-    self.c.turn_phase = "robber"
+    self.c.action_stack = ["rob", "robber"]
     self.c._add_road(Road([3, 7, 5, 7], "road", 1))
     self.c.handle_pirate(2, [4, 6])
     self.assertEqual(self.c.turn_phase, "main")
@@ -1197,7 +1191,7 @@ class TestPiratePlacement(BaseInputHandlerTest):
 
   def testPirateCannotDiscover(self):
     self.c.turn_idx = 2
-    self.c.turn_phase = "robber"
+    self.c.action_stack = ["rob", "robber"]
     self.c.tiles[(7, 3)].tile_type = "discover"
     with self.assertRaisesRegex(InvalidMove, "before exploring"):
       self.c.handle_pirate(2, [7, 3])
@@ -1277,7 +1271,7 @@ class TestInitialSettlement(BaseInputHandlerTest):
     self.c.pieces.clear()
     self.c.roads.clear()
     self.c.game_phase = "place1"
-    self.c.turn_phase = "settle"
+    self.c.action_stack = ["road", "settle"]
     self.c.turn_idx = 0
     for p in self.c.player_data:
       p.cards.clear()
@@ -1487,25 +1481,23 @@ class TestHandleShipInput(BaseInputHandlerTest):
 
   def testRoadBuildingCanBuildShips(self):
     self.c.player_data[0].cards.clear()
-    self.c.turn_phase = "dev_road"
+    self.c.action_stack = ["dev_road", "dev_road"]
     self.c.handle(0, {"type": "ship", "location": [3, 5, 5, 5]})
-    self.assertEqual(self.c.turn_phase, "dev_road")
-    self.assertEqual(self.c.dev_roads_placed, 1)
+    self.assertEqual(self.c.action_stack, ["dev_road"])
     self.c.handle(0, {"type": "ship", "location": [5, 5, 6, 4]})
     self.assertEqual(self.c.turn_phase, "main")
 
   def testRoadBuildingCanBuildMixed(self):
     self.c.player_data[0].cards.clear()
-    self.c.turn_phase = "dev_road"
+    self.c.action_stack = ["dev_road", "dev_road"]
     self.c.handle(0, {"type": "road", "location": [2, 4, 3, 5]})
-    self.assertEqual(self.c.turn_phase, "dev_road")
-    self.assertEqual(self.c.dev_roads_placed, 1)
+    self.assertEqual(self.c.action_stack, ["dev_road"])
     self.c.handle(0, {"type": "ship", "location": [3, 5, 5, 5]})
     self.assertEqual(self.c.turn_phase, "main")
 
   def testCanBuildShipInPlacePhase(self):
     self.c.game_phase = "place2"
-    self.c.turn_phase = "road"
+    self.c.action_stack = ["road"]
     self.c.add_piece(islanders.Piece(5, 7, "settlement", 0))
     self.c.handle(0, {"type": "ship", "location": [5, 7, 6, 6]})
     self.assertEqual(self.c.game_phase, "main")
@@ -1924,7 +1916,7 @@ class TestCalculateRobPlayers(BaseInputHandlerTest):
     self.c.add_player("green", "Player3")  # New player's index is 2.
     self.c.turn_idx = 2
     self.c.dice_roll = (6, 1)
-    self.c.turn_phase = "robber"
+    self.c.action_stack = ["rob", "robber"]
     moved_piece = self.c.pieces.pop((5, 5))
     moved_piece.location = islanders.CornerLocation(6, 6)
     self.c.add_piece(moved_piece)
@@ -2303,7 +2295,7 @@ class TestDiscard(BaseInputHandlerTest):
     self.c.player_data[0].cards.update({"rsrc1": 4, "rsrc2": 4, "rsrc3": 4, "rsrc5": 4})
     self.c.player_data[1].cards.update({"rsrc1": 4, "rsrc3": 2, "rsrc5": 1, "knight": 5})
     self.c.player_data[2].cards.update({"rsrc1": 2, "rsrc2": 4, "rsrc3": 2, "rsrc5": 1})
-    self.c.turn_phase = "dice"
+    self.c.action_stack = ["dice"]
     self.c.handle_roll_dice()
     self.assertEqual(self.c.turn_phase, "discard")
     self.assertEqual(self.c.event_log[-1].event_type, "dice")
@@ -2335,7 +2327,7 @@ class TestDiscard(BaseInputHandlerTest):
     self.c.player_data[0].cards.update({"rsrc1": 2, "rsrc2": 2, "rsrc3": 1, "rsrc5": 1})
     self.c.player_data[1].cards.update({"rsrc1": 4, "rsrc3": 2, "rsrc5": 1, "knight": 5})
     self.c.player_data[2].cards.update({"rsrc1": 2, "rsrc2": 0, "rsrc3": 2, "rsrc5": 1})
-    self.c.turn_phase = "dice"
+    self.c.action_stack = ["dice"]
     self.c.handle_roll_dice()
     self.assertEqual(self.c.turn_phase, "robber")
 
@@ -2388,7 +2380,7 @@ class TestExtraBuildPhase(BreakpointTestMixin):
 
     # Also validate that there is no special build phase after the last settlement/road.
     self.c.game_phase = "place2"
-    self.c.turn_phase = "settle"
+    self.c.action_stack = ["road", "settle"]
     self.c.turn_idx = 0
     self.c.handle(0, {"type": "settle", "location": [9, 3]})
     self.c.handle(0, {"type": "road", "location": [9, 3, 11, 3]})
@@ -2398,7 +2390,7 @@ class TestExtraBuildPhase(BreakpointTestMixin):
 
   def testExtraBuildActions(self):
     self.c.game_phase = "main"
-    self.c.turn_phase = "main"
+    self.c.action_stack.clear()
     self.c.turn_idx = 4
     self.c.add_piece(islanders.Piece(3, 3, "settlement", 0))
     self.c._add_road(Road([3, 3, 5, 3], "road", 0))
@@ -2432,7 +2424,7 @@ class TestExtraBuildPhase(BreakpointTestMixin):
 
   def testLastExtraBuild(self):
     self.c.game_phase = "main"
-    self.c.turn_phase = "extra_build"
+    self.c.action_stack = ["extra_build"]
     self.c.turn_idx = 4
     self.c.extra_build_idx = 3
 

@@ -1,4 +1,5 @@
 {
+    "action_stack": [],
     "built_this_turn": [
         [
             2,
@@ -394,6 +395,5 @@
         }
     ],
     "trade_offer": {},
-    "turn_idx": 0,
-    "turn_phase": "main"
+    "turn_idx": 0
 }

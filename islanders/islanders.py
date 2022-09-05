@@ -494,7 +494,7 @@ class IslandersState:
   TRADE_SIDES = [WANT, GIVE]
   LOCATION_ATTRIBUTES = {"tiles", "ports", "pieces", "roads"}
   HIDDEN_ATTRIBUTES = {
-      "dev_cards", "dev_roads_placed", "played_dev", "ships_moved", "built_this_turn",
+      "dev_cards", "played_dev", "ships_moved", "built_this_turn",
       "home_corners", "foreign_landings", "placement_islands",
   }
   COMPUTED_ATTRIBUTES = {"port_corners", "corners_to_islands"}
@@ -503,7 +503,7 @@ class IslandersState:
   }
   REQUIRED_ATTRIBUTES = {
       "player_data", "tiles", "ports", "pieces", "roads", "robber", "dev_cards", "dice_roll",
-      "game_phase", "turn_phase", "turn_idx", "dev_roads_placed", "played_dev", "discard_players",
+      "game_phase", "action_stack", "turn_idx", "played_dev", "discard_players",
       "rob_players", "trade_offer", "counter_offers", "options",
   }
   EXTRA_BUILD_ACTIONS = ["settle", "city", "buy_dev", "road", "ship", "end_extra_build"]
@@ -530,12 +530,11 @@ class IslandersState:
     # Turn Information
     self.game_phase: str = "place1"  # valid values are place1, place2, main, victory
     # valid values: settle, road, dice, collect, discard, robber, rob, dev_road, main, extra_build
-    self.turn_phase: str = "settle"
+    self.action_stack: List[str] = ["road", "settle"]
     self.turn_idx: int = 0
     self.collect_idx: Optional[int] = None
     self.extra_build_idx: Optional[int] = None
     # Bookkeeping
-    self.dev_roads_placed: int = 0
     self.played_dev: int = 0
     self.ships_moved: int = 0
     self.built_this_turn: List[EdgeLocation] = []  # Locations where ships were placed this turn.
@@ -645,6 +644,7 @@ class IslandersState:
         name: getattr(self, name) for name in
         self.__dict__.keys() - self.LOCATION_ATTRIBUTES - self.COMPUTED_ATTRIBUTES - custom
     }
+    ret["turn_phase"] = self.turn_phase
     ret.update({name: list(getattr(self, name).values()) for name in self.LOCATION_ATTRIBUTES})
     for attr in self.INDEXED_ATTRIBUTES:
       ret.update({attr: [getattr(self, attr).get(idx) for idx in range(len(self.player_data))]})
@@ -731,6 +731,39 @@ class IslandersState:
 
   def add_player(self, color, name):
     self.player_data.append(Player(color, name))
+
+  @property
+  def turn_phase(self):
+    if self.game_phase.startswith("place"):
+      if not self.action_stack:
+        return "settle"
+      return self.action_stack[-1]
+    if not self.action_stack:
+      return "main"
+    return self.action_stack[-1]
+
+  def next_action(self):
+    if self.turn_phase not in ["collect", "rob", "dev_road"]:
+      return
+    if self.turn_phase == "collect":
+      self.next_collect_player()
+      return
+    if self.turn_phase == "rob":
+      if not self.rob_players:
+        self.action_stack.pop()
+        self.next_action()
+        return
+      if len(self.rob_players) == 1:
+        self._rob_player(self.rob_players[0], self.turn_idx)
+        return
+    if self.turn_phase == "dev_road":
+      usable = ["road", "ship"] if self.options.seafarers else ["road"]
+      used = len([r for r in self.roads.values() if r.player == self.turn_idx])
+      # Automatically end dev road if the player is out of roads/ships.
+      # TODO: replace this with a method to check to see if they have any legal road moves.
+      if used >= 15 * len(usable):
+        self.action_stack.pop()
+        self.next_action()
 
   def handle(self, player_idx, data):
     if not data.get("type"):
@@ -843,6 +876,8 @@ class IslandersState:
     self.extra_build_idx = (self.extra_build_idx + 1) % len(self.player_data)
     if self.extra_build_idx == self.turn_idx:
       self.extra_build_idx = None
+      self.action_stack.pop()
+      self.next_action()
       self.end_turn()
 
   def handle_end_turn(self):
@@ -852,7 +887,7 @@ class IslandersState:
     if self.options.extra_build:
       next_player = (self.turn_idx + 1) % len(self.player_data)
       self.extra_build_idx = next_player
-      self.turn_phase = "extra_build"
+      self.action_stack.append("extra_build")
       return
     self.end_turn()
 
@@ -867,11 +902,11 @@ class IslandersState:
     if self.game_phase == "main":
       self.turn_idx += 1
       self.turn_idx = self.turn_idx % len(self.player_data)
-      self.turn_phase = "dice"
+      self.action_stack.append("dice")
       self.dice_roll = None
       return
     if self.game_phase == "place1":
-      self.turn_phase = "settle"
+      self.action_stack.extend(["road", "settle"])
       if self.turn_idx == len(self.player_data) - 1:
         self.game_phase = "place2"
         return
@@ -880,9 +915,9 @@ class IslandersState:
     if self.game_phase == "place2":
       if self.turn_idx == 0:
         self.game_phase = "main"
-        self.turn_phase = "dice"
+        self.action_stack.append("dice")
         return
-      self.turn_phase = "settle"
+      self.action_stack.extend(["road", "settle"])
       self.turn_idx -= 1
       return
 
@@ -898,15 +933,15 @@ class IslandersState:
       white = random.randint(1, 6)
     self.dice_roll = (red, white)
     self.event_log.append(Event("dice", "{player%s} rolled a %s" % (self.turn_idx, red + white)))
+    self.action_stack.pop()
     if (red + white) == 7:
+      self.action_stack.extend(["rob", "robber"])
       self.discard_players = self._get_players_with_too_many_resources()
       if sum(self.discard_players.values()):
-        self.turn_phase = "discard"
-      else:
-        self.turn_phase = "robber"
+        self.action_stack.append("discard")
+      self.next_action()
       return
-    to_receive = self.calculate_resource_distribution(self.dice_roll)
-    self.distribute_resources(to_receive)
+    self.distribute_resources(self.dice_roll)
 
   def handle_force_dice(self, value):
     if not self.options.debug:
@@ -919,8 +954,7 @@ class IslandersState:
     for _ in range(count):
       red = random.randint(1, 6)
       white = random.randint(1, 6)
-      dist = self.calculate_resource_distribution((red, white))
-      self.distribute_resources(dist)
+      self.distribute_resources((red, white))
 
   def remaining_resources(self, rsrc):
     return 19 - sum([p.cards[rsrc] for p in self.player_data])
@@ -943,7 +977,8 @@ class IslandersState:
     self.collect_counts = to_receive.pop("anyrsrc", {})
     return to_receive
 
-  def distribute_resources(self, to_receive):
+  def distribute_resources(self, dice_roll):
+    to_receive = self.calculate_resource_distribution(dice_roll)
     self.shortage_resources = []
     # Changes the values of to_receive as it iterates through them.
     for rsrc, receive_players in to_receive.items():
@@ -981,7 +1016,9 @@ class IslandersState:
       text = "received " + ", ".join(["%s {%s}" % (count, rsrc) for rsrc, count in rsrcs.items()])
       self.event_log.append(Event("receive", "{player%s} " % player + text))
 
-    self.next_collect_player()
+    if sum(self.collect_counts.values()):
+      self.action_stack.append("collect")
+      self.next_action()
 
   def next_collect_player(self):
     total_collect = sum(self.collect_counts.values())
@@ -998,14 +1035,12 @@ class IslandersState:
     if min_available >= total_collect:
       # Special case: if there are enough resources available such that no player can deplete
       # the bank, all players may collect resources at the same time.
-      self.turn_phase = "collect"
       self.collect_idx = None
       return
     num_players = len(self.player_data)
     collect_players = [idx for idx, count in self.collect_counts.items() if count]
     collect_players.sort(key=lambda idx: (idx - self.turn_idx + num_players) % num_players)
     self.collect_idx = collect_players[0]
-    self.turn_phase = "collect"
     if sum(available.values()) < self.collect_counts[self.collect_idx]:
       # If there's not enough left in the bank, the player collects everything that remains.
       self.collect_counts[self.collect_idx] = sum(available.values())
@@ -1013,19 +1048,8 @@ class IslandersState:
   def finish_collect(self):
     self.collect_counts.clear()
     self.collect_idx = None
-    if self.game_phase == "place2":
-      self.turn_phase = "road"
-      return
-    if self.dev_roads_placed > 0:
-      self.turn_phase = "dev_road"
-      if self.dev_roads_placed == 2:
-        self.dev_roads_placed = 0
-        self.turn_phase = "main"
-      return
-    if self.extra_build_idx is not None:
-      self.turn_phase = "extra_build"
-      return
-    self.turn_phase = "main"
+    self.action_stack.pop()
+    self.next_action()
 
   def handle_collect(self, player_idx, selection):
     self._validate_selection(selection)
@@ -1045,7 +1069,7 @@ class IslandersState:
     event_text = ", ".join(["%s {%s}" % (count, rsrc) for rsrc, count in selection.items()])
     self.event_log.append(Event("collect", "{player%s} collected " % player_idx + event_text))
     del self.collect_counts[player_idx]
-    self.next_collect_player()
+    self.next_action()
 
   def _get_players_with_too_many_resources(self):
     return {
@@ -1069,14 +1093,15 @@ class IslandersState:
     self.event_log.append(Event("discard", "{player%s} discarded %s" % (player, discarded)))
     del self.discard_players[player]
     if sum(self.discard_players.values()) == 0:
-      self.turn_phase = "robber"
+      self.action_stack.pop()
+      self.next_action()
 
   def validate_robber_location(self, location, robber_type, land):
-    new_location = parse_location(location, TileLocation)
     if self.turn_phase != "robber":
       if self.turn_phase == "discard":
         raise InvalidMove("Waiting for players to discard.")
       raise InvalidMove("You cannot play the %s right now." % robber_type)
+    new_location = parse_location(location, TileLocation)
     chosen_tile = self.tiles.get(new_location)
     if chosen_tile is None or land != chosen_tile.is_land:
       raise InvalidMove(
@@ -1121,16 +1146,9 @@ class IslandersState:
         idx for idx in adjacent_players if self.player_data[idx].resource_card_count()
     }
     robbable_players -= {current_player}
-    if len(robbable_players) > 1:
-      self.rob_players = list(robbable_players)
-      self.turn_phase = "rob"
-      return
-    if len(robbable_players) == 1:
-      self._rob_player(list(robbable_players)[0], current_player)
-    if self.dice_roll is None:
-      self.turn_phase = "dice"
-    else:
-      self.turn_phase = "main"
+    self.rob_players = list(robbable_players)
+    self.action_stack.pop()
+    self.next_action()
 
   def handle_rob(self, rob_player, current_player):
     if self.turn_phase != "rob":
@@ -1138,11 +1156,6 @@ class IslandersState:
     if rob_player not in self.rob_players:
       raise InvalidMove("You cannot rob from that player with that robber placement.")
     self._rob_player(rob_player, current_player)
-    self.rob_players = []  # Reset after successful rob.
-    if self.dice_roll is None:
-      self.turn_phase = "dice"
-    else:
-      self.turn_phase = "main"
 
   def _rob_player(self, rob_player, current_player):
     all_rsrc_cards = []
@@ -1159,6 +1172,9 @@ class IslandersState:
         "{player%s} stole a {%s} from {player%s}" % (current_player, chosen_rsrc, rob_player),
         [current_player, rob_player],
     ))
+    self.rob_players = []  # Reset after successful rob.
+    self.action_stack.pop()
+    self.next_action()
 
   def _check_main_phase(self, move_type, text):
     if self.turn_phase == "extra_build" and move_type in self.EXTRA_BUILD_ACTIONS:
@@ -1303,34 +1319,23 @@ class IslandersState:
     if road_count >= 15:
       raise InvalidMove(f"You have no {road_type}s remaining.")
     # Handle special settlement phase.
-    if self.game_phase.startswith("place"):
+    if self.turn_phase == "road":
       self._check_road_next_to_empty_settlement(loc, player)
-      self.add_road(Road(loc, road_type, player))
+      self.action_stack.pop()
       self.event_log.append(Event(road_type, "{player%s} built a %s" % (player, road_type)))
+      self.add_road(Road(loc, road_type, player))
+      self.next_action()
       self.end_turn()
       return
     # Handle road building dev card.
     if self.turn_phase == "dev_road":
-      self.dev_roads_placed += 1
-      self.add_road(Road(loc, road_type, player))
+      self.action_stack.pop()
       self.event_log.append(Event(road_type, "{player%s} built a %s" % (player, road_type)))
-      # Road building ends if they placed 2 roads or ran out of roads.
-      usable = ["road", "ship"] if self.options.seafarers else ["road"]
-      used = len([r for r in self.roads.values() if r.player == player and r.road_type in usable])
-      # TODO: replace this with a method to check to see if they have any legal road moves.
-      if used >= 15 * len(usable):
-        self.dev_roads_placed = 2  # Automatically end dev road if the player is out of roads/ships.
-      # NOTE: it is possible to enter the "collect" phase while building roads, in which case
-      # we will not override the turn_phase. next_collect_player() is responsible for returning
-      # to the dev_road phase (or main phase) when the collection is done.
-      if self.turn_phase == "dev_road":
-        if self.dev_roads_placed == 2:
-          self.dev_roads_placed = 0
-          self.turn_phase = "main"
+      self.add_road(Road(loc, road_type, player))
+      self.next_action()
       return
     # Check resources and deduct from player.
     self._remove_resources(resources, player, f"build a {road_type}")
-
     self.event_log.append(Event(road_type, "{player%s} built a %s" % (player, road_type)))
     self.add_road(Road(loc, road_type, player))
 
@@ -1588,7 +1593,8 @@ class IslandersState:
           collect_counts[road.player] += 1
     if collect_counts:
       self.collect_counts.update(collect_counts)
-      self.next_collect_player()
+      self.action_stack.append("collect")
+      self.next_action()
 
   def handle_settle(self, location, player):
     loc = parse_location(location, CornerLocation)
@@ -1605,14 +1611,15 @@ class IslandersState:
       if adjacent in self.pieces:
         raise InvalidMove("You cannot place a settlement next to existing settlement.")
     # Handle special settlement phase.
-    if self.game_phase.startswith("place"):
+    if self.turn_phase == "settle":
       if self.placement_islands is not None:
         canonical_corner = self.corners_to_islands.get(loc)
         if canonical_corner not in self.placement_islands:
           raise InvalidMove("You cannot place your first settlements in that area.")
       self.add_piece(Piece(loc.x, loc.y, "settlement", player))
       self.event_log.append(Event("settlement", "{player%s} built a settlement" % player))
-      self.turn_phase = "road"
+      self.action_stack.pop()
+      self.next_action()
       if self.game_phase == "place2":
         self.give_second_resources(player, loc)
       return
@@ -1693,7 +1700,8 @@ class IslandersState:
 
     if received.get("anyrsrc"):
       self.collect_counts[player] = received.pop("anyrsrc")
-      self.turn_phase = "collect"
+      self.action_stack.append("collect")
+      self.next_action()
 
     for rsrc, count in received.items():
       self.player_data[player].cards[rsrc] += count
@@ -1787,7 +1795,8 @@ class IslandersState:
           event_text += " from {player%s}" % self.largest_army_player
         self.event_log.append(Event("largest_army", event_text))
       self.largest_army_player = player_idx
-    self.turn_phase = "robber"
+    self.action_stack.extend(["rob", "robber"])
+    self.next_action()
 
   def _handle_road_building(self, player):
     # Check that the player has enough roads/ships left.
@@ -1796,7 +1805,8 @@ class IslandersState:
     if used >= 15 * len(usable):
       raise InvalidMove("You have no roads remaining.")
     self.event_log.append(Event("roadbuilding", "{player%s} played a road building card" % player))
-    self.turn_phase = "dev_road"
+    self.action_stack.extend(["dev_road", "dev_road"])
+    self.next_action()
 
   def _handle_year_of_plenty(self, player, selection):
     self._validate_selection(selection)
@@ -2195,7 +2205,7 @@ class BeginnerMap(Scenario):
     if len(state.player_data) == 4:
       state.give_second_resources(3, CornerLocation(9, 3))
     state.game_phase = "main"
-    state.turn_phase = "dice"
+    state.action_stack = ["dice"]
 
   @classmethod
   def mutate_options(cls, options):
@@ -2468,7 +2478,7 @@ class MapMaker(Scenario):
   def init(cls, state):
     state.add_tile(Tile(4, 2, "space", False, None))
     state.game_phase = "main"
-    state.turn_phase = "main"
+    state.action_stack.clear()
     state.player_data[0].name = "tiles"
     state.player_data[1].name = "numbers/ports"
     if len(state.player_data) > 2:
