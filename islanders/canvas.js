@@ -16,7 +16,7 @@ hoverTile = null;
 hoverNumber = null;
 hoverCorner = null;
 hoverEdge = null;
-clickEdgeLocation = null;
+hoverTileEdge = null;
 moveShipFromLocation = null;
 
 function locationsEqual(locA, locB) {
@@ -151,7 +151,7 @@ function drawRoad(roadLoc, style, road_type, closed, movable, conquered, ctx) {
   if (road_type.startsWith("coast") && moveShipFromLocation != null) {
     road_type = "ship";
   }
-  if (road_type == "coastdown") {
+  if (road_type.endsWith("down")) {
     ctx.rotate(Math.PI);
   }
   ctx.fillStyle = style;
@@ -159,9 +159,9 @@ function drawRoad(roadLoc, style, road_type, closed, movable, conquered, ctx) {
     ctx.globalAlpha = 0.5;
   }
   if (road_type.startsWith("coast")) {
-    ctx.translate(0, -pieceRadius / 2);
+    ctx.translate(0, -pieceRadius * 3/2);
   }
-  if (road_type != "road") {
+  if (!road_type.includes("road")) {
     ctx.beginPath();
     ctx.moveTo(-rectLength / 2, -pieceRadius / 2);
     ctx.lineTo(-3 * pieceRadius / 4, -pieceRadius / 2);
@@ -191,9 +191,9 @@ function drawRoad(roadLoc, style, road_type, closed, movable, conquered, ctx) {
     }
   }
   if (road_type.startsWith("coast")) {
-    ctx.translate(0, pieceRadius);
+    ctx.translate(0, pieceRadius * 3);
   }
-  if (road_type != "ship") {
+  if (!road_type.includes("ship")) {
     ctx.strokeStyle = "black";
     ctx.fillRect(-rectLength / 2, -pieceRadius / 2, rectLength, pieceRadius);
     ctx.strokeRect(-rectLength / 2, -pieceRadius / 2, rectLength, pieceRadius);
@@ -249,6 +249,9 @@ function drawDebug(ctx) {
     }
     if (hoverEdge != null) {
       ctx.fillText("" + hoverEdge.location, 0, 0);
+    }
+    if (hoverTileEdge != null) {
+      ctx.fillText("" + hoverTileEdge.edge, 0, 0);
     }
   }
 }
@@ -523,6 +526,27 @@ function drawHover(ctx) {
     canvas.style.cursor = "pointer";
     return;
   }
+  if (hoverTileEdge != null) {
+    let edgeType = null;
+    for (let i = 0; i < edges.length; i++) {
+      if (locationsEqual(edges[i].location, hoverTileEdge.edge)) {
+        edgeType = edges[i].edge_type;
+        break;
+      }
+    }
+    if (edgeType != null && edgeType.startsWith("coast")) {
+      let shipAbove = tiles[hoverTileEdge.tileNum].location[1] < (hoverTileEdge.edge[1] + hoverTileEdge.edge[3]) / 2;
+      if (edgeType == "coastdown") {
+        shipAbove = !shipAbove;
+      }
+      let drawType = "coast";
+      drawType += shipAbove ? "ship" : "road";
+      drawType += edgeType == "coastup" ? "up" : "down";
+      drawRoad(hoverTileEdge.edge, "rgba(127, 127, 127, 0.5)", drawType, null, null, null, ctx);
+      canvas.style.cursor = "pointer";
+      return;
+    }
+  }
   canvas.style.cursor = "auto";
 }
 function drawRobber(ctx, loc, alpha, land) {
@@ -581,9 +605,42 @@ function getTile(eventX, eventY) {
     let distanceX = eventX - centerX;
     let distanceY = eventY - centerY;
     let distance = distanceX * distanceX + distanceY * distanceY;
-    let radius = 50 * scale;
+    let radius = 42 * scale;
     if (distance < radius * radius) {
       return i;
+    }
+  }
+  return null;
+}
+function getTileEdge(eventX, eventY) {
+  for (let i = 0; i < tiles.length; i++) {
+    let cornerOffsets = [[1, 1], [-1, 1], [-2, 0], [-1, -1], [1, -1], [2, 0], [1, 1]];
+    for (let j = 0; j < 6; j++) {
+      let loc1 = coordToCanvasLoc(tiles[i].location);
+      let loc2 = coordToCanvasLoc([
+        tiles[i].location[0] + cornerOffsets[j][0], tiles[i].location[1] + cornerOffsets[j][1]
+      ]);
+      let loc3 = coordToCanvasLoc([
+        tiles[i].location[0] + cornerOffsets[j+1][0], tiles[i].location[1] + cornerOffsets[j+1][1]
+      ]);
+      let newX = (2*loc1.x + 3*loc2.x + 3*loc3.x) / 8;
+      let newY = (2*loc1.y + 3*loc2.y + 3*loc3.y) / 8;
+      let centerX = newX * scale + offsetX + dX;
+      let centerY = newY * scale + offsetY + dY;
+      let distanceX = eventX - centerX;
+      let distanceY = eventY - centerY;
+      let distance = distanceX * distanceX + distanceY * distanceY;
+      let radius = pieceRadius * scale;
+      if (distance < radius * radius) {
+        let edge = [
+          tiles[i].location[0] + cornerOffsets[j][0], tiles[i].location[1] + cornerOffsets[j][1],
+          tiles[i].location[0] + cornerOffsets[j+1][0], tiles[i].location[1] + cornerOffsets[j+1][1],
+        ];
+        if (cornerOffsets[j][0] > cornerOffsets[j+1][0]) {
+          edge = [edge[2], edge[3], edge[0], edge[1]];
+        }
+        return {tileNum: i, rotation: j, edge: edge};
+      }
     }
   }
   return null;
@@ -595,10 +652,6 @@ function onclick(event) {
   }
   // Ignore right/middle-click.
   if (event.button != 0) {
-    return;
-  }
-  if (clickEdgeLocation != null) {
-    cancelCoast();
     return;
   }
   let clickTile = getTile(event.clientX, event.clientY);
@@ -630,7 +683,6 @@ function onclick(event) {
       ws.send(JSON.stringify(msg));
     }
   }
-  clickEdgeLocation = null;
   let clickEdge = getEdge(event.clientX, event.clientY);
   if (clickEdge != null) {
     if (moveShipFromLocation != null) {
@@ -643,13 +695,7 @@ function onclick(event) {
       moveShipFromLocation = null;
       return;
     }
-    if (edges[clickEdge].edge_type && edges[clickEdge].edge_type.startsWith("coast")) {
-      clickEdgeLocation = edges[clickEdge].location;
-      showCoastPopup();
-      // Here, we stop propagation to avoid the body's onclick, which will try to close the
-      // popup if the thing clicked on was not the popup.
-      event.stopPropagation();
-    } else {
+    if (edges[clickEdge].edge_type && !edges[clickEdge].edge_type.startsWith("coast")) {
       for (let road of roads) {
         if (locationsEqual(road.location, edges[clickEdge].location)) {
           if (road.player == myIdx && road.road_type == "ship") {
@@ -668,6 +714,27 @@ function onclick(event) {
     }
   } else if (moveShipFromLocation != null) {
     moveShipFromLocation = null;
+  }
+  let clickTileEdge = getTileEdge(event.clientX, event.clientY);
+  if (clickTileEdge != null) {
+    let edgeType = null;
+    for (let i = 0; i < edges.length; i++) {
+      if (locationsEqual(edges[i].location, clickTileEdge.edge)) {
+        edgeType = edges[i].edge_type;
+        break;
+      }
+    }
+    if (edgeType != null && edgeType.startsWith("coast")) {
+      let shipAbove = tiles[clickTileEdge.tileNum].location[1] < (clickTileEdge.edge[1] + clickTileEdge.edge[3]) / 2;
+      if (edgeType == "coastdown") {
+        shipAbove = !shipAbove;
+      }
+      let msg = {
+        type: shipAbove ? "ship" : "road",
+        location: clickTileEdge.edge,
+      };
+      ws.send(JSON.stringify(msg));
+    }
   }
 }
 function onmove(event) {
@@ -696,6 +763,7 @@ function onmove(event) {
   } else {
     hoverEdge = null;
   }
+  hoverTileEdge = getTileEdge(event.clientX, event.clientY);
   if (isDragging) {
     newX = event.clientX;
     newY = event.clientY;
