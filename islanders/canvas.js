@@ -527,6 +527,19 @@ function drawHover(ctx) {
     return;
   }
   if (hoverTileEdge != null) {
+    if (turnPhase == "placeport" && placementPort != null) {
+      if (tiles[hoverTileEdge.tileNum].is_land) {
+        return;
+      }
+      let tmpPort = {
+        port_type: placementPort,
+        location: tiles[hoverTileEdge.tileNum].location,
+        rotation: hoverTileEdge.rotation,
+      };
+      drawPort(tmpPort, ctx);
+      canvas.style.cursor = "pointer";
+      return;
+    }
     let edgeType = null;
     for (let i = 0; i < edges.length; i++) {
       if (locationsEqual(edges[i].location, hoverTileEdge.edge)) {
@@ -717,6 +730,15 @@ function onclick(event) {
   }
   let clickTileEdge = getTileEdge(event.clientX, event.clientY);
   if (clickTileEdge != null) {
+    if (turnPhase == "placeport" && placementPort != null) {
+      let msg = {
+        type: "placeport",
+        location: tiles[clickTileEdge.tileNum].location,
+        rotation: clickTileEdge.rotation,
+      };
+      ws.send(JSON.stringify(msg));
+      return;
+    }
     let edgeType = null;
     for (let i = 0; i < edges.length; i++) {
       if (locationsEqual(edges[i].location, clickTileEdge.edge)) {

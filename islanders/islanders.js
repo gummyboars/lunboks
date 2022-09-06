@@ -85,6 +85,7 @@ diceRoll = null;
 robberLoc = null;
 pirateLoc = null;
 targetTile = null;
+placementPort = null;
 tradeOffer = null;
 gamePhase = null;
 turnPhase = null;
@@ -1083,6 +1084,7 @@ function onmsg(event) {
   robberLoc = data.robber;
   pirateLoc = data.pirate;
   targetTile = data.target_tile;
+  placementPort = data.placement_port;
   cards = data.cards;
   devCardCount = data.dev_cards;
   diceRoll = data.dice_roll;
