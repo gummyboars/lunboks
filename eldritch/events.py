@@ -3603,10 +3603,13 @@ class CombatRound(Event):
 #     self.character = character
 #     self.check = check
 #     self.done = False
+#     super().__init__()
+#
+#   def resolve(self, state):
+#     self.check
 #
 #   def is_resolved(self):
 #     return self.is_done
-#
 #
 #   def log(self, state):
 #     return f"{self.character.name} force-passed a {self.check.check_type} check"
