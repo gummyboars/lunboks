@@ -17,7 +17,7 @@ selectCardHeight = summaryCardHeight * 3;
 // Other constants.
 cardResources = ["rsrc1", "rsrc2", "rsrc3", "rsrc4", "rsrc5"];
 devCards = ["knight", "roadbuilding", "yearofplenty", "monopoly", "palace", "chapel", "university", "library", "market"];
-resourceSelectionUI = {
+tradeSelectionUI = {
   tradeOffer: {
     topPanelText: "You Want",
     bottomPanelText: "You Give",
@@ -39,18 +39,20 @@ resourceSelectionUI = {
     resetText: "Reset",
     cancelText: "Reject",
   },
+};
+resourceSelectionUI = {
   monopoly: {
-    bottomPanelText: "Choose a resource to monopolize.",
+    topText: "Choose a resource to monopolize.",
     okText: "Monopoly!",
     cancelText: "Cancel",
   },
   yearofplenty: {
-    bottomPanelText: "Choose two resources to receive from the bank.",
+    topText: "Choose two resources to receive from the bank.",
     okText: "OK",
     cancelText: "Cancel",
   },
   collect: {
-    bottomPanelText: "Choose {} to collect.",
+    topText: "Choose {} to collect.",
     okText: "OK",
   },
 };
@@ -96,9 +98,9 @@ largestArmyPlayer = null;
 
 // Local state.
 debug = false;
-resourceSelectorActive = false;
-resourceSelectorType = null;  // values are tradeOffer, tradeBank, tradeCounterOffer, and dev
-resourceSelection = {"top": {}, "bottom": {}};
+resourceSelection = {};
+tradeSelectorType = null;  // values are tradeOffer, tradeBank, tradeCounterOffer
+tradeSelection = {"top": {}, "bottom": {}};
 tradeActiveOffer = {"want": {}, "give": {}};  // null until someone makes an offer.
 counterOffers = [];
 handSelection = {};
@@ -156,81 +158,93 @@ function acceptCounter(event, player, offer) {
   };
   ws.send(JSON.stringify(msg));
 }
-function confirmSelection(event) {
-  if (resourceSelectorType == "tradeBank") {
+function confirmTrade(event) {
+  if (tradeSelectorType == "tradeBank") {
     let msg = {
       type: "trade_bank",
-      offer: {"want": resourceSelection["top"], "give": resourceSelection["bottom"]},
+      offer: {"want": tradeSelection["top"], "give": tradeSelection["bottom"]},
     };
     ws.send(JSON.stringify(msg));
     return;
-  } else if (resourceSelectorType == "tradeOffer") {
+  } else if (tradeSelectorType == "tradeOffer") {
     let msg = {
       type: "trade_offer",
-      offer: {"want": resourceSelection["top"], "give": resourceSelection["bottom"]},
+      offer: {"want": tradeSelection["top"], "give": tradeSelection["bottom"]},
     };
     ws.send(JSON.stringify(msg));
     return;
-  } else if (resourceSelectorType == "tradeCounterOffer") {
+  } else if (tradeSelectorType == "tradeCounterOffer") {
     let msg = {
       type: "counter_offer",
-      offer: {"want": resourceSelection["top"], "give": resourceSelection["bottom"]},
+      offer: {"want": tradeSelection["top"], "give": tradeSelection["bottom"]},
     };
     ws.send(JSON.stringify(msg));
     return;
-  } else if (resourceSelectorType == "dev") {
-    let msg = {
-      type: "play_dev",
-      card_type: devCardType,
-      selection: resourceSelection["bottom"],
-    };
-    ws.send(JSON.stringify(msg));
-    return;
-  } else if (resourceSelectorType == "collect") {
-    let msg = {
-      type: "collect",
-      selection: resourceSelection["bottom"],
-    };
-    ws.send(JSON.stringify(msg));
-    return;
-  } else {
-    // TODO: fill this in.
   }
 }
-function clearResourceSelection(side) {
-  resourceSelection[side] = {};
+function clearTradeSelection(side) {
+  tradeSelection[side] = {};
 }
-function resetSelection(event) {
-  if (resourceSelectorType == "tradeCounterOffer") {
+function resetTrade(event) {
+  if (tradeSelectorType == "tradeCounterOffer") {
     copyActiveOffer();
     updateSelectCounts();
   } else {
     // TODO: Are there any scenarios where we wouldn't want to reset this?
-    resourceSelection = {"top": {}, "bottom": {}};
+    tradeSelection = {"top": {}, "bottom": {}};
     updateSelectCounts();
   }
 }
-function cancelSelection(event) {
-  if (resourceSelectorType == "tradeCounterOffer") {
+function cancelTrade(event) {
+  if (tradeSelectorType == "tradeCounterOffer") {
     let msg = {
       type: "counter_offer",
       offer: 0,
     };
     ws.send(JSON.stringify(msg));
-    hideSelectorWindow();
+    hideTradeWindow();
     return;
-  } else if (resourceSelectorType == "collect") {
-    // You can't cancel collecting resources.
-    return;
-  } else if (resourceSelectorType == "tradeOffer") {
-    clearResourceSelection("top");
-    clearResourceSelection("bottom");
+  } else if (tradeSelectorType == "tradeOffer") {
+    clearTradeSelection("top");
+    clearTradeSelection("bottom");
     let msg = {
       type: "trade_offer",
-      offer: {"want": resourceSelection["top"], "give": resourceSelection["bottom"]},
+      offer: {"want": tradeSelection["top"], "give": tradeSelection["bottom"]},
     };
     ws.send(JSON.stringify(msg));
-    hideSelectorWindow();
+    hideTradeWindow();
+  } else {
+    hideTradeWindow();
+  }
+}
+function confirmSelection(event) {
+  if (turnPhase != null && turnPhase.startsWith("collect")) {
+    let msg = {
+      type: "collect",
+      selection: resourceSelection,
+    };
+    ws.send(JSON.stringify(msg));
+    return;
+  }
+  let msg = {
+    type: "play_dev",
+    card_type: devCardType,
+    selection: resourceSelection,
+  };
+  ws.send(JSON.stringify(msg));
+  hideSelectorWindow();
+}
+function clearResourceSelection() {
+  resourceSelection = {};
+}
+function resetSelection(event) {
+  resourceSelection = {};
+  updateSelectCounts();
+}
+function cancelSelection(event) {
+  if (document.getElementById("selectcancel").style.display == "none") {
+    // You can't cancel collecting resources.
+    return;
   } else {
     hideSelectorWindow();
   }
@@ -276,29 +290,31 @@ function deselectResource(event, windowName, rsrc) {
   selectResourceHelper(windowName, rsrc, -1);
 }
 function selectResourceHelper(windowName, rsrc, num) {
-  let current = resourceSelection[windowName][rsrc] || 0;
-  resourceSelection[windowName][rsrc] = current + num;
-  if (resourceSelection[windowName][rsrc] < 0) {
-    resourceSelection[windowName][rsrc] = 0;
+  let selections = windowName == "resource" ? resourceSelection : tradeSelection[windowName];
+  let current = selections[rsrc] || 0;
+  selections[rsrc] = current + num;
+  if (selections[rsrc] < 0) {
+    selections[rsrc] = 0;
   }
   updateSelectCounts();
 }
 function updateSelectCounts() {
-  for (let key in resourceSelection) {
+  for (let key of ["top", "bottom", "resource"]) {
     let container = document.getElementById(key + "selectbox");
     for (let i = 0; i < cardResources.length; i++) {
       let subcontainer = container.getElementsByClassName(cardResources[i])[0];
       let counter = subcontainer.getElementsByClassName("selectcount")[0];
-      counter.innerText = "x" + (resourceSelection[key][cardResources[i]] || 0);
+      let counts = key == "resource" ? resourceSelection : tradeSelection[key];
+      counter.innerText = "x" + (counts[cardResources[i]] || 0);
     }
   }
   updateSelectSummary();
-  if (resourceSelectorType == "tradeCounterOffer") {
-    let myOffer = {"want": resourceSelection["top"], "give": resourceSelection["bottom"]};
+  if (tradeSelectorType == "tradeCounterOffer") {
+    let myOffer = {"want": tradeSelection["top"], "give": tradeSelection["bottom"]};
     if (areOffersEqual(myOffer, tradeActiveOffer, true)) {
-      document.getElementById("selectconfirm").innerText = "Accept";
+      document.getElementById("tradeconfirm").innerText = "Accept";
     } else {
-      document.getElementById("selectconfirm").innerText = "Counter";
+      document.getElementById("tradeconfirm").innerText = "Counter";
     }
   }
 }
@@ -306,7 +322,7 @@ function updateSelectSummary() {
   // TODO: fix the width of these summary windows and don't let them make the whole
   // resource popup wider when the user selects a ridiculous number of resources.
   let summary = document.getElementById("tradesummary");
-  if (resourceSelectorType != "tradeOffer" && resourceSelectorType != "tradeCounterOffer") {
+  if (tradeSelectorType != "tradeOffer" && tradeSelectorType != "tradeCounterOffer") {
     summary.style.display = "none";
     return;
   } else {
@@ -320,7 +336,7 @@ function updateSelectSummary() {
   if (turn == myIdx) {
     mySelection = tradeActiveOffer;
   } else {
-    mySelection = {"want": resourceSelection["top"], "give": resourceSelection["bottom"]};
+    mySelection = {"want": tradeSelection["top"], "give": tradeSelection["bottom"]};
   }
   for (let key in mySelection) {
     let side;
@@ -402,9 +418,9 @@ function updateCounterOfferSummary() {
       } else if (areOffersEqual(tradeActiveOffer, counterOffer, true)) {
         // The user may change their selection without updating their offer,
         // so we make sure that the selection and the offer match the counter offer.
-        let currentOffer = {want: resourceSelection["top"], give: resourceSelection["bottom"]};
+        let currentOffer = {want: tradeSelection["top"], give: tradeSelection["bottom"]};
         if (areOffersEqual(currentOffer, counterOffer, true)) {
-          textspan.innerText = " accepts.";
+          textspan.innerText = " accepts ✔️.";
           showMore = false;
         }
       }
@@ -470,32 +486,29 @@ function toggleTradeWindow(partner) {
   } else {
     return;
   }
-  if (resourceSelectorActive && resourceSelectorType == selectorType) {
-    resourceSelectorActive = false;
+  if (tradeSelectorActive() && tradeSelectorType == selectorType) {
+    hideTradeWindow();
   } else {
-    resourceSelectorActive = true;
-    resourceSelectorType = selectorType;
-  }
-  if (resourceSelectorActive) {
-    showResourceUI(resourceSelectorType, null);
-  } else {
-    hideSelectorWindow();
+    tradeSelectorType = selectorType;
+    showTradeUI();
   }
 }
 function hideSelectorWindow() {
-  resourceSelectorActive = false;
-  document.getElementById("resourcepopup").style.display = 'none';
+  document.getElementById("resourcepopup").style.display = "none";
+}
+function hideTradeWindow() {
+  document.getElementById("tradepopup").style.display = "none";
   updateTradeButtons();
 }
 function rememberActiveOffer() {
   // When the current player opens the trading UI after closing it (maybe they
   // wanted to look behind it?), we restore the trade offer that they have made.
   if (tradeActiveOffer && (tradeActiveOffer["want"] || tradeActiveOffer["give"])) {
-    resourceSelection["top"] = Object.assign({}, tradeActiveOffer["want"]);
-    resourceSelection["bottom"] = Object.assign({}, tradeActiveOffer["give"]);
+    tradeSelection["top"] = Object.assign({}, tradeActiveOffer["want"]);
+    tradeSelection["bottom"] = Object.assign({}, tradeActiveOffer["give"]);
   } else {
-    clearResourceSelection("top");
-    clearResourceSelection("bottom");
+    clearTradeSelection("top");
+    clearTradeSelection("bottom");
   }
 }
 function copyActiveOffer() {
@@ -506,14 +519,14 @@ function copyActiveOffer() {
   if (tradeActiveOffer == null) {
     return;
   }
-  resourceSelection["top"] = Object.assign({}, tradeActiveOffer["give"]);
-  resourceSelection["bottom"] = Object.assign({}, tradeActiveOffer["want"]);
+  tradeSelection["top"] = Object.assign({}, tradeActiveOffer["give"]);
+  tradeSelection["bottom"] = Object.assign({}, tradeActiveOffer["want"]);
 }
 function copyPreviousCounterOffer(offer) {
   // This function is only called the first time the user connects, and is used
   // to restore any counter-offer they had previously made.
-  resourceSelection["top"] = Object.assign({}, offer["want"]);
-  resourceSelection["bottom"] = Object.assign({}, offer["give"]);
+  tradeSelection["top"] = Object.assign({}, offer["want"]);
+  tradeSelection["bottom"] = Object.assign({}, offer["give"]);
 }
 function areOffersEqual(offerA, offerB, swapSides) {
   if (offerA == null && offerB == null) {
@@ -571,16 +584,16 @@ function maybeShowActiveTradeOffer(oldActiveOffer) {
   }
   let shouldCopy = false;
   // If they're not actively looking at the trade window, update the selection.
-  if (!resourceSelectorActive) {
+  if (!tradeSelectorActive()) {
     shouldCopy = true;
   }
   // If they haven't touched the trade offer and haven't made a counter offer, update it.
-  if (!counterOffers[myIdx] && areOffersEqual(oldActiveOffer, {want: resourceSelection["top"], give: resourceSelection["bottom"]}, true)) {
+  if (!counterOffers[myIdx] && areOffersEqual(oldActiveOffer, {want: tradeSelection["top"], give: tradeSelection["bottom"]}, true)) {
     shouldCopy = true;
   }
   // If they have no selection (e.g. if the window was already open when the offer was made),
   // then we should show them the new offer.
-  if (!Object.keys(resourceSelection["top"]) && !Object.keys(resourceSelection["bottom"])) {
+  if (!Object.keys(tradeSelection["top"]) && !Object.keys(tradeSelection["bottom"])) {
     shouldCopy = true;
   }
   if (shouldCopy) {
@@ -593,20 +606,20 @@ function maybeShowActiveTradeOffer(oldActiveOffer) {
   updateSelectCounts();
   if (tradeActiveOffer && ((tradeActiveOffer.want && Object.keys(tradeActiveOffer.want).length) || (tradeActiveOffer.give && Object.keys(tradeActiveOffer.give).length))) {
     if (counterOffers[myIdx] != 0) {
-      resourceSelectorType = "tradeCounterOffer";
-      showResourceUI(resourceSelectorType, null);
+      tradeSelectorType = "tradeCounterOffer";
+      showTradeUI();
     }
   } else {
-    hideSelectorWindow();
+    hideTradeWindow();
   }
 }
 function updateTradeButtons() {
   let playerButton = document.getElementById("tradeplayer");
   let bankButton = document.getElementById("tradebank");
-  if (resourceSelectorActive && resourceSelectorType.startsWith("trade")) {
+  if (tradeSelectorActive()) {
     let activeButton = null;
     let inactiveButton = null;
-    if (resourceSelectorType == "tradeBank") {
+    if (tradeSelectorType == "tradeBank") {
       activeButton = bankButton;
       inactiveButton = playerButton;
     } else {
@@ -657,13 +670,12 @@ function maybeShowCollectWindow(oldPhase) {
     }
   }
   if (collectText != null) {
-    if (resourceSelectorType != "collect") {
+    if (oldPhase != turnPhase) {
       // Clear selection counts only if we just popped the window up.
-      clearResourceSelection("bottom");
+      clearResourceSelection();
       updateSelectCounts();
     }
-    resourceSelectorType = "collect";
-    showResourceUI(resourceSelectorType, collectText);
+    showResourceUI("collect", collectText);
   } else if (["collect1", "collect2", "collectpi", "collect"].includes(oldPhase)) {
     hideSelectorWindow();
   }
@@ -987,8 +999,7 @@ function playDevCard(e, cardType) {
   devCardType = cardType;
   let selectInfo = resourceSelectionUI[cardType];
   if (selectInfo) {
-    clearResourceSelection("bottom");
-    resourceSelectorType = "dev";
+    clearResourceSelection();
     updateSelectCounts();
     showResourceUI(cardType, null);
   } else {
@@ -1001,31 +1012,36 @@ function showResourceUI(uiType, param) {
     console.log("unknown selector " + uiType);
     return;
   }
-  if (selectInfo.topPanelText) {
-    let topText = formatStringWithParam(selectInfo.topPanelText, param);
-    document.getElementById("topselect").style.display = 'flex';
-    document.getElementById("topselecttitle").innerText = topText;
-  } else {
-    document.getElementById("topselect").style.display = 'none';
-  }
-  let bottomText = formatStringWithParam(selectInfo.bottomPanelText, param);
-  document.getElementById("bottomselecttitle").innerText = bottomText;
+  document.getElementById("resourceselecttitle").innerText = formatStringWithParam(selectInfo.topText, param);
   let buttons = {"okText": "selectconfirm", "resetText": "selectreset", "cancelText": "selectcancel"};
   for (let button in buttons) {
     if (selectInfo[button]) {
       document.getElementById(buttons[button]).innerText = selectInfo[button];
-      document.getElementById(buttons[button]).style.display = 'inline-block';
+      document.getElementById(buttons[button]).style.display = "inline-block";
     } else {
-      document.getElementById(buttons[button]).style.display = 'none';
+      document.getElementById(buttons[button]).style.display = "none";
     }
   }
-  resourceSelectorActive = true;
-  if (resourceSelectorType == "tradeOffer" && turn == myIdx) {
+  updateSelectCounts();
+  document.getElementById("resourcepopup").style.display = "flex";
+}
+function showTradeUI() {
+  let selectInfo = tradeSelectionUI[tradeSelectorType];
+  document.getElementById("topselecttitle").innerText = selectInfo.topPanelText;
+  document.getElementById("bottomselecttitle").innerText = selectInfo.bottomPanelText;
+  let buttons = {"okText": "tradeconfirm", "resetText": "tradereset", "cancelText": "tradecancel"};
+  for (let button in buttons) {
+    document.getElementById(buttons[button]).innerText = selectInfo[button];
+  }
+  if (tradeSelectorType == "tradeOffer" && turn == myIdx) {
     rememberActiveOffer();
   }
   updateSelectCounts();
-  document.getElementById("resourcepopup").style.display = 'flex';
+  document.getElementById("tradepopup").style.display = 'flex';
   updateTradeButtons();
+}
+function tradeSelectorActive() {
+  return document.getElementById("tradepopup").style.display == "flex";
 }
 function onkey(event) {
   let thing = event.which || event.keyCode; // Cross-browser compatibility.
@@ -1140,7 +1156,7 @@ function onmsg(event) {
     snd1.play();
   }
   if (oldTurn != null && oldTurn != turn) {
-    hideSelectorWindow();
+    hideTradeWindow();
   }
   maybeShowCollectWindow(oldPhase);
   maybeShowDiscardWindow();
@@ -1775,21 +1791,19 @@ function winmove(e) {
   draggedWin.style.transform = "translate(" + offsetX + "px, " + offsetY + "px)"
 }
 function createSelectors() {
-  for (selectBox of ["top", "bottom"]) {
+  for (let selectBox of ["top", "bottom", "resource"]) {
     let box = document.getElementById(selectBox + "selectbox");
     while (box.firstChild) {
       box.removeChild(box.firstChild);
     }
-    for (cardRsrc of cardResources) {
-      let boxCopy = selectBox;
-      let rsrcCopy = cardRsrc;
+    for (let cardRsrc of cardResources) {
       let cnv = document.createElement("CANVAS");
       cnv.classList.add("selector");
       cnv.classList.add("clickable");
       cnv.width = selectCardWidth;
       cnv.height = selectCardHeight;
-      cnv.onclick = function(e) { selectResource(e, boxCopy, rsrcCopy); };
-      cnv.oncontextmenu = function(e) { deselectResource(e, boxCopy, rsrcCopy); };
+      cnv.onclick = function(e) { selectResource(e, selectBox, cardRsrc); };
+      cnv.oncontextmenu = function(e) { deselectResource(e, selectBox, cardRsrc); };
       let counter = document.createElement("DIV");
       counter.innerText = "x0";
       counter.classList.add("selectcount");
@@ -1961,26 +1975,30 @@ function onBodyClick(event) {
     return;
   }
   let hideSelector = true;
-  if (resourceSelectorType == "collect") {
-    return;
+  let hideTrade = true;
+  if (document.getElementById("selectcancel").style.display == "none") {
+    hideSelector = false;
   }
-  if (resourceSelectorActive) {
-    let target = event.target;
-    while (target != null) {
-      if (target.id == "resourcepopup") {
-        hideSelector = false;
-        break;
-      }
-      if (target.classList && target.classList.contains("resourceselector")) {
-        hideSelector = false;
-        break;
-      }
-      target = target.parentNode;
+  let target = event.target;
+  while (target != null) {
+    if (target.id == "resourcepopup") {
+      hideSelector = false;
     }
-    if (hideSelector) {
-      resourceSelectorActive = false;
-      hideSelectorWindow();
+    if (target.id == "tradepopup") {
+      hideTrade = false;
     }
+    if (target.classList && target.classList.contains("resourceselector")) {
+      hideSelector = false;
+      hideTrade = false;
+      break;
+    }
+    target = target.parentNode;
+  }
+  if (hideSelector) {
+    hideSelectorWindow();
+  }
+  if (hideTrade) {
+    hideTradeWindow();
   }
 }
 function showError(errText) {
