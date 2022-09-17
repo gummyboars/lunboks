@@ -62,8 +62,19 @@
                 <div id="handselectcards" class="selectsummary"></div>
               </div>
             </div>
-            <div id="resourcepopup" class="clickable selectpopup" onmousedown="windown(event)">
-              <div id="resourceselect" class="selectinner">
+            <div id="resourcepopup" class="clickable selectinner" onmousedown="windown(event)">
+              <div id="resourceselect" class="uiselect">
+                <div id="resourceselecttitle" class="selecttitle">You Give</div>
+                <div id="resourceselectbox" class="resourceselectbox"></div>
+              </div>
+              <div id="selectbuttons">
+                <div class="leftbutton"><button id="selectconfirm" class="selectbutton button clickable" onclick="confirmSelection(event)">Confirm</button></div>
+                <div class="centerbutton"><button id="selectreset" class="selectbutton button clickable" onclick="resetSelection(event)">Reset</button></div>
+                <div class="rightbutton"><button id="selectcancel" class="selectbutton button clickable" onclick="cancelSelection(event)">Cancel</button></div>
+              </div>
+            </div>
+            <div id="tradepopup" class="clickable" onmousedown="windown(event)">
+              <div class="selectinner">
                 <div id="topselect" class="uiselect">
                   <div id="topselecttitle" class="selecttitle">You Want</div>
                   <div id="topselectbox" class="resourceselectbox"></div>
@@ -81,10 +92,10 @@
                     <div class="summaryfixed"><p>You Give</p></div>
                   </div>
                 </div>
-                <div id="selectbuttons">
-                  <div class="leftbutton"><button id="selectconfirm" class="selectbutton button clickable" onclick="confirmSelection(event)">Confirm</button></div>
-                  <div class="centerbutton"><button id="selectreset" class="selectbutton button clickable" onclick="resetSelection(event)">Reset</button></div>
-                  <div class="rightbutton"><button id="selectcancel" class="selectbutton button clickable" onclick="cancelSelection(event)">Cancel</button></div>
+                <div id="tradebuttons">
+                  <div class="leftbutton"><button id="tradeconfirm" class="selectbutton button clickable" onclick="confirmTrade(event)">Trade</button></div>
+                  <div class="centerbutton"><button id="tradereset" class="selectbutton button clickable" onclick="resetTrade(event)">Reset</button></div>
+                  <div class="rightbutton"><button id="tradecancel" class="selectbutton button clickable" onclick="cancelTrade(event)">Close</button></div>
                 </div>
               </div>
             </div>
