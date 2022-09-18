@@ -141,10 +141,10 @@ class TestLoadState(unittest.TestCase):
     self.assertEqual(len(c.treasures), 2)
     self.assertIn(islanders.CornerLocation(8, 6), c.treasures)
     self.assertIn(islanders.CornerLocation(5, 7), c.treasures)
-    self.assertEqual(c.treasures[(8, 6)], "devcard")
+    self.assertEqual(c.treasures[(8, 6)], "takedev")
     self.assertEqual(c.treasures[(5, 7)], "roadbuilding")
 
-    self.assertListEqual(c.discoverable_treasures, ["collectpi", "collect2", "devcard"])
+    self.assertListEqual(c.discoverable_treasures, ["collectpi", "collect2", "takedev"])
 
   def testDumpAndLoad(self):
     # TODO: test with different numbers of users
@@ -589,7 +589,7 @@ class TestFogLandingCalculations(BreakpointTestMixin):
     # Player will discover a land tile, then sea, then land again.
     self.c.discoverable_tiles = ["rsrc1", "space", "rsrc2"]
     self.c.discoverable_numbers = [12, 2]
-    self.c.discoverable_treasures = ["devcard"]  # To be drawn when discovering the sea tile.
+    self.c.discoverable_treasures = ["takedev"]  # To be drawn when discovering the sea tile.
 
     # Discover the first land tile.
     self.c.handle(0, {"type": "ship", "location": [3, 7, 5, 7]})
@@ -1374,7 +1374,7 @@ class TestTreasures(BaseInputHandlerTest):
 
   def testDiscoverDevCard(self):
     self.c.dev_cards.append("market")
-    self.c.discoverable_treasures.append("devcard")
+    self.c.discoverable_treasures.append("takedev")
     old_rsrcs = collections.Counter(self.c.player_data[0].cards)
     self.c.handle_road([2, 6, 3, 7], 0, "ship", [("rsrc1", 1), ("rsrc2", 1)])
     new_rsrcs = collections.Counter(self.c.player_data[0].cards)
@@ -1479,6 +1479,190 @@ class TestTreasures(BaseInputHandlerTest):
     self.assertEqual(self.c.turn_phase, "collect2")
     self.c.handle_collect(0, {"rsrc4": 1, "rsrc3": 1})
     self.assertEqual(self.c.turn_phase, "main")
+
+  def testDiscoverDuringSetup(self):
+    self.c.treasures[(5, 5)] = "collect1"
+    self.c.game_phase = "place2"
+    self.c.action_stack = ["road"]
+    self.c.roads.clear()
+    self.c.pieces[(3, 5)].player = 1
+    self.c.turn_idx = 1
+    self.c.handle_road((3, 5, 5, 5), 1, "ship", [("rsrc1", 1), ("rsrc2", 2)])
+    self.assertEqual(self.c.turn_idx, 1)
+    self.assertEqual(self.c.turn_phase, "collect1")
+    self.assertEqual(self.c.game_phase, "place2")
+    self.c.handle_collect(1, {"rsrc5": 1})
+    self.assertEqual(self.c.turn_idx, 0)
+    self.assertEqual(self.c.action_stack, ["road", "settle"])
+    self.assertEqual(self.c.game_phase, "place2")
+
+  def testChainedDiscoverDuringSetup(self):
+    self.c.treasures[(5, 5)] = "roadbuilding"
+    self.c.game_phase = "place2"
+    self.c.action_stack = ["road"]
+    self.c.roads.clear()
+    self.c.handle_road((3, 5, 5, 5), 0, "ship", [("rsrc1", 1), ("rsrc2", 2)])
+    self.assertEqual(self.c.turn_idx, 0)
+    self.assertEqual(self.c.turn_phase, "dev_road")
+    self.assertEqual(self.c.game_phase, "place2")
+    self.c.handle_road((5, 5, 6, 6), 0, "ship", [("rsrc1", 1), ("rsrc2", 2)])
+    self.c.handle_road((6, 6, 8, 6), 0, "ship", [("rsrc1", 1), ("rsrc2", 2)])
+    self.assertEqual(self.c.turn_idx, 0)
+    self.assertEqual(self.c.turn_phase, "dice")
+    self.assertEqual(self.c.game_phase, "main")
+
+
+class TestBuryTreasures(BaseInputHandlerTest):
+
+  TEST_FILE = "treasure_test.json"
+
+  def setUp(self):
+    super().setUp()
+    self.c.options["bury_treasure"].force(True)
+
+  def testCanBuryTreasure(self):
+    self.c.handle_road([3, 5, 5, 5], 0, "ship", [("rsrc1", 1), ("rsrc2", 1)])
+    self.c.handle_road([5, 5, 6, 6], 0, "ship", [("rsrc1", 1), ("rsrc2", 1)])
+    self.c.handle_road([5, 7, 6, 6], 0, "ship", [("rsrc1", 1), ("rsrc2", 1)])
+    self.assertEqual(self.c.turn_phase, "bury")
+    self.assertEqual(self.c.action_stack, ["dev_road", "dev_road", "bury"])
+    self.c.handle_bury(0, True)
+    self.assertEqual(self.c.player_data[0].buried_treasure, 1)
+    self.assertEqual(self.c.turn_phase, "main")
+    self.assertEqual(self.c.action_stack, [])
+
+  def testDeclineToBuryTreasure(self):
+    self.c.handle_road([3, 5, 5, 5], 0, "ship", [("rsrc1", 1), ("rsrc2", 1)])
+    self.c.handle_road([5, 5, 6, 6], 0, "ship", [("rsrc1", 1), ("rsrc2", 1)])
+    self.c.handle_road([5, 7, 6, 6], 0, "ship", [("rsrc1", 1), ("rsrc2", 1)])
+    self.assertEqual(self.c.turn_phase, "bury")
+    self.assertEqual(self.c.action_stack, ["dev_road", "dev_road", "bury"])
+    self.c.handle_bury(0, False)
+    self.assertEqual(self.c.player_data[0].buried_treasure, 0)
+    self.assertEqual(self.c.turn_phase, "dev_road")
+    self.assertEqual(self.c.action_stack, ["dev_road", "dev_road"])
+
+  def testCannotBuryMoreThanFour(self):
+    self.c.player_data[0].buried_treasure = 4
+    self.c.handle_road([3, 5, 5, 5], 0, "ship", [("rsrc1", 1), ("rsrc2", 1)])
+    self.c.handle_road([5, 5, 6, 6], 0, "ship", [("rsrc1", 1), ("rsrc2", 1)])
+    self.c.handle_road([5, 7, 6, 6], 0, "ship", [("rsrc1", 1), ("rsrc2", 1)])
+    self.assertEqual(self.c.turn_phase, "dev_road")
+    self.assertEqual(self.c.action_stack, ["dev_road", "dev_road"])
+
+  def testBurySecondTreasurePlacesPort(self):
+    self.c.player_data[0].buried_treasure = 1
+    self.c.treasures[islanders.CornerLocation(5, 7)] = "collect1"
+    self.c.handle_road([3, 5, 5, 5], 0, "ship", [("rsrc1", 1), ("rsrc2", 1)])
+    self.c.handle_road([5, 5, 6, 6], 0, "ship", [("rsrc1", 1), ("rsrc2", 1)])
+    self.c.handle_road([5, 7, 6, 6], 0, "ship", [("rsrc1", 1), ("rsrc2", 1)])
+    self.assertEqual(self.c.turn_phase, "bury")
+    self.assertEqual(self.c.action_stack, ["collect1", "bury"])
+    self.c.handle_bury(0, True)
+    self.assertEqual(self.c.player_data[0].buried_treasure, 2)
+    self.assertEqual(self.c.action_stack, ["placeport"])
+    self.assertEqual(self.c.turn_phase, "placeport")
+
+  def testBuryRoadbuildingPlacesPort(self):
+    self.c.player_data[0].buried_treasure = 1
+    self.c.handle_road([3, 5, 5, 5], 0, "ship", [("rsrc1", 1), ("rsrc2", 1)])
+    self.c.handle_road([5, 5, 6, 6], 0, "ship", [("rsrc1", 1), ("rsrc2", 1)])
+    self.c.handle_road([5, 7, 6, 6], 0, "ship", [("rsrc1", 1), ("rsrc2", 1)])
+    self.assertEqual(self.c.turn_phase, "bury")
+    self.assertEqual(self.c.action_stack, ["dev_road", "dev_road", "bury"])
+    self.c.handle_bury(0, True)
+    self.assertEqual(self.c.player_data[0].buried_treasure, 2)
+    self.assertEqual(self.c.action_stack, ["placeport"])
+    self.assertEqual(self.c.turn_phase, "placeport")
+
+  def testBuryDuringSetup(self):
+    self.c.treasures[(5, 5)] = "collect1"
+    self.c.game_phase = "place2"
+    self.c.action_stack = ["road"]
+    self.c.roads.clear()
+    self.c.pieces[(3, 5)].player = 1
+    self.c.turn_idx = 1
+    self.c.handle_road((3, 5, 5, 5), 1, "ship", [("rsrc1", 1), ("rsrc2", 2)])
+    self.assertEqual(self.c.turn_idx, 1)
+    self.assertEqual(self.c.turn_phase, "bury")
+    self.assertEqual(self.c.game_phase, "place2")
+    self.c.handle_bury(1, True)
+    self.assertEqual(self.c.player_data[1].buried_treasure, 1)
+    self.assertEqual(self.c.turn_idx, 0)
+    self.assertEqual(self.c.turn_phase, "settle")
+    self.assertEqual(self.c.game_phase, "place2")
+
+  def testBurySecondDuringSetup(self):
+    self.c.treasures[(5, 5)] = "collect1"
+    self.c.game_phase = "place2"
+    self.c.action_stack = ["road"]
+    self.c.roads.clear()
+    self.c.player_data[0].buried_treasure = 1
+    self.c.handle_road((3, 5, 5, 5), 0, "ship", [("rsrc1", 1), ("rsrc2", 2)])
+    self.assertEqual(self.c.turn_idx, 0)
+    self.assertEqual(self.c.turn_phase, "bury")
+    self.assertEqual(self.c.game_phase, "place2")
+
+    self.c.handle_bury(0, True)
+    self.assertEqual(self.c.player_data[0].buried_treasure, 2)
+    self.assertEqual(self.c.turn_idx, 0)
+    self.assertEqual(self.c.turn_phase, "placeport")
+    self.assertEqual(self.c.game_phase, "place2")
+
+    self.c.handle_place_port(0, (4, 6), 2, "rsrc1")
+    self.assertEqual(self.c.player_data[0].trade_ratios["rsrc1"], 2)
+    self.assertEqual(self.c.player_data[0].trade_ratios["rsrc3"], 4)
+    self.assertEqual(self.c.turn_idx, 0)
+    self.assertEqual(self.c.turn_phase, "dice")
+    self.assertEqual(self.c.game_phase, "main")
+
+
+class PlacePortTest(BaseInputHandlerTest):
+
+  TEST_FILE = "treasure_test.json"
+
+  def setUp(self):
+    super().setUp()
+    self.c.options["bury_treasure"].force(True)
+    self.c.player_data[0].buried_treasure = 2
+    self.c.action_stack = ["placeport"]
+
+  def testPlacedPortUpdatesTradeRatios(self):
+    self.c.handle_place_port(0, (4, 6), 2, "rsrc1")
+    self.assertEqual(self.c.player_data[0].trade_ratios["rsrc1"], 2)
+    self.assertEqual(self.c.player_data[0].trade_ratios["rsrc3"], 4)
+
+  def testPlaceOnLand(self):
+    with self.assertRaisesRegex(InvalidMove, "place the port on {space}"):
+      self.c.handle_place_port(0, (1, 5), 4, "rsrc1")
+
+  def testPlaceBadRotation(self):
+    with self.assertRaisesRegex(InvalidMove, "Invalid rotation"):
+      self.c.handle_place_port(0, (4, 6), 2.5, "rsrc1")
+    with self.assertRaisesRegex(InvalidMove, "Invalid rotation"):
+      self.c.handle_place_port(0, (4, 6), -1, "rsrc1")
+    with self.assertRaisesRegex(InvalidMove, "Invalid rotation"):
+      self.c.handle_place_port(0, (4, 6), "left", "rsrc1")
+
+  def testPlaceOnExistingPort(self):
+    self.c.add_port(islanders.Port(4, 6, "rsrc2", 0))
+    with self.assertRaisesRegex(InvalidMove, "already a port there"):
+      self.c.handle_place_port(0, (4, 6), 2, "rsrc1")
+
+  def testPlaceNotAttachedToSettlement(self):
+    with self.assertRaisesRegex(InvalidMove, "next to one of your settlements"):
+      self.c.handle_place_port(0, (4, 6), 0, "rsrc1")
+
+  def testPlaceAlreadyTakenPort(self):
+    self.c.add_port(islanders.Port(4, 6, "rsrc2", 0))
+    with self.assertRaisesRegex(InvalidMove, "already taken"):
+      self.c.handle_place_port(0, (4, 4), 1, "rsrc2")
+
+  def testPlaceSharingCornerWithAnotherPort(self):
+    self.c.add_port(islanders.Port(4, 6, "rsrc2", 2))
+    self.c._compute_ports()
+    with self.assertRaisesRegex(InvalidMove, "share a corner"):
+      self.c.handle_place_port(0, (4, 4), 1, "rsrc1")
 
 
 class TestRobberMovement(BaseInputHandlerTest):
@@ -2907,6 +3091,14 @@ class TestPlayerPoints(BaseInputHandlerTest):
     self.assertEqual(self.c.player_points(0, visible=True), 3)
     self.assertEqual(self.c.player_points(1, visible=True), 1)
 
+  def testBuriedCountsForVictoryPoints(self):
+    self.c.player_data[0].buried_treasure = 2
+    self.c.player_data[1].buried_treasure = 3
+    self.assertEqual(self.c.player_points(0, visible=True), 3)
+    self.assertEqual(self.c.player_points(1, visible=True), 3)
+    self.c.player_data[1].buried_treasure = 4
+    self.assertEqual(self.c.player_points(1, visible=True), 4)
+
 
 @mock.patch.object(islanders.random, "randint", return_value=3.5)
 class TestDiscard(BaseInputHandlerTest):
@@ -2956,6 +3148,20 @@ class TestDiscard(BaseInputHandlerTest):
     self.c.action_stack = ["dice"]
     self.c.handle_roll_dice()
     self.assertEqual(self.c.turn_phase, "robber")
+
+  def testBuriedTreasureIncreasesThreshold(self, unused_randint):
+    self.c.player_data[0].cards.update({"rsrc1": 4, "rsrc2": 4})
+    self.c.player_data[1].cards.update({"rsrc1": 4, "rsrc3": 5, "knight": 5})
+    self.c.player_data[2].cards.update({"rsrc1": 5, "rsrc2": 5})
+    for player in self.c.player_data:
+      player.buried_treasure = 1
+    self.c.action_stack = ["dice"]
+    self.c.handle_roll_dice()
+    self.assertEqual(self.c.turn_phase, "discard")
+    # Player 0 has 8 cards, and does not need to discard.
+    # Player 1 has 9 cards, and does not need to discard.
+    # Player 2 has 10 cards, and must discard 5.
+    self.assertDictEqual(self.c.discard_players, {2: 5})
 
 
 class TestBuyDevCard(BaseInputHandlerTest):

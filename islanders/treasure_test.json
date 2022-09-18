@@ -56,7 +56,7 @@
     "discoverable_treasures": [
         "collectpi",
         "collect2",
-        "devcard"
+        "takedev"
     ],
     "event_log": [],
     "foreign_landings": [
@@ -422,7 +422,7 @@
                 8,
                 6
             ],
-            "treasure_type": "devcard"
+            "treasure_type": "takedev"
         },
         {
             "location": [

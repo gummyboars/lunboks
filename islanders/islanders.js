@@ -93,6 +93,7 @@ gamePhase = null;
 turnPhase = null;
 discardPlayers = {};
 robPlayers = [];
+treasure = null;
 longestRoutePlayer = null;
 largestArmyPlayer = null;
 
@@ -875,6 +876,128 @@ function maybeShowRobWindow() {
     playerpopup.style.display = 'none';
   }
 }
+function maybeShowBuryWindow() {
+  if (turn != myIdx || turnPhase != "bury") {
+    document.getElementById("burypopup").style.display = "none";
+    return;
+  }
+  document.getElementById("burypopup").style.display = "flex";
+  let div = document.getElementById("treasure");
+  while (div.children.length) {
+    div.removeChild(div.firstChild);
+  }
+  let cnv = document.createElement("CANVAS");
+  cnv.width = cardWidth;
+  cnv.height = cardHeight;
+  cnv.style.display = "block";
+  div.appendChild(cnv);
+  if (treasure == "collect1") {
+    renderAssetToCanvas(cnv, "cardback", "");
+  }
+  if (treasure == "collect2") {
+    renderAssetToCanvas(cnv, "cardback", "");
+    let cnv2 = document.createElement("CANVAS");
+    cnv2.width = cardWidth;
+    cnv2.height = cardHeight;
+    cnv2.style.display = "block";
+    div.appendChild(cnv2);
+    renderAssetToCanvas(cnv2, "cardback", "");
+  }
+  if (treasure == "collectpi") {
+    let cnt = document.createElement("DIV");
+    cnt.style.width = 1.5*cardWidth + "px";
+    cnt.style.height = 1.5*cardHeight + "px";
+    cnt.style.display = "block";
+    div.appendChild(cnt);
+    cnt.appendChild(cnv);
+    renderAssetToCanvas(cnv, "rsrc1card", "");
+    cnv.style.position = "absolute";
+    cnv.style.top = "0";
+    cnv.style.left = "0";
+    let cnv2 = document.createElement("CANVAS");
+    cnv2.width = cardWidth;
+    cnv2.height = cardHeight;
+    cnv2.style.display = "block";
+    cnt.appendChild(cnv2);
+    renderAssetToCanvas(cnv2, "rsrc3card", "");
+    cnv.style.position = "absolute";
+    cnv.style.top = "0";
+    cnv.style.right = "0";
+    let cnv3 = document.createElement("CANVAS");
+    cnv3.width = cardWidth;
+    cnv3.height = cardHeight;
+    cnv3.style.display = "block";
+    cnt.appendChild(cnv3);
+    renderAssetToCanvas(cnv3, "rsrc4card", "");
+    cnv.style.position = "absolute";
+    cnv.style.bottom = "0";
+    cnv.style.left = "16.66%";
+    // createCard("#9D6BBB", "default" + devData.name, cardWidth, cardHeight, devData.text, devData.bottomText); FIXME
+  }
+  if (treasure == "dev_road") {
+    renderAssetToCanvas(cnv, "roadbuilding", "");
+  }
+  if (treasure == "takedev") {
+    renderAssetToCanvas(cnv, "devcard", "");
+  }
+}
+function buryTreasure(e) {
+  let msg = {
+    type: "bury",
+  };
+  ws.send(JSON.stringify(msg));
+}
+function useTreasure(e) {
+  let msg = {
+    type: "treasure",
+  };
+  ws.send(JSON.stringify(msg));
+}
+function maybeShowPortWindow() {
+  if (turn != myIdx || turnPhase != "placeport") {
+    document.getElementById("portpopup").style.display = "none";
+    return;
+  }
+  document.getElementById("portpopup").style.display = "flex";
+  if (placementPort != null) {
+    document.getElementById("portselect").style.display = "none";
+    document.getElementById("portselecttitle").innerText = "Place the " + serverNames[placementPort] + " port";
+  } else {
+    document.getElementById("portselect").style.display = "flex";
+    document.getElementById("portselecttitle").innerText = "Choose a port to place";
+  }
+  let div = document.getElementById("portselect");
+  while (div.children.length) {
+    div.removeChild(div.firstChild);
+  }
+  let portList = [];
+  for (let port of ports) {
+    portList.push(port.port_type);
+  }
+  for (let rsrc of cardResources) {
+    if (portList.includes(rsrc)) {
+      continue;
+    }
+    let cnv = document.createElement("CANVAS");
+    cnv.width = tileWidth;
+    cnv.height = tileHeight;
+    cnv.style.display = "block";
+    cnv.classList.add("selectable");
+    cnv.onclick = function(e) { placementPort = rsrc; maybeShowPortWindow(); };
+    div.appendChild(cnv);
+    let loc = [2, 1];
+    let rot = 0;
+    if (turned) {
+      loc = [-2 * tileHeight / tileWidth, tileWidth / tileHeight];
+      rot = 1.5;
+    }
+    let tmpPort = {port_type: rsrc, location: loc, rotation: rot};
+    let tmpTile = {tile_type: "space", location: loc, rotation: rot};
+    let ctx = cnv.getContext("2d");
+    drawTile(tmpTile, ctx);
+    drawPort(tmpPort, ctx);
+  }
+}
 function rollDice() {
   if (turn != myIdx) {
     return;
@@ -1166,7 +1289,6 @@ function onmsg(event) {
   robberLoc = data.robber;
   pirateLoc = data.pirate;
   targetTile = data.target_tile;
-  placementPort = data.placement_port;
   cards = data.cards;
   devCardCount = data.dev_cards;
   diceRoll = data.dice_roll;
@@ -1184,6 +1306,7 @@ function onmsg(event) {
   tradeActiveOffer = data.trade_offer;
   counterOffers = data.counter_offers;
   robPlayers = data.rob_players;
+  treasure = data.treasure;
   longestRoutePlayer = data.longest_route_player;
   largestArmyPlayer = data.largest_army_player;
   eventLog = data.event_log;
@@ -1227,6 +1350,8 @@ function onmsg(event) {
   maybeShowCollectWindow(oldPhase);
   maybeShowDiscardWindow();
   maybeShowRobWindow();
+  maybeShowBuryWindow();
+  maybeShowPortWindow();
 }
 function updateEndTurn() {
   let canUseButton = false;

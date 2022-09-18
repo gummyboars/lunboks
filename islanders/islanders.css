@@ -207,10 +207,26 @@ div {
   flex-direction: row;
   z-index: 20; /* show over other elements */
 }
-#handpopup, #resourcepopup {
+#handpopup, #resourcepopup, #burypopup, #portpopup {
   display: none;
   flex-direction: column;
   z-index: 20;
+}
+#portselecttitle {
+  text-align: center;
+  padding-left: 1em;
+  padding-right: 1em;
+}
+#treasure {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+}
+#portselect {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-evenly;
+  border-top: 1px solid black;
 }
 .selectinner {
   flex: 0 0 auto;
@@ -301,7 +317,7 @@ div {
   flex: 0 1 auto;
   overflow-x: hidden;
 }
-#selectbuttons, #tradebuttons {
+#selectbuttons, #tradebuttons, #burybuttons {
   display: flex;
   flex-direction: row;
   align-items: center;
