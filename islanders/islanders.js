@@ -379,7 +379,17 @@ function updateCounterOfferSummary() {
   while (container.getElementsByClassName("countersummary").length) {
     container.removeChild(container.getElementsByClassName("countersummary")[0]);
   }
-  for (let i = 0; i < playerData.length; i++) {
+  let counters = [];
+  for (let [idx, p] of playerData.entries()) {
+    counters.push({name: p.name, color: p.color, offer: counterOffers[idx]});
+  }
+  if (myIdx == turn) {
+    let bankOffers = computeBankOffers();
+    for (let off of bankOffers) {
+      counters.push({name: "Bank", color: "black", offer: off});
+    }
+  }
+  for (let [i, counterData] of counters.entries()) {
     if (i == myIdx) {
       continue;
     }
@@ -393,8 +403,8 @@ function updateCounterOfferSummary() {
     leftText.classList.add("summaryfixed");
     let newp = document.createElement("P");
     let namespan = document.createElement("SPAN");
-    namespan.innerText = playerData[i].name;
-    namespan.style.color = playerData[i].color;
+    namespan.innerText = counterData.name;
+    namespan.style.color = counterData.color;
     namespan.style.fontWeight = "bold";
     let textspan = document.createElement("SPAN");
     textspan.innerText = leftSide == "want" ? " wants" : " offers";
@@ -405,7 +415,7 @@ function updateCounterOfferSummary() {
     let showMore = true;
     let canAccept = (myIdx == turn);
     if (i != turn) {
-      var counterOffer = counterOffers[i];
+      var counterOffer = counterData.offer;
       if (counterOffer === null) {
         textspan.innerText = " is considering...";
         canAccept = false;
@@ -415,7 +425,7 @@ function updateCounterOfferSummary() {
         newsummary.classList.add("rejected");
         canAccept = false;
         showMore = false;
-      } else if (areOffersEqual(tradeActiveOffer, counterOffer, true)) {
+      } else if (i < playerData.length && areOffersEqual(tradeActiveOffer, counterOffer, true)) {
         // The user may change their selection without updating their offer,
         // so we make sure that the selection and the offer match the counter offer.
         let currentOffer = {want: tradeSelection["top"], give: tradeSelection["bottom"]};
@@ -431,8 +441,8 @@ function updateCounterOfferSummary() {
       rightText.classList.add("summaryfixed");
       newp = document.createElement("P");
       namespan = document.createElement("SPAN");
-      namespan.innerText = playerData[i].name;
-      namespan.style.color = playerData[i].color;
+      namespan.innerText = counterData.name;
+      namespan.style.color = counterData.color;
       namespan.style.fontWeight = "bold";
       textspan = document.createElement("SPAN");
       textspan.innerText = rightSide == "want" ? " wants" : " offers";
@@ -454,9 +464,9 @@ function updateCounterOfferSummary() {
         addSelectionToPanel(tradeActiveOffer[leftSide], summaryLeft);
         addSelectionToPanel(tradeActiveOffer[rightSide], summaryRight);
         newsummary.style.order = "-1";
-      } else if (counterOffers[i]) {
-        addSelectionToPanel(counterOffers[i][leftSide], summaryLeft);
-        addSelectionToPanel(counterOffers[i][rightSide], summaryRight);
+      } else if (counterData.offer) {
+        addSelectionToPanel(counterData.offer[leftSide], summaryLeft);
+        addSelectionToPanel(counterData.offer[rightSide], summaryRight);
       }
       centerText.appendChild(newp);
       newsummary.appendChild(summaryLeft);
@@ -469,11 +479,67 @@ function updateCounterOfferSummary() {
       newsummary.classList.add("selectable");
       newsummary.classList.add("acceptable");
       newsummary.onclick = function(event) {
-        acceptCounter(event, playerIdx, counterOffers[i]);
+        if (i < playerData.length) {
+          acceptCounter(event, playerIdx, counterData.offer);
+        } else {
+          let msg = {
+            type: "trade_bank",
+            offer: {"want": counterData.offer["give"], "give": counterData.offer["want"]},
+          };
+          ws.send(JSON.stringify(msg));
+        }
       }
     }
     container.appendChild(newsummary);
   }
+}
+function computeBankOffers() {
+  if (myIdx != turn) {
+    return [];
+  }
+  let want = tradeSelection["top"];
+  let give = tradeSelection["bottom"];
+  let count = 0;
+  for (let rsrc in want) {
+    count += want[rsrc];
+  }
+  if (!count) {
+    return [];
+  }
+  let trades = [];
+  for (let rsrc of cardResources) {
+    if ((want[rsrc] || 0) > 0) {
+      continue;
+    }
+    trades.push({rsrc: rsrc, selected: (give[rsrc] || 0) > 0, ratio: playerData[myIdx].trade_ratios[rsrc]});
+  }
+  trades.sort(function(a, b) {
+    if (a.selected && !b.selected) {
+      return -1;
+    }
+    if (!a.selected && b.selected) {
+      return 1;
+    }
+    return a.ratio - b.ratio;
+  });
+  let used = {};
+  for (let rsrc of cardResources) {
+    used[rsrc] = 0;
+  }
+  for (let i = 0; i < count; i++) {
+    let found = false;
+    for (let trade of trades) {
+      if (cards[trade.rsrc] - used[trade.rsrc] >= trade.ratio) {
+        used[trade.rsrc] += trade.ratio;
+        found = true;
+        break;
+      }
+    }
+    if (!found) {
+      return [];
+    }
+  }
+  return [{want: used, give: Object.assign({}, want)}];
 }
 function toggleTradeWindow(partner) {
   let selectorType;

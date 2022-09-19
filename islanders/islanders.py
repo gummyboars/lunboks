@@ -493,6 +493,7 @@ class Player:
         "longest_route": self.longest_route,
         "resource_cards": self.resource_card_count(),
         "dev_cards": self.dev_card_count(),
+        "trade_ratios": {rsrc: self.trade_ratios[rsrc] for rsrc in RESOURCES},
         "points": 0,
     }
     if is_over:
@@ -2261,10 +2262,10 @@ class IslandersState:
       )
     # TODO: make sure there is enough left in the bank.
 
-    gave_text = ", ".join(["%s {%s}" % (count, rsrc) for rsrc, count in offer[self.GIVE].items()])
-    recv_text = ", ".join(["%s {%s}" % (count, rsrc) for rsrc, count in offer[self.WANT].items()])
+    gave_txt = ", ".join(f"{count} {{{rsrc}}}" for rsrc, count in offer[self.GIVE].items() if count)
+    recv_txt = ", ".join(f"{count} {{{rsrc}}}" for rsrc, count in offer[self.WANT].items() if count)
     self.event_log.append(Event(
-        "trade", "{player%s} traded %s with the bank for %s" % (player, gave_text, recv_text)))
+        "trade", "{player%s} traded %s with the bank for %s" % (player, gave_txt, recv_txt)))
     # Now, make the trade.
     for rsrc, want in offer[self.WANT].items():
       self.player_data[player].cards[rsrc] += want

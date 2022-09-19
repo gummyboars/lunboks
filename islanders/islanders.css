@@ -685,3 +685,6 @@ div {
   opacity: 0.6;
   cursor: not-allowed;
 }
+#tradebank {
+  display: none;
+}
