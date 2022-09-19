@@ -4,7 +4,8 @@ from .base import Item, Weapon, OneshotWeapon
 __all__ = [
     "CreateUnique", "EnchantedKnife", "EnchantedBlade", "HolyWater", "MagicLamp", "MagicPowder",
     "SwordOfGlory",
-    "AncientTablet", "EnchantedJewelry", "HealingStone", "BlueWatcher", "SunkenCityRuby"
+    "AncientTablet", "EnchantedJewelry", "HealingStone", "BlueWatcher", "SunkenCityRuby",
+    "ObsidianStatue", "OuterGodlyFlute",
 ]
 
 
@@ -249,13 +250,23 @@ class ObsidianStatue(Item):
 
 class OuterGodlyFlute(Item):
   def __init__(self, idx):
-    super().__init__("Outer Godly Flute", idx, "unique", {}, {}, None, 8)
+    super().__init__("Flute", idx, "unique", {}, {}, None, 8)
 
-  def get_usable_trigger(self, event, owner, state):
-    if not isinstance(event, events.Combat):
+  def get_usable_interrupt(self, event, owner, state):
+    if not isinstance(event, events.CombatRound):
       return None
-    seq = [events.Loss(owner, {"stamina": 3, "sanity": 3}), ]
-    # TODO: Defeat monsters
+    if owner.stamina < 3 or owner.sanity < 3:
+      print("Can't use")
+      return None
+
+    seq = [
+        events.DiscardSpecific(owner, [self]),
+        events.PassCombatRound(event)
+    ]
+    for monster in state.monsters:
+      if monster.place == owner.place and monster != event.monster:
+        seq.append(events.TakeTrophy(owner, monster))
+    seq.append(events.Loss(owner, {"stamina": 3, "sanity": 3}))
     return events.Sequence(
         seq, owner
     )
@@ -263,7 +274,7 @@ class OuterGodlyFlute(Item):
 
 class SunkenCityRuby(Item):
   def __init__(self, idx):
-    super().__init__("Ruby of the Sunken City", idx, "unique", {}, {}, None, 8)
+    super().__init__("Ruby", idx, "unique", {}, {}, None, 8)
 
   def get_interrupt(self, event, owner, state):
     if isinstance(event, events.CityMovement) and event.character == owner and not self.exhausted:

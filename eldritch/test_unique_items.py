@@ -182,10 +182,15 @@ class HealingStoneTest(EventTest):
 class BlueWatcherTest(EventTest):
   def setUp(self):
     super().setUp()
-    self.char.possessions = [items.BlueWatcher(0)]
+    self.watcher = items.BlueWatcher(0)
+    self.char.possessions = [self.watcher]
 
-  def testPassCombat(self):
+  def testPassCombatMonster(self):
     pass
+
+  def testPassCombatEncounter(self):
+    self.state.event_stack.append(encounters.Bank3(self.char))
+    watcher = self.resolve_to_usable(0, "Blue Watcher0")
 
   def testPassFightClose(self):
     pass
@@ -196,13 +201,13 @@ class BlueWatcherTest(EventTest):
   def testCantUseOnOtherFightOrLore(self):
     self.state.event_stack.append(encounters.Science2(self.char))
     with self.assertRaises(AssertionError):
-      self.resolve_to_usable(0, "Blue Watcher of the Pyramid0")
+      self.resolve_to_usable(0, "Blue Watcher0")
 
   def testNotEnoughStamina(self):
     self.char.stamina = 1
     self.state.event_stack.append(events.Combat(self.char, monsters.Cultist()))
     with self.assertRaises(AssertionError):
-      self.resolve_to_usable(0, "Blue Watcher of the Pyramid0")
+      self.resolve_to_usable(0, "Blue Watcher0")
 
 
 class RubyTest(EventTest):
@@ -220,3 +225,128 @@ class RubyTest(EventTest):
     self.resolve_to_choice(events.CityMovement)
     self.assertEqual(self.char.movement_points, 7)
     self.assertTrue(ruby.exhausted)
+
+
+class FluteTest(EventTest):
+  def setUp(self):
+    super().setUp()
+    self.flute = items.OuterGodlyFlute(0)
+    self.char.possessions = [self.flute]
+    self.maniac = monsters.Maniac()
+    self.cultist = monsters.Cultist()
+    self.flier = monsters.SubterraneanFlier()
+    self.state.monsters.extend([self.maniac, self.cultist, self.flier])
+
+  def enterCombat(self, monster_idx=0):
+    self.advance_turn(0, "movement")
+    move = self.resolve_to_choice(events.CityMovement)
+    move.resolve(self.state, "done")
+    try:
+      monster = self.resolve_to_choice(events.MonsterChoice)
+      monster.resolve(self.state, monster.monsters[monster_idx].handle)
+    except AssertionError:
+      pass
+    fight_or_flee = self.resolve_to_choice(events.FightOrEvadeChoice)
+    fight_or_flee.resolve(self.state, "Fight")
+    fight_or_flee = self.resolve_to_choice(events.FightOrEvadeChoice)
+    fight_or_flee.resolve(self.state, "Fight")
+
+  def testNotEnoughSanity(self):
+    self.maniac.place = self.char.place
+    self.char.sanity = 2
+    self.enterCombat()
+    with self.assertRaises(AssertionError):
+      self.resolve_to_usable(0, "Flute0")
+
+  def testNotEnoughStamina(self):
+    self.maniac.place = self.char.place
+    self.char.stamina = 2
+    self.enterCombat()
+    with self.assertRaises(AssertionError):
+      self.resolve_to_usable(0, "Flute0")
+
+  def testDevouredButBeaten(self):
+    self.maniac.place = self.char.place
+    self.cultist.place = self.char.place
+    self.char.stamina = 3
+    self.char.sanity = 3
+    self.enterCombat()
+    flute = self.resolve_to_usable(0, "Flute0")
+    self.state.event_stack.append(flute)
+    self.resolve_until_event_type(events.Devoured)
+    self.assertFalse(self.maniac.place)
+    self.assertFalse(self.cultist.place)
+
+  def testSingleMonsterNoHorror(self):
+    self.maniac.place = self.char.place
+    self.enterCombat()
+    flute = self.resolve_to_usable(0, "Flute0")
+    self.state.event_stack.append(flute)
+    self.resolve_until_done()
+    self.assertEqual(self.char.stamina, 2)
+    self.assertEqual(self.char.sanity, 2)
+    self.assertIn(self.maniac, self.char.trophies)
+    self.assertNotIn(self.flute, self.char.possessions)
+
+  def testMultiMonstersNoOverwhelming(self):
+    self.maniac.place = self.char.place
+    self.cultist.place = self.char.place
+    self.enterCombat(0)
+    flute = self.resolve_to_usable(0, "Flute0")
+    self.state.event_stack.append(flute)
+    self.resolve_until_done()
+    self.assertEqual(self.char.stamina, 2)
+    self.assertEqual(self.char.sanity, 2)
+    self.assertIn(self.maniac, self.char.trophies)
+    self.assertIn(self.cultist, self.char.trophies)
+    self.assertNotIn(self.flute, self.char.possessions)
+
+
+class ObsidianStatueTest(EventTest):
+  def setUp(self):
+    super().setUp()
+    self.statue = items.ObsidianStatue(0)
+    self.char.possessions = [self.statue]
+
+  def testSingleSanity(self):
+    self.state.event_stack.append(events.Loss(self.char, {"sanity": 1}))
+    statue = self.resolve_to_usable(0, "Obsidian Statue0")
+    self.state.event_stack.append(statue)
+    self.resolve_until_done()
+    self.assertEqual(self.char.sanity, 5)
+    self.assertNotIn(self.statue, self.char.possessions)
+
+  def testMultipleSanity(self):
+    self.state.event_stack.append(events.Loss(self.char, {"sanity": 2}))
+    statue = self.resolve_to_usable(0, "Obsidian Statue0")
+    self.state.event_stack.append(statue)
+    self.resolve_until_done()
+    self.assertEqual(self.char.sanity, 5)
+    self.assertNotIn(self.statue, self.char.possessions)
+
+  def testSingleStamina(self):
+    self.state.event_stack.append(events.Loss(self.char, {"stamina": 1}))
+    statue = self.resolve_to_usable(0, "Obsidian Statue0")
+    self.state.event_stack.append(statue)
+    self.resolve_until_done()
+    self.assertEqual(self.char.stamina, 5)
+    self.assertNotIn(self.statue, self.char.possessions)
+
+  def testMultipleStamina(self):
+    self.state.event_stack.append(events.Loss(self.char, {"stamina": 2}))
+    statue = self.resolve_to_usable(0, "Obsidian Statue0")
+    self.state.event_stack.append(statue)
+    self.resolve_until_done()
+    self.assertEqual(self.char.stamina, 5)
+    self.assertNotIn(self.statue, self.char.possessions)
+
+  def testSanityAndStamina(self):
+    self.state.event_stack.append(events.Loss(self.char, {"stamina": 2, "sanity": 2}))
+    statue = self.resolve_to_usable(0, "Obsidian Statue0")
+    self.state.event_stack.append(statue)
+    choice = self.resolve_to_choice(events.MultipleChoice)
+    choice.resolve(self.state, "Stamina")
+    self.resolve_until_done()
+    self.assertEqual(self.char.stamina, 5)
+    self.assertEqual(self.char.sanity, 3)
+    self.assertNotIn(self.statue, self.char.possessions)

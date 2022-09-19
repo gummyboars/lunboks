@@ -3271,6 +3271,10 @@ class EvadeOrFightAll(Event):
       assert self.combat.is_done()
       idx = self.monsters.index(self.combat.monster)
       self.done[idx] = True
+      for idx, monster in enumerate(self.monsters):
+        # Maybe an item defeated these monsters
+        if monster in self.character.trophies:
+          self.done[idx] = True
       self.combat = None
     if all(self.done):
       return
@@ -3287,8 +3291,9 @@ class EvadeOrFightAll(Event):
       annotations = ["Done" if self.done[idx] else None for idx, _ in present_monsters]
       prompt = "Choose a monster to fight or evade"
       none_choice = "Ignore All" if self.auto_evade else None
-      self.choice = MonsterChoice(self.character, prompt, shown_monsters, annotations, none_choice)
-      state.event_stack.append(self.choice)
+      if shown_monsters:
+        self.choice = MonsterChoice(self.character, prompt, shown_monsters, annotations, none_choice)
+        state.event_stack.append(self.choice)
       return
 
     # If the user has chosen the option to evade all remaining monsters, we are done.
