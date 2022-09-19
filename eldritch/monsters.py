@@ -444,7 +444,7 @@ class EventMonster(Monster):
 
     if ((not isinstance(event, events.CombatRound))
         or event.check is None
-        or not event.check.is_done()):
+            or not event.check.is_done()):
       return None
 
     if (event.check.successes or 0) < self.toughness(state, event.character):
