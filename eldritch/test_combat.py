@@ -2650,7 +2650,7 @@ class CombatWithRedSignTest(EventTest):
 
   def testCastFutilely(self):
     giant_insect = monsters.GiantInsect()
-    choose_weapons = self.start(giant_insect)
+    self.start(giant_insect)
     self.assertEqual(giant_insect.toughness(self.state, self.char), 1)
 
     self.assertNotIn("Red Sign0", self.state.usables.get(0, {}))
