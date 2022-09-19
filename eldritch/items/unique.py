@@ -4,7 +4,7 @@ from .base import Item, Weapon, OneshotWeapon
 __all__ = [
     "CreateUnique", "EnchantedKnife", "EnchantedBlade", "HolyWater", "MagicLamp", "MagicPowder",
     "SwordOfGlory",
-    "AncientTablet", "EnchantedJewelry", "HealingStone", "BluePyramidWatcher", "SunkenCityRuby"
+    "AncientTablet", "EnchantedJewelry", "HealingStone", "BlueWatcher", "SunkenCityRuby"
 ]
 
 
@@ -97,9 +97,9 @@ class AncientTablet(Item):
     ], owner)
 
 
-class BluePyramidWatcher(Item):
+class BlueWatcher(Item):
   def __init__(self, idx):
-    super().__init__("Blue Watcher of the Pyramid", idx, "unique", {}, {}, None, 4)
+    super().__init__("Blue Watcher", idx, "unique", {}, {}, None, 4)
 
   def get_usable_interrupt(self, event, owner, state):
     if not isinstance(event, (events.Check, events.CombatRound)):

@@ -182,7 +182,7 @@ class HealingStoneTest(EventTest):
 class BlueWatcherTest(EventTest):
   def setUp(self):
     super().setUp()
-    self.char.possessions = [items.BluePyramidWatcher(0)]
+    self.char.possessions = [items.BlueWatcher(0)]
 
   def testPassCombat(self):
     pass
