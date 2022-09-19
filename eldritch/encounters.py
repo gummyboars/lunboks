@@ -3,6 +3,7 @@ import operator
 from eldritch import events
 from eldritch import items
 from eldritch import values
+from eldritch.monsters import EventMonster
 
 
 class EncounterCard:
@@ -449,11 +450,15 @@ def Graveyard2(char):
 
 
 def Graveyard3(char):
-  check = events.Check(char, "combat", -2)
   victory = events.Sequence([events.Draw(char, "unique", 1), events.Gain(char, {"clues": 1})])
   damage = events.DiceRoll(char, 1)
   defeat = events.Loss(char, {"stamina": values.Die(damage)})
-  return events.PassFail(char, check, victory, events.Sequence([damage, defeat], char))
+  fail_event = events.Sequence([damage, defeat], char)
+  return events.CombatRound(
+      char,
+      EventMonster("vampire", {"combat": -2}, pass_event=victory, fail_event=fail_event),
+      deactivate=True
+  )
 
 
 def Graveyard4(char):
@@ -1011,14 +1016,13 @@ def Bank2(char):
 
 
 def Bank3(char):
-  prep = events.CombatChoice(char, "Choose weapons to fight the bank robbers")
-  check = events.Check(char, "combat", -1)
   robbed = events.Loss(char, {"dollars": float("inf")})
   nothing = events.Nothing()
-  cond = events.Conditional(char, check, "successes", {0: robbed, 1: nothing})
-  deactivate = events.DeactivateItems(char)
-  de_spell = events.DeactivateSpells(char)
-  return events.Sequence([prep, check, cond, deactivate, de_spell], char)
+  return events.CombatRound(
+      char,
+      EventMonster("bank robbers", {"combat": -1}, nothing, robbed),
+      deactivate=True
+  )
 
 
 def Bank4(char):
@@ -1237,14 +1241,13 @@ def Hospital1(char):
 
 def Hospital2(char):
   sanity = events.Loss(char, {"sanity": 1})
-  prep = events.CombatChoice(char, "Choose weapons to fight the corpse")
-  check = events.Check(char, "combat", -1)
   won = events.Gain(char, {"clues": 1})
   lost = events.ForceMovement(char, "Uptown")
-  cond = events.Conditional(char, check, "successes", {0: lost, 1: won})
-  deactivate = events.DeactivateItems(char)
-  de_spell = events.DeactivateSpells(char)
-  return events.Sequence([sanity, prep, check, cond, deactivate, de_spell], char)
+  combat = events.CombatRound(
+      char,
+      EventMonster("corpse", {"combat": -1}, won, lost),
+      deactivate=True)
+  return events.Sequence([sanity, combat], char)
 
 
 def Hospital3(char):
