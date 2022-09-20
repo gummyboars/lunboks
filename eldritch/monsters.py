@@ -428,7 +428,7 @@ def Zombie():
 
 
 class EventMonster(Monster):
-  """A pseudo-monster used for events like Bank3 and Hospital2"""
+  """A pseudo-monster used for events like Bank3, Hospital2, and Graveyard3"""
 
   def __init__(self, name, rating, pass_event, fail_event, toughness=1, attributes=None):
     super().__init__(
