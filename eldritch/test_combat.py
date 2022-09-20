@@ -2648,25 +2648,12 @@ class CombatWithRedSignTest(EventTest):
     self.assertFalse(self.char.possessions[2].in_use)
     self.assertFalse(self.char.possessions[2].exhausted)
 
-  def testToughnessCannotBeLessThanOne(self):
+  def testCastFutilely(self):
     giant_insect = monsters.GiantInsect()
-    choose_weapons = self.start(giant_insect)
+    self.start(giant_insect)
     self.assertEqual(giant_insect.toughness(self.state, self.char), 1)
 
-    self.state.event_stack.append(self.state.usables[0]["Red Sign0"])
-    choose_ignore = self.resolve_to_choice(SpendChoice)
-    self.assertEqual(choose_ignore.choices, ["none", "Cancel"])
-    self.spend("sanity", 1, choose_ignore)
-    choose_ignore.resolve(self.state, "none")
-
-    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
-      choose_weapons = self.resolve_to_choice(CombatChoice)
-    self.assertEqual(giant_insect.toughness(self.state, self.char), 1)
-    self.choose_items(choose_weapons, [".38 Revolver0"])
-
-    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)) as rand:
-      self.resolve_until_done()
-      self.assertEqual(rand.call_count, 7)  # Fight (4) + insect 0 + revolver (3)
+    self.assertNotIn("Red Sign0", self.state.usables.get(0, {}))
 
   def testIgnoresMagicalResistance(self):
     witch = monsters.Witch()

@@ -3479,7 +3479,7 @@ class PassEvadeRound(Event):
 
 class CombatRound(Event):
 
-  def __init__(self, character, monster):
+  def __init__(self, character, monster, deactivate=False):
     super().__init__()
     self.character = character
     self.monster = monster
@@ -3492,6 +3492,7 @@ class CombatRound(Event):
     self.defeated = None
     self.damage: Optional[Event] = None
     self.pass_combat: Optional[Event] = None
+    self.deactivate = deactivate
     self.done = False
 
   def resolve(self, state):
@@ -3514,6 +3515,14 @@ class CombatRound(Event):
           self.character, "combat", self.monster.difficulty("combat", state, self.character), attrs)
     if not self.check.is_done():
       state.event_stack.append(self.check)
+      return
+
+    if self.deactivate and not isinstance(self.deactivate, Event):
+      self.deactivate = Sequence(
+          [DeactivateItems(self.character), DeactivateSpells(self.character)],
+          self.character
+      )
+      state.event_stack.append(self.deactivate)
       return
 
     if self.defeated is None:

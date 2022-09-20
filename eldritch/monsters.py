@@ -427,6 +427,31 @@ def Zombie():
   )
 
 
+class EventMonster(Monster):
+  """A pseudo-monster used for events like Bank3, Hospital2, and Graveyard3"""
+
+  def __init__(self, name, rating, pass_event, fail_event, toughness=1, attributes=None):
+    super().__init__(
+        name, "normal", "moon",  dict(evade=0, **rating),
+        {"combat": 0, }, toughness, attributes or set()
+    )
+    self.pass_event = pass_event
+    self.fail_event = fail_event
+
+  def get_trigger(self, event, state):
+    if isinstance(event, events.PassCombatRound):
+      return self.pass_event
+
+    if ((not isinstance(event, events.CombatRound))
+        or event.check is None
+            or not event.check.is_done()):
+      return None
+
+    if (event.check.successes or 0) < self.toughness(state, event.character):
+      return self.fail_event
+    return None
+
+
 MONSTERS = {
     x().name: x for x in [
         GiantInsect, LandSquid, Cultist, TentacleTree, DimensionalShambler, GiantWorm, ElderThing,

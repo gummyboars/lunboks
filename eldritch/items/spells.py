@@ -279,6 +279,8 @@ class RedSign(CombatSpell):
     if not isinstance(getattr(event, "monster", None), monsters.Monster):
       return None
     attributes = sorted(event.monster.attributes(state, owner) - self.INVALID_ATTRIBUTES)
+    if not attributes and event.monster.toughness(state, event.character) == 1:
+      return None
     choices = attributes + ["none", "Cancel"]
     spend = values.ExactSpendPrerequisite({"sanity": self.sanity_cost})
     spends = [spend] * (len(choices)-1) + [None]

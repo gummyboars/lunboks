@@ -4719,6 +4719,8 @@ class GraveyardTest(EncounterTest):
     self.char.fight_will_slider = 2
     self.state.unique.append(items.HolyWater(0))
     self.state.event_stack.append(encounters.Graveyard3(self.char))
+    choice = self.resolve_to_choice(events.CombatChoice)
+    choice.resolve(self.state, "done")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       self.resolve_until_done()
     self.assertEqual(self.char.clues, 1)
@@ -4730,6 +4732,8 @@ class GraveyardTest(EncounterTest):
     self.char.stamina = 4
     self.state.unique.append(items.HolyWater(0))
     self.state.event_stack.append(encounters.Graveyard3(self.char))
+    choice = self.resolve_to_choice(events.CombatChoice)
+    choice.resolve(self.state, "done")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=1)):
       self.resolve_until_done()
     self.assertEqual(self.char.stamina, 3)
@@ -4739,6 +4743,8 @@ class GraveyardTest(EncounterTest):
     self.char.stamina = 4
     self.state.unique.append(items.HolyWater(0))
     self.state.event_stack.append(encounters.Graveyard3(self.char))
+    choice = self.resolve_to_choice(events.CombatChoice)
+    choice.resolve(self.state, "done")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=2)):
       self.resolve_until_done()
     self.assertEqual(self.char.stamina, 2)
@@ -4748,6 +4754,8 @@ class GraveyardTest(EncounterTest):
     self.char.stamina = 4
     self.state.unique.append(items.HolyWater(0))
     self.state.event_stack.append(encounters.Graveyard3(self.char))
+    choice = self.resolve_to_choice(events.CombatChoice)
+    choice.resolve(self.state, "done")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
       self.resolve_until_done()
     self.assertEqual(self.char.stamina, 1)
@@ -4757,6 +4765,8 @@ class GraveyardTest(EncounterTest):
     self.char.stamina = 5
     self.state.unique.append(items.HolyWater(0))
     self.state.event_stack.append(encounters.Graveyard3(self.char))
+    choice = self.resolve_to_choice(events.CombatChoice)
+    choice.resolve(self.state, "done")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=4)):
       self.resolve_until_done()
     self.assertEqual(self.char.stamina, 1)
@@ -4766,6 +4776,8 @@ class GraveyardTest(EncounterTest):
     self.char.stamina = 4
     self.state.unique.append(items.HolyWater(0))
     self.state.event_stack.append(encounters.Graveyard3(self.char))
+    choice = self.resolve_to_choice(events.CombatChoice)
+    choice.resolve(self.state, "done")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=4)):
       choice = self.resolve_to_choice(ItemLossChoice)
     self.choose_items(choice, [])
