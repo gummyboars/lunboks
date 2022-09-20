@@ -167,7 +167,7 @@ class GateBox(Item):
         or not event.character == owner
         or len(state.event_stack) < 2
         or not isinstance(state.event_stack[-2], events.Return)
-        or event.gate_name is None):
+            or event.gate_name is None):
       return None
     print("Gate boxing")
     gate_choice = events.GateChoice(
