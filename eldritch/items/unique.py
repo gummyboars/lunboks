@@ -4,8 +4,8 @@ from .base import Item, Weapon, OneshotWeapon
 __all__ = [
     "CreateUnique", "EnchantedKnife", "EnchantedBlade", "HolyWater", "MagicLamp", "MagicPowder",
     "SwordOfGlory",
-    "AncientTablet", "EnchantedJewelry", "HealingStone", "BlueWatcher", "SunkenCityRuby",
-    "ObsidianStatue", "OuterGodlyFlute",
+    "AncientTablet", "EnchantedJewelry", "GateBox", "HealingStone", "BlueWatcher", "SunkenCityRuby",
+    "ObsidianStatue", "OuterGodlyFlute"
 ]
 
 
@@ -163,13 +163,20 @@ class GateBox(Item):
     super().__init__("Gate Box", idx, "unique", {}, {}, None, 4)
 
   def get_interrupt(self, event, owner, state):
-    if not isinstance(event, events.GateChoice) or not event.character == owner:
+    if (not isinstance(event, events.GateChoice)
+        or not event.character == owner
+        or len(state.event_stack) < 2
+        or not isinstance(state.event_stack[-2], events.Return)
+        or event.gate_name is None):
       return None
-    if event.gate_name is None:
-      return None
+    print("Gate boxing")
+    gate_choice = events.GateChoice(
+        owner, "Gate box allows you to choose any open gate", None, event.none_choice, event.annotation
+    )
+    state.event_stack[-2].return_choice = gate_choice
     return events.Sequence([
         events.CancelEvent(event),
-        events.GateChoice(owner, "Choose any open gate", None, event.none_choice, event.annotation)
+        gate_choice
     ],
         owner)
 
@@ -231,9 +238,11 @@ class ObsidianStatue(Item):
 
     types = [loss_type for loss_type in ("sanity", "stamina") if loss_type in event.losses]
     seq = [events.DiscardSpecific(owner, [self])]
-    if len(types) == 1:
+    if len(types) == 0:
+      return None
+    elif len(types) == 1:
       loss_type = types[0]
-      seq.append(events.LossPrevention(self, event, loss_type, event.losses[loss_type]))
+      seq.append(events.LossPrevention(self, event, loss_type, float("inf")))
     else:
       seq.append(
           events.BinaryChoice(
@@ -241,8 +250,8 @@ class ObsidianStatue(Item):
               "Prevent Sanity or Stamina loss?",
               "Sanity",
               "Stamina",
-              events.LossPrevention(self, event, "sanity", event.losses["sanity"]),
-              events.LossPrevention(self, event, "stamina", event.losses["stamina"]),
+              events.LossPrevention(self, event, "sanity", float("inf")),
+              events.LossPrevention(self, event, "stamina", float("inf")),
           )
       )
     return events.Sequence(seq, owner)
@@ -277,9 +286,6 @@ class SunkenCityRuby(Item):
     super().__init__("Ruby", idx, "unique", {}, {}, None, 8)
 
   def get_interrupt(self, event, owner, state):
-    if isinstance(event, events.CityMovement) and event.character == owner and not self.exhausted:
-      return events.Sequence([
-          events.ChangeMovementPoints(owner, 3),
-          events.ExhaustAsset(owner, self)
-      ])
+    if isinstance(event, events.CityMovement) and event.character == owner:
+      return events.ChangeMovementPoints(owner, 3)
     return None

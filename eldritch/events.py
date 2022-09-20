@@ -3273,7 +3273,7 @@ class EvadeOrFightAll(Event):
       self.done[idx] = True
       for idx, monster in enumerate(self.monsters):
         # Maybe an item defeated these monsters
-        if monster in self.character.trophies:
+        if monster.place != self.character.place:
           self.done[idx] = True
       self.combat = None
     if all(self.done):
@@ -3291,9 +3291,8 @@ class EvadeOrFightAll(Event):
       annotations = ["Done" if self.done[idx] else None for idx, _ in present_monsters]
       prompt = "Choose a monster to fight or evade"
       none_choice = "Ignore All" if self.auto_evade else None
-      if shown_monsters:
-        self.choice = MonsterChoice(self.character, prompt, shown_monsters, annotations, none_choice)
-        state.event_stack.append(self.choice)
+      self.choice = MonsterChoice(self.character, prompt, shown_monsters, annotations, none_choice)
+      state.event_stack.append(self.choice)
       return
 
     # If the user has chosen the option to evade all remaining monsters, we are done.
@@ -3603,21 +3602,21 @@ class CombatRound(Event):
     return f"{self.character.name} did not defeat the {self.monster.name}"
 
 
-# class PassCheck(Event):
-#   def __init__(self, character, check):
-#     self.character = character
-#     self.check = check
-#     self.done = False
-#     super().__init__()
-#
-#   def resolve(self, state):
-#     self.check
-#
-#   def is_resolved(self):
-#     return self.is_done
-#
-#   def log(self, state):
-#     return f"{self.character.name} force-passed a {self.check.check_type} check"
+class PassCheck(Event):
+  def __init__(self, character, check):
+    self.character = character
+    self.check = check
+    self.done = False
+    super().__init__()
+
+  def resolve(self, state):
+    self.check
+
+  def is_resolved(self):
+    return self.is_done
+
+  def log(self, state):
+    return f"{self.character.name} force-passed a {self.check.check_type} check"
 
 
 class PassCombatRound(Event):

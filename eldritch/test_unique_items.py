@@ -190,6 +190,8 @@ class BlueWatcherTest(EventTest):
 
   def testPassCombatEncounter(self):
     self.state.event_stack.append(encounters.Bank3(self.char))
+    weapons = self.resolve_to_choice(events.CombatChoice)
+    weapons.resolve(self.state, "done")
     watcher = self.resolve_to_usable(0, "Blue Watcher0")
 
   def testPassFightClose(self):
@@ -224,7 +226,16 @@ class RubyTest(EventTest):
     self.char.possessions = [ruby]
     self.resolve_to_choice(events.CityMovement)
     self.assertEqual(self.char.movement_points, 7)
-    self.assertTrue(ruby.exhausted)
+
+  def testOnlyGainOncePerTurn(self):
+    ruby = items.SunkenCityRuby(0)
+    self.char.possessions = [ruby]
+    choice = self.resolve_to_choice(events.CityMovement)
+    print(choice.choices)
+    choice.resolve(self.state, "Roadhouse")
+    self.resolve_to_choice(events.CityMovement)
+    self.assertEqual(self.char.movement_points, 5)
+    self.assertEqual(self.char.place.name, "Roadhouse")
 
 
 class FluteTest(EventTest):
@@ -302,11 +313,48 @@ class FluteTest(EventTest):
     self.assertNotIn(self.flute, self.char.possessions)
 
 
+class GateBoxTeset(EventTest):
+  def setUp(self):
+    super().setUp()
+    self.char.possessions = [items.GateBox(0)]
+    self.char.place = self.state.places["Sunken City2"]
+    self.advance_turn(0, "movement")
+
+  def get_gate(self, gate_name):
+    return next(
+        gate for gate in self.state.gates
+        if gate.name == gate_name
+    )
+
+  def testTwoGates(self):
+    self.state.places["Woods"].gate = self.get_gate("Sunken City")
+    self.state.places["Diner"].gate = self.get_gate("Abyss")
+    choice = self.resolve_to_choice(events.GateChoice)
+    choice.resolve(self.state, "Diner")
+    self.resolve_until_done()
+    self.assertEqual(self.char.place.name, "Diner")
+
+  def testNoChoiceOnOneGate(self):
+    self.state.places["Woods"].gate = self.get_gate("Sunken City")
+    self.resolve_until_done()
+    self.assertEqual(self.char.place.name, "Woods")
+
+  def testSaveLostInTimeAndSpace(self):
+    self.state.places["Woods"].gate = self.get_gate("Abyss")
+    self.resolve_until_done()
+    self.assertEqual(self.char.place.name, "Woods")
+
+
 class ObsidianStatueTest(EventTest):
   def setUp(self):
     super().setUp()
     self.statue = items.ObsidianStatue(0)
     self.char.possessions = [self.statue]
+
+  def testClueLoss(self):
+    self.state.event_stack.append(events.Loss(self.char, {"clues": 1}))
+    with self.assertRaises(AssertionError):
+      self.resolve_to_usable(0, "Obsidian Statue0")
 
   def testSingleSanity(self):
     self.state.event_stack.append(events.Loss(self.char, {"sanity": 1}))
