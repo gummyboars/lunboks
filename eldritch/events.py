@@ -2319,6 +2319,7 @@ class Check(Event):
     self.modifier = modifier
     self.attributes = attributes
     self.dice: Optional[Event] = None
+    self.pass_check: Optional[Event] = None
     self.roll = None
     self.successes = None
     self.spend: Optional[SpendChoice] = None
@@ -2326,6 +2327,10 @@ class Check(Event):
     self.done = False
 
   def resolve(self, state):
+    if self.pass_check is not None:
+        self.successes = float("inf")
+        self.done = True
+        return
     if self.dice is None:
       if self.check_type == "combat":
         num_dice = self.character.combat(state, self.attributes) + self.modifier
@@ -2387,6 +2392,8 @@ class Check(Event):
     return f"{self.check_type} {self.modifier:+d} check"
 
   def log(self, state):
+    if self.pass_check:
+      return f"{self.character.name} passed check"
     if self.cancelled and self.roll is None:
       return f"{self.character.name} did not make a {self.check_str()}"
     if self.roll is None:
@@ -3603,17 +3610,19 @@ class CombatRound(Event):
 
 
 class PassCheck(Event):
-  def __init__(self, character, check):
+  def __init__(self, character, check, item):
     self.character = character
     self.check = check
+    self.item = item
     self.done = False
     super().__init__()
 
   def resolve(self, state):
-    self.check
+    self.check.pass_check = self
+    self.done = True
 
   def is_resolved(self):
-    return self.is_done
+    return self.done
 
   def log(self, state):
     return f"{self.character.name} force-passed a {self.check.check_type} check"

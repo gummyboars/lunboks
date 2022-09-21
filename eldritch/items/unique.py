@@ -115,14 +115,18 @@ class BlueWatcher(Item):
               event,
               log_message="{char_name} passed a combat round against {monster_name} using Blue Watcher of the Pyramid"
           ),
-          events.DiscardSpecific(owner, [self])
+          events.DiscardSpecific(owner, [self]),
+          events.Loss(owner, {"stamina": 2})
       ], owner)
-    # TODO: Pass combat check or gate close check
     if (event.check_type == "combat"
         or (event.check_type in ("fight", "lore")
             and isinstance(state.event_stack[-2], events.GateCloseAttempt))):
       return events.Sequence(
-          [events.DiscardSpecific(owner, [self]), events.PassCheck(owner, event)],
+          [
+            events.DiscardSpecific(owner, [self]),
+            events.PassCheck(owner, event, self),
+            events.Loss(owner, {"stamina": 2})
+          ],
           owner
       )
     return None

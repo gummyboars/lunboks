@@ -190,15 +190,47 @@ class BlueWatcherTest(EventTest):
 
   def testPassCombatEncounter(self):
     self.state.event_stack.append(encounters.Bank3(self.char))
-    weapons = self.resolve_to_choice(events.CombatChoice)
-    weapons.resolve(self.state, "done")
     watcher = self.resolve_to_usable(0, "Blue Watcher0")
+    self.state.event_stack.append(watcher)
+    self.resolve_until_done()
+    self.assertEqual(self.char.stamina, 3)
+    self.assertFalse(self.char.trophies)
+    self.assertNotIn(self.watcher, self.char.possessions)
+
 
   def testPassFightClose(self):
-    pass
+    gate = self.state.gates[0]
+    self.state.places["Diner"].gate = gate
+    self.state.event_stack.append(events.GateCloseAttempt(self.char, "Diner"))
+    choice = self.resolve_to_choice(events.MultipleChoice)
+    choice.resolve(self.state, "Close with fight")
+    watcher = self.resolve_to_usable(0, "Blue Watcher0")
+    self.state.event_stack.append(watcher)
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=1)):
+      seal = self.resolve_to_choice(events.SpendChoice)
+    seal.resolve(self.state, "No")
+    self.resolve_until_done()
+    self.assertEqual(self.char.stamina, 3)
+    self.assertNotIn(self.watcher, self.char.possessions)
+    self.assertIn(gate, self.char.trophies)
+
 
   def testFightLoreClose(self):
-    pass
+    gate = self.state.gates[0]
+    self.state.places["Diner"].gate = gate
+    self.state.event_stack.append(events.GateCloseAttempt(self.char, "Diner"))
+    choice = self.resolve_to_choice(events.MultipleChoice)
+    choice.resolve(self.state, "Close with lore")
+    watcher = self.resolve_to_usable(0, "Blue Watcher0")
+    self.state.event_stack.append(watcher)
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=1)):
+      seal = self.resolve_to_choice(events.SpendChoice)
+    seal.resolve(self.state, "No")
+    self.resolve_until_done()
+    self.assertEqual(self.char.stamina, 3)
+    self.assertNotIn(self.watcher, self.char.possessions)
+    self.assertIn(gate, self.char.trophies)
+
 
   def testCantUseOnOtherFightOrLore(self):
     self.state.event_stack.append(encounters.Science2(self.char))
