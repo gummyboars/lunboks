@@ -2443,6 +2443,7 @@ class BankTest(EncounterTest):
       self.resolve_until_done()
     self.assertEqual(self.char.dollars, 3)
     self.assertFalse(any(pos.active for pos in self.char.possessions))
+    self.assertFalse(self.char.trophies)
 
   def testBank3HandsPass(self):
     self.state.event_stack.append(encounters.Bank3(self.char))
@@ -2452,6 +2453,7 @@ class BankTest(EncounterTest):
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       self.resolve_until_done()
     self.assertEqual(self.char.dollars, 3)
+    self.assertFalse(self.char.trophies)
 
   def testBank3Spell(self):
     self.char.possessions.extend([items.Wither(0), items.RedSign(0)])
@@ -2473,6 +2475,7 @@ class BankTest(EncounterTest):
     self.assertFalse(self.char.possessions[0].active)
     self.assertFalse(self.char.possessions[0].in_use)
     self.assertTrue(self.char.possessions[0].exhausted)
+    self.assertFalse(self.char.trophies)
 
   def testBank4Pass(self):
     self.state.event_stack.append(encounters.Bank4(self.char))
@@ -3512,6 +3515,7 @@ class HospitalTest(EncounterTest):
     self.assertEqual(self.char.sanity, 2)
     self.assertEqual(self.char.stamina, 3)
     self.assertEqual(self.char.clues, 1)
+    self.assertFalse(self.char.trophies)
 
   def testHospital2Gun(self):
     self.char.possessions.append(items.TommyGun(0))
@@ -3526,6 +3530,7 @@ class HospitalTest(EncounterTest):
     self.assertEqual(self.char.stamina, 3)
     self.assertEqual(self.char.clues, 1)
     self.assertFalse(any(pos.active for pos in self.char.possessions))
+    self.assertFalse(self.char.trophies)
 
   def testHospital2Spell(self):
     self.char.possessions.append(items.Wither(0))
@@ -3547,6 +3552,7 @@ class HospitalTest(EncounterTest):
     self.assertFalse(self.char.possessions[0].active)
     self.assertFalse(self.char.possessions[0].in_use)
     self.assertTrue(self.char.possessions[0].exhausted)
+    self.assertFalse(self.char.trophies)
 
   def testHospital2Loss(self):
     self.state.event_stack.append(encounters.Hospital2(self.char))
@@ -4726,6 +4732,7 @@ class GraveyardTest(EncounterTest):
     self.assertEqual(self.char.clues, 1)
     self.assertEqual(len(self.char.possessions), 1)
     self.assertEqual(self.char.possessions[0].name, "Holy Water")
+    self.assertFalse(self.char.trophies)
 
   def testGraveyard3FailOne(self):
     self.char.fight_will_slider = 2

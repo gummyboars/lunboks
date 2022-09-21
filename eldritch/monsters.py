@@ -438,6 +438,11 @@ class EventMonster(Monster):
     self.pass_event = pass_event
     self.fail_event = fail_event
 
+  def get_interrupt(self, event, state):
+    if isinstance(event, events.TakeTrophy):
+      return events.CancelEvent(event)
+    return None
+
   def get_trigger(self, event, state):
     if isinstance(event, events.PassCombatRound):
       return self.pass_event
