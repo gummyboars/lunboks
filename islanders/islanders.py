@@ -23,6 +23,7 @@ random = SystemRandom()
 # ruff: noqa: UP031
 
 RESOURCES = ["rsrc1", "rsrc2", "rsrc3", "rsrc4", "rsrc5"]
+TRADABLES = RESOURCES + ["gold"]
 PLAYABLE_DEV_CARDS = ["yearofplenty", "monopoly", "roadbuilding", "knight"]
 VICTORY_CARDS = ["palace", "chapel", "university", "market", "library"]
 TREASURES = ["collect1", "collect2", "collectpi", "roadbuilding", "takedev"]
@@ -115,6 +116,7 @@ class Options(collections.OrderedDict):
     self["max_cities"] = GameOption(
       "Max Cities", default=4, forced=True, hidden=True, choices=[4, 8]
     )
+    self["gold"] = GameOption("Gold Trading", default=False, forced=True, hidden=True)
     self["friendly_robber"] = GameOption("Friendly Robber", default=False)
     self["randomness"] = GameOption("Randomness", default=36, choices=list(range(37)))
     self["victory_points"] = GameOption("Victory Points", default=10, choices=list(range(8, 22)))
@@ -520,9 +522,15 @@ class Player:
     self.cards = collections.defaultdict(int)
     self.trade_ratios = collections.defaultdict(lambda: 4)
     self.unusable = collections.defaultdict(int)
+    self.gold_traded = 0
 
   def json_repr(self):
-    return {attr: getattr(self, attr) for attr in self.__dict__}
+    defaultdict_attrs = ["cards", "trade_ratios", "unusable"]
+    data = {attr: getattr(self, attr) for attr in self.__dict__.keys() - set(defaultdict_attrs)}
+    for attr in defaultdict_attrs:
+      data[attr] = dict(getattr(self, attr))
+    data["trade_ratios"]["default"] = self.trade_ratios.default_factory()
+    return data
 
   @staticmethod
   def parse_json(value):
@@ -532,7 +540,11 @@ class Player:
       getattr(player, attr).update(value[attr])
     value.setdefault("buried_treasure", 0)  # Backwards compatibility
     for attr in set(player.__dict__.keys()) - set(defaultdict_attrs):
-      setattr(player, attr, value[attr])
+      if attr in value:
+        setattr(player, attr, value[attr])
+    ratio_default = player.trade_ratios.pop("default", None)
+    if ratio_default is not None:
+      player.trade_ratios.default_factory = lambda: ratio_default
     return player
 
   def __str__(self):
@@ -546,10 +558,12 @@ class Player:
       "longest_route": self.longest_route,
       "buried_treasure": self.buried_treasure,
       "resource_cards": self.resource_card_count(),
+      "gold": self.cards.get("gold", 0),
       "dev_cards": self.dev_card_count(),
       "trade_ratios": {rsrc: self.trade_ratios[rsrc] for rsrc in RESOURCES},
       "points": 0,
     }
+    ret["trade_ratios"]["default"] = self.trade_ratios.default_factory()
     if is_over:
       ret["dev_cards"] = {
         name: count
@@ -786,7 +800,6 @@ class IslandersState:
     if player_idx is not None:
       data["you"] = player_idx
       data["cards"] = self.player_data[player_idx].cards
-      data["trade_ratios"] = self.player_data[player_idx].trade_ratios
     events = data.pop("event_log")
     data["event_log"] = []
     for event in events:
@@ -1058,6 +1071,7 @@ class IslandersState:
 
   def end_turn(self):
     self.player_data[self.turn_idx].unusable.clear()
+    self.player_data[self.turn_idx].gold_traded = 0
     self.played_dev = 0
     self.ships_moved = 0
     self.built_this_turn.clear()
@@ -2150,9 +2164,9 @@ class IslandersState:
     """Sets the trade ratios for a player who built a settlement at this location."""
     port_type = self.port_corners.get(location)
     if port_type == "3":
-      for rsrc in RESOURCES:
-        new_ratio = min(self.player_data[player].trade_ratios[rsrc], 3)
-        self.player_data[player].trade_ratios[rsrc] = new_ratio
+      self.player_data[player].trade_ratios.default_factory = lambda: 3
+      for rsrc, ratio in self.player_data[player].trade_ratios.items():
+        self.player_data[player].trade_ratios[rsrc] = min(ratio, 3)
     elif port_type:
       new_ratio = min(self.player_data[player].trade_ratios[port_type], 2)
       self.player_data[player].trade_ratios[port_type] = new_ratio
@@ -2366,10 +2380,14 @@ class IslandersState:
       if not isinstance(offer[side], dict):
         raise InvalidInput("invalid offer format - each side must be a dict")
       for rsrc, count in offer[side].items():
-        if rsrc not in RESOURCES:
+        if rsrc not in TRADABLES:
           raise InvalidMove("{%s} is not tradable." % rsrc)
         if not isinstance(count, int) or count < 0:
-          raise InvalidMove("You must trade an non-negative integer quantity.")
+          raise InvalidMove("You must trade a non-negative integer quantity.")
+    wants = {key for key, count in offer[self.WANT].items() if count > 0}
+    gives = {key for key, count in offer[self.GIVE].items() if count > 0}
+    if wants & gives:
+      raise InvalidMove("You cannot give and receive the same resource.")
     for rsrc, count in offer[self.GIVE].items():
       if self.player_data[player].cards[rsrc] < count:
         raise InvalidMove("You do not have enough {%s}." % rsrc)
@@ -2407,23 +2425,25 @@ class IslandersState:
     # their_want and their_give are pulled from saved counter-offers.
     # We validate that they are the same to avoid any scenarios where the player
     # might accept a different offer than the counter-party is giving.
-    for rsrc in RESOURCES:
+    for rsrc in TRADABLES:
       for trade_dict in [my_want, my_give, their_want, their_give]:
         if trade_dict.get(rsrc) == 0:
           del trade_dict[rsrc]
     if sorted(my_want.items()) != sorted(their_give.items()):
-      print(f"Offers do not match - {sorted(my_want.items())} vs {sorted(their_give.items())}")
       raise InvalidMove("The player changed their offer.")
     if sorted(my_give.items()) != sorted(their_want.items()):
-      print(f"Offers do not match - {sorted(my_give.items())} vs {sorted(their_want.items())}")
       raise InvalidMove("The player changed their offer.")
 
     # Validate that both players have the resources to make the trade.
     self._validate_trade({self.WANT: my_want, self.GIVE: my_give}, player)
     self._validate_trade({self.WANT: their_want, self.GIVE: their_give}, counter_player)
 
-    gave_text = ", ".join(["%s {%s}" % (count, rsrc) for rsrc, count in my_give.items()])
-    recv_text = ", ".join(["%s {%s}" % (count, rsrc) for rsrc, count in my_want.items()])
+    # You cannot trade for nothing.
+    if sum(my_want.values()) == 0 or sum(my_give.values()) == 0:
+      raise InvalidMove("You cannot trade for nothing.")
+
+    gave_text = ", ".join(["%s {%s}" % (count, rsrc) for rsrc, count in my_give.items() if count])
+    recv_text = ", ".join(["%s {%s}" % (count, rsrc) for rsrc, count in my_want.items() if count])
     self.event_log.append(
       Event(
         "trade",
@@ -2444,21 +2464,9 @@ class IslandersState:
   def handle_trade_bank(self, offer, player):
     self._check_main_phase("trade_bank", "make a trade")
     self._validate_trade(offer, player)
-    # Also validate that ratios are correct.
-    requested = sum(offer[self.WANT].values())
-    available = 0
-    for rsrc, give in offer[self.GIVE].items():
-      if give == 0:
-        continue
-      ratio = self.player_data[player].trade_ratios[rsrc]
-      if give % ratio != 0:
-        raise InvalidMove("You must trade {%s} with the bank at a %s:1 ratio." % (rsrc, ratio))
-      available += give // ratio
-    if available != requested:
-      raise InvalidMove(
-        "You should receive %s resources, but you requested %s." % (available, requested)
-      )
-    # TODO: make sure there is enough left in the bank.
+    self._validate_bank_trade(
+      offer, self.player_data[player].trade_ratios, self.player_data[player].gold_traded
+    )
 
     gave_txt = ", ".join(f"{count} {{{rsrc}}}" for rsrc, count in offer[self.GIVE].items() if count)
     recv_txt = ", ".join(f"{count} {{{rsrc}}}" for rsrc, count in offer[self.WANT].items() if count)
@@ -2470,6 +2478,83 @@ class IslandersState:
       self.player_data[player].cards[rsrc] += want
     for rsrc, give in offer[self.GIVE].items():
       self.player_data[player].cards[rsrc] -= give
+    # Keep track of how much gold the player has traded for resources this turn.
+    self.player_data[player].gold_traded += offer[self.GIVE].get("gold", 0)
+
+  def _validate_bank_trade(self, offer, ratios, gold_traded):
+    """Match up the player's exports with the imports, based on trade ratios.
+
+    This is made tricky by the fact that even if the player has a 2:1 port, they cannot use that
+    port to trade for gold. They may only use 3:1 ports or the standard 4:1 ratio to trade for
+    gold. Start by computing how many of the player's cards will be used to trade for gold,
+    then calculate how many additional resources the player is entitled to receive based on the
+    remaining resources they are exporting. Relies on the fact that trading for gold always uses
+    the player's worst trade ratio; it will break if this assumption is violated.
+    """
+    requested_rsrcs = {rsrc: val for rsrc, val in offer[self.WANT].items() if rsrc != "gold"}
+    if not self.options.gold and offer[self.WANT].get("gold", 0):
+      raise InvalidMove("There is no gold in this scenario.")
+    # Make sure the player cannot receive more resources than the bank has.
+    for rsrc, count in requested_rsrcs.items():
+      if self.remaining_resources(rsrc) < count:
+        raise InvalidMove(f"There is only {self.remaining_resources(rsrc)} {{{rsrc}}} remaining.")
+    # You may only trade gold for resources up to twice per turn.
+    if offer[self.GIVE].get("gold", 0) + gold_traded > 4:
+      raise InvalidMove("You may only trade gold for resources up to twice per turn.")
+    requested_cards = sum(requested_rsrcs.values())
+    requested_gold = offer[self.WANT].get("gold", 0)
+    gold_ratio = ratios.default_factory()
+    used = {rsrc: 0 for rsrc in TRADABLES}
+
+    # Sort the resources; worst trade ratio first. We will preferentially use resources with the
+    # worst trade ratio to purchase gold. Consider the scenario where a player tries to trade
+    # 9 of rsrc1, and 3 each of rsrc2 and rsrc3; the player has a 2:1 port for rsrc1 and 3:1 for
+    # the other resources. The player wants 3 gold in return. We want to consume rsrc2 and rsrc3
+    # first, giving us a return of 3 resources and 3 gold. If we consume rsrc1 to get the gold,
+    # we would erroneously only get 2 resources and 3 gold.
+    sorted_resources = sorted(RESOURCES, key=lambda rsrc: -ratios[rsrc])
+    for rsrc in sorted_resources:
+      give = offer[self.GIVE].get(rsrc)
+      if not give:
+        continue
+      normal_ratio = ratios[rsrc]
+      for num_gold in range(min(give // gold_ratio, requested_gold), 0, -1):
+        # Only look for trades where when done, the rest of the cards may be traded at the normal
+        # ratio. For example, if the player is giving 7 cards with a default ratio of 3, we will
+        # use only 3 cards for the gold instead of 6, allowing them to user the remaining 4 cards
+        # at a 2:1 ratio (assuming they have a 2:1 port).
+        if (give - num_gold * gold_ratio) % normal_ratio == 0:
+          requested_gold -= num_gold
+          used[rsrc] = num_gold * gold_ratio
+          break
+
+    # Now that we are done figuring out how we're going to pay for gold, just count the number of
+    # resources the remaining cards can buy for us and subtract from requested_cards.
+    for rsrc in offer[self.GIVE]:
+      give = offer[self.GIVE][rsrc] - used.get(rsrc, 0)
+      if not give:
+        continue
+      ratio = ratios[rsrc] if rsrc != "gold" else 2
+      if give % ratio != 0:
+        raise InvalidMove("You must trade {%s} with the bank at a %s:1 ratio." % (rsrc, ratio))
+      requested_cards -= give // ratio
+
+    if requested_cards == 0 and requested_gold == 0:
+      return
+
+    orig_cards = sum(val for rsrc, val in offer[self.WANT].items() if rsrc != "gold")
+    orig_gold = offer[self.WANT].get("gold", 0)
+    if orig_gold != 0:
+      if orig_cards - requested_cards == orig_gold and orig_gold - requested_gold == orig_cards:
+        raise InvalidMove("You cannot trade for gold at a 2:1 ratio")
+      raise InvalidMove(
+        "You should receive %s cards and %s gold, but you requested %s cards and %s gold."
+        % (orig_cards - requested_cards, orig_gold - requested_gold, orig_cards, orig_gold)
+      )
+    raise InvalidMove(
+      "You should receive %s cards, but you requested %s."
+      % (orig_cards - requested_cards, orig_cards)
+    )
 
   def add_tile(self, tile):
     self.tiles[tile.location] = tile

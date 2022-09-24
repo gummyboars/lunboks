@@ -7,6 +7,7 @@ serverNames = {
   norsrc: "desert",
   anyrsrc: "bonus",
   space: "water",
+  gold: "gold",
 };
 
 assetPrefix = "islanders";
@@ -37,6 +38,7 @@ assetNames = [
   "rsrc3card",
   "rsrc4card",
   "rsrc5card",
+  "goldcard",
   "knight",
   "roadbuilding",
   "yearofplenty",
@@ -81,8 +83,9 @@ function initializeSpace() {
     rsrc4: "clay",
     rsrc5: "metal",
     norsrc: "desert",
-    anyrsrc: "gold",
+    anyrsrc: "uranium",
     space: "space",
+    gold: "gold",
   }));
   localStorage.setItem("islandersimageinfo", JSON.stringify({
     "rsrc1tile": {"src":"/islanders/images/sulfur.png"},
@@ -132,6 +135,7 @@ function initializeNone() {
     norsrc: "desert",
     anyrsrc: "bonus",
     space: "water",
+    gold: "gold",
   }));
   localStorage.setItem("islandersvariants", "{}");
   localStorage.setItem("islandersimageinfo", "{}");

@@ -16,6 +16,7 @@ selectCardWidth = summaryCardWidth * 3;
 selectCardHeight = summaryCardHeight * 3;
 // Other constants.
 cardResources = ["rsrc1", "rsrc2", "rsrc3", "rsrc4", "rsrc5"];
+tradables = [...cardResources, "gold"];
 devCards = ["knight", "roadbuilding", "yearofplenty", "monopoly", "palace", "chapel", "university", "library", "market"];
 tradeSelectionUI = {
   tradeOffer: {
@@ -302,11 +303,12 @@ function selectResourceHelper(windowName, rsrc, num) {
 function updateSelectCounts() {
   for (let key of ["top", "bottom", "resource"]) {
     let container = document.getElementById(key + "selectbox");
-    for (let i = 0; i < cardResources.length; i++) {
-      let subcontainer = container.getElementsByClassName(cardResources[i])[0];
+    let rsrcs = key == "resource" ? cardResources : tradables;
+    for (let i = 0; i < rsrcs.length; i++) {
+      let subcontainer = container.getElementsByClassName(rsrcs[i])[0];
       let counter = subcontainer.getElementsByClassName("selectcount")[0];
       let counts = key == "resource" ? resourceSelection : tradeSelection[key];
-      counter.innerText = "x" + (counts[cardResources[i]] || 0);
+      counter.innerText = "x" + (counts[rsrcs[i]] || 0);
     }
   }
   updateSelectSummary();
@@ -359,7 +361,7 @@ function addSelectionToPanel(selection, panel) {
   if (!selection) {
     return;
   }
-  for (let rsrc of cardResources) {
+  for (let rsrc of tradables) {
     let count = selection[rsrc] || 0;
     for (let i = 0; i < count; i++) {
       let div = document.createElement("DIV");
@@ -501,13 +503,17 @@ function computeBankOffers() {
   let want = tradeSelection["top"];
   let give = tradeSelection["bottom"];
   let count = 0;
-  for (let rsrc in want) {
-    count += want[rsrc];
+  for (let rsrc of cardResources) {
+    count += want[rsrc] || 0;
   }
-  if (!count) {
+  let goldCount = want["gold"] || 0;
+  if (!count && !goldCount) {
     return [];
   }
   let trades = [];
+  if (!want["gold"]) {
+    trades.push({rsrc: "gold", selected: (give["gold"] || 0) > 0, ratio: 2});
+  }
   for (let rsrc of cardResources) {
     if ((want[rsrc] || 0) > 0) {
       continue;
@@ -524,14 +530,20 @@ function computeBankOffers() {
     return a.ratio - b.ratio;
   });
   let used = {};
-  for (let rsrc of cardResources) {
-    used[rsrc] = 0;
+  let available = {};
+  for (let rsrc of tradables) {
+    available[rsrc] = cards[rsrc] || 0;
   }
-  for (let i = 0; i < count; i++) {
+  for (let i = 0; i < count + goldCount; i++) {
     let found = false;
     for (let trade of trades) {
-      if (cards[trade.rsrc] - used[trade.rsrc] >= trade.ratio) {
-        used[trade.rsrc] += trade.ratio;
+      let ratio = trade.ratio;
+      if (i < goldCount && ratio <= 2) {  // cannot trade 2 resources for 1 gold
+        ratio = playerData[myIdx].trade_ratios["default"];
+      }
+      if (available[trade.rsrc] >= ratio) {
+        available[trade.rsrc] -= ratio;
+        used[trade.rsrc] = (used[trade.rsrc] || 0) + ratio;
         found = true;
         break;
       }
@@ -1047,6 +1059,11 @@ function updateCards() {
       suffix: "card",
     },
     {
+      clist: ["gold"],
+      clickAction: null,
+      suffix: "card",
+    },
+    {
       clist: devCards,
       clickAction: playDevCard,
       suffix: "",
@@ -1059,26 +1076,26 @@ function updateCards() {
   let ordering = 0;
   for (cfg of cfgs) {
     for (let cardType of cfg.clist) {
-      if (!cards[cardType]) {
-        cards[cardType] = 0;
-      }
+      let cardCount = cards[cardType] || 0;
       oldCards[cardType] = countOldCards(container, cardType + cfg.suffix);
-      for (i = 0; i < cards[cardType] - oldCards[cardType]; i++) {
+      for (i = 0; i < cardCount - oldCards[cardType]; i++) {
         addCard(container, cardType + cfg.suffix, ordering, cfg.clickAction);
       }
-      removeCards(container, oldCards[cardType] - cards[cardType], cardType + cfg.suffix);
+      removeCards(container, oldCards[cardType] - cardCount, cardType + cfg.suffix);
       ordering++;
     }
   }
   for (let child of container.children) {
     updateCard(child);
   }
-  let maxOrder = {"card": 0, "dev": 0};
-  let maxChild = {"card": null, "dev": null};
+  let maxOrder = {"card": 0, "token": 0, "dev": 0};
+  let maxChild = {"card": null, "token": null, "dev": null};
   for (let child of container.children) {
     let cardType = "card";
-    if (parseInt(child.style.order) >= cardResources.length) {
+    if (parseInt(child.style.order) >= cardResources.length + 1) {
       cardType = "dev";
+    } else if (parseInt(child.style.order) >= cardResources.length) {
+      cardType = "token";
     }
     if (parseInt(child.style.order) >= maxOrder[cardType] && !child.classList.contains("leave")) {
       maxOrder[cardType] = parseInt(child.style.order);
@@ -1335,6 +1352,7 @@ function onmsg(event) {
   updateDice();
   updateEndTurn();
   updateTradeButtons();
+  updateSelectors();
   updatePlayerData();
   updateEventLog();
   if (firstMsg && counterOffers[myIdx]) {
@@ -1869,17 +1887,24 @@ function updatePlayerCardInfo(idx, cardDiv, onlyResources) {
   while (cardDiv.firstChild) {
     cardDiv.removeChild(cardDiv.firstChild);
   }
-  if (!onlyResources && playerData[idx].resource_cards && playerData[idx].dev_cards) {
+  let numSeparators = 0;
+  if (!onlyResources) {
+    numSeparators += playerData[idx].resource_cards ? 1 : 0;
+    numSeparators += playerData[idx].gold ? 1 : 0;
+    numSeparators += playerData[idx].dev_cards ? 1 : 0;
+    numSeparators -= 1;
+  }
+  for (let i = 0; i < numSeparators; i++) {
     let sepDiv = document.createElement("DIV");
     sepDiv.classList.add("cardseparator");
     sepDiv.style.width = summaryCardWidth / 2 + "px";
     sepDiv.style.height = summaryCardHeight + "px";
-    sepDiv.style.order = 1;
+    sepDiv.style.order = 2*i + 1;
     cardDiv.appendChild(sepDiv);
   }
-  let orders = {resource_cards: 0, dev_cards: 2};
-  let imgs = {resource_cards: "cardback", dev_cards: "devcard"};
-  let typeList = ["resource_cards", "dev_cards"];
+  let orders = {resource_cards: 0, gold: 2, dev_cards: 4};
+  let imgs = {resource_cards: "cardback", gold: "goldcard", dev_cards: "devcard"};
+  let typeList = ["resource_cards", "gold", "dev_cards"];
   if (onlyResources) {
     typeList = ["resource_cards"];
   }
@@ -1906,10 +1931,10 @@ function updatePlayerCardInfo(idx, cardDiv, onlyResources) {
     return;
   }
   if (longestRoutePlayer === idx) {
-    addBonusCard(cardDiv, 3, "longestroute");
+    addBonusCard(cardDiv, 5, "longestroute");
   }
   if (largestArmyPlayer === idx) {
-    addBonusCard(cardDiv, 5, "largestarmy");
+    addBonusCard(cardDiv, 7, "largestarmy");
   }
 }
 function addSummaryCard(cardContainer, order, cardName, isLast) {
@@ -2001,7 +2026,8 @@ function createSelectors() {
     while (box.firstChild) {
       box.removeChild(box.firstChild);
     }
-    for (let cardRsrc of cardResources) {
+    let rsrcs = selectBox == "resource" ? cardResources : tradables;
+    for (let cardRsrc of rsrcs) {
       let cnv = document.createElement("CANVAS");
       cnv.classList.add("selector");
       cnv.classList.add("clickable");
@@ -2020,6 +2046,17 @@ function createSelectors() {
       container.appendChild(counter);
       box.appendChild(container);
       renderAssetToCanvas(cnv, cardRsrc + "card", "");
+    }
+  }
+}
+function updateSelectors() {
+  for (let selectBox of ["top", "bottom"]) {
+    let box = document.getElementById(selectBox + "selectbox");
+    let goldDiv = box.getElementsByClassName("gold")[0];
+    if (gameOptions["gold"] != null && gameOptions["gold"].value) {
+      goldDiv.style.display = "flex";
+    } else {
+      goldDiv.style.display = "none";
     }
   }
 }

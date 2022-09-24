@@ -671,8 +671,10 @@ class TestLoadTestData(BaseInputHandlerTest):
 
   def testTradeRatios(self):
     self.assertEqual(self.c.player_data[0].trade_ratios["rsrc1"], 2)
-    self.assertEqual(self.c.player_data[0].trade_ratios["rsrc2"], 4)
+    self.assertEqual(self.c.player_data[0].trade_ratios["rsrc2"], 3)
     self.assertEqual(self.c.player_data[1].trade_ratios["rsrc1"], 4)
+    self.assertEqual(self.c.player_data[0].trade_ratios.default_factory(), 3)
+    self.assertEqual(self.c.player_data[1].trade_ratios.default_factory(), 4)
 
 
 class DebugRulesOffTest(BaseInputHandlerTest):
@@ -781,9 +783,17 @@ class TestDevCards(BaseInputHandlerTest):
 
   def testYearOfPlentyDepletedResource(self):
     self.c.player_data[1].cards["rsrc1"] = 19
+    orig = self.c.player_data[0].cards["rsrc2"]
     with self.assertRaisesRegex(InvalidMove, "not enough {rsrc1} in the bank"):
       self.c.handle_play_dev("yearofplenty", {"rsrc1": 1, "rsrc2": 1}, 0)
     self.c.handle_play_dev("yearofplenty", {"rsrc2": 2}, 0)
+    self.assertEqual(self.c.player_data[0].cards["rsrc1"], 0)
+    self.assertEqual(self.c.player_data[0].cards["rsrc2"], orig + 2)
+
+  def testYearOfPlentyCannotGetGold(self):
+    with self.assertRaisesRegex(InvalidMove, "Invalid resource"):
+      self.c.handle_play_dev("yearofplenty", {"gold": 2}, 0)
+    self.assertEqual(self.c.player_data[0].cards["gold"], 0)
 
   def testYearOfPlentyMostlyDepletedResource(self):
     self.c.player_data[1].cards["rsrc1"] = 18
@@ -1660,10 +1670,17 @@ class PlacePortTest(BaseInputHandlerTest):
     self.c.player_data[0].buried_treasure = 2
     self.c.action_stack = ["placeport"]
 
+  def testInvalidPortType(self):
+    with self.assertRaisesRegex(InvalidMove, "Unknown port type"):
+      self.c.handle_place_port(0, (4, 6), 2, "space")
+    with self.assertRaisesRegex(InvalidMove, "Unknown port type"):
+      self.c.handle_place_port(0, (4, 6), 2, "gold")
+
   def testPlacedPortUpdatesTradeRatios(self):
     self.c.handle_place_port(0, (4, 6), 2, "rsrc1")
     self.assertEqual(self.c.player_data[0].trade_ratios["rsrc1"], 2)
     self.assertEqual(self.c.player_data[0].trade_ratios["rsrc3"], 4)
+    self.assertEqual(self.c.player_data[0].trade_ratios.default_factory(), 4)
 
   def testPlaceOnLand(self):
     with self.assertRaisesRegex(InvalidMove, "place the port on {space}"):
@@ -2713,6 +2730,7 @@ class TestCalculateRobPlayers(BaseInputHandlerTest):
     # Give these players some dev cards to make sure we don't rob dev cards.
     self.c.player_data[0].cards["knight"] = 10
     self.c.player_data[1].cards["knight"] = 10
+    self.c.player_data[0].cards["gold"] = 3
 
   def testRobNoAdjacentPieces(self):
     p1_old_count = sum(self.c.player_data[0].cards[x] for x in islanders.RESOURCES)
@@ -2754,6 +2772,17 @@ class TestCalculateRobPlayers(BaseInputHandlerTest):
     self.assertEqual(p1_new_count, p1_old_count - 1)
     self.assertEqual(p2_new_count, p2_old_count)
     self.assertEqual(p3_new_count, 1)
+
+  def testCannotRobGold(self):
+    self.c.player_data[0].cards.clear()
+    self.c.player_data[0].cards["rsrc1"] = 1
+    self.c.player_data[0].cards["gold"] = 1
+
+    # Will choose gold if it's in the list; otherwise we don't care.
+    with mock.patch.object(islanders.random, "choice", new=lambda lst: sorted(lst)[0]):
+      self.c.handle(2, {"type": "robber", "location": [7, 3]})
+    self.assertEqual(self.c.player_data[0].cards["rsrc1"], 0)
+    self.assertEqual(self.c.player_data[0].cards["gold"], 1)
 
   def testRobSingleAdjacentPlayerWithoutCards(self):
     self.c.player_data[0].cards.clear()
@@ -3122,15 +3151,15 @@ class TestDiscard(BaseInputHandlerTest):
 
   def testCalculateDiscardPlayers(self, unused_randint):
     self.c.player_data[0].cards.update({"rsrc1": 4, "rsrc2": 4, "rsrc3": 4, "rsrc5": 4})
-    self.c.player_data[1].cards.update({"rsrc1": 4, "rsrc3": 2, "rsrc5": 1, "knight": 5})
-    self.c.player_data[2].cards.update({"rsrc1": 2, "rsrc2": 4, "rsrc3": 2, "rsrc5": 1})
+    self.c.player_data[1].cards.update({"rsrc1": 4, "rsrc3": 2, "rsrc5": 1, "knight": 5, "gold": 4})
+    self.c.player_data[2].cards.update({"rsrc1": 2, "rsrc2": 4, "rsrc3": 2, "rsrc5": 1, "gold": 2})
     self.c.action_stack = ["dice"]
     self.c.handle_roll_dice()
     self.assertEqual(self.c.turn_phase, "discard")
     self.assertEqual(self.c.event_log[-1].event_type, "dice")
     self.assertIn("rolled a 7", self.c.event_log[-1].public_text)
     # Player 0 has 16 cards, and must discard 8.
-    # Player 1 does not have to discard because dev cards don't count.
+    # Player 1 does not have to discard because dev cards and gold don't count.
     # Player 2 must discard 9/2 rounded down = 4.
     self.assertDictEqual(self.c.discard_players, {0: 8, 2: 4})
 
@@ -3140,6 +3169,9 @@ class TestDiscard(BaseInputHandlerTest):
     # Player 2 must discard the correct number of cards.
     with self.assertRaisesRegex(InvalidMove, "must discard 4"):
       self.c.handle_discard({"rsrc2": 4, "rsrc5": 1}, 2)
+    # Player 2 cannot discard gold instead of cards.
+    with self.assertRaisesRegex(InvalidMove, "Invalid resource"):
+      self.c.handle_discard({"rsrc2": 2, "gold": 2}, 2)
     # Player 0 cannot discard cards they don't have.
     with self.assertRaisesRegex(InvalidMove, "would need"):
       self.c.handle_discard({"rsrc1": 4, "rsrc4": 4}, 0)
@@ -3200,6 +3232,197 @@ class TestBuyDevCard(BaseInputHandlerTest):
       self.c.handle_buy_dev(0)
     self.assertEqual(self.c.player_data[0].cards["knight"], 2)
     self.assertEqual(self.c.player_data[0].cards["yearofplenty"], 1)
+
+
+class TestTradeOffer(BaseInputHandlerTest):
+  def setUp(self):
+    BaseInputHandlerTest.setUp(self)
+    self.c.player_data[0].cards.clear()
+    self.c.player_data[1].cards.clear()
+    self.c.player_data[0].cards.update({"rsrc1": 4, "rsrc2": 4, "rsrc3": 4, "gold": 1})
+    self.c.player_data[1].cards.update({"rsrc1": 4, "rsrc4": 4, "rsrc5": 4, "gold": 2})
+
+  def testMakeOffer(self):
+    self.c.handle_trade_offer({"want": {"rsrc4": 1}, "give": {"rsrc1": 1}}, 0)
+    self.assertDictEqual(self.c.trade_offer, {"want": {"rsrc4": 1}, "give": {"rsrc1": 1}})
+
+  def testCanMakeOpenEndedOffer(self):
+    self.c.handle_trade_offer({"want": {"rsrc4": 1}, "give": {}}, 0)
+    self.assertDictEqual(self.c.trade_offer, {"want": {"rsrc4": 1}, "give": {}})
+
+  def testMustOfferOwnedResources(self):
+    with self.assertRaisesRegex(InvalidMove, "do not have enough"):
+      self.c.handle_trade_offer({"want": {"rsrc4": 1}, "give": {"rsrc5": 1}}, 0)
+
+  def testCanOfferGold(self):
+    self.c.handle_trade_offer({"want": {"rsrc4": 1}, "give": {"gold": 1}}, 0)
+
+  def testCannotGiveAndReceiveSameResource(self):
+    with self.assertRaisesRegex(InvalidMove, "the same resource"):
+      self.c.handle_trade_offer({"want": {"rsrc1": 1, "rsrc4": 1}, "give": {"rsrc1": 2}}, 0)
+
+
+class TestCounterOffer(BaseInputHandlerTest):
+  def setUp(self):
+    BaseInputHandlerTest.setUp(self)
+    self.c.player_data[0].cards.clear()
+    self.c.player_data[1].cards.clear()
+    self.c.player_data[0].cards.update({"rsrc1": 4, "rsrc2": 4, "rsrc3": 4, "gold": 1})
+    self.c.player_data[1].cards.update({"rsrc1": 4, "rsrc4": 4, "rsrc5": 4, "gold": 2})
+    self.c.handle_trade_offer({"want": {"rsrc4": 1}, "give": {"rsrc1": 1}}, 0)
+
+  def testMakeCounter(self):
+    self.assertNotIn(1, self.c.counter_offers)
+    self.c.handle_counter_offer({"want": {"rsrc2": 1}, "give": {"rsrc4": 1}}, 1)
+    self.assertIn(1, self.c.counter_offers)
+    self.assertEqual(self.c.counter_offers[1], {"want": {"rsrc2": 1}, "give": {"rsrc4": 1}}, 1)
+
+  def testRejectOffer(self):
+    self.c.handle_counter_offer(0, 1)
+    self.assertIn(1, self.c.counter_offers)
+    self.assertEqual(self.c.counter_offers[1], 0)
+
+  def testMustOfferOwnedResources(self):
+    with self.assertRaisesRegex(InvalidMove, "do not have enough"):
+      self.c.handle_counter_offer({"want": {"rsrc2": 1}, "give": {"rsrc3": 1}}, 1)
+
+  def testCanMakeOpenEndedCounter(self):
+    self.c.handle_counter_offer({"want": {"rsrc2": 1}, "give": {}}, 1)
+    self.assertEqual(self.c.counter_offers[1], {"want": {"rsrc2": 1}, "give": {}})
+
+  def testCannotGiveAndReceiveSameResource(self):
+    with self.assertRaisesRegex(InvalidMove, "the same resource"):
+      self.c.handle_counter_offer({"want": {"rsrc2": 1}, "give": {"rsrc2": 1}}, 1)
+
+
+class TestAcceptCounter(BaseInputHandlerTest):
+  def setUp(self):
+    BaseInputHandlerTest.setUp(self)
+    self.c.player_data[0].cards.clear()
+    self.c.player_data[1].cards.clear()
+    self.c.player_data[0].cards.update({"rsrc1": 4, "rsrc2": 4, "rsrc3": 4, "gold": 1})
+    self.c.player_data[1].cards.update({"rsrc1": 4, "rsrc4": 4, "rsrc5": 4, "gold": 2})
+    self.c.handle_trade_offer({"want": {"rsrc4": 1}, "give": {"rsrc1": 1}}, 0)
+
+  def testOfferAndCounterMustMatch(self):
+    self.c.handle_counter_offer({"want": {"rsrc2": 1}, "give": {"rsrc4": 1}}, 1)
+    with self.assertRaisesRegex(InvalidMove, "changed their offer"):
+      self.c.handle_accept_counter({"want": {"rsrc1": 1}, "give": {"rsrc4": 1}}, 1, 0)
+    self.c.handle_accept_counter({"want": {"rsrc2": 1}, "give": {"rsrc4": 1}}, 1, 0)
+    self.assertEqual(self.c.player_data[0].cards["rsrc2"], 3)
+    self.assertEqual(self.c.player_data[0].cards["rsrc4"], 1)
+
+  def testCannotTradeForNothing(self):
+    self.c.handle_counter_offer({"want": {"rsrc2": 0}, "give": {"rsrc4": 1}}, 1)
+    with self.assertRaisesRegex(InvalidMove, "trade for nothing"):
+      self.c.handle_accept_counter({"want": {"rsrc2": 0}, "give": {"rsrc4": 1}}, 1, 0)
+
+  def testMustTradeForDifferentResources(self):
+    # bypass counter offer validation for the sake of this test
+    self.c.counter_offers[1] = {"want": {"rsrc2": 1, "rsrc1": 1}, "give": {"rsrc4": 1, "rsrc1": 1}}
+    with self.assertRaisesRegex(InvalidMove, "the same resource"):
+      self.c.handle_accept_counter(
+        {"want": {"rsrc2": 1, "rsrc1": 1}, "give": {"rsrc4": 1, "rsrc1": 1}}, 1, 0
+      )
+
+
+class TestTradeBank(BaseInputHandlerTest):
+  def setUp(self):
+    BaseInputHandlerTest.setUp(self)
+    self.c.options["gold"].force(True)
+    self.c.player_data[0].cards.clear()
+    self.c.player_data[1].cards.clear()
+    self.c.player_data[0].cards.update({"rsrc1": 4, "rsrc2": 4, "rsrc3": 4, "gold": 1})
+    self.c.player_data[1].cards.update({"rsrc1": 4, "rsrc4": 4, "rsrc5": 4, "gold": 2})
+    # Player 0 trade ratios: 2 for rsrc1, 3 otherwise.
+    # Player 1 trade ratios: 2 for rsrc4, 4 otherwise.
+
+  def testCannotOverdrawBank(self):
+    self.c.player_data[1].cards["rsrc5"] = 18
+    with self.assertRaisesRegex(InvalidMove, "remaining"):
+      self.c.handle_trade_bank({"want": {"rsrc5": 2}, "give": {"rsrc1": 4}}, 0)
+    self.c.handle_trade_bank({"want": {"rsrc5": 1}, "give": {"rsrc1": 2}}, 0)
+
+  def testFourToOneTrade(self):
+    self.c.handle_trade_bank({"want": {"rsrc2": 1}, "give": {"rsrc1": 4}}, 1)
+    self.assertEqual(self.c.player_data[1].cards["rsrc2"], 1)
+    self.assertEqual(self.c.player_data[1].cards["rsrc1"], 0)
+
+  def testThreeToOneTrade(self):
+    self.c.handle_trade_bank({"want": {"rsrc5": 1}, "give": {"rsrc2": 3}}, 0)
+    self.assertEqual(self.c.player_data[0].cards["rsrc5"], 1)
+    self.assertEqual(self.c.player_data[0].cards["rsrc2"], 1)
+
+  def testHybridTwoAndFourTrade(self):
+    self.c.handle_trade_bank({"want": {"rsrc2": 2}, "give": {"rsrc4": 2, "rsrc5": 4}}, 1)
+    self.assertEqual(self.c.player_data[1].cards["rsrc2"], 2)
+    self.assertEqual(self.c.player_data[1].cards["rsrc5"], 0)
+    self.assertEqual(self.c.player_data[1].cards["rsrc4"], 2)
+
+  def testHybridTwoAndThreeTrade(self):
+    self.c.handle_trade_bank({"want": {"rsrc4": 2}, "give": {"rsrc1": 2, "rsrc2": 3}}, 0)
+    self.assertEqual(self.c.player_data[0].cards["rsrc4"], 2)
+    self.assertEqual(self.c.player_data[0].cards["rsrc2"], 1)
+    self.assertEqual(self.c.player_data[0].cards["rsrc1"], 2)
+
+  def testBadTradeRatio(self):
+    with self.assertRaisesRegex(InvalidMove, "should receive 3"):
+      self.c.handle_trade_bank({"want": {"rsrc4": 2}, "give": {"rsrc1": 4, "rsrc2": 3}}, 0)
+    with self.assertRaisesRegex(InvalidMove, "should receive 2"):
+      self.c.handle_trade_bank({"want": {"rsrc4": 3}, "give": {"rsrc1": 2, "rsrc2": 3}}, 0)
+    with self.assertRaisesRegex(InvalidMove, "must trade .* 2:1 ratio"):
+      self.c.handle_trade_bank({"want": {"rsrc4": 2}, "give": {"rsrc1": 3, "rsrc2": 3}}, 0)
+    with self.assertRaisesRegex(InvalidMove, "must trade .* 3:1 ratio"):
+      self.c.handle_trade_bank({"want": {"rsrc4": 2}, "give": {"rsrc1": 2, "rsrc2": 4}}, 0)
+
+  def testCannotTradeForGoldWhenDisabled(self):
+    self.c.options["gold"].force(False)
+    with self.assertRaisesRegex(InvalidMove, "There is no gold"):
+      self.c.handle_trade_bank({"want": {"gold": 1}, "give": {"rsrc2": 3}}, 0)
+
+  def testTradeForGold(self):
+    self.c.handle_trade_bank({"want": {"gold": 1}, "give": {"rsrc2": 3}}, 0)
+    self.assertEqual(self.c.player_data[0].cards["rsrc2"], 1)
+    self.assertEqual(self.c.player_data[0].cards["gold"], 2)
+    self.assertEqual(self.c.player_data[0].gold_traded, 0)
+
+  def testTradeGold(self):
+    self.c.handle_trade_bank({"want": {"rsrc2": 1}, "give": {"gold": 2}}, 1)
+    self.assertEqual(self.c.player_data[1].cards["rsrc2"], 1)
+    self.assertEqual(self.c.player_data[1].cards["gold"], 0)
+    self.assertEqual(self.c.player_data[1].gold_traded, 2)
+
+  def testCannotTradeMoreThanFourGoldPerTurn(self):
+    self.c.player_data[1].gold_traded = 4
+    with self.assertRaisesRegex(InvalidMove, "twice per turn"):
+      self.c.handle_trade_bank({"want": {"rsrc2": 1}, "give": {"gold": 2}}, 1)
+
+  def testCannotTradeTwoToOneForGold(self):
+    with self.assertRaisesRegex(InvalidMove, "cannot trade for gold .* 2:1 ratio"):
+      self.c.handle_trade_bank({"want": {"gold": 1}, "give": {"rsrc1": 2}}, 0)
+
+  def testTradeForGoldAndAnotherResource(self):
+    self.c.handle_trade_bank({"want": {"gold": 1, "rsrc4": 1}, "give": {"rsrc1": 2, "rsrc2": 3}}, 0)
+    self.assertEqual(self.c.player_data[0].cards["rsrc4"], 1)
+    self.assertEqual(self.c.player_data[0].cards["gold"], 2)
+    self.assertEqual(self.c.player_data[0].cards["rsrc1"], 2)
+    self.assertEqual(self.c.player_data[0].cards["rsrc2"], 1)
+    self.assertEqual(self.c.player_data[0].gold_traded, 0)
+
+  def testTradeForGoldUnevenRatios(self):
+    self.c.player_data[0].cards.clear()
+    self.c.player_data[0].cards.update({"rsrc1": 6, "rsrc2": 3, "rsrc3": 3})
+    self.c.handle_trade_bank(
+      {"want": {"gold": 2, "rsrc4": 3}, "give": {"rsrc1": 6, "rsrc2": 3, "rsrc3": 3}}, 0
+    )
+
+  def testTradeForGoldUseCorrectRatioFirst(self):
+    self.c.player_data[0].cards.clear()
+    self.c.player_data[0].cards.update({"rsrc1": 6, "rsrc2": 3, "rsrc3": 3})
+    with self.assertRaisesRegex(InvalidMove, "should receive 3 cards and 2 gold"):
+      self.c.handle_trade_bank(
+        {"want": {"gold": 2, "rsrc4": 2}, "give": {"rsrc1": 6, "rsrc2": 3, "rsrc3": 3}}, 0
+      )
 
 
 class TestHastenInvasion(BaseInputHandlerTest):

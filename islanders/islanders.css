@@ -572,7 +572,7 @@ div {
 }
 .cardback {
   flex: 0 1 auto;
-  overflow-x: hidden;
+  min-width: 0;
 }
 .cardseparator {
   flex: 0 0 auto;
