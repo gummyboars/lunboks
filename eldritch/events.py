@@ -2328,9 +2328,9 @@ class Check(Event):
 
   def resolve(self, state):
     if self.pass_check is not None:
-        self.successes = float("inf")
-        self.done = True
-        return
+      self.successes = float("inf")
+      self.done = True
+      return
     if self.dice is None:
       if self.check_type == "combat":
         num_dice = self.character.combat(state, self.attributes) + self.modifier

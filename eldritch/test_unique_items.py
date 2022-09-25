@@ -186,7 +186,18 @@ class BlueWatcherTest(EventTest):
     self.char.possessions = [self.watcher]
 
   def testPassCombatMonster(self):
-    pass
+    monster = monsters.Hound()
+    self.state.event_stack.append(events.Combat(self.char, monster))
+    fight_evade = self.resolve_to_choice(events.FightOrEvadeChoice)
+    fight_evade.resolve(self.state, "Fight")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=1)):
+      watcher = self.resolve_to_usable(0, "Blue Watcher0")
+    self.state.event_stack.append(watcher)
+    self.resolve_until_done()
+    self.assertEqual(self.char.sanity, 1)
+    self.assertEqual(self.char.stamina, 3)
+    self.assertIn(monster, self.char.trophies)
+    self.assertNotIn(self.watcher, self.char.possessions)
 
   def testPassCombatEncounter(self):
     self.state.event_stack.append(encounters.Bank3(self.char))
@@ -196,7 +207,6 @@ class BlueWatcherTest(EventTest):
     self.assertEqual(self.char.stamina, 3)
     self.assertFalse(self.char.trophies)
     self.assertNotIn(self.watcher, self.char.possessions)
-
 
   def testPassFightClose(self):
     gate = self.state.gates[0]
@@ -214,7 +224,6 @@ class BlueWatcherTest(EventTest):
     self.assertNotIn(self.watcher, self.char.possessions)
     self.assertIn(gate, self.char.trophies)
 
-
   def testFightLoreClose(self):
     gate = self.state.gates[0]
     self.state.places["Diner"].gate = gate
@@ -230,7 +239,6 @@ class BlueWatcherTest(EventTest):
     self.assertEqual(self.char.stamina, 3)
     self.assertNotIn(self.watcher, self.char.possessions)
     self.assertIn(gate, self.char.trophies)
-
 
   def testCantUseOnOtherFightOrLore(self):
     self.state.event_stack.append(encounters.Science2(self.char))
@@ -268,6 +276,8 @@ class RubyTest(EventTest):
     self.resolve_to_choice(events.CityMovement)
     self.assertEqual(self.char.movement_points, 5)
     self.assertEqual(self.char.place.name, "Roadhouse")
+
+  # TODO: Test that multiple players can receive benefit
 
 
 class FluteTest(EventTest):
@@ -430,3 +440,32 @@ class ObsidianStatueTest(EventTest):
     self.assertEqual(self.char.stamina, 5)
     self.assertEqual(self.char.sanity, 3)
     self.assertNotIn(self.statue, self.char.possessions)
+
+
+class SilverKeyTest(EventTest):
+  def setUp(self):
+    super().setUp()
+    self.key = items.SilverKey(0)
+    self.char.possessions.append(self.key)
+    combat = events.Combat(
+        self.char, monsters.DreamFlier()
+    )
+    self.state.event_stack.append(combat)
+    evade_choice = self.resolve_to_choice(events.FightOrEvadeChoice)
+    evade_choice.resolve(self.state, "Flee")
+
+  def testEvade(self):
+    key = self.resolve_to_usable(0, "Silver Key0")
+    self.state.event_stack.append(key)
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=1)):
+      self.resolve_until_done()
+    self.assertEqual(self.key.tokens["stamina"], 1)
+    self.assertIn(self.key, self.char.possessions)
+
+  def testEvadeMaxTokens(self):
+    self.key.tokens["stamina"] = 2
+    key = self.resolve_to_usable(0, "Silver Key0")
+    self.state.event_stack.append(key)
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=1)):
+      self.resolve_until_done()
+    self.assertNotIn(self.key, self.char.possessions)

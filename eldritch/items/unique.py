@@ -5,12 +5,24 @@ __all__ = [
     "CreateUnique", "EnchantedKnife", "EnchantedBlade", "HolyWater", "MagicLamp", "MagicPowder",
     "SwordOfGlory",
     "AncientTablet", "EnchantedJewelry", "GateBox", "HealingStone", "BlueWatcher", "SunkenCityRuby",
-    "ObsidianStatue", "OuterGodlyFlute"
+    "ObsidianStatue", "OuterGodlyFlute", "SilverKey", "PallidMask",
+  # TODO: AlienStatue, DragonsEye, ElderSign, WardingStatue
+  # TODO: Tomes
 ]
 
 
 def CreateUnique():
   counts = {
+      AncientTablet: 1,
+      BlueWatcher: 1,
+      EnchantedJewelry: 1,
+      OuterGodlyFlute: 1,
+      GateBox: 1,
+      HealingStone: 1,
+      ObsidianStatue: 1,
+      PallidMask: 1,
+      SunkenCityRuby: 1,
+      SilverKey: 1,
       HolyWater: 4,
       EnchantedBlade: 2,
       EnchantedKnife: 2,
@@ -113,7 +125,8 @@ class BlueWatcher(Item):
       return events.Sequence([
           events.PassCombatRound(
               event,
-              log_message="{char_name} passed a combat round against {monster_name} using Blue Watcher of the Pyramid"
+              log_message=("{char_name} passed a combat round against"
+                           " {monster_name} using Blue Watcher of the Pyramid")
           ),
           events.DiscardSpecific(owner, [self]),
           events.Loss(owner, {"stamina": 2})
@@ -283,6 +296,21 @@ class OuterGodlyFlute(Item):
     return events.Sequence(
         seq, owner
     )
+
+
+class SilverKey(Item):
+  def __init__(self, idx):
+    super().__init__("Silver Key", idx, "unique", {}, {}, None, 4)
+    self.tokens["stamina"] = 0
+    self.max_tokens["stamina"] = 3
+
+  def get_usable_interrupt(self, event, owner, state):
+    if isinstance(event, events.EvadeRound) and event.character == owner and not event.is_done():
+      return events.Sequence([
+        events.PassEvadeRound(event),
+        events.AddToken(self, "stamina", owner)
+      ])
+    return None
 
 
 class SunkenCityRuby(Item):
