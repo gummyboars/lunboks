@@ -279,15 +279,18 @@ class OuterGodlyFlute(Item):
     super().__init__("Flute", idx, "unique", {}, {}, None, 8)
 
   def get_usable_interrupt(self, event, owner, state):
-    if not isinstance(event, events.CombatRound):
+    if (not isinstance(event, events.CombatChoice)
+        or len(state.event_stack) < 2
+        or not isinstance(state.event_stack[-2], events.CombatRound)):
       return None
     if owner.stamina < 3 or owner.sanity < 3:
-      print("Can't use")
       return None
+
+    combat_round = state.event_stack[-2]
 
     seq = [
         events.DiscardSpecific(owner, [self]),
-        events.PassCombatRound(event)
+        events.PassCombatRound(combat_round)
     ]
     for monster in state.monsters:
       if monster.place == owner.place and monster != event.monster:
