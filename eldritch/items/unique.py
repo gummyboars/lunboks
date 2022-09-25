@@ -6,8 +6,8 @@ __all__ = [
     "SwordOfGlory",
     "AncientTablet", "EnchantedJewelry", "GateBox", "HealingStone", "BlueWatcher", "SunkenCityRuby",
     "ObsidianStatue", "OuterGodlyFlute", "SilverKey", "PallidMask",
-  # TODO: AlienStatue, DragonsEye, ElderSign, WardingStatue
-  # TODO: Tomes
+    # TODO: AlienStatue, DragonsEye, ElderSign, WardingStatue
+    # TODO: Tomes
 ]
 
 
@@ -136,9 +136,9 @@ class BlueWatcher(Item):
             and isinstance(state.event_stack[-2], events.GateCloseAttempt))):
       return events.Sequence(
           [
-            events.DiscardSpecific(owner, [self]),
-            events.PassCheck(owner, event, self),
-            events.Loss(owner, {"stamina": 2})
+              events.DiscardSpecific(owner, [self]),
+              events.PassCheck(owner, event, self),
+              events.Loss(owner, {"stamina": 2})
           ],
           owner
       )
@@ -307,8 +307,8 @@ class SilverKey(Item):
   def get_usable_interrupt(self, event, owner, state):
     if isinstance(event, events.EvadeRound) and event.character == owner and not event.is_done():
       return events.Sequence([
-        events.PassEvadeRound(event),
-        events.AddToken(self, "stamina", owner)
+          events.PassEvadeRound(event),
+          events.AddToken(self, "stamina", owner)
       ])
     return None
 
