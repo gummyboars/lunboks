@@ -25,6 +25,9 @@ function initializeDefaults() {
     {name: "university", text: "⛲", bottomText: "1 point"},
     {name: "library", text: "⛲", bottomText: "1 point"},
     {name: "market", text: "⛲", bottomText: "1 point"},
+    {name: "treason", text: "🗡️", bottomText: "treason"},
+    {name: "intrigue", text: "🎭", bottomText: "intrigue"},
+    {name: "fastknight", text: "🔴", bottomText: "fast knight"},
   ];
   for (let resourceData of resourceDatas) {
     let tile = createHex(resourceData.color, "default" + resourceData.name + "tile", resourceData.text);
@@ -36,6 +39,9 @@ function initializeDefaults() {
   }
   for (let devData of devDatas) {
     let dev = createCard("#9D6BBB", "default" + devData.name, cardWidth, cardHeight, devData.text, devData.bottomText);
+    if (devData.name == "fastknight") {
+      renderText(dev.getContext("2d"), "💂", cardWidth / 2, cardHeight / 2, cardWidth);
+    }
     assets.appendChild(dev);
   }
   let threeport = createPort("white", "default3port", "3:1");
@@ -47,6 +53,10 @@ function initializeDefaults() {
   assets.appendChild(longestRoute);
   let largestArmy = createCard("indianred", "defaultlargestarmy", cardHeight * 4 / 5, cardHeight, "Army");
   assets.appendChild(largestArmy);
+
+  let castle = createHex("#95B900", "defaultcastletile", "");
+  renderText(castle.getContext("2d"), "🏰", hexWidth / 2, hexHeight / 2, 4 * hexHeight / 5);
+  assets.append(castle);
 
   let gold = document.createElement("CANVAS");
   gold.width = cardWidth;

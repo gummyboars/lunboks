@@ -138,6 +138,7 @@ class TestLoadState(unittest.TestCase):
     self.assertEqual(len(c.player_data), 1)
     self.assertIsInstance(c.player_data[0].cards, collections.defaultdict)
     self.assertIsInstance(c.player_data[0].trade_ratios, collections.defaultdict)
+    self.assertIsInstance(c.num_dev, collections.Counter)
     # TODO: add some more assertions here
 
   def testLoadSeafarerState(self):
@@ -167,6 +168,20 @@ class TestLoadState(unittest.TestCase):
     self.assertEqual(c.treasures[(5, 7)], "roadbuilding")
 
     self.assertListEqual(c.discoverable_treasures, ["collectpi", "collect2", "takedev"])
+
+  def testLoadKnights(self):
+    path = os.path.join(os.path.dirname(__file__), "knight_test.json")
+    with open(path, encoding="ascii") as json_file:
+      json_data = json_file.read()
+    g = islanders.IslandersGame.parse_json(json_data)
+    c = g.game
+    self.assertEqual(len(c.knights), 2)
+    self.assertIn((6, 4, 8, 4), c.knights)
+    self.assertIn((5, 5, 6, 4), c.knights)
+    self.assertIsInstance(c.knights[(5, 5, 6, 4)].location, islanders.EdgeLocation)
+    self.assertIsInstance(c.knights[(5, 5, 6, 4)].source, islanders.EdgeLocation)
+    self.assertEqual(c.knights[(5, 5, 6, 4)].player, 1)
+    self.assertEqual(c.knights[(5, 5, 6, 4)].movement, -2)
 
   def testDumpAndLoad(self):
     # TODO: test with different numbers of users
@@ -1424,6 +1439,18 @@ class TestTreasures(BaseInputHandlerTest):
     self.c.handle_road([2, 6, 3, 7], 0, "ship", [("rsrc1", 1), ("rsrc2", 1)])
     new_rsrcs = collections.Counter(self.c.player_data[0].cards)
     self.assertDictEqual(new_rsrcs - old_rsrcs, {"market": 1})
+    self.assertDictEqual(old_rsrcs - new_rsrcs, {"rsrc1": 1, "rsrc2": 1})
+    self.assertEqual(self.c.turn_phase, "main")
+
+  def testDiscoverDevCardReshuffle(self):
+    self.c.options["shuffle_discards"].force(True)
+    self.c.dev_cards.clear()
+    self.c.discoverable_treasures.append("takedev")
+    old_rsrcs = collections.Counter(self.c.player_data[0].cards)
+    with mock.patch.object(islanders.random, "shuffle", new=lambda cards: cards.sort()):
+      self.c.handle_road([2, 6, 3, 7], 0, "ship", [("rsrc1", 1), ("rsrc2", 1)])
+    new_rsrcs = collections.Counter(self.c.player_data[0].cards)
+    self.assertDictEqual(new_rsrcs - old_rsrcs, {"yearofplenty": 1})
     self.assertDictEqual(old_rsrcs - new_rsrcs, {"rsrc1": 1, "rsrc2": 1})
     self.assertEqual(self.c.turn_phase, "main")
 
@@ -3250,6 +3277,150 @@ class TestBuyDevCard(BaseInputHandlerTest):
       self.c.handle_buy_dev(0)
     self.assertEqual(self.c.player_data[0].cards["knight"], 2)
     self.assertEqual(self.c.player_data[0].cards["yearofplenty"], 1)
+
+  def testBuyReshuffle(self):
+    self.c.options["shuffle_discards"].force(True)
+    self.c.handle_buy_dev(0)
+    self.c.handle_buy_dev(0)
+    self.c.handle_buy_dev(0)
+    with mock.patch.object(islanders.random, "shuffle", new=lambda cards: cards.sort()):
+      self.c.handle_buy_dev(0)
+    self.assertEqual(self.c.player_data[0].cards["knight"], 2)
+    self.assertEqual(self.c.player_data[0].cards["yearofplenty"], 2)
+    count = collections.Counter({"knight": 12, "monopoly": 2, "roadbuilding": 2, "yearofplenty": 0})
+    self.assertCountEqual(self.c.dev_cards, count.elements())
+
+  def testBuyImmediateDev(self):
+    self.c.options["immediate_dev"].force(True)
+    self.c.handle_buy_dev(0)
+    self.assertEqual(self.c.action_stack, ["knight"])
+    self.assertEqual(self.c.player_data[0].cards.get("knight", 0), 0)
+
+
+class TestBuildKnight(BaseInputHandlerTest):
+  TEST_FILE = "knight_test.json"
+
+  def testPlaceKnight(self):
+    self.c.dev_cards.append("knight")
+    self.c.handle_buy_dev(0)
+    self.assertEqual(self.c.turn_phase, "knight")
+    self.assertEqual(len(self.c.knights), 2)
+    self.c.handle_place_knight([3, 5, 5, 5], 0)
+    self.assertEqual(len(self.c.knights), 3)
+
+  def testPlaceKnightOnCoast(self):
+    self.c.dev_cards.append("knight")
+    self.c.handle_buy_dev(0)
+    self.assertEqual(self.c.turn_phase, "knight")
+    self.assertEqual(len(self.c.knights), 2)
+    self.c.handle_place_knight([3, 7, 5, 7], 0)
+    self.assertEqual(len(self.c.knights), 3)
+
+  def testInvalidPlacement(self):
+    self.c.dev_cards.append("knight")
+    self.c.handle_buy_dev(0)
+    self.assertEqual(self.c.turn_phase, "knight")
+    self.assertEqual(len(self.c.knights), 2)
+    with self.assertRaisesRegex(InvalidMove, "tuple of size 4"):
+      self.c.handle_place_knight([3, 5], 0)
+    with self.assertRaisesRegex(InvalidMove, "not a valid edge"):
+      self.c.handle_place_knight([3, 5, 6, 6], 0)
+    with self.assertRaisesRegex(InvalidMove, "next to a castle"):
+      self.c.handle_place_knight([3, 3, 5, 3], 0)
+    self.assertEqual(len(self.c.knights), 2)
+
+  def testPlaceFastKnight(self):
+    self.c.dev_cards.append("fastknight")
+    self.c.handle_buy_dev(0)
+    self.assertEqual(self.c.turn_phase, "fastknight")
+    self.assertEqual(len(self.c.knights), 2)
+    with self.assertRaisesRegex(InvalidMove, "valid edge"):
+      self.c.handle_place_knight([2, 8, 3, 7], 0)
+    with self.assertRaisesRegex(InvalidMove, "already a knight there"):
+      self.c.handle_place_knight([6, 4, 8, 4], 0)
+    self.c.handle_place_knight([6, 2, 8, 2], 0)
+    self.assertEqual(len(self.c.knights), 3)
+
+  def testCannotHaveMoreThanSixKnights(self):
+    locs = [(6, 2, 8, 2), (3, 3, 5, 3), (6, 6, 8, 6), (5, 3, 6, 4), (2, 4, 3, 3)]
+    for loc in locs:
+      self.c.knights[loc] = islanders.Knight(loc, 0, loc)
+    self.assertEqual(len(self.c.knights), 7)
+    self.c.dev_cards.append("knight")
+    self.c.handle_buy_dev(0)
+    self.assertEqual(self.c.turn_phase, "main")
+    self.assertEqual(len(self.c.knights), 7)
+
+
+class TestMoveKnights(BaseInputHandlerTest):
+  TEST_FILE = "knight_test.json"
+
+  def setUp(self):
+    super().setUp()
+    self.c.handle_end_turn()
+
+  def testMoveKnightsComesAfterTurnEnd(self):
+    self.c.action_stack.clear()
+    self.assertEqual(self.c.turn_phase, "main")
+    self.c.handle_end_turn()
+    self.assertEqual(self.c.turn_phase, "move_knights")
+    self.assertEqual(self.c.knights[(6, 4, 8, 4)].source, islanders.EdgeLocation(6, 4, 8, 4))
+    self.assertEqual(self.c.knights[(6, 4, 8, 4)].movement, 3)
+
+  def testMoveOneKnight(self):
+    self.c.handle_move_knight((6, 4, 8, 4), (2, 6, 3, 5), 0)
+    self.assertEqual(self.c.knights[(2, 6, 3, 5)].location, islanders.EdgeLocation(2, 6, 3, 5))
+    self.assertEqual(self.c.knights[(2, 6, 3, 5)].source, islanders.EdgeLocation(6, 4, 8, 4))
+    self.assertEqual(self.c.knights[(2, 6, 3, 5)].movement, 0)
+
+    self.c.handle_move_knight((2, 6, 3, 5), (5, 3, 6, 2), 0)
+    self.assertEqual(self.c.knights[(5, 3, 6, 2)].location, islanders.EdgeLocation(5, 3, 6, 2))
+    self.assertEqual(self.c.knights[(5, 3, 6, 2)].source, islanders.EdgeLocation(6, 4, 8, 4))
+    self.assertEqual(self.c.knights[(5, 3, 6, 2)].movement, 1)
+
+    old_rsrcs = collections.Counter(self.c.player_data[0].cards)
+    self.c.handle_end_move_knights(0)
+    new_rsrcs = collections.Counter(self.c.player_data[0].cards)
+    self.assertDictEqual(new_rsrcs, old_rsrcs)
+
+  def testInvalidMoves(self):
+    with self.assertRaisesRegex(InvalidMove, "tuple of size 4"):
+      self.c.handle_move_knight((6, 4, 8, 4), (2, 6), 0)
+    with self.assertRaisesRegex(InvalidMove, "valid edge"):
+      self.c.handle_move_knight((6, 4, 8, 4), (5, 5, 9, 5), 0)
+    with self.assertRaisesRegex(InvalidMove, "your own knight"):
+      self.c.handle_move_knight((5, 5, 6, 4), (2, 6, 3, 5), 0)
+    with self.assertRaisesRegex(InvalidMove, "valid edge"):
+      self.c.handle_move_knight((6, 4, 8, 4), (9, 3, 11, 3), 0)
+
+  def testMustNotEndOnCastle(self):
+    self.c.handle_move_knight((6, 4, 8, 4), (3, 5, 5, 5), 0)
+    with self.assertRaisesRegex(InvalidMove, "away from the castle"):
+      self.c.handle_end_move_knights(0)
+
+  def testMoveFar(self):
+    loc = islanders.EdgeLocation(2, 6, 3, 7)
+    self.c.knights[loc] = islanders.Knight(loc, 0, loc)
+    self.c.knights[(6, 4, 8, 4)].source = None
+    self.c.action_stack.clear()
+    self.c.handle_end_turn()
+    self.assertEqual(self.c.knights[(6, 4, 8, 4)].source, islanders.EdgeLocation(6, 4, 8, 4))
+    self.c.handle_move_knight((2, 6, 3, 7), (5, 3, 6, 2), 0)
+    with self.assertRaisesRegex(InvalidMove, "enough movement"):
+      self.c.handle_move_knight((5, 3, 6, 2), (6, 2, 8, 2), 0)
+    old_rsrcs = collections.Counter(self.c.player_data[0].cards)
+    self.c.handle_end_move_knights(0)
+    new_rsrcs = collections.Counter(self.c.player_data[0].cards)
+    self.assertDictEqual(old_rsrcs - new_rsrcs, {"rsrc3": 1})
+    self.assertDictEqual(new_rsrcs - old_rsrcs, {})
+
+  def testMoveFarInsufficientFunds(self):
+    self.c.player_data[0].cards["rsrc3"] = 0
+    loc = islanders.EdgeLocation(2, 6, 3, 7)
+    self.c.knights[loc] = islanders.Knight(loc, 0, loc)
+    self.c.handle_move_knight((2, 6, 3, 7), (5, 3, 6, 2), 0)
+    with self.assertRaisesRegex(InvalidMove, "would need 1.*"):
+      self.c.handle_end_move_knights(0)
 
 
 class TestTradeOffer(BaseInputHandlerTest):

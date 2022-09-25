@@ -41,6 +41,12 @@
     "game_phase": "main",
     "largest_army_player": null,
     "longest_route_player": null,
+    "num_dev": {
+        "knight": 14,
+        "monopoly": 2,
+        "roadbuilding": 2,
+        "yearofplenty": 2
+    },
     "options": {
         "victory_points": {
             "name": "Victory Points",

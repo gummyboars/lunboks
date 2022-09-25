@@ -83,6 +83,8 @@ edges = [];
 edgeMatrix = [];
 roads = [];
 roadMatrix = [];
+knights = [];
+knightMatrix = [];
 cards = {};
 devCardCount = 0;
 turn = null;
@@ -1027,9 +1029,14 @@ function rollDice() {
   ws.send(JSON.stringify(msg));
 }
 function endTurn() {
-  let msg = {
-    type: (turnPhase == "extra_build") ? "end_extra_build" : "end_turn",
-  };
+  let end = "end_turn";
+  if (turnPhase == "move_knights") {
+    end = "end_move_knights";
+  }
+  if (turnPhase == "extra_build") {
+    end = "end_extra_build";
+  }
+  let msg = {type: end};
   ws.send(JSON.stringify(msg));
 }
 function updateCostCard() {
@@ -1112,6 +1119,21 @@ function updateCards() {
   for (let cardType in maxChild) {
     if (maxChild[cardType] != null) {
       maxChild[cardType].classList.add("shown");
+    }
+  }
+
+  let spendCount = 0;
+  for (let knight of knights) {
+    if (knight.player == myIdx && knight.movement < 0) {
+      spendCount++;
+    }
+  }
+  for (let child of container.children) {
+    if (spendCount > 0 && child.cardType == "rsrc3card" && !child.classList.contains("leave")) {
+      child.classList.add("spend");
+      spendCount--;
+    } else {
+      child.classList.remove("spend");
     }
   }
 }
@@ -1320,6 +1342,7 @@ function onmsg(event) {
   landings = data.landings;
   treasures = data.treasures;
   updateElems(roads, roadMatrix, data.roads);
+  updateElems(knights, knightMatrix, data.knights);
   let oldTurn = turn;
   turn = data.turn;
   collectTurn = data.collect_idx;
@@ -1441,6 +1464,9 @@ function updateEndTurn() {
   if (turnPhase == "extra_build" && turn != myIdx) {
     button.innerText = "End Build";
     canUseButton = (extraBuildTurn == myIdx);
+  } else if (turnPhase == "move_knights" && turn == myIdx) {
+    button.innerText = "Done";
+    canUseButton = true;
   } else {
     button.innerText = "End Turn";
     canUseButton = (turn == myIdx && turnPhase == "main");
@@ -1866,10 +1892,12 @@ function updatePlayerData() {
       if (gamePhase == "victory") {
         turnMarker.innerText = "🏆";
         phaseMarker.innerText = "🏆";
-      } else if (turnPhase == "robber" || turnPhase == "rob" || turnPhase == "expel") {
+      } else if (["robber", "rob", "expel", "knight", "fastknight"].includes(turnPhase)) {
         phaseMarker.innerText = "💂";
       } else if (turnPhase == "deplete") {
         phaseMarker.innerText = "🔃";
+      } else if (turnPhase == "move_knights") {
+        phaseMarker.innerText = "👣";
       } else if (turnPhase == "dice") {
         phaseMarker.innerText = "🎲";
       } else if (turnPhase == "main") {
@@ -2159,30 +2187,40 @@ function updateBuyDev() {
   }
   block.style.width = (cardWidth + devCardCount) + "px";
   block.style.height = (cardHeight + devCardCount) + "px";
-  for (let i = 0; i < devCardCount; i++) {
+  let totalCount = devCardCount;
+  let topDev = null;
+  if (["knight", "fastknight", "treason", "intrigue"].includes(turnPhase)) {
+    totalCount += 1;
+    topDev = turnPhase;
+  }
+  for (let i = 0; i < totalCount; i++) {
     let buydev = document.createElement("CANVAS");
     buydev.width = cardWidth;
     buydev.height = cardHeight;
-    renderAssetToCanvas(buydev, "devcard", "");
-    let offset = devCardCount - i - 1;
+    let asset = "devcard";
+    if (i == totalCount-1 && topDev != null) {
+      asset = topDev;
+    }
+    renderAssetToCanvas(buydev, asset, "");
+    let offset = totalCount - i - 1;
     buydev.style.position = "absolute";
-    if (i == devCardCount-1) {
+    if (i == totalCount-1 && topDev == null) {
       buydev.classList.add("buyactive");
-    } else {
+    } else if (i != totalCount-1) {
       buydev.style.transform = "translate(" + offset + "px," + offset + "px)";
     }
     block.appendChild(buydev);
   }
   let canUse = (gamePhase == "main" && turnPhase == "main" && turn == myIdx);
   canUse = canUse || (turnPhase == "extra_build" && extraBuildTurn == myIdx);
-  if (!canUse) {
-    block.classList.remove("selectable");
-    block.classList.add("disabled");
-    block.disabled = true;
-  } else {
+  if (canUse || topDev != null) {
     block.classList.add("selectable");
     block.classList.remove("disabled");
     block.disabled = false;
+  } else {
+    block.classList.remove("selectable");
+    block.classList.add("disabled");
+    block.disabled = true;
   }
 }
 function flip() {
