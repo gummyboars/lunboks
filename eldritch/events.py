@@ -2164,6 +2164,8 @@ class DiscardSpecific(Event):
 
     self.discarded = []
     for item in self.items:
+      for attr in item.tokens:
+        item.tokens[attr] = 0
       if item not in self.character.possessions:
         continue
       self.character.possessions.remove(item)
