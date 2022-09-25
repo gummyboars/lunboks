@@ -120,6 +120,10 @@ class Options(collections.OrderedDict):
     self["friendly_robber"] = GameOption("Friendly Robber", default=False)
     self["randomness"] = GameOption("Randomness", default=36, choices=list(range(37)))
     self["victory_points"] = GameOption("Victory Points", default=10, choices=list(range(8, 22)))
+    self["immediate_dev"] = GameOption("", default=False, forced=True, hidden=True)
+    self["shuffle_discards"] = GameOption(
+      "Shuffle Discards", default=False, forced=True, hidden=True
+    )
     self["foreign_island_points"] = GameOption(
       "", default=0, choices=[0, 1, 2], forced=True, hidden=True
     )
@@ -416,6 +420,29 @@ class Road:
     return str(self.json_repr())
 
 
+class Knight:
+  def __init__(self, location, player, source, *, movement=0):
+    self.location = EdgeLocation(*location)
+    self.player = player
+    self.source = EdgeLocation(*source)
+    self.movement = movement
+
+  def json_repr(self):
+    return {
+      "location": self.location,
+      "player": self.player,
+      "source": self.source,
+      "movement": self.movement,
+    }
+
+  @staticmethod
+  def parse_json(value):
+    return Knight(value["location"], value["player"], value["source"], movement=value["movement"])
+
+  def __str__(self):
+    return str(self.json_repr())
+
+
 class Piece:
   TYPES = ("settlement", "city")
 
@@ -590,10 +617,11 @@ class IslandersState:
   GIVE = "give"
   TRADE_SIDES = (WANT, GIVE)
   PLACEMENTS = ("place1", "place2", "place3")
-  LOCATION_ATTRIBUTES = frozenset({"tiles", "ports", "pieces", "roads", "treasures"})
+  LOCATION_ATTRIBUTES = frozenset({"tiles", "ports", "pieces", "roads", "knights", "treasures"})
   HIDDEN_ATTRIBUTES = frozenset(
     {
       "dev_cards",
+      "num_dev",
       "played_dev",
       "ships_moved",
       "built_this_turn",
@@ -638,9 +666,11 @@ class IslandersState:
     self.port_corners: dict[CornerLocation, str] = {}
     self.pieces: dict[CornerLocation, Piece] = {}
     self.roads: dict[EdgeLocation, Road] = {}  # includes ships
+    self.knights: dict[EdgeLocation, Knight] = {}
     self.robber: Optional[TileLocation] = None
     self.pirate: Optional[TileLocation] = None
     self.treasures: dict[CornerLocation, str] = {}
+    self.num_dev: collections.Counter[str] = collections.Counter()
     self.dev_cards: list[str] = []
     self.largest_army_player: Optional[int] = None
     self.longest_route_player: Optional[int] = None
@@ -654,7 +684,8 @@ class IslandersState:
     # Turn Information
     self.game_phase: str = "place1"  # valid values are place1, place2, place3, main, victory
     # settle, road, dice, collect, discard, robber, rob, dev_road, deplete, expel, main, extra_build
-    # collect1, collect2, collectpi, takedev, bury, placeport
+    # collect1, collect2, collectpi, takedev, bury, placeport, knight, fastknight, treason, intrigue
+    # move_knights
     self.action_stack: list[str] = ["road", "settle"]
     self.turn_idx: int = 0
     self.collect_idx: Optional[int] = None
@@ -719,6 +750,7 @@ class IslandersState:
     cstate.parse_ports(gamedata["ports"])
     cstate.parse_pieces(gamedata["pieces"])
     cstate.parse_roads(gamedata["roads"])
+    cstate.parse_knights(gamedata.get("knights", []))
     cstate.parse_treasures(gamedata.get("treasures", []))
 
     # Location attributes need to be replaced with location objects.
@@ -728,6 +760,9 @@ class IslandersState:
       cstate.pirate = TileLocation(*cstate.pirate)
     if cstate.target_tile is not None:
       cstate.target_tile = TileLocation(*cstate.target_tile)
+
+    # The number of dev cards needs to be a counter instead of a plain dict.
+    cstate.num_dev = collections.Counter(cstate.num_dev)
 
     # Built this turn needs to use locations instead of lists. Same thing for placement_islands.
     cstate.built_this_turn = [EdgeLocation(*loc) for loc in cstate.built_this_turn]
@@ -769,6 +804,11 @@ class IslandersState:
     for road_json in roaddata:
       road = Road.parse_json(road_json)
       self._add_road(road)
+
+  def parse_knights(self, knightdata):
+    for knight_json in knightdata:
+      knight = Knight.parse_json(knight_json)
+      self.knights[knight.location] = knight
 
   def parse_treasures(self, treasuredata):
     for treasure_json in treasuredata:
@@ -891,9 +931,32 @@ class IslandersState:
     if self.game_phase.startswith("place"):
       if not self.action_stack:
         self.end_turn()
-    if self.turn_phase not in ["collect", "rob", "dev_road", "deplete", "takedev"]:
+    if self.turn_phase not in [
+      "collect",
+      "rob",
+      "dev_road",
+      "deplete",
+      "takedev",
+      "knight",
+      "fastknight",
+      "move_knights",
+    ]:
+      return
+    if self.turn_phase == "move_knights":
+      for knight in self.knights.values():
+        if knight.player == self.turn_idx:
+          knight.movement = 3
+          knight.source = knight.location
+      return
+    if self.turn_phase in ["knight", "fastknight"]:
+      if len([k for k in self.knights.values() if k.player == self.turn_idx]) >= 6:
+        # Cannot have more than 6 knights.
+        self.action_stack.pop()
+        self.next_action()
       return
     if self.turn_phase == "takedev":
+      if self.options.shuffle_discards and not self.dev_cards:
+        self.reshuffle_dev_cards()
       if self.dev_cards:
         card_type = self.add_dev_card(self.turn_idx)
         self.event_log.append(
@@ -1009,6 +1072,16 @@ class IslandersState:
       return self.handle_buy_dev(player_idx)
     if move_type == "play_dev":
       return self.handle_play_dev(data.get("card_type"), data.get("selection"), player_idx)
+    if move_type == "knight":
+      return self.handle_place_knight(location, player_idx)
+    if move_type == "move_knight":
+      return self.handle_move_knight(data.get("from"), data.get("to"), player_idx)
+    if move_type == "treason":
+      return self.handle_treason(
+        data.get("froma"), data.get("fromb"), data.get("toa"), data.get("tob"), player_idx
+      )
+    if move_type == "intrigue":
+      return self.handle_intrigue(location, player_idx)
     if move_type == "expel":
       return self.handle_expel(location, player_idx)
     if move_type == "settle":
@@ -1023,6 +1096,8 @@ class IslandersState:
       )
     if move_type == "trade_bank":
       return self.handle_trade_bank(data.get("offer"), player_idx)
+    if move_type == "end_move_knights":
+      return self.handle_end_move_knights(player_idx)
     if move_type == "end_extra_build":
       return self.handle_end_extra_build(player_idx)
     if move_type == "end_turn":
@@ -1046,6 +1121,31 @@ class IslandersState:
     self.game_phase = "victory"
     self.event_log.append(Event("victory", "{player%s} has won!" % self.turn_idx))
 
+  def handle_end_move_knights(self, player_idx):
+    if self.turn_phase != "move_knights":
+      raise InvalidMove("It is not time to move your knights.")
+    castles = [tile for tile in self.tiles.values() if tile.tile_type == "castle"]
+    castle_edges = set(sum([tile.location.get_edge_locations() for tile in castles], []))
+    if any(edge in self.knights for edge in castle_edges):
+      raise InvalidMove("You must move all knights away from the castle.")
+    spend = len([k for k in self.knights.values() if k.movement < 0 and k.player == player_idx])
+    if self.player_data[player_idx].cards["rsrc3"] < spend:
+      raise InvalidMove(f"You would need {spend} {{rsrc3}} to move your knights that far.")
+    self.player_data[player_idx].cards["rsrc3"] -= spend
+    text = "{player%s} " % player_idx
+    if spend:
+      text += "paid %s {rsrc3} to move their knights" % spend
+    else:
+      text += "moved their knights"
+    self.event_log.append(Event("move_knights", text))
+
+    for knight in self.knights.values():
+      if knight.player == player_idx:
+        knight.movement = 0
+    self.action_stack.pop()
+    # TODO: make this work with extra build phase
+    self.end_turn()
+
   def handle_end_extra_build(self, player_idx):
     if self.turn_phase != "extra_build":
       raise InvalidMove("It is not the extra build phase.")
@@ -1062,6 +1162,10 @@ class IslandersState:
     if self.game_phase != "main":
       raise InvalidMove("You MUST place your first settlement/roads.")
     self._check_main_phase("end_turn", "end your turn")
+    if any(knight.player == self.turn_idx for knight in self.knights.values()):
+      self.action_stack.append("move_knights")
+      self.next_action()
+      return
     if self.options.extra_build:
       next_player = (self.turn_idx + 1) % len(self.player_data)
       self.extra_build_idx = next_player
@@ -2232,10 +2336,19 @@ class IslandersState:
   def handle_buy_dev(self, player):
     # Check that this is the right part of the turn.
     self._check_main_phase("buy_dev", "buy a development card")
-    resources = [("rsrc1", 1), ("rsrc3", 1), ("rsrc5", 1)]
-    if len(self.dev_cards) < 1:
+    if self.options.shuffle_discards and not self.dev_cards:
+      self.reshuffle_dev_cards()
+    if not self.dev_cards:
       raise InvalidMove("There are no development cards left.")
+    resources = [("rsrc1", 1), ("rsrc3", 1), ("rsrc5", 1)]
     self._remove_resources(resources, player, "buy a development card")
+
+    if self.options.immediate_dev:
+      card_type = self.dev_cards.pop()
+      self.event_log.append(Event("buy_dev", "{player%s} bought a %s" % (player, card_type)))
+      self.action_stack.append(card_type)
+      self.next_action()
+      return
     card_type = self.add_dev_card(player)
     self.event_log.append(
       Event(
@@ -2306,6 +2419,86 @@ class IslandersState:
     if not removable:
       raise InvalidMove("There are no barbarians that can be removed.")
     self.action_stack.append("expel")
+    self.next_action()
+
+  def handle_place_knight(self, loc, player_idx):
+    if self.turn_phase not in ["knight", "fastknight"]:
+      raise InvalidMove("You cannot place any knights right now.")
+    location = parse_location(loc, EdgeLocation)
+    if self.turn_phase == "knight":
+      castles = [tile for tile in self.tiles.values() if tile.tile_type == "castle"]
+      castle_edges = set(sum([tile.location.get_edge_locations() for tile in castles], []))
+      if location not in castle_edges:
+        raise InvalidMove("You must place your knight next to a castle.")
+    else:
+      edge_type = self._get_edge_type(location)
+      if edge_type is None or (edge_type != "road" and not edge_type.startswith("coast")):
+        raise InvalidMove("You must place your knight on a valid edge.")
+    if location in self.knights:
+      raise InvalidMove("There is already a knight there.")
+
+    self.knights[location] = Knight(location, player_idx, location)
+    self.event_log.append(Event("knight", "{player%s} built a knight" % player_idx))
+    self.action_stack.pop()
+    self.next_action()
+
+  def handle_move_knight(self, from_loc, to_loc, player_idx):
+    if self.turn_phase != "move_knights":
+      raise InvalidMove("You cannot move your knights right now.")
+    from_location = parse_location(from_loc, EdgeLocation)
+    to_location = parse_location(to_loc, EdgeLocation)
+    if from_location not in self.knights:
+      raise InvalidMove("You do not have a knight there.")
+    if self.knights[from_location].player != player_idx:
+      raise InvalidMove("You can only move your own knights.")
+    if to_location in self.knights:
+      raise InvalidMove("You cannot place your knight on top of another knight.")
+    edge_type = self._get_edge_type(to_location)
+    if edge_type is None or (edge_type != "road" and not edge_type.startswith("coast")):
+      raise InvalidMove("You must move your knight to a valid edge.")
+    distance = self._bfs_search(self.knights[from_location].source, to_location)
+    orig_movement = 3
+    if distance is None or orig_movement - distance < -2:
+      raise InvalidMove("Your knight does not have enough movement.")
+    knight = self.knights.pop(from_location)
+    knight.location = to_location
+    knight.movement = orig_movement - distance
+    self.knights[to_location] = knight
+
+  def _bfs_search(self, start, target):
+    if start == target:
+      return 0
+    max_search = 5
+    to_search = [start]
+    distances = {start: 0}
+    while to_search:
+      edge = to_search.pop(0)
+      if distances[edge] > max_search:
+        return None
+      tiles = edge.get_adjacent_tiles()
+      if not all(tile in self.tiles for tile in tiles):
+        # If this edge is not between two tiles on the map, ignore it.
+        continue
+      if edge == target:
+        return distances[edge]
+      left_edges = edge.corner_left.get_edges()
+      right_edges = edge.corner_right.get_edges()
+      adjacents = set(left_edges + right_edges) - {edge}
+      for adjacent in adjacents:
+        if adjacent in distances:
+          continue
+        distances[adjacent] = distances[edge] + 1
+        to_search.append(adjacent)
+    return None
+
+  def handle_treason(self, froma, fromb, toa, tob, player_idx):
+    # TODO
+    self.action_stack.pop()
+    self.next_action()
+
+  def handle_intrigue(self, loc, player_idx):
+    # TODO
+    self.action_stack.pop()
     self.next_action()
 
   def handle_expel(self, loc, player_idx):  # pylint: disable=unused-argument
@@ -2611,13 +2804,27 @@ class IslandersState:
     if self.options.extra_build:
       for card, count in {"knight": 6, "monopoly": 1, "roadbuilding": 1, "yearofplenty": 1}.items():
         counts[card] = counts[card] + count
-    return counts
+    return collections.Counter(counts)
 
   def init_dev_cards(self):
-    dev_cards = sum([[card] * count for card, count in self.dev_card_counts().items()], [])
-    random.shuffle(dev_cards)
-    self.dev_cards = dev_cards
+    self.num_dev = self.dev_card_counts()
+    self.reshuffle_dev_cards()
     self.init_dice_cards()
+
+  def init_barbarian_dev_cards(self):
+    self.num_dev = collections.Counter({"knight": 14, "fastknight": 4, "treason": 4, "intrigue": 4})
+    self.reshuffle_dev_cards()
+    self.init_dice_cards()
+
+  def reshuffle_dev_cards(self):
+    used_dev = collections.Counter()
+    for p in self.player_data:
+      used_dev += collections.Counter({card: p.cards.get(card, 0) for card in self.num_dev})
+    knights_played = sum(p.knights_played for p in self.player_data)
+    used_dev += collections.Counter({"knight": knights_played})
+    to_shuffle = self.num_dev - used_dev
+    self.dev_cards = list(to_shuffle.elements())
+    random.shuffle(self.dev_cards)
 
   def init_dice_cards(self):
     if self.options.randomness >= 36:
@@ -3254,6 +3461,46 @@ class DesertRiders(SeafarerScenario):
     options["foreign_island_points"].default = 0
 
 
+class BarbariansAttack(Scenario):
+  @classmethod
+  def preview(cls, state):
+    cls.load_file(state, "barbarians4.json")
+    center = TileLocation(7, 5)
+    center_tiles = [center] + center.get_adjacent_tiles()
+    for tile in state.tiles.values():
+      if tile.is_land and tile.number:
+        tile.tile_type = "discover" if tile.location in center_tiles else "randomized"
+    for port in state.ports.values():
+      port.port_type = "randomized"
+    state.recompute()
+
+  @classmethod
+  def init(cls, state):
+    if len(state.player_data) < 3 or len(state.player_data) > 4:
+      raise InvalidPlayer("Must have between 3 and 4 players.")
+    cls.load_file(state, "barbarians4.json")
+    center = TileLocation(7, 5)
+    center_locs = [center] + center.get_adjacent_tiles()
+    outer_locs = [
+      loc for loc, tile in state.tiles.items() if tile.number and tile.location not in center_locs
+    ]
+    state.shuffle_land_tiles(center_locs)
+    state.shuffle_land_tiles(outer_locs)
+    state.shuffle_ports()
+    state.recompute()
+    state.init_barbarian_dev_cards()
+
+  @classmethod
+  def mutate_options(cls, options):
+    super().mutate_options(options)
+    options["robber"].force(False)
+    options["victory_points"].default = 12
+    options["gold"].force(True)
+    options["immediate_dev"].force(True)
+    options["shuffle_discards"].force(True)
+    options["placements"].force(("settlement", "city"))
+
+
 class MapMakerState(IslandersState):
   def handle(self, player_idx, data):
     if data["type"] not in ["robber", "pirate", "end_turn", "settle", "city"]:
@@ -3357,6 +3604,7 @@ class IslandersGame(BaseGame):
       ("Into the Unknown", IntoTheUnknown),
       ("Greater Islands", GreaterIslands),
       ("Desert Riders", DesertRiders),
+      ("Barbarians Attack", BarbariansAttack),
       ("Map Maker", MapMaker),
     ]
   )

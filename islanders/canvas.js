@@ -19,6 +19,7 @@ hoverCorner = null;  // The location x, y coordinates
 hoverEdge = null;  // An edge object with a location and an edge_type
 hoverTileEdge = null;  // An object with tile, edge, and rotation
 moveShipFromLocation = null;
+moveKnightFromLocation = null;
 
 function locationsEqual(locA, locB) {
   if (locA == null && locB == null) {
@@ -104,6 +105,11 @@ function draw() {
   context.save();
   for (let i = 0; i < treasures.length; i++) {
     drawTreasure(treasures[i].location, context);
+  }
+  context.restore();
+  context.save();
+  for (let knight of knights) {
+    drawKnight(knight.location, playerData[knight.player].color, knight.movement, context);
   }
   context.restore();
   context.save();
@@ -346,6 +352,68 @@ function drawTreasure(loc, ctx) {
   ctx.lineTo(canvasLoc.x - pieceRadius * 3/2, canvasLoc.y - pieceRadius * 1/3);
   ctx.stroke();
 }
+function drawKnight(loc, color, movement, ctx) {
+  let leftCorner = coordToCanvasLoc([loc[0], loc[1]]);
+  let rightCorner = coordToCanvasLoc([loc[2], loc[3]]);
+  let canvasLoc = {x: (leftCorner.x+rightCorner.x)/2, y: (leftCorner.y+rightCorner.y)/2};
+  let radius = pieceRadius * 1.25;
+  ctx.save();
+  ctx.translate(canvasLoc.x, canvasLoc.y);
+  ctx.fillStyle = color;
+  ctx.strokeStyle = "black";
+  ctx.lineWidth = 1;
+  if (locationsEqual(moveKnightFromLocation, loc)) {
+    ctx.globalAlpha = 0.5;
+  }
+  ctx.beginPath();
+  ctx.moveTo(-radius, -radius);
+  ctx.lineTo(radius, -radius);
+  ctx.quadraticCurveTo(radius, radius/3, 0, radius);
+  ctx.quadraticCurveTo(-radius, radius/3, -radius, -radius);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  ctx.clip();
+  ctx.fillStyle = "black";
+  if (movement > 0) {
+    ctx.beginPath();
+    ctx.moveTo(5*pieceRadius/6, -pieceRadius/2);
+    ctx.ellipse(pieceRadius/2, -pieceRadius/2, pieceRadius/3, pieceRadius/3, 0, 0, 2*Math.PI);
+    ctx.closePath();
+    ctx.fill();
+  }
+  if (movement > 2) {
+    ctx.beginPath();
+    ctx.moveTo(pieceRadius/3, pieceRadius/3);
+    ctx.ellipse(0, pieceRadius/3, pieceRadius/3, pieceRadius/3, 0, 0, 2*Math.PI);
+    ctx.closePath();
+    ctx.fill();
+  }
+  if (movement > 1) {
+    ctx.beginPath();
+    ctx.moveTo(-5*pieceRadius/6, -pieceRadius/2);
+    ctx.ellipse(-pieceRadius/2, -pieceRadius/2, pieceRadius/3, pieceRadius/3, 0, Math.PI, 3*Math.PI);
+    ctx.closePath();
+    ctx.fill();
+  }
+  if (movement < 0) {
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(0, -1.5*pieceRadius);
+    ctx.lineTo(0, 1.5*pieceRadius);
+    ctx.closePath();
+    ctx.stroke();
+  }
+  if (movement < -1) {
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(-1.5*pieceRadius, -pieceRadius/3);
+    ctx.lineTo(1.5*pieceRadius, -pieceRadius/3);
+    ctx.closePath();
+    ctx.stroke();
+  }
+  ctx.restore();
+}
 function drawTile(tileData, ctx) {
   let img = getAsset(tileData.tile_type + "tile", tileData.variant);
   let canvasLoc = coordToCanvasLoc(tileData.location);
@@ -554,6 +622,12 @@ function drawHover(ctx) {
     }
   }
   if ((edgeType == null || !edgeType.startsWith("coast")) && hoverEdge != null) {
+    if (["knight", "fastknight", "move_knights"].includes(turnPhase)) {
+      if (hoverEdge.edge_type != "ship") {
+        drawKnight(hoverEdge.location, 'rgba(127, 127, 127, 0.5)', 0, ctx);
+      }
+      return;
+    }
     drawRoad(hoverEdge.location, 'rgba(127, 127, 127, 0.5)', hoverEdge.edge_type, null, null, false, ctx);
     return;
   }
@@ -645,20 +719,54 @@ function onClickEdge(event, edgeLoc) {
     moveShipFromLocation = null;
     return;
   }
+  if (moveKnightFromLocation != null) {
+    if (locationsEqual(moveKnightFromLocation, edgeLoc)) {  // Cancel moving knight
+      moveKnightFromLocation  = null;
+      draw();
+      return;
+    }
+    let msg = {
+      type: "move_knight",
+      from: moveKnightFromLocation,
+      to: edgeLoc,
+    };
+    ws.send(JSON.stringify(msg));
+    moveKnightFromLocation = null;
+    return;
+  }
   let edgeType = null;
   let [edgeX, edgeY] = [(edgeLoc[0]+edgeLoc[2])/2, (edgeLoc[1]+edgeLoc[3])/2];
   if (edgeMatrix[edgeX] != null && edgeMatrix[edgeX][edgeY] != null) {
     edgeType = edgeMatrix[edgeX][edgeY].edge_type;
   }
-  if (edgeType && !edgeType.startsWith("coast")) {  // Coast must use tileedge instead
-    if (roadMatrix[edgeX] != null && roadMatrix[edgeX][edgeY] != null) {
-      if (roadMatrix[edgeX][edgeY].player == myIdx && roadMatrix[edgeX][edgeY].road_type == "ship") {
-        moveShipFromLocation = edgeLoc;
-        event.stopPropagation();
-        draw();
-        return;
-      }
+  if (!edgeType) {
+    return;
+  }
+  if (roadMatrix[edgeX] != null && roadMatrix[edgeX][edgeY] != null) {
+    if (roadMatrix[edgeX][edgeY].player == myIdx && roadMatrix[edgeX][edgeY].road_type == "ship") {
+      moveShipFromLocation = edgeLoc;
+      event.stopPropagation();
+      draw();
+      return;
     }
+  }
+  if (knightMatrix[edgeX] != null && knightMatrix[edgeX][edgeY] != null) {
+    if (turnPhase == "move_knights" && knightMatrix[edgeX][edgeY].player == myIdx) {
+      moveKnightFromLocation = knightMatrix[edgeX][edgeY].location;
+      event.stopPropagation();
+      draw();
+      return;
+    }
+  }
+  if (["knight", "fastknight"].includes(turnPhase)) {
+    let msg = {
+      type: "knight",
+      location: edgeLoc,
+    }
+    ws.send(JSON.stringify(msg));
+    return;
+  }
+  if (!edgeType.startsWith("coast")) {  // Coast must use tileedge instead
     let msg = {
       type: edgeType,
       location: edgeLoc,
@@ -710,8 +818,9 @@ function onclick(event) {
     ignoreNextClick = false;
     return;
   }
-  if (moveShipFromLocation != null) {
+  if (moveShipFromLocation != null || moveKnightFromLocation != null) {
     moveShipFromLocation = null;
+    moveKnightFromLocation = null;
     draw();
   }
 }

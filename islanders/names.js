@@ -23,6 +23,7 @@ assetNames = [
   "discovertile",
   "randomizedtile",
   "spacetile",
+  "castletile",
   "coast",
   "port",
   "rsrc1port",
@@ -48,6 +49,9 @@ assetNames = [
   "university",
   "library",
   "market",
+  "fastknight",
+  "treason",
+  "intrigue",
   // Other
   "devcard",
   "cardback",

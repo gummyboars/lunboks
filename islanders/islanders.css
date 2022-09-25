@@ -679,6 +679,10 @@ div {
   transform: translateY(-100%);
   opacity: 0;
 }
+.uicard.spend {
+  transform: translateY(-20%);
+  opacity: 0.7;
+}
 .innercard {
   position: absolute;
   top: 0;
