@@ -281,7 +281,7 @@ class OuterGodlyFlute(Item):
   def get_usable_interrupt(self, event, owner, state):
     if (not isinstance(event, events.CombatChoice)
         or len(state.event_stack) < 2
-        or not isinstance(state.event_stack[-2], events.CombatRound)):
+            or not isinstance(state.event_stack[-2], events.CombatRound)):
       return None
     if owner.stamina < 3 or owner.sanity < 3:
       return None
