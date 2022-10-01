@@ -1945,7 +1945,7 @@ function updatePlayerInfo(idx, dataDiv) {
   points.classList.add("otheritem");
   let armySize = document.createElement("DIV");
   let armyText = document.createElement("SPAN");
-  armyText.innerText = playerData[idx].armies;
+  armyText.innerText = playerData[idx].armies || playerData[idx].captured_barbarians || 0;
   if (idx === largestArmyPlayer) {
     armyText.style.padding = "2px";
     armyText.style.border = "2px white solid";

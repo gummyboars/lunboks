@@ -123,6 +123,17 @@
             "hidden": true,
             "value": true
         },
+        "invasion_type": {
+            "name": "Invasion Type",
+            "forced": true,
+            "default": "barbarians",
+            "choices": [
+                "riders",
+                "barbarians"
+            ],
+            "hidden": true,
+            "value": "barbarians"
+        },
         "placements": {
             "name": "",
             "forced": true,
