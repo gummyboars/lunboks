@@ -124,6 +124,9 @@ class Options(collections.OrderedDict):
     self["shuffle_discards"] = GameOption(
       "Shuffle Discards", default=False, forced=True, hidden=True
     )
+    self["invasion_type"] = GameOption(
+      "Invasion Type", default="riders", forced=True, hidden=True, choices=["riders", "barbarians"]
+    )
     self["foreign_island_points"] = GameOption(
       "", default=0, choices=[0, 1, 2], forced=True, hidden=True
     )
@@ -1516,6 +1519,29 @@ class IslandersState:
     self.next_action()
 
   def hasten_invasion(self):
+    if self.options.invasion_type == "barbarians":
+      remaining_barbarians = 30 - sum(t.barbarians for t in self.tiles.values())
+      to_place = min(remaining_barbarians, 3)
+      rolls = []
+      while len(rolls) < to_place:
+        roll = random.randint(1, 6) + random.randint(1, 6)
+        if roll not in rolls and roll != 7:
+          rolls.append(roll)
+      # TODO: this will need to change for larger maps
+      center_locs = TileLocation(7, 5).get_adjacent_tiles() + [TileLocation(7, 5)]
+      for roll in rolls:
+        matching_tiles = [
+          t for t in self.tiles.values() if t.location not in center_locs and t.number == roll
+        ]
+        for tile in matching_tiles:
+          if tile.barbarians >= 3:
+            continue
+          tile.barbarians += 1
+          if tile.barbarians >= 3:
+            tile.conquered = True
+            self.check_conquest(tile)
+      self.event_log.append(Event("invade", f"Barbarians invaded {', '.join(map(str, rolls))}"))
+      return
     if self.invasion_countdown is None or self.invasion_countdown <= 0:
       return
     count = 3 if len(self.player_data) <= 3 else 2
@@ -1527,7 +1553,9 @@ class IslandersState:
       deserts[0].barbarians += 1
       self.invasion_countdown -= 1
     for tile in deserts:
-      self.check_conquest(tile)
+      if tile.barbarians > 0:
+        tile.conquered = True
+        self.check_conquest(tile)
 
   def invade(self, num):
     if self.invasion_countdown is None or self.invasion_countdown > 0:
@@ -1559,20 +1587,37 @@ class IslandersState:
       if deserts[0].barbarians == 0:
         cleared.append(deserts[0])
     for tile in invaded:
+      tile.conquered = True
       self.check_conquest(tile)
     for tile in cleared:
       self.check_recapture(tile)
 
   def check_conquest(self, tile):
-    if tile.barbarians <= 0:
-      return
-    tile.conquered = True
+    def is_conquered(tile):
+      if self.options.invasion_type == "barbarians":
+        return tile.conquered or not tile.is_land
+      return tile.conquered
+
+    if tile.number:
+      text = f"The {tile.number} {{{tile.tile_type}}} was conquered"
+      self.event_log.append(Event("conquest", text))
     pieces = [self.pieces[c] for c in tile.location.get_corner_locations() if c in self.pieces]
     roads = [self.roads[edge] for edge in tile.location.get_edge_locations() if edge in self.roads]
+    conquer_count = collections.defaultdict(int)
     for piece in pieces:
       surrounding = [self.tiles[tile] for tile in piece.location.get_tiles() if tile in self.tiles]
-      if all(tile.conquered for tile in surrounding):
+      if all(is_conquered(tile) for tile in surrounding):
+        if not piece.conquered:
+          conquer_count[piece.piece_type] += 1
         piece.conquered = True
+        if piece.location in self.port_corners:
+          self.recompute_ports(piece.player)
+    conquer_text = " and ".join(f"{count} {kind}s" for kind, count in conquer_count.items())
+    if conquer_count:
+      self.event_log.append(Event("conquest", conquer_text + " were conquered"))
+    if self.options.invasion_type == "barbarians":
+      return
+
     players_to_check = set()
     for road in roads:
       surrounding = [self.tiles[t] for t in road.location.get_adjacent_tiles() if t in self.tiles]
@@ -1583,6 +1628,13 @@ class IslandersState:
     for player in players_to_check:
       self.player_data[player].longest_route = self._calculate_longest_road(player)
     self._update_longest_route_player()
+
+  def recompute_ports(self, player_idx):
+    self.player_data[player_idx].trade_ratios = collections.defaultdict(lambda: 4)
+    for corner in self.port_corners:
+      piece = self.pieces.get(corner)
+      if piece and piece.player == player_idx and not piece.conquered:
+        self._add_player_port(corner, player_idx)
 
   def _check_main_phase(self, move_type, text):
     if self.turn_phase == "extra_build" and move_type in self.EXTRA_BUILD_ACTIONS:
@@ -1628,8 +1680,12 @@ class IslandersState:
         raise InvalidMove("You cannot place a ship next to the pirate.")
     # Validate that this road is not surrounded by conquered tiles.
     # Note that both adjacent tiles are guaranteed to be in self.tiles because of _check_edge_type.
-    if all(self.tiles[loc].conquered for loc in location.get_adjacent_tiles()):
-      raise InvalidMove(f"You cannot place a {road_type} between two conquered tiles.")
+    if self.options.invasion_type == "barbarians":
+      if any(self.tiles[loc].conquered for loc in location.get_adjacent_tiles()):
+        raise InvalidMove(f"You cannot place a {road_type} next to a conquered tile.")
+    else:
+      if all(self.tiles[loc].conquered for loc in location.get_adjacent_tiles()):
+        raise InvalidMove(f"You cannot place a {road_type} between two conquered tiles.")
     # Validate that this connects to either a settlement or another road.
     for corner in [left_corner, right_corner]:
       # Check whether this corner has one of the player's settlements.
@@ -2223,8 +2279,12 @@ class IslandersState:
     else:
       raise InvalidMove("You must place your settlement next to one of your roads.")
     # Check that this is not a conquered corner.
-    if not any(tile in self.tiles and not self.tiles[tile].conquered for tile in loc.get_tiles()):
-      raise InvalidMove("You cannot place your settlement on a conquered corner.")
+    if self.options.invasion_type == "barbarians":
+      if any(tile in self.tiles and self.tiles[tile].conquered for tile in loc.get_tiles()):
+        raise InvalidMove("You cannot place your settlement next to a conquered tile.")
+    else:
+      if all(tile in self.tiles and self.tiles[tile].conquered for tile in loc.get_tiles()):
+        raise InvalidMove("You cannot place your settlement on a conquered corner.")
     # Check player has enough settlements left.
     settle_count = len(
       [p for p in self.pieces.values() if p.player == player and p.piece_type == "settlement"]
@@ -3498,6 +3558,7 @@ class BarbariansAttack(Scenario):
     options["gold"].force(True)
     options["immediate_dev"].force(True)
     options["shuffle_discards"].force(True)
+    options["invasion_type"].force("barbarians")
     options["placements"].force(("settlement", "city"))
 
 

@@ -3993,6 +3993,174 @@ class TestExpelBarbarians(BaseInputHandlerTest):
     self.assertIsNone(self.c.largest_army_player)
 
 
+class TestBarbarianInvasion(BaseInputHandlerTest):
+  TEST_FILE = "barbarian_test.json"
+
+  def testThreeBarbariansLand(self):
+    with mock.patch.object(islanders.random, "randint", side_effect=[1, 2, 3, 5, 4, 6]):
+      self.c.handle(1, {"type": "settle", "location": [9, 7]})
+    expected_tiles = [(13, 3), (13, 5), (10, 8)]
+    for tile in self.c.tiles.values():
+      with self.subTest(tile=tile.location):
+        if tile.location in expected_tiles:
+          self.assertEqual(tile.barbarians, 1)
+        else:
+          self.assertEqual(tile.barbarians, 0)
+        self.assertFalse(tile.conquered)
+
+  def testCityAlsoCausesInvasion(self):
+    # No invasion caused by building a road
+    self.c.handle(1, {"type": "road", "location": [2, 6, 3, 7]})
+    for tile in self.c.tiles.values():
+      with self.subTest(tile=tile.location):
+        self.assertEqual(tile.barbarians, 0)
+
+    # Invasion caused by upgrading to a city
+    with mock.patch.object(islanders.random, "randint", side_effect=[1, 2, 3, 5, 4, 6]):
+      self.c.handle(1, {"type": "city", "location": [0, 6]})
+    expected_tiles = [(13, 3), (13, 5), (10, 8)]
+    for tile in self.c.tiles.values():
+      with self.subTest(tile=tile.location):
+        if tile.location in expected_tiles:
+          self.assertEqual(tile.barbarians, 1)
+        else:
+          self.assertEqual(tile.barbarians, 0)
+        self.assertFalse(tile.conquered)
+
+  def testDuplicateNumbersAreRerolled(self):
+    # An eight is rolled twice - once as 3, 5 and again as 4, 4. The second one should be rerolled.
+    with mock.patch.object(islanders.random, "randint", side_effect=[1, 2, 3, 5, 4, 4, 4, 6]):
+      self.c.handle(1, {"type": "city", "location": [0, 6]})
+    expected_tiles = [(13, 3), (13, 5), (10, 8)]
+    for loc in expected_tiles:
+      with self.subTest(tile=loc):
+        self.assertEqual(self.c.tiles[loc].barbarians, 1)
+
+  def testSevensAreRerolled(self):
+    # Ignore the 7 and reroll
+    with mock.patch.object(islanders.random, "randint", side_effect=[1, 2, 3, 4, 4, 4, 4, 6]):
+      self.c.handle(1, {"type": "city", "location": [0, 6]})
+    expected_tiles = [(13, 3), (13, 5), (10, 8)]
+    for loc in expected_tiles:
+      with self.subTest(tile=loc):
+        self.assertEqual(self.c.tiles[loc].barbarians, 1)
+
+  def testConqueredTilesAreNotRerolled(self):
+    self.c.tiles[(13, 5)].barbarians = 3
+    self.c.tiles[(13, 5)].conquered = True
+    self.c.tiles[(13, 3)].barbarians = 2
+    with mock.patch.object(islanders.random, "randint", side_effect=[1, 2, 3, 5, 4, 6]):
+      self.c.handle(1, {"type": "city", "location": [0, 6]})
+    self.assertEqual(self.c.tiles[(13, 5)].barbarians, 3)
+    self.assertTrue(self.c.tiles[(13, 5)].conquered)
+    self.assertEqual(self.c.tiles[(13, 3)].barbarians, 3)
+    self.assertTrue(self.c.tiles[(13, 3)].conquered)
+    self.assertEqual(self.c.tiles[(10, 8)].barbarians, 1)
+    self.assertFalse(self.c.tiles[(10, 8)].conquered)
+
+  def testNoMoreThanThirtyBarbarians(self):
+    tiles = [(4, 2), (7, 1), (10, 2), (13, 3), (13, 5), (10, 8), (7, 9), (4, 8), (1, 7), (1, 5)]
+    for loc in tiles:
+      self.c.tiles[loc].barbarians = 3
+      self.c.tiles[loc].conquered = True
+    with mock.patch.object(islanders.random, "randint", side_effect=[1, 2, 3, 5, 4, 6]):
+      self.c.handle(1, {"type": "city", "location": [0, 6]})
+    for loc in tiles:
+      with self.subTest(tile=loc):
+        self.assertEqual(self.c.tiles[loc].barbarians, 3)
+        self.assertTrue(self.c.tiles[loc].conquered)
+
+
+class TestBarbarianConquest(BaseInputHandlerTest):
+  TEST_FILE = "barbarian_test.json"
+
+  def testIsolatedSettlementsAreConquered(self):
+    to_conquer = [(4, 8), (10, 2), (1, 5)]
+    for loc in to_conquer:
+      self.c.tiles[loc].barbarians = 2
+
+    with mock.patch.object(islanders.random, "randint", side_effect=[3, 3, 3, 2, 4, 5]):
+      self.c.handle(1, {"type": "city", "location": [0, 6]})
+    for loc in to_conquer:
+      with self.subTest(tile=loc):
+        self.assertEqual(self.c.tiles[loc].barbarians, 3)
+        self.assertTrue(self.c.tiles[loc].conquered)
+
+    self.assertTrue(self.c.pieces[(3, 9)].conquered)
+    self.assertTrue(self.c.pieces[(11, 1)].conquered)
+    self.assertFalse(self.c.pieces[(0, 6)].conquered)
+
+    # Also check that conquered ports no longer provide benefits
+    self.assertEqual(self.c.player_data[0].trade_ratios["rsrc4"], 4)
+    self.assertEqual(self.c.player_data[1].trade_ratios["rsrc4"], 3)
+    self.assertEqual(self.c.player_data[2].trade_ratios["rsrc4"], 4)
+
+  def testCastleAndDesertAreNeverConquered(self):
+    to_conquer = [(10, 8), (4, 2), (7, 9)]
+    for loc in to_conquer:
+      self.c.tiles[loc].barbarians = 2
+
+    with mock.patch.object(islanders.random, "randint", side_effect=[5, 5, 2, 2, 6, 5]):
+      self.c.handle(1, {"type": "city", "location": [0, 6]})
+    for loc in to_conquer:
+      with self.subTest(tile=loc):
+        self.assertEqual(self.c.tiles[loc].barbarians, 3)
+        self.assertTrue(self.c.tiles[loc].conquered)
+
+    self.assertFalse(self.c.pieces[(12, 8)].conquered)
+    self.assertFalse(self.c.pieces[(2, 2)].conquered)
+
+  def testRoadsAreNotConquered(self):
+    to_conquer = [(10, 2), (13, 3), (13, 5)]
+    for loc in to_conquer:
+      self.c.tiles[loc].barbarians = 2
+
+    with mock.patch.object(islanders.random, "randint", side_effect=[4, 5, 1, 2, 4, 4]):
+      self.c.handle(1, {"type": "city", "location": [0, 6]})
+    for loc in to_conquer:
+      with self.subTest(tile=loc):
+        self.assertEqual(self.c.tiles[loc].barbarians, 3)
+        self.assertTrue(self.c.tiles[loc].conquered)
+
+    self.assertTrue(self.c.pieces[(14, 4)].conquered)
+    self.assertTrue(self.c.pieces[(11, 1)].conquered)
+    self.assertFalse(self.c.roads[(12, 4, 14, 4)].conquered)
+    self.assertEqual(self.c.player_data[2].longest_route, 1)
+
+
+class TestBuildNextToConqueredTiles(BaseInputHandlerTest):
+  TEST_FILE = "barbarian_test.json"
+
+  def testCannotBuildNextToConqueredTiles(self):
+    to_conquer = [(1, 5), (10, 8), (4, 8)]
+    for loc in to_conquer:
+      self.c.tiles[loc].barbarians = 2
+
+    with mock.patch.object(islanders.random, "randint", side_effect=[3, 3, 3, 2, 5, 5]):
+      self.c.handle(1, {"type": "city", "location": [0, 6]})
+    with self.assertRaisesRegex(InvalidMove, "next to a conquered tile"):
+      self.c.handle(1, {"type": "settle", "location": [9, 7]})
+    with self.assertRaisesRegex(InvalidMove, "next to a conquered tile"):
+      self.c.handle(1, {"type": "road", "location": [2, 6, 3, 5]})
+    self.c.handle(1, {"type": "road", "location": [2, 6, 3, 7]})
+    with self.assertRaisesRegex(InvalidMove, "next to a conquered tile"):
+      self.c.handle(1, {"type": "settle", "location": [3, 7]})
+
+  def testCanUpgradeConqueredSettlement(self):
+    # The rules do not prohibit upgrading a conquered settlement to a city.
+    to_conquer = [(1, 5), (1, 7), (10, 8)]
+    for loc in to_conquer:
+      self.c.tiles[loc].barbarians = 2
+
+    with mock.patch.object(islanders.random, "randint", side_effect=[1, 1, 3, 3, 5, 5]):
+      self.c.handle(1, {"type": "settle", "location": [9, 7]})
+    self.c.handle(1, {"type": "city", "location": [0, 6]})
+
+    # The new piece should still be conquered and not provide its port benefit.
+    self.assertTrue(self.c.pieces[(0, 6)].conquered)
+    self.assertEqual(self.c.player_data[1].trade_ratios["rsrc4"], 4)
+
+
 class TestExtraBuildPhase(BreakpointTestMixin):
   def setUp(self):
     self.g = islanders.IslandersGame()
