@@ -247,6 +247,9 @@ class BreakpointTestMixin(unittest.TestCase):
     server.main(8001)
     t.join()
 
+  def handle(self, player_idx, data):
+    return [*self.c.handle(player_idx, data)]  # Loop through generator results
+
 
 class CornerComputationTest(unittest.TestCase):
   def testIslandCorners(self):
@@ -342,6 +345,9 @@ class CornerComputationTest(unittest.TestCase):
 
 
 class PlacementRestrictionsTest(unittest.TestCase):
+  def handle(self, state, player_idx, data):
+    return [*state.handle(player_idx, data)]
+
   def testSaveAndLoad(self):
     c = islanders.IslandersState()
     c.add_player("red", "player1")
@@ -368,10 +374,10 @@ class PlacementRestrictionsTest(unittest.TestCase):
     self.assertCountEqual(c.placement_islands, [(-1, 3)])
 
     with self.assertRaisesRegex(InvalidMove, "starting settlement"):
-      c.handle(0, {"type": "settle", "location": [0, 8]})
+      self.handle(c, 0, {"type": "settle", "location": [0, 8]})
     with self.assertRaisesRegex(InvalidMove, "starting settlement"):
-      c.handle(0, {"type": "settle", "location": [12, 0]})
-    c.handle(0, {"type": "settle", "location": [3, 3]})
+      self.handle(c, 0, {"type": "settle", "location": [12, 0]})
+    self.handle(c, 0, {"type": "settle", "location": [3, 3]})
 
     # We're going to skip a bunch of placements.
     c.game_phase = "place2"
@@ -379,8 +385,8 @@ class PlacementRestrictionsTest(unittest.TestCase):
     c.turn_idx = 1
 
     with self.assertRaisesRegex(InvalidMove, "starting settlement"):
-      c.handle(1, {"type": "settle", "location": [9, 9]})
-    c.handle(1, {"type": "settle", "location": [3, 5]})
+      self.handle(c, 1, {"type": "settle", "location": [9, 9]})
+    self.handle(c, 1, {"type": "settle", "location": [3, 5]})
 
   def testDesert4Placement(self):
     c = islanders.IslandersState()
@@ -393,10 +399,10 @@ class PlacementRestrictionsTest(unittest.TestCase):
     self.assertCountEqual(c.placement_islands, [(-1, 5)])
 
     with self.assertRaisesRegex(InvalidMove, "starting settlement"):
-      c.handle(0, {"type": "settle", "location": [0, 8]})
+      self.handle(c, 0, {"type": "settle", "location": [0, 8]})
     with self.assertRaisesRegex(InvalidMove, "starting settlement"):
-      c.handle(0, {"type": "settle", "location": [12, 0]})
-    c.handle(0, {"type": "settle", "location": [3, 3]})
+      self.handle(c, 0, {"type": "settle", "location": [12, 0]})
+    self.handle(c, 0, {"type": "settle", "location": [3, 3]})
 
     # We're going to skip a bunch of placements.
     c.game_phase = "place2"
@@ -405,8 +411,8 @@ class PlacementRestrictionsTest(unittest.TestCase):
 
     # It should still validate islands in the second placement round.
     with self.assertRaisesRegex(InvalidMove, "starting settlement"):
-      c.handle(1, {"type": "settle", "location": [12, 12]})
-    c.handle(1, {"type": "settle", "location": [12, 8]})
+      self.handle(c, 1, {"type": "settle", "location": [12, 12]})
+    self.handle(c, 1, {"type": "settle", "location": [12, 8]})
 
   def testShores3Placement(self):
     c = islanders.IslandersState()
@@ -418,12 +424,12 @@ class PlacementRestrictionsTest(unittest.TestCase):
     self.assertCountEqual(c.placement_islands, [(-1, 3)])
 
     with self.assertRaisesRegex(InvalidMove, "starting settlement"):
-      c.handle(0, {"type": "settle", "location": [3, 9]})
+      self.handle(c, 0, {"type": "settle", "location": [3, 9]})
     with self.assertRaisesRegex(InvalidMove, "starting settlement"):
-      c.handle(0, {"type": "settle", "location": [18, 4]})
+      self.handle(c, 0, {"type": "settle", "location": [18, 4]})
     with self.assertRaisesRegex(InvalidMove, "starting settlement"):
-      c.handle(0, {"type": "settle", "location": [15, 9]})
-    c.handle(0, {"type": "settle", "location": [3, 3]})
+      self.handle(c, 0, {"type": "settle", "location": [15, 9]})
+    self.handle(c, 0, {"type": "settle", "location": [3, 3]})
 
   def testShores4Placement(self):
     c = islanders.IslandersState()
@@ -436,12 +442,12 @@ class PlacementRestrictionsTest(unittest.TestCase):
     self.assertCountEqual(c.placement_islands, [(-1, 3)])
 
     with self.assertRaisesRegex(InvalidMove, "starting settlement"):
-      c.handle(0, {"type": "settle", "location": [3, 11]})
+      self.handle(c, 0, {"type": "settle", "location": [3, 11]})
     with self.assertRaisesRegex(InvalidMove, "starting settlement"):
-      c.handle(0, {"type": "settle", "location": [18, 4]})
+      self.handle(c, 0, {"type": "settle", "location": [18, 4]})
     with self.assertRaisesRegex(InvalidMove, "starting settlement"):
-      c.handle(0, {"type": "settle", "location": [17, 11]})
-    c.handle(0, {"type": "settle", "location": [3, 3]})
+      self.handle(c, 0, {"type": "settle", "location": [17, 11]})
+    self.handle(c, 0, {"type": "settle", "location": [3, 3]})
 
   def testFog3Placement(self):
     c = islanders.IslandersState()
@@ -453,14 +459,14 @@ class PlacementRestrictionsTest(unittest.TestCase):
     self.assertCountEqual(c.placement_islands, [(2, 6), (11, 13)])
 
     with self.assertRaisesRegex(InvalidMove, "starting settlement"):
-      c.handle(0, {"type": "settle", "location": [17, 3]})
+      self.handle(c, 0, {"type": "settle", "location": [17, 3]})
     with self.assertRaisesRegex(InvalidMove, "starting settlement"):
-      c.handle(0, {"type": "settle", "location": [5, 11]})
-    c.handle(0, {"type": "settle", "location": [9, 7]})
+      self.handle(c, 0, {"type": "settle", "location": [5, 11]})
+    self.handle(c, 0, {"type": "settle", "location": [9, 7]})
     c.game_phase = "place2"
     c.action_stack = ["road", "settle"]
     c.turn_idx = 1
-    c.handle(1, {"type": "settle", "location": [17, 13]})
+    self.handle(c, 1, {"type": "settle", "location": [17, 13]})
 
   def testFog4Placement(self):
     c = islanders.IslandersState()
@@ -473,16 +479,16 @@ class PlacementRestrictionsTest(unittest.TestCase):
     self.assertCountEqual(c.placement_islands, [(2, 4), (8, 14)])
 
     with self.assertRaisesRegex(InvalidMove, "starting settlement"):
-      c.handle(0, {"type": "settle", "location": [20, 4]})
+      self.handle(c, 0, {"type": "settle", "location": [20, 4]})
     with self.assertRaisesRegex(InvalidMove, "starting settlement"):
-      c.handle(0, {"type": "settle", "location": [5, 9]})
+      self.handle(c, 0, {"type": "settle", "location": [5, 9]})
     with self.assertRaisesRegex(InvalidMove, "starting settlement"):
-      c.handle(0, {"type": "settle", "location": [9, 7]})
-    c.handle(0, {"type": "settle", "location": [9, 5]})
+      self.handle(c, 0, {"type": "settle", "location": [9, 7]})
+    self.handle(c, 0, {"type": "settle", "location": [9, 5]})
     c.game_phase = "place2"
     c.action_stack = ["road", "settle"]
     c.turn_idx = 1
-    c.handle(1, {"type": "settle", "location": [20, 10]})
+    self.handle(c, 1, {"type": "settle", "location": [20, 10]})
 
   def testTreasurePlacement(self):
     c = islanders.IslandersState()
@@ -494,12 +500,12 @@ class PlacementRestrictionsTest(unittest.TestCase):
     self.assertCountEqual(c.placement_islands, [(5, 7)])
 
     with self.assertRaisesRegex(InvalidMove, "starting settlement"):
-      c.handle(0, {"type": "settle", "location": [2, 4]})
+      self.handle(c, 0, {"type": "settle", "location": [2, 4]})
     with self.assertRaisesRegex(InvalidMove, "starting settlement"):
-      c.handle(0, {"type": "settle", "location": [3, 11]})
+      self.handle(c, 0, {"type": "settle", "location": [3, 11]})
     with self.assertRaisesRegex(InvalidMove, "starting settlement"):
-      c.handle(0, {"type": "settle", "location": [15, 15]})
-    c.handle(0, {"type": "settle", "location": [18, 6]})
+      self.handle(c, 0, {"type": "settle", "location": [15, 15]})
+    self.handle(c, 0, {"type": "settle", "location": [18, 6]})
 
 
 class TestIslandCalculations(BreakpointTestMixin):
@@ -512,16 +518,16 @@ class TestIslandCalculations(BreakpointTestMixin):
     islanders.SeafarerIslands.init(self.c)
     # TODO: we should have a helper to init a game with the default options for a scenario.
     self.c.options["foreign_island_points"].set(2)
-    self.c.handle(0, {"type": "settle", "location": [12, 4]})
-    self.c.handle(0, {"type": "ship", "location": [11, 3, 12, 4]})
-    self.c.handle(1, {"type": "settle", "location": [5, 5]})
-    self.c.handle(1, {"type": "ship", "location": [5, 5, 6, 6]})
-    self.c.handle(2, {"type": "settle", "location": [8, 8]})
-    self.c.handle(2, {"type": "ship", "location": [8, 8, 9, 7]})
-    self.c.handle(2, {"type": "settle", "location": [18, 8]})
-    self.c.handle(2, {"type": "road", "location": [18, 8, 20, 8]})
-    self.c.handle(1, {"type": "settle", "location": [9, 1]})
-    self.c.handle(1, {"type": "ship", "location": [9, 1, 11, 1]})
+    self.handle(0, {"type": "settle", "location": [12, 4]})
+    self.handle(0, {"type": "ship", "location": [11, 3, 12, 4]})
+    self.handle(1, {"type": "settle", "location": [5, 5]})
+    self.handle(1, {"type": "ship", "location": [5, 5, 6, 6]})
+    self.handle(2, {"type": "settle", "location": [8, 8]})
+    self.handle(2, {"type": "ship", "location": [8, 8, 9, 7]})
+    self.handle(2, {"type": "settle", "location": [18, 8]})
+    self.handle(2, {"type": "road", "location": [18, 8, 20, 8]})
+    self.handle(1, {"type": "settle", "location": [9, 1]})
+    self.handle(1, {"type": "ship", "location": [9, 1, 11, 1]})
     self.c.game_phase = "main"
     self.c.action_stack.clear()
     self.c.pirate = None
@@ -610,8 +616,8 @@ class TestFogLandingCalculations(BreakpointTestMixin):
     # TODO: we should have a helper to init a game with the default options for a scenario.
     self.c.options["foreign_island_points"].set(1)
 
-    self.c.handle(0, {"type": "settle", "location": [6, 8]})
-    self.c.handle(0, {"type": "ship", "location": [5, 7, 6, 8]})
+    self.handle(0, {"type": "settle", "location": [6, 8]})
+    self.handle(0, {"type": "ship", "location": [5, 7, 6, 8]})
     self.c.game_phase = "main"
     self.c.turn_idx = 0
     self.c.action_stack.clear()
@@ -628,22 +634,22 @@ class TestFogLandingCalculations(BreakpointTestMixin):
     self.c.discoverable_treasures = ["takedev"]  # To be drawn when discovering the sea tile.
 
     # Discover the first land tile.
-    self.c.handle(0, {"type": "ship", "location": [3, 7, 5, 7]})
+    self.handle(0, {"type": "ship", "location": [3, 7, 5, 7]})
     # Build and check that this counts as a foreign landing.
-    self.c.handle(0, {"type": "settle", "location": [3, 7]})
+    self.handle(0, {"type": "settle", "location": [3, 7]})
     self.assertCountEqual(self.c.foreign_landings[0], [(3, 7)])
 
     # Discover the next tile, which should be a sea tile.
-    self.c.handle(0, {"type": "ship", "location": [2, 8, 3, 7]})
+    self.handle(0, {"type": "ship", "location": [2, 8, 3, 7]})
     self.assertEqual(self.c.tiles[(1, 9)].tile_type, "space")
-    self.c.handle(0, {"type": "ship", "location": [2, 8, 3, 9]})
+    self.handle(0, {"type": "ship", "location": [2, 8, 3, 9]})
     self.assertCountEqual(self.c.foreign_landings[0], [(3, 7)])
 
   def testSplitFogIslandIsOnlyOne(self):
     # Test that if you discover a sea that splits an island, it still only counts as 1.
     self.discoverAndLand()
-    self.c.handle(0, {"type": "ship", "location": [2, 10, 3, 9]})
-    self.c.handle(0, {"type": "settle", "location": [2, 10]})
+    self.handle(0, {"type": "ship", "location": [2, 10, 3, 9]})
+    self.handle(0, {"type": "settle", "location": [2, 10]})
     self.assertCountEqual(self.c.foreign_landings[0], [(3, 7)])
 
   def testIslandSplitCalculationOnSaveLoad(self):
@@ -651,11 +657,11 @@ class TestFogLandingCalculations(BreakpointTestMixin):
     self.discoverAndLand()
     dump = self.g.json_str()
     loaded = islanders.IslandersGame.parse_json(dump)
-    loaded_game = loaded.game
-    loaded_game.handle(0, {"type": "ship", "location": [2, 10, 3, 9]})
-    loaded_game.handle(0, {"type": "settle", "location": [2, 10]})
-    self.assertCountEqual(loaded_game.foreign_landings[0], [(3, 7)])
-    self.assertEqual(loaded_game.tiles[(1, 9)].tile_type, "space")
+    self.c = loaded.game
+    self.handle(0, {"type": "ship", "location": [2, 10, 3, 9]})
+    self.handle(0, {"type": "settle", "location": [2, 10]})
+    self.assertCountEqual(self.c.foreign_landings[0], [(3, 7)])
+    self.assertEqual(self.c.tiles[(1, 9)].tile_type, "space")
 
 
 class BaseInputHandlerTest(BreakpointTestMixin):
@@ -696,7 +702,7 @@ class DebugRulesOffTest(BaseInputHandlerTest):
   def testDebugDisabledNormalGame(self):
     with mock.patch.object(self.c, "distribute_resources") as dist:
       with self.assertRaisesRegex(InvalidMove, "debug mode"):
-        self.g.handle("Player1", {"type": "debug_roll_dice", "count": 5})
+        _ = [*self.g.handle("Player1", {"type": "debug_roll_dice", "count": 5})]
         self.assertFalse(dist.called)
 
 
@@ -705,11 +711,11 @@ class DebugRulesOnTest(BaseInputHandlerTest):
 
   def testDebugEnabledRollDice(self):
     with mock.patch.object(self.c, "distribute_resources") as dist:
-      self.g.handle("Player1", {"type": "debug_roll_dice", "count": 5})
+      _ = [*self.g.handle("Player1", {"type": "debug_roll_dice", "count": 5})]
       self.assertEqual(dist.call_count, 5)
 
   def testDebugEnabledForceDice(self):
-    self.g.handle("Player1", {"type": "force_dice", "value": 5})
+    _ = [*self.g.handle("Player1", {"type": "force_dice", "value": 5})]
     self.c.action_stack = ["dice"]
     self.c.handle_roll_dice()
     self.assertTupleEqual(self.c.dice_roll, (2, 3))
@@ -911,9 +917,9 @@ class TestCollectResources(BaseInputHandlerTest):
     self.assertIsNone(self.c.collect_idx)
     # Player 1 cannot collect; they don't have any bonus tiles on a 9.
     with self.assertRaisesRegex(islanders.NotYourTurn, "not eligible"):
-      self.c.handle(0, {"type": "collect", "selection": {"rsrc3": 1}})
+      self.handle(0, {"type": "collect", "selection": {"rsrc3": 1}})
     # Player 2 should be able to collect even when it is not their turn.
-    self.c.handle(1, {"type": "collect", "selection": {"rsrc3": 2}})
+    self.handle(1, {"type": "collect", "selection": {"rsrc3": 2}})
     self.assertIn("collected 2 {rsrc3}", self.c.event_log[-1].public_text)
 
   def testCollectDepletedResource(self):
@@ -925,8 +931,8 @@ class TestCollectResources(BaseInputHandlerTest):
     self.assertEqual(self.c.turn_phase, "collect")
     self.assertDictEqual(self.c.collect_counts, {1: 2})
     with self.assertRaisesRegex(InvalidMove, "not enough {rsrc3} in the bank"):
-      self.c.handle(1, {"type": "collect", "selection": {"rsrc3": 2}})
-    self.c.handle(1, {"type": "collect", "selection": {"rsrc1": 1, "rsrc3": 1}})
+      self.handle(1, {"type": "collect", "selection": {"rsrc3": 2}})
+    self.handle(1, {"type": "collect", "selection": {"rsrc1": 1, "rsrc3": 1}})
 
   def testCollectScarcityForcesOrder(self):
     self.c.action_stack = ["dice"]
@@ -939,8 +945,8 @@ class TestCollectResources(BaseInputHandlerTest):
     # It is Player1's turn, so they should collect first.
     self.assertEqual(self.c.collect_idx, 0)
     with self.assertRaisesRegex(islanders.NotYourTurn, "Another player.*before you"):
-      self.c.handle(1, {"type": "collect", "selection": {"rsrc3": 2}})
-    self.c.handle(0, {"type": "collect", "selection": {"rsrc3": 1}})
+      self.handle(1, {"type": "collect", "selection": {"rsrc3": 2}})
+    self.handle(0, {"type": "collect", "selection": {"rsrc3": 1}})
     self.assertEqual(self.c.player_data[0].cards["rsrc3"], 5)
     self.assertEqual(self.c.turn_phase, "collect")
     self.assertDictEqual(self.c.collect_counts, {1: 2, 2: 2})
@@ -970,7 +976,7 @@ class TestCollectResources(BaseInputHandlerTest):
     # Minimum 3 resources remain, but players will collect a total of 5. They must take turns.
     # Since it is currently player3's turn, they collect first.
     self.assertEqual(self.c.collect_idx, 2)
-    self.c.handle(2, {"type": "collect", "selection": {"rsrc1": 2}})
+    self.handle(2, {"type": "collect", "selection": {"rsrc1": 2}})
     # The minimum resources available is still 3, but now only 3 resources remain to be collected.
     # The rest of the players may collect in any order.
     self.assertDictEqual(self.c.collect_counts, {0: 1, 1: 2})
@@ -995,14 +1001,14 @@ class TestCollectResources(BaseInputHandlerTest):
     self.assertIsNone(self.c.collect_idx)
     # Assert that you cannot collect resources that suffered a shortage.
     with self.assertRaisesRegex(InvalidMove, "shortage"):
-      self.c.handle(0, {"type": "collect", "selection": {"rsrc3": 1}})
-    self.c.handle(0, {"type": "collect", "selection": {"rsrc1": 1}})
+      self.handle(0, {"type": "collect", "selection": {"rsrc3": 1}})
+    self.handle(0, {"type": "collect", "selection": {"rsrc1": 1}})
     self.assertEqual(self.c.turn_phase, "collect")
     # Even after one player collects, other players still cannot collect shortage resources.
     with self.assertRaisesRegex(InvalidMove, "shortage"):
-      self.c.handle(2, {"type": "collect", "selection": {"rsrc3": 2}})
-    self.c.handle(2, {"type": "collect", "selection": {"rsrc4": 2}})
-    self.c.handle(1, {"type": "collect", "selection": {"rsrc2": 2}})
+      self.handle(2, {"type": "collect", "selection": {"rsrc3": 2}})
+    self.handle(2, {"type": "collect", "selection": {"rsrc4": 2}})
+    self.handle(1, {"type": "collect", "selection": {"rsrc2": 2}})
     # After everyone collects, it should be back to the original player's turn.
     self.assertEqual(self.c.turn_phase, "main")
 
@@ -1054,13 +1060,13 @@ class TestCollectResources(BaseInputHandlerTest):
     self.c.handle_roll_dice()
     self.assertDictEqual(self.c.collect_counts, {0: 1, 1: 2, 2: 2})
     self.assertEqual(self.c.collect_idx, 0)
-    self.c.handle(0, {"type": "collect", "selection": {"rsrc1": 1}})
+    self.handle(0, {"type": "collect", "selection": {"rsrc1": 1}})
     # There is exactly 1 rsrc1 remaining. Player 2 (next player) should have their count updated.
     # Player 3's count is not updated yet - that will happen after player 2 collects.
     self.assertDictEqual(self.c.collect_counts, {1: 1, 2: 2})
     with self.assertRaisesRegex(InvalidMove, "not enough {rsrc2} in the bank"):
-      self.c.handle(1, {"type": "collect", "selection": {"rsrc2": 1}})
-    self.c.handle(1, {"type": "collect", "selection": {"rsrc1": 1}})
+      self.handle(1, {"type": "collect", "selection": {"rsrc2": 1}})
+    self.handle(1, {"type": "collect", "selection": {"rsrc1": 1}})
     # Now that the bank is empty, player 3's collection is skipped.
     self.assertDictEqual(self.c.collect_counts, {})
     self.assertIsNone(self.c.collect_idx)
@@ -1460,7 +1466,7 @@ class TestTreasures(BaseInputHandlerTest):
     self.c.handle_road([2, 6, 3, 7], 0, "ship", [("rsrc1", 1), ("rsrc2", 1)])
     self.assertEqual(self.c.turn_phase, "collect1")
     with self.assertRaises(game.NotYourTurn):
-      self.c.handle(1, {"type": "collect", "rsrc5": 1})
+      self.handle(1, {"type": "collect", "rsrc5": 1})
     self.c.handle_collect(0, {"rsrc5": 1})
     new_rsrcs = collections.Counter(self.c.player_data[0].cards)
     self.assertDictEqual(new_rsrcs - old_rsrcs, {"rsrc5": 1})
@@ -1949,7 +1955,7 @@ class TestHandleSettleInput(BaseInputHandlerTest):
   def testSettle(self):
     resources = ["rsrc1", "rsrc2", "rsrc3", "rsrc4"]
     counts = [self.c.player_data[0].cards[x] for x in resources]
-    self.c.handle(0, {"type": "settle", "location": [5, 3]})
+    self.handle(0, {"type": "settle", "location": [5, 3]})
     for rsrc, orig_count in zip(resources, counts):
       self.assertEqual(self.c.player_data[0].cards[rsrc], orig_count - 1)
     self.assertEqual(self.c.event_log[-1].event_type, "settlement")
@@ -1957,35 +1963,35 @@ class TestHandleSettleInput(BaseInputHandlerTest):
 
   def testMustSettleNextToRoad(self):
     with self.assertRaisesRegex(InvalidMove, "next to one of your roads"):
-      self.c.handle(0, {"type": "settle", "location": [3, 3]})
+      self.handle(0, {"type": "settle", "location": [3, 3]})
 
   def testMustSettleNextToOwnRoad(self):
     self.c._add_road(Road([6, 6, 8, 6], "road", 1))
     with self.assertRaisesRegex(InvalidMove, "next to one of your roads"):
-      self.c.handle(0, {"type": "settle", "location": [8, 6]})
+      self.handle(0, {"type": "settle", "location": [8, 6]})
 
   def testCannotSettleTooClose(self):
     self.c._add_road(Road([6, 6, 8, 6], "road", 0))
     with self.assertRaisesRegex(InvalidMove, "cannot.*next to existing"):
-      self.c.handle(0, {"type": "settle", "location": [9, 3]})
+      self.handle(0, {"type": "settle", "location": [9, 3]})
     # Validate both distance from own settlements and from opponents'.
     with self.assertRaisesRegex(InvalidMove, "cannot.*next to existing"):
-      self.c.handle(0, {"type": "settle", "location": [6, 6]})
+      self.handle(0, {"type": "settle", "location": [6, 6]})
 
   def testCannotSettleSettledLocation(self):
     self.c._add_road(Road([5, 5, 6, 4], "road", 0))
     with self.assertRaisesRegex(InvalidMove, "cannot.*settle on top of"):
-      self.c.handle(0, {"type": "settle", "location": [8, 4]})
+      self.handle(0, {"type": "settle", "location": [8, 4]})
     with self.assertRaisesRegex(InvalidMove, "cannot.*settle on top of"):
-      self.c.handle(0, {"type": "settle", "location": [5, 5]})
+      self.handle(0, {"type": "settle", "location": [5, 5]})
     # Also validate you cannot build on top of a city.
     self.c.handle_city([5, 5], 1)
     with self.assertRaisesRegex(InvalidMove, "cannot.*settle on top of"):
-      self.c.handle(0, {"type": "settle", "location": [5, 5]})
+      self.handle(0, {"type": "settle", "location": [5, 5]})
 
   def testMustSettleValidLocation(self):
     with self.assertRaisesRegex(InvalidMove, "should be a tuple of size 2"):
-      self.c.handle(0, {"type": "settle", "location": [2]})
+      self.handle(0, {"type": "settle", "location": [2]})
 
   def testCannotBuildTooManySettlements(self):
     self.c.add_piece(islanders.Piece(2, 4, "settlement", 0))
@@ -1993,14 +1999,14 @@ class TestHandleSettleInput(BaseInputHandlerTest):
     self.c.add_piece(islanders.Piece(8, 6, "settlement", 0))
     self.c.add_piece(islanders.Piece(8, 2, "settlement", 0))
     with self.assertRaisesRegex(InvalidMove, "settlements remaining"):
-      self.c.handle(0, {"type": "settle", "location": [5, 3]})
+      self.handle(0, {"type": "settle", "location": [5, 3]})
 
     self.c.pieces[(2, 4)].piece_type = "city"
     self.c.pieces[(2, 6)].piece_type = "city"
     self.c.pieces[(8, 6)].piece_type = "city"
     self.c.pieces[(8, 2)].piece_type = "city"
     with self.assertRaisesRegex(InvalidMove, "cities remaining"):
-      self.c.handle(0, {"type": "city", "location": [8, 4]})
+      self.handle(0, {"type": "city", "location": [8, 4]})
 
   def testCannotBuildConqueredSettlement(self):
     for loc in [(4, 4), (4, 6), (7, 5)]:
@@ -2009,8 +2015,8 @@ class TestHandleSettleInput(BaseInputHandlerTest):
     self.c.pieces.pop((5, 5))
     self.c.turn_idx = 1
     with self.assertRaisesRegex(InvalidMove, "conquered"):
-      self.c.handle(1, {"type": "settle", "location": [5, 5]})
-    self.c.handle(1, {"type": "settle", "location": [6, 6]})
+      self.handle(1, {"type": "settle", "location": [5, 5]})
+    self.handle(1, {"type": "settle", "location": [6, 6]})
 
 
 class TestInitialSettlement(BaseInputHandlerTest):
@@ -2025,10 +2031,10 @@ class TestInitialSettlement(BaseInputHandlerTest):
       p.cards.clear()
 
   def testPlaceFirstSettlement(self):
-    self.c.handle(0, {"type": "settle", "location": [3, 7]})
-    self.c.handle(0, {"type": "road", "location": [3, 7, 5, 7]})
-    self.c.handle(1, {"type": "settle", "location": [8, 4]})
-    self.c.handle(1, {"type": "road", "location": [6, 4, 8, 4]})
+    self.handle(0, {"type": "settle", "location": [3, 7]})
+    self.handle(0, {"type": "road", "location": [3, 7, 5, 7]})
+    self.handle(1, {"type": "settle", "location": [8, 4]})
+    self.handle(1, {"type": "road", "location": [6, 4, 8, 4]})
     self.assertEqual(self.c.game_phase, "place2")
     self.assertEqual(self.c.turn_phase, "settle")
     self.assertEqual(self.c.turn_idx, 1)
@@ -2041,35 +2047,35 @@ class TestInitialSettlement(BaseInputHandlerTest):
     self.c.tiles[(4, 4)].tile_type = "space"
     self.c.tiles[(4, 4)].is_land = False
     with self.assertRaisesRegex(InvalidMove, "in bounds"):
-      self.c.handle(0, {"type": "settle", "location": [5, 1]})
+      self.handle(0, {"type": "settle", "location": [5, 1]})
     with self.assertRaisesRegex(InvalidMove, "on land"):
-      self.c.handle(0, {"type": "settle", "location": [2, 4]})
+      self.handle(0, {"type": "settle", "location": [2, 4]})
 
   def testFirstRoadMustBeNextToFirstSettlement(self):
-    self.c.handle(0, {"type": "settle", "location": [3, 7]})
+    self.handle(0, {"type": "settle", "location": [3, 7]})
     with self.assertRaisesRegex(InvalidMove, "must be connected"):
-      self.c.handle(0, {"type": "road", "location": [2, 6, 3, 5]})
+      self.handle(0, {"type": "road", "location": [2, 6, 3, 5]})
 
   def testSecondRoadCannotBeNextToFirstSettlement(self):
-    self.c.handle(0, {"type": "settle", "location": [3, 7]})
-    self.c.handle(0, {"type": "road", "location": [3, 7, 5, 7]})
-    self.c.handle(1, {"type": "settle", "location": [8, 4]})
-    self.c.handle(1, {"type": "road", "location": [6, 4, 8, 4]})
-    self.c.handle(1, {"type": "settle", "location": [5, 5]})
+    self.handle(0, {"type": "settle", "location": [3, 7]})
+    self.handle(0, {"type": "road", "location": [3, 7, 5, 7]})
+    self.handle(1, {"type": "settle", "location": [8, 4]})
+    self.handle(1, {"type": "road", "location": [6, 4, 8, 4]})
+    self.handle(1, {"type": "settle", "location": [5, 5]})
     with self.assertRaisesRegex(InvalidMove, "next to your settlement"):
-      self.c.handle(1, {"type": "road", "location": [5, 3, 6, 4]})
+      self.handle(1, {"type": "road", "location": [5, 3, 6, 4]})
     with self.assertRaisesRegex(InvalidMove, "next to your second settlement"):
-      self.c.handle(1, {"type": "road", "location": [8, 4, 9, 5]})
-    self.c.handle(1, {"type": "road", "location": [5, 5, 6, 4]})
+      self.handle(1, {"type": "road", "location": [8, 4, 9, 5]})
+    self.handle(1, {"type": "road", "location": [5, 5, 6, 4]})
 
   def testReceiveSecondResources(self):
     self.c.game_phase = "place2"
-    self.c.handle(0, {"type": "settle", "location": [5, 5]})
+    self.handle(0, {"type": "settle", "location": [5, 5]})
     expected = collections.Counter({"rsrc1": 1, "rsrc4": 1, "rsrc5": 1})
     received = collections.Counter(self.c.player_data[0].cards)
     self.assertDictEqual(received - expected, {})
     self.assertDictEqual(expected - received, {})
-    self.c.handle(0, {"type": "road", "location": [3, 5, 5, 5]})
+    self.handle(0, {"type": "road", "location": [3, 5, 5, 5]})
     self.assertEqual(self.c.game_phase, "main")
     self.assertEqual(self.c.turn_phase, "dice")
     self.assertEqual(self.c.turn_idx, 0)
@@ -2077,7 +2083,7 @@ class TestInitialSettlement(BaseInputHandlerTest):
   def testReceiveSecondResourcesFromSea(self):
     self.c.game_phase = "place2"
     self.c.tiles[(7, 3)].tile_type = "rsrc5"  # Also test two of the same resource.
-    self.c.handle(0, {"type": "settle", "location": [5, 3]})
+    self.handle(0, {"type": "settle", "location": [5, 3]})
     expected = collections.Counter({"rsrc5": 2})
     received = collections.Counter(self.c.player_data[0].cards)
     self.assertDictEqual(received - expected, {})
@@ -2098,24 +2104,24 @@ class TestSettlementTurnOrder(BreakpointTestMixin):
 
   def testThreeSettlements(self):
     self.c.options["placements"].force(("settlement", "settlement", "settlement"))
-    self.c.handle(0, {"type": "settle", "location": [15, 7]})
-    self.c.handle(0, {"type": "ship", "location": [15, 7, 17, 7]})
-    self.c.handle(1, {"type": "settle", "location": [15, 5]})
-    self.c.handle(1, {"type": "road", "location": [15, 5, 17, 5]})
-    self.c.handle(2, {"type": "settle", "location": [12, 6]})
-    self.c.handle(2, {"type": "road", "location": [12, 6, 14, 6]})
-    self.c.handle(2, {"type": "settle", "location": [12, 4]})
-    self.c.handle(2, {"type": "road", "location": [12, 4, 14, 4]})
-    self.c.handle(1, {"type": "settle", "location": [9, 7]})
-    self.c.handle(1, {"type": "ship", "location": [9, 7, 11, 7]})
-    self.c.handle(0, {"type": "settle", "location": [9, 5]})
-    self.c.handle(0, {"type": "road", "location": [9, 5, 11, 5]})
-    self.c.handle(0, {"type": "settle", "location": [9, 3]})
-    self.c.handle(0, {"type": "ship", "location": [9, 3, 11, 3]})
-    self.c.handle(1, {"type": "settle", "location": [6, 6]})
-    self.c.handle(1, {"type": "road", "location": [6, 6, 8, 6]})
-    self.c.handle(2, {"type": "settle", "location": [6, 4]})
-    self.c.handle(2, {"type": "road", "location": [6, 4, 8, 4]})
+    self.handle(0, {"type": "settle", "location": [15, 7]})
+    self.handle(0, {"type": "ship", "location": [15, 7, 17, 7]})
+    self.handle(1, {"type": "settle", "location": [15, 5]})
+    self.handle(1, {"type": "road", "location": [15, 5, 17, 5]})
+    self.handle(2, {"type": "settle", "location": [12, 6]})
+    self.handle(2, {"type": "road", "location": [12, 6, 14, 6]})
+    self.handle(2, {"type": "settle", "location": [12, 4]})
+    self.handle(2, {"type": "road", "location": [12, 4, 14, 4]})
+    self.handle(1, {"type": "settle", "location": [9, 7]})
+    self.handle(1, {"type": "ship", "location": [9, 7, 11, 7]})
+    self.handle(0, {"type": "settle", "location": [9, 5]})
+    self.handle(0, {"type": "road", "location": [9, 5, 11, 5]})
+    self.handle(0, {"type": "settle", "location": [9, 3]})
+    self.handle(0, {"type": "ship", "location": [9, 3, 11, 3]})
+    self.handle(1, {"type": "settle", "location": [6, 6]})
+    self.handle(1, {"type": "road", "location": [6, 6, 8, 6]})
+    self.handle(2, {"type": "settle", "location": [6, 4]})
+    self.handle(2, {"type": "road", "location": [6, 4, 8, 4]})
 
     self.assertEqual(self.c.game_phase, "main")
     self.assertEqual(self.c.turn_phase, "dice")
@@ -2133,18 +2139,18 @@ class TestSettlementTurnOrder(BreakpointTestMixin):
 
   def testSettlementCity(self):
     self.c.options["placements"].force(("settlement", "city"))
-    self.c.handle(0, {"type": "settle", "location": [15, 7]})
-    self.c.handle(0, {"type": "ship", "location": [15, 7, 17, 7]})
-    self.c.handle(1, {"type": "settle", "location": [15, 5]})
-    self.c.handle(1, {"type": "road", "location": [15, 5, 17, 5]})
-    self.c.handle(2, {"type": "settle", "location": [12, 6]})
-    self.c.handle(2, {"type": "road", "location": [12, 6, 14, 6]})
-    self.c.handle(2, {"type": "settle", "location": [12, 4]})
-    self.c.handle(2, {"type": "road", "location": [12, 4, 14, 4]})
-    self.c.handle(1, {"type": "settle", "location": [9, 7]})
-    self.c.handle(1, {"type": "ship", "location": [9, 7, 11, 7]})
-    self.c.handle(0, {"type": "settle", "location": [9, 5]})
-    self.c.handle(0, {"type": "road", "location": [9, 5, 11, 5]})
+    self.handle(0, {"type": "settle", "location": [15, 7]})
+    self.handle(0, {"type": "ship", "location": [15, 7, 17, 7]})
+    self.handle(1, {"type": "settle", "location": [15, 5]})
+    self.handle(1, {"type": "road", "location": [15, 5, 17, 5]})
+    self.handle(2, {"type": "settle", "location": [12, 6]})
+    self.handle(2, {"type": "road", "location": [12, 6, 14, 6]})
+    self.handle(2, {"type": "settle", "location": [12, 4]})
+    self.handle(2, {"type": "road", "location": [12, 4, 14, 4]})
+    self.handle(1, {"type": "settle", "location": [9, 7]})
+    self.handle(1, {"type": "ship", "location": [9, 7, 11, 7]})
+    self.handle(0, {"type": "settle", "location": [9, 5]})
+    self.handle(0, {"type": "road", "location": [9, 5, 11, 5]})
 
     self.assertEqual(self.c.game_phase, "main")
     self.assertEqual(self.c.turn_phase, "dice")
@@ -2183,22 +2189,22 @@ def AddThirteenRoads(c):
 class TestHandleRoadInput(BaseInputHandlerTest):
   def testRoadsMustConnect(self):
     with self.assertRaisesRegex(InvalidMove, "must be connected"):
-      self.c.handle(0, {"type": "road", "location": [3, 3, 5, 3]})
+      self.handle(0, {"type": "road", "location": [3, 3, 5, 3]})
 
   def testRoadsMustConnectToSelf(self):
     # Validate that roads must connect to your own roads, not opponents'.
     with self.assertRaisesRegex(InvalidMove, "must be connected"):
-      self.c.handle(0, {"type": "road", "location": [6, 6, 8, 6]})
+      self.handle(0, {"type": "road", "location": [6, 6, 8, 6]})
 
   def testBuildRoad(self):
     count2 = self.c.player_data[0].cards["rsrc2"]
     count4 = self.c.player_data[0].cards["rsrc4"]
-    self.c.handle(0, {"type": "road", "location": [5, 3, 6, 4]})
+    self.handle(0, {"type": "road", "location": [5, 3, 6, 4]})
     # Validate that resources were taken away.
     self.assertEqual(self.c.player_data[0].cards["rsrc2"], count2 - 1)
     self.assertEqual(self.c.player_data[0].cards["rsrc4"], count4 - 1)
     # Test both connection to a road and connection to a settlement.
-    self.c.handle(0, {"type": "road", "location": [8, 4, 9, 3]})
+    self.handle(0, {"type": "road", "location": [8, 4, 9, 3]})
     self.assertEqual(self.c.player_data[0].cards["rsrc2"], count2 - 2)
     self.assertEqual(self.c.player_data[0].cards["rsrc4"], count4 - 2)
     self.assertEqual(self.c.event_log[-1].event_type, "road")
@@ -2206,57 +2212,57 @@ class TestHandleRoadInput(BaseInputHandlerTest):
 
   def testCannotBuildTooManyRoads(self):
     AddThirteenRoads(self.c)
-    self.c.handle(0, {"type": "road", "location": [8, 4, 9, 5]})
+    self.handle(0, {"type": "road", "location": [8, 4, 9, 5]})
     with self.assertRaisesRegex(InvalidMove, "no roads remaining"):
-      self.c.handle(0, {"type": "road", "location": [5, 3, 6, 4]})
+      self.handle(0, {"type": "road", "location": [5, 3, 6, 4]})
 
   def testCanPlayRoadBuildingWithOneRoadLeft(self):
     AddThirteenRoads(self.c)
     self.c.player_data[0].cards["roadbuilding"] += 1
-    self.c.handle(0, {"type": "play_dev", "card_type": "roadbuilding"})
-    self.c.handle(0, {"type": "road", "location": [8, 4, 9, 5]})
+    self.handle(0, {"type": "play_dev", "card_type": "roadbuilding"})
+    self.handle(0, {"type": "road", "location": [8, 4, 9, 5]})
     self.assertEqual(self.c.turn_phase, "main")
 
   def testRoadBuildingDoesNotEndIfShipsLeft(self):
     self.c.options["seafarers"].value = True
     AddThirteenRoads(self.c)
     self.c.player_data[0].cards["roadbuilding"] += 1
-    self.c.handle(0, {"type": "play_dev", "card_type": "roadbuilding"})
-    self.c.handle(0, {"type": "road", "location": [8, 4, 9, 5]})
+    self.handle(0, {"type": "play_dev", "card_type": "roadbuilding"})
+    self.handle(0, {"type": "road", "location": [8, 4, 9, 5]})
     self.assertEqual(self.c.turn_phase, "dev_road")
 
   def testCannotPlayRoadBuildingAtMaxRoads(self):
     AddThirteenRoads(self.c)
-    self.c.handle(0, {"type": "road", "location": [8, 4, 9, 5]})
+    self.handle(0, {"type": "road", "location": [8, 4, 9, 5]})
     self.c.player_data[0].cards["roadbuilding"] += 1
     with self.assertRaisesRegex(InvalidMove, "no roads remaining"):
-      self.c.handle(0, {"type": "play_dev", "card_type": "roadbuilding"})
+      self.handle(0, {"type": "play_dev", "card_type": "roadbuilding"})
 
   def testCannotBuildWithoutResources(self):
     self.c.player_data[0].cards["rsrc2"] = 0
     with self.assertRaisesRegex(InvalidMove, "need an extra 1 {rsrc2}"):
-      self.c.handle(0, {"type": "road", "location": [5, 3, 6, 4]})
+      self.handle(0, {"type": "road", "location": [5, 3, 6, 4]})
 
   def testRoadLocationMustBeAnEdge(self):
     with self.assertRaisesRegex(InvalidMove, "not a valid edge"):
-      self.c.handle(0, {"type": "road", "location": [3, 3, 6, 4]})
+      self.handle(0, {"type": "road", "location": [3, 3, 6, 4]})
 
   def testRoadLocationMustBeValid(self):
     with self.assertRaisesRegex(InvalidMove, "should be a tuple"):
-      self.c.handle(0, {"type": "road", "location": [2, 3, 4]})
+      self.handle(0, {"type": "road", "location": [2, 3, 4]})
     with self.assertRaisesRegex(AssertionError, "must be left"):
-      self.c.handle(0, {"type": "road", "location": [6, 4, 5, 3]})
+      self.handle(0, {"type": "road", "location": [6, 4, 5, 3]})
 
   def testCannotBuildOnWater(self):
     self.c.add_tile(islanders.Tile(13, 3, "space", False, None))  # Avoid out of bound issues
     self.c._add_road(Road([8, 4, 9, 3], "road", 0))
     with self.assertRaisesRegex(InvalidMove, "two land tiles"):
-      self.c.handle(0, {"type": "road", "location": [9, 3, 11, 3]})
+      self.handle(0, {"type": "road", "location": [9, 3, 11, 3]})
 
   def testCannotBuildAcrossOpponentSettlement(self):
     self.c._add_road(Road([5, 5, 6, 4], "road", 0))
     with self.assertRaisesRegex(InvalidMove, "must be connected"):
-      self.c.handle(0, {"type": "road", "location": [3, 5, 5, 5]})
+      self.handle(0, {"type": "road", "location": [3, 5, 5, 5]})
 
   def testCannotBuildConqueredRoad(self):
     for loc in [(4, 4), (4, 6), (7, 5)]:
@@ -2265,7 +2271,7 @@ class TestHandleRoadInput(BaseInputHandlerTest):
     self.c.roads[(5, 5, 6, 6)].conquered = True
     self.c.turn_idx = 1
     with self.assertRaisesRegex(InvalidMove, "conquered"):
-      self.c.handle(1, {"type": "road", "location": [3, 5, 5, 5]})
+      self.handle(1, {"type": "road", "location": [3, 5, 5, 5]})
 
   def testCannotAttachToConqueredRoad(self):
     for loc in [(4, 4), (4, 6), (7, 5)]:
@@ -2274,7 +2280,7 @@ class TestHandleRoadInput(BaseInputHandlerTest):
     self.c.roads[(5, 5, 6, 6)].conquered = True
     self.c.turn_idx = 1
     with self.assertRaisesRegex(InvalidMove, "must be connected"):
-      self.c.handle(1, {"type": "road", "location": [5, 7, 6, 6]})
+      self.handle(1, {"type": "road", "location": [5, 7, 6, 6]})
 
 
 class TestHandleShipInput(BaseInputHandlerTest):
@@ -2287,18 +2293,18 @@ class TestHandleShipInput(BaseInputHandlerTest):
 
   def testShipsMustConnectToNetwork(self):
     with self.assertRaisesRegex(InvalidMove, "Ships.*must be connected.*ship network"):
-      self.c.handle(0, {"type": "ship", "location": [6, 4, 8, 4]})
+      self.handle(0, {"type": "ship", "location": [6, 4, 8, 4]})
 
   def testShipsCannotConnectToRoads(self):
     self.c._add_road(Road([2, 4, 3, 5], "road", 0))
     with self.assertRaisesRegex(InvalidMove, "must be connected.*ship network"):
-      self.c.handle(0, {"type": "ship", "location": [2, 4, 3, 3]})
+      self.handle(0, {"type": "ship", "location": [2, 4, 3, 3]})
     # Verify that you can build a road in that same spot that you can't build a ship.
-    self.c.handle(0, {"type": "road", "location": [2, 4, 3, 3]})
+    self.handle(0, {"type": "road", "location": [2, 4, 3, 3]})
 
   def testBuildShip(self):
     old_counts = {x: self.c.player_data[0].cards[x] for x in islanders.RESOURCES}
-    self.c.handle(0, {"type": "ship", "location": [3, 5, 5, 5]})
+    self.handle(0, {"type": "ship", "location": [3, 5, 5, 5]})
     new_counts = {x: self.c.player_data[0].cards[x] for x in islanders.RESOURCES}
     self.assertEqual(new_counts.pop("rsrc1"), old_counts.pop("rsrc1") - 1)
     self.assertEqual(new_counts.pop("rsrc2"), old_counts.pop("rsrc2") - 1)
@@ -2308,25 +2314,25 @@ class TestHandleShipInput(BaseInputHandlerTest):
   def testNotEnoughResources(self):
     self.c.player_data[0].cards.update({"rsrc1": 0, "rsrc2": 1, "rsrc4": 1})
     with self.assertRaisesRegex(InvalidMove, "1 {rsrc1}"):
-      self.c.handle(0, {"type": "ship", "location": [3, 5, 5, 5]})
+      self.handle(0, {"type": "ship", "location": [3, 5, 5, 5]})
 
   def testCannotBuildOutOfBounds(self):
     self.c._add_road(Road([2, 6, 3, 5], "ship", 0))
     self.c._add_road(Road([0, 6, 2, 6], "ship", 0))
     with self.assertRaisesRegex(InvalidMove, "out of bounds"):
-      self.c.handle(0, {"type": "ship", "location": [-1, 7, 0, 6]})
+      self.handle(0, {"type": "ship", "location": [-1, 7, 0, 6]})
 
   def testCannotBuildOnLand(self):
     self.c._add_road(Road([2, 6, 3, 5], "ship", 0))
     self.c._add_road(Road([0, 6, 2, 6], "ship", 0))
     self.c._add_road(Road([-1, 5, 0, 6], "ship", 0))
     with self.assertRaisesRegex(InvalidMove, "must be water"):
-      self.c.handle(0, {"type": "ship", "location": [-1, 5, 0, 4]})
+      self.handle(0, {"type": "ship", "location": [-1, 5, 0, 4]})
 
   def testCannotBuildOnRoad(self):
     self.c._add_road(Road([2, 6, 3, 5], "road", 0))
     with self.assertRaisesRegex(InvalidMove, "already a road"):
-      self.c.handle(0, {"type": "ship", "location": [2, 6, 3, 5]})
+      self.handle(0, {"type": "ship", "location": [2, 6, 3, 5]})
 
   def testCanStillBuildWithTooManyRoads(self):
     roads = [
@@ -2339,29 +2345,29 @@ class TestHandleShipInput(BaseInputHandlerTest):
     self.assertEqual(
       len([x for x in self.c.roads.values() if x.player == 0 and x.road_type == "road"]), 15
     )
-    self.c.handle(0, {"type": "ship", "location": [3, 5, 5, 5]})
+    self.handle(0, {"type": "ship", "location": [3, 5, 5, 5]})
 
   def testRoadBuildingCanBuildShips(self):
     self.c.player_data[0].cards.clear()
     self.c.action_stack = ["dev_road", "dev_road"]
-    self.c.handle(0, {"type": "ship", "location": [3, 5, 5, 5]})
+    self.handle(0, {"type": "ship", "location": [3, 5, 5, 5]})
     self.assertEqual(self.c.action_stack, ["dev_road"])
-    self.c.handle(0, {"type": "ship", "location": [5, 5, 6, 4]})
+    self.handle(0, {"type": "ship", "location": [5, 5, 6, 4]})
     self.assertEqual(self.c.turn_phase, "main")
 
   def testRoadBuildingCanBuildMixed(self):
     self.c.player_data[0].cards.clear()
     self.c.action_stack = ["dev_road", "dev_road"]
-    self.c.handle(0, {"type": "road", "location": [2, 4, 3, 5]})
+    self.handle(0, {"type": "road", "location": [2, 4, 3, 5]})
     self.assertEqual(self.c.action_stack, ["dev_road"])
-    self.c.handle(0, {"type": "ship", "location": [3, 5, 5, 5]})
+    self.handle(0, {"type": "ship", "location": [3, 5, 5, 5]})
     self.assertEqual(self.c.turn_phase, "main")
 
   def testCanBuildShipInPlacePhase(self):
     self.c.game_phase = "place2"
     self.c.action_stack = ["road"]
     self.c.add_piece(islanders.Piece(5, 7, "settlement", 0))
-    self.c.handle(0, {"type": "ship", "location": [5, 7, 6, 6]})
+    self.handle(0, {"type": "ship", "location": [5, 7, 6, 6]})
     self.assertEqual(self.c.game_phase, "main")
 
   def testCannotBuildTooManyShips(self):
@@ -2376,7 +2382,7 @@ class TestHandleShipInput(BaseInputHandlerTest):
       len([x for x in self.c.roads.values() if x.player == 0 and x.road_type == "ship"]), 15
     )
     with self.assertRaisesRegex(InvalidMove, "no ships remaining"):
-      self.c.handle(0, {"type": "ship", "location": [6, 2, 8, 2]})
+      self.handle(0, {"type": "ship", "location": [6, 2, 8, 2]})
 
 
 class TestShipOpenClosedCalculation(BaseInputHandlerTest):
@@ -2614,7 +2620,7 @@ class TestShipOpenClosedCalculation(BaseInputHandlerTest):
     # the ship that remains attached to 9, 5 should become movable again.
     new_loc = (0, 6, 2, 6)
     self.c.built_this_turn.clear()
-    self.c.handle(0, {"type": "move_ship", "from": roads[2], "to": new_loc})
+    self.handle(0, {"type": "move_ship", "from": roads[2], "to": new_loc})
     self.assertEqual(self.c.roads[new_loc].source, (3, 5))
     self.assertTrue(self.c.roads[new_loc].movable)
     self.assertFalse(self.c.roads[new_loc].closed)
@@ -2627,7 +2633,7 @@ class TestShipOpenClosedCalculation(BaseInputHandlerTest):
     # These two ships should become closed, the previously moved ship should remain movable.
     last_loc = (2, 6, 3, 7)
     self.c.ships_moved = 0
-    self.c.handle(0, {"type": "move_ship", "from": roads[1], "to": last_loc})
+    self.handle(0, {"type": "move_ship", "from": roads[1], "to": last_loc})
     self.assertIn(self.c.roads[last_loc].source, [(3, 5), (3, 7)])
     self.assertTrue(self.c.roads[last_loc].closed)
     self.assertTrue(self.c.roads[roads[0]].closed)
@@ -2644,18 +2650,18 @@ class TestShipMovement(BaseInputHandlerTest):
 
   def testMoveShip(self):
     self.c.built_this_turn.clear()
-    self.c.handle(0, {"type": "move_ship", "from": [3, 5, 5, 5], "to": [2, 4, 3, 5]})
+    self.handle(0, {"type": "move_ship", "from": [3, 5, 5, 5], "to": [2, 4, 3, 5]})
     self.assertEqual(self.c.event_log[-1].event_type, "move_ship")
 
   def testInvalidInput(self):
     with self.assertRaisesRegex(InvalidMove, "should be a tuple of size 4"):
-      self.c.handle(0, {"type": "move_ship", "from": [2, 4, 3, 5], "to": [5, 5, 4]})
+      self.handle(0, {"type": "move_ship", "from": [2, 4, 3, 5], "to": [5, 5, 4]})
     with self.assertRaisesRegex(InvalidMove, "should be a tuple of size 4"):
-      self.c.handle(0, {"type": "move_ship", "from": [2, 4, 3, 5, 5], "to": [5, 5, 6, 4]})
+      self.handle(0, {"type": "move_ship", "from": [2, 4, 3, 5, 5], "to": [5, 5, 6, 4]})
 
   def testMustMoveExistingShip(self):
     with self.assertRaisesRegex(InvalidMove, "do not have a ship"):
-      self.c.handle(0, {"type": "move_ship", "from": [2, 4, 3, 5], "to": [5, 5, 6, 4]})
+      self.handle(0, {"type": "move_ship", "from": [2, 4, 3, 5], "to": [5, 5, 6, 4]})
 
   def testNewLocationMustConnectToNetwork(self):
     self.c.add_road(Road([5, 5, 6, 4], "ship", 0))
@@ -2663,7 +2669,7 @@ class TestShipMovement(BaseInputHandlerTest):
     # Extra check: the new location is a location that would be connected to the network
     # if the ship were not moving.
     with self.assertRaisesRegex(InvalidMove, "must be connected"):
-      self.c.handle(0, {"type": "move_ship", "from": [5, 5, 6, 4], "to": [6, 4, 8, 4]})
+      self.handle(0, {"type": "move_ship", "from": [5, 5, 6, 4], "to": [6, 4, 8, 4]})
     # Check that the old ship is still there.
     self.assertIn((5, 5, 6, 4), self.c.roads)
 
@@ -2671,20 +2677,20 @@ class TestShipMovement(BaseInputHandlerTest):
     self.c.add_road(Road([2, 4, 3, 5], "ship", 0))
     self.c.built_this_turn.clear()
     with self.assertRaisesRegex(InvalidMove, "already a ship"):
-      self.c.handle(0, {"type": "move_ship", "from": [3, 5, 5, 5], "to": [2, 4, 3, 5]})
+      self.handle(0, {"type": "move_ship", "from": [3, 5, 5, 5], "to": [2, 4, 3, 5]})
 
   def testCannotMoveRoads(self):
     self.c.add_road(Road([2, 4, 3, 5], "road", 0))
     self.c.built_this_turn.clear()
     with self.assertRaisesRegex(InvalidMove, "only move ships"):
-      self.c.handle(0, {"type": "move_ship", "from": [2, 4, 3, 5], "to": [2, 6, 3, 5]})
+      self.handle(0, {"type": "move_ship", "from": [2, 4, 3, 5], "to": [2, 6, 3, 5]})
 
   def testCannotMoveOtherPlayersShips(self):
     self.c.add_piece(islanders.Piece(9, 5, "settlement", 1))
     self.c.add_road(Road([8, 4, 9, 5], "ship", 1))
     self.c.built_this_turn.clear()
     with self.assertRaisesRegex(InvalidMove, "only move your"):
-      self.c.handle(0, {"type": "move_ship", "from": [8, 4, 9, 5], "to": [2, 4, 3, 5]})
+      self.handle(0, {"type": "move_ship", "from": [8, 4, 9, 5], "to": [2, 4, 3, 5]})
 
   def testCannotMoveShipOnClosedRoute(self):
     self.c.add_piece(islanders.Piece(3, 7, "settlement", 0))
@@ -2692,29 +2698,29 @@ class TestShipMovement(BaseInputHandlerTest):
     self.c.add_road(Road([2, 6, 3, 7], "ship", 0))
     self.c.built_this_turn.clear()
     with self.assertRaisesRegex(InvalidMove, "that connects two"):
-      self.c.handle(0, {"type": "move_ship", "from": [2, 6, 3, 7], "to": [2, 4, 3, 5]})
+      self.handle(0, {"type": "move_ship", "from": [2, 6, 3, 7], "to": [2, 4, 3, 5]})
     # Validate that moving a different ship here will work.
-    self.c.handle(0, {"type": "move_ship", "from": [3, 5, 5, 5], "to": [2, 4, 3, 5]})
+    self.handle(0, {"type": "move_ship", "from": [3, 5, 5, 5], "to": [2, 4, 3, 5]})
 
   def testMustMoveShipAtEndOfRoute(self):
     self.c.add_road(Road([5, 5, 6, 4], "ship", 0))
     self.c.built_this_turn.clear()
     with self.assertRaisesRegex(InvalidMove, "at the end"):
-      self.c.handle(0, {"type": "move_ship", "from": [3, 5, 5, 5], "to": [2, 4, 3, 5]})
+      self.handle(0, {"type": "move_ship", "from": [3, 5, 5, 5], "to": [2, 4, 3, 5]})
     # Validate that moving a ship at the end of the network will work.
-    self.c.handle(0, {"type": "move_ship", "from": [5, 5, 6, 4], "to": [2, 4, 3, 5]})
+    self.handle(0, {"type": "move_ship", "from": [5, 5, 6, 4], "to": [2, 4, 3, 5]})
 
   def testCannotMoveTwoShipsInOneTurn(self):
     self.c.add_road(Road([5, 5, 6, 4], "ship", 0))
     self.c.built_this_turn.clear()
-    self.c.handle(0, {"type": "move_ship", "from": [5, 5, 6, 4], "to": [2, 4, 3, 5]})
+    self.handle(0, {"type": "move_ship", "from": [5, 5, 6, 4], "to": [2, 4, 3, 5]})
     with self.assertRaisesRegex(InvalidMove, "already moved a ship"):
-      self.c.handle(0, {"type": "move_ship", "from": [3, 5, 5, 5], "to": [2, 6, 3, 5]})
+      self.handle(0, {"type": "move_ship", "from": [3, 5, 5, 5], "to": [2, 6, 3, 5]})
 
   def testCannotMoveShipBuiltThisTurn(self):
-    self.c.handle(0, {"type": "ship", "location": [5, 5, 6, 4]})
+    self.handle(0, {"type": "ship", "location": [5, 5, 6, 4]})
     with self.assertRaisesRegex(InvalidMove, "built this turn"):
-      self.c.handle(0, {"type": "move_ship", "from": [5, 5, 6, 4], "to": [2, 6, 3, 5]})
+      self.handle(0, {"type": "move_ship", "from": [5, 5, 6, 4], "to": [2, 6, 3, 5]})
 
 
 class TestShipMovementLongestRoute(BaseInputHandlerTest):
@@ -2780,7 +2786,7 @@ class TestCalculateRobPlayers(BaseInputHandlerTest):
   def testRobNoAdjacentPieces(self):
     p1_old_count = sum(self.c.player_data[0].cards[x] for x in islanders.RESOURCES)
     p2_old_count = sum(self.c.player_data[1].cards[x] for x in islanders.RESOURCES)
-    self.c.handle(2, {"type": "robber", "location": [4, 4]})
+    self.handle(2, {"type": "robber", "location": [4, 4]})
     self.assertEqual(self.c.turn_phase, "main")
     p1_new_count = sum(self.c.player_data[0].cards[x] for x in islanders.RESOURCES)
     p2_new_count = sum(self.c.player_data[1].cards[x] for x in islanders.RESOURCES)
@@ -2790,7 +2796,7 @@ class TestCalculateRobPlayers(BaseInputHandlerTest):
   def testRobTwoAdjacentPlayers(self):
     p1_old_count = sum(self.c.player_data[0].cards[x] for x in islanders.RESOURCES)
     p2_old_count = sum(self.c.player_data[1].cards[x] for x in islanders.RESOURCES)
-    self.c.handle(2, {"type": "robber", "location": [7, 5]})
+    self.handle(2, {"type": "robber", "location": [7, 5]})
     self.assertEqual(self.c.turn_phase, "rob")
     self.assertCountEqual(self.c.rob_players, [0, 1])
     p1_new_count = sum(self.c.player_data[0].cards[x] for x in islanders.RESOURCES)
@@ -2798,7 +2804,7 @@ class TestCalculateRobPlayers(BaseInputHandlerTest):
     self.assertEqual(p1_new_count, p1_old_count)
     self.assertEqual(p2_new_count, p2_old_count)
 
-    self.c.handle(2, {"type": "rob", "player": 1})
+    self.handle(2, {"type": "rob", "player": 1})
     p1_new_count = sum(self.c.player_data[0].cards[x] for x in islanders.RESOURCES)
     p2_new_count = sum(self.c.player_data[1].cards[x] for x in islanders.RESOURCES)
     p3_new_count = sum(self.c.player_data[2].cards[x] for x in islanders.RESOURCES)
@@ -2809,7 +2815,7 @@ class TestCalculateRobPlayers(BaseInputHandlerTest):
   def testRobSingleAdjacentPlayer(self):
     p1_old_count = sum(self.c.player_data[0].cards[x] for x in islanders.RESOURCES)
     p2_old_count = sum(self.c.player_data[1].cards[x] for x in islanders.RESOURCES)
-    self.c.handle(2, {"type": "robber", "location": [7, 3]})
+    self.handle(2, {"type": "robber", "location": [7, 3]})
     self.assertEqual(self.c.turn_phase, "main")
     p1_new_count = sum(self.c.player_data[0].cards[x] for x in islanders.RESOURCES)
     p2_new_count = sum(self.c.player_data[1].cards[x] for x in islanders.RESOURCES)
@@ -2825,13 +2831,13 @@ class TestCalculateRobPlayers(BaseInputHandlerTest):
 
     # Will choose gold if it's in the list; otherwise we don't care.
     with mock.patch.object(islanders.random, "choice", new=lambda lst: sorted(lst)[0]):
-      self.c.handle(2, {"type": "robber", "location": [7, 3]})
+      self.handle(2, {"type": "robber", "location": [7, 3]})
     self.assertEqual(self.c.player_data[0].cards["rsrc1"], 0)
     self.assertEqual(self.c.player_data[0].cards["gold"], 1)
 
   def testRobSingleAdjacentPlayerWithoutCards(self):
     self.c.player_data[0].cards.clear()
-    self.c.handle(2, {"type": "robber", "location": [7, 3]})
+    self.handle(2, {"type": "robber", "location": [7, 3]})
     self.assertEqual(self.c.turn_phase, "main")
     p3_new_count = sum(self.c.player_data[2].cards[x] for x in islanders.RESOURCES)
     self.assertEqual(p3_new_count, 0)
@@ -2839,7 +2845,7 @@ class TestCalculateRobPlayers(BaseInputHandlerTest):
   def testRobTwoAdjacentPlayersOneWithoutCards(self):
     p2_old_count = sum(self.c.player_data[1].cards[x] for x in islanders.RESOURCES)
     self.c.player_data[0].cards.clear()
-    self.c.handle(2, {"type": "robber", "location": [7, 5]})
+    self.handle(2, {"type": "robber", "location": [7, 5]})
     self.assertEqual(self.c.turn_phase, "main")
     p2_new_count = sum(self.c.player_data[1].cards[x] for x in islanders.RESOURCES)
     p3_new_count = sum(self.c.player_data[2].cards[x] for x in islanders.RESOURCES)
@@ -2850,7 +2856,7 @@ class TestCalculateRobPlayers(BaseInputHandlerTest):
     self.c.add_piece(islanders.Piece(6, 4, "settlement", 2))
     self.c.player_data[2].cards["rsrc3"] = 1
     p3_old_count = sum(self.c.player_data[2].cards[x] for x in islanders.RESOURCES)
-    self.c.handle(2, {"type": "robber", "location": [4, 4]})
+    self.handle(2, {"type": "robber", "location": [4, 4]})
     self.assertEqual(self.c.turn_phase, "main")
     p3_new_count = sum(self.c.player_data[2].cards[x] for x in islanders.RESOURCES)
     self.assertEqual(p3_old_count, p3_new_count)
@@ -2860,7 +2866,7 @@ class TestCalculateRobPlayers(BaseInputHandlerTest):
     self.c.player_data[2].cards["rsrc3"] = 1
     p1_old_count = sum(self.c.player_data[0].cards[x] for x in islanders.RESOURCES)
     p2_old_count = sum(self.c.player_data[1].cards[x] for x in islanders.RESOURCES)
-    self.c.handle(2, {"type": "robber", "location": [7, 3]})
+    self.handle(2, {"type": "robber", "location": [7, 3]})
     self.assertEqual(self.c.turn_phase, "main")
     p1_new_count = sum(self.c.player_data[0].cards[x] for x in islanders.RESOURCES)
     p2_new_count = sum(self.c.player_data[1].cards[x] for x in islanders.RESOURCES)
@@ -2874,7 +2880,7 @@ class TestCalculateRobPlayers(BaseInputHandlerTest):
     self.c.player_data[2].cards["rsrc3"] = 1
     p1_old_count = sum(self.c.player_data[0].cards[x] for x in islanders.RESOURCES)
     p2_old_count = sum(self.c.player_data[1].cards[x] for x in islanders.RESOURCES)
-    self.c.handle(2, {"type": "robber", "location": [7, 5]})
+    self.handle(2, {"type": "robber", "location": [7, 5]})
     self.assertEqual(self.c.turn_phase, "rob")
     self.assertCountEqual(self.c.rob_players, [0, 1])
     p1_new_count = sum(self.c.player_data[0].cards[x] for x in islanders.RESOURCES)
@@ -3177,6 +3183,12 @@ class TestPlayerPoints(BaseInputHandlerTest):
     self.assertEqual(self.c.player_points(0, visible=True), 3)
     self.assertEqual(self.c.player_points(1, visible=True), 1)
 
+  def testTwoBarbariansAreOnePoint(self):
+    self.c.player_data[0].captured_barbarians = 4
+    self.c.player_data[1].captured_barbarians = 1
+    self.assertEqual(self.c.player_points(0, visible=True), 5)
+    self.assertEqual(self.c.player_points(1, visible=True), 2)
+
   def testBuriedCountsForVictoryPoints(self):
     self.c.player_data[0].buried_treasure = 2
     self.c.player_data[1].buried_treasure = 3
@@ -3366,6 +3378,13 @@ class TestMoveKnights(BaseInputHandlerTest):
     self.assertEqual(self.c.turn_phase, "move_knights")
     self.assertEqual(self.c.knights[(6, 4, 8, 4)].source, islanders.EdgeLocation(6, 4, 8, 4))
     self.assertEqual(self.c.knights[(6, 4, 8, 4)].movement, 3)
+
+  def testNoMoveKnightsPhaseIfNoKnights(self):
+    self.c.action_stack.clear()
+    self.assertEqual(self.c.turn_phase, "main")
+    self.c.knights.pop((6, 4, 8, 4))
+    self.c.handle_end_turn()
+    self.assertEqual(self.c.turn_phase, "check_recapture")  # Gets resolved by handle()
 
   def testMoveOneKnight(self):
     self.c.handle_move_knight((6, 4, 8, 4), (2, 6, 3, 5), 0)
@@ -3851,12 +3870,12 @@ class TestInvasionEdgeCases(BreakpointTestMixin):
     # TODO: we should have a helper to init a game with the default options for a scenario.
     self.c.options["foreign_island_points"].set(0)
 
-    self.c.handle(0, {"type": "settle", "location": [18, 6]})
-    self.c.handle(0, {"type": "road", "location": [18, 6, 20, 6]})
-    self.c.handle(1, {"type": "settle", "location": [18, 8]})
-    self.c.handle(1, {"type": "road", "location": [17, 7, 18, 8]})
-    self.c.handle(2, {"type": "settle", "location": [15, 3]})
-    self.c.handle(2, {"type": "road", "location": [14, 2, 15, 3]})
+    self.handle(0, {"type": "settle", "location": [18, 6]})
+    self.handle(0, {"type": "road", "location": [18, 6, 20, 6]})
+    self.handle(1, {"type": "settle", "location": [18, 8]})
+    self.handle(1, {"type": "road", "location": [17, 7, 18, 8]})
+    self.handle(2, {"type": "settle", "location": [15, 3]})
+    self.handle(2, {"type": "road", "location": [14, 2, 15, 3]})
     self.g = islanders.IslandersGame()
     self.g.game = self.c
     self.g.scenario = "Desert Riders"
@@ -3867,7 +3886,7 @@ class TestInvasionEdgeCases(BreakpointTestMixin):
     self.c.action_stack.clear()
     self.c.player_data[1].cards["rsrc3"] = 5
     self.c.player_data[1].cards["rsrc5"] = 5
-    self.c.handle(1, {"type": "city", "location": [18, 8]})
+    self.handle(1, {"type": "city", "location": [18, 8]})
 
     # Each desert should now have one barbarian
     min_barbs = min(tile.barbarians for tile in self.c.tiles.values() if tile.tile_type == "norsrc")
@@ -3998,7 +4017,7 @@ class TestBarbarianInvasion(BaseInputHandlerTest):
 
   def testThreeBarbariansLand(self):
     with mock.patch.object(islanders.random, "randint", side_effect=[1, 2, 3, 5, 4, 6]):
-      self.c.handle(1, {"type": "settle", "location": [9, 7]})
+      self.handle(1, {"type": "settle", "location": [9, 7]})
     expected_tiles = [(13, 3), (13, 5), (10, 8)]
     for tile in self.c.tiles.values():
       with self.subTest(tile=tile.location):
@@ -4010,14 +4029,14 @@ class TestBarbarianInvasion(BaseInputHandlerTest):
 
   def testCityAlsoCausesInvasion(self):
     # No invasion caused by building a road
-    self.c.handle(1, {"type": "road", "location": [2, 6, 3, 7]})
+    self.handle(1, {"type": "road", "location": [2, 6, 3, 7]})
     for tile in self.c.tiles.values():
       with self.subTest(tile=tile.location):
         self.assertEqual(tile.barbarians, 0)
 
     # Invasion caused by upgrading to a city
     with mock.patch.object(islanders.random, "randint", side_effect=[1, 2, 3, 5, 4, 6]):
-      self.c.handle(1, {"type": "city", "location": [0, 6]})
+      self.handle(1, {"type": "city", "location": [0, 6]})
     expected_tiles = [(13, 3), (13, 5), (10, 8)]
     for tile in self.c.tiles.values():
       with self.subTest(tile=tile.location):
@@ -4030,7 +4049,7 @@ class TestBarbarianInvasion(BaseInputHandlerTest):
   def testDuplicateNumbersAreRerolled(self):
     # An eight is rolled twice - once as 3, 5 and again as 4, 4. The second one should be rerolled.
     with mock.patch.object(islanders.random, "randint", side_effect=[1, 2, 3, 5, 4, 4, 4, 6]):
-      self.c.handle(1, {"type": "city", "location": [0, 6]})
+      self.handle(1, {"type": "city", "location": [0, 6]})
     expected_tiles = [(13, 3), (13, 5), (10, 8)]
     for loc in expected_tiles:
       with self.subTest(tile=loc):
@@ -4039,7 +4058,7 @@ class TestBarbarianInvasion(BaseInputHandlerTest):
   def testSevensAreRerolled(self):
     # Ignore the 7 and reroll
     with mock.patch.object(islanders.random, "randint", side_effect=[1, 2, 3, 4, 4, 4, 4, 6]):
-      self.c.handle(1, {"type": "city", "location": [0, 6]})
+      self.handle(1, {"type": "city", "location": [0, 6]})
     expected_tiles = [(13, 3), (13, 5), (10, 8)]
     for loc in expected_tiles:
       with self.subTest(tile=loc):
@@ -4050,7 +4069,7 @@ class TestBarbarianInvasion(BaseInputHandlerTest):
     self.c.tiles[(13, 5)].conquered = True
     self.c.tiles[(13, 3)].barbarians = 2
     with mock.patch.object(islanders.random, "randint", side_effect=[1, 2, 3, 5, 4, 6]):
-      self.c.handle(1, {"type": "city", "location": [0, 6]})
+      self.handle(1, {"type": "city", "location": [0, 6]})
     self.assertEqual(self.c.tiles[(13, 5)].barbarians, 3)
     self.assertTrue(self.c.tiles[(13, 5)].conquered)
     self.assertEqual(self.c.tiles[(13, 3)].barbarians, 3)
@@ -4064,11 +4083,33 @@ class TestBarbarianInvasion(BaseInputHandlerTest):
       self.c.tiles[loc].barbarians = 3
       self.c.tiles[loc].conquered = True
     with mock.patch.object(islanders.random, "randint", side_effect=[1, 2, 3, 5, 4, 6]):
-      self.c.handle(1, {"type": "city", "location": [0, 6]})
+      self.handle(1, {"type": "city", "location": [0, 6]})
     for loc in tiles:
       with self.subTest(tile=loc):
         self.assertEqual(self.c.tiles[loc].barbarians, 3)
         self.assertTrue(self.c.tiles[loc].conquered)
+
+  def testThirtyBarbarianLimitIncludesCaptured(self):
+    self.c.player_data[0].captured_barbarians = 10
+    self.c.player_data[1].captured_barbarians = 10
+    self.c.player_data[2].captured_barbarians = 8
+    with mock.patch.object(islanders.random, "randint", side_effect=[1, 2, 3, 5, 4, 6]):
+      self.handle(1, {"type": "city", "location": [0, 6]})
+    self.assertEqual(self.c.tiles[(13, 3)].barbarians, 1)
+    self.assertEqual(self.c.tiles[(13, 5)].barbarians, 1)
+    self.assertEqual(self.c.tiles[(10, 8)].barbarians, 0)
+
+  def testThirtyBarbarianLimitBoardAndCaptured(self):
+    self.c.player_data[0].captured_barbarians = 8
+    self.c.player_data[1].captured_barbarians = 8
+    self.c.player_data[2].captured_barbarians = 8
+    self.c.tiles[(1, 5)].barbarians = 3
+    self.c.tiles[(1, 7)].barbarians = 2
+    with mock.patch.object(islanders.random, "randint", side_effect=[1, 2, 3, 5, 4, 6]):
+      self.handle(1, {"type": "city", "location": [0, 6]})
+    self.assertEqual(self.c.tiles[(13, 3)].barbarians, 1)
+    self.assertEqual(self.c.tiles[(13, 5)].barbarians, 0)
+    self.assertEqual(self.c.tiles[(10, 8)].barbarians, 0)
 
 
 class TestBarbarianConquest(BaseInputHandlerTest):
@@ -4080,7 +4121,7 @@ class TestBarbarianConquest(BaseInputHandlerTest):
       self.c.tiles[loc].barbarians = 2
 
     with mock.patch.object(islanders.random, "randint", side_effect=[3, 3, 3, 2, 4, 5]):
-      self.c.handle(1, {"type": "city", "location": [0, 6]})
+      self.handle(1, {"type": "city", "location": [0, 6]})
     for loc in to_conquer:
       with self.subTest(tile=loc):
         self.assertEqual(self.c.tiles[loc].barbarians, 3)
@@ -4101,7 +4142,7 @@ class TestBarbarianConquest(BaseInputHandlerTest):
       self.c.tiles[loc].barbarians = 2
 
     with mock.patch.object(islanders.random, "randint", side_effect=[5, 5, 2, 2, 6, 5]):
-      self.c.handle(1, {"type": "city", "location": [0, 6]})
+      self.handle(1, {"type": "city", "location": [0, 6]})
     for loc in to_conquer:
       with self.subTest(tile=loc):
         self.assertEqual(self.c.tiles[loc].barbarians, 3)
@@ -4116,7 +4157,7 @@ class TestBarbarianConquest(BaseInputHandlerTest):
       self.c.tiles[loc].barbarians = 2
 
     with mock.patch.object(islanders.random, "randint", side_effect=[4, 5, 1, 2, 4, 4]):
-      self.c.handle(1, {"type": "city", "location": [0, 6]})
+      self.handle(1, {"type": "city", "location": [0, 6]})
     for loc in to_conquer:
       with self.subTest(tile=loc):
         self.assertEqual(self.c.tiles[loc].barbarians, 3)
@@ -4137,14 +4178,14 @@ class TestBuildNextToConqueredTiles(BaseInputHandlerTest):
       self.c.tiles[loc].barbarians = 2
 
     with mock.patch.object(islanders.random, "randint", side_effect=[3, 3, 3, 2, 5, 5]):
-      self.c.handle(1, {"type": "city", "location": [0, 6]})
+      self.handle(1, {"type": "city", "location": [0, 6]})
     with self.assertRaisesRegex(InvalidMove, "next to a conquered tile"):
-      self.c.handle(1, {"type": "settle", "location": [9, 7]})
+      self.handle(1, {"type": "settle", "location": [9, 7]})
     with self.assertRaisesRegex(InvalidMove, "next to a conquered tile"):
-      self.c.handle(1, {"type": "road", "location": [2, 6, 3, 5]})
-    self.c.handle(1, {"type": "road", "location": [2, 6, 3, 7]})
+      self.handle(1, {"type": "road", "location": [2, 6, 3, 5]})
+    self.handle(1, {"type": "road", "location": [2, 6, 3, 7]})
     with self.assertRaisesRegex(InvalidMove, "next to a conquered tile"):
-      self.c.handle(1, {"type": "settle", "location": [3, 7]})
+      self.handle(1, {"type": "settle", "location": [3, 7]})
 
   def testCanUpgradeConqueredSettlement(self):
     # The rules do not prohibit upgrading a conquered settlement to a city.
@@ -4153,12 +4194,165 @@ class TestBuildNextToConqueredTiles(BaseInputHandlerTest):
       self.c.tiles[loc].barbarians = 2
 
     with mock.patch.object(islanders.random, "randint", side_effect=[1, 1, 3, 3, 5, 5]):
-      self.c.handle(1, {"type": "settle", "location": [9, 7]})
-    self.c.handle(1, {"type": "city", "location": [0, 6]})
+      self.handle(1, {"type": "settle", "location": [9, 7]})
+    self.handle(1, {"type": "city", "location": [0, 6]})
 
     # The new piece should still be conquered and not provide its port benefit.
     self.assertTrue(self.c.pieces[(0, 6)].conquered)
     self.assertEqual(self.c.player_data[1].trade_ratios["rsrc4"], 4)
+
+
+class RecaptureBarbarianTest(BaseInputHandlerTest):
+  TEST_FILE = "barbarian_test.json"
+
+  def testInsufficientKnightsMeansNoBattle(self):
+    locs = [(3, 1, 5, 1), (3, 3, 5, 3)]
+    for loc in locs:
+      self.c.knights[loc] = islanders.Knight(loc, 2, loc)
+    self.c.tiles[(4, 2)].barbarians = 2
+    self.handle(1, {"type": "end_turn"})
+    self.assertEqual(self.c.turn_idx, 2)
+    self.assertEqual(self.c.tiles[(4, 2)].barbarians, 2)
+    self.assertEqual(self.c.player_data[2].captured_barbarians, 0)
+
+  def testBattlesHappenInClockwiseOrder(self):
+    locs = [(3, 1, 5, 1), (5, 1, 6, 2), (6, 2, 8, 2)]
+    for loc in locs:
+      self.c.knights[loc] = islanders.Knight(loc, 2, loc)
+    self.c.tiles[(4, 2)].barbarians = 1
+    self.c.tiles[(7, 1)].barbarians = 1
+    # One barbarian on each tile, two barbarians surrounding each tile.
+    # At the end of the first battle, the knight at 5, 1, 6, 2 (rotation 4) will be lost,
+    # leaving not enough knights to fight the barbarians for the second battle.
+    with mock.patch.object(islanders.random, "randint", new=lambda *args: 1):
+      self.handle(1, {"type": "end_turn"})
+
+    self.assertEqual(self.c.turn_idx, 2)
+    self.assertEqual(self.c.tiles[(4, 2)].barbarians, 0)
+    self.assertEqual(self.c.tiles[(7, 1)].barbarians, 1)
+    self.assertNotIn((5, 1, 6, 2), self.c.knights)
+    self.assertIn((3, 1, 5, 1), self.c.knights)
+    self.assertEqual(self.c.player_data[2].captured_barbarians, 1)
+
+  @mock.patch.object(islanders.random, "shuffle", new=lambda lst: lst.sort(reverse=True))
+  def testInsufficentKnightsDoesNotPreventFutureBattle(self):
+    self.c.player_data[0].cards["gold"] = 0
+    self.c.player_data[1].cards["gold"] = 0
+    locs = [(8, 8, 9, 9), (6, 8, 8, 8)]
+    for idx, loc in enumerate(locs):
+      self.c.knights[loc] = islanders.Knight(loc, idx, loc)
+    self.c.tiles[(10, 8)].barbarians = 1
+    self.c.tiles[(7, 9)].barbarians = 1
+
+    with mock.patch.object(islanders.random, "randint", new=lambda *args: 1):
+      self.handle(1, {"type": "end_turn"})
+      self.handle(1, {"type": "end_move_knights"})
+
+    self.assertEqual(self.c.turn_idx, 2)
+    self.assertEqual(self.c.tiles[(10, 8)].barbarians, 1)
+    self.assertEqual(self.c.tiles[(7, 9)].barbarians, 0)
+    self.assertNotIn((8, 8, 9, 9), self.c.knights)
+    self.assertIn((6, 8, 8, 8), self.c.knights)
+    self.assertEqual(self.c.player_data[1].captured_barbarians, 1)
+    self.assertEqual(self.c.player_data[0].captured_barbarians, 0)
+    self.assertEqual(self.c.player_data[1].cards["gold"], 0)
+    # Player 0 lost a knight and lost the tie-break for prisoner capture
+    self.assertEqual(self.c.player_data[0].cards["gold"], 6)
+
+  def testRecapturingRestoresPort(self):
+    self.c.tiles[(10, 2)].barbarians = 3
+    self.c.tiles[(10, 2)].conquered = True
+    self.c.check_conquest(self.c.tiles[(10, 2)])
+    self.assertTrue(self.c.pieces[(11, 1)].conquered)
+    self.assertEqual(self.c.player_data[2].trade_ratios["rsrc3"], 4)
+
+    locs = [(8, 2, 9, 1), (9, 1, 11, 1), (11, 1, 12, 2), (11, 3, 12, 2)]
+    for loc in locs:
+      self.c.knights[loc] = islanders.Knight(loc, 0, loc)
+
+    self.handle(1, {"type": "end_turn"})
+    self.assertEqual(self.c.turn_idx, 2)
+    self.assertEqual(self.c.tiles[(10, 2)].barbarians, 0)
+    self.assertFalse(self.c.pieces[(11, 1)].conquered)
+    self.assertEqual(self.c.player_data[2].trade_ratios["rsrc3"], 3)
+
+
+class CapturedBarbarianTest(BaseInputHandlerTest):
+  TEST_FILE = "barbarian_test.json"
+
+  @mock.patch.object(islanders.random, "randint", new=lambda *args: 3)  # Nobody loses any knights
+  @mock.patch.object(islanders.random, "shuffle", new=lambda lst: lst.sort(reverse=True))
+  def testCapturedBarbarianCounts(self):
+    tests = [
+      {"knights": [2], "barbarians": 1, "captured": [1], "gold": [0]},
+      {"knights": [1, 1], "barbarians": 1, "captured": [0, 1], "gold": [3, 0]},
+      {"knights": [1, 1, 1], "barbarians": 1, "captured": [0, 0, 1], "gold": [3, 3, 0]},
+      {"knights": [3], "barbarians": 2, "captured": [2], "gold": [0]},
+      {"knights": [2, 2], "barbarians": 2, "captured": [1, 1], "gold": [0, 0]},
+      {"knights": [2, 1], "barbarians": 2, "captured": [1, 1], "gold": [0, 0]},
+      {"knights": [1, 1, 1], "barbarians": 2, "captured": [0, 1, 1], "gold": [3, 0, 0]},
+      {"knights": [2, 2], "barbarians": 3, "captured": [1, 2], "gold": [3, 0]},
+      {"knights": [3, 2], "barbarians": 3, "captured": [2, 1], "gold": [0, 0]},
+      {"knights": [2, 1, 1], "barbarians": 3, "captured": [1, 1, 1], "gold": [0, 0, 0]},
+      {"knights": [2, 2, 1], "barbarians": 3, "captured": [1, 1, 1], "gold": [0, 0, 0]},
+      {"knights": [1, 1, 1, 1], "barbarians": 3, "captured": [0, 1, 1, 1], "gold": [3, 0, 0, 0]},
+      {"knights": [2, 1, 1, 1], "barbarians": 3, "captured": [0, 1, 1, 1], "gold": [3, 0, 0, 0]},
+      {"knights": [2, 2, 1, 1], "barbarians": 3, "captured": [0, 1, 1, 1], "gold": [3, 0, 0, 0]},
+    ]
+
+    edge_locs = self.c.tiles[(7, 1)].location.get_edge_locations()
+    self.c.add_player("darkviolet", "purple")
+
+    for test in tests:
+      with self.subTest(**test):
+        # Put the correct number of barbarians on the tile
+        self.c.tiles[(7, 1)].barbarians = test["barbarians"]
+
+        # Clear out old knights and put in the correct number of knights per player
+        self.c.knights.clear()
+        i = 0
+        for player_idx, knight_count in enumerate(test["knights"]):
+          for _ in range(knight_count):
+            self.c.knights[edge_locs[i]] = islanders.Knight(edge_locs[i], player_idx, edge_locs[i])
+            i += 1
+
+        # Remove any gold and captured barbarians the players may have left over
+        for player in self.c.player_data:
+          player.cards["gold"] = 0
+          player.captured_barbarians = 0
+
+        # Run the battle
+        self.c.barbarian_battle(self.c.tiles[(7, 1)])
+
+        # Assert on captured barbarians and gold
+        self.assertEqual(sum(test["captured"]), test["barbarians"])
+        for player_idx, player in enumerate(self.c.player_data):
+          with self.subTest(player=player_idx):
+            if player_idx >= len(test["captured"]):
+              self.assertEqual(player.captured_barbarians, 0)
+              self.assertEqual(player.cards["gold"], 0)
+              continue
+            self.assertEqual(player.captured_barbarians, test["captured"][player_idx])
+            self.assertEqual(player.cards["gold"], test["gold"][player_idx])
+
+  @mock.patch.object(islanders.random, "randint", new=lambda *args: 0)
+  def testKnightsCountedBeforeKnightLoss(self):
+    self.c.player_data[0].cards["gold"] = 0
+    self.c.player_data[1].cards["gold"] = 0
+
+    edge_locs = self.c.tiles[(7, 1)].location.get_edge_locations()
+    # Player 0 will lose both knights at rotations 0 and 3. Player 1 will lose nothing.
+    self.c.knights[edge_locs[0]] = islanders.Knight(edge_locs[0], 0, edge_locs[0])
+    self.c.knights[edge_locs[1]] = islanders.Knight(edge_locs[1], 1, edge_locs[1])
+    self.c.knights[edge_locs[3]] = islanders.Knight(edge_locs[3], 0, edge_locs[3])
+
+    self.c.tiles[(7, 1)].barbarians = 2
+    self.c.barbarian_battle(self.c.tiles[(7, 1)])
+
+    self.assertEqual(self.c.player_data[0].captured_barbarians, 1)
+    self.assertEqual(self.c.player_data[1].captured_barbarians, 1)
+    self.assertEqual(self.c.player_data[0].cards["gold"], 6)  # For losing two knights.
+    self.assertEqual(self.c.player_data[1].cards["gold"], 0)
 
 
 class TestExtraBuildPhase(BreakpointTestMixin):
@@ -4172,8 +4366,8 @@ class TestExtraBuildPhase(BreakpointTestMixin):
     self.c = self.g.game
 
   def testNoExtraBuildDuringPlacePhase(self):
-    self.c.handle(0, {"type": "settle", "location": [3, 3]})
-    self.c.handle(0, {"type": "road", "location": [3, 3, 5, 3]})
+    self.handle(0, {"type": "settle", "location": [3, 3]})
+    self.handle(0, {"type": "road", "location": [3, 3, 5, 3]})
     self.assertEqual(self.c.game_phase, "place1")
     self.assertEqual(self.c.turn_phase, "settle")
     self.assertEqual(self.c.turn_idx, 1)
@@ -4182,8 +4376,8 @@ class TestExtraBuildPhase(BreakpointTestMixin):
     self.c.game_phase = "place2"
     self.c.action_stack = ["road", "settle"]
     self.c.turn_idx = 0
-    self.c.handle(0, {"type": "settle", "location": [9, 3]})
-    self.c.handle(0, {"type": "road", "location": [9, 3, 11, 3]})
+    self.handle(0, {"type": "settle", "location": [9, 3]})
+    self.handle(0, {"type": "road", "location": [9, 3, 11, 3]})
     self.assertEqual(self.c.game_phase, "main")
     self.assertEqual(self.c.turn_phase, "dice")
     self.assertEqual(self.c.turn_idx, 0)
@@ -4199,28 +4393,28 @@ class TestExtraBuildPhase(BreakpointTestMixin):
     self.c.player_data[4].cards.update({"rsrc1": 3, "rsrc2": 3, "rsrc3": 5, "rsrc4": 3, "rsrc5": 5})
 
     with self.assertRaises(islanders.NotYourTurn):
-      self.c.handle(0, {"type": "settle", "location": [6, 4]})
+      self.handle(0, {"type": "settle", "location": [6, 4]})
 
-    self.c.handle(4, {"type": "end_turn"})
+    self.handle(4, {"type": "end_turn"})
     self.assertEqual(self.c.game_phase, "main")
     self.assertEqual(self.c.turn_phase, "extra_build")
     self.assertEqual(self.c.extra_build_idx, 0)
-    self.c.handle(0, {"type": "settle", "location": [6, 4]})
-    self.c.handle(0, {"type": "road", "location": [6, 4, 8, 4]})
-    self.c.handle(0, {"type": "city", "location": [3, 3]})
-    self.c.handle(0, {"type": "buy_dev"})
+    self.handle(0, {"type": "settle", "location": [6, 4]})
+    self.handle(0, {"type": "road", "location": [6, 4, 8, 4]})
+    self.handle(0, {"type": "city", "location": [3, 3]})
+    self.handle(0, {"type": "buy_dev"})
 
     with self.assertRaises(islanders.NotYourTurn):
-      self.c.handle(0, {"type": "end_turn"})
+      self.handle(0, {"type": "end_turn"})
     with self.assertRaises(islanders.NotYourTurn):
-      self.c.handle(0, {"type": "play_dev", "card_type": "knight"})
-    self.c.handle(0, {"type": "end_extra_build"})
+      self.handle(0, {"type": "play_dev", "card_type": "knight"})
+    self.handle(0, {"type": "end_extra_build"})
     self.assertEqual(self.c.game_phase, "main")
     self.assertEqual(self.c.turn_phase, "extra_build")
     self.assertEqual(self.c.extra_build_idx, 1)
 
     with self.assertRaises(islanders.NotYourTurn):
-      self.c.handle(4, {"type": "buy_dev"})
+      self.handle(4, {"type": "buy_dev"})
 
   def testLastExtraBuild(self):
     self.c.game_phase = "main"
@@ -4228,7 +4422,7 @@ class TestExtraBuildPhase(BreakpointTestMixin):
     self.c.turn_idx = 4
     self.c.extra_build_idx = 3
 
-    self.c.handle(3, {"type": "end_extra_build"})
+    self.handle(3, {"type": "end_extra_build"})
     self.assertEqual(self.c.game_phase, "main")
     self.assertEqual(self.c.turn_phase, "dice")
     self.assertIsNone(self.c.extra_build_idx)

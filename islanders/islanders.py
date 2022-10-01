@@ -237,14 +237,14 @@ class TileLocation(collections.namedtuple("TileLocation", ["x", "y"])):
     raise ValueError(f"Invalid rotation {rotation}")
 
   def get_edge_locations(self):
-    # Order matters here.
+    # Order matters here. Index in this array lines up with rotation semantics.
     corners = [
+      self.get_lower_right_corner(),
+      self.get_lower_left_corner(),
       self.get_left_corner(),
       self.get_upper_left_corner(),
       self.get_upper_right_corner(),
       self.get_right_corner(),
-      self.get_lower_right_corner(),
-      self.get_lower_left_corner(),
     ]
     edges = []
     for idx, corner in enumerate(corners):
@@ -549,6 +549,7 @@ class Player:
     self.knights_played = 0
     self.longest_route = 0
     self.buried_treasure = 0
+    self.captured_barbarians = 0
     self.cards = collections.defaultdict(int)
     self.trade_ratios = collections.defaultdict(lambda: 4)
     self.unusable = collections.defaultdict(int)
@@ -587,6 +588,7 @@ class Player:
       "armies": self.knights_played,
       "longest_route": self.longest_route,
       "buried_treasure": self.buried_treasure,
+      "captured_barbarians": self.captured_barbarians,
       "resource_cards": self.resource_card_count(),
       "gold": self.cards.get("gold", 0),
       "dev_cards": self.dev_card_count(),
@@ -688,7 +690,7 @@ class IslandersState:
     self.game_phase: str = "place1"  # valid values are place1, place2, place3, main, victory
     # settle, road, dice, collect, discard, robber, rob, dev_road, deplete, expel, main, extra_build
     # collect1, collect2, collectpi, takedev, bury, placeport, knight, fastknight, treason, intrigue
-    # move_knights
+    # move_knights, check_recapture
     self.action_stack: list[str] = ["road", "settle"]
     self.turn_idx: int = 0
     self.collect_idx: Optional[int] = None
@@ -908,6 +910,7 @@ class IslandersState:
     if self.longest_route_player == idx:
       count += 2
     count += max(self.player_data[idx].buried_treasure - 2, 0)
+    count += self.player_data[idx].captured_barbarians // 2
     if not visible:
       count += sum(self.player_data[idx].cards[card] for card in VICTORY_CARDS)
     count += len(self.foreign_landings[idx]) * self.options.foreign_island_points
@@ -946,10 +949,15 @@ class IslandersState:
     ]:
       return
     if self.turn_phase == "move_knights":
+      found = False
       for knight in self.knights.values():
         if knight.player == self.turn_idx:
           knight.movement = 3
           knight.source = knight.location
+          found = True
+      if not found:
+        self.action_stack.pop()
+        self.next_action()
       return
     if self.turn_phase in ["knight", "fastknight"]:
       if len([k for k in self.knights.values() if k.player == self.turn_idx]) >= 6:
@@ -1004,18 +1012,23 @@ class IslandersState:
       raise InvalidInput("Missing move type")
     if data["type"] == "force_dice":
       self.handle_force_dice(int(data.get("value")))
+      yield
       return
     if data["type"] == "debug_roll_dice":
       self.handle_debug_roll_dice(int(data.get("count", 1)))
+      yield
       return
     self.check_turn_okay(player_idx, data["type"])
     self.inner_handle(player_idx, data["type"], data)
+    if self.turn_phase == "check_recapture":
+      yield from self.handle_recapture()
     # NOTE: use turn_idx here, since it is possible for a player to get to 10 points when it is
     # not their turn (e.g. because someone else's longest road was broken), but the rules say
     # you can only win on YOUR turn. So we check for victory after we have handled the end of
     # the previous turn, in case the next player wins at the start of their turn.
     if self.player_points(self.turn_idx, visible=False) >= self.options.victory_points:
       self.handle_victory()
+    yield
 
   def check_turn_okay(self, player_idx, move_type):
     if move_type == "rename":
@@ -1147,7 +1160,7 @@ class IslandersState:
         knight.movement = 0
     self.action_stack.pop()
     # TODO: make this work with extra build phase
-    self.end_turn()
+    self.next_action()
 
   def handle_end_extra_build(self, player_idx):
     if self.turn_phase != "extra_build":
@@ -1165,8 +1178,8 @@ class IslandersState:
     if self.game_phase != "main":
       raise InvalidMove("You MUST place your first settlement/roads.")
     self._check_main_phase("end_turn", "end your turn")
-    if any(knight.player == self.turn_idx for knight in self.knights.values()):
-      self.action_stack.append("move_knights")
+    if self.options.invasion_type == "barbarians":
+      self.action_stack.extend(["check_recapture", "move_knights"])
       self.next_action()
       return
     if self.options.extra_build:
@@ -1521,6 +1534,7 @@ class IslandersState:
   def hasten_invasion(self):
     if self.options.invasion_type == "barbarians":
       remaining_barbarians = 30 - sum(t.barbarians for t in self.tiles.values())
+      remaining_barbarians -= sum(p.captured_barbarians for p in self.player_data)
       to_place = min(remaining_barbarians, 3)
       rolls = []
       while len(rolls) < to_place:
@@ -1590,7 +1604,8 @@ class IslandersState:
       tile.conquered = True
       self.check_conquest(tile)
     for tile in cleared:
-      self.check_recapture(tile)
+      tile.conquered = False
+      self.recapture(tile)
 
   def check_conquest(self, tile):
     def is_conquered(tile):
@@ -2569,17 +2584,133 @@ class IslandersState:
     if tile is None or tile.barbarians <= 0:
       raise InvalidMove("You must choose a tile with barbarians on it.")
     tile.barbarians -= 1
-    self.check_recapture(tile)
+    if tile.barbarians == 0:
+      tile.conquered = False
+      self.recapture(tile)
     self.action_stack.pop()
     self.next_action()
 
-  def check_recapture(self, tile):
-    if tile.barbarians > 0:
-      return
-    tile.conquered = False
+  def handle_recapture(self):
+    directions = [(0, 2), (-3, 1), (-3, -1), (0, -2), (3, -1), (3, 1)]
+
+    castles = [tile for tile in self.tiles.values() if tile.tile_type == "castle"]
+    for castle in castles:
+      surrounding = [self.tiles[loc] for loc in castle.location.get_adjacent_tiles()]
+      for idx in range(len(surrounding)):  # pylint: disable=consider-using-enumerate
+        if not surrounding[idx].is_land and surrounding[(idx + 1) % 6].is_land:
+          dir_idx = (idx + 1) % 6
+          loc = surrounding[(idx + 1) % 6].location
+          break
+      else:
+        continue
+
+      while self.tiles[loc].tile_type != "castle":
+        if self.barbarian_battle(self.tiles[loc]):
+          yield
+        new_loc = (loc[0] + directions[dir_idx][0], loc[1] + directions[dir_idx][1])
+        while not (new_loc in self.tiles and self.tiles[new_loc].is_land):
+          dir_idx = (dir_idx + 1) % 6
+          new_loc = (loc[0] + directions[dir_idx][0], loc[1] + directions[dir_idx][1])
+        loc = new_loc
+    self.action_stack.pop()
+    self.end_turn()
+    yield
+
+  def barbarian_battle(self, tile):
+    if not tile.barbarians:
+      return False
+    surrounding = [self.knights.get(loc) for loc in tile.location.get_edge_locations()]
+    knight_count = len([knight for knight in surrounding if knight])
+    if knight_count <= tile.barbarians:
+      return False
+
+    capture_count = tile.barbarians
+    self.event_log.append(Event("barbarians", f"{capture_count} barbarians were defeated"))
+    tile.barbarians = 0
+    if tile.conquered:
+      tile.conquered = False
+      self.recapture(tile)
+    players = collections.Counter(knight.player for knight in surrounding if knight)
+    # Knight losses
+    direction = random.randint(0, 2)
+    losses = [knight for idx, knight in enumerate(surrounding) if idx % 3 == direction and knight]
+    for loss in losses:
+      del self.knights[loss.location]
+      self.player_data[loss.player].cards["gold"] += 3
+    player_losses = collections.Counter(knight.player for knight in losses)
+    for player, count in player_losses.items():
+      text = "{player%s} lost %d knights and received %d gold" % (player, count, 3 * count)
+      self.event_log.append(Event("knight", text))
+
+    # Barbarian Capture
+    # If there is only one player, they get all the prisoners.
+    if len(players) < 2:
+      player = next(iter(players.elements()))
+      self.player_data[player].captured_barbarians += capture_count
+      text = "{player%s} captured %s barbarians" % (player, capture_count)
+      self.event_log.append(Event("barbarians", text))
+      return True
+    # If there are not enough to go around, we distribute them randomly.
+    # Randomly sort the players. The first players get the a prisoner each; the rest get gold.
+    if len(players) > capture_count:
+      players = list(players.keys())
+      random.shuffle(players)
+      for player in players:
+        if capture_count > 0:
+          self.player_data[player].captured_barbarians += 1
+          capture_count -= 1
+          self.event_log.append(Event("barbarians", "{player%s} captured 1 barbarian" % player))
+        else:
+          self.player_data[player].cards["gold"] += 3
+          self.event_log.append(Event("barbarians", "{player%s} received 3 gold" % player))
+      return True
+    # If there are enough to go around, everyone gets at least one prisoner.
+    per_player = capture_count // len(players)
+    for player in players:
+      self.player_data[player].captured_barbarians += per_player
+    remain_count = capture_count % len(players)
+    # If there are no prisoners left over after distribution amongst players, we are done.
+    if not remain_count:
+      for player in players:
+        text = "{player%s} captured %s barbarians" % (player, per_player)
+        self.event_log.append(Event("barbarians", text))
+      return True
+    # If there are still prisoners left over, they go to the player with the most involved knights.
+    (top_player, top_count), (_, second_count) = players.most_common(2)
+    # If there is a single player with the most involved knights, they get the remainder.
+    if top_count != second_count:
+      self.player_data[top_player].captured_barbarians += remain_count
+      for player in players:
+        total = per_player + (remain_count if player == top_player else 0)
+        self.event_log.append(
+          Event("barbarians", "{player%s} captured %s barbarians" % (player, total))
+        )
+      return True
+    # Otherwise, split the remainder randomly. TODO: dedup.
+    players = list(players.keys())
+    random.shuffle(players)
+    for player in players:
+      if remain_count > 0:
+        self.player_data[player].captured_barbarians += 1
+        remain_count -= 1
+        text = "{player%s} captured %s barbarians" % (player, 1 + per_player)
+        self.event_log.append(Event("barbarians", text))
+      else:
+        self.player_data[player].cards["gold"] += 3
+        text = "{player%s} captured %s barbarians and received 3 gold" % (player, per_player)
+        self.event_log.append(Event("barbarians", text))
+    return True
+
+  def recapture(self, tile):
+    if tile.number:
+      self.event_log.append(
+        Event("recapture", f"The {tile.number} {{{tile.tile_type}}} was recaptured")
+      )
     for corner in tile.location.get_corner_locations():
       if corner in self.pieces:
         self.pieces[corner].conquered = False
+        if corner in self.port_corners:
+          self._add_player_port(corner, self.pieces[corner].player)
     players_to_check = set()
     for edge in tile.location.get_edge_locations():
       if edge in self.roads:
