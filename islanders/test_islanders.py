@@ -4355,6 +4355,298 @@ class CapturedBarbarianTest(BaseInputHandlerTest):
     self.assertEqual(self.c.player_data[1].cards["gold"], 0)
 
 
+class TestIntrigue(BaseInputHandlerTest):
+  TEST_FILE = "barbarian_test.json"
+
+  def setUp(self):
+    super().setUp()
+    self.c.dev_cards.append("intrigue")
+    for player in self.c.player_data:
+      player.captured_barbarians = 0
+      player.cards["gold"] = 0
+
+  def testRemoveBarbarian(self):
+    locs = [(4, 2), (10, 2), (4, 8)]
+    for count, loc in enumerate(locs):
+      self.c.tiles[loc].barbarians = count + 1
+      if count + 1 == 3:
+        self.c.tiles[loc].conquered = True
+        self.c.check_conquest(self.c.tiles[loc])
+    self.c.handle_buy_dev(1)
+
+    self.assertEqual(self.c.turn_phase, "intrigue")
+    self.c.handle_intrigue([10, 2], 1)
+    self.assertEqual(self.c.turn_phase, "main")
+    self.assertEqual(self.c.tiles[(10, 2)].barbarians, 1)
+    self.assertEqual(self.c.player_data[1].captured_barbarians, 1)
+    self.assertEqual(self.c.player_data[1].cards["gold"], 0)
+
+  def testInvalidLocation(self):
+    self.c.tiles[(10, 2)].barbarians = 2
+    self.c.handle_buy_dev(1)
+
+    with self.assertRaisesRegex(AssertionError, "tile.*location"):
+      self.c.handle_intrigue([12, 4], 1)
+    with self.assertRaisesRegex(InvalidMove, "a tile with barbarians"):
+      self.c.handle_intrigue([13, 5], 1)
+
+  def testRemoveBarbarianAndRecapture(self):
+    locs = [(4, 2), (10, 2), (4, 8)]
+    for count, loc in enumerate(locs):
+      self.c.tiles[loc].barbarians = count + 1
+      if count + 1 == 3:
+        self.c.tiles[loc].conquered = True
+        self.c.check_conquest(self.c.tiles[loc])
+    self.assertTrue(self.c.tiles[(4, 8)].conquered)
+    self.c.handle_buy_dev(1)
+
+    self.c.handle_intrigue([4, 8], 1)
+    self.assertEqual(self.c.tiles[(4, 8)].barbarians, 2)
+    self.assertFalse(self.c.tiles[(4, 8)].conquered)
+    self.assertEqual(self.c.player_data[1].captured_barbarians, 1)
+    self.assertEqual(self.c.player_data[1].cards["gold"], 0)
+
+  def testNoBarbariansAvailable(self):
+    self.c.dev_cards.extend(["treason", "intrigue"])
+    num_cards = len(self.c.dev_cards)
+    self.c.handle_buy_dev(1)
+
+    self.assertEqual(self.c.turn_phase, "treason")
+    self.assertEqual(len(self.c.dev_cards), num_cards - 2)
+
+  @mock.patch.object(islanders.random, "shuffle", new=lambda cards: cards.sort())
+  def testNoBarbariansAndReshuffle(self):
+    self.c.dev_cards.clear()
+    self.c.dev_cards.append("intrigue")
+    self.c.handle_buy_dev(1)
+
+    self.assertEqual(self.c.turn_phase, "treason")
+    self.assertEqual(len(self.c.dev_cards), 25)
+
+  @mock.patch.object(islanders.random, "shuffle")
+  def testNoBarbariansMultipleReshuffles(self, mock_shuffle):
+    def shuffle_with_intrigue_on_top(cards):
+      cards.sort(reverse=True)
+      for _ in range(4):
+        cards.pop()
+
+    mock_shuffle.side_effect = shuffle_with_intrigue_on_top
+    self.c.dev_cards.clear()
+    self.c.dev_cards.append("intrigue")
+    self.c.handle_buy_dev(1)
+
+    self.assertEqual(self.c.turn_phase, "knight")
+    self.assertEqual(len(self.c.dev_cards), 17)
+
+
+class TestTreason(BaseInputHandlerTest):
+  TEST_FILE = "barbarian_test.json"
+
+  def setUp(self):
+    super().setUp()
+    self.c.dev_cards.append("treason")
+
+  def testMoveBarbarians(self):
+    self.c.player_data[1].cards["gold"] = 0
+    locs = [(10, 2), (4, 8)]
+    for loc in locs:
+      self.c.tiles[loc].barbarians = 2
+
+    self.c.handle_buy_dev(1)
+    self.assertEqual(self.c.turn_phase, "treason")
+    self.c.handle_treason((10, 2), (4, 8), (4, 2), (10, 8), 1)
+    for loc in locs + [(4, 2), (10, 8)]:
+      with self.subTest(loc=loc):
+        self.assertEqual(self.c.tiles[loc].barbarians, 1)
+    self.assertEqual(self.c.player_data[1].cards["gold"], 2)
+
+  def testMoveAndChangeConquest(self):
+    locs = [(1, 5), (1, 7), (4, 8), (10, 2)]
+    for idx, loc in enumerate(locs):
+      self.c.tiles[loc].barbarians = 2
+      if idx % 2 == 0:
+        self.c.tiles[loc].barbarians = 3
+        self.c.tiles[loc].conquered = True
+        self.c.check_conquest(self.c.tiles[loc])
+
+    self.assertTrue(self.c.pieces[(3, 9)].conquered)
+    self.assertFalse(self.c.pieces[(11, 1)].conquered)
+    self.assertFalse(self.c.pieces[(0, 6)].conquered)
+
+    self.c.handle_buy_dev(1)
+    self.c.handle_treason((1, 5), (4, 8), (1, 7), (10, 2), 1)
+    self.assertFalse(self.c.tiles[(1, 5)].conquered)
+    self.assertFalse(self.c.tiles[(4, 8)].conquered)
+    self.assertTrue(self.c.tiles[(1, 7)].conquered)
+    self.assertTrue(self.c.tiles[(10, 2)].conquered)
+    self.assertFalse(self.c.pieces[(3, 9)].conquered)
+    self.assertTrue(self.c.pieces[(11, 1)].conquered)
+    self.assertFalse(self.c.pieces[(0, 6)].conquered)
+
+  def testInvalidTiles(self):
+    locs = [(10, 2), (4, 8)]
+    for loc in locs:
+      self.c.tiles[loc].barbarians = 2
+    self.c.tiles[(1, 5)].barbarians = 3
+    self.c.tiles[(1, 5)].conquered = True
+
+    self.c.handle_buy_dev(1)
+    with self.assertRaisesRegex(InvalidMove, "distinct tiles"):
+      self.c.handle_treason((4, 8), (4, 8), (4, 2), (10, 8), 1)
+    with self.assertRaisesRegex(InvalidMove, "distinct tiles"):
+      self.c.handle_treason((10, 2), (4, 8), (4, 8), (10, 8), 1)
+    with self.assertRaisesRegex(InvalidMove, "specify both.*from"):
+      self.c.handle_treason(None, (4, 8), (4, 2), (10, 8), 1)
+    with self.assertRaisesRegex(InvalidMove, "specify tile.*from"):
+      self.c.handle_treason((4, 8), None, (4, 2), (10, 8), 1)
+    with self.assertRaisesRegex(InvalidMove, "specify tile.*send"):
+      self.c.handle_treason((4, 8), (10, 2), None, (10, 8), 1)
+    with self.assertRaisesRegex(InvalidMove, "specify both.*send"):
+      self.c.handle_treason((4, 8), (10, 2), (10, 8), None, 1)
+    with self.assertRaisesRegex(InvalidMove, "tiles with barbarians"):
+      self.c.handle_treason((7, 1), (4, 8), (4, 2), (10, 8), 1)
+    with self.assertRaisesRegex(InvalidMove, "coastal tile"):
+      self.c.handle_treason((10, 2), (4, 8), (4, 2), (7, 5), 1)
+    with self.assertRaisesRegex(InvalidMove, "numbered tile"):
+      self.c.handle_treason((10, 2), (4, 8), (4, 2), (1, 1), 1)
+    with self.assertRaisesRegex(InvalidMove, "unconquered tile"):
+      self.c.handle_treason((10, 2), (4, 8), (4, 2), (1, 5), 1)
+
+  def testEmptyBoard(self):
+    self.c.handle_buy_dev(1)
+    with self.assertRaisesRegex(InvalidMove, "hould not specify"):
+      self.c.handle_treason((4, 8), (10, 2), (4, 2), (10, 8), 1)
+    with self.assertRaisesRegex(InvalidMove, "hould not specify"):
+      self.c.handle_treason(None, (10, 2), (4, 2), (10, 8), 1)
+    with self.assertRaisesRegex(InvalidMove, "hould not specify"):
+      self.c.handle_treason((4, 8), None, (4, 2), (10, 8), 1)
+    self.c.handle_treason(None, None, (4, 2), (10, 8), 1)
+    self.assertEqual(self.c.tiles[(4, 2)].barbarians, 1)
+    self.assertEqual(self.c.tiles[(10, 8)].barbarians, 1)
+
+  def testOneBarbarianOnBoard(self):
+    self.c.tiles[(4, 8)].barbarians = 1
+    self.c.handle_buy_dev(1)
+    with self.assertRaisesRegex(InvalidMove, "hould not specify"):
+      self.c.handle_treason((4, 8), (10, 2), (4, 2), (10, 8), 1)
+    with self.assertRaisesRegex(InvalidMove, "hould not specify"):
+      self.c.handle_treason((4, 8), None, (4, 2), (10, 8), 1)
+    with self.assertRaisesRegex(InvalidMove, "specify tile.*take"):
+      self.c.handle_treason(None, None, (4, 2), (10, 8), 1)
+    self.c.handle_treason(None, (4, 8), (4, 2), (10, 8), 1)
+    self.assertEqual(self.c.tiles[(4, 8)].barbarians, 0)
+    self.assertEqual(self.c.tiles[(4, 2)].barbarians, 1)
+    self.assertEqual(self.c.tiles[(10, 8)].barbarians, 1)
+
+  def testNearlyEmptyBoardNoBarbarianSupply(self):
+    self.c.tiles[(1, 5)].barbarians = 1
+    for idx, player in enumerate(self.c.player_data):  # 29 barbarians gone from the supply
+      player.captured_barbarians = 9 if idx == 0 else 10
+
+    self.c.handle_buy_dev(1)
+    # Because there are no barbarians left in the supply, you should not place a second barbarian.
+    with self.assertRaisesRegex(InvalidMove, "not specify.*send"):
+      self.c.handle_treason(None, (1, 5), (4, 2), (10, 8), 1)
+    self.c.handle_treason(None, (1, 5), (4, 2), None, 1)
+
+  def testBoardAlmostFull(self):
+    self.c.player_data[1].cards["gold"] = 0
+    locs = [(4, 2), (7, 1), (10, 2), (13, 3), (13, 5), (10, 8), (7, 9), (4, 8), (1, 7), (1, 5)]
+    for loc in locs:  # Exactly one tile on the board with room for more barbarians.
+      self.c.tiles[loc].barbarians = 3
+      if loc == (1, 5):
+        self.c.tiles[loc].barbarians = 0
+      self.c.check_conquest(self.c.tiles[loc])
+
+    self.c.handle_buy_dev(1)
+    self.assertEqual(self.c.turn_phase, "treason")
+    with self.assertRaisesRegex(InvalidMove, "hould not specify"):
+      self.c.handle_treason((4, 8), (1, 5), (4, 2), (10, 8), 1)
+    with self.assertRaisesRegex(InvalidMove, "specify the tile.*from"):
+      self.c.handle_treason((1, 5), None, (4, 2), (10, 8), 1)
+    with self.assertRaisesRegex(InvalidMove, "specify tile.*take"):
+      self.c.handle_treason(None, None, (4, 2), (10, 8), 1)
+    with self.assertRaisesRegex(InvalidMove, "hould not specify"):
+      self.c.handle_treason(None, (1, 5), (4, 2), (10, 8), 1)
+    with self.assertRaisesRegex(InvalidMove, "hould not specify"):
+      self.c.handle_treason(None, (1, 5), None, (4, 2), 1)
+    with self.assertRaisesRegex(InvalidMove, "specify tile.*take"):
+      self.c.handle_treason(None, None, None, None, 1)
+    with self.assertRaisesRegex(InvalidMove, "unconquered tile"):
+      self.c.handle_treason(None, (1, 7), (4, 2), None, 1)
+    self.c.handle_treason(None, (4, 2), (1, 5), None, 1)
+    self.assertEqual(self.c.tiles[(4, 2)].barbarians, 2)
+    self.assertEqual(self.c.tiles[(1, 5)].barbarians, 1)
+    self.assertEqual(self.c.player_data[1].cards["gold"], 2)
+
+  def testBoardFull(self):
+    self.c.player_data[1].cards["gold"] = 0
+    locs = [(4, 2), (7, 1), (10, 2), (13, 3), (13, 5), (10, 8), (7, 9), (4, 8), (1, 7), (1, 5)]
+    for loc in locs:
+      self.c.tiles[loc].barbarians = 3
+      self.c.check_conquest(self.c.tiles[loc])
+
+    self.c.handle_buy_dev(1)
+    self.assertEqual(self.c.turn_phase, "main")
+    self.assertEqual(self.c.player_data[1].cards["gold"], 2)
+    for loc in locs:
+      with self.subTest(loc=loc):
+        self.assertEqual(self.c.tiles[loc].barbarians, 3)
+
+
+class TestTreasonCalculation(BaseInputHandlerTest):
+  TEST_FILE = "barbarian_test.json"
+  LOCS = ((4, 2), (7, 1), (10, 2), (13, 3), (13, 5), (10, 8), (7, 9), (4, 8), (1, 7), (1, 5))
+
+  def setBarbarianCounts(self, empty_tiles, full_tiles, supply_count):
+    partial_tiles = 10 - empty_tiles - full_tiles
+    assert partial_tiles >= 0
+    capture_count = 30 - full_tiles * 3 - partial_tiles * 2 - supply_count
+    assert capture_count >= 0
+    for loc in self.LOCS:
+      if empty_tiles > 0:
+        self.c.tiles[loc].barbarians = 0
+        self.c.tiles[loc].conquered = False
+        empty_tiles -= 1
+      elif full_tiles > 0:
+        self.c.tiles[loc].barbarians = 3
+        self.c.tiles[loc].conquered = True
+        full_tiles -= 1
+      else:
+        self.c.tiles[loc].barbarians = 2
+        self.c.tiles[loc].conquered = False
+    for idx, player in enumerate(self.c.player_data):
+      player.captured_barbarians = (capture_count + idx) // 3
+
+  def testBarbarianSourceAndDestinationCounts(self):
+    tests = [
+      {"empty": 10, "full": 0, "supply": 30, "srcs": 0, "dests": 2},
+      {"empty": 10, "full": 0, "supply": 0, "srcs": 0, "dests": 0},
+      {"empty": 10, "full": 0, "supply": 1, "srcs": 0, "dests": 1},
+      {"empty": 10, "full": 0, "supply": 2, "srcs": 0, "dests": 2},
+      {"empty": 9, "full": 0, "supply": 28, "srcs": 1, "dests": 2},
+      {"empty": 9, "full": 1, "supply": 27, "srcs": 1, "dests": 2},
+      {"empty": 9, "full": 0, "supply": 0, "srcs": 1, "dests": 1},
+      {"empty": 9, "full": 0, "supply": 1, "srcs": 1, "dests": 2},
+      {"empty": 8, "full": 0, "supply": 26, "srcs": 2, "dests": 2},
+      {"empty": 8, "full": 0, "supply": 0, "srcs": 2, "dests": 2},
+      {"empty": 8, "full": 2, "supply": 24, "srcs": 2, "dests": 2},
+      {"empty": 5, "full": 5, "supply": 15, "srcs": 2, "dests": 2},
+      {"empty": 2, "full": 8, "supply": 6, "srcs": 2, "dests": 2},
+      {"empty": 0, "full": 8, "supply": 2, "srcs": 2, "dests": 2},
+      {"empty": 1, "full": 9, "supply": 3, "srcs": 1, "dests": 1},
+      {"empty": 0, "full": 9, "supply": 1, "srcs": 1, "dests": 1},
+      {"empty": 0, "full": 9, "supply": 0, "srcs": 1, "dests": 1},
+      {"empty": 0, "full": 10, "supply": 0, "srcs": 0, "dests": 0},
+    ]
+    for test in tests:
+      with self.subTest(**test):
+        self.setBarbarianCounts(test["empty"], test["full"], test["supply"])
+        src_count, dest_count = self.c._calculate_treason_tiles()
+        self.assertEqual(src_count, test["srcs"])
+        self.assertEqual(dest_count, test["dests"])
+
+
 class TestExtraBuildPhase(BreakpointTestMixin):
   def setUp(self):
     self.g = islanders.IslandersGame()

@@ -20,6 +20,9 @@ hoverEdge = null;  // An edge object with a location and an edge_type
 hoverTileEdge = null;  // An object with tile, edge, and rotation
 moveShipFromLocation = null;
 moveKnightFromLocation = null;
+moveBarbarianTiles = [];
+barbarianFromCount = 0;
+barbarianToCount = 0;
 
 function locationsEqual(locA, locB) {
   if (locA == null && locB == null) {
@@ -452,11 +455,41 @@ function drawBarbarians(tileData, ctx) {
   ctx.save();
   let offsets = [[1, 0], [-1, 0], [0, -0.5], [0, 0.5], [0.5, -0.25], [-0.5, 0.25]];
   let barbarians = tileData.barbarians || 0;
+  let moveIdx = null;
+  for (let [idx, loc] of moveBarbarianTiles.entries()) {
+    if (locationsEqual(loc, tileData.location)) {
+      moveIdx = idx;
+      break;
+    }
+  }
+  let removable = ["expel", "intrigue"].includes(turnPhase);
+  if (turnPhase == "treason" && moveBarbarianTiles.length < 2) {
+    removable = true;
+  }
+  if (moveIdx != null) {
+    if (moveIdx >= 2) {
+      barbarians++;
+    }
+    removable = true;
+  } else if (moveBarbarianTiles.length >= 2) {
+    if (hoverTile != null && locationsEqual(hoverTile.location, tileData.location) && tileData.barbarians < 3 && tileData.number) {
+      barbarians++;
+      removable = true;
+    }
+  }
   for (let i = 0; i < barbarians && i < 6; i++) {
     let newLoc = [tileData.location[0] + offsets[i][0], tileData.location[1] + offsets[i][1]];
     let alpha = 1;
-    if (i == barbarians - 1 && turnPhase == "expel" && hoverTile != null && locationsEqual(hoverTile.location, tileData.location)) {
-      alpha = 0.5;
+    if (i == barbarians - 1) {
+      if (moveIdx != null) {
+        alpha = (moveIdx < 2) ? 0.2 : 0.8;
+      }
+      if (removable && hoverTile != null && locationsEqual(hoverTile.location, tileData.location)) {
+        alpha = 0.5;
+        if (moveIdx != null) {
+          alpha = (moveIdx < 2) ? 0.35 : 0.65;
+        }
+      }
     }
     drawRobber(ctx, newLoc, alpha, tileData.is_land);
   }
@@ -562,7 +595,7 @@ function drawHover(ctx) {
   }
   let canvas = document.getElementById("myCanvas");
   if (hoverTile != null) {
-    if (["expel", "deplete"].includes(turnPhase)) {
+    if (["expel", "deplete", "treason"].includes(turnPhase)) {
       return;
     }
     if (!locationsEqual(robberLoc, hoverTile.location) && !locationsEqual(pirateLoc, hoverTile.location)) {
@@ -660,17 +693,60 @@ function onClickTile(event, tileLoc) {
     ignoreNextClick = false;
     return;
   }
-  if (tileMatrix[tileLoc[0]] != null && tileMatrix[tileLoc[0]][tileLoc[1]] != null) {
-    let clickType = (tileMatrix[tileLoc[0]][tileLoc[1]].is_land ? "robber" : "pirate");
-    if (["expel", "deplete"].includes(turnPhase)) {
-      clickType = turnPhase;
-    }
-    let msg = {
-      type: clickType,
-      location: tileLoc,
-    };
-    ws.send(JSON.stringify(msg));
+  if (tileMatrix[tileLoc[0]] == null || tileMatrix[tileLoc[0]][tileLoc[1]] == null) {
+    return;
   }
+  if (turnPhase == "treason") {
+    let foundIdx = null;
+    for (let [idx, loc] of moveBarbarianTiles.entries()) {
+      if (locationsEqual(loc, tileLoc)) {
+        foundIdx = idx;
+      }
+    }
+    if (foundIdx != null) {
+      if (moveBarbarianTiles.length <= 2) {
+        moveBarbarianTiles.splice(foundIdx, 1);
+      }
+      // Cannot undo from tiles if you have already chosen a to tile.
+      if (moveBarbarianTiles.length > 2 && foundIdx >= 2) {
+        moveBarbarianTiles.splice(foundIdx, 1);
+      }
+      draw();
+      return;
+    }
+    if (moveBarbarianTiles.length < 2) {
+      if (tileMatrix[tileLoc[0]][tileLoc[1]].barbarians) {
+        moveBarbarianTiles.push(tileLoc);
+      }
+    } else {
+      if (tileMatrix[tileLoc[0]][tileLoc[1]].barbarians < 3) {
+        moveBarbarianTiles.push(tileLoc);
+      }
+    }
+    if (moveBarbarianTiles.length == 4 || (moveBarbarianTiles.length == 3 && barbarianToCount < 2)) {
+      let msg = {
+        type: "treason",
+        froma: moveBarbarianTiles[0],
+        fromb: moveBarbarianTiles[1],
+        toa: moveBarbarianTiles[2],
+        tob: barbarianToCount < 2 ? null : moveBarbarianTiles[3],
+      };
+      ws.send(JSON.stringify(msg));
+      moveBarbarianTiles = [];
+      return;  // Do not draw - let next message do the drawing
+    }
+    draw();
+    return;
+  }
+  let clickType = (tileMatrix[tileLoc[0]][tileLoc[1]].is_land ? "robber" : "pirate");
+  if (["expel", "deplete", "intrigue"].includes(turnPhase)) {
+    clickType = turnPhase;
+  }
+  let msg = {
+    type: clickType,
+    location: tileLoc,
+  };
+  ws.send(JSON.stringify(msg));
 }
 function onClickCorner(event, cornerLoc) {
   if (event.button != 0) {
