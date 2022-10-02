@@ -1354,6 +1354,8 @@ function onmsg(event) {
   counterOffers = data.counter_offers;
   robPlayers = data.rob_players;
   treasure = data.treasure;
+  barbarianFromCount = data.from_count ?? 0;
+  barbarianToCount = data.to_count ?? 0;
   longestRoutePlayer = data.longest_route_player;
   largestArmyPlayer = data.largest_army_player;
   eventLog = data.event_log;
@@ -1898,6 +1900,10 @@ function updatePlayerData() {
         phaseMarker.innerText = "🔃";
       } else if (turnPhase == "move_knights") {
         phaseMarker.innerText = "👣";
+      } else if (turnPhase == "intrigue") {
+        phaseMarker.innerText = "🎭";
+      } else if (turnPhase == "treason") {
+        phaseMarker.innerText = "🗡️";
       } else if (turnPhase == "dice") {
         phaseMarker.innerText = "🎲";
       } else if (turnPhase == "main") {
@@ -2192,6 +2198,14 @@ function updateBuyDev() {
   if (["knight", "fastknight", "treason", "intrigue"].includes(turnPhase)) {
     totalCount += 1;
     topDev = turnPhase;
+    if (turnPhase == "treason" && turn == myIdx) {
+      if (barbarianFromCount <= 1) {
+        moveBarbarianTiles[0] = null;
+        if (barbarianFromCount <= 0) {
+          moveBarbarianTiles[1] = null;
+        }
+      }
+    }
   }
   for (let i = 0; i < totalCount; i++) {
     let buydev = document.createElement("CANVAS");

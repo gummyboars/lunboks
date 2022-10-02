@@ -842,6 +842,10 @@ class IslandersState:
     data = self.json_for_player()
     if self.turn_phase == "bury" and len(self.action_stack) > 1:
       data["treasure"] = self.action_stack[-2]
+    if self.turn_phase == "treason" and self.turn_idx == player_idx:
+      src_count, dest_count = self._calculate_treason_tiles()
+      data["from_count"] = src_count
+      data["to_count"] = dest_count
     if player_idx is not None:
       data["you"] = player_idx
       data["cards"] = self.player_data[player_idx].cards
@@ -946,6 +950,8 @@ class IslandersState:
       "knight",
       "fastknight",
       "move_knights",
+      "intrigue",
+      "treason",
     ]:
       return
     if self.turn_phase == "move_knights":
@@ -965,6 +971,25 @@ class IslandersState:
         self.action_stack.pop()
         self.next_action()
       return
+    if self.turn_phase == "intrigue":
+      if not any(tile.barbarians for tile in self.tiles.values()):
+        self.action_stack.pop()
+        if self.options.shuffle_discards and not self.dev_cards:
+          self.reshuffle_dev_cards()
+        if self.dev_cards:
+          card_type = self.dev_cards.pop()
+          text = "{player%s} discarded intrigue and drew %s" % (self.turn_idx, card_type)
+          self.event_log.append(Event("takedev", text))
+          self.action_stack.append(card_type)
+        else:
+          self.event_log.append(Event("takedev", "{player%s} discarded intrigue" % (self.turn_idx)))
+        self.next_action()
+      return
+    if self.turn_phase == "treason":
+      _, dest_count = self._calculate_treason_tiles()
+      if dest_count == 0:
+        self.handle_treason(None, None, None, None, self.turn_idx)
+        return
     if self.turn_phase == "takedev":
       if self.options.shuffle_discards and not self.dev_cards:
         self.reshuffle_dev_cards()
@@ -1093,9 +1118,7 @@ class IslandersState:
     if move_type == "move_knight":
       return self.handle_move_knight(data.get("from"), data.get("to"), player_idx)
     if move_type == "treason":
-      return self.handle_treason(
-        data.get("froma"), data.get("fromb"), data.get("toa"), data.get("tob"), player_idx
-      )
+      return self.handle_treason(data["froma"], data["fromb"], data["toa"], data["tob"], player_idx)
     if move_type == "intrigue":
       return self.handle_intrigue(location, player_idx)
     if move_type == "expel":
@@ -2566,13 +2589,121 @@ class IslandersState:
         to_search.append(adjacent)
     return None
 
+  def _calculate_treason_tiles(self):
+    """Returns a pair of (tiles to take barbarians from, tiles to send barbarians to).
+
+    Both results are capped at 2.
+    The number of tiles to send barbarians to is usually the number of non-full coastal tiles.
+    The number of tiles to take barbarians from does not take into account the number of barbarians
+    that will be taken from the supply. For example, if the board is empty but there are barbarians
+    in the supply, then the result will be (0, 2).
+    If there are insufficient barbarians to move (i.e. no barbarians left on the board and no
+    barbarians left in the supply), the destination count will be reduced to the maximum number of
+    barbarians that can be moved.
+    If there are insufficient destinations, the source count will be reduced to the maximum number
+    of barbarians that can be moved.
+    """
+    valid_dests = 0
+    valid_srcs = 0
+    for tile in self.tiles.values():
+      if not tile.is_land or not tile.number:
+        continue  # Exclude both sea tiles and the castle/desert
+      adjacent = tile.location.get_adjacent_tiles()
+      if all(loc in self.tiles and self.tiles[loc].is_land for loc in adjacent):
+        continue  # Landlocked tiles cannot have barbarians
+      if tile.barbarians < 3:
+        valid_dests += 1
+      if tile.barbarians > 0:
+        valid_srcs += 1
+
+    tile_barbarians = sum(t.barbarians for t in self.tiles.values())
+    captured_barbarians = sum(p.captured_barbarians for p in self.player_data)
+    supply = 30 - captured_barbarians - tile_barbarians
+    dest_count = min(valid_dests, valid_srcs + supply, 2)
+    src_count = min(valid_srcs, dest_count, 2)
+    return src_count, dest_count
+
   def handle_treason(self, froma, fromb, toa, tob, player_idx):
-    # TODO
+    if self.turn_phase != "treason":
+      raise InvalidMove("You cannot use the treason card right now.")
+
+    src_count, dest_count = self._calculate_treason_tiles()
+    # Short-circuit when you cannot place any barbarians.
+    if dest_count == 0:
+      if any(loc is not None for loc in [froma, fromb, toa, tob]):
+        raise InvalidMove("Cannot move any barbarians when the board is full.")
+      self.player_data[player_idx].cards["gold"] += 2
+      self.action_stack.pop()
+      self.next_action()
+      return
+
+    from_a = parse_location(froma, TileLocation) if froma is not None else None
+    from_b = parse_location(fromb, TileLocation) if fromb is not None else None
+    to_a = parse_location(toa, TileLocation) if toa is not None else None
+    to_b = parse_location(tob, TileLocation) if tob is not None else None
+    if (src_count <= 1) != (from_a is None):
+      if from_a is None:  # pylint: disable=no-else-raise
+        raise InvalidMove("Must specify both tiles to take barbarians from.")
+      else:  # noqa: RET506
+        raise InvalidMove("Should not specify the tile to take the second barbarian from.")
+    if (src_count <= 0) != (from_b is None):
+      if from_b is None:  # pylint: disable=no-else-raise
+        raise InvalidMove("Must specify tile to take a barbarian from.")
+      else:  # noqa: RET506
+        raise InvalidMove("Should not specify either tile to take a barbarian from")
+    if (dest_count <= 1) != (to_b is None):
+      if to_b is None:  # pylint: disable=no-else-raise
+        raise InvalidMove("Must specify both tiles to send barbarians to.")
+      else:  # noqa: RET506
+        raise InvalidMove("Should not specify a second tile to send barbarians to.")
+    if to_a is None:
+      raise InvalidMove("Must specify tile to send a barbarian to.")
+
+    # We have validated the None values. From here onward, anything that is None can be skipped.
+    sources = [loc for loc in [from_a, from_b] if loc is not None]
+    dests = [loc for loc in [to_a, to_b] if loc is not None]
+    if any(loc not in self.tiles for loc in sources + dests):
+      raise InvalidMove("Unknown tile.")
+    if len(set(sources + dests)) != len(sources + dests):
+      raise InvalidMove("You must choose distinct tiles.")
+    for source in sources:
+      if not self.tiles[source].barbarians:
+        raise InvalidMove("You must remove barbarians from tiles with barbarians on them.")
+    for dest in dests:
+      if all(loc in self.tiles and self.tiles[loc].is_land for loc in dest.get_adjacent_tiles()):
+        raise InvalidMove("You must place the barbarian on a coastal tile.")
+      if not self.tiles[dest].number:
+        raise InvalidMove("You must place the barbarian on a numbered tile.")
+      if self.tiles[dest].barbarians >= 3 or self.tiles[dest].conquered:
+        raise InvalidMove("You must place the barbarian on an unconquered tile.")
+
+    # Validation complete; move barbarians and check for conquest/recapture.
+    self.player_data[player_idx].cards["gold"] += 2
+    for source in sources:
+      self.tiles[source].barbarians -= 1
+      self.tiles[source].conquered = False
+      if self.tiles[source].barbarians == 2:
+        self.recapture(self.tiles[source])
+    for dest in dests:
+      self.tiles[dest].barbarians += 1
+      if self.tiles[dest].barbarians >= 3:
+        self.tiles[dest].conquered = True
+        self.check_conquest(self.tiles[dest])
     self.action_stack.pop()
     self.next_action()
 
   def handle_intrigue(self, loc, player_idx):
-    # TODO
+    if self.turn_phase != "intrigue":
+      raise InvalidMove("You cannot use the intrigue card right now.")
+    location = parse_location(loc, TileLocation)
+    tile = self.tiles.get(location)
+    if not tile or tile.barbarians <= 0:
+      raise InvalidMove("You must choose a tile with barbarians on it.")
+    tile.barbarians -= 1
+    self.player_data[player_idx].captured_barbarians += 1
+    if tile.conquered:
+      tile.conquered = False
+      self.recapture(tile)
     self.action_stack.pop()
     self.next_action()
 
