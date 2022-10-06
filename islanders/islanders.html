@@ -12,18 +12,19 @@
   <script type="text/javascript" src="/islanders/defaults.js"></script>
   <script type="text/javascript" src="/islanders/plugin.js"></script>
   <body onload="init()" onmousemove="winmove(event)" onmouseup="bodyup(event)">
-    <canvas id="myCanvas" width="678" height="730"></canvas>
-    <div id="ui" class="noclick">
-      <p id="errorText" class="noclick"></p>
-      <div id="uiload">
-        <div>Loading...</div>
-        <div id="loadbar">
-          <div id="loadingbar"></div>
-          <div id="errorbar"></div>
-          <span id="loadcount">&nbsp;</span>
+    <div id="ui">
+      <p id="errorText"></p>
+      <div class="centerizer">
+        <div id="uiload">
+          <div>Loading...</div>
+          <div id="loadbar">
+            <div id="loadingbar"></div>
+            <div id="errorbar"></div>
+            <span id="loadcount">&nbsp;</span>
+          </div>
         </div>
       </div>
-      <div id="uijoin" class="noclick">
+      <div id="uijoin" class="centerizer">
         <div id="joininner" class="clickable" onmousedown="windown(event)">
           <div id="options">
             <div id="flagoptions" class="suboptions"></div>
@@ -37,7 +38,7 @@
               </div>
             </div>
           </div>
-          <div id="joinname" class="clickable">
+          <div id="joinname">
             <div>Name:</div>
             <input type="text" id="joinnameinput" class="clickable" maxlength="16"></input>
             <div id="joincolor" onclick="toggleColor(event)">
@@ -51,75 +52,18 @@
               </ul>
             </div>
           </div>
-          <div id="joinbuttons" class="clickable">
+          <div id="joinbuttons">
             <div class="leftbutton noclick"><button id="observe" class="selectbutton button clickable" onclick="observe(event)">Observe</button></div>
             <div class="centerbutton noclick"><button id="start" disabled="true" class="selectbutton button clickable disabled" onclick="startGame(event)">Start</button></div>
             <div class="rightbutton noclick"><button id="join" class="selectbutton button clickable" onclick="joinGame(event)">Join</button></div>
           </div>
         </div>
       </div>
-      <div id="uioverlay" class="noclick">
+      <div id="uioverlay">
+        <canvas id="myCanvas" width="678" height="730"></canvas>
         <div id="uimain" class="noclick">
-          <div id="centerizer" class="noclick">
-            <div id="playerpopup" class="clickable uiselect" onmousedown="windown(event)">
-            </div>
-            <div id="portpopup" class="clickable selectinner" onmousedown="windown(event)">
-              <div id="portselecttitle"></div>
-              <div id="portselect"></div>
-            </div>
-            <div id="burypopup" class="clickable selectinner" onmousedown="windown(event)">
-              <div id="treasure"></div>
-              <div id="burybuttons">
-                <div class="leftbutton"><button id="burytreasure" class="selectbutton button clickable" onclick="buryTreasure(event)">Bury</button></div>
-                <div class="rightbutton"><button id="usetreasure" class="selectbutton button clickable" onclick="useTreasure(event)">Use</button></div>
-              </div>
-            </div>
-            <div id="handpopup" class="clickable selectinner" onmousedown="windown(event)">
-              <div id="handselecttop">
-                <div id="handselecttitle"></div>
-                <div class="rightbutton"><button id="handok" class="takeoverbutton button clickable" onclick="okHandSelection(event)">Discard</button></div>
-              </div>
-              <div id="handselectsummary" class="uiselect">
-                <div id="handselectcards" class="selectsummary"></div>
-              </div>
-            </div>
-            <div id="resourcepopup" class="clickable selectinner" onmousedown="windown(event)">
-              <div id="resourceselect" class="uiselect">
-                <div id="resourceselecttitle" class="selecttitle">You Give</div>
-                <div id="resourceselectbox" class="resourceselectbox"></div>
-              </div>
-              <div id="selectbuttons">
-                <div class="leftbutton"><button id="selectconfirm" class="selectbutton button clickable" onclick="confirmSelection(event)">Confirm</button></div>
-                <div class="centerbutton"><button id="selectreset" class="selectbutton button clickable" onclick="resetSelection(event)">Reset</button></div>
-                <div class="rightbutton"><button id="selectcancel" class="selectbutton button clickable" onclick="cancelSelection(event)">Cancel</button></div>
-              </div>
-            </div>
-            <div id="tradepopup" class="clickable" onmousedown="windown(event)">
-              <div class="selectinner">
-                <div id="topselect" class="uiselect">
-                  <div id="topselecttitle" class="selecttitle">You Want</div>
-                  <div id="topselectbox" class="resourceselectbox"></div>
-                </div>
-                <div id="bottomselect" class="uiselect">
-                  <div id="bottomselecttitle" class="selecttitle">You Give</div>
-                  <div id="bottomselectbox" class="resourceselectbox"></div>
-                </div>
-                <div id="tradesummary" class="uiselect">
-                  <div id="selfsummary" class="selectsummary">
-                    <div class="summaryfixed"><p>You Want</p></div>
-                    <div class="summaryleft summarypanel"></div>
-                    <div class="summaryfixed"><p>🔄</p></div>
-                    <div class="summaryright summarypanel"></div>
-                    <div class="summaryfixed"><p>You Give</p></div>
-                  </div>
-                </div>
-                <div id="tradebuttons">
-                  <div class="leftbutton"><button id="tradeconfirm" class="selectbutton button clickable" onclick="confirmTrade(event)">Trade</button></div>
-                  <div class="centerbutton"><button id="tradereset" class="selectbutton button clickable" onclick="resetTrade(event)">Reset</button></div>
-                  <div class="rightbutton"><button id="tradecancel" class="selectbutton button clickable" onclick="cancelTrade(event)">Close</button></div>
-                </div>
-              </div>
-            </div>
+          <div id="flipper" class="clickable selectable" onclick="flip()">
+            <div id="flipinner" class="flipnormal">🗺</div>
           </div>
           <div id="uileft" class="noclick">
             <div id="leftcontainer" class="noclick">
@@ -131,9 +75,6 @@
               <select id="skinchoice" onchange="chooseSkin(event)" class="clickable">
                 <option value="null">Change Skin...</option>
               </select>
-              <div id="flipper" class="clickable selectable" onclick="flip()">
-                <div id="flipinner" class="flipnormal">🗺</div>
-              </div>
             </div>
             <div id="bottombutton" class="noclick">
               <button id="tradeplayer" class="button bigbutton tradebutton resourceselector clickable" onclick="toggleTradeWindow('player')">Trade</button>
@@ -145,7 +86,68 @@
         </div>
         <div id="uibottom" class="noclick">
           <div id="uicards" class="noclick"></div>
-          <div id="uicost"></div>
+          <div id="uicost" class="clickable"></div>
+        </div>
+        <div id="uipopup" class="centerizer">
+          <div id="playerpopup" class="clickable uiselect" onmousedown="windown(event)">
+          </div>
+          <div id="portpopup" class="clickable selectinner" onmousedown="windown(event)">
+            <div id="portselecttitle"></div>
+            <div id="portselect"></div>
+          </div>
+          <div id="burypopup" class="clickable selectinner" onmousedown="windown(event)">
+            <div id="treasure"></div>
+            <div id="burybuttons">
+              <div class="leftbutton"><button id="burytreasure" class="selectbutton button clickable" onclick="buryTreasure(event)">Bury</button></div>
+              <div class="rightbutton"><button id="usetreasure" class="selectbutton button clickable" onclick="useTreasure(event)">Use</button></div>
+            </div>
+          </div>
+          <div id="handpopup" class="clickable selectinner" onmousedown="windown(event)">
+            <div id="handselecttop">
+              <div id="handselecttitle"></div>
+              <div class="rightbutton"><button id="handok" class="takeoverbutton button clickable" onclick="okHandSelection(event)">Discard</button></div>
+            </div>
+            <div id="handselectsummary" class="uiselect">
+              <div id="handselectcards" class="selectsummary"></div>
+            </div>
+          </div>
+          <div id="resourcepopup" class="clickable selectinner" onmousedown="windown(event)">
+            <div id="resourceselect" class="uiselect">
+              <div id="resourceselecttitle" class="selecttitle">You Give</div>
+              <div id="resourceselectbox" class="resourceselectbox"></div>
+            </div>
+            <div id="selectbuttons">
+              <div class="leftbutton"><button id="selectconfirm" class="selectbutton button clickable" onclick="confirmSelection(event)">Confirm</button></div>
+              <div class="centerbutton"><button id="selectreset" class="selectbutton button clickable" onclick="resetSelection(event)">Reset</button></div>
+              <div class="rightbutton"><button id="selectcancel" class="selectbutton button clickable" onclick="cancelSelection(event)">Cancel</button></div>
+            </div>
+          </div>
+          <div id="tradepopup" class="clickable" onmousedown="windown(event)">
+            <div class="selectinner">
+              <div id="topselect" class="uiselect">
+                <div id="topselecttitle" class="selecttitle">You Want</div>
+                <div id="topselectbox" class="resourceselectbox"></div>
+              </div>
+              <div id="bottomselect" class="uiselect">
+                <div id="bottomselecttitle" class="selecttitle">You Give</div>
+                <div id="bottomselectbox" class="resourceselectbox"></div>
+              </div>
+              <div id="tradesummary" class="uiselect">
+                <div id="selfsummary" class="selectsummary">
+                  <div class="summaryfixed"><p>You Want</p></div>
+                  <div class="summaryleft summarypanel"></div>
+                  <div class="summaryfixed"><p>🔄</p></div>
+                  <div class="summaryright summarypanel"></div>
+                  <div class="summaryfixed"><p>You Give</p></div>
+                </div>
+              </div>
+              <div id="tradebuttons">
+                <div class="leftbutton"><button id="tradeconfirm" class="selectbutton button clickable" onclick="confirmTrade(event)">Trade</button></div>
+                <div class="centerbutton"><button id="tradereset" class="selectbutton button clickable" onclick="resetTrade(event)">Reset</button></div>
+                <div class="rightbutton"><button id="tradecancel" class="selectbutton button clickable" onclick="cancelTrade(event)">Close</button></div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
       <div id="uiright">
