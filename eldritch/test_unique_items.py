@@ -354,6 +354,27 @@ class FluteTest(EventTest):
     self.assertIn(self.cultist, self.char.trophies)
     self.assertNotIn(self.flute, self.char.possessions)
 
+  def testEndlessOrPinataBehavior(self):
+    pinata = monsters.Pinata()
+    endless = monsters.Haunter()
+    self.state.monsters.extend([pinata, endless])
+    holy_water = items.HolyWater(0)
+    self.state.unique.append(holy_water)
+    for monster in [self.maniac, pinata, endless]:
+      monster.place = self.char.place
+
+    self.enterCombat(0)
+    flute = self.resolve_to_usable(0, "Flute0")
+    self.state.event_stack.append(flute)
+    self.resolve_until_done()
+    self.assertEqual(self.char.stamina, 2)
+    self.assertEqual(self.char.sanity, 2)
+    self.assertIn(self.maniac, self.char.trophies)
+    self.assertNotIn(pinata, self.char.trophies)
+    self.assertNotIn(endless, self.char.trophies)
+    self.assertNotIn(self.flute, self.char.possessions)
+    self.assertIn(holy_water, self.char.possessions)
+
 
 class GateBoxTeset(EventTest):
   def setUp(self):

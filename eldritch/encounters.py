@@ -238,7 +238,7 @@ def Sanctum1(char):
 def Sanctum2(char):
   check = events.Check(char, "luck", -1)
   choose = events.MonsterOnBoardChoice(char, "Choose a monster to take as a trophy")
-  take = events.TakeTrophy(char, choose)
+  take = events.ForceTakeTrophy(char, choose)
   success = events.Sequence([choose, take], char)
   nothing = events.Nothing()
   seq = events.PassFail(char, check, success, nothing)
@@ -485,7 +485,7 @@ def Graveyard6(char):
 
 def Graveyard7(char):
   draw = events.DrawMonstersFromCup(1, char)
-  return events.Sequence([draw, events.TakeTrophy(char, draw)], char)
+  return events.Sequence([draw, events.ForceTakeTrophy(char, draw)], char)
 
 
 def Society1(char):

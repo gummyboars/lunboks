@@ -3682,7 +3682,7 @@ class PassCombatRound(Event):
     return self.log_message
 
 
-class TakeTrophy(Event):
+class ForceTakeTrophy(Event):
 
   def __init__(self, character, monster):
     super().__init__()
@@ -3715,6 +3715,14 @@ class TakeTrophy(Event):
     if not self.done:
       return f"{self.character.name} takes a monster trophy"
     return f"{self.character.name} took a {self.monster.name} as a trophy"
+
+
+class TakeTrophy(ForceTakeTrophy):
+  def log(self, state):
+    if self.done:
+      return (f"{self.character.name} took a {self.monster.name} as"
+              " a trophy after defeating it in combat")
+    return super().log(state)
 
 
 class MonsterAppears(Conditional):

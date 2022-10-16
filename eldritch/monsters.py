@@ -131,7 +131,15 @@ class Monster:
         return movement
     return "normal"
 
-  def get_interrupt(self, event, state):  # pylint: disable=unused-argument
+  def get_interrupt(self, event, state):
+    if (isinstance(event, events.TakeTrophy)
+            and self.has_attribute("endless", state, event.character)):
+      return events.Sequence(
+          [
+              events.CancelEvent(event),
+              events.ReturnMonsterFromBoard(event.character, self, ),
+          ], event.character
+      )
     return None
 
   def get_trigger(self, event, state):  # pylint: disable=unused-argument
@@ -331,8 +339,6 @@ class Pinata(Monster):
 
   def get_interrupt(self, event, state):
     if not isinstance(event, events.TakeTrophy):
-      return None
-    if len(state.event_stack) < 2 or not isinstance(state.event_stack[-2], events.PassCombatRound):
       return None
     seq = [
         events.CancelEvent(event),
