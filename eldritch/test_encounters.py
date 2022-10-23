@@ -17,6 +17,7 @@ from eldritch import gate_encounters
 from eldritch.events import *
 from eldritch import items
 from eldritch import monsters
+from eldritch import mythos
 from eldritch.test_events import EventTest
 
 from game import InvalidMove
@@ -2774,6 +2775,30 @@ class ShopTest(EncounterTest):
       self.resolve_until_done()
     self.assertEqual(len(self.char.possessions), 2)
     self.assertEqual(self.char.sanity, 2)
+
+  def testShop7Pass(self):
+    self.state.mythos.clear()
+    self.state.mythos.extend([mythos.Mythos4(), mythos.Mythos3()])
+    self.state.event_stack.append(encounters.Shop7(self.char))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.bless_curse, 0)
+    self.assertEqual(self.char.place.name, "Shop")
+    self.assertEqual([m.name for m in self.state.mythos], ["Mythos4", "Mythos3"])
+
+  def testShop7Fail(self):
+    self.state.places["University"].encounters = [
+        encounters.EncounterCard("University1", {"Science": encounters.Science1}),
+    ]
+    self.state.mythos.clear()
+    self.state.mythos.extend([mythos.Mythos4(), mythos.Mythos3()])
+
+    self.state.event_stack.append(encounters.Shop7(self.char))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.bless_curse, 1)
+    self.assertEqual(self.char.place.name, "Science")
+    self.assertEqual([m.name for m in self.state.mythos], ["Mythos3", "Mythos4"])
 
 
 class NewspaperTest(EncounterTest):

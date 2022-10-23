@@ -1214,7 +1214,7 @@ class ForceMovement(Event):
   def __init__(self, character, location_name):
     super().__init__()
     self.character = character
-    self.location_name: Union[MapChoice, str] = location_name
+    self.location_name: Union[MapChoice, DrawMythosCard, str] = location_name
     self.done = False
 
   def resolve(self, state):
@@ -1225,6 +1225,12 @@ class ForceMovement(Event):
         self.cancelled = True
         return
       self.location_name = self.location_name.choice
+    elif isinstance(self.location_name, DrawMythosCard):
+      assert self.location_name.is_done()
+      if self.location_name.card is None or self.location_name.card.gate_location is None:
+        self.cancelled = True
+        return
+      self.location_name = self.location_name.card.gate_location
     self.character.place = state.places[self.location_name]
     self.character.explored = False
     self.character.avoid_monsters = []
@@ -1534,7 +1540,7 @@ class Encounter(Event):
   def __init__(self, character, location_name, count=1):
     super().__init__()
     self.character = character
-    self.location_name: Union[MapChoice, str] = location_name
+    self.location_name: Union[MapChoice, DrawMythosCard, str] = location_name
     self.draw: Optional[DrawEncounter] = None
     self.encounter: Optional[Event] = None
     self.count = count
@@ -1542,20 +1548,22 @@ class Encounter(Event):
   def resolve(self, state):
     if isinstance(self.location_name, MapChoice):
       assert self.location_name.is_done()
-      name = self.location_name.choice
-      if name is None or not isinstance(state.places[name], places.Location):
+      if self.location_name.choice is None:
         self.cancelled = True
         return
-      self.location_name = name
-
-    if self.character.lodge_membership and self.location_name == "Lodge":
-      self.location_name = "Sanctum"
+      self.location_name = self.location_name.choice
+    elif isinstance(self.location_name, DrawMythosCard):
+      assert self.location_name.is_done()
+      if self.location_name.card is None or self.location_name.card.gate_location is None:
+        self.cancelled = True
+        return
+      self.location_name = self.location_name.card.gate_location
+    if not isinstance(state.places[self.location_name], places.Location):
+      self.cancelled = True
+      return
 
     if self.draw is None:
-      if self.location_name == "Sanctum":
-        neighborhood = state.places["FrenchHill"]
-      else:
-        neighborhood = state.places[self.location_name].neighborhood
+      neighborhood = state.places[self.location_name].neighborhood
       self.draw = DrawEncounter(self.character, neighborhood, self.count)
 
     if not self.draw.is_done():
@@ -1569,13 +1577,17 @@ class Encounter(Event):
     if self.encounter and self.encounter.is_done():
       return
 
+    location_name = self.location_name
+    if self.character.lodge_membership and self.location_name == "Lodge":
+      location_name = "Sanctum"
+
     if len(self.draw.cards) == 1 and state.test_mode:  # TODO: test this
-      self.encounter = self.draw.cards[0].encounter_event(self.character, self.location_name)
+      self.encounter = self.draw.cards[0].encounter_event(self.character, location_name)
       state.event_stack.append(self.encounter)
       return
 
     encounters = [
-        card.encounter_event(self.character, self.location_name) for card in self.draw.cards]
+        card.encounter_event(self.character, location_name) for card in self.draw.cards]
     choice = CardChoice(
         self.character, "Choose an Encounter", [card.name for card in self.draw.cards],
     )
@@ -3909,9 +3921,10 @@ class RemoveAllSeals(Event):
 
 class DrawMythosCard(Event):
 
-  def __init__(self, character):
+  def __init__(self, character, require_gate=False):
     super().__init__()
     self.character = character
+    self.require_gate = require_gate
     self.shuffled = False
     self.card = None
 
@@ -3919,10 +3932,13 @@ class DrawMythosCard(Event):
     while True:
       card = state.mythos.popleft()
       state.mythos.append(card)
-      if card.name != "ShuffleMythos":
-        break
-      random.shuffle(state.mythos)
-      self.shuffled = True
+      if card.name == "ShuffleMythos":
+        random.shuffle(state.mythos)
+        self.shuffled = True
+        continue
+      if self.require_gate and card.gate_location is None:
+        continue
+      break
     self.card = card
 
   def is_resolved(self):
