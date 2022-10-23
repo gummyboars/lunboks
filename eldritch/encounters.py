@@ -980,7 +980,25 @@ def Asylum4(char):
 
 def Asylum5(char):
   check = events.Check(char, "will", -1)
-  lose = events.Nothing()  # TODO: Oh dear...so many choices
+  clue_prereq = values.AttributePrerequisite(char, "clues", 4, "at least")
+  clue_loss = events.Loss(char, {"clues": 4})
+  spell_prereq = values.ItemDeckPrerequisite(char, "spells", 2, "at least")
+  spell_loss = events.LoseItems(char, 2, "Choose 2 spells to lose", {"spells"})
+  skill_prereq = values.ItemDeckPrerequisite(char, "skills", 1, "at least")
+  skill_loss = events.LoseItems(char, 1, "Choose 1 skill to lose", {"skills"})
+  nothing = events.Nothing()
+
+  skill_spell_sum = values.Calculation(skill_prereq, None, operator.add, spell_prereq)
+  overall_sum = values.Calculation(skill_spell_sum, None, operator.add, clue_prereq)
+  none_prereq = values.Calculation(overall_sum, None, operator.not_)
+  choice = events.MultipleChoice(
+      char, "Choose something to lose", ["Nothing", "4 Clues", "2 Spells", "1 Skill"],
+      prereqs=[none_prereq, clue_prereq, spell_prereq, skill_prereq],
+  )
+  losses = events.Conditional(
+      char, choice, "choice_index", {0: nothing, 1: clue_loss, 2: spell_loss, 3: skill_loss},
+  )
+  lose = events.Sequence([choice, losses], char)
   skill = events.Draw(char, "skills", 1)
   cond = events.Conditional(char, check, "successes", {0: lose, 2: skill})
   return events.Sequence([check, cond], char)

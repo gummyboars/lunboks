@@ -2294,6 +2294,89 @@ class AsylumTest(EncounterTest):
     self.assertEqual(len(self.char.possessions), 0)
     self.assertEqual(len(self.state.spells), 2)
 
+  def testAsylum5Pass(self):
+    self.state.skills.append(abilities.Marksman(0))
+    self.char.clues = 5
+    self.state.event_stack.append(encounters.Asylum5(self.char))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      spend = self.resolve_to_choice(SpendChoice)
+      spend.resolve(self.state, "Done")
+    self.resolve_until_done()
+    self.assertEqual(len(self.char.possessions), 1)
+    self.assertEqual(self.char.possessions[0].name, "Marksman")
+    self.assertEqual(self.char.clues, 5)
+
+  def testAsylum5LoseClues(self):
+    self.char.clues = 5
+    self.state.event_stack.append(encounters.Asylum5(self.char))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
+      spend = self.resolve_to_choice(SpendChoice)
+      spend.resolve(self.state, "Done")
+    loss_choice = self.resolve_to_choice(MultipleChoice)
+    self.assertCountEqual(loss_choice.invalid_choices.keys(), [0, 2, 3])
+    loss_choice.resolve(self.state, "4 Clues")
+    self.resolve_until_done()
+    self.assertEqual(self.char.clues, 1)
+
+  def testAsylum5LoseSpells(self):
+    self.char.possessions.extend([items.Wither(0), items.Wither(1), items.Food(0)])
+    self.state.event_stack.append(encounters.Asylum5(self.char))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
+      loss_choice = self.resolve_to_choice(MultipleChoice)
+    self.assertCountEqual(loss_choice.invalid_choices.keys(), [0, 1, 3])
+    loss_choice.resolve(self.state, "2 Spells")
+    item_choice = self.resolve_to_choice(ItemLossChoice)
+    with self.assertRaisesRegex(InvalidMove, "Invalid choices"):
+      item_choice.resolve(self.state, "Food0")
+    self.choose_items(item_choice, ["Wither0", "Wither1"])
+    self.resolve_until_done()
+    self.assertEqual(len(self.char.possessions), 1)
+    self.assertEqual(self.char.possessions[0].name, "Food")
+
+  def testAsylum5LoseSkill(self):
+    self.char.possessions.extend([abilities.Marksman(0), items.Food(0)])
+    self.state.event_stack.append(encounters.Asylum5(self.char))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
+      loss_choice = self.resolve_to_choice(MultipleChoice)
+    self.assertCountEqual(loss_choice.invalid_choices.keys(), [0, 1, 2])
+    loss_choice.resolve(self.state, "1 Skill")
+    item_choice = self.resolve_to_choice(ItemLossChoice)
+    with self.assertRaisesRegex(InvalidMove, "Invalid choices"):
+      item_choice.resolve(self.state, "Food0")
+    self.choose_items(item_choice, ["Marksman0"])
+    self.resolve_until_done()
+    self.assertEqual(len(self.char.possessions), 1)
+    self.assertEqual(self.char.possessions[0].name, "Food")
+
+  def testAsylum5NothingToLose(self):
+    # With exactly one spell, no skills, and 3 clues, all choices are invalid.
+    self.char.possessions.extend([items.Wither(0), items.Food(0)])
+    self.char.clues = 3
+    self.state.event_stack.append(encounters.Asylum5(self.char))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
+      spend = self.resolve_to_choice(SpendChoice)
+      spend.resolve(self.state, "Done")
+    loss_choice = self.resolve_to_choice(MultipleChoice)
+    self.assertCountEqual(loss_choice.invalid_choices.keys(), [1, 2, 3])
+    loss_choice.resolve(self.state, "Nothing")
+    self.resolve_until_done()
+    self.assertEqual(len(self.char.possessions), 2)
+    self.assertEqual(self.char.clues, 3)
+
+  def testAsylum5LoseAnything(self):
+    self.char.possessions.extend([items.Wither(0), items.Wither(1), abilities.Marksman(0)])
+    self.char.clues = 4
+    self.state.event_stack.append(encounters.Asylum5(self.char))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
+      spend = self.resolve_to_choice(SpendChoice)
+      spend.resolve(self.state, "Done")
+    loss_choice = self.resolve_to_choice(MultipleChoice)
+    self.assertCountEqual(loss_choice.invalid_choices.keys(), [0])  # Can't choose nothing.
+    loss_choice.resolve(self.state, "4 Clues")
+    self.resolve_until_done()
+    self.assertEqual(len(self.char.possessions), 3)
+    self.assertEqual(self.char.clues, 0)
+
   def testAsylum6Pass(self):
     # increase lore because it's a -2 check
     self.char.lore_luck_slider = 2
