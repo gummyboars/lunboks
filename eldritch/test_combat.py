@@ -1120,6 +1120,129 @@ class CombatOutputTest(EventTest):
     self.assertFalse(self.state.event_stack)
 
 
+class ElderThingCombatTest(EventTest):
+
+  def setUp(self):
+    super().setUp()
+    self.char.possessions.extend([items.Wither(0), items.Revolver38(0), items.DarkCloak(0)])
+    self.thing = monsters.ElderThing()
+    combat = EvadeOrCombat(self.char, self.thing)
+    self.state.event_stack.append(combat)
+
+  def testWeaponDeactivatesOnLoss(self):
+    fight_or_evade = self.resolve_to_choice(FightOrEvadeChoice)
+    fight_or_evade.resolve(self.state, "Fight")
+    fight_or_flee = self.resolve_to_choice(FightOrEvadeChoice)
+    fight_or_flee.resolve(self.state, "Fight")
+    combat_choice = self.resolve_to_choice(CombatChoice)
+
+    self.state.event_stack.append(self.state.usables[0]["Wither0"])
+    cast = self.resolve_to_choice(SpendChoice)
+    cast.resolve(self.state, "Cast")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_to_choice(CombatChoice)
+    self.choose_items(combat_choice, [".38 Revolver0"])
+    # Lose the combat round.
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
+      loss_choice = self.resolve_to_choice(WeaponOrSpellLossChoice)
+    self.assertTrue(self.char.possessions[0].active)
+    self.assertTrue(self.char.possessions[0].exhausted)
+    self.assertTrue(self.char.possessions[1].active)
+    self.choose_items(loss_choice, [".38 Revolver0"])
+    fight_or_flee = self.resolve_to_choice(FightOrEvadeChoice)
+
+    # Validate that the player lost stamina, and that the revolver has been lost.
+    self.assertEqual(self.char.stamina, 4)
+    self.assertEqual(len(self.char.possessions), 2)
+    self.assertEqual([item.handle for item in self.char.possessions], ["Wither0", "Dark Cloak0"])
+    # The spell should still be active, but not the revolver, which should be in the deck.
+    self.assertTrue(self.char.possessions[0].active)
+    self.assertTrue(self.char.possessions[0].exhausted)
+    self.assertFalse(self.char.possessions[1].active)  # The dark cloak.
+    self.assertEqual(len(self.state.common), 1)
+    self.assertEqual(self.state.common[0].name, ".38 Revolver")
+    self.assertFalse(self.state.common[0].active)
+
+  def testSpellDeactivatesOnLoss(self):
+    fight_or_evade = self.resolve_to_choice(FightOrEvadeChoice)
+    fight_or_evade.resolve(self.state, "Fight")
+    fight_or_flee = self.resolve_to_choice(FightOrEvadeChoice)
+    fight_or_flee.resolve(self.state, "Fight")
+    combat_choice = self.resolve_to_choice(CombatChoice)
+
+    self.state.event_stack.append(self.state.usables[0]["Wither0"])
+    cast = self.resolve_to_choice(SpendChoice)
+    cast.resolve(self.state, "Cast")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_to_choice(CombatChoice)
+    self.choose_items(combat_choice, [".38 Revolver0"])
+    # Lose the combat round.
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
+      loss_choice = self.resolve_to_choice(WeaponOrSpellLossChoice)
+    self.assertTrue(self.char.possessions[0].active)
+    self.assertTrue(self.char.possessions[0].exhausted)
+    self.assertTrue(self.char.possessions[1].active)
+    self.choose_items(loss_choice, ["Wither0"])
+    fight_or_flee = self.resolve_to_choice(FightOrEvadeChoice)
+
+    # Validate that the player lost stamina, and that the wither spell has been lost.
+    self.assertEqual(self.char.stamina, 4)
+    self.assertEqual(len(self.char.possessions), 2)
+    self.assertNotIn("Wither0", [item.handle for item in self.char.possessions])
+    # Nothing should be active or exhausted.
+    self.assertFalse(any(item.active for item in self.char.possessions))
+    self.assertEqual(len(self.state.spells), 1)
+    self.assertEqual(self.state.spells[0].name, "Wither")
+    self.assertFalse(self.state.spells[0].active)
+    self.assertFalse(self.state.spells[0].exhausted)
+
+  def testDiscardOnEvadeFailure(self):
+    fight_or_evade = self.resolve_to_choice(FightOrEvadeChoice)
+    fight_or_evade.resolve(self.state, "Evade")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
+      loss_choice = self.resolve_to_choice(WeaponOrSpellLossChoice)
+    self.choose_items(loss_choice, ["Wither0"])
+    self.resolve_to_choice(FightOrEvadeChoice)
+    self.assertEqual(len(self.char.possessions), 2)
+
+  def testNoDiscardOnSuccess(self):
+    fight_or_evade = self.resolve_to_choice(FightOrEvadeChoice)
+    fight_or_evade.resolve(self.state, "Fight")
+    fight_or_flee = self.resolve_to_choice(FightOrEvadeChoice)
+    fight_or_flee.resolve(self.state, "Fight")
+    combat_choice = self.resolve_to_choice(CombatChoice)
+
+    self.choose_items(combat_choice, [".38 Revolver0"])
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+    self.assertEqual(len(self.char.possessions), 3)
+    self.assertEqual(len(self.char.trophies), 1)
+
+  def testNoDiscardOnEvade(self):
+    self.char.speed_sneak_slider = 0
+    fight_or_evade = self.resolve_to_choice(FightOrEvadeChoice)
+    fight_or_evade.resolve(self.state, "Evade")
+
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+    self.assertEqual(len(self.char.possessions), 3)
+    self.assertEqual(len(self.char.trophies), 0)
+
+  def testNoDiscardableItems(self):
+    self.char.possessions.clear()
+    self.char.possessions.extend([assets.OldProfessor(), items.Deputy()])
+
+    fight_or_evade = self.resolve_to_choice(FightOrEvadeChoice)
+    fight_or_evade.resolve(self.state, "Fight")
+    fight_or_flee = self.resolve_to_choice(FightOrEvadeChoice)
+    fight_or_flee.resolve(self.state, "Fight")
+    combat_choice = self.resolve_to_choice(CombatChoice)
+
+    self.choose_items(combat_choice, [])
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
+      self.resolve_to_choice(FightOrEvadeChoice)
+
+
 class CombatWithItems(EventTest):
 
   def setUp(self):

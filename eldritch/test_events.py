@@ -2430,6 +2430,73 @@ class LossChoiceTest(EventTest):
     self.assertTrue(choice.is_resolved())
 
 
+class WeaponOrSpellLossChoiceTest(EventTest):
+
+  def setUp(self):
+    super().setUp()
+    self.char.possessions.append(items.Derringer18(0))
+    self.char.possessions.append(items.MagicLamp(0))
+    self.char.possessions.append(items.DarkCloak(0))
+    self.char.possessions.append(items.Wither(0))
+    self.char.possessions.append(items.Voice(0))
+
+  def testCanChooseSpell(self):
+    self.state.event_stack.append(WeaponOrSpellLossChoice(self.char, "lose", 1))
+    choice = self.resolve_to_choice(WeaponOrSpellLossChoice)
+    with self.assertRaisesRegex(InvalidMove, "Not enough"):
+      choice.resolve(self.state, "done")
+    choice.resolve(self.state, "Wither0")
+    choice.resolve(self.state, "done")
+    self.resolve_until_done()
+
+    self.assertTrue(choice.is_resolved())
+    self.assertEqual(choice.chosen, [self.char.possessions[3]])
+
+  def testCanChooseWeapon(self):
+    self.state.event_stack.append(WeaponOrSpellLossChoice(self.char, "lose", 1))
+    choice = self.resolve_to_choice(WeaponOrSpellLossChoice)
+    with self.assertRaisesRegex(InvalidMove, "Invalid choice"):
+      choice.resolve(self.state, "Dark Cloak0")
+    choice.resolve(self.state, "Magic Lamp0")
+    choice.resolve(self.state, "done")
+    self.resolve_until_done()
+
+    self.assertTrue(choice.is_resolved())
+    self.assertEqual(choice.chosen, [self.char.possessions[1]])
+
+  def testCanChooseUnlosableWeapon(self):
+    self.state.event_stack.append(WeaponOrSpellLossChoice(self.char, "lose", 1))
+    choice = self.resolve_to_choice(WeaponOrSpellLossChoice)
+    choice.resolve(self.state, ".18 Derringer0")
+    choice.resolve(self.state, "done")
+    self.resolve_until_done()
+
+    self.assertTrue(choice.is_resolved())
+    self.assertEqual(choice.chosen, [self.char.possessions[0]])
+
+  def testCanIgnoreIfOnlyUnlosables(self):
+    self.char.possessions.clear()
+    self.char.possessions.append(items.Derringer18(0))
+    self.state.event_stack.append(WeaponOrSpellLossChoice(self.char, "lose", 1))
+    choice = self.resolve_to_choice(WeaponOrSpellLossChoice)
+    choice.resolve(self.state, "done")
+    self.resolve_until_done()
+
+    self.assertTrue(choice.is_resolved())
+    self.assertEqual(choice.chosen, [])
+
+  def testSkipIfNoMatchingItems(self):
+    self.char.possessions.clear()
+    self.char.possessions.append(items.DarkCloak(0))
+    choice = WeaponOrSpellLossChoice(self.char, "lose", 1)
+    self.state.event_stack.append(choice)
+    self.resolve_until_done()
+
+    self.assertTrue(choice.is_done())
+    self.assertTrue(choice.is_cancelled())
+    self.assertFalse(choice.chosen)
+
+
 class SinglePhysicalWeaponChoiceTest(EventTest):
 
   def setUp(self):
