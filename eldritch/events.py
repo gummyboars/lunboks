@@ -2100,7 +2100,7 @@ class DeactivateSpell(Event):
     return f"{self.character.name} stopped using their {self.spell.name}"
 
 
-class DeactivateSpells(Event):
+class DeactivateCombatSpells(Event):
 
   def __init__(self, character):
     super().__init__()
@@ -2112,7 +2112,7 @@ class DeactivateSpells(Event):
     if self.deactivations is None:
       self.deactivations = [
           DeactivateSpell(self.character, spell) for spell in self.character.possessions
-          if getattr(spell, "deck", None) == "spells" and spell.in_use
+          if getattr(spell, "deck", None) == "spells" and spell.in_use and spell.combat
       ]
     while self.idx < len(self.deactivations):
       if not self.deactivations[self.idx].is_done():
@@ -3551,7 +3551,7 @@ class CombatRound(Event):
 
     if self.deactivate and not isinstance(self.deactivate, Event):
       self.deactivate = Sequence(
-          [DeactivateItems(self.character), DeactivateSpells(self.character)],
+          [DeactivateItems(self.character), DeactivateCombatSpells(self.character)],
           self.character
       )
       state.event_stack.append(self.deactivate)

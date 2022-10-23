@@ -881,6 +881,105 @@ class HealTest(EventTest):
     self.assertTrue(self.char.possessions[0].exhausted)
 
 
+class VoiceTest(EventTest):
+
+  def setUp(self):
+    super().setUp()
+    self.state.turn_phase = "upkeep"
+    self.char.possessions.append(items.Voice(0))
+
+  def testCastSuccess(self):
+    self.state.event_stack.append(events.UpkeepActions(self.char))
+    voice = self.resolve_to_usable(0, "Voice0", CastSpell)
+    self.state.event_stack.append(voice)
+    cast = self.resolve_to_choice(SpendChoice)
+    self.spend("sanity", 1, cast)
+    cast.resolve(self.state, "Cast")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+
+    self.assertTrue(self.char.possessions[0].exhausted)
+    self.assertTrue(self.char.possessions[0].active)
+    self.assertEqual(self.char.sanity, 4)
+
+    # Validate that this applies to checks.
+    self.state.event_stack.append(Check(self.char, "fight", 0))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)) as rand:
+      self.resolve_until_done()
+      self.assertEqual(rand.call_count, 5)
+
+    # Also validate that it applies to movement points.
+    self.state.turn_phase = "movement"
+    self.state.event_stack.append(Movement(self.char))
+    self.resolve_to_choice(CityMovement)
+    self.assertEqual(self.char.movement_points, 5)
+
+  def testCastFailure(self):
+    self.state.event_stack.append(events.UpkeepActions(self.char))
+    voice = self.resolve_to_usable(0, "Voice0", CastSpell)
+    self.state.event_stack.append(voice)
+    cast = self.resolve_to_choice(SpendChoice)
+    self.spend("sanity", 1, cast)
+    cast.resolve(self.state, "Cast")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
+      self.resolve_until_done()
+
+    self.assertTrue(self.char.possessions[0].exhausted)
+    self.assertFalse(self.char.possessions[0].active)
+    self.assertEqual(self.char.sanity, 4)
+
+    self.state.event_stack.append(Check(self.char, "fight", 0))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)) as rand:
+      self.resolve_until_done()
+      self.assertEqual(rand.call_count, 4)
+
+  def testDeactivatesAtEndOfTurn(self):
+    self.char.place = self.state.places["Easttown"]
+    self.state.event_stack.append(events.UpkeepActions(self.char))
+    voice = self.resolve_to_usable(0, "Voice0", CastSpell)
+    self.state.event_stack.append(voice)
+    cast = self.resolve_to_choice(SpendChoice)
+    self.spend("sanity", 1, cast)
+    cast.resolve(self.state, "Cast")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+
+    self.advance_turn(0, "mythos")
+    self.assertTrue(self.char.possessions[0].exhausted)
+    self.assertTrue(self.char.possessions[0].active)
+    self.advance_turn(1, "upkeep")
+    self.assertFalse(self.char.possessions[0].active)
+    self.assertTrue(self.char.possessions[0].exhausted)  # Still exhausted - has not refreshed
+
+    # Should now be usable again, since we refreshed it during upkeep.
+    voice = self.resolve_to_usable(0, "Voice0", CastSpell)
+    self.assertFalse(self.char.possessions[0].exhausted)
+    self.assertFalse(self.char.possessions[0].active)
+
+  def testStaysActiveAfterCombat(self):
+    self.state.event_stack.append(events.UpkeepActions(self.char))
+    voice = self.resolve_to_usable(0, "Voice0", CastSpell)
+    self.state.event_stack.append(voice)
+    cast = self.resolve_to_choice(SpendChoice)
+    self.spend("sanity", 1, cast)
+    cast.resolve(self.state, "Cast")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+    self.assertTrue(self.char.possessions[0].exhausted)
+    self.assertTrue(self.char.possessions[0].active)
+
+    cultist = monsters.Cultist()
+    self.state.event_stack.append(Combat(self.char, cultist))
+    fight_or_flee = self.resolve_to_choice(MultipleChoice)
+    fight_or_flee.resolve(self.state, "Fight")
+    combat_choice = self.resolve_to_choice(CombatChoice)
+    combat_choice.resolve(self.state, "done")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+    self.assertTrue(self.char.possessions[0].exhausted)
+    self.assertTrue(self.char.possessions[0].active)
+
+
 class PhysicianTest(EventTest):
 
   def setUp(self):

@@ -17,7 +17,7 @@ def CreateSpells():
       EnchantWeapon: 3,
       FindGate: 4,
       FleshWard: 4,
-      # Heal: 3,  TODO: add heal to the spell pool when it does not stall upkeep in tests
+      Heal: 3,
       Mists: 4,
       RedSign: 2,
       Shrivelling: 5,
@@ -31,6 +31,8 @@ def CreateSpells():
 
 
 class Spell(Item):
+
+  combat = False
 
   def __init__(self, name, idx, active_bonuses, hands, difficulty, sanity_cost):
     super().__init__(name, idx, "spells", active_bonuses, {}, hands, None)
@@ -55,6 +57,8 @@ class Spell(Item):
 
 
 class CombatSpell(Spell):
+
+  combat = True
 
   def is_combat(self, event, owner):
     if getattr(event, "character", None) != owner:
@@ -307,18 +311,19 @@ class Voice(Spell):
     )
 
   def get_usable_trigger(self, event, owner, state):
-    return None
-    # TODO: an actual event for upkeep
-    # if self.exhausted or owner.sanity < self.sanity_cost:
-    #   return None
-    # if state.turn_phase != "upkeep" or state.characters[state.turn_idx] != owner:
-    #   return None
-    # return events.CastSpell(owner, self)
+    if not isinstance(event, events.UpkeepActions) or event.character != owner:
+      return None
+    if self.exhausted or owner.sanity < self.sanity_cost:
+      return None
+    return events.CastSpell(owner, self)
 
   def get_trigger(self, event, owner, state):
     if isinstance(event, events.Mythos) and self.active:
       return events.DeactivateSpell(owner, self)
     return None
+
+  def get_cast_event(self, owner, state):
+    return events.ActivateItem(owner, self)
 
 
 class FindGate(Spell):
