@@ -852,7 +852,12 @@ def Shop6(char):
 
 
 def Shop7(char):
-  return events.Nothing()  # TODO: draw a mythos card, move to the gate location, have an encounter
+  check = events.Check(char, "speed", -1)
+  draw_mythos = events.DrawMythosCard(char, require_gate=True)
+  move = events.ForceMovement(char, draw_mythos)
+  encounter = events.Encounter(char, draw_mythos)
+  fail = events.Sequence([draw_mythos, move, encounter], char)
+  return events.PassFail(char, check, events.Nothing(), fail)
 
 
 def Newspaper1(char):
