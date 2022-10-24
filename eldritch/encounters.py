@@ -499,8 +499,7 @@ def Society2(char):
   move = events.ForceMovement(char, "Southside")
   luck = events.Check(char, "luck", -1)
   move_dream = events.ForceMovement(char, "Dreamlands1")
-  # TODO: don't hard-code.
-  enc = events.GateEncounter(char, "Dreamlands", {"blue", "green", "red", "yellow"})
+  enc = events.GateEncounter(char)
   ret = events.ForceMovement(char, "Society")
   dreamlands = events.Sequence([move_dream, enc, ret], char)
   spell = events.Draw(char, "spells", 1)
@@ -546,13 +545,11 @@ def Society7(char):
 def House1(char):
   luck = events. Check(char, "luck", 0)
   move_dream = events.ForceMovement(char, "Dreamlands1")
-  # TODO: don't hard-code.
-  enc_dream = events.GateEncounter(char, "Dreamlands", {"blue", "green", "red", "yellow"})
+  enc_dream = events.GateEncounter(char)
   ret = events.ForceMovement(char, "House")
   dreamlands = events.Sequence([move_dream, enc_dream, ret], char)
   move_abyss = events.ForceMovement(char, "Abyss1")
-  # TODO: don't hard-code.
-  enc_abyss = events.GateEncounter(char, "Abyss", {"blue", "red"})
+  enc_abyss = events.GateEncounter(char)
   abyss = events.Sequence([move_abyss, enc_abyss, ret], char)
   return events.PassFail(char, luck, dreamlands, abyss)
 
@@ -732,8 +729,7 @@ def Library3(char):
 
 def Library4(char):
   move = events.ForceMovement(char, "Dreamlands1")
-  # TODO: don't hard-code.
-  enc = events.GateEncounter(char, "Dreamlands", {"blue", "green", "red", "yellow"})
+  enc = events.GateEncounter(char)
   ret = events.ForceMovement(char, "Library")
   return events.Sequence([move, enc, ret], char)
 
@@ -815,7 +811,7 @@ def Shop1(char):
 def Shop2(char):
   check = events.Check(char, "fight", -1)
   move = events.ForceMovement(char, "Abyss1")
-  enc = events.GateEncounter(char, "Abyss", {"blue", "red"})  # TODO: don't hard-code.
+  enc = events.GateEncounter(char)
   ret = events.ForceMovement(char, "Shop")
   abyss = events.Sequence([move, enc, ret], char)
   return events.PassFail(char, check, events.Nothing(), abyss)
