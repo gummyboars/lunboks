@@ -1,3 +1,4 @@
+import operator
 from eldritch import events, values
 from .base import Item, Weapon, OneshotWeapon
 
@@ -88,7 +89,6 @@ class AncientTablet(Item):
     if self.exhausted:
       return None
 
-    print(owner.movement_points)
     if owner.movement_points < movement_cost:
       return None
 
@@ -115,16 +115,20 @@ class BlueWatcher(Item):
     super().__init__("Blue Watcher", idx, "unique", {}, {}, None, 4)
 
   def get_usable_interrupt(self, event, owner, state):
-    if not isinstance(event, (events.Check, events.CombatRound)):
+    if not isinstance(event, (events.Check, events.CombatChoice)):
       return None
     if not owner == event.character:
       return None
     if owner.stamina < 2:
       return None
-    if isinstance(event, events.CombatRound):
+    if len(state.event_stack) > 1 and isinstance(state.event_stack[-2], events.InvestigatorAttack):
+      return None
+    if isinstance(event, events.CombatChoice):
+      if event.combat_round is None:
+        return None
       return events.Sequence([
           events.PassCombatRound(
-              event,
+              event.combat_round,
               log_message=("{char_name} passed a combat round against"
                            " {monster_name} using Blue Watcher of the Pyramid")
           ),
@@ -179,23 +183,31 @@ class GateBox(Item):
   def __init__(self, idx):
     super().__init__("Gate Box", idx, "unique", {}, {}, None, 4)
 
-  def get_interrupt(self, event, owner, state):
-    if (not isinstance(event, events.GateChoice)
-        or not event.character == owner
-        or len(state.event_stack) < 2
-        or not isinstance(state.event_stack[-2], events.Return)
-            or event.gate_name is None):
-      return None
-    print("Gate boxing")
-    gate_choice = events.GateChoice(
-        owner, "Gate box allows you to choose any open gate", None, event.none_choice, event.annotation
+  def is_usable(self, event, owner, state, need_neighbors):
+    has_neighbors = len([
+        char for char in state.characters if char.place == owner.place and char != owner]) > 0
+    return (
+        isinstance(event, events.GateChoice)
+        and event.character == owner
+        and len(state.event_stack) >= 2
+        and isinstance(state.event_stack[-2], events.Return)
+        and event.gate_name is not None
+        and (has_neighbors if need_neighbors else not has_neighbors)
     )
-    state.event_stack[-2].return_choice = gate_choice
-    return events.Sequence([
-        events.CancelEvent(event),
-        gate_choice
-    ],
-        owner)
+
+  def get_interrupt(self, event, owner, state):
+    if self.is_usable(event, owner, state, False):
+      return events.OverrideGateChoice(
+          owner, event, gate_name=None, prompt="Gate box allows you to choose any open gate"
+      )
+    return None
+
+  def get_usable_interrupt(self, event, owner, state):
+    if self.is_usable(event, owner, state, True):
+      return events.OverrideGateChoice(
+          owner, event, gate_name=None, prompt="Gate box allows you to choose any open gate"
+      )
+    return None
 
 
 class HealingStone(Item):
@@ -220,10 +232,13 @@ class HealingStone(Item):
       return None
     # End copy-paste
 
-    available = [attr for attr in ["stamina", "sanity"] if getattr(owner, attr) < getattr(owner, f"max_{attr}")(state)]
+    available = [
+        attr for attr in ["stamina", "sanity"]
+        if getattr(owner, attr) < getattr(owner, f"max_{attr}")(state)
+    ]
     if not available:
       return None
-    elif len(available) == 1:
+    if len(available) == 1:
       gain = events.Gain(owner, {available[0]: 1})
     else:
       gain = events.BinaryChoice(
@@ -253,11 +268,16 @@ class ObsidianStatue(Item):
     if not isinstance(event, events.GainOrLoss) or not event.character == owner:
       return None
 
-    types = [loss_type for loss_type in ("sanity", "stamina") if loss_type in event.losses]
+    types = [
+        loss_type
+        for loss_type in ("sanity", "stamina")
+        if loss_type in event.losses
+        and values.Calculation(event.losses[loss_type], operand=operator.gt, right=0).value(state)
+    ]
     seq = [events.DiscardSpecific(owner, [self])]
     if len(types) == 0:
       return None
-    elif len(types) == 1:
+    if len(types) == 1:
       loss_type = types[0]
       seq.append(events.LossPrevention(self, event, loss_type, float("inf")))
     else:
@@ -296,9 +316,7 @@ class OuterGodlyFlute(Item):
       if monster.place == owner.place and monster != event.monster:
         seq.append(events.TakeTrophy(owner, monster))
     seq.append(events.Loss(owner, {"stamina": 3, "sanity": 3}))
-    return events.Sequence(
-        seq, owner
-    )
+    return events.Sequence(seq, owner)
 
 
 class SilverKey(Item):

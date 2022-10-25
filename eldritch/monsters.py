@@ -134,6 +134,7 @@ class Monster:
   def get_interrupt(self, event, state):
     if (isinstance(event, events.TakeTrophy)
             and self.has_attribute("endless", state, event.character)):
+      # TODO: Should this be coded into TakeTrophy instead?
       return events.Sequence(
           [
               events.CancelEvent(event),
@@ -339,7 +340,7 @@ class Pinata(Monster):
 
   def get_interrupt(self, event, state):
     if not isinstance(event, events.TakeTrophy):
-      return None
+      return super().get_interrupt(event, state)
     seq = [
         events.CancelEvent(event),
         events.ReturnMonsterFromBoard(event.character, self, to_box=True),
@@ -413,9 +414,9 @@ class Warlock(Monster):
 
   def get_interrupt(self, event, state):
     if not isinstance(event, events.TakeTrophy):
-      return None
+      return super().get_interrupt(event, state)
     if len(state.event_stack) < 2 or not isinstance(state.event_stack[-2], events.PassCombatRound):
-      return None
+      return super().get_interrupt(event, state)
     seq = [
         events.CancelEvent(event),
         events.ReturnMonsterFromBoard(event.character, self, to_box=True),
@@ -452,7 +453,7 @@ class EventMonster(Monster):
   def get_interrupt(self, event, state):
     if isinstance(event, events.TakeTrophy):
       return events.CancelEvent(event)
-    return None
+    return super().get_interrupt(event, state)
 
   def get_trigger(self, event, state):
     if isinstance(event, events.PassCombatRound):

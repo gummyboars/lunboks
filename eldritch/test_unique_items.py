@@ -9,10 +9,12 @@ from unittest import mock
 if os.path.abspath(sys.path[0]) == os.path.dirname(os.path.abspath(__file__)):
   sys.path[0] = os.path.dirname(sys.path[0])
 
+from eldritch import characters
 from eldritch import encounters
 from eldritch import events
 from eldritch import items
 from eldritch import monsters
+from eldritch import values
 from eldritch.test_events import EventTest
 
 
@@ -65,8 +67,22 @@ class AncientTabletTest(EventTest):
     choice = self.resolve_to_choice(events.CityMovement)
     self.assertNotIn("Ancient Tablet0", self.state.usables.get(0, []))
     self.assertGreater(len(initial_choices), len(choice.choices))
-    # with self.assertRaises(AssertionError):
-    #   self.resolve_to_usable(0, "Ancient Tablet0")
+
+  def testNotUsableInOtherWorld(self):
+    self.char.place = self.state.places["Abyss1"]
+    self.advance_turn(0, "movement")
+    self.resolve_until_done()
+    self.assertFalse(self.state.usables)
+    self.assertIn(self.tablet, self.char.possessions)
+    self.assertEqual(self.char.place.name, "Abyss2")
+
+  def testNotUsableWithPatrolWagon(self):
+    self.char.possessions.append(items.PatrolWagon())
+    wagon = self.resolve_to_usable(0, "Patrol Wagon")
+    self.state.event_stack.append(wagon)
+    self.resolve_to_choice(events.PlaceChoice)
+    self.assertFalse(self.state.usables)
+    self.assertIn(self.tablet, self.char.possessions)
 
 
 class EnchantedJewelryTest(EventTest):
@@ -99,7 +115,6 @@ class EnchantedJewelryTest(EventTest):
     loss = events.Loss(self.char, {"stamina": 2})
     self.state.event_stack.append(loss)
     self.resolve_to_usable(0, "Enchanted Jewelry0")
-    print("appending Enchanted Jewelry")
     self.state.event_stack.append(self.state.usables[0]["Enchanted Jewelry0"])
     self.resolve_to_usable(0, "Enchanted Jewelry0")
     self.state.event_stack.append(self.state.usables[0]["Enchanted Jewelry0"])
@@ -107,14 +122,14 @@ class EnchantedJewelryTest(EventTest):
     self.assertEqual(self.jewelry.tokens["stamina"], 2)
     self.assertEqual(self.char.stamina, 5)
 
-  def testSingleStaminaMaxTokens(self):
+  def testMultipleStaminaMaxTokens(self):
     self.jewelry.tokens["stamina"] = 2
-    loss = events.Loss(self.char, {"stamina": 1})
+    loss = events.Loss(self.char, {"stamina": 2})
     self.state.event_stack.append(loss)
     self.resolve_to_usable(0, "Enchanted Jewelry0")
     self.state.event_stack.append(self.state.usables[0]["Enchanted Jewelry0"])
     self.resolve_until_done()
-    self.assertEqual(self.char.stamina, 5)
+    self.assertEqual(self.char.stamina, 4)
     self.assertNotIn(self.jewelry, self.char.possessions)
 
 
@@ -128,13 +143,12 @@ class HealingStoneTest(EventTest):
   def testNotUsableWhenFull(self):
     upkeep = events.UpkeepActions(self.char)
     self.state.event_stack.append(upkeep)
-    with self.assertRaises(AssertionError):
-      self.resolve_to_usable(0, "Healing Stone0")
+    self.resolve_until_done()
 
   def testNotUsableOutsideUpkeep(self):
     self.advance_turn(0, "movement")
-    with self.assertRaises(AssertionError):
-      self.resolve_to_usable(0, "Healing Stone0")
+    self.resolve_to_choice(events.CityMovement)
+    self.assertFalse(self.state.usables)
 
   def testSanityOnly(self):
     self.char.sanity = 3
@@ -186,18 +200,34 @@ class BlueWatcherTest(EventTest):
     self.char.possessions = [self.watcher]
 
   def testPassCombatMonster(self):
+    self.char.fight_will_slider = 0
+    self.assertEqual(self.char.movement_points, 4)
+    self.advance_turn(0, "movement")
+    self.assertEqual(self.char.place.name, "Diner")
     monster = monsters.Hound()
-    self.state.event_stack.append(events.Combat(self.char, monster))
+    self.state.monsters.append(monster)
+    monster.place = self.state.places["Easttown"]
+    movement = self.resolve_to_choice(events.CityMovement)
+    movement.resolve(self.state, "Easttown")
+    movement = self.resolve_to_choice(events.CityMovement)
+    self.assertEqual(self.char.movement_points, 3)
+    movement.resolve(self.state, "Rivertown")
+
     fight_evade = self.resolve_to_choice(events.FightOrEvadeChoice)
     fight_evade.resolve(self.state, "Fight")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      fight_flee = self.resolve_to_choice(events.FightOrEvadeChoice)
+      fight_flee.resolve(self.state, "Fight")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=1)):
       watcher = self.resolve_to_usable(0, "Blue Watcher0")
     self.state.event_stack.append(watcher)
     self.resolve_until_done()
-    self.assertEqual(self.char.sanity, 1)
+    self.assertEqual(self.char.sanity, 5)
     self.assertEqual(self.char.stamina, 3)
+    self.assertEqual(self.char.place.name, "Easttown")
     self.assertIn(monster, self.char.trophies)
     self.assertNotIn(self.watcher, self.char.possessions)
+    self.assertEqual(self.char.movement_points, 0)
 
   def testPassCombatEncounter(self):
     self.state.event_stack.append(encounters.Bank3(self.char))
@@ -209,7 +239,7 @@ class BlueWatcherTest(EventTest):
     self.assertNotIn(self.watcher, self.char.possessions)
 
   def testPassFightClose(self):
-    gate = self.state.gates[0]
+    gate = self.state.gates.popleft()
     self.state.places["Diner"].gate = gate
     self.state.event_stack.append(events.GateCloseAttempt(self.char, "Diner"))
     choice = self.resolve_to_choice(events.MultipleChoice)
@@ -224,7 +254,7 @@ class BlueWatcherTest(EventTest):
     self.assertNotIn(self.watcher, self.char.possessions)
     self.assertIn(gate, self.char.trophies)
 
-  def testFightLoreClose(self):
+  def testPassLoreClose(self):
     gate = self.state.gates[0]
     self.state.places["Diner"].gate = gate
     self.state.event_stack.append(events.GateCloseAttempt(self.char, "Diner"))
@@ -242,19 +272,32 @@ class BlueWatcherTest(EventTest):
 
   def testCantUseOnOtherFightOrLore(self):
     self.state.event_stack.append(encounters.Science2(self.char))
-    with self.assertRaises(AssertionError):
-      self.resolve_to_usable(0, "Blue Watcher0")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
 
   def testNotEnoughStamina(self):
     self.char.stamina = 1
     self.state.event_stack.append(events.Combat(self.char, monsters.Cultist()))
-    with self.assertRaises(AssertionError):
-      self.resolve_to_usable(0, "Blue Watcher0")
+    fight_evade = self.resolve_to_choice(events.FightOrEvadeChoice)
+    fight_evade.resolve(self.state, "Fight")
+    self.resolve_to_choice(events.CombatChoice)
+    self.assertFalse(self.state.usables)
+
+  def testCantUseOnAncientOne(self):
+    self.state.ancient_one.health = self.state.ancient_one.max_doom
+    self.state.event_stack.append(events.InvestigatorAttack(self.char))
+    weapons = self.resolve_to_choice(events.CombatChoice)
+    self.assertNotIn("Blue Watcher0", weapons.choices)
+    weapons.resolve(self.state, "done")
+    self.resolve_until_done()
 
 
 class RubyTest(EventTest):
   def setUp(self):
     super().setUp()
+    self.buddy = characters.Character("Buddy", 5, 5, 4, 4, 4, 4, 4, 4, 4, "Square")
+    self.buddy.place = self.state.places["Square"]
+    self.state.characters.append(self.buddy)
     self.advance_turn(0, "movement")
 
   def testDefaultBehavior(self):
@@ -271,13 +314,27 @@ class RubyTest(EventTest):
     ruby = items.SunkenCityRuby(0)
     self.char.possessions = [ruby]
     choice = self.resolve_to_choice(events.CityMovement)
-    print(choice.choices)
     choice.resolve(self.state, "Roadhouse")
     self.resolve_to_choice(events.CityMovement)
     self.assertEqual(self.char.movement_points, 5)
     self.assertEqual(self.char.place.name, "Roadhouse")
 
-  # TODO: Test that multiple players can receive benefit
+  def testBuddyReceivesBonus(self):
+    ruby = items.SunkenCityRuby(0)
+    self.char.possessions = [ruby]
+    movement = self.resolve_to_choice(events.CityMovement)
+    self.assertEqual(self.char.movement_points, 7)
+    movement.resolve(self.state, "Square")
+    movement = self.resolve_to_choice(events.CityMovement)
+    self.assertEqual(self.char.movement_points, 4)
+    self.state.handle_give(0, 1, "Ruby0", 1)
+    movement.resolve(self.state, "done")
+    self.assertEqual(self.char, movement.character)
+    self.resolve_until_done()
+    self.state.next_turn()
+    buddy_movement = self.resolve_to_choice(events.CityMovement)
+    self.assertEqual(self.buddy.movement_points, 7)
+    self.assertEqual(buddy_movement.character, self.buddy)
 
 
 class FluteTest(EventTest):
@@ -308,15 +365,15 @@ class FluteTest(EventTest):
     self.maniac.place = self.char.place
     self.char.sanity = 2
     self.enterCombat()
-    with self.assertRaises(AssertionError):
-      self.resolve_to_usable(0, "Flute0")
+    self.resolve_to_choice(events.CombatChoice)
+    self.assertFalse(self.state.usables)
 
   def testNotEnoughStamina(self):
     self.maniac.place = self.char.place
     self.char.stamina = 2
     self.enterCombat()
-    with self.assertRaises(AssertionError):
-      self.resolve_to_usable(0, "Flute0")
+    self.resolve_to_choice(events.CombatChoice)
+    self.assertFalse(self.state.usables)
 
   def testDevouredButBeaten(self):
     self.maniac.place = self.char.place
@@ -329,6 +386,21 @@ class FluteTest(EventTest):
     self.resolve_until_event_type(events.Devoured)
     self.assertFalse(self.maniac.place)
     self.assertFalse(self.cultist.place)
+
+  def testInsaneKeepTrophies(self):
+    self.maniac.place = self.char.place
+    self.cultist.place = self.char.place
+    self.char.stamina = 4
+    self.char.sanity = 3
+    self.enterCombat()
+    flute = self.resolve_to_usable(0, "Flute0")
+    self.state.event_stack.append(flute)
+    loss = self.resolve_to_choice(events.ItemLossChoice)
+    loss.resolve(self.state, "done")
+    self.resolve_until_done()
+    self.assertEqual(self.char.place.name, "Asylum")
+    self.assertIn(self.maniac, self.char.trophies)
+    self.assertIn(self.cultist, self.char.trophies)
 
   def testSingleMonsterNoHorror(self):
     self.maniac.place = self.char.place
@@ -376,7 +448,7 @@ class FluteTest(EventTest):
     self.assertIn(holy_water, self.char.possessions)
 
 
-class GateBoxTeset(EventTest):
+class GateBoxTest(EventTest):
   def setUp(self):
     super().setUp()
     self.char.possessions = [items.GateBox(0)]
@@ -407,6 +479,27 @@ class GateBoxTeset(EventTest):
     self.resolve_until_done()
     self.assertEqual(self.char.place.name, "Woods")
 
+  def testTradeBeforeReturnMultipleGates(self):
+    self.state.places["Woods"].gate = self.get_gate("Sunken City")
+    self.state.places["Diner"].gate = self.get_gate("Abyss")
+    nun = characters.Nun()
+    self.state.characters.append(nun)
+    self.assertEqual(self.char.place.name, "Sunken City2")
+    nun.place = self.char.place
+    self.char.possessions.append(items.Cross(0))
+    choice = self.resolve_to_choice(events.GateChoice)
+    self.assertIn("Gate Box0", self.state.usables[0],)
+    self.state.handle_give(0, 1, "Gate Box0", None)
+    self.assertSequenceEqual(choice.choices, ["Woods"])
+    choice.resolve(self.state, "Woods")
+    self.state.next_turn()
+    gate_box = self.resolve_to_usable(1, "Gate Box0")
+    self.state.event_stack.append(gate_box)
+    nun_choice = self.resolve_to_choice(events.GateChoice)
+    self.assertRegex(nun_choice.prompt, "any open gate")
+    self.assertEqual(nun_choice.character, nun)
+    self.assertSequenceEqual(nun_choice.choices, ["Diner", "Woods"])
+
 
 class ObsidianStatueTest(EventTest):
   def setUp(self):
@@ -416,8 +509,7 @@ class ObsidianStatueTest(EventTest):
 
   def testClueLoss(self):
     self.state.event_stack.append(events.Loss(self.char, {"clues": 1}))
-    with self.assertRaises(AssertionError):
-      self.resolve_to_usable(0, "Obsidian Statue0")
+    self.resolve_until_done()
 
   def testSingleSanity(self):
     self.state.event_stack.append(events.Loss(self.char, {"sanity": 1}))
@@ -462,16 +554,50 @@ class ObsidianStatueTest(EventTest):
     self.assertEqual(self.char.sanity, 3)
     self.assertNotIn(self.statue, self.char.possessions)
 
+  def testLossIsValueType(self):
+    die = events.DiceRoll(self.char, 1)
+    loss = events.Loss(self.char, {"stamina": values.Calculation(die, "successes")})
+    self.state.event_stack.append(events.Sequence(
+        [die, loss], self.char
+    ))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      statue = self.resolve_to_usable(0, "Obsidian Statue0")
+      self.state.event_stack.append(statue)
+    self.resolve_until_done()
+    self.assertEqual(self.char.stamina, 5)
+    self.assertNotIn(self.statue, self.char.possessions)
+
+  def testLossIsZeroValueType(self):
+    die = events.DiceRoll(self.char, 1)
+    loss = events.Loss(self.char, {"stamina": values.Calculation(die, "successes")})
+    self.state.event_stack.append(events.Sequence(
+        [die, loss], self.char
+    ))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.stamina, 5)
+    self.assertIn(self.statue, self.char.possessions)
+
+  def testJewelryAndStatue(self):
+    jewelry = items.EnchantedJewelry(0)
+    self.char.possessions.append(jewelry)
+    self.state.event_stack.append(events.Loss(self.char, {"stamina": 1}))
+    jewelry_usable = self.resolve_to_usable(0, "Enchanted Jewelry0")
+    self.state.event_stack.append(jewelry_usable)
+    self.resolve_until_done()
+    self.assertEqual(self.char.stamina, 5)
+    self.assertIn(self.statue, self.char.possessions)
+
 
 class SilverKeyTest(EventTest):
   def setUp(self):
     super().setUp()
     self.key = items.SilverKey(0)
     self.char.possessions.append(self.key)
-    combat = events.Combat(
+    self.combat = events.Combat(
         self.char, monsters.DreamFlier()
     )
-    self.state.event_stack.append(combat)
+    self.state.event_stack.append(self.combat)
     evade_choice = self.resolve_to_choice(events.FightOrEvadeChoice)
     evade_choice.resolve(self.state, "Flee")
 
@@ -490,3 +616,28 @@ class SilverKeyTest(EventTest):
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=1)):
       self.resolve_until_done()
     self.assertNotIn(self.key, self.char.possessions)
+
+  def testKeyPreservesMovement(self):
+    cancels = events.Sequence(
+        [events.CancelEvent(event) for event in self.state.event_stack], self.char
+    )
+    self.state.event_stack.append(cancels)
+
+    self.advance_turn(0, "movement")
+    self.assertEqual(self.char.place.name, "Diner")
+    monster = monsters.Hound()
+    self.state.monsters.append(monster)
+    monster.place = self.state.places["Easttown"]
+    movement = self.resolve_to_choice(events.CityMovement)
+    movement.resolve(self.state, "Easttown")
+    movement = self.resolve_to_choice(events.CityMovement)
+    self.assertEqual(self.char.movement_points, 3)
+    movement.resolve(self.state, "Rivertown")
+    fight_evade = self.resolve_to_choice(events.FightOrEvadeChoice)
+    fight_evade.resolve(self.state, "Evade")
+    key = self.resolve_to_usable(0, "Silver Key0")
+    self.state.event_stack.append(key)
+    self.resolve_to_choice(events.CityMovement)
+    self.assertEqual(self.char.place.name, "Rivertown")
+    self.assertEqual(self.char.movement_points, 2)
+    self.assertEqual(self.key.tokens["stamina"], 1)

@@ -862,7 +862,7 @@ class LossPrevention(Event):
     assert attribute in source_event.losses
     super().__init__()
     self.prevention_source = prevention_source
-    self.source_event: Event = source_event
+    self.source_event: GainOrLoss = source_event
     self.attribute = attribute
     self.amount = amount
     self.prevented = None
@@ -2214,6 +2214,8 @@ class DiscardNamed(Event):
         item._exhausted = False  # pylint: disable=protected-access
         if hasattr(item, "_active"):
           item._active = False  # pylint: disable=protected-access
+        for attr in item.tokens:
+          item.tokens[attr] = 0
         deck = getattr(state, item.deck)
         deck.append(item)
         self.discarded = item
@@ -2773,7 +2775,7 @@ class SpendMultiChoiceMixin(SpendMixin):
     if choice not in self.choices:
       raise InvalidMove(f"Invalid choice {choice}")
     choice_idx = self.choices.index(choice)
-    remaining_spend = self.remaining_spend[choice_idx]
+    remaining_spend: dict = self.remaining_spend[choice_idx]
     if remaining_spend:
       if len(remaining_spend) == 1:
         spend, count = next(iter(remaining_spend.items()))
@@ -3125,6 +3127,7 @@ class GateChoice(MapChoice):
     super().__init__(character, prompt, none_choice=none_choice)
     self.gate_name = gate_name
     self.annotation = annotation
+    self.overridden = False
 
   def compute_choices(self, state):
     if isinstance(self.gate_name, values.Value):
@@ -3159,6 +3162,33 @@ class GateChoice(MapChoice):
     if self.annotation and self.choices is not None:
       return [self.annotation for _ in self.choices]
     return None
+
+
+class OverrideGateChoice(Event):
+  def __init__(self, character, original_choice: GateChoice, **changes):
+    super().__init__()
+    self.character = character
+    self.original_choice = original_choice
+    self.changes = changes
+    assert len(changes)
+    assert {"prompt", "gate_name", "none_choice", "annotation"}.issuperset(changes.keys())
+    self.done = False
+
+  def resolve(self, state):
+    for key, value in self.changes.items():
+      setattr(self.original_choice, key, value)
+    self.original_choice.compute_choices(state)
+    self.original_choice.overridden = True
+    self.done = True
+
+  def is_resolved(self) -> bool:
+    return self.done
+
+  def log(self, state) -> str:
+    changes = [f"{key} to {repr(value)}" for key, value in self.changes.items()]
+    if self.done:
+      return "Gate choice updated " + ", ".join(changes)
+    return "Gate choice to update " + ", ".join(changes)
 
 
 class NearestGateChoice(MapChoice):
@@ -3554,6 +3584,7 @@ class CombatRound(Event):
         if isinstance(event, (MoveOne, WagonMove)):
           event.cancelled = True
         if isinstance(event, CityMovement):
+          self.character.movement_points = 0
           event.done = True  # TODO: should this be cancelled instead?
           break
       self.movement_cancelled = True
@@ -3667,7 +3698,9 @@ class PassCombatRound(Event):
       state.event_stack.append(self.take_trophy)
       return
 
-    if monster.has_attribute("overwhelming", state, char) and self.damage is None:
+    if (monster is not None
+        and monster.has_attribute("overwhelming", state, char)
+            and self.damage is None):
       self.damage = Loss(
           char, {"stamina": monster.bypass_damage("combat", state)})
       state.event_stack.append(self.damage)
@@ -4144,6 +4177,10 @@ class AddToken(Event):
     return self.done
 
   def log(self, state):
+    if not self.added:
+      return f"{self.n_tokens} {self.token_type.title()} tokens to be added to {self.asset.name}"
+    if self.resolved_max:
+      return f"{self.asset.name} has reached its maximum of {self.token_type.title()} tokens"
     if self.done and not self.cancelled:
       return f"{self.n_tokens} {self.token_type.title()} token(s) added to {self.asset.name}"
     return (f"{self.n_tokens} {self.token_type.title()} token(s) prevented"

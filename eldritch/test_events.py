@@ -1552,6 +1552,18 @@ class DiscardNamedTest(EventTest):
     self.resolve_until_done()
     self.assertEqual(discard.log(self.state), "Dummy did not have a Food to discard")
 
+  def testDiscardClearsTokens(self):
+    silver_key = items.SilverKey(0)
+    self.state.unique = [silver_key]
+    self.state.event_stack.append(events.DrawSpecific(self.char, "unique", "Silver Key"))
+    self.resolve_until_done()
+    silver_key.tokens["stamina"] = 2
+    self.char.possessions.append(silver_key)
+    self.state.event_stack.append(events.DiscardNamed(self.char, "Silver Key"))
+    self.resolve_until_done()
+    self.state.event_stack.append(events.DrawSpecific(self.char, "unique", "Silver Key"))
+    self.assertEqual(silver_key.tokens["stamina"], 0)
+
 
 class TakeTrophyTest(EventTest):
 

@@ -13,7 +13,7 @@ class Asset(metaclass=abc.ABCMeta):
 
   # pylint: disable=unused-argument
 
-  JSON_ATTRS = {"name", "handle", "active", "exhausted", "hands", "bonuses"}
+  JSON_ATTRS = {"name", "handle", "active", "exhausted", "hands", "bonuses", "max_tokens", "tokens"}
 
   def __init__(self, name, idx=None):
     self._name = name

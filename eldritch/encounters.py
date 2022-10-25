@@ -216,9 +216,7 @@ def Lodge6(char):
 def Lodge7(char):
   check = events.Check(char, "sneak", -2)
   common1 = events.Draw(char, "common", 1)
-  # common2 = events.Draw(char, "common", 1)
   unique1 = events.Draw(char, "unique", 1)
-  # unique2 = events.Draw(char, "unique", 1)
   rolls = events.DiceRoll(char, 2)
   two_common = events.Draw(char, "common", 2, keep_count=2)
   two_unique = events.Draw(char, "unique", 2, keep_count=2)
