@@ -7,6 +7,7 @@ from typing import List, Dict, Optional, Union, NoReturn
 
 from eldritch import places
 from eldritch import values
+from eldritch import mythos
 
 from game import InvalidMove, InvalidInput
 
@@ -169,7 +170,7 @@ class Turn(Event, metaclass=abc.ABCMeta):
     char = getattr(self, "character", None)
     if not char:
       return False
-    if char.lose_turn_until is not None:
+    if not (char.lose_turn_until is None and char.arrested_until is None):
       self.cancelled = True
       return True
     return False
@@ -525,6 +526,7 @@ class Mythos(Turn):
     first_player = state.characters[state.first_player]
 
     if self.draw is None:
+      state.headline = None
       self.draw = DrawMythosCard(first_player)
       state.event_stack.append(self.draw)
       return
@@ -1105,6 +1107,29 @@ def Delayed(character):
 
 def LoseTurn(character):
   return DelayOrLoseTurn(character, "lose_turn")
+
+
+class ClearStatus(Event):
+  def __init__(self, character, status):
+    assert status in {"delayed", "lose_turn", "arrested"}
+    super().__init__()
+    self.character = character
+    self.status = status
+    self.done = False
+
+  def resolve(self, state):
+    setattr(self.character, self.status + "_until", None)
+    self.done = True
+
+  def is_resolved(self):
+    return self.done
+
+  def log(self, state):
+    if self.done:
+      return f"{self.character.name} had their {self.status} cleared"
+    if self.cancelled:
+      return f"{self.character.name} had their {self.status} clearing cancelled"
+    return f"{self.character.name} will have their {self.status} cleared"
 
 
 class LostInTimeAndSpace(Sequence):
@@ -2521,13 +2546,37 @@ def PassFail(character, condition, pass_result, fail_result):
   return Sequence([condition, outcome], character)
 
 
-class Arrested(Sequence):
+class Arrested(Event):
 
   def __init__(self, character):
-    super().__init__([
-        ForceMovement(character, "Police"), LoseTurn(character),
-        Loss(character, {"dollars": values.Calculation(character, "dollars", operator.floordiv, 2)})
-    ], character)
+    super().__init__()
+    self.character = character
+    self.jail = None
+    self.done = False
+
+  def resolve(self, state):
+    if self.jail is None:
+      self.jail = Sequence([
+          ForceMovement(self.character, "Police"),
+          Loss(self.character,
+               {"dollars": values.Calculation(self.character, "dollars", operator.floordiv, 2)}
+               )
+      ], self.character)
+      state.event_stack.append(self.jail)
+      return
+    self.character.arrested_until = state.turn_number + 2
+    self.done = True
+
+  def is_resolved(self) -> bool:
+    return self.done
+
+  def log(self, state):
+    if self.done:
+      return f"{self.character.name} was arrested and lost their next turn"
+    if self.cancelled:
+      return f"{self.character.name}'s arrest was cancelled"
+    return f"{self.character.name} to be arrested"
+
 
 
 class MultipleChoice(ChoiceEvent):
@@ -4165,6 +4214,9 @@ class AddToken(Event):
     self.n_tokens = n_tokens
     super().__init__()
 
+  def is_resolved(self):
+    return self.done
+
   def resolve(self, state):
     token_type = self.token_type
     asset = self.asset
@@ -4181,9 +4233,6 @@ class AddToken(Event):
 
     self.done = True
 
-  def is_resolved(self):
-    return self.done
-
   def log(self, state):
     if not self.added:
       return f"{self.n_tokens} {self.token_type.title()} tokens to be added to {self.asset.name}"
@@ -4193,6 +4242,31 @@ class AddToken(Event):
       return f"{self.n_tokens} {self.token_type.title()} token(s) added to {self.asset.name}"
     return (f"{self.n_tokens} {self.token_type.title()} token(s) prevented"
             f" from being added to {self.asset.name}")
+
+
+class AllyToBox(Event):
+  def __init__(self):
+    super().__init__()
+    self.ally = None
+    self.done = False
+
+  def is_resolved(self):
+    return self.done
+
+  def resolve(self, state):
+    if len(state.allies):
+      self.ally = state.allies.popleft()
+      state.boxed_allies.append(self.ally)
+    self.done = True
+
+  def log(self, state):
+    if self.cancelled:
+      return "No ally was boxed"
+    if self.ally:
+      return f"{self.ally.name} was returned to the box"
+    if self.done:
+      return f"No allies remaining to be returned to the box"
+    return "Returning an ally to the box"
 
 
 class AddDoom(Event):
@@ -4295,6 +4369,7 @@ class MonsterSpawnChoice(ChoiceEvent):
     self.spawn_count = None
     self.outskirts_count = None
     self.num_clears = None
+    self.terror_increased = None
     self.character = None
     self.to_spawn = None
 
@@ -4399,6 +4474,10 @@ class MonsterSpawnChoice(ChoiceEvent):
     for location_name, monster_indexes in choice.items():
       for monster_idx in monster_indexes:
         state.monsters[monster_idx].place = state.places[location_name]
+    if self.num_clears > 0 and not self.terror_increased:
+      self.terror_increased = IncreaseTerror(self.num_clears)
+      state.event_stack.append(self.terror_increased)
+      return
     self.spawned = True
 
   def is_resolved(self):
@@ -4416,6 +4495,68 @@ class MonsterSpawnChoice(ChoiceEvent):
     if self.num_clears:
       text += f" the outskirts cleared {self.num_clears} times"
     return text
+
+
+class IncreaseTerror(Event):
+  def __init__(self, count=1):
+    super().__init__()
+    self.count = count
+    self.added = 0
+    self.done = False
+
+  def resolve(self, state):
+    close = None
+    if self.added < self.count:
+      self.added += 1
+      if state.terror >= 10:
+        state.event_stack.append(AddDoom())
+        return
+      state.terror += 1
+      ally_to_box = AllyToBox()
+      if state.terror == 3:
+        close = CloseLocation("Store")
+      elif state.terror == 6:
+        close = CloseLocation("Shop")
+      elif state.terror == 9:
+        close = CloseLocation("Shoppe")
+      if close:
+        state.event_stack.append(Sequence([ally_to_box, close]))
+      else:
+        state.event_stack.append(ally_to_box)
+      return
+
+    self.done = True
+
+  def is_resolved(self):
+    return self.done
+
+  def log(self, state):
+    if self.cancelled and not self.done:
+      return "Terror track was not advanced"
+    if not self.done:
+      return f"Terror track will advance by up to {self.count}"
+    return f"Terror track advanced by {self.added} of {self.count}"
+
+
+class AddHeadline(Event):
+  def __init__(self, headline):
+    super().__init__()
+    self.headline = headline
+    self.done = False
+
+  def resolve(self, state):
+    state.headline = self.headline
+    self.done = True
+
+  def is_resolved(self):
+    return self.done
+
+  def log(self, state):
+    if self.cancelled:
+      return f"Headline not set to {self.headline.name}"
+    if self.done:
+      return f"Headline set to {self.headline.name}"
+    return f"Headline to be set to {self.headline.name}"
 
 
 class SpawnClue(Event):
@@ -4834,6 +4975,7 @@ class Awaken(Event):
       state.turn_phase = "ancient"
       state.environment = None
       state.rumor = None
+      state.headline = None
       self.stack_cleared = True
     if not self.awaken_done:
       state.ancient_one.health = len(state.characters) * state.ancient_one.max_doom

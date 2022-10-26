@@ -1880,7 +1880,7 @@ class AdministrationTest(EncounterTest):
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
       self.resolve_until_done()
     self.assertEqual(self.char.dollars, 4)
-    self.assertEqual(self.char.lose_turn_until, self.state.turn_number + 2)
+    self.assertEqual(self.char.arrested_until, self.state.turn_number + 2)
     self.assertEqual(self.char.place.name, "Police")
 
 
@@ -2267,13 +2267,13 @@ class AsylumTest(EncounterTest):
     self.assertEqual(self.char.dollars, 3)
     self.assertIsNone(self.char.lose_turn_until)
 
-  def testASylum3Fail(self):
+  def testAsylum3Fail(self):
     self.state.event_stack.append(encounters.Asylum3(self.char))
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=2)):
       self.resolve_until_done()
     self.assertEqual(self.char.place.name, "Police")
     self.assertEqual(self.char.dollars, 2)
-    self.assertEqual(self.char.lose_turn_until, self.state.turn_number + 2)
+    self.assertEqual(self.char.arrested_until, self.state.turn_number + 2)
 
   def testAsylum4Pass(self):
     self.state.event_stack.append(encounters.Asylum4(self.char))
@@ -3195,7 +3195,7 @@ class DocksTest(EncounterTest):
     self.assertEqual(len(self.state.common), 1)
     self.assertEqual(self.char.place.name, "Police")
     self.assertEqual(self.char.dollars, 2)
-    self.assertEqual(self.char.lose_turn_until, self.state.turn_number + 2)
+    self.assertEqual(self.char.arrested_until, self.state.turn_number + 2)
 
   def testDocks3Pass(self):
     self.assertEqual(self.char.dollars, 3)

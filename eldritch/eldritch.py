@@ -26,13 +26,13 @@ random = SystemRandom()
 
 class GameState:
 
-  DEQUE_ATTRIBUTES = {"common", "unique", "spells", "skills", "allies", "gates"}
+  DEQUE_ATTRIBUTES = {"common", "unique", "spells", "skills", "allies", "boxed_allies", "gates"}
   HIDDEN_ATTRIBUTES = {
       "event_stack", "interrupt_stack", "trigger_stack", "log_stack", "mythos", "gate_cards",
   }
   CUSTOM_ATTRIBUTES = {
       "characters", "all_characters", "environment", "mythos", "other_globals", "ancient_one",
-      "all_ancients", "monsters", "usables", "spendables",
+      "all_ancients", "monsters", "usables", "spendables", "headline"
   }
   TURN_PHASES = ["upkeep", "movement", "encounter", "otherworld", "mythos"]
   AWAKENED_PHASES = ["upkeep", "attack", "ancient"]
@@ -65,6 +65,7 @@ class GameState:
     self.spells = collections.deque()
     self.skills = collections.deque()
     self.allies = collections.deque()
+    self.boxed_allies = collections.deque()  # Church expansion
     self.tradables = []
     self.specials = []
     self.mythos = collections.deque()
@@ -88,11 +89,13 @@ class GameState:
     self.first_player = 0
     self.rumor = None
     self.environment = None
+    self.headline = None
     self.ancient_one = None
     self.other_globals = []
     self.check_result = None
     self.dice_result = []
     self.test_mode = False
+    self.terror = 0
 
   def initialize_for_tests(self):
     self.places = places.CreatePlaces()
@@ -201,14 +204,15 @@ class GameState:
     return override
 
   def globals(self):
-    return [self.rumor, self.environment, self.ancient_one] + self.other_globals
+    return [self.rumor, self.environment, self.headline, self.ancient_one] + self.other_globals
 
   def gate_limit(self):
     limit = 9 - (len(self.characters)+1) // 2
     return limit + self.get_modifier(self, "gate_limit")
 
   def monster_limit(self):
-    # TODO: return infinity when the terror track reaches 10
+    if self.terror >= 10:
+      return float("inf")
     limit = len(self.characters) + 3
     return limit + self.get_modifier(self, "monster_limit")
 
@@ -1098,6 +1102,8 @@ class GameState:
       for char in self.characters:  # TODO: is this the right place to check for this?
         if char.lose_turn_until and char.lose_turn_until <= self.turn_number:
           char.lose_turn_until = None
+        if char.arrested_until and char.arrested_until <= self.turn_number:
+          char.arrested_until = None
       self.event_stack.append(events.Upkeep(self.characters[self.turn_idx]))
       for place in self.places.values():
         if getattr(place, "closed_until", None) == self.turn_number:

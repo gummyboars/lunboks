@@ -216,6 +216,75 @@ class Mythos6(Environment):
     return None
 
 
+class Mythos7(Headline):
+  def __init__(self):
+    super().__init__("Mythos7", "Unnamable", "Woods", {"hex"}, {"slash", "triangle", "star"})
+
+  def create_event(self, state):
+    seq = super().create_event(state)
+    for char in state.characters:
+      if char.arrested_until is not None:
+        seq.events.append(events.ClearStatus(char, "arrested"))
+    seq.events.append(events.AddHeadline(self))
+    return seq
+
+  def get_interrupt(self, event, state):
+    print(event)
+    if isinstance(event, events.Arrested):
+      return events.CancelEvent(event)
+    return None
+
+
+class Mythos8(Environment):
+  def __init__(self):
+    super().__init__(
+        "Mythos8", "Square", "Unnamable", {"square", "diamond"}, {"circle"}, "mystic", "Rivertown"
+    )
+
+  def get_usable_trigger(self, event, state):
+    if isinstance(event, events.Movement) and event.character.place == self.activity_location:
+      dice = events.DiceRoll(event.character, event.character.stamina)
+      loss = events.Loss(
+          event.character,
+          {"stamina": values.Calculation(
+              left="stamina", right=values.Die(dice), operand=operator.sub,
+          )})
+      final = events.PassFail(
+          event.char,
+          values.Calculation(event.character, "stamina"),
+          events.Gain(event.character, {"clues": 3}),
+          events.Devoured(event.character)
+      )
+      return events.Sequence([dice, loss, final], event.character)
+    return None
+
+
+class Mythos9(Environment):
+  def __init__(self):
+    super().__init__(
+        "Mythos9", "Cave", "Roadhouse", {"square", "diamond"}, {"circle"}, "mystic"
+    )
+
+  def get_modifier(self, thing, attribute):
+    if attribute == "luck":
+      return -1
+    if attribute == "sneak":
+      return 1
+    return 0
+
+
+class Mythos10(Headline):
+  def __init__(self):
+    super().__init__("Mythos10", "Isle", "Science", {"hex"}, {"slash", "triangle", "star"})
+
+  def create_event(self, state):
+    seq = super().create_event(state)
+    seq.events.append(events.CloseLocation("Store", for_turns=1))
+    seq.events.append(events.CloseLocation("Shop", for_turns=1))
+    seq.events.append(events.CloseLocation("Shoppe", for_turns=1))
+    return seq
+
+
 class Mythos11(Headline):
 
   def __init__(self):
@@ -225,6 +294,80 @@ class Mythos11(Headline):
     seq = super().create_event(state)
     seq.events.append(events.ReturnToCup(from_places={"Southside", "House", "Church", "Society"}))
     return seq
+
+
+class Mythos12(Headline):
+  def __init__(self):
+    super().__init__("Mythos12", "Square", "Unnamable", {"circle"}, {"square", "diamond"})
+
+  def create_event(self, state):
+    seq = super().create_event(state)
+    seq.events.append(events.ReturnToCup(
+        from_places={"University", "Library", "Administration", "Science"}
+    ))
+    return seq
+
+
+class Mythos13(Rumor):
+  def __init__(self):
+    super().__init__(
+        "Mythos13", "Cave", {"slash", "triangle", "star"}, {"hex"}, "Rivertown"
+    )
+
+  def should_fail(self, state):
+    return state.terror >= 10
+
+  def get_interrupt(self, event, state):
+    if self.failed and isinstance(event, events.Mythos):
+      return self.get_failure_interrupt(event, state)
+    if not self.failed and isinstance(event, events.EncounterPhase):
+      return self.get_pass_interrupt(event, state)
+    return None
+
+  def get_failure_interrupt(self, event, state):  # pylint: disable=unused-argument
+    draw = events.DrawMythosCard(state.characters[state.first_player])
+    return events.Sequence([draw, events.OpenGate(draw)])
+
+  def get_pass_interrupt(self, event, state):
+    if event.character.place != state.places["Rivertown"]:
+      return None
+    seq = events.Sequence([
+        events.EndRumor(self, failed=False),
+    ] + [events.Draw(char, "spells", 1) for char in state.characters if not char.gone])
+    return events.BinarySpend(
+        event.character, "gates", 2, "Spend 2 gate trophies to end the rumor?",
+        "Yes", "No", seq
+    )
+
+  def get_trigger(self, event, state):
+    if isinstance(event, events.IncreaseTerror) and self.should_fail(state):
+      curses = [events.Curse(char) for char in state.characters]
+      return events.Sequence(curses + [events.EndRumor(self, failed=True)])
+    return super().get_trigger(event, state)
+
+  def progress_event(self, state):
+    first_player = state.characters[state.first_player]
+    dice1 = events.DiceRoll(first_player, 1)
+    prog1 = events.IncreaseTerror()
+    cond1 = events.Conditional(first_player, values.Die(dice1), "", {0: prog1, 3: events.Nothing()})
+    return events.Sequence([dice1, cond1])
+
+
+class Mythos14(Environment):
+  def __init__(self):
+    super().__init__(
+        "Mythos14", "Unnamable", "Woods", {"square", "diamond"}, {"circle"}, "urban", "Northside"
+    )
+
+  def get_trigger(self, event, state):
+    if isinstance(event, events.Movement) and event.character.place.name == "Northside":
+      clues = events.Gain(event.character, {"clues": 1})
+      check = events.Check(event.character, "will", -1)
+      loss = events.Loss(event.character, {"sanity": 1})
+      return events.Sequence(
+          [clues, events.PassFail(event.character, check, events.Nothing(), loss)]
+      )
+    return None
 
 
 class Mythos15(Environment):

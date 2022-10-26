@@ -1232,9 +1232,14 @@ class StatusChangeTest(EventTest):
     self.state.event_stack.append(arrest)
     self.resolve_until_done()
 
-    self.assertEqual(self.char.lose_turn_until, self.state.turn_number + 2)
+    self.assertEqual(self.char.arrested_until, self.state.turn_number + 2)
     self.assertEqual(self.char.dollars, 3)
     self.assertEqual(self.char.place.name, "Police")
+
+    turn_phase = Movement(self.char)
+    self.state.event_stack.append(turn_phase)
+    self.resolve_until_done()
+    self.assertTrue(turn_phase.cancelled)
 
 
 class DrawTest(EventTest):
@@ -3474,5 +3479,46 @@ class AddDoomTest(EventTest):
     self.assertEqual(self.state.ancient_one.doom, 10)
 
 
+class IncreaseTerrorTest(EventTest):
+  def setUp(self):
+    super().setUp()
+    self.state.allies.extend(assets.CreateAllies())
+
+  def testAddSingleTerror(self):
+    self.assertEqual(self.state.terror, 0)
+    n_allies = len(self.state.allies)
+    self.state.event_stack.append(events.IncreaseTerror(1))
+    self.resolve_until_done()
+    self.assertEqual(self.state.terror, 1)
+    self.assertEqual(len(self.state.allies), n_allies -1)
+    self.assertEqual(len(self.state.boxed_allies), 1)
+
+  def testAddMultipleTerror(self):
+    self.assertEqual(self.state.terror, 0)
+    n_allies = len(self.state.allies)
+    self.state.event_stack.append(events.IncreaseTerror(3))
+    self.resolve_until_done()
+    self.assertEqual(self.state.terror, 3)
+    self.assertEqual(len(self.state.allies), n_allies -3)
+    self.assertEqual(len(self.state.boxed_allies), 3)
+    self.assertTrue(self.state.places["Store"].closed)
+
+  def testAddToMaxedTrack(self):
+    self.state.terror = 2
+    n_allies = len(self.state.allies)
+    self.state.event_stack.append(events.Sequence([events.IncreaseTerror(1) for _ in range(10)]))
+    self.resolve_until_done()
+    self.assertEqual(self.state.terror, 10)
+    # For every point the terror level goes up, ...
+    self.assertEqual(len(self.state.allies), n_allies - 8)
+    self.assertEqual(len(self.state.boxed_allies), 8)
+    self.assertEqual(self.state.ancient_one.doom, 2)
+    self.assertGreater(self.state.monster_limit(), 100)
+    self.assertTrue(self.state.places["Store"].closed)
+    self.assertTrue(self.state.places["Shop"].closed)
+    self.assertTrue(self.state.places["Shoppe"].closed)
+
+
 if __name__ == "__main__":
   unittest.main()
+
