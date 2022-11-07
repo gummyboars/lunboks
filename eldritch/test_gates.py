@@ -30,16 +30,18 @@ class DrawGateEncounter(EventTest):
     ])
 
   def testDrawCard(self):
+    self.char.place = self.state.places["Abyss1"]  # blue and red
     self.assertEqual(len(self.state.gate_cards), 4)
-    gate_encounter = GateEncounter(self.char, "Anywhere", {"blue"})
+    gate_encounter = GateEncounter(self.char)
     self.state.event_stack.append(gate_encounter)
     self.resolve_until_done()
     self.assertEqual(len(self.state.gate_cards), 4)
     self.assertEqual(self.state.gate_cards[-1].name, "Gate1")
 
   def testDrawColoredCard(self):
+    self.char.place = self.state.places["Plateau1"]  # green and red
     card_count = len(self.state.gate_cards)
-    gate_encounter = GateEncounter(self.char, "Nowhere", {"green"})
+    gate_encounter = GateEncounter(self.char)
     self.state.event_stack.append(gate_encounter)
     self.resolve_until_done()
     self.assertEqual(len(self.state.gate_cards), card_count)
@@ -48,26 +50,19 @@ class DrawGateEncounter(EventTest):
     self.assertFalse("shuffled" in str(self.state.event_log[0]))
 
   def testDrawMultipleColors(self):
+    self.char.place = self.state.places["City1"]  # green and yellow
     card_count = len(self.state.gate_cards)
-    gate_encounter = GateEncounter(self.char, "Somewhere", {"green", "red"})
+    gate_encounter = GateEncounter(self.char)
     self.state.event_stack.append(gate_encounter)
     self.resolve_until_done()
     self.assertEqual(len(self.state.gate_cards), card_count)
     self.assertEqual(self.state.gate_cards[-1].name, "Gate2")
     self.assertFalse("shuffled" in str(self.state.event_log[0]))
 
-  def testDrawAndShuffle(self):
-    card_count = len(self.state.gate_cards)
-    gate_encounter = GateEncounter(self.char, "Someplace Else", {"yellow"})
-    self.state.event_stack.append(gate_encounter)
-    self.resolve_until_done()
-    self.assertEqual(len(self.state.gate_cards), card_count)
-    self.assertEqual(self.state.gate_cards[-1].name, "Gate3")
-    self.assertTrue("shuffled" in str(self.state.event_log[0]))
-
   def testDrawMultipleColorsWithShuffle(self):
+    self.char.place = self.state.places["Sunken City1"]  # yellow and red
     card_count = len(self.state.gate_cards)
-    gate_encounter = GateEncounter(self.char, "Somewhere", {"red", "yellow"})
+    gate_encounter = GateEncounter(self.char)
     self.state.event_stack.append(gate_encounter)
     self.resolve_until_done()
     self.assertEqual(len(self.state.gate_cards), card_count)

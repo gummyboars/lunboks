@@ -497,8 +497,7 @@ class OtherWorldPhase(Turn):
         self.action.done = True
         self.done = True
         return
-      self.action = GateEncounter(
-          self.character, self.character.place.info.name, self.character.place.info.colors)
+      self.action = GateEncounter(self.character)
       state.event_stack.append(self.action)
       return
 
@@ -1634,11 +1633,9 @@ class DrawEncounter(Event):
 
 class GateEncounter(Event):
 
-  def __init__(self, character, name, colors):
+  def __init__(self, character):
     super().__init__()
     self.character = character
-    self.world_name = name
-    self.colors = colors
     self.draw_count = 1
     self.draw: Optional[DrawGateCard] = None
     self.cards = []
@@ -1651,6 +1648,13 @@ class GateEncounter(Event):
       self.cards = []
       return
 
+    if not hasattr(self.character.place, "colors"):
+      # Character is not in another world.
+      self.cancelled = True
+      return
+    colors = self.character.place.colors
+    world_name = self.character.place.info.name
+
     if self.draw is not None:
       assert self.draw.is_done()
       if self.draw.is_cancelled():
@@ -1662,16 +1666,16 @@ class GateEncounter(Event):
       self.draw = None
 
     if len(self.cards) < self.draw_count:
-      self.draw = DrawGateCard(self.character, self.colors)
+      self.draw = DrawGateCard(self.character, colors)
       state.event_stack.append(self.draw)
       return
 
     if len(self.cards) == 1 and state.test_mode:  # TODO: test this
-      self.encounter = self.cards[0].encounter_event(self.character, self.world_name)
+      self.encounter = self.cards[0].encounter_event(self.character, world_name)
       state.event_stack.append(self.encounter)
       return
 
-    encounters = [card.encounter_event(self.character, self.world_name) for card in self.cards]
+    encounters = [card.encounter_event(self.character, world_name) for card in self.cards]
     choice = CardChoice(self.character, "Choose an Encounter", [card.name for card in self.cards])
     cond = Conditional(self.character, choice, "choice_index", dict(enumerate(encounters)))
     self.encounter = Sequence([choice, cond], self.character)
