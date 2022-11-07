@@ -120,6 +120,7 @@ class BlueWatcher(Item):
     if not owner == event.character:
       return None
     if owner.stamina < 2:
+      # TODO: What if the gangster wants to do this with one stamina?
       return None
     if len(state.event_stack) > 1 and isinstance(state.event_stack[-2], events.InvestigatorAttack):
       return None
@@ -171,13 +172,7 @@ class EnchantedJewelry(Item):
       return None
 
     reduction = events.LossPrevention(self, event, "stamina", 1)
-    return events.Sequence(
-        [
-            reduction,
-            events.AddToken(self, "stamina", event.character, n_tokens=1)
-        ],
-        owner
-    )
+    return events.Sequence([reduction, events.AddToken(self, "stamina", owner, n_tokens=1)], owner)
 
 
 class GateBox(Item):
@@ -193,7 +188,7 @@ class GateBox(Item):
         and len(state.event_stack) >= 2
         and isinstance(state.event_stack[-2], events.Return)
         and event.gate_name is not None
-        and (has_neighbors if need_neighbors else not has_neighbors)
+        and (bool(has_neighbors) == need_neighbors)
     )
 
   def get_interrupt(self, event, owner, state):
@@ -332,7 +327,7 @@ class SilverKey(Item):
       return events.Sequence([
           events.PassEvadeRound(event),
           events.AddToken(self, "stamina", owner)
-      ])
+      ], owner)
     return None
 
 

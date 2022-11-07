@@ -2,7 +2,6 @@
 
 import os
 import sys
-# import unittest
 from unittest import mock
 
 # Hack to allow the test to be run directly instead of invoking python from the base dir.
@@ -218,8 +217,7 @@ class BlueWatcherTest(EventTest):
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       fight_flee = self.resolve_to_choice(events.FightOrEvadeChoice)
       fight_flee.resolve(self.state, "Fight")
-    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=1)):
-      watcher = self.resolve_to_usable(0, "Blue Watcher0")
+    watcher = self.resolve_to_usable(0, "Blue Watcher0")
     self.state.event_stack.append(watcher)
     self.resolve_until_done()
     self.assertEqual(self.char.sanity, 5)
@@ -287,7 +285,7 @@ class BlueWatcherTest(EventTest):
     self.state.ancient_one.health = self.state.ancient_one.max_doom
     self.state.event_stack.append(events.InvestigatorAttack(self.char))
     weapons = self.resolve_to_choice(events.CombatChoice)
-    self.assertNotIn("Blue Watcher0", weapons.choices)
+    self.assertFalse(self.state.usables)
     weapons.resolve(self.state, "done")
     self.resolve_until_done()
 
@@ -426,6 +424,19 @@ class FluteTest(EventTest):
     self.assertIn(self.cultist, self.char.trophies)
     self.assertNotIn(self.flute, self.char.possessions)
 
+  def testMultiMonstersNightmarishOverwhelming(self):
+    self.maniac.place = self.char.place
+    self.flier.place = self.char.place
+    self.enterCombat(0)
+    flute = self.resolve_to_usable(0, "Flute0")
+    self.state.event_stack.append(flute)
+    self.resolve_until_done()
+    self.assertEqual(self.char.stamina, 2)
+    self.assertEqual(self.char.sanity, 2)
+    self.assertIn(self.maniac, self.char.trophies)
+    self.assertIn(self.flier, self.char.trophies)
+    self.assertNotIn(self.flute, self.char.possessions)
+
   def testEndlessOrPinataBehavior(self):
     pinata = monsters.Pinata()
     endless = monsters.Haunter()
@@ -444,6 +455,8 @@ class FluteTest(EventTest):
     self.assertIn(self.maniac, self.char.trophies)
     self.assertNotIn(pinata, self.char.trophies)
     self.assertNotIn(endless, self.char.trophies)
+    self.assertFalse(pinata.place)
+    self.assertEqual(endless.place, self.state.monster_cup)
     self.assertNotIn(self.flute, self.char.possessions)
     self.assertIn(holy_water, self.char.possessions)
 

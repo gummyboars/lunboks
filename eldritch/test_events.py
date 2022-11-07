@@ -1524,10 +1524,11 @@ class DiscardSpecificTest(EventTest):
     self.state.event_stack.append(events.DrawSpecific(self.char, "unique", "Silver Key"))
     self.resolve_until_done()
     silver_key.tokens["stamina"] = 2
-    self.char.possessions.append(silver_key)
     self.state.event_stack.append(events.AddToken(silver_key, "stamina", character=self.char))
     self.resolve_until_done()
+    self.assertNotIn(silver_key, self.char.possessions)
     self.state.event_stack.append(events.DrawSpecific(self.char, "unique", "Silver Key"))
+    self.resolve_until_done()
     self.assertEqual(silver_key.tokens["stamina"], 0)
 
 
@@ -1558,10 +1559,10 @@ class DiscardNamedTest(EventTest):
     self.state.event_stack.append(events.DrawSpecific(self.char, "unique", "Silver Key"))
     self.resolve_until_done()
     silver_key.tokens["stamina"] = 2
-    self.char.possessions.append(silver_key)
     self.state.event_stack.append(events.DiscardNamed(self.char, "Silver Key"))
     self.resolve_until_done()
     self.state.event_stack.append(events.DrawSpecific(self.char, "unique", "Silver Key"))
+    self.resolve_until_done()
     self.assertEqual(silver_key.tokens["stamina"], 0)
 
 
