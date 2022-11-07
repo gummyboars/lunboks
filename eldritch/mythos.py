@@ -229,7 +229,6 @@ class Mythos7(Headline):
     return seq
 
   def get_interrupt(self, event, state):
-    print(event)
     if isinstance(event, events.Arrested):
       return events.CancelEvent(event)
     return None
