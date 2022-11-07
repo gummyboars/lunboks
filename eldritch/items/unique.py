@@ -137,6 +137,7 @@ class BlueWatcher(Item):
       ], owner)
     if (event.check_type == "combat"
         or (event.check_type in ("fight", "lore")
+            and len(state.event_stack) > 1
             and isinstance(state.event_stack[-2], events.GateCloseAttempt))):
       return events.Sequence(
           [
@@ -326,6 +327,7 @@ class SilverKey(Item):
     self.max_tokens["stamina"] = 3
 
   def get_usable_interrupt(self, event, owner, state):
+    # TODO: maybe it would make more sense to attach this usable to the FightOrEvadeChoice
     if isinstance(event, events.EvadeRound) and event.character == owner and not event.is_done():
       return events.Sequence([
           events.PassEvadeRound(event),

@@ -3658,7 +3658,11 @@ class PassCheck(Event):
     return self.done
 
   def log(self, state):
-    return f"{self.character.name} force-passed a {self.check.check_type} check"
+    if self.done:
+      return f"{self.character.name} force-passed a {self.check.check_type} check"
+    if self.cancelled:
+      return f"{self.character.name} force-passing a {self.check.check_type} check cancelled"
+    return f"{self.character.name} to force-pass a {self.check.check_type} check"
 
 
 class PassCombatRound(Event):
@@ -4148,6 +4152,7 @@ class OpenGate(Event):
 
 class AddToken(Event):
   def __init__(self, asset, token_type, character=None, n_tokens=1):
+    assert token_type in asset.tokens
     self.asset = asset
     self.token_type = token_type
     self.character = character

@@ -500,6 +500,8 @@ class GateBoxTest(EventTest):
     self.assertEqual(nun_choice.character, nun)
     self.assertSequenceEqual(nun_choice.choices, ["Diner", "Woods"])
 
+    # TODO: what happens if they decide to give the gate box back?
+
 
 class ObsidianStatueTest(EventTest):
   def setUp(self):
@@ -588,6 +590,16 @@ class ObsidianStatueTest(EventTest):
     self.assertEqual(self.char.stamina, 5)
     self.assertIn(self.statue, self.char.possessions)
 
+  def testStatueAndJewelry(self):
+    jewelry = items.EnchantedJewelry(0)
+    self.char.possessions.append(jewelry)
+    self.state.event_stack.append(events.Loss(self.char, {"stamina": 1}))
+    statue_usable = self.resolve_to_usable(0, "Obsidian Statue0")
+    self.state.event_stack.append(statue_usable)
+    self.resolve_until_done()
+    self.assertEqual(self.char.stamina, 5)
+    self.assertIn(jewelry, self.char.possessions)
+
 
 class SilverKeyTest(EventTest):
   def setUp(self):
@@ -595,7 +607,7 @@ class SilverKeyTest(EventTest):
     self.key = items.SilverKey(0)
     self.char.possessions.append(self.key)
     self.combat = events.Combat(
-        self.char, monsters.DreamFlier()
+        self.char, monsters.Zombie()
     )
     self.state.event_stack.append(self.combat)
     evade_choice = self.resolve_to_choice(events.FightOrEvadeChoice)
@@ -618,10 +630,7 @@ class SilverKeyTest(EventTest):
     self.assertNotIn(self.key, self.char.possessions)
 
   def testKeyPreservesMovement(self):
-    cancels = events.Sequence(
-        [events.CancelEvent(event) for event in self.state.event_stack], self.char
-    )
-    self.state.event_stack.append(cancels)
+    self.state.event_stack.clear()
 
     self.advance_turn(0, "movement")
     self.assertEqual(self.char.place.name, "Diner")
