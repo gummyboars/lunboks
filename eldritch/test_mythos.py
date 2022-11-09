@@ -1798,9 +1798,12 @@ class Mythos7Test(EventTest):
     self.state.turn_phase = "mythos"
 
   def drawMythos7(self):
-    self.state.mythos.append(Mythos7())
+    self.mythos7 = Mythos7()
+    self.state.mythos.append(self.mythos7)
     self.state.event_stack.append(Mythos(self.char))
     self.resolve_until_done()
+    self.assertIn(self.mythos7, self.state.other_globals)
+    self.assertNotIn(self.mythos7, self.state.mythos)
 
   def testArrestedCharsReleased(self):
     self.state.event_stack.append(Arrested(self.char))
@@ -1835,6 +1838,8 @@ class Mythos7Test(EventTest):
     self.drawMythos7()
     self.state.mythos.insert(0, Mythos15())
     self.advance_turn(self.state.turn_number + 2, "movement")
+    self.assertNotIn(self.mythos7, self.state.other_globals)
+    self.assertIn(self.mythos7, self.state.mythos)
     choice = self.resolve_to_choice(events.CityMovement)
     choice.resolve(self.state, "done")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=2)):

@@ -226,7 +226,7 @@ class Mythos7(Headline):
     for char in state.characters:
       if char.arrested_until is not None:
         seq.events.append(events.ClearStatus(char, "arrested"))
-    seq.events.append(events.AddGlobalEffect(self))
+    seq.events.append(events.AddGlobalEffect(self, source_deck=state.mythos))
     self.active_until = state.turn_number + 1
     return seq
 
@@ -237,7 +237,7 @@ class Mythos7(Headline):
 
   def get_trigger(self, event, state):
     if state.turn_number > self.active_until and isinstance(event, events.Turn):
-      return events.RemoveGlobalEffect(self)
+      return events.RemoveGlobalEffect(self, source_deck=state.mythos)
     return None
 
 

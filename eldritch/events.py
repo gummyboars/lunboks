@@ -4537,12 +4537,15 @@ class IncreaseTerror(Event):
 
 
 class AddGlobalEffect(Event):
-  def __init__(self, effect):
+  def __init__(self, effect, source_deck=None):
     super().__init__()
     self.effect = effect
+    self.source_deck = source_deck
     self.done = False
 
   def resolve(self, state):
+    if self.source_deck and self.effect in self.source_deck:
+      self.source_deck.remove(self.effect)
     state.other_globals.append(self.effect)
     self.done = True
 
@@ -4558,13 +4561,17 @@ class AddGlobalEffect(Event):
 
 
 class RemoveGlobalEffect(Event):
-  def __init__(self, effect):
+  def __init__(self, effect, source_deck=None):
     super().__init__()
     self.effect = effect
+    self.source_deck = source_deck
     self.done = False
 
   def resolve(self, state):
     state.other_globals.remove(self.effect)
+    if self.source_deck and self.effect not in self.source_deck:
+      self.source_deck.append(self.effect)
+
     self.done = True
 
   def is_resolved(self):
