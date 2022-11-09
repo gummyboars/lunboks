@@ -1796,6 +1796,7 @@ class Mythos7Test(EventTest):
     super().setUp()
     self.state.turn_number = 0
     self.state.turn_phase = "mythos"
+    self.mythos7 = None
 
   def drawMythos7(self):
     self.mythos7 = Mythos7()
