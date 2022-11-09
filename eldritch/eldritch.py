@@ -32,7 +32,7 @@ class GameState:
   }
   CUSTOM_ATTRIBUTES = {
       "characters", "all_characters", "environment", "mythos", "other_globals", "ancient_one",
-      "all_ancients", "monsters", "usables", "spendables", "headline"
+      "all_ancients", "monsters", "usables", "spendables"
   }
   TURN_PHASES = ["upkeep", "movement", "encounter", "otherworld", "mythos"]
   AWAKENED_PHASES = ["upkeep", "attack", "ancient"]
@@ -89,7 +89,6 @@ class GameState:
     self.first_player = 0
     self.rumor = None
     self.environment = None
-    self.headline = None
     self.ancient_one = None
     self.other_globals = []
     self.check_result = None
@@ -204,7 +203,7 @@ class GameState:
     return override
 
   def globals(self):
-    return [self.rumor, self.environment, self.headline, self.ancient_one] + self.other_globals
+    return [self.rumor, self.environment, self.ancient_one] + self.other_globals
 
   def gate_limit(self):
     limit = 9 - (len(self.characters)+1) // 2

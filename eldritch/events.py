@@ -7,7 +7,6 @@ from typing import List, Dict, Optional, Union, NoReturn
 
 from eldritch import places
 from eldritch import values
-from eldritch import mythos
 
 from game import InvalidMove, InvalidInput
 
@@ -526,7 +525,6 @@ class Mythos(Turn):
     first_player = state.characters[state.first_player]
 
     if self.draw is None:
-      state.headline = None
       self.draw = DrawMythosCard(first_player)
       state.event_stack.append(self.draw)
       return
@@ -1066,7 +1064,7 @@ class Devoured(StackClearMixin, Event):
 class DelayOrLoseTurn(Event):
 
   def __init__(self, character, status, which="next"):
-    assert status in {"delayed", "lose_turn"}
+    assert status in {"delayed", "lose_turn", "arrested"}
     assert which in {"this", "next"}
     super().__init__()
     self.character = character
@@ -4265,7 +4263,7 @@ class AllyToBox(Event):
     if self.ally:
       return f"{self.ally.name} was returned to the box"
     if self.done:
-      return f"No allies remaining to be returned to the box"
+      return "No allies remaining to be returned to the box"
     return "Returning an ally to the box"
 
 
@@ -4538,14 +4536,14 @@ class IncreaseTerror(Event):
     return f"Terror track advanced by {self.added} of {self.count}"
 
 
-class AddHeadline(Event):
-  def __init__(self, headline):
+class AddGlobalEffect(Event):
+  def __init__(self, effect):
     super().__init__()
-    self.headline = headline
+    self.effect = effect
     self.done = False
 
   def resolve(self, state):
-    state.headline = self.headline
+    state.other_globals.append(self.effect)
     self.done = True
 
   def is_resolved(self):
@@ -4553,10 +4551,31 @@ class AddHeadline(Event):
 
   def log(self, state):
     if self.cancelled:
-      return f"Headline not set to {self.headline.name}"
+      return f"Didn't add {self.effect.name} to the global effects"
     if self.done:
-      return f"Headline set to {self.headline.name}"
-    return f"Headline to be set to {self.headline.name}"
+      return f"{self.effect.name} added to the global effects"
+    return f"{self.effect.name} to be added to the global effects"
+
+
+class RemoveGlobalEffect(Event):
+  def __init__(self, effect):
+    super().__init__()
+    self.effect = effect
+    self.done = False
+
+  def resolve(self, state):
+    state.other_globals.remove(self.effect)
+    self.done = True
+
+  def is_resolved(self):
+    return self.done
+
+  def log(self, state):
+    if self.cancelled:
+      return f"Didn't remove {self.effect.name} from the global effects"
+    if self.done:
+      return f"{self.effect.name} remove from the global effects"
+    return f"{self.effect.name} to be removed from the global effects"
 
 
 class SpawnClue(Event):
@@ -4975,7 +4994,6 @@ class Awaken(Event):
       state.turn_phase = "ancient"
       state.environment = None
       state.rumor = None
-      state.headline = None
       self.stack_cleared = True
     if not self.awaken_done:
       state.ancient_one.health = len(state.characters) * state.ancient_one.max_doom

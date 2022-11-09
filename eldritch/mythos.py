@@ -219,18 +219,25 @@ class Mythos6(Environment):
 class Mythos7(Headline):
   def __init__(self):
     super().__init__("Mythos7", "Unnamable", "Woods", {"hex"}, {"slash", "triangle", "star"})
+    self.active_until = None
 
   def create_event(self, state):
     seq = super().create_event(state)
     for char in state.characters:
       if char.arrested_until is not None:
         seq.events.append(events.ClearStatus(char, "arrested"))
-    seq.events.append(events.AddHeadline(self))
+    seq.events.append(events.AddGlobalEffect(self))
+    self.active_until = state.turn_number + 1
     return seq
 
   def get_interrupt(self, event, state):
     if isinstance(event, events.Arrested):
       return events.CancelEvent(event)
+    return None
+
+  def get_trigger(self, event, state):
+    if state.turn_number > self.active_until and isinstance(event, events.Turn):
+      return events.RemoveGlobalEffect(self)
     return None
 
 
@@ -241,12 +248,14 @@ class Mythos8(Environment):
     )
 
   def get_usable_trigger(self, event, state):
-    if isinstance(event, events.Movement) and event.character.place == self.activity_location:
+    if isinstance(event, events.Movement) and event.character.place.name == self.activity_location:
       dice = events.DiceRoll(event.character, event.character.stamina)
       loss = events.Loss(
           event.character,
           {"stamina": values.Calculation(
-              left="stamina", right=values.Die(dice), operand=operator.sub,
+              left=event.character, left_attr="stamina",
+              operand=operator.sub,
+              right=values.Die(dice), right_attr="successes",
           )})
       final = events.PassFail(
           event.char,
@@ -317,15 +326,9 @@ class Mythos13(Rumor):
     return state.terror >= 10
 
   def get_interrupt(self, event, state):
-    if self.failed and isinstance(event, events.Mythos):
-      return self.get_failure_interrupt(event, state)
     if not self.failed and isinstance(event, events.EncounterPhase):
       return self.get_pass_interrupt(event, state)
     return None
-
-  def get_failure_interrupt(self, event, state):  # pylint: disable=unused-argument
-    draw = events.DrawMythosCard(state.characters[state.first_player])
-    return events.Sequence([draw, events.OpenGate(draw)])
 
   def get_pass_interrupt(self, event, state):
     if event.character.place != state.places["Rivertown"]:
@@ -340,7 +343,7 @@ class Mythos13(Rumor):
 
   def get_trigger(self, event, state):
     if isinstance(event, events.IncreaseTerror) and self.should_fail(state):
-      curses = [events.Curse(char) for char in state.characters]
+      curses = [events.Curse(char) for char in state.characters if not char.gone]
       return events.Sequence(curses + [events.EndRumor(self, failed=True)])
     return super().get_trigger(event, state)
 
@@ -350,6 +353,12 @@ class Mythos13(Rumor):
     prog1 = events.IncreaseTerror()
     cond1 = events.Conditional(first_player, values.Die(dice1), "", {0: prog1, 3: events.Nothing()})
     return events.Sequence([dice1, cond1])
+
+  def get_progress(self, state):
+    return state.terror
+
+  def max_progress(self, state):
+    return 10
 
 
 class Mythos14(Environment):

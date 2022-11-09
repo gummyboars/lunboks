@@ -1522,7 +1522,7 @@ class RumorTest(EventTest):
     self.state.event_stack.append(IncreaseTerror(9))
     self.resolve_until_done()
 
-    with mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=[1, 2])):
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=[1])):
       # This turn starts the rumor, so you have to advance past the next mythos phase.
       self.advance_turn(self.state.turn_number+2, "upkeep")
     self.assertIsNone(self.state.rumor)
@@ -1549,6 +1549,7 @@ class RumorTest(EventTest):
     self.resolve_until_done()
     self.assertEqual(len([p for p in self.char.possessions if isinstance(p, items.Spell)]), 1)
     self.assertIsNone(self.state.rumor)
+    self.assertEqual(self.char.bless_curse, 0)
 
 
   def testActivateRumor27(self):
@@ -1828,6 +1829,18 @@ class Mythos7Test(EventTest):
     self.resolve_until_done()
     self.assertIsNone(self.char.arrested_until)
     self.assertEqual(self.char.place, place)
+
+  def testCanBeArrestedLater(self):
+    self.char.place = self.state.places["Rivertown"]
+    self.drawMythos7()
+    self.state.mythos.insert(0, Mythos15())
+    self.advance_turn(self.state.turn_number + 2, "movement")
+    choice = self.resolve_to_choice(events.CityMovement)
+    choice.resolve(self.state, "done")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=2)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.place.name, "Police")
+    self.assertEqual(self.char.arrested_until, self.state.turn_number+2)
 
 
 
