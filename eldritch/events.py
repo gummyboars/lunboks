@@ -3177,7 +3177,6 @@ class OverrideGateChoice(Event):
   def resolve(self, state):
     for key, value in self.changes.items():
       setattr(self.original_choice, key, value)
-    self.original_choice.compute_choices(state)
     self.original_choice.overridden = True
     self.done = True
 

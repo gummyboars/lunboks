@@ -500,14 +500,14 @@ class GateBoxTest(EventTest):
     self.assertEqual(self.char.place.name, "Sunken City2")
     nun.place = self.char.place
     self.char.possessions.append(items.Cross(0))
-    choice = self.resolve_to_choice(events.GateChoice)
-    self.assertIn("Gate Box0", self.state.usables[0],)
+    self.resolve_to_choice(events.GateChoice)
+    self.assertIn("Gate Box0", self.state.usables[0])
     self.state.handle_give(0, 1, "Gate Box0", None)
-    self.assertSequenceEqual(choice.choices, ["Woods"])
-    choice.resolve(self.state, "Woods")
+    self.state.done_using[0] = True
+    # Dummy now no longer has the choice
+    self.resolve_until_done()
     self.state.next_turn()
-    gate_box = self.resolve_to_usable(1, "Gate Box0")
-    self.state.event_stack.append(gate_box)
+    # Nun has no one to trade with, so automatically uses the gate box
     nun_choice = self.resolve_to_choice(events.GateChoice)
     self.assertRegex(nun_choice.prompt, "any open gate")
     self.assertEqual(nun_choice.character, nun)
