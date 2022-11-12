@@ -247,7 +247,7 @@ class Mythos8(Environment):
         "Mythos8", "Square", "Unnamable", {"square", "diamond"}, {"circle"}, "mystic", "Rivertown"
     )
 
-  def get_usable_trigger(self, event, state):
+  def get_trigger(self, event, state):
     if isinstance(event, events.Movement) and event.character.place.name == self.activity_location:
       dice = events.DiceRoll(event.character, event.character.stamina)
       loss = events.Loss(
@@ -255,15 +255,30 @@ class Mythos8(Environment):
           {"stamina": values.Calculation(
               left=event.character, left_attr="stamina",
               operand=operator.sub,
-              right=values.Die(dice), right_attr="successes",
-          )})
+              right=dice, right_attr="successes",
+          )}, source=self)
       final = events.PassFail(
-          event.char,
+          event.character,
           values.Calculation(event.character, "stamina"),
           events.Gain(event.character, {"clues": 3}),
-          events.Devoured(event.character)
+          events.Nothing()
       )
-      return events.Sequence([dice, loss, final], event.character)
+      yes_sequence = events.Sequence([dice, loss, final], event.character)
+      return events.BinaryChoice(
+          event.character,
+          "Delve into mysteries with your life force?",
+          "Yes", "No", yes_sequence, events.Nothing()
+      )
+    return None
+
+  def get_interrupt(self, event, state):
+    if (
+        isinstance(event, events.InsaneOrUnconscious)
+        and len(state.event_stack) > 1
+        and isinstance(state.event_stack[-2], events.GainOrLoss)
+        and state.event_stack[-2].source == self
+    ):
+      return events.Devoured(event.character)
     return None
 
 

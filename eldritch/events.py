@@ -711,7 +711,7 @@ class MoveOne(Event):
 
 class GainOrLoss(Event):
 
-  def __init__(self, character, gains, losses):
+  def __init__(self, character, gains, losses, source=None):
     assert not gains.keys() - {"stamina", "sanity", "dollars", "clues"}
     assert not losses.keys() - {"stamina", "sanity", "dollars", "clues"}
     assert not gains.keys() & losses.keys()
@@ -721,6 +721,7 @@ class GainOrLoss(Event):
     self.character = character
     self.gains = gains
     self.losses = losses
+    self.source = source
     self.final_adjustments = None
 
   def __repr__(self):
@@ -801,12 +802,12 @@ class GainOrLoss(Event):
     return f"nothing changed for {self.character.name}"
 
 
-def Gain(character, gains):
-  return GainOrLoss(character, gains, {})
+def Gain(character, gains, source=None):
+  return GainOrLoss(character, gains, {}, source=source)
 
 
-def Loss(character, losses):
-  return GainOrLoss(character, {}, losses)
+def Loss(character, losses, source=None):
+  return GainOrLoss(character, {}, losses, source=source)
 
 
 class SplitGain(Event):

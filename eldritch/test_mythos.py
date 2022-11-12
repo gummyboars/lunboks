@@ -1880,5 +1880,58 @@ class MythosPhaseTest(EventTest):
     self.assertTrue(self.mythos.action.is_cancelled())
 
 
+class Mythos8Test(EventTest):
+  def setUp(self):
+    super().setUp()
+    self.state.turn_number = 0
+    self.state.turn_phase = "mythos"
+    self.mythos8 = Mythos8()
+    self.state.mythos.append(self.mythos8)
+    self.state.event_stack.append(Mythos(self.char))
+    self.resolve_until_done()
+    self.assertEqual(self.mythos8, self.state.environment)
+    self.assertNotIn(self.mythos8, self.state.mythos)
+    self.char.place = self.state.places["Rivertown"]
+    self.advance_turn(self.state.turn_number, "movement")
+    self.movement = self.resolve_to_choice(CityMovement)
+
+  def testUseAliveLucky(self):
+    self.assertEqual(self.char.place.name, self.mythos8.activity_location)
+    self.movement.resolve(self.state, "done")
+    m8_choice = self.resolve_to_choice(MultipleChoice)
+    m8_choice.resolve(self.state, "Yes")
+    rolls = [5, 5, 5, 1, 1]
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=rolls)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.stamina, 3)
+    self.assertEqual(self.char.clues, 3)
+
+  def testUseAlive(self):
+    self.assertEqual(self.char.place.name, self.mythos8.activity_location)
+    self.movement.resolve(self.state, "done")
+    m8_choice = self.resolve_to_choice(MultipleChoice)
+    m8_choice.resolve(self.state, "Yes")
+    rolls = [5, 1, 1, 1, 1]
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=rolls)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.stamina, 1)
+    self.assertEqual(self.char.clues, 3)
+
+  def testUseDevoured(self):
+    self.assertEqual(self.char.place.name, self.mythos8.activity_location)
+    self.movement.resolve(self.state, "done")
+    m8_choice = self.resolve_to_choice(MultipleChoice)
+    m8_choice.resolve(self.state, "Yes")
+    rolls = [1, 1, 1, 1, 1]
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=rolls)):
+      self.resolve_until_done()
+    self.assertTrue(self.char.gone)
+
+  def testCantUseIfNotInRivertown(self):
+    self.movement.resolve(self.state, "Uptown")
+    end_turn = self.resolve_to_choice(CityMovement)
+    end_turn.resolve(self.state, "done")
+
+
 if __name__ == "__main__":
   unittest.main()
