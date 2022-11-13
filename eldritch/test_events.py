@@ -3491,7 +3491,7 @@ class IncreaseTerrorTest(EventTest):
     self.state.event_stack.append(events.IncreaseTerror(1))
     self.resolve_until_done()
     self.assertEqual(self.state.terror, 1)
-    self.assertEqual(len(self.state.allies), n_allies -1)
+    self.assertEqual(len(self.state.allies), n_allies - 1)
     self.assertEqual(len(self.state.boxed_allies), 1)
     self.assertFalse(self.state.places["Store"].closed)
 
@@ -3501,7 +3501,7 @@ class IncreaseTerrorTest(EventTest):
     self.state.event_stack.append(events.IncreaseTerror(3))
     self.resolve_until_done()
     self.assertEqual(self.state.terror, 3)
-    self.assertEqual(len(self.state.allies), n_allies -3)
+    self.assertEqual(len(self.state.allies), n_allies - 3)
     self.assertEqual(len(self.state.boxed_allies), 3)
     self.assertTrue(self.state.places["Store"].closed)
 
@@ -3523,14 +3523,29 @@ class IncreaseTerrorTest(EventTest):
 
 class ClearStatusTest(EventTest):
   def testClearDelayed(self):
-    pass
+    self.state.event_stack.append(Delayed(self.char))
+    self.resolve_until_done()
+    self.assertEqual(self.char.delayed_until, self.state.turn_number + 2)
+    self.state.event_stack.append(ClearStatus(self.char, "delayed"))
+    self.resolve_until_done()
+    self.assertIsNone(self.char.delayed_until)
 
   def testClearLoseTurn(self):
-    pass
+    self.state.event_stack.append(LoseTurn(self.char))
+    self.resolve_until_done()
+    self.assertEqual(self.char.lose_turn_until, self.state.turn_number + 2)
+    self.state.event_stack.append(ClearStatus(self.char, "lose_turn"))
+    self.resolve_until_done()
+    self.assertIsNone(self.char.lose_turn_until)
 
   def testClearArrested(self):
-    pass
+    self.state.event_stack.append(Arrested(self.char))
+    self.resolve_until_done()
+    self.assertEqual(self.char.arrested_until, self.state.turn_number + 2)
+    self.state.event_stack.append(ClearStatus(self.char, "arrested"))
+    self.resolve_until_done()
+    self.assertIsNone(self.char.arrested_until)
+
 
 if __name__ == "__main__":
   unittest.main()
-

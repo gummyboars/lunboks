@@ -2579,7 +2579,6 @@ class Arrested(Event):
     return f"{self.character.name} to be arrested"
 
 
-
 class MultipleChoice(ChoiceEvent):
 
   def __init__(self, character, prompt, choices, prereqs=None, annotations=None):

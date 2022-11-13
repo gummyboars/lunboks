@@ -1569,7 +1569,6 @@ class RumorTest(EventTest):
     self.assertIsNone(self.state.rumor)
     self.assertEqual(self.char.bless_curse, 0)
 
-
   def testActivateRumor27(self):
     self.state.mythos.append(Mythos27())
     self.state.event_stack.append(Mythos(self.char))
@@ -1844,7 +1843,6 @@ class Mythos7Test(EventTest):
 
     self.assertEqual(self.char.lose_turn_until, 2)
 
-
   def testCantBeArrested(self):
     self.drawMythos7()
     place = self.char.place
@@ -1866,6 +1864,7 @@ class Mythos7Test(EventTest):
       self.resolve_until_done()
     self.assertEqual(self.char.place.name, "Police")
     self.assertEqual(self.char.arrested_until, self.state.turn_number+2)
+
 
 class Mythos8Test(EventTest):
   def setUp(self):
@@ -1946,7 +1945,6 @@ class Mythos14Test(EventTest):
     self.resolve_until_done()
     self.assertEqual(self.char.sanity, 1)
     self.assertEqual(self.char.place.name, "Asylum")
-
 
   def testNormal(self):
     self.char.sanity = 1

@@ -226,7 +226,9 @@ class Mythos7(Headline):
     for char in state.characters:
       if char.arrested_until is not None:
         seq.events.append(events.ClearStatus(char, "arrested"))
-    seq.events.append(events.AddGlobalEffect(self, source_deck="mythos", active_until=state.turn_number + 1))
+    seq.events.append(events.AddGlobalEffect(
+        self, source_deck="mythos", active_until=state.turn_number + 1
+    ))
     return seq
 
   def get_interrupt(self, event, state):
@@ -235,7 +237,9 @@ class Mythos7(Headline):
     return None
 
   def get_trigger(self, event, state):
-    if self.active_until is not None and state.turn_number >= self.active_until and isinstance(event, events.Mythos):
+    if (self.active_until is not None
+        and state.turn_number >= self.active_until
+            and isinstance(event, events.Mythos)):
       return events.RemoveGlobalEffect(self, source_deck="mythos")
     return None
 
@@ -248,7 +252,7 @@ class Mythos8(Environment):
 
   def get_trigger(self, event, state):
     if isinstance(event, events.Movement) and event.character.place.name == self.activity_location:
-      dice = events.DiceRoll(event.character, values.Calculation(event.character, 'stamina'))
+      dice = events.DiceRoll(event.character, values.Calculation(event.character, "stamina"))
       loss = events.Loss(
           event.character,
           {"stamina": values.Calculation(
@@ -526,7 +530,7 @@ class ShuffleMythos(MythosCard):
 
 def CreateMythos():
   return [
-      Mythos1(), Mythos2(), Mythos3(), Mythos4(), Mythos5(), Mythos6(), Mythos7(), Mythos8(), Mythos9(), Mythos10(),
-      Mythos11(), Mythos12(), Mythos13(), Mythos14(), Mythos15(),
+      Mythos1(), Mythos2(), Mythos3(), Mythos4(), Mythos5(), Mythos6(), Mythos7(), Mythos8(),
+      Mythos9(), Mythos10(), Mythos11(), Mythos12(), Mythos13(), Mythos14(), Mythos15(),
       Mythos27(), Mythos45(), Mythos59(), ShuffleMythos(),
   ]
