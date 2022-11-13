@@ -934,6 +934,47 @@ class GainLossTest(EventTest):
     self.assertDictEqual(loss.final_adjustments, {"sanity": -4, "stamina": -1})
 
 
+class MaxSanityStaminaTest(EventTest):
+
+  def testStaminaCannotExceedMaxStamina(self):
+    self.char.possessions.append(assets.ArmWrestler())
+    self.assertEqual(self.char.max_stamina(self.state), 6)
+
+    self.char.stamina = 6
+    self.state.event_stack.append(events.DiscardSpecific(self.char, [self.char.possessions[0]]))
+    self.resolve_until_done()
+    self.assertEqual(self.char.stamina, 5)
+
+  def testLossPreventionDoesNotWorkOnMaxStamina(self):
+    self.char.possessions.extend([assets.ArmWrestler(), abilities.StrongBody()])
+    self.assertEqual(self.char.max_stamina(self.state), 6)
+
+    self.char.stamina = 6
+    self.state.event_stack.append(events.DiscardSpecific(self.char, [self.char.possessions[0]]))
+    self.resolve_until_done()
+    self.assertEqual(self.char.stamina, 5)
+
+  def testDoNotLoseStaminaAtLessThanMax(self):
+    self.char.possessions.append(assets.ArmWrestler())
+    self.assertEqual(self.char.max_stamina(self.state), 6)
+
+    self.char.stamina = 5
+    self.state.event_stack.append(events.DiscardSpecific(self.char, [self.char.possessions[0]]))
+    self.resolve_until_done()
+    self.assertEqual(self.char.stamina, 5)
+
+  def testDevouredIfReducedToZeroMax(self):
+    terrible_curse = assets.Card("Frogurt", 0, "common", {}, {"max_stamina": -5})
+    self.char.possessions.extend([assets.ArmWrestler(), terrible_curse])
+    self.assertEqual(self.char.max_stamina(self.state), 1)
+
+    self.char.stamina = 1
+    self.state.event_stack.append(events.DiscardSpecific(self.char, [self.char.possessions[0]]))
+    self.resolve_until_done()
+    self.assertEqual(self.char.stamina, 0)
+    self.assertTrue(self.char.gone)
+
+
 class CollectCluesTest(EventTest):
 
   def testCollectNoClues(self):

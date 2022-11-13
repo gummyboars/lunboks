@@ -889,6 +889,25 @@ class LossPrevention(Event):
     return f"{self.prevention_source.name} prevented {self.prevented} {self.attribute} loss"
 
 
+class CapStatsAtMax(Event):
+
+  def __init__(self, character):
+    super().__init__()
+    self.character = character
+    self.done = False
+
+  def resolve(self, state):
+    self.character.sanity = min(self.character.sanity, self.character.max_sanity(state))
+    self.character.stamina = min(self.character.stamina, self.character.max_stamina(state))
+    self.done = True
+
+  def is_resolved(self):
+    return self.done
+
+  def log(self, state):
+    return ""
+
+
 class CollectClues(Event):
 
   def __init__(self, character, place):

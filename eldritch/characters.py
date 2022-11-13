@@ -156,7 +156,16 @@ class Character:
     return spendables
 
   def get_triggers(self, event, state):
-    return [
+    triggers = []
+    if isinstance(event, events.DiscardSpecific):
+      triggers.extend([
+          p.get_trigger(event, self, state) for p in event.discarded
+          if p.get_trigger(event, self, state)
+      ])
+    if isinstance(event, events.DiscardNamed) and event.discarded:
+      trig = event.discarded.get_trigger(event, self, state)
+      triggers.extend([trig] if trig else [])
+    return triggers + [
         p.get_trigger(event, self, state) for p in self.possessions
         if p.get_trigger(event, self, state)
     ]

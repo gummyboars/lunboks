@@ -651,6 +651,11 @@ class GameState:
           elif event.character.stamina <= 0:
             triggers.append(events.Unconscious(event.character))
 
+    # Devoured if max sanity/stamina go to 0.
+    if isinstance(event, events.CapStatsAtMax):
+      if event.character.sanity <= 0 or event.character.stamina <= 0:
+        triggers.append(events.Devoured(event.character))
+
     # Lost investigators are devoured when the ancient one awakens.
     if isinstance(event, events.Awaken):
       for char in self.characters:

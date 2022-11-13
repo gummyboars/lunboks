@@ -2137,8 +2137,9 @@ class ScienceTest(EncounterTest):
     self.assertEqual(len(self.state.allies), 0)
     self.assertEqual(len(self.char.possessions), 1)
     self.assertEqual(self.char.possessions[0].name, "Arm Wrestler")
-    self.assertEqual(self.char.stamina, 1)
+    self.assertEqual(self.char.stamina, 2)  # You gain one stamina when the arm wrestler joins you.
     self.assertEqual(self.char.place.name, "Science")
+    self.assertEqual(self.char.max_stamina(self.state), 6)
 
   def testScience4Reward(self):
     self.char.dollars = 3
@@ -3989,6 +3990,7 @@ class WoodsTest(EncounterTest):
     self.resolve_until_done()
     self.assertEqual(len(self.char.possessions), 1)
     self.assertEqual(self.char.possessions[0].name, "Dog")
+    self.assertEqual(self.char.max_sanity(self.state), 6)
 
   def testWoods5FoodReward(self):
     self.char.speed_sneak_slider = 2
