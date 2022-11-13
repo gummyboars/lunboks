@@ -1065,6 +1065,8 @@ class GameState:
       return True
     if len(self.event_stack) < 2:
       return False
+    if isinstance(event, events.GateChoice) and event.overridden:
+      return False
     if isinstance(self.event_stack[-2], events.Return) and isinstance(event, events.GateChoice):
       return True
     return False

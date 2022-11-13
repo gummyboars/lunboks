@@ -723,6 +723,12 @@ class GainOrLoss(Event):
     self.losses = losses
     self.final_adjustments = None
 
+  def __repr__(self):
+    repr_str = str(type(self))[:-1] + " {}: {}/{}{}>"
+    return repr_str.format(
+        self.character.name, self.gains, self.losses, " cancelled" if self.cancelled else ""
+    )
+
   def resolve(self, state):
     assert not self.gains.keys() & self.losses.keys()
     adjustments = {}
@@ -855,7 +861,7 @@ class LossPrevention(Event):
     assert attribute in source_event.losses
     super().__init__()
     self.prevention_source = prevention_source
-    self.source_event: Event = source_event
+    self.source_event: GainOrLoss = source_event
     self.attribute = attribute
     self.amount = amount
     self.prevented = None
@@ -1357,6 +1363,8 @@ class KeepDrawn(Event):
 
 def Draw(character, deck, draw_count, prompt="Choose a card", keep_count=1, target_type=None):
   cards = DrawItems(character, deck, draw_count, target_type=target_type)
+  if keep_count == "all":
+    keep_count = draw_count
   keep = KeepDrawn(character, cards, prompt, keep_count, sort_uniq=math.isinf(draw_count))
   return Sequence([cards, keep], character)
 
@@ -2160,6 +2168,8 @@ class DiscardSpecific(Event):
 
     self.discarded = []
     for item in self.items:
+      for attr in item.tokens:
+        item.tokens[attr] = 0
       if item not in self.character.possessions:
         continue
       self.character.possessions.remove(item)
@@ -2208,6 +2218,8 @@ class DiscardNamed(Event):
         item._exhausted = False  # pylint: disable=protected-access
         if hasattr(item, "_active"):
           item._active = False  # pylint: disable=protected-access
+        for attr in item.tokens:
+          item.tokens[attr] = 0
         deck = getattr(state, item.deck)
         deck.append(item)
         self.discarded = item
@@ -2315,6 +2327,7 @@ class Check(Event):
     self.modifier = modifier
     self.attributes = attributes
     self.dice: Optional[Event] = None
+    self.pass_check: Optional[Event] = None
     self.roll = None
     self.successes = None
     self.spend: Optional[SpendChoice] = None
@@ -2322,6 +2335,10 @@ class Check(Event):
     self.done = False
 
   def resolve(self, state):
+    if self.pass_check is not None:
+      self.successes = float("inf")
+      self.done = True
+      return
     if self.dice is None:
       if self.check_type == "combat":
         num_dice = self.character.combat(state, self.attributes) + self.modifier
@@ -2383,6 +2400,8 @@ class Check(Event):
     return f"{self.check_type} {self.modifier:+d} check"
 
   def log(self, state):
+    if self.pass_check:
+      return f"{self.character.name} passed check"
     if self.cancelled and self.roll is None:
       return f"{self.character.name} did not make a {self.check_str()}"
     if self.roll is None:
@@ -2760,7 +2779,7 @@ class SpendMultiChoiceMixin(SpendMixin):
     if choice not in self.choices:
       raise InvalidMove(f"Invalid choice {choice}")
     choice_idx = self.choices.index(choice)
-    remaining_spend = self.remaining_spend[choice_idx]
+    remaining_spend: dict = self.remaining_spend[choice_idx]
     if remaining_spend:
       if len(remaining_spend) == 1:
         spend, count = next(iter(remaining_spend.items()))
@@ -3112,6 +3131,7 @@ class GateChoice(MapChoice):
     super().__init__(character, prompt, none_choice=none_choice)
     self.gate_name = gate_name
     self.annotation = annotation
+    self.overridden = False
 
   def compute_choices(self, state):
     if isinstance(self.gate_name, values.Value):
@@ -3146,6 +3166,32 @@ class GateChoice(MapChoice):
     if self.annotation and self.choices is not None:
       return [self.annotation for _ in self.choices]
     return None
+
+
+class OverrideGateChoice(Event):
+  def __init__(self, character, original_choice: GateChoice, **changes):
+    super().__init__()
+    self.character = character
+    self.original_choice = original_choice
+    self.changes = changes
+    assert len(changes)
+    assert {"prompt", "gate_name", "none_choice", "annotation"}.issuperset(changes.keys())
+    self.done = False
+
+  def resolve(self, state):
+    for key, value in self.changes.items():
+      setattr(self.original_choice, key, value)
+    self.original_choice.overridden = True
+    self.done = True
+
+  def is_resolved(self) -> bool:
+    return self.done
+
+  def log(self, state) -> str:
+    changes = [f"{key} to {repr(value)}" for key, value in self.changes.items()]
+    if self.done:
+      return "Gate choice updated " + ", ".join(changes)
+    return "Gate choice to update " + ", ".join(changes)
 
 
 class NearestGateChoice(MapChoice):
@@ -3267,6 +3313,10 @@ class EvadeOrFightAll(Event):
       assert self.combat.is_done()
       idx = self.monsters.index(self.combat.monster)
       self.done[idx] = True
+      for idx, monster in enumerate(self.monsters):
+        # Maybe an item defeated these monsters
+        if monster.place != self.character.place:
+          self.done[idx] = True
       self.combat = None
     if all(self.done):
       return
@@ -3537,6 +3587,7 @@ class CombatRound(Event):
         if isinstance(event, (MoveOne, WagonMove)):
           event.cancelled = True
         if isinstance(event, CityMovement):
+          self.character.movement_points = 0
           event.done = True  # TODO: should this be cancelled instead?
           break
       self.movement_cancelled = True
@@ -3594,6 +3645,29 @@ class CombatRound(Event):
     return f"{self.character.name} did not defeat the {self.monster.name}"
 
 
+class PassCheck(Event):
+  def __init__(self, character, check, item):
+    self.character = character
+    self.check = check
+    self.item = item
+    self.done = False
+    super().__init__()
+
+  def resolve(self, state):
+    self.check.pass_check = self
+    self.done = True
+
+  def is_resolved(self):
+    return self.done
+
+  def log(self, state):
+    if self.done:
+      return f"{self.character.name} force-passed a {self.check.check_type} check"
+    if self.cancelled:
+      return f"{self.character.name} force-passing a {self.check.check_type} check cancelled"
+    return f"{self.character.name} to force-pass a {self.check.check_type} check"
+
+
 class PassCombatRound(Event):
   def __init__(
       self,
@@ -3631,7 +3705,9 @@ class PassCombatRound(Event):
       state.event_stack.append(self.take_trophy)
       return
 
-    if monster.has_attribute("overwhelming", state, char) and self.damage is None:
+    if (monster is not None
+        and monster.has_attribute("overwhelming", state, char)
+            and self.damage is None):
       self.damage = Loss(
           char, {"stamina": monster.bypass_damage("combat", state)})
       state.event_stack.append(self.damage)
@@ -3646,7 +3722,7 @@ class PassCombatRound(Event):
     return self.log_message
 
 
-class TakeTrophy(Event):
+class ForceTakeTrophy(Event):
 
   def __init__(self, character, monster):
     super().__init__()
@@ -3679,6 +3755,14 @@ class TakeTrophy(Event):
     if not self.done:
       return f"{self.character.name} takes a monster trophy"
     return f"{self.character.name} took a {self.monster.name} as a trophy"
+
+
+class TakeTrophy(ForceTakeTrophy):
+  def log(self, state):
+    if self.done:
+      return (f"{self.character.name} took a {self.monster.name} as"
+              " a trophy after defeating it in combat")
+    return super().log(state)
 
 
 class MonsterAppears(Conditional):
@@ -4067,6 +4151,48 @@ class OpenGate(Event):
     if self.spawn:
       return f"A monster surge occurred at {self.location_name}."
     return f"A gate did not appear at {self.location_name}."
+
+
+class AddToken(Event):
+  def __init__(self, asset, token_type, character=None, n_tokens=1):
+    assert token_type in asset.tokens
+    self.asset = asset
+    self.token_type = token_type
+    self.character = character
+    self.added = False
+    self.resolved_max = False
+    self.done = False
+    self.n_tokens = n_tokens
+    super().__init__()
+
+  def resolve(self, state):
+    token_type = self.token_type
+    asset = self.asset
+
+    if not self.added:
+      asset.tokens[self.token_type] += self.n_tokens
+      self.added = True
+
+    if ((not self.resolved_max)
+            and (asset.tokens[token_type] >= asset.max_tokens.get(token_type, float("inf")))):
+      state.event_stack.append(self.asset.get_max_token_event(token_type, self.character))
+      self.resolved_max = True
+      return
+
+    self.done = True
+
+  def is_resolved(self):
+    return self.done
+
+  def log(self, state):
+    if not self.added:
+      return f"{self.n_tokens} {self.token_type.title()} tokens to be added to {self.asset.name}"
+    if self.resolved_max:
+      return f"{self.asset.name} has reached its maximum of {self.token_type.title()} tokens"
+    if self.done and not self.cancelled:
+      return f"{self.n_tokens} {self.token_type.title()} token(s) added to {self.asset.name}"
+    return (f"{self.n_tokens} {self.token_type.title()} token(s) prevented"
+            f" from being added to {self.asset.name}")
 
 
 class AddDoom(Event):

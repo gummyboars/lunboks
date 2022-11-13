@@ -133,6 +133,37 @@ class CombatTest(EventTest):
     self.assertIsNone(combat_round.damage)
     self.assertTrue(combat.is_resolved())
 
+  def testCombatAgainstEndless(self):
+    self.char.possessions.append(items.TommyGun(0))
+    self.char.fight_will_slider = 3
+    self.assertEqual(self.char.fight(self.state), 4)
+    self.assertEqual(self.char.will(self.state), 1)
+    self.assertEqual(self.char.stamina, 5)
+    self.assertEqual(self.char.sanity, 5)
+    haunter = monsters.Haunter()
+    combat = Combat(self.char, haunter)
+    self.state.event_stack.append(combat)
+
+    # The horror check happens here - they are guaranteed to fail becuse they have only 1 will.
+    fight_or_flee = self.resolve_to_choice(FightOrEvadeChoice)
+    self.assertIsNotNone(combat.horror)
+    self.assertTrue(combat.horror.is_resolved())
+    self.assertEqual(self.char.sanity, 3)
+
+    combat_round = combat.combat
+    fight_or_flee.resolve(self.state, "Fight")
+    choose_weapons = self.resolve_to_choice(CombatChoice)
+    self.choose_items(choose_weapons, ["Tommy Gun0"])
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+
+    self.assertTrue(combat_round.is_resolved())
+    self.assertTrue(combat_round.defeated)
+    self.assertIsNone(combat_round.damage)
+    self.assertTrue(combat.is_resolved())
+    self.assertNotIn(haunter, self.char.trophies)
+    self.assertEqual(haunter.place.name, "cup")
+
   def testCombatRoundWithGlobal(self):
     self.char.fight_will_slider = 0
     self.assertEqual(self.char.fight(self.state), 1)
@@ -3294,9 +3325,9 @@ class FightAncientOneTest(EventTest):
       self.assertEqual(rand.call_count, 6)
     self.assertEqual(self.state.ancient_one.health, 14)
 
-  def testCombatWithWeirdSpells(self):
+  def testCombatWithWeirdItems(self):
     self.state.event_stack.append(InvestigatorAttack(self.char))
-    self.char.possessions.extend([items.RedSign(0), items.BindMonster(0)])
+    self.char.possessions.extend([items.RedSign(0), items.BindMonster(0), items.BlueWatcher(0)])
     combat_choice = self.resolve_to_choice(CombatChoice)
     self.assertFalse(self.state.usables)
     combat_choice.resolve(self.state, "done")

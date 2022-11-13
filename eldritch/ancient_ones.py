@@ -1,7 +1,9 @@
 import abc
+from typing import Optional
 
 from eldritch import events, places, characters, monsters, values, mythos
 from eldritch.events import AncientOneAttack
+from eldritch.characters import Character
 
 
 class AncientOne(mythos.GlobalEffect, metaclass=abc.ABCMeta):
@@ -33,7 +35,7 @@ class AncientOne(mythos.GlobalEffect, metaclass=abc.ABCMeta):
     return attrs
 
   # TODO: dedup with monster
-  def has_attribute(self, attribute, state, char):
+  def has_attribute(self, attribute, state, char: Optional[Character]):
     state_override = state.get_override(self, attribute)
     char_override = char.get_override(self, attribute) if char else None
     # Prefer specific overrides (at the item level) over general ones (environment, ancient one).

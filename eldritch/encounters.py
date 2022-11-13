@@ -216,12 +216,10 @@ def Lodge6(char):
 def Lodge7(char):
   check = events.Check(char, "sneak", -2)
   common1 = events.Draw(char, "common", 1)
-  common2 = events.Draw(char, "common", 1)
   unique1 = events.Draw(char, "unique", 1)
-  unique2 = events.Draw(char, "unique", 1)
   rolls = events.DiceRoll(char, 2)
-  two_common = events.Sequence([common1, common2], char)
-  two_unique = events.Sequence([unique1, unique2], char)
+  two_common = events.Draw(char, "common", 2, keep_count=2)
+  two_unique = events.Draw(char, "unique", 2, keep_count=2)
   one_each = events.Sequence([common1, unique1], char)
   cond = events.Conditional(
       char, rolls, "successes", {0: two_common, 1: one_each, 2: two_unique, }
@@ -238,7 +236,7 @@ def Sanctum1(char):
 def Sanctum2(char):
   check = events.Check(char, "luck", -1)
   choose = events.MonsterOnBoardChoice(char, "Choose a monster to take as a trophy")
-  take = events.TakeTrophy(char, choose)
+  take = events.ForceTakeTrophy(char, choose)
   success = events.Sequence([choose, take], char)
   nothing = events.Nothing()
   seq = events.PassFail(char, check, success, nothing)
@@ -485,7 +483,7 @@ def Graveyard6(char):
 
 def Graveyard7(char):
   draw = events.DrawMonstersFromCup(1, char)
-  return events.Sequence([draw, events.TakeTrophy(char, draw)], char)
+  return events.Sequence([draw, events.ForceTakeTrophy(char, draw)], char)
 
 
 def Society1(char):
