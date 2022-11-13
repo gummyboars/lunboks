@@ -127,6 +127,7 @@ class EventTest(unittest.TestCase):
 
   def advance_turn(self, target_turn, target_phase):
     self.state.mythos.extend([NoMythos()] * (target_turn - self.state.turn_number + 1))
+    # TODO: should actually add a number of NoMythos - current turn - existing cards in mythos deck
     while True:
       for _ in self.state.resolve_loop():
         if self.state.turn_number >= target_turn and self.state.turn_phase == target_phase:
@@ -3492,6 +3493,7 @@ class IncreaseTerrorTest(EventTest):
     self.assertEqual(self.state.terror, 1)
     self.assertEqual(len(self.state.allies), n_allies -1)
     self.assertEqual(len(self.state.boxed_allies), 1)
+    self.assertFalse(self.state.places["Store"].closed)
 
   def testAddMultipleTerror(self):
     self.assertEqual(self.state.terror, 0)
@@ -3518,6 +3520,16 @@ class IncreaseTerrorTest(EventTest):
     self.assertTrue(self.state.places["Shop"].closed)
     self.assertTrue(self.state.places["Shoppe"].closed)
 
+
+class ClearStatusTest(EventTest):
+  def testClearDelayed(self):
+    pass
+
+  def testClearLoseTurn(self):
+    pass
+
+  def testClearArrested(self):
+    pass
 
 if __name__ == "__main__":
   unittest.main()

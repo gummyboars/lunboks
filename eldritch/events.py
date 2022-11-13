@@ -651,6 +651,8 @@ class DiceRoll(Event):
     self.successes = None
 
   def resolve(self, state):
+    if isinstance(self.count, values.Value):
+      self.count = self.count.value(state)
     self.roll = [random.randint(1, 6) for _ in range(self.count)]
     self.sum = sum(self.roll)
     # Some encounters have: "Roll a die for each X. On a success..."
@@ -4253,7 +4255,7 @@ class AllyToBox(Event):
     return self.done
 
   def resolve(self, state):
-    if len(state.allies):
+    if state.allies:
       self.ally = state.allies.popleft()
       state.boxed_allies.append(self.ally)
     self.done = True
@@ -4531,6 +4533,8 @@ class IncreaseTerror(Event):
 
   def log(self, state):
     if self.cancelled and not self.done:
+      if self.added:
+        return f"Terror track advanced by {self.added} before being cancelled"
       return "Terror track was not advanced"
     if not self.done:
       return f"Terror track will advance by up to {self.count}"
@@ -4538,16 +4542,20 @@ class IncreaseTerror(Event):
 
 
 class AddGlobalEffect(Event):
-  def __init__(self, effect, source_deck=None):
+  def __init__(self, effect, source_deck=None, active_until=None):
+    assert source_deck in {"mythos"}  # TODO: add more as necessary
     super().__init__()
     self.effect = effect
     self.source_deck = source_deck
     self.done = False
+    self.active_until = active_until
 
   def resolve(self, state):
-    if self.source_deck and self.effect in self.source_deck:
-      self.source_deck.remove(self.effect)
+    source_deck = getattr(state, self.source_deck)
+    if source_deck and self.effect in source_deck:
+      source_deck.remove(self.effect)
     state.other_globals.append(self.effect)
+    self.effect.active_until = self.active_until
     self.done = True
 
   def is_resolved(self):
@@ -4555,10 +4563,10 @@ class AddGlobalEffect(Event):
 
   def log(self, state):
     if self.cancelled:
-      return f"Didn't add {self.effect.name} to the global effects"
+      return f"Didn't add {self.effect.name} to play"
     if self.done:
-      return f"{self.effect.name} added to the global effects"
-    return f"{self.effect.name} to be added to the global effects"
+      return f"{self.effect.name} enters play"
+    return f"{self.effect.name} to be entered into play"
 
 
 class RemoveGlobalEffect(Event):
@@ -4570,8 +4578,10 @@ class RemoveGlobalEffect(Event):
 
   def resolve(self, state):
     state.other_globals.remove(self.effect)
-    if self.source_deck and self.effect not in self.source_deck:
-      self.source_deck.append(self.effect)
+    source_deck = getattr(state, self.source_deck)
+    if source_deck and self.effect not in source_deck:
+      source_deck.append(self.effect)
+    self.effect.active_until = None
 
     self.done = True
 
@@ -4580,10 +4590,10 @@ class RemoveGlobalEffect(Event):
 
   def log(self, state):
     if self.cancelled:
-      return f"Didn't remove {self.effect.name} from the global effects"
+      return f"Didn't remove {self.effect.name} from play"
     if self.done:
-      return f"{self.effect.name} remove from the global effects"
-    return f"{self.effect.name} to be removed from the global effects"
+      return f"{self.effect.name} removed from play"
+    return f"{self.effect.name} to be removed from play"
 
 
 class SpawnClue(Event):

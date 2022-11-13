@@ -32,7 +32,7 @@ class GameState:
   }
   CUSTOM_ATTRIBUTES = {
       "characters", "all_characters", "environment", "mythos", "other_globals", "ancient_one",
-      "all_ancients", "monsters", "usables", "spendables"
+      "all_ancients", "monsters", "usables", "spendables",
   }
   TURN_PHASES = ["upkeep", "movement", "encounter", "otherworld", "mythos"]
   AWAKENED_PHASES = ["upkeep", "attack", "ancient"]

@@ -1498,6 +1498,8 @@ class RumorTest(EventTest):
       self.resolve_until_done()
     self.assertEqual(self.state.rumor.name, "Mythos13")
     self.assertEqual(self.state.terror, 6)
+    self.assertEqual(len(self.state.allies), 1)
+    self.assertEqual(len(self.state.boxed_allies), 6)
     self.assertFalse(self.state.rumor.failed)
 
     self.advance_turn(self.state.turn_number+1, "mythos")
@@ -1865,38 +1867,6 @@ class Mythos7Test(EventTest):
     self.assertEqual(self.char.place.name, "Police")
     self.assertEqual(self.char.arrested_until, self.state.turn_number+2)
 
-
-
-class MythosPhaseTest(EventTest):
-
-  def setUp(self):
-    super().setUp()
-    self.mythos = Mythos(self.char)
-    self.state.event_stack.append(self.mythos)
-    self.state.mythos.clear()
-    self.state.mythos.append(Mythos6())
-
-  def testMythos(self):
-    self.resolve_until_done()
-    self.assertTrue(self.mythos.is_resolved())
-    self.assertTrue(self.mythos.action.is_resolved())
-
-  def testCancelledEnvironment(self):
-    self.char.possessions.append(Canceller(ActivateEnvironment))
-    self.resolve_until_done()
-    self.assertTrue(self.mythos.is_resolved())
-    self.assertTrue(self.mythos.action.is_resolved())
-    self.assertFalse(self.mythos.action.events[3].is_resolved())
-    self.assertTrue(self.mythos.action.events[3].is_cancelled())
-
-  def testCancelWholeMythos(self):
-    self.char.possessions.append(Canceller(Sequence))
-    self.resolve_until_done()
-    self.assertTrue(self.mythos.is_resolved())
-    self.assertFalse(self.mythos.action.is_resolved())
-    self.assertTrue(self.mythos.action.is_cancelled())
-
-
 class Mythos8Test(EventTest):
   def setUp(self):
     super().setUp()
@@ -1948,6 +1918,75 @@ class Mythos8Test(EventTest):
     self.movement.resolve(self.state, "Uptown")
     end_turn = self.resolve_to_choice(CityMovement)
     end_turn.resolve(self.state, "done")
+
+
+class Mythos14Test(EventTest):
+  def setUp(self):
+    super().setUp()
+    self.state.turn_number = 0
+    self.state.turn_phase = "mythos"
+    self.mythos14 = Mythos14()
+    self.state.mythos.append(self.mythos14)
+    self.state.event_stack.append(Mythos(self.char))
+    self.resolve_until_done()
+    self.assertEqual(self.mythos14, self.state.environment)
+    self.assertNotIn(self.mythos14, self.state.mythos)
+    self.char.place = self.state.places["Northside"]
+    self.advance_turn(self.state.turn_number, "movement")
+    self.movement = self.resolve_to_choice(CityMovement)
+
+  def testInsane(self):
+    self.char.sanity = 1
+    self.movement.resolve(self.state, "done")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=1)):
+      clues = self.resolve_to_choice(SpendChoice)
+      clues.resolve(self.state, "Done")
+      loss = self.resolve_to_choice(ItemLossChoice)
+    loss.resolve(self.state, "done")
+    self.resolve_until_done()
+    self.assertEqual(self.char.sanity, 1)
+    self.assertEqual(self.char.place.name, "Asylum")
+
+
+  def testNormal(self):
+    self.char.sanity = 1
+    self.char.fight_will_slider = 2
+    self.movement.resolve(self.state, "done")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      clues = self.resolve_to_choice(SpendChoice)
+      clues.resolve(self.state, "Done")
+      self.resolve_until_done()
+    self.assertEqual(self.char.place.name, "Northside")
+
+
+class MythosPhaseTest(EventTest):
+
+  def setUp(self):
+    super().setUp()
+    self.mythos = Mythos(self.char)
+    self.state.event_stack.append(self.mythos)
+    self.state.mythos.clear()
+    self.state.mythos.append(Mythos6())
+
+  def testMythos(self):
+    self.resolve_until_done()
+    self.assertTrue(self.mythos.is_resolved())
+    self.assertTrue(self.mythos.action.is_resolved())
+
+  def testCancelledEnvironment(self):
+    self.char.possessions.append(Canceller(ActivateEnvironment))
+    self.resolve_until_done()
+    self.assertTrue(self.mythos.is_resolved())
+    self.assertTrue(self.mythos.action.is_resolved())
+    self.assertFalse(self.mythos.action.events[3].is_resolved())
+    self.assertTrue(self.mythos.action.events[3].is_cancelled())
+
+  def testCancelWholeMythos(self):
+    self.char.possessions.append(Canceller(Sequence))
+    self.resolve_until_done()
+    self.assertTrue(self.mythos.is_resolved())
+    self.assertFalse(self.mythos.action.is_resolved())
+    self.assertTrue(self.mythos.action.is_cancelled())
 
 
 if __name__ == "__main__":
