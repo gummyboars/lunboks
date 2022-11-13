@@ -4554,7 +4554,8 @@ class AddGlobalEffect(Event):
     if source_deck and self.effect in source_deck:
       source_deck.remove(self.effect)
     state.other_globals.append(self.effect)
-    self.effect.active_until = self.active_until
+    if self.active_until is not None:
+      self.effect.active_until = self.active_until
     self.done = True
 
   def is_resolved(self):
