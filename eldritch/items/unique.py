@@ -194,14 +194,14 @@ class GateBox(Item):
   def get_interrupt(self, event, owner, state):
     if self.is_usable(event, owner, state, False):
       return events.OverrideGateChoice(
-          owner, event, gate_name=None, prompt="Gate box allows you to choose any open gate"
+          owner, event, gate_name=None, _prompt="Gate box allows you to choose any open gate"
       )
     return None
 
   def get_usable_interrupt(self, event, owner, state):
     if self.is_usable(event, owner, state, True):
       return events.OverrideGateChoice(
-          owner, event, gate_name=None, prompt="Gate box allows you to choose any open gate"
+          owner, event, gate_name=None, _prompt="Gate box allows you to choose any open gate"
       )
     return None
 

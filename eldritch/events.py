@@ -3224,7 +3224,7 @@ class OverrideGateChoice(Event):
     self.original_choice = original_choice
     self.changes = changes
     assert len(changes)
-    assert {"prompt", "gate_name", "none_choice", "annotation"}.issuperset(changes.keys())
+    assert {"_prompt", "gate_name", "none_choice", "annotation"}.issuperset(changes.keys())
     self.done = False
 
   def resolve(self, state):
