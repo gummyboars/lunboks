@@ -761,14 +761,13 @@ class FleshWardTest(EventTest):
     self.assertEqual(self.char.sanity, 3)
 
   def testNotUsableAfterDamageReduced(self):
-    self.char.possessions.append(items.Food(0))
+    self.char.possessions.append(items.ObsidianStatue(0))
     self.assertEqual(self.char.stamina, 5)
     self.assertEqual(self.char.sanity, 5)
     self.state.event_stack.append(Loss(self.char, {"stamina": 1}))
     self.resolve_to_usable(0, "Flesh Ward0", events.CastSpell)
-    self.state.event_stack.append(self.state.usables[0]["Food0"])
+    self.state.event_stack.append(self.state.usables[0]["Obsidian Statue0"])
     self.resolve_until_done()
-    self.assertFalse(self.state.usables)
     self.assertEqual(self.char.stamina, 5)
 
   def testDiscardedIfAncientOneAwakens(self):
@@ -879,6 +878,17 @@ class HealTest(EventTest):
     self.assertEqual(self.char.stamina, 3)
     self.assertEqual(self.char.sanity, 4)
     self.assertTrue(self.char.possessions[0].exhausted)
+
+  def testCanOnlyCastDuringOwnUpkeep(self):
+    buddy = characters.Character("Buddy", 5, 5, 4, 4, 4, 4, 4, 4, 4, "Square")
+    buddy.place = self.char.place
+    self.state.all_characters["Buddy"] = buddy
+    self.state.characters.append(buddy)
+    buddy.stamina = 1
+
+    upkeep = events.UpkeepActions(buddy)
+    self.state.event_stack.append(upkeep)
+    self.resolve_until_done()  # Never stops to ask the player to use heal.
 
 
 class VoiceTest(EventTest):
@@ -1271,6 +1281,21 @@ class MistsTest(EventTest):
     choice.resolve(self.state, "Cast")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       self.resolve_until_done()
+
+  def testDeclineToCast(self):
+    self.char.clues = 1
+    monster = monsters.Zombie()
+    self.state.event_stack.append(EvadeOrCombat(self.char, monster))
+    evade_choice = self.resolve_to_choice(MultipleChoice)
+    evade_choice.resolve(self.state, "Evade")
+    self.resolve_to_usable(0, "Mists0", events.CastSpell)
+    self.state.done_using[0] = True
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      spend_clues = self.resolve_to_choice(SpendChoice)
+    self.assertIn(0, self.state.usables)
+    self.assertIn("Mists0", self.state.usables[0])
+    spend_clues.resolve(self.state, "Done")
+    self.resolve_until_done()
 
   def testFailToCast(self):
     monster = monsters.Cultist()
