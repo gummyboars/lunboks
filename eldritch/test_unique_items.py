@@ -455,7 +455,7 @@ class FluteTest(EventTest):
     self.assertIn(self.maniac, self.char.trophies)
     self.assertNotIn(pinata, self.char.trophies)
     self.assertNotIn(endless, self.char.trophies)
-    self.assertFalse(pinata.place)
+    self.assertIsNone(pinata.place)
     self.assertEqual(endless.place, self.state.monster_cup)
     self.assertNotIn(self.flute, self.char.possessions)
     self.assertIn(holy_water, self.char.possessions)
