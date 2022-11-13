@@ -216,6 +216,101 @@ class Mythos6(Environment):
     return None
 
 
+class Mythos7(Headline):
+  def __init__(self):
+    super().__init__("Mythos7", "Unnamable", "Woods", {"hex"}, {"slash", "triangle", "star"})
+    self.active_until = None
+
+  def create_event(self, state):
+    seq = super().create_event(state)
+    for char in state.characters:
+      if char.arrested_until is not None:
+        seq.events.append(events.ClearStatus(char, "arrested"))
+    seq.events.append(events.AddGlobalEffect(
+        self, source_deck="mythos", active_until=state.turn_number + 1
+    ))
+    return seq
+
+  def get_interrupt(self, event, state):
+    if isinstance(event, events.Arrested):
+      return events.CancelEvent(event)
+    return None
+
+  def get_trigger(self, event, state):
+    if (self.active_until is not None
+        and state.turn_number >= self.active_until
+            and isinstance(event, events.Mythos)):
+      return events.RemoveGlobalEffect(self, source_deck="mythos")
+    return None
+
+
+class Mythos8(Environment):
+  def __init__(self):
+    super().__init__(
+        "Mythos8", "Square", "Unnamable", {"square", "diamond"}, {"circle"}, "mystic", "Rivertown"
+    )
+
+  def get_trigger(self, event, state):
+    if isinstance(event, events.Movement) and event.character.place.name == self.activity_location:
+      dice = events.DiceRoll(event.character, values.Calculation(event.character, "stamina"))
+      loss = events.Loss(
+          event.character,
+          {"stamina": values.Calculation(
+              left=event.character, left_attr="stamina",
+              operand=operator.sub,
+              right=dice, right_attr="successes",
+          )}, source=self)
+      final = events.PassFail(
+          event.character,
+          values.Calculation(event.character, "stamina"),
+          events.Gain(event.character, {"clues": 3}),
+          events.Nothing()
+      )
+      yes_sequence = events.Sequence([dice, loss, final], event.character)
+      return events.BinaryChoice(
+          event.character,
+          "Delve into mysteries with your life force?",
+          "Yes", "No", yes_sequence, events.Nothing()
+      )
+    return None
+
+  def get_interrupt(self, event, state):
+    if (
+        isinstance(event, events.InsaneOrUnconscious)
+        and len(state.event_stack) > 1
+        and isinstance(state.event_stack[-2], events.GainOrLoss)
+        and state.event_stack[-2].source == self
+    ):
+      return events.Devoured(event.character)
+    return None
+
+
+class Mythos9(Environment):
+  def __init__(self):
+    super().__init__(
+        "Mythos9", "Cave", "Roadhouse", {"square", "diamond"}, {"circle"}, "mystic"
+    )
+
+  def get_modifier(self, thing, attribute):
+    if attribute == "luck":
+      return -1
+    if attribute == "sneak":
+      return 1
+    return 0
+
+
+class Mythos10(Headline):
+  def __init__(self):
+    super().__init__("Mythos10", "Isle", "Science", {"hex"}, {"slash", "triangle", "star"})
+
+  def create_event(self, state):
+    seq = super().create_event(state)
+    seq.events.append(events.CloseLocation("Store", for_turns=1))
+    seq.events.append(events.CloseLocation("Shop", for_turns=1))
+    seq.events.append(events.CloseLocation("Shoppe", for_turns=1))
+    return seq
+
+
 class Mythos11(Headline):
 
   def __init__(self):
@@ -225,6 +320,81 @@ class Mythos11(Headline):
     seq = super().create_event(state)
     seq.events.append(events.ReturnToCup(from_places={"Southside", "House", "Church", "Society"}))
     return seq
+
+
+class Mythos12(Headline):
+  def __init__(self):
+    super().__init__("Mythos12", "Square", "Unnamable", {"circle"}, {"square", "diamond"})
+
+  def create_event(self, state):
+    seq = super().create_event(state)
+    seq.events.append(events.ReturnToCup(
+        from_places={"University", "Library", "Administration", "Science"}
+    ))
+    return seq
+
+
+class Mythos13(Rumor):
+  def __init__(self):
+    super().__init__(
+        "Mythos13", "Cave", {"slash", "triangle", "star"}, {"hex"}, "Rivertown"
+    )
+
+  def should_fail(self, state):
+    return state.terror >= 10
+
+  def get_interrupt(self, event, state):
+    if not self.failed and isinstance(event, events.EncounterPhase):
+      return self.get_pass_interrupt(event, state)
+    return None
+
+  def get_pass_interrupt(self, event, state):
+    if event.character.place != state.places["Rivertown"]:
+      return None
+    seq = events.Sequence([
+        events.EndRumor(self, failed=False),
+    ] + [events.Draw(char, "spells", 1) for char in state.characters if not char.gone])
+    return events.BinarySpend(
+        event.character, "gates", 2, "Spend 2 gate trophies to end the rumor?",
+        "Yes", "No", seq
+    )
+
+  def get_trigger(self, event, state):
+    if isinstance(event, events.IncreaseTerror) and self.should_fail(state):
+      curses = [events.Curse(char) for char in state.characters if not char.gone]
+      return events.Sequence(curses + [events.EndRumor(self, failed=True)])
+    return super().get_trigger(event, state)
+
+  def progress_event(self, state):
+    first_player = state.characters[state.first_player]
+    dice1 = events.DiceRoll(first_player, 1)
+    prog1 = events.IncreaseTerror()
+    cond1 = events.Conditional(first_player, values.Die(dice1), "", {0: prog1, 3: events.Nothing()})
+    return events.Sequence([dice1, cond1])
+
+  def get_progress(self, state):
+    return state.terror
+
+  def max_progress(self, state):
+    return 10
+
+
+class Mythos14(Environment):
+  def __init__(self):
+    super().__init__(
+        "Mythos14", "Unnamable", "Woods", {"square", "diamond"}, {"circle"}, "urban", "Northside"
+    )
+
+  def get_trigger(self, event, state):
+    if isinstance(event, events.Movement) and event.character.place.name == "Northside":
+      clues = events.Gain(event.character, {"clues": 1})
+      check = events.Check(event.character, "will", -1)
+      loss = events.Loss(event.character, {"sanity": 1})
+      return events.Sequence(
+          [clues, events.PassFail(event.character, check, events.Nothing(), loss)],
+          event.character
+      )
+    return None
 
 
 class Mythos15(Environment):
@@ -360,6 +530,7 @@ class ShuffleMythos(MythosCard):
 
 def CreateMythos():
   return [
-      Mythos1(), Mythos2(), Mythos3(), Mythos4(), Mythos5(), Mythos6(), Mythos11(), Mythos15(),
+      Mythos1(), Mythos2(), Mythos3(), Mythos4(), Mythos5(), Mythos6(), Mythos7(), Mythos8(),
+      Mythos9(), Mythos10(), Mythos11(), Mythos12(), Mythos13(), Mythos14(), Mythos15(),
       Mythos27(), Mythos45(), Mythos59(), ShuffleMythos(),
   ]

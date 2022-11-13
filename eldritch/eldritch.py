@@ -26,7 +26,7 @@ random = SystemRandom()
 
 class GameState:
 
-  DEQUE_ATTRIBUTES = {"common", "unique", "spells", "skills", "allies", "gates"}
+  DEQUE_ATTRIBUTES = {"common", "unique", "spells", "skills", "allies", "boxed_allies", "gates"}
   HIDDEN_ATTRIBUTES = {
       "event_stack", "interrupt_stack", "trigger_stack", "log_stack", "mythos", "gate_cards",
   }
@@ -65,6 +65,7 @@ class GameState:
     self.spells = collections.deque()
     self.skills = collections.deque()
     self.allies = collections.deque()
+    self.boxed_allies = collections.deque()  # Church expansion
     self.tradables = []
     self.specials = []
     self.mythos = collections.deque()
@@ -93,6 +94,7 @@ class GameState:
     self.check_result = None
     self.dice_result = []
     self.test_mode = False
+    self.terror = 0
 
   def initialize_for_tests(self):
     self.places = places.CreatePlaces()
@@ -208,7 +210,8 @@ class GameState:
     return limit + self.get_modifier(self, "gate_limit")
 
   def monster_limit(self):
-    # TODO: return infinity when the terror track reaches 10
+    if self.terror >= 10:
+      return float("inf")
     limit = len(self.characters) + 3
     return limit + self.get_modifier(self, "monster_limit")
 
@@ -1098,6 +1101,8 @@ class GameState:
       for char in self.characters:  # TODO: is this the right place to check for this?
         if char.lose_turn_until and char.lose_turn_until <= self.turn_number:
           char.lose_turn_until = None
+        if char.arrested_until and char.arrested_until <= self.turn_number:
+          char.arrested_until = None
       self.event_stack.append(events.Upkeep(self.characters[self.turn_idx]))
       for place in self.places.values():
         if getattr(place, "closed_until", None) == self.turn_number:

@@ -127,6 +127,7 @@ class EventTest(unittest.TestCase):
 
   def advance_turn(self, target_turn, target_phase):
     self.state.mythos.extend([NoMythos()] * (target_turn - self.state.turn_number + 1))
+    # TODO: should actually add a number of NoMythos - current turn - existing cards in mythos deck
     while True:
       for _ in self.state.resolve_loop():
         if self.state.turn_number >= target_turn and self.state.turn_phase == target_phase:
@@ -1232,9 +1233,14 @@ class StatusChangeTest(EventTest):
     self.state.event_stack.append(arrest)
     self.resolve_until_done()
 
-    self.assertEqual(self.char.lose_turn_until, self.state.turn_number + 2)
+    self.assertEqual(self.char.arrested_until, self.state.turn_number + 2)
     self.assertEqual(self.char.dollars, 3)
     self.assertEqual(self.char.place.name, "Police")
+
+    turn_phase = Movement(self.char)
+    self.state.event_stack.append(turn_phase)
+    self.resolve_until_done()
+    self.assertTrue(turn_phase.cancelled)
 
 
 class DrawTest(EventTest):
@@ -3472,6 +3478,73 @@ class AddDoomTest(EventTest):
     self.state.event_stack.append(AddDoom())
     self.resolve_until_event_type(Awaken)
     self.assertEqual(self.state.ancient_one.doom, 10)
+
+
+class IncreaseTerrorTest(EventTest):
+  def setUp(self):
+    super().setUp()
+    self.state.allies.extend(assets.CreateAllies())
+
+  def testAddSingleTerror(self):
+    self.assertEqual(self.state.terror, 0)
+    n_allies = len(self.state.allies)
+    self.state.event_stack.append(events.IncreaseTerror(1))
+    self.resolve_until_done()
+    self.assertEqual(self.state.terror, 1)
+    self.assertEqual(len(self.state.allies), n_allies - 1)
+    self.assertEqual(len(self.state.boxed_allies), 1)
+    self.assertFalse(self.state.places["Store"].closed)
+
+  def testAddMultipleTerror(self):
+    self.assertEqual(self.state.terror, 0)
+    n_allies = len(self.state.allies)
+    self.state.event_stack.append(events.IncreaseTerror(3))
+    self.resolve_until_done()
+    self.assertEqual(self.state.terror, 3)
+    self.assertEqual(len(self.state.allies), n_allies - 3)
+    self.assertEqual(len(self.state.boxed_allies), 3)
+    self.assertTrue(self.state.places["Store"].closed)
+
+  def testAddToMaxedTrack(self):
+    self.state.terror = 2
+    n_allies = len(self.state.allies)
+    self.state.event_stack.append(events.Sequence([events.IncreaseTerror(1) for _ in range(10)]))
+    self.resolve_until_done()
+    self.assertEqual(self.state.terror, 10)
+    # For every point the terror level goes up, ...
+    self.assertEqual(len(self.state.allies), n_allies - 8)
+    self.assertEqual(len(self.state.boxed_allies), 8)
+    self.assertEqual(self.state.ancient_one.doom, 2)
+    self.assertGreater(self.state.monster_limit(), 100)
+    self.assertTrue(self.state.places["Store"].closed)
+    self.assertTrue(self.state.places["Shop"].closed)
+    self.assertTrue(self.state.places["Shoppe"].closed)
+
+
+class ClearStatusTest(EventTest):
+  def testClearDelayed(self):
+    self.state.event_stack.append(Delayed(self.char))
+    self.resolve_until_done()
+    self.assertEqual(self.char.delayed_until, self.state.turn_number + 2)
+    self.state.event_stack.append(ClearStatus(self.char, "delayed"))
+    self.resolve_until_done()
+    self.assertIsNone(self.char.delayed_until)
+
+  def testClearLoseTurn(self):
+    self.state.event_stack.append(LoseTurn(self.char))
+    self.resolve_until_done()
+    self.assertEqual(self.char.lose_turn_until, self.state.turn_number + 2)
+    self.state.event_stack.append(ClearStatus(self.char, "lose_turn"))
+    self.resolve_until_done()
+    self.assertIsNone(self.char.lose_turn_until)
+
+  def testClearArrested(self):
+    self.state.event_stack.append(Arrested(self.char))
+    self.resolve_until_done()
+    self.assertEqual(self.char.arrested_until, self.state.turn_number + 2)
+    self.state.event_stack.append(ClearStatus(self.char, "arrested"))
+    self.resolve_until_done()
+    self.assertIsNone(self.char.arrested_until)
 
 
 if __name__ == "__main__":

@@ -17,6 +17,7 @@ from eldritch import items
 from eldritch import monsters
 from eldritch.mythos import *
 from eldritch import places
+from eldritch import assets
 from eldritch.test_events import EventTest, Canceller
 
 from game import InvalidMove, InvalidInput
@@ -1395,7 +1396,7 @@ class EnvironmentTests(EventTest):
       self.resolve_until_done()
       self.assertGreater(rand.call_count, 0)
     self.assertEqual(self.char.place.name, "Easttown")
-    self.assertIsNone(self.char.lose_turn_until)
+    self.assertIsNone(self.char.arrested_until)
 
   def testMythos15Fail(self):
     self.state.environment = Mythos15()
@@ -1409,7 +1410,7 @@ class EnvironmentTests(EventTest):
       self.resolve_until_done()
       self.assertGreater(rand.call_count, 0)
     self.assertEqual(self.char.place.name, "Police")
-    self.assertTrue(self.char.lose_turn_until)
+    self.assertTrue(self.char.arrested_until)
 
   def testMythos15NotInStreet(self):
     self.state.environment = Mythos15()
@@ -1421,7 +1422,7 @@ class EnvironmentTests(EventTest):
       self.resolve_until_done()
       self.assertEqual(rand.call_count, 0)
     self.assertEqual(self.char.place.name, "Diner")
-    self.assertIsNone(self.char.lose_turn_until)
+    self.assertIsNone(self.char.arrested_until)
 
   def testMythos15IgnoresDeputy(self):
     self.state.environment = Mythos15()
@@ -1436,7 +1437,7 @@ class EnvironmentTests(EventTest):
       self.resolve_until_done()
       self.assertEqual(rand.call_count, 0)
     self.assertEqual(self.char.place.name, "Easttown")
-    self.assertIsNone(self.char.lose_turn_until)
+    self.assertIsNone(self.char.arrested_until)
 
 
 class DrawMythosTest(EventTest):
@@ -1462,6 +1463,7 @@ class RumorTest(EventTest):
     super().setUp()
     self.state.turn_number = 0
     self.state.turn_phase = "mythos"
+    self.state.spells.extend(items.CreateSpells())
     self.char.place = self.state.places["Uptown"]
     self.state.monsters.clear()
     # Replace all monsters with stationary monsters so that none move during the mythos phase.
@@ -1469,6 +1471,103 @@ class RumorTest(EventTest):
     for idx, monster in enumerate(self.state.monsters):
       monster.idx = idx
       monster.place = self.state.monster_cup
+
+  def testActivateRumor13(self):
+    self.state.mythos.append(Mythos13())
+    self.state.event_stack.append(Mythos(self.char))
+    self.resolve_until_done()
+    self.assertTrue(self.state.rumor)
+    self.assertEqual(self.state.rumor.name, "Mythos13")
+    self.assertFalse(self.state.rumor.failed)
+    self.assertNotIn(self.state.rumor, self.state.mythos)
+
+  def testRumor13Progress(self):
+    self.state.allies.extend(assets.CreateAllies()[:7])
+    self.state.event_stack.append(IncreaseTerror(6))
+    self.resolve_until_done()
+    self.state.mythos.append(Mythos13())
+    self.state.event_stack.append(Mythos(self.char))
+    self.resolve_until_done()
+    self.assertEqual(self.state.rumor.name, "Mythos13")
+    self.assertEqual(self.state.terror, 6)
+    self.assertEqual(len(self.state.boxed_allies), 6)
+
+    self.advance_turn(self.state.turn_number+1, "mythos")
+    self.assertTrue(self.state.event_stack)
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=[3])):
+      self.resolve_until_done()
+    self.assertEqual(self.state.rumor.name, "Mythos13")
+    self.assertEqual(self.state.terror, 6)
+    self.assertEqual(len(self.state.allies), 1)
+    self.assertEqual(len(self.state.boxed_allies), 6)
+    self.assertFalse(self.state.rumor.failed)
+
+    self.advance_turn(self.state.turn_number+1, "mythos")
+    self.assertTrue(self.state.event_stack)
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=[1])):
+      self.resolve_until_done()
+    self.assertEqual(self.state.rumor.name, "Mythos13")
+    self.assertEqual(self.state.terror, 7)
+    self.assertFalse(self.state.rumor.failed)
+    self.assertEqual(len(self.state.boxed_allies), 7)
+    self.assertFalse(self.state.allies)
+
+    self.advance_turn(self.state.turn_number+1, "mythos")
+    self.assertTrue(self.state.event_stack)
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=[3])):
+      self.resolve_until_done()
+    self.assertEqual(self.state.rumor.name, "Mythos13")
+    self.assertEqual(self.state.terror, 7)
+    self.assertFalse(self.state.rumor.failed)
+
+    self.advance_turn(self.state.turn_number+1, "mythos")
+    self.assertTrue(self.state.event_stack)
+    self.assertFalse(self.state.allies)
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=[1])):
+      self.resolve_until_done()
+    self.assertEqual(self.state.rumor.name, "Mythos13")
+    self.assertEqual(self.state.terror, 8)
+    self.assertFalse(self.state.rumor.failed)
+    self.assertEqual(len(self.state.boxed_allies), 7)
+    self.assertFalse(self.state.allies)
+
+  def testFailRumor13(self):
+    rumor = Mythos13()
+    self.state.mythos.append(rumor)
+    self.state.event_stack.append(Mythos(self.char))
+    self.resolve_until_done()
+    self.assertEqual(self.state.rumor.name, "Mythos13")
+    self.state.event_stack.append(IncreaseTerror(9))
+    self.resolve_until_done()
+
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=[1])):
+      # This turn starts the rumor, so you have to advance past the next mythos phase.
+      self.advance_turn(self.state.turn_number+2, "upkeep")
+    self.assertIsNone(self.state.rumor)
+    self.assertTrue(rumor.failed)
+    self.assertNotIn(rumor, self.state.other_globals)
+    self.assertNotIn(rumor, self.state.mythos)
+
+    self.assertEqual(self.char.bless_curse, -1)
+
+  def testEndRumor13Choice(self):
+    rumor = Mythos13()
+    self.state.rumor = rumor
+    self.state.turn_number = 1
+    self.state.turn_phase = "encounter"
+    self.char.place = self.state.places["Rivertown"]
+    self.char.trophies.append(self.state.gates.pop())
+    self.char.trophies.append(self.state.gates.pop())
+    self.char.trophies.append(self.state.gates.pop())
+    self.state.event_stack.append(EncounterPhase(self.char))
+    choice = self.resolve_to_choice(SpendChoice)
+    self.toggle_spend(0, self.char.trophies[0].handle, choice)
+    self.toggle_spend(0, self.char.trophies[1].handle, choice)
+    choice.resolve(self.state, "Yes")
+    self.resolve_until_done()
+    self.assertEqual(len([p for p in self.char.possessions if isinstance(p, items.Spell)]), 1)
+    self.assertIsNone(self.state.rumor)
+    self.assertEqual(self.char.bless_curse, 0)
 
   def testActivateRumor27(self):
     self.state.mythos.append(Mythos27())
@@ -1707,6 +1806,160 @@ class RumorTest(EventTest):
     self.assertEqual(self.state.mythos[-1].progress, 0)
     cultist = monsters.Cultist()
     self.assertEqual(cultist.toughness(self.state, self.char), 1)
+
+
+class Mythos7Test(EventTest):
+  def setUp(self):
+    super().setUp()
+    self.state.turn_number = 0
+    self.state.turn_phase = "mythos"
+    self.mythos7 = None
+
+  def drawMythos7(self):
+    self.mythos7 = Mythos7()
+    self.state.mythos.append(self.mythos7)
+    self.state.event_stack.append(Mythos(self.char))
+    self.resolve_until_done()
+    self.assertIn(self.mythos7, self.state.other_globals)
+    self.assertNotIn(self.mythos7, self.state.mythos)
+
+  def testArrestedCharsReleased(self):
+    self.state.event_stack.append(Arrested(self.char))
+    self.resolve_until_done()
+    self.assertEqual(self.char.place.name, "Police")
+    self.assertEqual(self.char.arrested_until, 2)
+
+    self.drawMythos7()
+
+    self.assertIsNone(self.char.arrested_until)
+
+  def testUnarrestedCharsUnaffected(self):
+    self.char.place = self.state.places["Police"]
+    self.state.event_stack.append(LoseTurn(self.char))
+    self.resolve_until_done()
+    self.assertEqual(self.char.lose_turn_until, 2)
+
+    self.drawMythos7()
+
+    self.assertEqual(self.char.lose_turn_until, 2)
+
+  def testCantBeArrested(self):
+    self.drawMythos7()
+    place = self.char.place
+    self.state.event_stack.append(Arrested(self.char))
+    self.resolve_until_done()
+    self.assertIsNone(self.char.arrested_until)
+    self.assertEqual(self.char.place, place)
+
+  def testCanBeArrestedLater(self):
+    self.char.place = self.state.places["Rivertown"]
+    self.drawMythos7()
+    self.state.mythos.insert(0, Mythos15())
+    self.advance_turn(self.state.turn_number + 2, "movement")
+    self.assertNotIn(self.mythos7, self.state.other_globals)
+    self.assertIn(self.mythos7, self.state.mythos)
+    choice = self.resolve_to_choice(events.CityMovement)
+    choice.resolve(self.state, "done")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=2)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.place.name, "Police")
+    self.assertEqual(self.char.arrested_until, self.state.turn_number+2)
+
+
+class Mythos8Test(EventTest):
+  def setUp(self):
+    super().setUp()
+    self.state.turn_number = 0
+    self.state.turn_phase = "mythos"
+    self.mythos8 = Mythos8()
+    self.state.mythos.append(self.mythos8)
+    self.state.event_stack.append(Mythos(self.char))
+    self.resolve_until_done()
+    self.assertEqual(self.mythos8, self.state.environment)
+    self.assertNotIn(self.mythos8, self.state.mythos)
+    self.char.place = self.state.places["Rivertown"]
+    self.advance_turn(self.state.turn_number, "movement")
+    self.movement = self.resolve_to_choice(CityMovement)
+
+  def testUseAliveLucky(self):
+    self.assertEqual(self.char.place.name, self.mythos8.activity_location)
+    self.movement.resolve(self.state, "done")
+    m8_choice = self.resolve_to_choice(MultipleChoice)
+    m8_choice.resolve(self.state, "Yes")
+    rolls = [5, 5, 5, 1, 1]
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=rolls)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.stamina, 3)
+    self.assertEqual(self.char.clues, 3)
+
+  def testUseAlive(self):
+    self.assertEqual(self.char.place.name, self.mythos8.activity_location)
+    self.movement.resolve(self.state, "done")
+    m8_choice = self.resolve_to_choice(MultipleChoice)
+    m8_choice.resolve(self.state, "Yes")
+    rolls = [5, 1, 1, 1, 1]
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=rolls)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.stamina, 1)
+    self.assertEqual(self.char.clues, 3)
+
+  def testUseDevoured(self):
+    self.assertEqual(self.char.place.name, self.mythos8.activity_location)
+    self.movement.resolve(self.state, "done")
+    m8_choice = self.resolve_to_choice(MultipleChoice)
+    m8_choice.resolve(self.state, "Yes")
+    rolls = [1, 1, 1, 1, 1]
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=rolls)):
+      self.resolve_until_done()
+    self.assertTrue(self.char.gone)
+
+  def testCantUseIfNotInRivertown(self):
+    self.movement.resolve(self.state, "Uptown")
+    end_turn = self.resolve_to_choice(CityMovement)
+    end_turn.resolve(self.state, "done")
+
+
+class Mythos14Test(EventTest):
+  def setUp(self):
+    super().setUp()
+    self.state.turn_number = 0
+    self.state.turn_phase = "mythos"
+    self.mythos14 = Mythos14()
+    self.state.mythos.append(self.mythos14)
+    self.state.event_stack.append(Mythos(self.char))
+    self.resolve_until_done()
+    self.assertEqual(self.mythos14, self.state.environment)
+    self.assertNotIn(self.mythos14, self.state.mythos)
+    self.char.place = self.state.places["Northside"]
+    self.advance_turn(self.state.turn_number, "movement")
+    self.movement = self.resolve_to_choice(CityMovement)
+
+  def testInsane(self):
+    self.char.sanity = 1
+    self.char.clues = 1
+    self.movement.resolve(self.state, "done")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=1)):
+      clues = self.resolve_to_choice(SpendChoice)
+      self.assertEqual(self.char.clues, 2)
+      clues.resolve(self.state, "Done")
+      loss = self.resolve_to_choice(ItemLossChoice)
+    loss.resolve(self.state, "done")
+    self.resolve_until_done()
+    self.assertEqual(self.char.sanity, 1)
+    self.assertEqual(self.char.clues, 1)
+    self.assertEqual(self.char.place.name, "Asylum")
+
+  def testNormal(self):
+    self.char.sanity = 1
+    self.char.fight_will_slider = 2
+    self.assertEqual(self.char.clues, 0)
+    self.movement.resolve(self.state, "done")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      clues = self.resolve_to_choice(SpendChoice)
+      clues.resolve(self.state, "Done")
+      self.resolve_until_done()
+    self.assertEqual(self.char.place.name, "Northside")
+    self.assertEqual(self.char.clues, 1)
 
 
 class MythosPhaseTest(EventTest):
