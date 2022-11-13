@@ -81,7 +81,12 @@ class EventTest(unittest.TestCase):
 
   def resolve_until_done(self):
     self.resolve_loop()
-    self.assertFalse(self.state.event_stack)
+    not_finished = {}
+    if self.state.usables:
+      not_finished["usables"] = self.state.usables
+    if self.state.event_stack:
+      not_finished["stack"] = self.state.event_stack
+    self.assertFalse(not_finished)
 
   def resolve_to_choice(self, event_class):
     self.resolve_loop()

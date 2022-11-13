@@ -1,3 +1,5 @@
+import operator
+
 from eldritch import events
 from eldritch import monsters
 from eldritch import places
@@ -208,10 +210,7 @@ class FleshWard(Spell):
     ):
       return None
     stam_loss = event.losses["stamina"]
-    if (
-        (isinstance(stam_loss, values.Value) and stam_loss.value(state) == 0)
-        or (isinstance(stam_loss, (int, float)) and stam_loss == 0)
-    ):
+    if values.Calculation(left=stam_loss, operand=operator.le, right=0).value(state):
       return None
     self.loss = event
     return events.CastSpell(owner, self)
@@ -225,7 +224,7 @@ class Heal(Spell):
     super().__init__("Heal", idx, {}, 0, 1, 1)
 
   def get_usable_interrupt(self, event, owner, state):
-    if not self.exhausted and isinstance(event, events.UpkeepActions):
+    if not self.exhausted and isinstance(event, events.UpkeepActions) and event.character == owner:
       return events.CastSpell(owner, self)
     return None
 
@@ -248,7 +247,7 @@ class Mists(Spell):
     if event.is_done() or self.exhausted or getattr(event, "character", None) != owner:
       return None
     # TODO: be able to cast Mists on an EvadeCheck
-    if isinstance(event, events.EvadeRound):
+    if isinstance(event, events.EvadeRound) and not event.check:
       self.difficulty = event.monster.difficulty("evade", state, owner)
       self.evade = event
       return events.CastSpell(owner, self)
