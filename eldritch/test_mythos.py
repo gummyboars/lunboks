@@ -1936,25 +1936,30 @@ class Mythos14Test(EventTest):
 
   def testInsane(self):
     self.char.sanity = 1
+    self.char.clues = 1
     self.movement.resolve(self.state, "done")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=1)):
       clues = self.resolve_to_choice(SpendChoice)
+      self.assertEqual(self.char.clues, 2)
       clues.resolve(self.state, "Done")
       loss = self.resolve_to_choice(ItemLossChoice)
     loss.resolve(self.state, "done")
     self.resolve_until_done()
     self.assertEqual(self.char.sanity, 1)
+    self.assertEqual(self.char.clues, 1)
     self.assertEqual(self.char.place.name, "Asylum")
 
   def testNormal(self):
     self.char.sanity = 1
     self.char.fight_will_slider = 2
+    self.assertEqual(self.char.clues, 0)
     self.movement.resolve(self.state, "done")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       clues = self.resolve_to_choice(SpendChoice)
       clues.resolve(self.state, "Done")
       self.resolve_until_done()
     self.assertEqual(self.char.place.name, "Northside")
+    self.assertEqual(self.char.clues, 1)
 
 
 class MythosPhaseTest(EventTest):
