@@ -4369,7 +4369,6 @@ class MonsterSpawnChoice(ChoiceEvent):
     self.spawn_count = None
     self.outskirts_count = None
     self.num_clears = None
-    self.terror_increased = None
     self.character = None
     self.to_spawn = None
 
@@ -4474,10 +4473,6 @@ class MonsterSpawnChoice(ChoiceEvent):
     for location_name, monster_indexes in choice.items():
       for monster_idx in monster_indexes:
         state.monsters[monster_idx].place = state.places[location_name]
-    if self.num_clears > 0 and not self.terror_increased:
-      self.terror_increased = IncreaseTerror(self.num_clears)
-      state.event_stack.append(self.terror_increased)
-      return
     self.spawned = True
 
   def is_resolved(self):
