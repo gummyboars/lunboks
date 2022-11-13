@@ -680,6 +680,11 @@ class GameState:
     if isinstance(event, self.MONSTER_EVENTS) and isinstance(event.monster, monsters.Monster):
       monster_trigger = event.monster.get_trigger(event, self)
       triggers.extend([monster_trigger] if monster_trigger else [])
+
+    # Clearing the outskirts increases the terror level.
+    if isinstance(event, events.MonsterSpawnChoice) and event.num_clears > 0:
+      triggers.append(events.IncreaseTerror(event.num_clears))
+
     return triggers
 
   def get_usable_triggers(self, event):
