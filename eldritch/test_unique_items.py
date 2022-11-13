@@ -509,7 +509,7 @@ class GateBoxTest(EventTest):
     self.state.next_turn()
     # Nun has no one to trade with, so automatically uses the gate box
     nun_choice = self.resolve_to_choice(events.GateChoice)
-    self.assertRegex(nun_choice.prompt, "any open gate")
+    self.assertRegex(nun_choice.prompt(), "any open gate")
     self.assertEqual(nun_choice.character, nun)
     self.assertSequenceEqual(nun_choice.choices, ["Diner", "Woods"])
 
