@@ -17,6 +17,7 @@ from eldritch import items
 from eldritch import monsters
 from eldritch.mythos import *
 from eldritch import places
+from eldritch import assets
 from eldritch.test_events import EventTest, Canceller
 
 from game import InvalidMove, InvalidInput
@@ -1481,6 +1482,7 @@ class RumorTest(EventTest):
     self.assertNotIn(self.state.rumor, self.state.mythos)
 
   def testRumor13Progress(self):
+    self.state.allies.extend(assets.CreateAllies()[:7])
     self.state.event_stack.append(IncreaseTerror(6))
     self.resolve_until_done()
     self.state.mythos.append(Mythos13())
@@ -1488,6 +1490,7 @@ class RumorTest(EventTest):
     self.resolve_until_done()
     self.assertEqual(self.state.rumor.name, "Mythos13")
     self.assertEqual(self.state.terror, 6)
+    self.assertEqual(len(self.state.boxed_allies), 6)
 
     self.advance_turn(self.state.turn_number+1, "mythos")
     self.assertTrue(self.state.event_stack)
@@ -1504,6 +1507,8 @@ class RumorTest(EventTest):
     self.assertEqual(self.state.rumor.name, "Mythos13")
     self.assertEqual(self.state.terror, 7)
     self.assertFalse(self.state.rumor.failed)
+    self.assertEqual(len(self.state.boxed_allies), 7)
+    self.assertFalse(self.state.allies)
 
     self.advance_turn(self.state.turn_number+1, "mythos")
     self.assertTrue(self.state.event_stack)
@@ -1512,6 +1517,17 @@ class RumorTest(EventTest):
     self.assertEqual(self.state.rumor.name, "Mythos13")
     self.assertEqual(self.state.terror, 7)
     self.assertFalse(self.state.rumor.failed)
+
+    self.advance_turn(self.state.turn_number+1, "mythos")
+    self.assertTrue(self.state.event_stack)
+    self.assertFalse(self.state.allies)
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=[1])):
+      self.resolve_until_done()
+    self.assertEqual(self.state.rumor.name, "Mythos13")
+    self.assertEqual(self.state.terror, 8)
+    self.assertFalse(self.state.rumor.failed)
+    self.assertEqual(len(self.state.boxed_allies), 7)
+    self.assertFalse(self.state.allies)
 
   def testFailRumor13(self):
     rumor = Mythos13()
@@ -1817,6 +1833,7 @@ class Mythos7Test(EventTest):
     self.assertIsNone(self.char.arrested_until)
 
   def testUnarrestedCharsUnaffected(self):
+    self.char.place = self.state.places["Police"]
     self.state.event_stack.append(LoseTurn(self.char))
     self.resolve_until_done()
     self.assertEqual(self.char.lose_turn_until, 2)
