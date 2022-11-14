@@ -719,5 +719,8 @@ def CreateMythos():
   return [
       Mythos1(), Mythos2(), Mythos3(), Mythos4(), Mythos5(), Mythos6(), Mythos7(), Mythos8(),
       Mythos9(), Mythos10(), Mythos11(), Mythos12(), Mythos13(), Mythos14(), Mythos15(),
-      Mythos27(), Mythos45(), Mythos59(), ShuffleMythos(),
+      Mythos16(), Mythos17(), Mythos18(), Mythos19(), Mythos20(), Mythos21(), Mythos22(),
+      Mythos23(), Mythos24(), Mythos25(), Mythos26(), Mythos27(), Mythos28(), Mythos29(),
+      Mythos30(),
+      Mythos45(), Mythos59(), ShuffleMythos(),
   ]
