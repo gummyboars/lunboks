@@ -276,6 +276,6 @@ def CreateSpecials():
   abilities = [
       FluxStabilizer(), Studious(), ShrewdDealer(), HometownAdvantage(), MagicalGift(),
       PsychicSensitivity(), Archaeology(), StrongMind(), StrongBody(), TrustFund(), Hunches(),
-      Physician(), Research(),
+      Physician(), Psychology(), Research(),
   ]
   return {ability.name: ability for ability in abilities}
