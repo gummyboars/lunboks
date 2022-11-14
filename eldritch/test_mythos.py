@@ -18,6 +18,9 @@ from eldritch import monsters
 from eldritch.mythos import *
 from eldritch import places
 from eldritch import assets
+from eldritch import abilities
+from eldritch import encounters
+from eldritch import location_specials
 from eldritch.test_events import EventTest, Canceller
 
 from game import InvalidMove, InvalidInput
@@ -2053,6 +2056,93 @@ class Mythos14Test(EventTest):
       self.resolve_until_done()
     self.assertEqual(self.char.place.name, "Northside")
     self.assertEqual(self.char.clues, 1)
+
+
+class Mythos18Test(EventTest):
+  def setUp(self):
+    super().setUp()
+    self.mythos = Mythos18()
+    self.state.mythos.append(self.mythos)
+    self.state.event_stack.append(Mythos(self.char))
+    self.resolve_until_done()
+    self.char.sanity = 2
+
+    specials = location_specials.CreateFixedEncounters()
+    for location_name, fixed_encounters in specials.items():
+      self.state.places[location_name].fixed_encounters.extend(fixed_encounters)
+    self.state.places["Downtown"].encounters.extend(
+        encounters.CreateEncounterCards()["Downtown"]
+    )
+
+  def testCanGainFromPsychology(self):
+    self.char.possessions.append(abilities.Psychology())
+    self.advance_turn(0, "upkeep")
+    self.state.event_stack.append(UpkeepActions(self.char))
+    psych = self.resolve_to_usable(0, "Psychology")
+    self.state.event_stack.append(psych)
+    char_choice = self.resolve_to_choice(MultipleChoice)
+    char_choice.resolve(self.state, "Dummy")
+    self.resolve_until_done()
+    self.assertEqual(self.char.sanity, 3)
+
+  def testCanGainAtAsylum(self):
+    self.char.dollars = 2
+    self.char.place = self.state.places["Asylum"]
+    self.advance_turn(0, "encounter")
+    choice = self.resolve_to_choice(CardSpendChoice)
+    choice.resolve(self.state, "Restore 1 Sanity")
+    self.resolve_until_done()
+    self.assertEqual(self.char.sanity, 3)
+    self.advance_turn(1, "encounter")
+    choice = self.resolve_to_choice(CardSpendChoice)
+    self.assertEqual(choice.choices, ["Downtown Card", "Restore 1 Sanity", "Restore All Sanity"])
+    choice.spend("dollars")
+    choice.spend("dollars")
+    choice = self.resolve_to_choice(CardSpendChoice)
+    choice.resolve(self.state, "Restore All Sanity")
+    self.resolve_until_done()
+    self.assertEqual(self.char.sanity, 5)
+
+  def testCantGainFromOthers(self):
+    self.char.possessions.append(items.HealingStone(0))
+    self.advance_turn(0, "upkeep")
+    self.state.event_stack.append(UpkeepActions(self.char))
+    stone = self.resolve_to_usable(0, "Healing Stone0")
+    self.state.event_stack.append(stone)
+    self.resolve_until_done()
+    self.assertEqual(self.char.sanity, 2)
+    self.state.event_stack.append(Gain(self.char, {"sanity": 3}))
+    self.resolve_until_done()
+    self.assertEqual(self.char.sanity, 2)
+
+
+class Mythos22Test(EventTest):
+  def setUp(self):
+    super().setUp()
+    self.tentacle_trees = [monsters.TentacleTree() for _ in range(3)]
+    self.state.monsters.extend(self.tentacle_trees)
+    # But not in the cup so they can't be drawn
+    self.mythos = Mythos22()
+
+  def drawMythos(self):
+    self.state.mythos.append(self.mythos)
+    self.state.event_stack.append(Mythos(self.char))
+    self.resolve_until_done()
+
+  def testNoMonstersReturned(self):
+    self.drawMythos()
+    self.assertEqual(self.state.terror, 0)
+
+  def testOneMonsterReturned(self):
+    self.tentacle_trees[0].place = self.state.places["Square"]
+    self.drawMythos()
+    self.assertEqual(self.state.terror, 1)
+
+  def testTwoMonsterReturned(self):
+    self.tentacle_trees[0].place = self.state.places["Square"]
+    self.tentacle_trees[1].place = self.state.places["Woods"]
+    self.drawMythos()
+    self.assertEqual(self.state.terror, 1)
 
 
 class MythosPhaseTest(EventTest):

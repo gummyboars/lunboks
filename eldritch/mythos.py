@@ -412,6 +412,155 @@ class Mythos15(Environment):
     return None
 
 
+class Mythos16(Environment):
+  def __init__(self):
+    super().__init__(
+        "Mythos16", "WitchHouse", "Cave",
+        {"square", "diamond"}, {"circle"},
+        "urban", activity_location="Uptown"
+    )
+
+  def get_trigger(self, event, state):
+    if not isinstance(event, events.Movement):
+      return None
+    if event.character.place.name != self.activity_location:
+      return None
+    return events.Purchase(event.character, "unique", draw_count=2, keep_count=2)
+
+
+class Mythos17(Environment):
+  def __init__(self):
+    super().__init__(
+        "Mythos17", "WitchHouse", "Cave",
+        {"plus"}, {"moon"},
+        "urban", activity_location="University"
+    )
+
+  def get_trigger(self, event, state):
+    if not isinstance(event, events.Movement):
+      return None
+    if event.character.place.name != self.activity_location:
+      return None
+    check = events.Check(event.character, "lore", -1)
+    gain = events.Gain(event.character, {"clues": 1})
+    return events.PassFail(event.character, check, gain, events.Nothing)
+
+
+class Mythos18(Environment):
+  def __init__(self):
+    super().__init__("Mythos18", "Square", "Unnamable", {"plus"}, {"moon"}, "mystic")
+
+  def get_interrupt(self, event, state):
+    if (
+        isinstance(event, events.GainOrLoss)
+        and values.Calculation(event.gains["sanity"], operand=values.operator.gt, right=0).value(
+            state)
+        and (event.source is None or event.source.name not in ("Psychology", "Asylum"))
+    ):
+      return events.GainPrevention(self, event, "sanity", event.gains["sanity"])
+    return None
+
+
+class Mythos19(Headline):
+  def __init__(self):
+    super().__init__("Mythos19", "WitchHouse", "Cave", {"moon"}, {"plus"}, activity_location="Cave")
+    self.active_until = None
+
+  def create_event(self, state):
+    seq = super().create_event(state)
+    seq.events.extend([
+        events.CloseLocation("Merchant", for_turns=1, evict=False),
+        events.AddGlobalEffect(self, active_until=state.turn_number + 1, source_deck="mythos")
+    ])
+    return seq
+
+  def get_trigger(self, event, state):
+    if (
+        isinstance(event, events.Mythos)
+            and self.active_until is not None
+            and state.turn_number >= self.active_until):
+      return events.RemoveGlobalEffect(self, source_deck="mythos")
+    return None
+
+
+class Mythos20(Headline):
+  def __init__(self):
+    super().__init__("Mythos20", "Cave", "Roadhouse", {"moon"}, {"plus"})
+
+  def create_event(self, state):
+    seq = super().create_event(state)
+    seq.events.append(events.ReturnToCup(from_places=[
+        p.name for p in state.places if isinstance(p, places.Street)
+    ]))
+
+
+class Mythos21(Headline):
+  def __init__(self):
+    super().__init__("Mythos21", "Graveyard", "Isle", {"moon"}, {"plus"})
+
+  def create_event(self, state):
+    seq = super().create_event(state)
+    seq.events.append(events.IncreaseTerror())
+    return seq
+
+
+class Mythos22(Headline):
+  def __init__(self):
+    super().__init__("Mythos22", "Square", "Unnamable", {"hex"}, {"slash", "triangle", "star"})
+
+  def create_event(self, state):
+    seq = super().create_event(state)
+    cup_return = events.ReturnToCup(names=["Tentacle Tree"])
+    terrorize = events.Conditional(
+        None, cup_return, "returned", {0: events.Nothing(), 1: events.IncreaseTerror()}
+    )
+    seq.events.extend([cup_return, terrorize])
+    return seq
+
+
+class Mythos23(Headline):
+  def __init__(self):
+    super().__init__("Mythos23", "Unnamable", "Woods", {"moon"}, {"plus"})
+
+  def create_event(self, state):
+    seq = super().create_event(state)
+    seq.events.append(events.ReleaseMonstersToLocation("Merchant"))
+    return seq
+
+
+class Mythos24(Headline):
+  def __init__(self):
+    super().__init__("Mythos24", "WitchHouse", "Cave", {"circle"}, {"square", "diamond"})
+
+  def create_event(self, state):
+    seq = super().create_event(state)
+    seq.events.append(events.ReturnToCup(from_places=["Easttown", "Roadhouse", "Diner", "Police"]))
+
+
+class Mythos25(Environment):
+  def __init__(self):
+    super().__init__("Mythos25", "Woods", "Square", {"square", "diamond"}, {"circle"}, "weather")
+
+  def get_modifier(self, thing, attribute):
+    if attribute == "fight":
+      return -1
+    if attribute == "lore":
+      return 1
+    if thing.name == "Flame Matrix" and attribute == "toughness":
+      return 1
+    return 0
+
+
+class Mythos26(Environment):
+  def __init__(self):
+    super().__init__("Mythos26", "Woods", "Society", {"square", "diamond"}, {"circle"}, "urban")
+
+  def get_interrupt(self, event, state):
+    if isinstance(event, events.IncreaseTerror):
+      return events.CancelEvent(event)
+    return None
+
+
 class Mythos27(Rumor):
 
   def __init__(self):
@@ -454,6 +603,44 @@ class Mythos27(Rumor):
       draws = [events.Draw(char, "unique", 1) for char in state.characters if not char.gone]
       return events.Sequence([events.EndRumor(self, failed=False)] + draws)
     return super().get_trigger(event, state)
+
+
+class Mythos28(Headline):
+  def __init__(self):
+    super().__init__("Mythos28", "Graveyard", "Isle", {"hex"}, {"slash", "triangle", "star"})
+
+  def create_event(self, state):
+    first_player = state.characters[state.first_player]
+    seq = super().create_event(state)
+    check = events.Check(first_player, "luck", -1)
+    pass_fail = events.PassFail(first_player, check, events.Nothing(), events.Curse(first_player))
+    seq.events.extend([check, pass_fail])
+    return seq
+
+
+class Mythos29(Environment):
+  def __init__(self):
+    super().__init__("Mythos30", "Society", "Lodge", {"plus"}, {"moon"}, "weather")
+
+  def get_override(self, thing, attribute):
+    if isinstance(thing, monsters.Monster) and attribute == "fast":
+      return "normal"
+    return None
+
+  def get_interrupt(self, event, state):
+    if isinstance(event, events.Movement):
+      return events.ChangeMovementPoints(event.character, -1)
+    return None
+
+
+class Mythos30(Headline):
+  def __init__(self):
+    super().__init__("Mythos30", "Society", "Lodge", {"moon"}, {"plus"})
+
+  def create_event(self, state):
+    seq = super().create_event(state)
+    seq.events.append(events.ReleaseMonstersToLocation("University"))
+    return seq
 
 
 class Mythos45(Environment):

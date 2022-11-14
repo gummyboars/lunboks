@@ -314,7 +314,7 @@ class Psychologist(Character):
     super().__init__("Psychologist", 4, 6, 3, 3, 4, 4, 5, 5, 2, "Asylum")
 
   def abilities(self):
-    return []  # TODO: Psychology
+    return ["Psychology"]
 
   def initial_attributes(self):
     return {"dollars": 7, "clues": 1}
