@@ -554,6 +554,47 @@ class MonsterSurgeTest(EventTest):
     self.assertEqual(counts["cup"], 7)
     self.assertEqual(self.state.terror, 2)
 
+  def testMonsterSurgeOnScientist(self):
+    self.state.characters.append(characters.Scientist())
+    self.state.all_characters["Scientist"] = self.state.characters[-1]
+    self.state.characters[-1].place = self.state.places["Woods"]
+
+    self.state.event_stack.append(OpenGate("Woods"))
+    self.resolve_until_done()  # Surge is prevented completely.
+    counts = self.monstersByPlace()
+    self.assertEqual(counts["Outskirts"], 0)
+    self.assertEqual(counts["WitchHouse"], 0)
+    self.assertEqual(counts["Woods"], 0)
+    self.assertEqual(counts["cup"], 7)
+    self.assertEqual(self.state.terror, 0)
+
+  def testMonsterSurgeWithScientistOnGate(self):
+    self.state.characters.append(characters.Scientist())
+    self.state.all_characters["Scientist"] = self.state.characters[-1]
+    self.state.characters[-1].place = self.state.places["Square"]
+
+    self.state.places["Square"].gate = gates.Gate("Pluto", 0, -2, "circle")
+    self.state.places["Society"].gate = gates.Gate("Pluto", 1, -2, "circle")
+
+    self.state.event_stack.append(OpenGate("Woods"))
+    surge = self.resolve_to_choice(MonsterSpawnChoice)
+    self.assertEqual(len(surge.to_spawn), 3)  # Number of gates
+    self.assertEqual(surge.spawn_count, 3)
+    self.assertEqual(surge.outskirts_count, 0)
+    self.assertEqual(surge.min_count, 1)
+    self.assertEqual(surge.max_count, 2)
+    self.assertEqual(surge.num_clears, 0)
+    surge.to_spawn = [1, 2, 3]
+
+    surge.resolve(self.state, {"Woods": [1, 2], "Society": [3]})
+    self.resolve_until_done()
+    counts = self.monstersByPlace()
+    self.assertEqual(counts["Outskirts"], 0)
+    self.assertEqual(counts["Society"], 1)
+    self.assertEqual(counts["Woods"], 2)
+    self.assertEqual(counts["cup"], 4)
+    self.assertEqual(self.state.terror, 0)
+
 
 class MonsterSpawnCountTest(unittest.TestCase):
 
