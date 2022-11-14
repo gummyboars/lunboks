@@ -4163,7 +4163,10 @@ class OpenGate(Event):
       return
 
     if not self.opened:  # Monster surge
-      gates = [name for name, place in state.places.items() if getattr(place, "gate", None)]
+      gates = [
+          name for name, place in state.places.items()
+          if getattr(place, "gate", None) and place.is_unstable(state)
+      ]
       self.spawn = MonsterSpawnChoice(self.draw_monsters, self.location_name, gates)
       state.event_stack.append(self.spawn)
       return
