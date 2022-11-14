@@ -3909,7 +3909,7 @@ class Return(Event):
       return f"{self.character.name} was unable to return"
     if not self.returned:
       return f"{self.character.name} did not return"
-    return f"{self.character.name} returned to {state.places[self.return_choice.choice]}"
+    return f"{self.character.name} returned to {state.places[self.return_choice.choice].name}"
 
 
 class PullThroughGate(Sequence):
