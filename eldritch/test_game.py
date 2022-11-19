@@ -1548,10 +1548,22 @@ class RollDiceTest(unittest.TestCase):
     self.assertFalse(self.state.event_stack)
 
   def testCheckAndSpendAndReroll(self):
+    self.state.test_mode = False
     self.state.characters[0].clues = 2
     self.state.characters[0].possessions.append(abilities.Stealth(0))
     check = events.Check(self.state.characters[0], "evade", 0)
+    # Start with a basic check.
     self.state.event_stack.append(check)
+    for _ in self.state.resolve_loop():
+      data = self.state.for_player(0)
+      self.assertIn("dice", data)
+      self.assertIn("roller", data)
+    # Stop at the first dice roll. Let the player roll the dice.
+    self.assertTrue(self.state.event_stack)  # Dice roll should be on top
+    self.assertIsInstance(self.state.event_stack[-1], events.DiceRoll)
+    self.state.event_stack[-1].resolve(self.state)
+
+    # The next several updates should include the dice the player rolled.
     roll_started = False
     for _ in self.state.resolve_loop():
       data = self.state.for_player(0)
@@ -1563,6 +1575,7 @@ class RollDiceTest(unittest.TestCase):
         self.assertIsInstance(data.get("roll", None), list)
     roll_length = len(data["roll"])
 
+    # The player chooses to spend one clue token.
     self.assertTrue(self.state.event_stack)  # Should have the spend event on top
     spend_choice = self.state.event_stack[-1]
     self.assertIsInstance(spend_choice, events.SpendMixin)
@@ -1575,16 +1588,49 @@ class RollDiceTest(unittest.TestCase):
       data = self.state.for_player(0)
       self.assertIn("dice", data)
       self.assertIsInstance(data.get("roll", None), list)
+    # Roll the extra die from the clue token.
+    self.assertIsInstance(self.state.event_stack[-1], events.DiceRoll)
+    self.state.event_stack[-1].resolve(self.state)
+
+    # There should now be an additional die in the updates.
+    for _ in self.state.resolve_loop():
+      data = self.state.for_player(0)
+      self.assertIn("dice", data)
+      self.assertIsInstance(data.get("roll", None), list)
     self.assertEqual(len(data["roll"]), roll_length+1)
 
+    # The player decides to reroll this check.
     self.assertIn(0, self.state.usables)
     self.assertIn("Stealth0", self.state.usables[0])
     self.state.event_stack.append(self.state.usables[0]["Stealth0"])
+    # The updates should go back to having no roll visible so that the player can reroll.
+    reroll_started = False
     for _ in self.state.resolve_loop():
       data = self.state.for_player(0)
-      self.assertIsInstance(data.get("roll", None), list)
-      self.assertEqual(len(data["roll"]), roll_length+1)
+      if data.get("roll") is None:
+        reroll_started = True
+      if reroll_started:
+        self.assertIsNone(data.get("roll"))
+      else:
+        self.assertIsInstance(data.get("roll", None), list)
+        self.assertEqual(len(data["roll"]), roll_length+1)
 
+    # The player rolls the dice again.
+    self.assertIsInstance(self.state.event_stack[-1], events.DiceRoll)
+    self.state.event_stack[-1].resolve(self.state)
+
+    # The new dice should show up in the following updates.
+    roll_started = False
+    for _ in self.state.resolve_loop():
+      data = self.state.for_player(0)
+      self.assertIn("dice", data)
+      self.assertIn("roller", data)
+      if data.get("roll", None) is not None:
+        roll_started = True
+      if roll_started:
+        self.assertIsInstance(data.get("roll", None), list)
+
+    # Done spending.
     next_spend = self.state.event_stack[-1]
     next_spend.resolve(self.state, "Done")
     for _ in self.state.resolve_loop():
