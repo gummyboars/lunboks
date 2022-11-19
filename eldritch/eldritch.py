@@ -306,6 +306,9 @@ class GameState:
         bonus += event.count
       if isinstance(event, events.DiceRoll):
         roller = event
+      if isinstance(event, events.RerollCheck) and event.dice is not None:
+        roller = event.dice
+        break
       if isinstance(event, events.Check):
         roller = event
         break
