@@ -19,7 +19,7 @@ def CreateFixedEncounters():
       name="unique",  # Make it the name of the deck so it shows up in CardChoice
       prereq=lambda char: values.AttributePrerequisite(char, "dollars", 1, "at least"),
       spend=lambda char: None,
-      encounter=lambda char, state: events.Purchase(char, "unique", 3),
+      encounter=lambda char, state: events.Purchase(char, "unique", 3, must_buy=True),
   )
 
   restore_sanity = FixedEncounter(
@@ -49,7 +49,7 @@ def CreateFixedEncounters():
       name="common",  # Make it the name of the deck so it shows up in CardChoice
       prereq=lambda char: values.AttributePrerequisite(char, "dollars", 1, "at least"),
       spend=lambda char: None,
-      encounter=lambda char, state: events.Purchase(char, "common", 3),
+      encounter=lambda char, state: events.Purchase(char, "common", 3, must_buy=True),
   )
 
   ally = FixedEncounter(
