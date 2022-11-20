@@ -124,6 +124,7 @@ class GameState:
     encounter_cards = encounters.CreateEncounterCards()
     self.gate_cards.extend(gate_encounters.CreateGateCards())
     for neighborhood_name, cards in encounter_cards.items():
+      random.shuffle(cards)
       self.places[neighborhood_name].encounters.extend(cards)
     for location_name, fixed_encounters in specials.items():
       self.places[location_name].fixed_encounters.extend(fixed_encounters)

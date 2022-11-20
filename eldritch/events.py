@@ -1603,7 +1603,7 @@ class Encounter(Event):
       state.event_stack.append(self.draw)
       return
 
-    if self.draw.is_cancelled():
+    if self.draw.is_cancelled() or not self.draw.cards:
       self.cancelled = True
       return
 
@@ -1647,15 +1647,14 @@ class DrawEncounter(Event):
     self.character = character
     self.neighborhood = neighborhood
     self.count = count
-    self.cards = []
+    self.cards = None
 
   def resolve(self, state):
-    encounters = self.neighborhood.encounters
-    assert len(encounters) >= self.count
-    self.cards.extend(random.sample(encounters, self.count))
+    self.cards = self.neighborhood.encounters[:self.count]
+    random.shuffle(self.neighborhood.encounters)
 
   def is_resolved(self):
-    return len(self.cards) == self.count
+    return self.cards is not None
 
   def log(self, state):
     if self.cancelled and not self.cards:
