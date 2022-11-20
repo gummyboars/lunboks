@@ -1836,6 +1836,7 @@ function newVisual(handleOrName, type, opts) {
     "monster": null,
     "choice": null,
     "defaultSpend": null,
+    "doneUse": false,
     "order": null,
     "classes": [],
     "descText": null,
@@ -1880,7 +1881,7 @@ function createVisual(scrollParent, visual, existing) {
   } else {
     div = document.createElement("DIV");
   }
-  div.classList.toggle("visualchoice", visual.choice != null);
+  div.classList.toggle("visualchoice", visual.choice != null || visual.doneUse);
   div.classList.add(className);
   if (existing == null) {
     holder.appendChild(div);
@@ -1951,6 +1952,8 @@ function createVisual(scrollParent, visual, existing) {
     div.onclick = function(e) { defaultSpend(visual.defaultSpend, visual.choice); };
   } else if (visual.choice != null) {
     div.onclick = function(e) { clearTimeout(autoClickTimeout); autoClickTimeout = null; makeChoice(visual.choice); };
+  } else if (visual.doneUse) {
+    div.onclick = doneUse;
   }
 
   if (visual.order != null) {
@@ -2888,7 +2891,14 @@ function updateCurrentCard(current, visual, monster, choice) {
     newVisuals.push(newVisual(current, "card"));
   }
   if (visual != null) {
-    newVisuals.push(newVisual(visual, "card"));
+    let visualCard = newVisual(visual, "card");
+    let doneUsing = document.getElementById("doneusing");
+    if (choice == null && doneUsing.style.display != "none" && doneUsing.innerText == "Done Using") {
+      // For cases where the visual is shown because a player may need to decide to use something,
+      // clicking the visual should be the equivalent of clicking "done using".
+      visualCard.doneUse = true;
+    }
+    newVisuals.push(visualCard);
     // This is the case when we show the mythos card for the second time. Give the players some
     // time to read it. TODO: other times we draw cards.
     if (visual == oldCurrent) {

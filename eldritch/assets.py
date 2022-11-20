@@ -183,18 +183,67 @@ class StatIncreaser(Card):
     discard = events.DiscardSpecific(owner, [self])
     return events.Sequence([restore, discard], owner)
 
-  def is_usable(self, event, owner, state):  # pylint: disable=unused-argument
+  def is_usable(self, event, owner, state):
     """Determines whether this is usable.
 
     when can you discard this?
-    - after items have refreshed so that you can use some spell during upkeep
-    - when adjusting sliders
+    - when adjusting sliders (maybe so that you can use some spell during upkeep)
+    --- interrupt SliderInput (if not done and prev is Upkeep)
     - during city movement
+    --- interrupt CityMovement (if not done)
     - between fighting different monsters - or any fight/evade/combat choice
+    --- interrupt a not-done MonsterChoice
+    --- interrupt a not-done FightOrEvadeChoice
     - other world movement
-    - before returning to arkham from another world
-    - before you draw a card: encounter/gate/mythos
+    --- interrupt ForceMovement (if not done and prev is Movement)
+    - before returning from another world
+    --- interrupt GateChoice (if not done and chain is Return <- Movement)
+    - before you draw a card:
+    --- interrupt DrawEncounter (if chain is Encounter <- EncounterPhase)
+    --- interrupt GateEncounter (if chain is OtherWorldPhase)
+    --- interrupt DrawMythosCard (if prev event is Mythos)
+    - before your encounter (other)
+    --- interrupt Travel event (if prev is EncounterPhase)
+    --- interrupt CardSpendChoice (if chain is Sequence <- EncounterPhase)
+    --- interrupt MultipleChoice (if chain is GateCloseAttempt <- EncounterPhase)
     """
+    prev_event = None
+    if len(state.event_stack) > 1:
+      prev_event = state.event_stack[-2]
+    if event.is_done():
+      return False
+    if isinstance(event, events.DrawMythosCard) and isinstance(prev_event, events.Mythos):
+      return True
+    if getattr(event, "character", None) != owner:
+      return False
+    choice_interrupts = (events.SliderInput, events.CityMovement)
+    if isinstance(event, choice_interrupts):
+      return True
+    fight_interrupts = (events.MonsterChoice, events.FightOrEvadeChoice, events.CombatChoice)
+    if isinstance(event, fight_interrupts) and state.turn_phase == "movement":
+      return True
+    if isinstance(event, events.ForceMovement) and isinstance(prev_event, events.Movement):
+      return True
+    if isinstance(event, events.Travel) and isinstance(prev_event, events.EncounterPhase):
+      return True
+    if isinstance(event, events.GateEncounter) and isinstance(prev_event, events.OtherWorldPhase):
+      if not event.cards and not event.draw:
+        return True
+    if len(state.event_stack) <= 2:
+      return False
+    prev_prev = state.event_stack[-3]
+    if isinstance(event, events.GateChoice):
+      if isinstance(prev_event, events.Return) and isinstance(prev_prev, events.Movement):
+        return True
+    if isinstance(event, events.DrawEncounter):
+      if isinstance(prev_event, events.Encounter) and isinstance(prev_prev, events.EncounterPhase):
+        return True
+    if isinstance(event, events.CardSpendChoice):
+      if isinstance(prev_event, events.Sequence) and isinstance(prev_prev, events.EncounterPhase):
+        return True
+    if isinstance(event, events.MultipleChoice) and isinstance(prev_event, events.GateCloseAttempt):
+      if isinstance(prev_prev, events.EncounterPhase):
+        return True
     return False
 
 
