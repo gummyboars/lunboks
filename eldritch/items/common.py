@@ -58,12 +58,19 @@ class Bullwhip(Weapon):
   def __init__(self, idx):
     super().__init__("Bullwhip", idx, "common", {"physical": 1}, {}, 1, 2)
 
-  def get_usable_trigger(self, event, owner, state):
-    if not isinstance(event, events.Check) or owner != event.character:
+  def get_usable_interrupt(self, event, owner, state):
+    if not isinstance(event, events.SpendChoice) or event.is_done() or event.character != owner:
       return None
-    if event.check_type != "combat":
+    if len(state.event_stack) < 2 or not isinstance(state.event_stack[-2], events.Check):
       return None
-    return None  # TODO: create an event here
+    if self.exhausted or state.event_stack[-2].check_type != "combat":
+      return None
+    choice = events.MultipleChoice(owner, "Choose a die to reroll", state.event_stack[-2].roll[:])
+    chosen = values.Calculation(choice, "choice_index")
+    return events.Sequence([
+        events.ExhaustAsset(owner, self), choice,
+        events.RerollSpecific(owner, state.event_stack[-2], chosen),
+    ], owner)
 
 
 def CavalrySaber(idx):

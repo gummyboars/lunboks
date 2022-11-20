@@ -174,6 +174,85 @@ class RerollTest(EventTest):
     self.assertEqual(self.check.successes, old_successes)
 
 
+class ResearchTest(EventTest):
+
+  def testUseOnOwnCheck(self):
+    self.char.clues = 2
+    self.char.possessions.append(abilities.Research())
+    check = Check(self.char, "speed", 0)
+    self.state.event_stack.append(check)
+
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=4)):
+      self.resolve_to_usable(0, "Research", Sequence)
+    self.assertFalse(check.is_resolved())
+    self.assertEqual(len(self.state.event_stack), 2)
+    self.assertEqual(self.state.event_stack[-1], check.spend)
+    self.assertEqual(len(self.state.usables), 1)
+    self.assertEqual(check.roll, [4, 4, 4, 4])
+
+    self.state.event_stack.append(self.state.usables[0]["Research"])
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_to_choice(SpendChoice)
+
+    self.assertFalse(self.state.usables)
+    self.assertEqual(check.roll, [5, 5, 5, 5])
+
+  def testUseOnSomeoneElsesCheck(self):
+    buddy = characters.Character("Buddy", 5, 5, 4, 4, 4, 4, 4, 4, 4, "Square")
+    buddy.place = self.state.places["Square"]
+    self.state.all_characters["Buddy"] = buddy
+    self.state.characters.append(buddy)
+
+    buddy.clues = 2
+    buddy.possessions.append(items.Shotgun(0))
+    self.char.possessions.append(abilities.Research())
+
+    cultist = monsters.Cultist()
+    combat = CombatRound(buddy, cultist)
+    self.state.event_stack.append(combat)
+    combat_choice = self.resolve_to_choice(CombatChoice)
+    self.choose_items(combat_choice, ["Shotgun0"])
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=4)):
+      self.resolve_to_usable(0, "Research", Sequence)
+    check = self.state.event_stack[-2]
+    self.assertIsInstance(check, Check)
+    self.assertEqual(check.successes, 0)
+    self.assertNotIn(1, self.state.usables)
+
+    self.state.event_stack.append(self.state.usables[0]["Research"])
+    new_rolls = [6, 1, 4, 3, 2, 1, 3, 4, 4]
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=new_rolls)):
+      spend = self.resolve_to_choice(SpendChoice)
+    self.assertEqual(check.successes, 2)  # 6s with the shotgun count for 2
+    self.assertFalse(self.state.usables)
+
+    spend.resolve(self.state, "Done")
+    self.resolve_until_done()
+
+  def testDeclineToUse(self):
+    buddy = characters.Character("Buddy", 5, 5, 4, 4, 4, 4, 4, 4, 4, "Square")
+    buddy.place = self.state.places["Square"]
+    self.state.all_characters["Buddy"] = buddy
+    self.state.characters.append(buddy)
+
+    buddy.clues = 2
+    self.char.possessions.append(abilities.Research())
+
+    check = Check(buddy, "speed", 0)
+    self.state.event_stack.append(check)
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=4)):
+      spend = self.resolve_to_choice(SpendChoice)
+    self.assertIn(0, self.state.usables)
+    self.assertIn("Research", self.state.usables[0])
+    self.assertEqual(check.successes, 0)
+    self.assertNotIn(1, self.state.usables)
+
+    # The player making the check may decide that they're done without waiting for the player with
+    # the Research ability to decide not to use it.
+    spend.resolve(self.state, "Done")
+    self.resolve_until_done()
+
+
 class TrustFundTest(EventTest):
 
   def testGainADollarDuringUpkeep(self):

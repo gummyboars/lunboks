@@ -2493,6 +2493,52 @@ class RerollCheck(Event):
     return f"{self.character.name} rerolled a {self.check.check_type} check"
 
 
+class RerollSpecific(Event):
+
+  def __init__(self, character, check, reroll_indexes):
+    super().__init__()
+    self.character = character
+    self.check: Check = check
+    self.reroll_indexes = reroll_indexes
+    self.dice: Optional[DiceRoll] = None
+    self.done = False
+
+  def resolve(self, state):
+    if isinstance(self.reroll_indexes, values.Value):
+      self.reroll_indexes = self.reroll_indexes.value(state)
+    if isinstance(self.reroll_indexes, int):
+      self.reroll_indexes = [self.reroll_indexes]
+
+    if not self.reroll_indexes:
+      self.cancelled = True
+      return
+
+    if self.dice is None:
+      self.dice = DiceRoll(self.character, len(self.reroll_indexes))
+      state.event_stack.append(self.dice)
+      return
+
+    if self.dice.is_cancelled():
+      self.cancelled = True
+      return
+
+    for idx, orig_idx in enumerate(self.reroll_indexes):
+      self.check.roll[orig_idx] = self.dice.roll[idx]
+    self.check.count_successes()
+    self.done = True
+
+  def is_resolved(self):
+    return self.done
+
+  def log(self, state):
+    ctype = f"{self.check.check_type} check"
+    if self.cancelled and not self.done:
+      return f"{self.character.name} did not reroll dice for their {ctype}"
+    if not self.done:
+      return f"{self.character.name} rerolls some of the dice on their {ctype}"
+    return f"{self.character.name} rerolled {len(self.reroll_indexes)} dice on their {ctype}"
+
+
 class Conditional(Event):
 
   def __init__(self, character, condition, attribute, result_map):

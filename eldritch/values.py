@@ -214,6 +214,21 @@ class InCity(Value):
     return int(isinstance(self.character.place, places.CityPlace))
 
 
+class UnsuccessfulDice(Value):
+
+  def __init__(self, check):
+    super().__init__()
+    self.check = check
+
+  def value(self, state):
+    if not self.check.roll:
+      return []
+    return [
+        idx for idx, roll in enumerate(self.check.roll)
+        if not self.check.character.is_success(roll, self.check.check_type)
+    ]
+
+
 class SpendValue(metaclass=abc.ABCMeta):
 
   SPEND_TYPES = {

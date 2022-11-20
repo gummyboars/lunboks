@@ -211,8 +211,7 @@ class Character:
     return override
 
   def count_successes(self, roll, check_type):
-    threshold = 5 - self.bless_curse
-    successes = len([result for result in roll if result >= threshold])
+    successes = len([result for result in roll if self.is_success(result, check_type)])
     if check_type == "combat":  # HACK: hard-code the Shotgun's functionality here.
       shotgun_active = any(
           item.name == "Shotgun" for item in self.possessions if getattr(item, "active", False)
@@ -220,6 +219,9 @@ class Character:
       if shotgun_active:
         successes += roll.count(6)
     return successes
+
+  def is_success(self, die, check_type):  # pylint: disable=unused-argument
+    return die >= 5 - self.bless_curse
 
   def hands_available(self):
     return 2 - sum(pos.hands_used() for pos in self.possessions if hasattr(pos, "hands_used"))
@@ -447,7 +449,7 @@ class Researcher(Character):
     super().__init__("Researcher", 5, 5, 4, 5, 3, 5, 4, 3, 2, "Library")
 
   def abilities(self):
-    return []  # TODO: Research
+    return ["Research"]
 
   def initial_attributes(self):
     return {"dollars": 6, "clues": 4}
