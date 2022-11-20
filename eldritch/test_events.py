@@ -726,9 +726,19 @@ class EncounterPhaseTest(EventTest):
     self.char.place = self.state.places["Cave"]
     self.state.places["Rivertown"].encounters = [
         encounters.EncounterCard("Rivertown7", {"Cave": encounters.Cave7}),
+        encounters.EncounterCard("Rivertown6", {"Cave": encounters.Cave6}),
+        encounters.EncounterCard("Rivertown5", {"Cave": encounters.Cave5}),
+        encounters.EncounterCard("Rivertown4", {"Cave": encounters.Cave4}),
+        encounters.EncounterCard("Rivertown3", {"Cave": encounters.Cave3}),
+        encounters.EncounterCard("Rivertown2", {"Cave": encounters.Cave2}),
+        encounters.EncounterCard("Rivertown1", {"Cave": encounters.Cave1}),
     ]
     choice = self.resolve_to_choice(MultipleChoice)
     self.assertEqual(choice.choices, ["Yes", "No"])
+    orig_order = [f"Rivertown{x}" for x in range(7, 0, -1)]
+    self.assertNotEqual(
+        [card.name for card in self.state.places["Rivertown"].encounters], orig_order,
+    )
 
   def testEncounterInStreet(self):
     self.char.place = self.state.places["Rivertown"]

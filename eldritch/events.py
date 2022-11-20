@@ -3092,12 +3092,13 @@ class CardSpendChoice(SpendMultiChoiceMixin, CardChoice):
 
 class MapChoice(ChoiceEvent, metaclass=abc.ABCMeta):
 
-  def __init__(self, character, prompt, none_choice=None):
+  def __init__(self, character, prompt, none_choice=None, annotation=None):
     super().__init__()
     self.character = character
     self._prompt = prompt
     self.choices = None
     self.none_choice = none_choice
+    self.annotation = annotation
     self.choice = None
 
   @abc.abstractmethod
@@ -3118,14 +3119,21 @@ class MapChoice(ChoiceEvent, metaclass=abc.ABCMeta):
   def prompt(self):
     return self._prompt
 
+  def annotations(self, state):
+    if self.annotation and self.choices is not None:
+      return [self.annotation for _ in self.choices]
+    return None
+
 
 class PlaceChoice(MapChoice):
 
   VALID_FILTERS = {"streets", "locations", "open", "closed"}
 
-  def __init__(self, character, prompt, choices=None, choice_filters=None, none_choice=None):
+  def __init__(
+      self, character, prompt, choices=None, choice_filters=None, none_choice=None, annotation=None,
+  ):
     assert choice_filters is None or choices is None
-    super().__init__(character, prompt, none_choice=none_choice)
+    super().__init__(character, prompt, none_choice=none_choice, annotation=annotation)
     if choices:
       self.fixed_choices = choices
       self.choice_filters = None
@@ -3176,9 +3184,8 @@ class PlaceChoice(MapChoice):
 class GateChoice(MapChoice):
 
   def __init__(self, character, prompt, gate_name=None, none_choice=None, annotation=None):
-    super().__init__(character, prompt, none_choice=none_choice)
+    super().__init__(character, prompt, none_choice=none_choice, annotation=annotation)
     self.gate_name = gate_name
-    self.annotation = annotation
     self.overridden = False
 
   def compute_choices(self, state):
@@ -3210,11 +3217,6 @@ class GateChoice(MapChoice):
       return f"{self.character.name} must choose a gate to {self.gate_name}"
     return f"{self.character.name} must choose a gate"
 
-  def annotations(self, state):
-    if self.annotation and self.choices is not None:
-      return [self.annotation for _ in self.choices]
-    return None
-
 
 class OverrideGateChoice(Event):
   def __init__(self, character, original_choice: GateChoice, **changes):
@@ -3245,8 +3247,7 @@ class OverrideGateChoice(Event):
 class NearestGateChoice(MapChoice):
 
   def __init__(self, character, prompt, annotation, none_choice=None):
-    super().__init__(character, prompt, none_choice=none_choice)
-    self.annotation = annotation
+    super().__init__(character, prompt, none_choice=none_choice, annotation=annotation)
 
   def compute_choices(self, state):
     if not isinstance(self.character.place, places.CityPlace):
@@ -3283,11 +3284,6 @@ class NearestGateChoice(MapChoice):
     if self.choice is None:
       return f"{self.character.name} must choose the nearest gate"
     return f"{self.character.name} chose the gate at {self.choice}"
-
-  def annotations(self, state):
-    if self.annotation and self.choices is not None:
-      return [self.annotation for _ in self.choices]
-    return None
 
 
 class MonsterOnBoardChoice(ChoiceEvent):
@@ -4539,7 +4535,7 @@ class IncreaseTerror(Event):
 
 class AddGlobalEffect(Event):
   def __init__(self, effect, source_deck=None, active_until=None):
-    assert source_deck in {"mythos"}  # TODO: add more as necessary
+    assert source_deck in {"mythos", None}  # TODO: add more as necessary
     super().__init__()
     self.effect = effect
     self.source_deck = source_deck
@@ -4547,9 +4543,10 @@ class AddGlobalEffect(Event):
     self.active_until = active_until
 
   def resolve(self, state):
-    source_deck = getattr(state, self.source_deck)
-    if source_deck and self.effect in source_deck:
-      source_deck.remove(self.effect)
+    if self.source_deck is not None:
+      source_deck = getattr(state, self.source_deck)
+      if source_deck and self.effect in source_deck:
+        source_deck.remove(self.effect)
     state.other_globals.append(self.effect)
     if self.active_until is not None:
       self.effect.active_until = self.active_until
@@ -4575,9 +4572,10 @@ class RemoveGlobalEffect(Event):
 
   def resolve(self, state):
     state.other_globals.remove(self.effect)
-    source_deck = getattr(state, self.source_deck)
-    if source_deck and self.effect not in source_deck:
-      source_deck.append(self.effect)
+    if self.source_deck is not None:
+      source_deck = getattr(state, self.source_deck)
+      if source_deck and self.effect not in source_deck:
+        source_deck.append(self.effect)
     self.effect.active_until = None
 
     self.done = True
