@@ -22,6 +22,7 @@ from eldritch import items
 from eldritch import location_specials
 from eldritch import monsters
 from eldritch import mythos
+from eldritch import values
 import game
 
 
@@ -1508,6 +1509,42 @@ class RollDiceTest(unittest.TestCase):
       # other_data = self.state.for_player(1)
       # self.assertNotIn("dice", data)
 
+    self.assertFalse(self.state.event_stack)
+
+  def testValueDiceRoll(self):
+    count = values.Calculation(self.state.characters[0], "stamina")
+    roll = events.DiceRoll(self.state.characters[0], count)
+    self.state.event_stack.append(roll)
+    self.state.test_mode = False
+
+    for _ in self.state.resolve_loop():
+      if not self.state.event_stack:
+        break
+      data = self.state.for_player(0)
+      self.assertIn("dice", data)
+      self.assertIn("roller", data)
+      self.assertEqual(data["roller"], 0)
+      self.assertIn("roll", data)
+      self.assertIsInstance(data["roll"], (type(None), list))
+
+    # Player is about to roll the dice. They should be able to see how many dice they will roll.
+    self.assertTrue(self.state.event_stack)
+    self.assertIsInstance(data["dice"], int)
+    self.assertFalse(data["roll"])
+    self.assertIsInstance(self.state.event_stack[-1], events.DiceRoll)
+    self.state.event_stack[-1].resolve(self.state)
+    self.state.test_mode = True  # Do not proceed to the next turn.
+
+    for _ in self.state.resolve_loop():
+      if not self.state.event_stack:
+        break
+      data = self.state.for_player(0)
+      self.assertIn("dice", data)
+      self.assertIsInstance(data["dice"], int)
+      self.assertIn("roller", data)
+      self.assertEqual(data["roller"], 0)
+      self.assertIn("roll", data)
+      self.assertIsInstance(data["roll"], (type(None), list))
     self.assertFalse(self.state.event_stack)
 
   def testCheckAndSpendAndReroll(self):
