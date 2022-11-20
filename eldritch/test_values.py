@@ -197,6 +197,18 @@ class StabilityTest(unittest.TestCase):
     self.assertEqual(unstable.value(state), 0)
 
 
+class UnsuccessfulDiceTest(unittest.TestCase):
+
+  def testUnsuccessfulDice(self):
+    char = Dummy(is_success=lambda roll, _: roll >= 5)
+    check = Dummy(character=char, roll=[1, 6, 3, 4, 5, 2], check_type="combat")
+    state = DummyState()
+    bad_dice = UnsuccessfulDice(check)
+    self.assertEqual(bad_dice.value(state), [0, 2, 3, 5])
+    check.character.is_success = lambda roll, _: roll >= 4  # pylint: disable=no-member
+    self.assertEqual(bad_dice.value(state), [0, 2, 5])
+
+
 class SpendTest(unittest.TestCase):
 
   def testFixedValuePrerequisite(self):

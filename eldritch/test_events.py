@@ -1735,6 +1735,67 @@ class CheckTest(EventTest):
     self.assertIsNone(check.roll)
 
 
+class RerollSpecificTest(EventTest):
+
+  def testRerollOneDie(self):
+    self.char.clues = 1
+    check = Check(self.char, "speed", 0)
+    self.assertEqual(self.char.speed(self.state), 4)
+    self.assertFalse(check.is_resolved())
+
+    self.state.event_stack.append(check)
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
+      self.resolve_to_choice(SpendChoice)
+    self.assertEqual(check.roll, [3, 3, 3, 3])
+    self.assertEqual(check.successes, 0)
+
+    self.state.event_stack.append(RerollSpecific(self.char, check, [2]))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_to_choice(SpendChoice)
+    self.assertEqual(check.roll, [3, 3, 5, 3])
+    self.assertEqual(check.successes, 1)
+
+  def testRerollUnsuccessfulDice(self):
+    self.char.clues = 1
+    check = Check(self.char, "speed", 0)
+    self.assertEqual(self.char.speed(self.state), 4)
+    self.assertFalse(check.is_resolved())
+
+    self.state.event_stack.append(check)
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=[5, 1, 6, 3])):
+      self.resolve_to_choice(SpendChoice)
+    self.assertEqual(check.roll, [5, 1, 6, 3])
+    self.assertEqual(check.successes, 2)
+
+    bad_dice = values.UnsuccessfulDice(check)
+    self.state.event_stack.append(RerollSpecific(self.char, check, bad_dice))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=[4, 5])):
+      self.resolve_to_choice(SpendChoice)
+    self.assertEqual(check.roll, [5, 4, 6, 5])
+    self.assertEqual(check.successes, 3)
+
+  def testRerollChosenDie(self):
+    self.char.clues = 1
+    check = Check(self.char, "speed", 0)
+    self.assertEqual(self.char.speed(self.state), 4)
+    self.assertFalse(check.is_resolved())
+
+    self.state.event_stack.append(check)
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=[5, 1, 6, 3])):
+      self.resolve_to_choice(SpendChoice)
+    self.assertEqual(check.roll, [5, 1, 6, 3])
+    self.assertEqual(check.successes, 2)
+
+    choice = MultipleChoice(self.char, "", [5, 1, 6, 3])
+    choice.resolve(self.state, 5)
+    chosen = values.Calculation(choice, "choice_index")
+    self.state.event_stack.append(RerollSpecific(self.char, check, chosen))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=[4])):
+      self.resolve_to_choice(SpendChoice)
+    self.assertEqual(check.roll, [4, 1, 6, 3])
+    self.assertEqual(check.successes, 1)
+
+
 class ConditionalTest(EventTest):
 
   def createConditional(self):

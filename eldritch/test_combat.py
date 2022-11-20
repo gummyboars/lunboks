@@ -2103,6 +2103,57 @@ class UndeadTest(EventTest):
       self.assertEqual(rand.call_count, 5)  # Fight 4, +1 combat rating
 
 
+class CombatWithBullwhipTest(EventTest):
+
+  def setUp(self):
+    super().setUp()
+    self.bullwhip = items.Bullwhip(0)
+    self.char.possessions.extend([self.bullwhip, items.Axe(0), items.Knife(0)])
+
+  def testUseBullwhip(self):
+    priest = monsters.HighPriest()
+    combat = Combat(self.char, priest)
+    self.state.event_stack.append(combat)
+
+    fight_or_evade = self.resolve_to_choice(FightOrEvadeChoice)
+    fight_or_evade.resolve(self.state, "Fight")
+    combat_choice = self.resolve_to_choice(CombatChoice)
+    self.choose_items(combat_choice, ["Bullwhip0", "Axe0"])
+    self.char.clues = 1
+    # Fight (4) + Bullwhip (1) + Axe (2) + Priest (-2) = 5
+    with mock.patch.object(events.random, "randint", new=mock.Mock(side_effect=[3, 2, 4, 1, 5])):
+      spend = self.resolve_to_choice(SpendChoice)
+    self.assertIn(0, self.state.usables)
+    self.assertIn("Bullwhip0", self.state.usables[0])
+    check = self.state.event_stack[-2]
+    self.assertIsInstance(check, Check)
+    self.assertEqual(check.successes, 1)
+
+    self.state.event_stack.append(self.state.usables[0]["Bullwhip0"])
+    choose_die = self.resolve_to_choice(MultipleChoice)
+    self.assertEqual(choose_die.choices, [3, 2, 4, 1, 5])
+    choose_die.resolve(self.state, 1)
+    with mock.patch.object(events.random, "randint", new=mock.Mock(return_value=4)):
+      spend = self.resolve_to_choice(SpendChoice)
+    self.assertEqual(check.roll, [3, 2, 4, 4, 5])
+    self.assertEqual(check.successes, 1)
+    # Now that the bullwhip has been used, its special ability cannot be used again.
+    self.assertFalse(self.state.usables)
+    spend.resolve(self.state, "Done")
+
+    fight_or_evade = self.resolve_to_choice(FightOrEvadeChoice)
+    fight_or_evade.resolve(self.state, "Fight")
+    combat_choice = self.resolve_to_choice(CombatChoice)
+    # You may still use the bullwhip in combat even when it is exhausted.
+    self.choose_items(combat_choice, ["Bullwhip0", "Axe0"])
+    with mock.patch.object(events.random, "randint", new=mock.Mock(return_value=6)) as rand:
+      spend = self.resolve_to_choice(SpendChoice)
+      self.assertEqual(rand.call_count, 5)
+    self.assertFalse(self.state.usables)
+    spend.resolve(self.state, "Done")
+    self.resolve_until_done()
+
+
 class CombatWithShotgunTest(EventTest):
 
   def setUp(self):

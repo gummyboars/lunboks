@@ -304,11 +304,14 @@ class GameState:
     # Figure out the current dice roll and how many bonus dice it has.
     roller = None
     bonus = 0
+    to_remove = []
     for event in reversed(self.event_stack):
       if isinstance(event, events.BonusDiceRoll):
         bonus += event.count
       if isinstance(event, events.DiceRoll):
         roller = event
+      if isinstance(event, events.RerollSpecific) and isinstance(event.reroll_indexes, list):
+        to_remove = event.reroll_indexes[:]
       if isinstance(event, events.RerollCheck) and event.dice is not None:
         roller = event.dice
         break
@@ -322,6 +325,8 @@ class GameState:
         output["dice"] = None
       output["roll"] = roller.roll
       output["roller"] = self.characters.index(roller.character)
+      if to_remove and roller.roll:
+        output["roll"] = [roll for idx, roll in enumerate(roller.roll) if idx not in to_remove]
 
     # Figure out the current choice.
     choice = None

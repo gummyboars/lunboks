@@ -189,6 +189,23 @@ class Hunches(assets.Asset):
     return events.AddExtraDie(owner, event)
 
 
+class Research(assets.Asset):
+
+  def __init__(self):
+    super().__init__("Research")
+
+  def get_usable_interrupt(self, event, owner, state):
+    if not isinstance(event, events.SpendChoice) or event.is_done() or self.exhausted:
+      return None
+    if len(state.event_stack) < 2 or not isinstance(state.event_stack[-2], events.Check):
+      return None
+    bad_dice = values.UnsuccessfulDice(state.event_stack[-2])
+    return events.Sequence([
+        events.ExhaustAsset(owner, self),
+        events.RerollSpecific(state.event_stack[-2].character, state.event_stack[-2], bad_dice),
+    ], owner)
+
+
 class Physician(assets.Asset):
 
   def __init__(self):
@@ -225,6 +242,6 @@ def CreateSpecials():
   abilities = [
       FluxStabilizer(), Studious(), ShrewdDealer(), HometownAdvantage(), MagicalGift(),
       PsychicSensitivity(), Archaeology(), StrongMind(), StrongBody(), TrustFund(), Hunches(),
-      Physician(),
+      Physician(), Research(),
   ]
   return {ability.name: ability for ability in abilities}
