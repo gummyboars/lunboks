@@ -2,6 +2,7 @@ import operator
 
 from eldritch import events
 from eldritch import items
+from eldritch import mythos
 from eldritch import values
 from eldritch.monsters import EventMonster
 
@@ -23,6 +24,30 @@ class EncounterCard:
       print(f"TODO: missing encounters for {self.name} at {location_name}")
       return events.Nothing()
     return self.encounters[location_name](character)
+
+
+class CardRevealer(mythos.GlobalEffect):
+  def __init__(self, choice):
+    self.choice = choice
+
+  @property
+  def name(self):
+    if self.choice.choice is not None:
+      return "Next " + self.choice.choice + " Card"
+    return "Next Card"
+
+  def get_trigger(self, event, state):
+    if not isinstance(event, events.DrawEncounter):
+      return None
+    if event.neighborhood.name != self.choice.choice:
+      return None
+    return events.RemoveGlobalEffect(self)
+
+  def json_repr(self, state):
+    return {
+        "name": state.places[self.choice.choice].encounters[0].name,
+        "annotation": "Next Card",
+    }
 
 
 def Diner1(char):
@@ -1378,21 +1403,13 @@ def Shoppe1(char):
 
 
 def Shoppe2(char):
-  # TODO: Implement "Turn the top card of one location deck face up;
-  # the next player to have an enounter there draws that encounter"
-  return events.Nothing()
-  # What follows is the start of an implementation
-  # streets = {
-  #   placename: place
-  #   for placename, place in char.game_state.places.items()
-  #   if isinstance(place, places.Street)
-  # }
-  # choice = events.MultipleChoice(
-  #   char,
-  #   "Choose a location deck to view the top card of",
-  #   list(keys(streets))
-  # )
-  # return choice
+  prompt = "Choose a neighborhood to view the top card of"
+  filters = {"streets", "open", "closed"}
+  choice = events.PlaceChoice(char, prompt, choice_filters=filters, annotation="Reveal")
+  was_cancelled = values.Calculation(choice, None, operator.methodcaller("is_cancelled"))
+  add_global = events.AddGlobalEffect(CardRevealer(choice))
+  cond = events.Conditional(char, was_cancelled, None, {0: add_global, 1: events.Nothing()})
+  return events.Sequence([choice, cond], char)
 
 
 def Shoppe3(char):

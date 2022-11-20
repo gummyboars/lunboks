@@ -11,6 +11,7 @@ if os.path.abspath(sys.path[0]) == os.path.dirname(os.path.abspath(__file__)):
 
 from eldritch import abilities
 from eldritch import assets
+from eldritch import characters
 from eldritch import encounters
 from eldritch import events
 from eldritch import gate_encounters
@@ -4632,6 +4633,112 @@ class StoreTest(EncounterTest):
     self.assertEqual(self.char.possessions[0].name, "Dynamite")
 
 
+class Shoppe2Test(EncounterTest):
+
+  def setUp(self):
+    super().setUp()
+    self.state.places["Rivertown"].encounters = [
+        encounters.EncounterCard(
+            "Rivertown2", {
+                "Cave": encounters.Cave2,
+                "Store": encounters.Store2,
+                "Graveyard": encounters.Graveyard2,
+            },
+        ),
+        encounters.EncounterCard(
+            "Rivertown1",  {
+                "Cave": encounters.Cave1,
+                "Store": encounters.Store1,
+                "Graveyard": encounters.Graveyard1,
+            },
+        ),
+    ]
+    self.state.places["Uptown"].encounters = [
+        encounters.EncounterCard(
+            "Uptown2", {
+                "Hospital": encounters.Hospital2,
+                "Woods": encounters.Woods2,
+                "Shoppe": encounters.Shoppe2,
+            },
+        ),
+        encounters.EncounterCard(
+            "Uptown1", {
+                "Hospital": encounters.Hospital1,
+                "Woods": encounters.Woods1,
+                "Shoppe": encounters.Shoppe1,
+            },
+        ),
+    ]
+    self.state.places["Merchant"].encounters = [
+        encounters.EncounterCard(
+            "Merchant1", {
+                "Docks": encounters.Docks1,
+                "Unnamable": encounters.Unnamable1,
+                "Isle": encounters.Isle1,
+            },
+        ),
+        encounters.EncounterCard(
+            "Merchant2", {
+                "Docks": encounters.Docks2,
+                "Unnamable": encounters.Unnamable2,
+                "Isle": encounters.Isle2,
+            },
+        ),
+    ]
+    self.char.place = self.state.places["Shoppe"]
+
+  def testRevealTopCard(self):
+    self.state.event_stack.append(events.Encounter(self.char, "Shoppe"))
+    choice = self.resolve_to_choice(PlaceChoice)
+    self.assertCountEqual(
+        choice.choices,
+        [name for name, place in self.state.places.items() if isinstance(place, places.Street)]
+    )
+    choice.resolve(self.state, "Rivertown")
+    self.resolve_until_done()
+    self.assertEqual(len(self.state.other_globals), 1)
+    self.assertEqual(self.state.other_globals[0].json_repr(self.state)["name"], "Rivertown2")
+
+  def testCanChooseClosedStreet(self):
+    self.state.event_stack.append(events.CloseLocation("Merchant", for_turns=1, evict=False))
+    self.resolve_until_done()
+    self.state.event_stack.append(events.Encounter(self.char, "Shoppe"))
+    choice = self.resolve_to_choice(PlaceChoice)
+    self.assertIn("Merchant", choice.choices)
+    choice.resolve(self.state, "Merchant")
+    self.resolve_until_done()
+    self.assertEqual(len(self.state.other_globals), 1)
+    self.assertEqual(self.state.other_globals[0].json_repr(self.state)["name"], "Merchant1")
+
+  def testChooseOwnLocation(self):
+    self.state.event_stack.append(events.Encounter(self.char, "Shoppe"))
+    choice = self.resolve_to_choice(PlaceChoice)
+    self.assertIn("Uptown", choice.choices)
+    choice.resolve(self.state, "Uptown")
+    self.resolve_until_done()
+    self.assertEqual(len(self.state.other_globals), 1)
+    # After shuffling, the order is not guaranteed, but there should still be a global.
+    self.assertIn("Uptown", self.state.other_globals[0].json_repr(self.state)["name"])
+
+  def testNextEncounterClearsGlobal(self):
+    buddy = characters.Character("Buddy", 5, 5, 4, 4, 4, 4, 4, 4, 4, "Store")
+    buddy.place = self.state.places["Store"]
+    self.state.all_characters["Buddy"] = buddy
+    self.state.characters.append(buddy)
+
+    self.state.event_stack.append(events.Encounter(self.char, "Shoppe"))
+    choice = self.resolve_to_choice(PlaceChoice)
+    choice.resolve(self.state, "Rivertown")
+    self.resolve_until_done()
+    self.assertEqual(len(self.state.other_globals), 1)
+    self.assertEqual(self.state.other_globals[0].json_repr(self.state)["name"], "Rivertown2")
+
+    self.state.event_stack.append(events.Encounter(buddy, "Store"))
+    self.resolve_until_done()
+    self.assertEqual(buddy.dollars, 0)  # Make sure we got the right encounter.
+    self.assertFalse(self.state.other_globals)  # The revealer should now be gone.
+
+
 class ShoppeTest(EncounterTest):
   def testShoppe1(self):
     self.state.event_stack.append(encounters.Shoppe1(self.char))
@@ -4646,21 +4753,6 @@ class ShoppeTest(EncounterTest):
     self.resolve_until_done()
     self.assertEqual(self.char.sanity, 1)
     self.assertEqual(self.char.place.name, "Asylum")
-
-  def testShoppe2(self):
-    # raise NotImplementedError("Don't know how to test that a location deck is face up")
-    # self.state.event_stack.append(encounters.Shoppe2(self.char))
-    # choice = self.resolve_to_choice(MultipleChoice)
-    # self.assertEqual(
-    #   sorted(choice.choices),
-    #   sorted([
-    #     placename
-    #     for placename, place in self.state.places.items()
-    #     if isinstance(place, places.Street)
-    #   ])
-    # )
-    # choice.resolve(self.state, "Uptown")
-    pass
 
   def testShoppe3Poor(self):
     self.state.event_stack.append(encounters.Shoppe3(self.char))
