@@ -236,6 +236,25 @@ class BlueWatcherTest(EventTest):
     self.assertFalse(self.char.trophies)
     self.assertNotIn(self.watcher, self.char.possessions)
 
+  def testDeclineToUseDuringCombat(self):
+    monster = monsters.Cultist()
+    self.state.monsters.append(monster)
+    monster.place = self.char.place
+    self.state.event_stack.append(events.Combat(self.char, monster))
+    self.char.possessions.append(items.Rifle(0))
+
+    fight_flee = self.resolve_to_choice(events.FightOrEvadeChoice)
+    fight_flee.resolve(self.state, "Fight")
+    choice = self.resolve_to_choice(events.CombatChoice)
+    self.assertIn("Blue Watcher0", self.state.usables[0])
+    self.choose_items(choice, ["Rifle0"])
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.sanity, 5)
+    self.assertEqual(self.char.stamina, 5)
+    self.assertIn(monster, self.char.trophies)
+    self.assertIn(self.watcher, self.char.possessions)
+
   def testPassFightClose(self):
     gate = self.state.gates.popleft()
     self.state.places["Diner"].gate = gate
@@ -459,6 +478,34 @@ class FluteTest(EventTest):
     self.assertEqual(endless.place, self.state.monster_cup)
     self.assertNotIn(self.flute, self.char.possessions)
     self.assertIn(holy_water, self.char.possessions)
+
+  def testDeclineToUse(self):
+    self.cultist.place = self.char.place
+    self.enterCombat(0)
+    choice = self.resolve_to_choice(events.CombatChoice)
+    self.assertIn("Flute0", self.state.usables[0])
+    self.choose_items(choice, [])
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.stamina, 5)
+    self.assertEqual(self.char.sanity, 5)
+    self.assertIn(self.cultist, self.char.trophies)
+    self.assertIn(self.flute, self.char.possessions)
+
+  def testFriendCannotUse(self):
+    buddy = characters.Character("Buddy", 5, 5, 4, 4, 4, 4, 4, 4, 4, "Square")
+    buddy.place = self.char.place
+    self.state.characters.append(buddy)
+    self.char.possessions.remove(self.flute)
+    buddy.possessions.append(self.flute)
+
+    self.cultist.place = self.char.place
+    self.enterCombat(0)
+    choice = self.resolve_to_choice(events.CombatChoice)
+    self.assertFalse(self.state.usables)
+    self.choose_items(choice, [])
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
 
 
 class GateBoxTest(EventTest):
