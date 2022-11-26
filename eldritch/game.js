@@ -1243,7 +1243,9 @@ function updateUsables(usables, spendables, choice) {
   let posList = pDiv.getElementsByClassName("possession");
   let trophyList = tDiv.getElementsByClassName("trophy");
   let usableList = usables || [];
-  usableList += (spendables || []);
+  if (spendables) {
+    usableList.concat(spendables);
+  }
   let anyPosUsable = false;
   let anyTrophyUsable = false;
   for (let pos of posList) {
