@@ -1,7 +1,9 @@
 import collections
 import json
+import operator
 from random import SystemRandom
 
+from eldritch import values
 from eldritch import places
 from eldritch import mythos
 from eldritch import monsters
@@ -310,7 +312,10 @@ class GameState:
         roller = event
         break
     if roller is not None:
-      output["dice"] = roller.count + bonus if roller.count is not None else None
+      if roller.count is not None:
+        output["dice"] = values.Calculation(roller.count, None, operator.add, bonus).value(self)
+      else:
+        output["dice"] = None
       output["roll"] = roller.roll
       output["roller"] = self.characters.index(roller.character)
 
