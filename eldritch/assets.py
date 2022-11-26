@@ -42,8 +42,7 @@ class Asset(metaclass=abc.ABCMeta):
   @property
   def bonuses(self):
     bonuses = {check: self.get_bonus(check, None) for check in CHECK_TYPES | SUB_CHECKS.keys()}
-    bonuses["combat"] = sum([
-        self.get_bonus(check, None) for check in {"combat", "physical", "magical"}])
+    bonuses["combat"] = sum(self.get_bonus(check, None) for check in {"combat"} | COMBAT_SUBTYPES)
     return bonuses
 
   def get_modifier(self, other, attribute):

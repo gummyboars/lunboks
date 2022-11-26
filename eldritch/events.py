@@ -2990,12 +2990,12 @@ class CombatChoice(ItemChoice):
         raise InvalidMove("You must choose a weapon")
       if getattr(pos, "deck", None) == "spells":
         raise InvalidMove("That spell cannot be cast during combat")
-    hands_used = sum([pos.hands for pos in chosen])
+    hands_used = sum(pos.hands for pos in chosen)
     if hands_used > self.character.hands_available():
       raise InvalidMove("You do not have enough hands")
 
   def hands_used(self):
-    return sum([pos.hands for pos in self.chosen])
+    return sum(pos.hands for pos in self.chosen)
 
 
 class ItemCountChoice(ItemChoice):

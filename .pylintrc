@@ -1,3 +1,6 @@
+[MAIN]
+jobs = 0
+
 [BASIC]
 function-rgx=(([a-z_]+)|(([A-Z][a-z]*)+))
 method-rgx=(([a-z_)+)|(test([A-Z][a-z0-9]*)+)
@@ -31,7 +34,6 @@ disable=missing-module-docstring,
         too-many-lines,
         too-few-public-methods,
         too-many-public-methods,
-        no-self-use,
         use-sequence-for-iteration,
         raise-missing-from,
         similarities,

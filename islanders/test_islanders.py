@@ -1141,10 +1141,10 @@ class TestPiratePlacement(BaseInputHandlerTest):
     self.c.player_data[0].cards["rsrc2"] += 5
 
   def testBuildNearPirate(self):
-    old_count = sum([self.c.player_data[0].cards[x] for x in islanders.RESOURCES])
+    old_count = sum(self.c.player_data[0].cards[x] for x in islanders.RESOURCES)
     with self.assertRaisesRegex(InvalidMove, "next to the pirate"):
       self.c.handle_road([3, 5, 5, 5], 0, "ship", [("rsrc1", 1), ("rsrc2", 1)])
-    new_count = sum([self.c.player_data[0].cards[x] for x in islanders.RESOURCES])
+    new_count = sum(self.c.player_data[0].cards[x] for x in islanders.RESOURCES)
     self.assertEqual(old_count, new_count)
     self.c.handle_road([5, 5, 6, 6], 1, "ship", [])
 
@@ -1164,9 +1164,9 @@ class TestPiratePlacement(BaseInputHandlerTest):
     self.c.add_player("green", "Bob")
     self.c.turn_idx = 2
     self.c.action_stack = ["rob", "robber"]
-    old_count = sum([self.c.player_data[0].cards[x] for x in islanders.RESOURCES])
+    old_count = sum(self.c.player_data[0].cards[x] for x in islanders.RESOURCES)
     self.c.handle_pirate(2, [4, 6])
-    new_count = sum([self.c.player_data[0].cards[x] for x in islanders.RESOURCES])
+    new_count = sum(self.c.player_data[0].cards[x] for x in islanders.RESOURCES)
     self.assertEqual(new_count, old_count - 1)
     self.assertEqual(self.c.turn_phase, "main")
 

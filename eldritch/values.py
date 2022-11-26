@@ -106,7 +106,7 @@ class ItemDeckCount(Value):
     self.decks = decks
 
   def value(self, state):
-    return sum([getattr(item, "deck", None) in self.decks for item in self.character.possessions])
+    return sum(getattr(item, "deck", None) in self.decks for item in self.character.possessions)
 
 
 class ItemCount(ItemDeckCount):
@@ -124,7 +124,7 @@ class ItemNameCount(Value):
     self.item_name = item_name
 
   def value(self, state):
-    return sum([item.name == self.item_name for item in self.character.possessions])
+    return sum(item.name == self.item_name for item in self.character.possessions)
 
 
 class ItemPrerequisite(Calculation):
@@ -161,7 +161,7 @@ class ContainsPrerequisite(Value):
     self.card_name = card_name
 
   def value(self, state):
-    return sum([card.name == self.card_name for card in getattr(state, self.deck)])
+    return sum(card.name == self.card_name for card in getattr(state, self.deck))
 
 
 class MonsterAttributePrerequisite(Value):

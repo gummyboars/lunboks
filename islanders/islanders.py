@@ -481,10 +481,10 @@ class Player:
     return ret
 
   def resource_card_count(self):
-    return sum([self.cards[x] for x in RESOURCES])
+    return sum(self.cards[x] for x in RESOURCES)
 
   def dev_card_count(self):
-    return sum([self.cards[x] for x in PLAYABLE_DEV_CARDS + VICTORY_CARDS])
+    return sum(self.cards[x] for x in PLAYABLE_DEV_CARDS + VICTORY_CARDS)
 
 
 class IslandersState:
@@ -721,7 +721,7 @@ class IslandersState:
     if self.longest_route_player == idx:
       count += 2
     if not visible:
-      count += sum([self.player_data[idx].cards[card] for card in VICTORY_CARDS])
+      count += sum(self.player_data[idx].cards[card] for card in VICTORY_CARDS)
     count += len(self.foreign_landings[idx]) * self.options.foreign_island_points
     return count
 
@@ -957,7 +957,7 @@ class IslandersState:
       self.distribute_resources((red, white))
 
   def remaining_resources(self, rsrc):
-    return 19 - sum([p.cards[rsrc] for p in self.player_data])
+    return 19 - sum(p.cards[rsrc] for p in self.player_data)
 
   def calculate_resource_distribution(self, dice_roll):
     # Figure out which players are due how many resources.
@@ -1083,7 +1083,7 @@ class IslandersState:
     self._validate_selection(selection)
     if not self.discard_players.get(player):
       raise InvalidMove("You do not need to discard any cards.")
-    discard_count = sum([selection.get(rsrc, 0) for rsrc in RESOURCES])
+    discard_count = sum(selection.get(rsrc, 0) for rsrc in RESOURCES)
     if discard_count != self.discard_players[player]:
       raise InvalidMove("You have %s resource cards and must discard %s." %
                         (self.player_data[player].resource_card_count(),
@@ -1359,7 +1359,7 @@ class IslandersState:
       self.built_this_turn.append(road.location)
 
   def _update_longest_route_player(self):
-    new_max = max([p.longest_route for p in self.player_data])
+    new_max = max(p.longest_route for p in self.player_data)
     holder_max = None
     if self.longest_route_player is not None:
       holder_max = self.player_data[self.longest_route_player].longest_route
@@ -1784,7 +1784,7 @@ class IslandersState:
     self.played_dev += 1
 
   def _handle_knight(self, player_idx):
-    current_max = max([player.knights_played for player in self.player_data])
+    current_max = max(player.knights_played for player in self.player_data)
     self.player_data[player_idx].knights_played += 1
     self.event_log.append(Event("knight", "{player%s} played a knight" % player_idx))
     if self.player_data[player_idx].knights_played > current_max >= 2:
