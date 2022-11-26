@@ -197,7 +197,7 @@ class Character:
     return modifier
 
   def get_modifier(self, other, attribute):
-    return sum([p.get_modifier(other, attribute) or 0 for p in self.possessions])
+    return sum(p.get_modifier(other, attribute) or 0 for p in self.possessions)
 
   def get_override(self, other, attribute):
     override = None
@@ -222,13 +222,13 @@ class Character:
     return successes
 
   def hands_available(self):
-    return 2 - sum([pos.hands_used() for pos in self.possessions if hasattr(pos, "hands_used")])
+    return 2 - sum(pos.hands_used() for pos in self.possessions if hasattr(pos, "hands_used"))
 
   def sliders(self):
     return {slider: getattr(self, slider + "_slider") for slider in self._slider_names}
 
   def focus_cost(self, pending_sliders):
-    return sum([abs(orig - pending_sliders[name]) for name, orig in self.sliders().items()])
+    return sum(abs(orig - pending_sliders[name]) for name, orig in self.sliders().items())
 
   def abilities(self):
     return []
