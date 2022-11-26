@@ -115,7 +115,7 @@ class BlueWatcher(Item):
     super().__init__("Blue Watcher", idx, "unique", {}, {}, None, 4)
 
   def get_usable_interrupt(self, event, owner, state):
-    if not isinstance(event, (events.Check, events.CombatChoice)):
+    if not isinstance(event, (events.Check, events.CombatChoice)) or event.is_done():
       return None
     if not owner == event.character:
       return None
@@ -136,18 +136,16 @@ class BlueWatcher(Item):
           events.DiscardSpecific(owner, [self]),
           events.Loss(owner, {"stamina": 2})
       ], owner)
-    if (event.check_type == "combat"
-        or (event.check_type in ("fight", "lore")
-            and len(state.event_stack) > 1
-            and isinstance(state.event_stack[-2], events.GateCloseAttempt))):
-      return events.Sequence(
-          [
-              events.DiscardSpecific(owner, [self]),
-              events.PassCheck(owner, event, self),
-              events.Loss(owner, {"stamina": 2})
-          ],
-          owner
-      )
+    if isinstance(state.event_stack[-2], events.GateCloseAttempt):
+      if event.check_type in ("fight", "lore") and len(state.event_stack) > 1:
+        return events.Sequence(
+            [
+                events.DiscardSpecific(owner, [self]),
+                events.PassCheck(owner, event, self),
+                events.Loss(owner, {"stamina": 2})
+            ],
+            owner
+        )
     return None
 
 
@@ -295,9 +293,9 @@ class OuterGodlyFlute(Item):
     super().__init__("Flute", idx, "unique", {}, {}, None, 8)
 
   def get_usable_interrupt(self, event, owner, state):
-    if (not isinstance(event, events.CombatChoice)
-        or len(state.event_stack) < 2
-            or not isinstance(state.event_stack[-2], events.CombatRound)):
+    if not isinstance(event, events.CombatChoice) or event.character != owner or event.is_done():
+      return None
+    if len(state.event_stack) < 2 or not isinstance(state.event_stack[-2], events.CombatRound):
       return None
     if owner.stamina < 3 or owner.sanity < 3:
       return None
