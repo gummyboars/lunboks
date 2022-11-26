@@ -7,6 +7,7 @@ from eldritch import events
 CHECK_TYPES = {"speed", "sneak", "fight", "will", "lore", "luck"}
 SUB_CHECKS = {"evade": "sneak", "combat": "fight", "horror": "will", "spell": "lore"}
 COMBAT_SUBTYPES = {"physical", "magical"}
+MAX_TYPES = {"max_sanity", "max_stamina"}
 
 
 class Asset(metaclass=abc.ABCMeta):
@@ -83,7 +84,7 @@ class Asset(metaclass=abc.ABCMeta):
 class Card(Asset):
 
   DECKS = {"common", "unique", "spells", "skills", "allies", "tradables", "specials"}
-  VALID_BONUS_TYPES = CHECK_TYPES | SUB_CHECKS.keys() | COMBAT_SUBTYPES
+  VALID_BONUS_TYPES = CHECK_TYPES | SUB_CHECKS.keys() | COMBAT_SUBTYPES | MAX_TYPES
 
   def __init__(self, name, idx, deck, active_bonuses, passive_bonuses):
     assert deck in self.DECKS
@@ -152,12 +153,53 @@ class Thief(Card):
     return None
 
 
-def ArmWrestler():
-  return Card("Arm Wrestler", None, "allies", {}, {})  # TODO: maximum stamina
+class StatIncreaser(Card):
+
+  def __init__(self, name, stat):
+    assert stat in MAX_TYPES
+    super().__init__(name, None, "allies", {}, {stat: 1})
+    self.stat = stat[4:]
+
+  def get_trigger(self, event, owner, state):
+    if isinstance(event, events.KeepDrawn) and self.name in event.kept:
+      return events.Gain(owner, {self.stat: 1})
+    if isinstance(event, events.DiscardNamed) and event.discarded == self:
+      return events.CapStatsAtMax(owner)
+    if isinstance(event, events.DiscardSpecific) and self in event.discarded:
+      return events.CapStatsAtMax(owner)
+    return None
+
+  def get_usable_interrupt(self, event, owner, state):
+    if not self.is_usable(event, owner, state):
+      return None
+    restore = events.Gain(owner, {self.stat: float("inf")})
+    discard = events.DiscardSpecific(owner, [self])
+    return events.Sequence([restore, discard], owner)
+
+  def is_usable(self, event, owner, state):  # pylint: disable=unused-argument
+    """
+    when can you discard this?
+    - after items have refreshed so that you can use some spell during upkeep
+    - when adjusting sliders
+    - during city movement
+    - between fighting different monsters - or any fight/evade/combat choice
+    - other world movement
+    - before returning to arkham from another world
+    - before you draw a card: encounter/gate/mythos
+    """
+    return False
 
 
-def Dog():
-  return Card("Dog", None, "allies", {}, {})  # TODO: maximum sanity
+class ArmWrestler(StatIncreaser):
+
+  def __init__(self):
+    super().__init__("Arm Wrestler", "max_stamina")
+
+
+class Dog(StatIncreaser):
+
+  def __init__(self):
+    super().__init__("Dog", "max_sanity")
 
 
 class BraveGuy(Card):
