@@ -3225,6 +3225,28 @@ class PurchaseTest(EventTest):
     self.assertEqual(len(self.state.common), 2)
     self.assertSequenceEqual(self.state.common, [cross, food])
 
+  def testDraw2MustPurchase1(self):
+    buy = Purchase(self.char, "common", 2, keep_count=1, must_buy=True)
+    self.char.dollars = 4
+    self.assertFalse(buy.is_resolved())
+    self.assertFalse(self.char.possessions)
+    cross = items.Cross(0)
+    gun = items.TommyGun(0)
+    self.state.common.extend([cross, gun])
+
+    self.state.event_stack.append(buy)
+    choice = self.resolve_to_choice(CardSpendChoice)
+    self.assertEqual(choice.choices, ["Cross", "Tommy Gun", "Nothing"])
+    self.assertIn(2, choice.invalid_choices)
+    with self.assertRaisesRegex(InvalidMove, "must purchase"):
+      choice.resolve(self.state, "Nothing")
+    self.char.dollars = 2
+    choice = self.resolve_to_choice(CardSpendChoice)
+    choice.resolve(self.state, "Nothing")
+    self.resolve_until_done()
+
+    self.assertFalse(self.char.possessions)
+
   def testCancelledDraw(self):
     buy = Purchase(self.char, "common", 2, keep_count=1)
     self.char.dollars = 8

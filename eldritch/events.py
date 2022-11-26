@@ -1482,7 +1482,7 @@ def Sell(char, decks, sell_count=1, discount_type="fixed", discount=0, prompt="S
 class PurchaseDrawn(Event):
   def __init__(
       self, character, draw, discount_type="fixed", discount=0, keep_count=1, prompt="Buy items?",
-      sort_uniq=False,
+      sort_uniq=False, must_buy=False,
   ):
     # TODO: draw could be something other than DrawItems (Northside 5)
     assert discount_type in {"fixed", "rate"}
@@ -1493,6 +1493,7 @@ class PurchaseDrawn(Event):
     self.keep_count = keep_count
     self.discount_type = discount_type
     self.discount = discount
+    self.must_buy = must_buy
     self.draw: DrawItems = draw
     self.drawn = None
     self.choice: Optional[ChoiceEvent] = None
@@ -1531,11 +1532,16 @@ class PurchaseDrawn(Event):
     choices = [card.name for card in self.drawn] + ["Nothing"]
     prices = [self.discounted_price(card) for card in self.drawn]
     spends = [values.ExactSpendPrerequisite({"dollars": price}) for price in prices] + [None]
-    # TODO: In some circumstances, you must purchase at least
-    # one card if able (e.g. General Store)
+    prereqs = len(choices) * [None]
+    if self.must_buy:
+      # TODO: consider other items/abilities that can be used as money
+      prereqs[-1] = values.Calculation(
+          self.character, "dollars", operator.lt, min(prices),
+          error_fmt="You must purchase at least one if able",
+      )
 
     self.choice = CardSpendChoice(
-        self.character, self.prompt, choices, spends=spends, sort_uniq=self.sort_uniq,
+        self.character, self.prompt, choices, prereqs, spends=spends, sort_uniq=self.sort_uniq,
     )
     state.event_stack.append(self.choice)
 
@@ -1559,11 +1565,11 @@ class PurchaseDrawn(Event):
 
 
 def Purchase(char, deck, draw_count, discount_type="fixed", discount=0, keep_count=1,
-             target_type=None, prompt="Buy items?"):
+             target_type=None, prompt="Buy items?", must_buy=False):
   items = DrawItems(char, deck, draw_count, target_type=target_type)
   buy = PurchaseDrawn(
       char, items, discount_type=discount_type, discount=discount, keep_count=keep_count,
-      prompt=prompt, sort_uniq=math.isinf(draw_count),
+      prompt=prompt, sort_uniq=math.isinf(draw_count), must_buy=must_buy,
   )
   return Sequence([items, buy], char)
 
