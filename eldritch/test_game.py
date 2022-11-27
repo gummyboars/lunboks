@@ -1493,17 +1493,21 @@ class RollDiceTest(unittest.TestCase):
     self.state.test_mode = True
 
   def testGenericDiceRoll(self):
-    roll = events.DiceRoll(self.state.characters[0], 1)
+    roll = events.DiceRoll(self.state.characters[0], 1, name="Northside1")
     self.state.event_stack.append(roll)
     for _ in self.state.resolve_loop():
       if not self.state.event_stack:
         break
       data = self.state.for_player(0)
       self.assertIn("dice", data)
-      self.assertIn("roller", data)
-      self.assertEqual(data["roller"], 0)
-      self.assertIn("roll", data)
-      self.assertIsInstance(data["roll"], (type(None), list))
+      self.assertIn("roller", data["dice"])
+      self.assertEqual(data["dice"]["roller"], 0)
+      self.assertIn("roll", data["dice"])
+      self.assertIsInstance(data["dice"]["roll"], (type(None), list))
+      self.assertIn("name", data["dice"])
+      self.assertEqual(data["dice"]["name"], "Northside1")
+      self.assertIn("prompt", data["dice"])
+      self.assertIn("rolls for Northside1", data["dice"]["prompt"])
 
       # TODO: figure out if we want to show the dice rolls to other players
       # other_data = self.state.for_player(1)
@@ -1522,15 +1526,15 @@ class RollDiceTest(unittest.TestCase):
         break
       data = self.state.for_player(0)
       self.assertIn("dice", data)
-      self.assertIn("roller", data)
-      self.assertEqual(data["roller"], 0)
-      self.assertIn("roll", data)
-      self.assertIsInstance(data["roll"], (type(None), list))
+      self.assertIn("roller", data["dice"])
+      self.assertEqual(data["dice"]["roller"], 0)
+      self.assertIn("roll", data["dice"])
+      self.assertIsInstance(data["dice"]["roll"], (type(None), list))
 
     # Player is about to roll the dice. They should be able to see how many dice they will roll.
     self.assertTrue(self.state.event_stack)
-    self.assertIsInstance(data["dice"], int)
-    self.assertFalse(data["roll"])
+    self.assertIsInstance(data["dice"]["count"], int)
+    self.assertFalse(data["dice"]["roll"])
     self.assertIsInstance(self.state.event_stack[-1], events.DiceRoll)
     self.state.event_stack[-1].resolve(self.state)
     self.state.test_mode = True  # Do not proceed to the next turn.
@@ -1540,24 +1544,28 @@ class RollDiceTest(unittest.TestCase):
         break
       data = self.state.for_player(0)
       self.assertIn("dice", data)
-      self.assertIsInstance(data["dice"], int)
-      self.assertIn("roller", data)
-      self.assertEqual(data["roller"], 0)
-      self.assertIn("roll", data)
-      self.assertIsInstance(data["roll"], (type(None), list))
+      self.assertIsInstance(data["dice"]["count"], int)
+      self.assertIn("roller", data["dice"])
+      self.assertEqual(data["dice"]["roller"], 0)
+      self.assertIn("roll", data["dice"])
+      self.assertIsInstance(data["dice"]["roll"], (type(None), list))
     self.assertFalse(self.state.event_stack)
 
   def testCheckAndSpendAndReroll(self):
     self.state.test_mode = False
     self.state.characters[0].clues = 2
     self.state.characters[0].possessions.append(abilities.Stealth(0))
-    check = events.Check(self.state.characters[0], "evade", 0)
+    check = events.Check(self.state.characters[0], "evade", 0, name="Land Squid")
     # Start with a basic check.
     self.state.event_stack.append(check)
     for _ in self.state.resolve_loop():
       data = self.state.for_player(0)
       self.assertIn("dice", data)
-      self.assertIn("roller", data)
+      self.assertEqual(data["dice"]["name"], "Land Squid")
+      self.assertIn("roller", data["dice"])
+      self.assertIn("count", data["dice"])
+      self.assertIn("prompt", data["dice"])
+      self.assertIn("makes a evade +0 check", data["dice"]["prompt"])
     # Stop at the first dice roll. Let the player roll the dice.
     self.assertTrue(self.state.event_stack)  # Dice roll should be on top
     self.assertIsInstance(self.state.event_stack[-1], events.DiceRoll)
@@ -1568,12 +1576,12 @@ class RollDiceTest(unittest.TestCase):
     for _ in self.state.resolve_loop():
       data = self.state.for_player(0)
       self.assertIn("dice", data)
-      self.assertIn("roller", data)
-      if data.get("roll", None) is not None:
+      self.assertIn("roller", data["dice"])
+      if data["dice"]["roll"] is not None:
         roll_started = True
       if roll_started:
-        self.assertIsInstance(data.get("roll", None), list)
-    roll_length = len(data["roll"])
+        self.assertIsInstance(data["dice"]["roll"], list)
+    roll_length = len(data["dice"]["roll"])
 
     # The player chooses to spend one clue token.
     self.assertTrue(self.state.event_stack)  # Should have the spend event on top
@@ -1587,7 +1595,7 @@ class RollDiceTest(unittest.TestCase):
     for _ in self.state.resolve_loop():
       data = self.state.for_player(0)
       self.assertIn("dice", data)
-      self.assertIsInstance(data.get("roll", None), list)
+      self.assertIsInstance(data["dice"]["roll"], list)
     # Roll the extra die from the clue token.
     self.assertIsInstance(self.state.event_stack[-1], events.DiceRoll)
     self.state.event_stack[-1].resolve(self.state)
@@ -1596,8 +1604,8 @@ class RollDiceTest(unittest.TestCase):
     for _ in self.state.resolve_loop():
       data = self.state.for_player(0)
       self.assertIn("dice", data)
-      self.assertIsInstance(data.get("roll", None), list)
-    self.assertEqual(len(data["roll"]), roll_length+1)
+      self.assertIsInstance(data["dice"]["roll"], list)
+    self.assertEqual(len(data["dice"]["roll"]), roll_length+1)
 
     # The player decides to reroll this check.
     self.assertIn(0, self.state.usables)
@@ -1607,13 +1615,13 @@ class RollDiceTest(unittest.TestCase):
     reroll_started = False
     for _ in self.state.resolve_loop():
       data = self.state.for_player(0)
-      if data.get("roll") is None:
+      if data["dice"]["roll"] is None:
         reroll_started = True
       if reroll_started:
-        self.assertIsNone(data.get("roll"))
+        self.assertIsNone(data["dice"]["roll"])
       else:
-        self.assertIsInstance(data.get("roll", None), list)
-        self.assertEqual(len(data["roll"]), roll_length+1)
+        self.assertIsInstance(data["dice"]["roll"], list)
+        self.assertEqual(len(data["dice"]["roll"]), roll_length+1)
 
     # The player rolls the dice again.
     self.assertIsInstance(self.state.event_stack[-1], events.DiceRoll)
@@ -1624,11 +1632,11 @@ class RollDiceTest(unittest.TestCase):
     for _ in self.state.resolve_loop():
       data = self.state.for_player(0)
       self.assertIn("dice", data)
-      self.assertIn("roller", data)
-      if data.get("roll", None) is not None:
+      self.assertIn("roller", data["dice"])
+      if data["dice"]["roll"] is not None:
         roll_started = True
       if roll_started:
-        self.assertIsInstance(data.get("roll", None), list)
+        self.assertIsInstance(data["dice"]["roll"], list)
 
     # Done spending.
     next_spend = self.state.event_stack[-1]
@@ -1636,7 +1644,7 @@ class RollDiceTest(unittest.TestCase):
     for _ in self.state.resolve_loop():
       if not self.state.event_stack:
         break
-      self.assertEqual(len(data["roll"]), roll_length+1)
+      self.assertEqual(len(data["dice"]["roll"]), roll_length+1)
 
 
 class MapChoiceTest(unittest.TestCase):

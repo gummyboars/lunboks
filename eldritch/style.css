@@ -183,6 +183,7 @@ button:disabled {
 .cardchoice {
   width: calc(min(15vw, 24vh));
   height: calc(min(15vw, 24vh) * 25 / 16);
+  position: relative;
 }
 .monsterchoice {
   width: calc(min(15vw, 24vh));

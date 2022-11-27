@@ -227,7 +227,7 @@ class CloseLocationsHeadline(Headline):
 
 
 def HealthWager(source, character, attribute, prompt, prize):
-  dice = events.DiceRoll(character, values.Calculation(character, attribute))
+  dice = events.DiceRoll(character, values.Calculation(character, attribute), name=source.name)
   loss = events.Loss(
       character,
       {attribute: values.Calculation(
@@ -453,7 +453,7 @@ class Mythos13(Rumor):
 
   def progress_event(self, state):
     first_player = state.characters[state.first_player]
-    dice1 = events.DiceRoll(first_player, 1)
+    dice1 = events.DiceRoll(first_player, 1, name=self.name)
     prog1 = events.IncreaseTerror()
     cond1 = events.Conditional(first_player, values.Die(dice1), "", {0: prog1, 3: events.Nothing()})
     return events.Sequence([dice1, cond1])
@@ -491,7 +491,7 @@ class Mythos15(Environment):
   def get_trigger(self, event, state):
     if isinstance(event, events.Movement) and isinstance(event.character.place, places.Street):
       is_deputy = values.ItemNameCount(event.character, "Deputy")
-      check = events.Check(event.character, "will", 0)
+      check = events.Check(event.character, "will", 0, name=self.name)
       arrested = events.Arrested(event.character)
       make_check = events.PassFail(event.character, check, events.Nothing(), arrested)
       return events.PassFail(event.character, is_deputy, events.Nothing(), make_check)
@@ -532,7 +532,7 @@ class Mythos17(Environment):
       return None
     if event.character.place.name != self.activity_location:
       return None
-    check = events.Check(event.character, "lore", -1)
+    check = events.Check(event.character, "lore", -1, name=self.name)
     gain = events.Gain(event.character, {"clues": 1})
     return events.PassFail(event.character, check, gain, events.Nothing())
 
@@ -648,8 +648,8 @@ class Mythos27(Rumor):
 
   def progress_event(self, state):
     first_player = state.characters[state.first_player]
-    dice1 = events.DiceRoll(first_player, 1)
-    dice2 = events.DiceRoll(first_player, 1)
+    dice1 = events.DiceRoll(first_player, 1, name=self.name)
+    dice2 = events.DiceRoll(first_player, 1, name=self.name)
     prog1 = events.ProgressRumor(self)
     prog2 = events.ProgressRumor(self)
     cond1 = events.Conditional(first_player, values.Die(dice1), "", {0: prog1, 3: events.Nothing()})

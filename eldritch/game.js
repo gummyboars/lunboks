@@ -308,7 +308,7 @@ function handleData(data) {
   updateMonsterChoices(data.choice, data.monsters);
   updatePlaceBoxes(data.places, data.activity);
   updateUsables(data.usables, data.spendables, data.choice);
-  updateDice(data.dice, data.roll, data.roller == data.player_idx);
+  updateDice(data.dice, data.player_idx, data.monsters);
   updateEventLog(data.event_log);
   if (!stepping && messageQueue.length && !runningAnim.length) {
     let msg = messageQueue.shift();
@@ -927,9 +927,9 @@ function toggleCards(e) {
 
 function setCardButtonText() {
   if (cardsStyle == "flex") {
-    document.getElementById("togglecards").innerText = "Hide Choices";
+    document.getElementById("togglecards").innerText = "Hide Info";
   } else {
-    document.getElementById("togglecards").innerText = "Show Choices";
+    document.getElementById("togglecards").innerText = "Show Info";
   }
 }
 
@@ -1097,6 +1097,33 @@ function addMonsterChoices(uichoice, cardChoice, monsters, invalidChoices, annot
     scrollParent.classList.remove("overflowing");
   }
   addChoices(uichoice, otherChoices, [], []);
+}
+
+function showMonster(cardChoice, monster) {
+  let holder = document.createElement("DIV");
+  holder.classList.add("cardholder");
+  let div = document.createElement("DIV");
+  div.classList.add("fightchoice", "monsterback");
+  div.monsterInfo = monster;
+  let cnv = document.createElement("CANVAS");
+  cnv.classList.add("markercnv");  // TODO: use a better class name for this
+  div.appendChild(cnv);
+  holder.appendChild(div);
+  cardChoice.appendChild(holder);
+  renderMonsterBackToDiv(div, monster);
+}
+
+function showActionSource(cardChoice, name) {
+  let holder = document.createElement("DIV");
+  holder.classList.add("cardholder");
+  let div = document.createElement("DIV");
+  div.classList.add("cardchoice", "cnvcontainer");
+  let cnv = document.createElement("CANVAS");
+  cnv.classList.add("markercnv");  // TODO: use a better class name for this
+  div.appendChild(cnv);
+  holder.appendChild(div);
+  cardChoice.appendChild(holder);
+  renderAssetToDiv(div, name);
 }
 
 function addFightOrEvadeChoices(uichoice, cardChoice, monster, choices, invalidChoices, remainingSpend, annotations) {
@@ -1742,14 +1769,39 @@ function toggleGlobals(e, frontCard) {
   }
 }
 
-function updateDice(numDice, roll, yours) {
+function updateDice(dice, playerIdx, monsterList) {
   let uidice = document.getElementById("uidice");
-  let diceDiv = document.getElementById("dice");
-  let btn = document.getElementById("dicebutton");
-  if (numDice == null) {
+  if (dice == null) {
     uidice.style.display = "none";
     return;
   }
+  if (dice.name != null) {  // Show the monster/card that is causing this dice roll.
+    while (uicardchoice.getElementsByClassName("cardholder").length) {
+      uicardchoice.removeChild(uicardchoice.getElementsByClassName("cardholder")[0]);
+    }
+    document.getElementById("cardchoicescroll").style.display = cardsStyle;
+    document.getElementById("togglecards").style.display = "inline-block";
+    setCardButtonText();
+    if (monsterNames.includes(dice.name) && dice.check_type != "evade") {
+      for (let m of monsterList) {
+        if (m.name == dice.name) {
+          showMonster(document.getElementById("uicardchoice"), m);
+          break;
+        }
+      }
+    } else {
+      showActionSource(document.getElementById("uicardchoice"), dice.name);
+    }
+  }
+  if (dice.prompt) {
+    document.getElementById("uiprompt").innerText = dice.prompt;
+  }
+
+  let numDice = dice.count;
+  let roll = dice.roll;
+  let yours = dice.roller == playerIdx;
+  let diceDiv = document.getElementById("dice");
+  let btn = document.getElementById("dicebutton");
   uidice.style.display = "flex";
   if (yours && (roll == null || roll.length < numDice)) {
     btn.style.display = "inline-block";
