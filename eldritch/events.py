@@ -84,6 +84,9 @@ class Event(metaclass=abc.ABCMeta):
   def flatten(self) -> bool:
     return False
 
+  def animated(self) -> bool:
+    return False
+
   @abc.abstractmethod
   def log(self, state) -> str:
     raise NotImplementedError
@@ -612,6 +615,9 @@ class DamageAncientOne(Event):
   def log(self, state):
     return f"{self.character.name} had {self.successes} successes against {state.ancient_one.name}"
 
+  def animated(self):
+    return True
+
 
 class AncientAttack(Turn):
 
@@ -638,6 +644,9 @@ class AncientAttack(Turn):
 
   def log(self, state):
     return f"{state.ancient_one.name}'s attack"
+
+  def animated(self):
+    return True
 
 
 class DiceRoll(Event):
@@ -669,6 +678,9 @@ class DiceRoll(Event):
     if not self.roll:
       return f"{self.character.name} rolled no dice"
     return f"{self.character.name} rolled {' '.join(str(x) for x in self.roll)}"
+
+  def animated(self):
+    return True
 
 
 class BonusDiceRoll(DiceRoll):
@@ -709,6 +721,9 @@ class MoveOne(Event):
     if self.moved:
       return f"{self.character.name} moved to {self.dest}"
     return f"{self.character.name} could not move from {self.character.place.name} to {self.dest}"
+
+  def animated(self):
+    return True
 
 
 class GainOrLoss(Event):
@@ -802,6 +817,9 @@ class GainOrLoss(Event):
     if losses:
       return f"{self.character.name} lost {losses}"
     return f"nothing changed for {self.character.name}"
+
+  def animated(self):
+    return True
 
 
 def Gain(character, gains, source=None):
@@ -906,6 +924,9 @@ class CapStatsAtMax(Event):
 
   def log(self, state):
     return ""
+
+  def animated(self):
+    return True
 
 
 class CollectClues(Event):
@@ -1043,6 +1064,9 @@ class InsaneOrUnconscious(StackClearMixin, Event):
       return f"{self.character.name} {self.desc} and woke up in the {self.force_move.location_name}"
     return f"{self.character.name} {self.desc}"
 
+  def animated(self):
+    return True
+
 
 def Insane(character):
   return InsaneOrUnconscious(character, "sanity", "went insane")
@@ -1082,6 +1106,9 @@ class Devoured(StackClearMixin, Event):
       return f"{self.character.name} was not devoured"
     return f"{self.character.name} was devoured"
 
+  def animated(self):
+    return True
+
 
 class DelayOrLoseTurn(Event):
 
@@ -1120,6 +1147,9 @@ class DelayOrLoseTurn(Event):
       return f"{self.character.name} lost the remainder of their turn"
     return f"{self.character.name} lost their next turn"
 
+  def animated(self):
+    return True
+
 
 def Delayed(character):
   return DelayOrLoseTurn(character, "delayed")
@@ -1150,6 +1180,9 @@ class ClearStatus(Event):
     if self.cancelled:
       return f"{self.character.name} had their {self.status} clearing cancelled"
     return f"{self.character.name} will have their {self.status} cleared"
+
+  def animated(self):
+    return True
 
 
 class LostInTimeAndSpace(Sequence):
@@ -1299,6 +1332,9 @@ class ForceMovement(Event):
       return f"{self.character.name} will move to {name}"
     return f"{self.character.name} moved to {name}"
 
+  def animated(self):
+    return True
+
 
 class DrawItems(Event):
 
@@ -1405,6 +1441,9 @@ class KeepDrawn(Event):
       return f"{self.character.name} chooses {self.keep_count} cards to keep"
     return f"{self.character.name} kept " + ", ".join(self.kept)
 
+  def animated(self):
+    return True
+
 
 def Draw(character, deck, draw_count, prompt="Choose a card", keep_count=1, target_type=None):
   cards = DrawItems(character, deck, draw_count, target_type=target_type)
@@ -1490,6 +1529,9 @@ class SellChosen(Event):
       return card.price - self.discount
     # self.discount_type == "rate"
     return card.price - int(self.discount * card.price)  # Discounts round up
+
+  def animated(self):
+    return True
 
 
 def Sell(char, decks, sell_count=1, discount_type="fixed", discount=0, prompt="Sell item?"):
@@ -1581,6 +1623,9 @@ class PurchaseDrawn(Event):
       return max(card.price - self.discount, 0)
     # self.discount_type == "rate"
     return card.price - int(self.discount * card.price)  # Discounts round up
+
+  def animated(self):
+    return True
 
 
 def Purchase(char, deck, draw_count, discount_type="fixed", discount=0, keep_count=1,
@@ -1845,6 +1890,9 @@ class ExhaustAsset(Event):
       return f"{self.character.name} did not exhaust their {self.item.name}"
     return f"{self.character.name} exhausted their {self.item.name}"
 
+  def animated(self):
+    return True
+
 
 class RefreshAsset(Event):
 
@@ -1873,6 +1921,9 @@ class RefreshAsset(Event):
     if not self.refreshed:
       return f"{self.character.name} did not refresh their {self.item.name}"
     return f"{self.character.name} refreshed their {self.item.name}"
+
+  def animated(self):
+    return True
 
 
 class RefreshAssets(Event):
@@ -1932,6 +1983,9 @@ class ActivateItem(Event):
     if not self.activated:
       return f"{self.character.name} did not use their {self.item.name}"
     return f"{self.character.name} used their {self.item.name}"
+
+  def animated(self):
+    return True
 
 
 class ActivateChosenItems(Event):
@@ -2004,6 +2058,9 @@ class DeactivateItem(Event):
     if not self.deactivated:
       return f"{self.character.name} did not stop using their {self.item.name}"
     return f"{self.character.name} stopped using their {self.item.name}"
+
+  def animated(self):
+    return True
 
 
 class DeactivateItems(Event):
@@ -2110,6 +2167,9 @@ class CastSpell(Event):
       return f"{self.character.name} successfully cast {self.spell.name}"
     return f"{self.character.name} failed to cast {self.spell.name} {self.fail_message}"
 
+  def animated(self):
+    return True
+
 
 class MarkDeactivatable(Event):
 
@@ -2160,6 +2220,9 @@ class DeactivateSpell(Event):
     if not self.done:
       return f"{self.character.name} will stop using their {self.spell.name}"
     return f"{self.character.name} stopped using their {self.spell.name}"
+
+  def animated(self):
+    return True
 
 
 class DeactivateCombatSpells(Event):
@@ -2252,6 +2315,9 @@ class DiscardSpecific(Event):
       return text
     return text + " to the box"
 
+  def animated(self):
+    return True
+
 
 class DiscardNamed(Event):
 
@@ -2288,6 +2354,9 @@ class DiscardNamed(Event):
       return f"{self.character.name} did not have a {self.item_name} to discard"
     return f"{self.character.name} discarded their {self.item_name}"
 
+  def animated(self):
+    return True
+
 
 class ReturnMonsterFromBoard(Event):  # TODO: merge the three return monster to cup events
 
@@ -2311,6 +2380,9 @@ class ReturnMonsterFromBoard(Event):  # TODO: merge the three return monster to 
     if not self.returned:
       return f"{self.monster.name} is returned to the {'box' if self.to_box else 'cup'}"
     return f"{self.monster.name} was returned to the {'box' if self.to_box else 'cup'}"
+
+  def animated(self):
+    return True
 
 
 class ReturnMonsterToCup(Event):
@@ -2339,6 +2411,9 @@ class ReturnMonsterToCup(Event):
       return f"{self.character.name} returns {self.handle} to the cup"
     return f"{self.character.name} returned " + ", ".join(self.returned) + " to the cup"
 
+  def animated(self):
+    return True
+
 
 class ReturnGateToStack(Event):
 
@@ -2365,6 +2440,9 @@ class ReturnGateToStack(Event):
     if self.returned is None:
       return f"{self.character.name} returns {self.handle}"
     return f"{self.character.name} returned " + ", ".join(self.returned)
+
+  def animated(self):
+    return True
 
 
 class Check(Event):
@@ -2459,6 +2537,9 @@ class Check(Event):
     if not self.successes:
       return f"{self.character.name} failed a {self.check_str()}"
     return f"{self.character.name} had {self.successes} successes on a {self.check_str()}"
+
+  def animated(self):
+    return True
 
 
 class AddExtraDie(Event):
@@ -3871,6 +3952,9 @@ class ForceTakeTrophy(Event):
       return f"{self.character.name} takes a monster trophy"
     return f"{self.character.name} took a {self.monster.name} as a trophy"
 
+  def animated(self):
+    return True
+
 
 class TakeTrophy(ForceTakeTrophy):
   def log(self, state):
@@ -3932,6 +4016,9 @@ class Travel(Event):
       return f"{self.character.name} moves to another world"
     return f"{self.character.name} moved to {self.world_name}"
 
+  def animated(self):
+    return True
+
 
 class Return(Event):
 
@@ -3976,6 +4063,9 @@ class Return(Event):
     if not self.returned:
       return f"{self.character.name} did not return"
     return f"{self.character.name} returned to {state.places[self.return_choice.choice].name}"
+
+  def animated(self):
+    return True
 
 
 class PullThroughGate(Sequence):
@@ -4131,6 +4221,9 @@ class CloseGate(Event):
     verb = "closed and sealed" if self.sealed else "closed"
     return f"{self.character.name} {verb} the gate at {self.location_name}"
 
+  def animated(self):
+    return True
+
 
 class RemoveAllSeals(Event):
 
@@ -4149,6 +4242,9 @@ class RemoveAllSeals(Event):
 
   def log(self, state):
     return "All locations were unsealed."
+
+  def animated(self):
+    return True
 
 
 class DrawMythosCard(Event):
@@ -4270,6 +4366,9 @@ class OpenGate(Event):
       return f"A monster surge occurred at {self.location_name}."
     return f"A gate did not appear at {self.location_name}."
 
+  def animated(self):
+    return True
+
 
 class AddToken(Event):
   def __init__(self, asset, token_type, character=None, n_tokens=1):
@@ -4312,6 +4411,9 @@ class AddToken(Event):
     return (f"{self.n_tokens} {self.token_type.title()} token(s) prevented"
             f" from being added to {self.asset.name}")
 
+  def animated(self):
+    return True
+
 
 class AllyToBox(Event):
   def __init__(self):
@@ -4336,6 +4438,9 @@ class AllyToBox(Event):
     if self.done:
       return "No allies remaining to be returned to the box"
     return "Returning an ally to the box"
+
+  def animated(self):
+    return True
 
 
 class AddDoom(Event):
@@ -4364,6 +4469,9 @@ class AddDoom(Event):
       return f"{self.count} doom tokens will be added"
     return f"{self.count} doom tokens were added"
 
+  def animated(self):
+    return True
+
 
 class RemoveDoom(Event):
   def __init__(self, character=None):
@@ -4389,6 +4497,9 @@ class RemoveDoom(Event):
     if not self.done:
       return "Doom token will be removed"
     return "Doom token was removed"
+
+  def animated(self):
+    return True
 
 
 class DrawMonstersFromCup(Event):
@@ -4603,6 +4714,9 @@ class IncreaseTerror(Event):
       return f"Terror track will advance by up to {self.count}"
     return f"Terror track advanced by {self.added} of {self.count}"
 
+  def animated(self):
+    return True
+
 
 class AddGlobalEffect(Event):
   def __init__(self, effect, source_deck=None, active_until=None):
@@ -4633,6 +4747,9 @@ class AddGlobalEffect(Event):
       return f"{self.effect.name} enters play"
     return f"{self.effect.name} to be entered into play"
 
+  def animated(self):
+    return True
+
 
 class RemoveGlobalEffect(Event):
   def __init__(self, effect, source_deck=None):
@@ -4660,6 +4777,9 @@ class RemoveGlobalEffect(Event):
     if self.done:
       return f"{self.effect.name} removed from play"
     return f"{self.effect.name} to be removed from play"
+
+  def animated(self):
+    return True
 
 
 class SpawnClue(Event):
@@ -4718,6 +4838,9 @@ class SpawnClue(Event):
     else:
       receiving_player = self.eligible[self.choice.choice_index or 0]
     return f"{receiving_player.name} received a clue."
+
+  def animated(self):
+    return True
 
 
 class MoveMonsters(Event):
@@ -4845,6 +4968,9 @@ class MoveMonster(Event):
       return f"{self.monster.name} did not move"
     return f"{self.monster.name} moved from {self.source.name} to {self.destination.name}"
 
+  def animated(self):
+    return True
+
 
 class ReturnToCup(Event):
 
@@ -4898,6 +5024,9 @@ class ReturnToCup(Event):
       return "All monsters in " + ", ".join(self.places) + " will be returned to the cup."
     return f"{self.returned} monsters returned to the cup"
 
+  def animated(self):
+    return True
+
 
 class CloseLocation(Event):
 
@@ -4940,6 +5069,9 @@ class CloseLocation(Event):
       return f"{self.location_name} is closing {suffix}"
     return f"{self.location_name} was closed {suffix}"
 
+  def animated(self):
+    return True
+
 
 class ActivateEnvironment(Event):
 
@@ -4964,6 +5096,9 @@ class ActivateEnvironment(Event):
     if not self.done:
       return f"{self.env.name} becomes the new environment"
     return f"{self.env.name} became the new environment"
+
+  def animated(self):
+    return True
 
 
 class StartRumor(Event):
@@ -4994,6 +5129,9 @@ class StartRumor(Event):
       return f"Rumor {self.rumor.name} did not enter play because a rumor is already in play"
     return f"Rumor {self.rumor.name} began"
 
+  def animated(self):
+    return True
+
 
 class ProgressRumor(Event):
 
@@ -5018,6 +5156,9 @@ class ProgressRumor(Event):
     if self.increase is None:
       return f"The rumor will advance by {self.amount}"
     return f"The rumor advanced by {self.increase}"
+
+  def animated(self):
+    return True
 
 
 class EndRumor(Event):
@@ -5045,6 +5186,9 @@ class EndRumor(Event):
     if self.failed:
       return "The rumor has failed"
     return "The rumor has passed"
+
+  def animated(self):
+    return True
 
 
 class AncientOneAttack(Sequence):
@@ -5104,3 +5248,6 @@ class Awaken(Event):
     if not self.done:
       return f"{state.ancient_one.name} awakens"
     return f"{state.ancient_one.name} awakened"
+
+  def animated(self):
+    return True

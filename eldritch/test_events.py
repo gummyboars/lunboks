@@ -141,6 +141,8 @@ class EventTest(unittest.TestCase):
         break
       if not self.state.event_stack:
         self.state.next_turn()
+        if self.state.turn_number >= target_turn and self.state.turn_phase == target_phase:
+          break
         continue
       if self.state.turn_phase == "upkeep":
         self.assertIsInstance(self.state.event_stack[-1], events.SliderInput)
