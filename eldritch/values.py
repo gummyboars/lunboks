@@ -80,6 +80,18 @@ def Die(die_roll):
   return Calculation(die_roll, "sum")
 
 
+class BadDice(Value):
+
+  def __init__(self, roll):
+    super().__init__()
+    self.roll = roll
+
+  def value(self, state):
+    if self.roll.bad is None:
+      return 0
+    return len([roll for roll in self.roll.roll if roll in self.roll.bad])
+
+
 class AttributePrerequisite(Calculation):
 
   def __init__(self, character, attribute, threshold, operand):

@@ -455,7 +455,7 @@ def Other21(char) -> events.Event:
 
 def Dreamlands22(char) -> events.Event:
   check = events.Check(char, "will", -1)
-  dice = events.DiceRoll(char, 2)
+  dice = events.DiceRoll(char, 2, bad=[])
   money = events.Gain(char, {"dollars": values.Calculation(dice, "sum")})
   return events.PassFail(char, check, events.Sequence([dice, money], char), events.Nothing())
 
@@ -549,7 +549,7 @@ def Other25(char) -> events.Event:
 
 def Abyss26(char) -> events.Event:
   check = events.Check(char, "luck", -1)
-  die = events.DiceRoll(char, 1)
+  die = events.DiceRoll(char, 1, bad=[])
   val = values.Calculation(die, "sum")
   gain = events.Sequence([die, events.Gain(char, {"stamina": val})], char)
   loss = events.Sequence([die, events.Loss(char, {"stamina": val})], char)
@@ -592,7 +592,7 @@ def Plateau27(char) -> events.Event:
 
 
 def Other27(char) -> events.Event:
-  dice = events.DiceRoll(char, values.Calculation(char, "stamina"))
+  dice = events.DiceRoll(char, values.Calculation(char, "stamina"), bad=[])
   loss = events.Loss(
       char,
       {"stamina": values.Calculation(
@@ -843,7 +843,7 @@ def Other40(char) -> events.Event:
 
 
 def SunkenCity41(char) -> events.Event:
-  die = events.DiceRoll(char, 1)
+  die = events.DiceRoll(char, 1, bad=[])
   seq = events.Sequence([
       die, events.Loss(char, {"sanity": values.Calculation(die, "sum")})
   ], char)
@@ -970,7 +970,7 @@ def Dreamlands47(char) -> events.Event:
 
 
 def Other47(char) -> events.Event:
-  dice = events.DiceRoll(char, values.Calculation(char, "sanity"))
+  dice = events.DiceRoll(char, values.Calculation(char, "sanity"), bad=[])
   loss = events.Loss(
       char,
       {"sanity": values.Calculation(

@@ -453,7 +453,7 @@ class Mythos13(Rumor):
 
   def progress_event(self, state):
     first_player = state.characters[state.first_player]
-    dice1 = events.DiceRoll(first_player, 1, name=self.name)
+    dice1 = events.DiceRoll(first_player, 1, name=self.name, bad=[1, 2])
     prog1 = events.IncreaseTerror()
     cond1 = events.Conditional(first_player, values.Die(dice1), "", {0: prog1, 3: events.Nothing()})
     return events.Sequence([dice1, cond1])
@@ -648,13 +648,11 @@ class Mythos27(Rumor):
 
   def progress_event(self, state):
     first_player = state.characters[state.first_player]
-    dice1 = events.DiceRoll(first_player, 1, name=self.name)
-    dice2 = events.DiceRoll(first_player, 1, name=self.name)
-    prog1 = events.ProgressRumor(self)
-    prog2 = events.ProgressRumor(self)
-    cond1 = events.Conditional(first_player, values.Die(dice1), "", {0: prog1, 3: events.Nothing()})
-    cond2 = events.Conditional(first_player, values.Die(dice2), "", {0: prog2, 3: events.Nothing()})
-    return events.Sequence([dice1, cond1, dice2, cond2])
+    dice = events.DiceRoll(first_player, 2, name=self.name, bad=[1, 2])
+    bad_count = values.BadDice(dice)
+    prog = events.ProgressRumor(self, amount=bad_count)
+    cond = events.Conditional(first_player, bad_count, "", {0: events.Nothing(), 1: prog})
+    return events.Sequence([dice, cond])
 
   def get_trigger(self, event, state):
     if isinstance(event, events.ProgressRumor) and event.rumor == self and self.should_fail(state):

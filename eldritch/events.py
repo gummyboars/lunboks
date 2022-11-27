@@ -669,11 +669,12 @@ class AncientAttack(Turn):
 
 class DiceRoll(Event):
 
-  def __init__(self, character, count, name=None):
+  def __init__(self, character, count, *, name=None, bad=None):
     super().__init__()
     self.character = character
     self.count = count
     self.name = name
+    self.bad = bad
     self.roll = None
     self.sum = None
     self.successes = None
@@ -2750,7 +2751,7 @@ def PassOrLoseDice(
     adjustment: int = 0,
 ) -> Event:
   check = Check(char, stat, modifier)
-  die = DiceRoll(char, n_dice)
+  die = DiceRoll(char, n_dice, bad=[])
   amt = values.Calculation(die, "sum", operand=operator.add, right=adjustment)
   if isinstance(attribute, str):
     attribute = [attribute]

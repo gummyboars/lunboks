@@ -1797,21 +1797,14 @@ function updateDice(dice, playerIdx, monsterList) {
     document.getElementById("uiprompt").innerText = dice.prompt;
   }
 
-  let numDice = dice.count;
-  let roll = dice.roll;
-  let yours = dice.roller == playerIdx;
+  let roll = dice.roll || [];
   let diceDiv = document.getElementById("dice");
   let btn = document.getElementById("dicebutton");
   uidice.style.display = "flex";
-  if (yours && (roll == null || roll.length < numDice)) {
-    btn.style.display = "inline-block";
-  } else {
-    btn.style.display = "none";
-  }
-  while (diceDiv.getElementsByClassName("die").length > Math.max(numDice, 0)) {
+  while (diceDiv.getElementsByClassName("die").length > Math.max(dice.count, 0)) {
     diceDiv.removeChild(diceDiv.getElementsByClassName("die")[0])
   }
-  while (diceDiv.getElementsByClassName("die").length < numDice) {
+  while (diceDiv.getElementsByClassName("die").length < dice.count) {
     let die = document.createElement("DIV");
     die.classList.add("die");
     diceDiv.appendChild(die);
@@ -1820,17 +1813,35 @@ function updateDice(dice, playerIdx, monsterList) {
   let allDice = diceDiv.getElementsByClassName("die");
   for (let die of allDice) {
     die.innerText = "?";
+    die.classList.remove("success", "bad");
   }
 
-  if (roll == null) {
-    return;
-  }
+  let remaining = dice.roll == null || roll.length < dice.count;
   for (let [idx, val] of roll.entries()) {
     if (idx >= allDice.length) {
       console.log("too many dice rolls");
       return;
     }
-    allDice[idx].innerText = val;
+    if (dice.bad != null && dice.bad.includes(val)) {
+      allDice[idx].classList.add("bad");
+    }
+    if (dice.success != null && idx < dice.success.length && dice.success[idx]) {
+      allDice[idx].classList.add("success");
+    }
+    if (val != null) {
+      allDice[idx].innerText = val;
+    } else {
+      remaining = true;
+    }
+  }
+  if (dice.roller == playerIdx && remaining) {
+    btn.style.display = "inline-block";
+  } else {
+    btn.style.display = "none";
+  }
+  if (dice.bad != null) {
+    runningAnim.push(true);  // let the user see the dice for a moment
+    setTimeout(finishAnim, 1000);
   }
 }
 

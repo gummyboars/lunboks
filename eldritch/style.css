@@ -1075,6 +1075,12 @@ button:disabled {
   background: sienna;
   border: 1px solid black;
 }
+.die.success {
+  background: green;
+}
+.die.bad {
+  background: red;
+}
 #roll {
   font-size: calc(min(1.25vw, 2vh));
 }
