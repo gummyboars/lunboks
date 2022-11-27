@@ -172,7 +172,7 @@ class LandSquid(Monster):
         if isinstance(char.place, places.CityPlace)
     ])
     first_player = state.characters[state.first_player]
-    roll = events.DiceRoll(first_player, 1, name=self.name)
+    roll = events.DiceRoll(first_player, 1, name=self.name, bad=[4, 5, 6])
     cond = events.Conditional(first_player, roll, "sum", {0: events.Nothing(), 4: seq})
     return events.Sequence([roll, cond])
 

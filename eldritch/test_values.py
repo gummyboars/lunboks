@@ -209,6 +209,23 @@ class UnsuccessfulDiceTest(unittest.TestCase):
     self.assertEqual(bad_dice.value(state), [0, 2, 5])
 
 
+class BadDiceTest(unittest.TestCase):
+
+  def testBadDice(self):
+    state = DummyState()
+    roll = Dummy(roll=[1, 2, 3, 4], bad=[1, 2])
+    bad_dice = BadDice(roll)
+    self.assertEqual(bad_dice.value(state), 2)
+    roll.bad = [4, 5, 6]
+    self.assertEqual(bad_dice.value(state), 1)
+
+  def testBadDiceWithNone(self):
+    state = DummyState()
+    roll = Dummy(roll=[1, 2, 3, 4], bad=None)
+    bad_dice = BadDice(roll)
+    self.assertEqual(bad_dice.value(state), 0)
+
+
 class SpendTest(unittest.TestCase):
 
   def testFixedValuePrerequisite(self):

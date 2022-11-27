@@ -303,7 +303,7 @@ class GameState:
           current = event.draw.card.name
     output["current"] = current
 
-    # Figure out the current dice roll and how many bonus dice it has.
+    # Figure out the current dice roll/check and how many bonus dice it has.
     roller = None
     bonus = 0
     to_remove = []
@@ -320,11 +320,14 @@ class GameState:
       if isinstance(event, events.Check):
         roller = event
         break
+    # Display the current dice roll/check.
     if roller is not None:
       output["dice"] = {
           "roll": roller.roll,
           "count": None,
           "prompt": None,
+          "success": None,
+          "bad": None,
           "check_type": getattr(roller, "check_type", None),
           "name": roller.name,
           "roller": self.characters.index(roller.character),
@@ -332,8 +335,17 @@ class GameState:
       if roller.count is not None:
         dice_count = values.Calculation(roller.count, None, operator.add, bonus).value(self)
         output["dice"]["count"] = dice_count
+      if getattr(roller, "bad", None) is not None:
+        output["dice"]["bad"] = roller.bad
+      elif roller.roll:
+        output["dice"]["success"] = [
+            roller.character.is_success(val, getattr(roller, "check_type", None))
+            for val in roller.roll
+        ]
       if to_remove and roller.roll:
-        output["dice"]["roll"] = [roll for i, roll in enumerate(roller.roll) if i not in to_remove]
+        output["dice"]["roll"] = [
+            None if i in to_remove else roll for i, roll in enumerate(roller.roll)
+        ]
       if roller.name is None and current is not None:
         output["dice"]["name"] = current
       if not isinstance(self.event_stack[-1], events.ChoiceEvent):

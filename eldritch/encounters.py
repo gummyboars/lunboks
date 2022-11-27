@@ -91,7 +91,7 @@ def Diner6(char):
 
 def Diner7(char):
   move = events.ForceMovement(char, "Easttown")
-  die = events.DiceRoll(char, 1)
+  die = events.DiceRoll(char, 1, bad=[])
   gain = events.Gain(char, {"dollars": values.Die(die)})
   check = events.Check(char, "sneak", -1)
   return events.PassFail(char, check, events.Sequence([die, gain]), move)
@@ -352,7 +352,7 @@ def WitchHouse5(char):
 
 
 def WitchHouse6(char):
-  die = events.DiceRoll(char, 1)
+  die = events.DiceRoll(char, 1, bad=[])
   gain = events.GainOrLoss(char, {"clues": values.Die(die)}, {"sanity": values.Die(die)})
   return events.Sequence([die, gain], char)
 
@@ -470,7 +470,7 @@ def Graveyard2(char):
 
 def Graveyard3(char):
   victory = events.Sequence([events.Draw(char, "unique", 1), events.Gain(char, {"clues": 1})])
-  damage = events.DiceRoll(char, 1)
+  damage = events.DiceRoll(char, 1, bad=[])
   defeat = events.Loss(char, {"stamina": values.Die(damage)})
   fail_event = events.Sequence([damage, defeat], char)
   return events.CombatRound(
@@ -581,7 +581,7 @@ def House2(char):
 
 
 def House3(char):
-  die = events.DiceRoll(char, 1)
+  die = events.DiceRoll(char, 1, bad=[])
   stamina = events.Gain(char, {"stamina":  values.Die(die)})
   return events.Sequence([die, stamina], char)
 
@@ -741,7 +741,7 @@ def Library2(char):
 
 def Library3(char):
   check = events.Check(char, "lore", -2)
-  die = events.DiceRoll(char, 1)
+  die = events.DiceRoll(char, 1, bad=[])
   gain = events.Gain(char, {"clues": values.Die(die)})
   loss = events.Loss(char, {"stamina": 2, "sanity": 2})
   return events.PassFail(char, check, events.Sequence([die, gain], char), loss)
@@ -799,7 +799,7 @@ def Science4(char):
 
 def Science5(char):
   check = events.Check(char, "luck", 0)
-  die = events.DiceRoll(char, 1)
+  die = events.DiceRoll(char, 1, bad=[])
   win = events.SplitGain(char, "stamina", "sanity", values.Die(die))
   coffee = events.Gain(char, {"stamina": 1})
   return events.PassFail(char, check, events.Sequence([die, win], char), coffee)
@@ -814,7 +814,7 @@ def Science6(char):
 
 def Science7(char):
   # check = events.Check(char, "lore", -2)
-  # die = events.DiceRoll(char, 1)
+  # die = events.DiceRoll(char, 1, bad=[])
   # stamina = events.Loss(char, {"stamina": values.Die(die)})
   # close_gates = events.Nothing()  # TODO: close all of the gates!
   # move = events.ForceMovement(char, "Hospital")
@@ -928,7 +928,7 @@ def Train1(char):
 def Train2(char):
   check = events.Check(char, "speed", -2)
   spell = events.Draw(char, "spells", 1)
-  die = events.DiceRoll(char, 1)
+  die = events.DiceRoll(char, 1, bad=[])
   sanity = events.Loss(char, {"sanity": values.Die(die)})
   return events.PassFail(char, check, spell, events.Sequence([die, sanity], char))
 
@@ -963,7 +963,7 @@ def Train6(char):
 def Train7(char):
   check = events.Check(char, "luck", -1)
   unique = events.Draw(char, "unique", 1)
-  die = events.DiceRoll(char, 1)
+  die = events.DiceRoll(char, 1, bad=[])
   stab = events.Loss(char, {"stamina": values.Die(die)})
   return events.PassFail(char, check, unique, events.Sequence([die, stab], char))
 
@@ -1293,7 +1293,7 @@ def Hospital2(char):
 
 
 def Hospital3(char):
-  die = events.DiceRoll(char, 1)
+  die = events.DiceRoll(char, 1, bad=[])
   cond = events.Conditional(
       char, die, "sum",
       {0: events.Nothing(), 1: events.Gain(char, {"stamina": values.Die(die)}), 4: events.Nothing()}
@@ -1414,7 +1414,7 @@ def Shoppe2(char):
 
 def Shoppe3(char):
   luck = events.Check(char, "luck", 0)
-  dice = events.DiceRoll(char, 2)
+  dice = events.DiceRoll(char, 2, bad=[])
   coins = events.Sequence([dice, events.Gain(char, {"dollars": values.Die(dice)})], char)
   jackpot = events.Draw(char, "unique", 2, keep_count=2)
   cond = events.Conditional(char, luck, "successes", {0: events.Nothing(), 1: coins, 2: jackpot})

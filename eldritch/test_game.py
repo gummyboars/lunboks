@@ -1493,7 +1493,7 @@ class RollDiceTest(unittest.TestCase):
     self.state.test_mode = True
 
   def testGenericDiceRoll(self):
-    roll = events.DiceRoll(self.state.characters[0], 1, name="Northside1")
+    roll = events.DiceRoll(self.state.characters[0], 1, name="Northside1", bad=[1, 2])
     self.state.event_stack.append(roll)
     for _ in self.state.resolve_loop():
       if not self.state.event_stack:
@@ -1508,6 +1508,8 @@ class RollDiceTest(unittest.TestCase):
       self.assertEqual(data["dice"]["name"], "Northside1")
       self.assertIn("prompt", data["dice"])
       self.assertIn("rolls for Northside1", data["dice"]["prompt"])
+      self.assertIn("bad", data["dice"])
+      self.assertListEqual(data["dice"]["bad"], [1, 2])
 
       # TODO: figure out if we want to show the dice rolls to other players
       # other_data = self.state.for_player(1)
@@ -1554,6 +1556,7 @@ class RollDiceTest(unittest.TestCase):
   def testCheckAndSpendAndReroll(self):
     self.state.test_mode = False
     self.state.characters[0].clues = 2
+    self.state.characters[0].speed_sneak_slider = 1
     self.state.characters[0].possessions.append(abilities.Stealth(0))
     check = events.Check(self.state.characters[0], "evade", 0, name="Land Squid")
     # Start with a basic check.
@@ -1566,10 +1569,15 @@ class RollDiceTest(unittest.TestCase):
       self.assertIn("count", data["dice"])
       self.assertIn("prompt", data["dice"])
       self.assertIn("makes a evade +0 check", data["dice"]["prompt"])
+      self.assertIn("bad", data["dice"])
+      self.assertIsNone(data["dice"]["bad"])
     # Stop at the first dice roll. Let the player roll the dice.
+    data = self.state.for_player(0)
+    self.assertEqual(data["dice"]["count"], 3)
     self.assertTrue(self.state.event_stack)  # Dice roll should be on top
     self.assertIsInstance(self.state.event_stack[-1], events.DiceRoll)
-    self.state.event_stack[-1].resolve(self.state)
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=[3, 5, 4])):
+      self.state.event_stack[-1].resolve(self.state)
 
     # The next several updates should include the dice the player rolled.
     roll_started = False
@@ -1581,6 +1589,9 @@ class RollDiceTest(unittest.TestCase):
         roll_started = True
       if roll_started:
         self.assertIsInstance(data["dice"]["roll"], list)
+        self.assertIsInstance(data["dice"]["success"], list)
+        self.assertEqual(len(data["dice"]["roll"]), len(data["dice"]["success"]))
+        self.assertListEqual(data["dice"]["success"], [False, True, False])
     roll_length = len(data["dice"]["roll"])
 
     # The player chooses to spend one clue token.
@@ -1645,6 +1656,68 @@ class RollDiceTest(unittest.TestCase):
       if not self.state.event_stack:
         break
       self.assertEqual(len(data["dice"]["roll"]), roll_length+1)
+
+  def testCheckAndRerollSpecific(self):
+    self.state.test_mode = False
+    self.state.characters[0].possessions.append(items.Bullwhip(0))
+    check = events.Check(self.state.characters[0], "combat", -1, name="Cultist")
+    # Start with a basic check.
+    self.state.event_stack.append(check)
+    for _ in self.state.resolve_loop():
+      data = self.state.for_player(0)
+      self.assertIn("dice", data)
+      self.assertEqual(data["dice"]["name"], "Cultist")
+      self.assertIn("count", data["dice"])
+      self.assertIn("prompt", data["dice"])
+      self.assertIn("makes a combat -1 check", data["dice"]["prompt"])
+    # Stop at the first dice roll. Let the player roll the dice.
+    data = self.state.for_player(0)
+    self.assertEqual(data["dice"]["count"], 2)
+    self.assertTrue(self.state.event_stack)  # Dice roll should be on top
+    self.assertIsInstance(self.state.event_stack[-1], events.DiceRoll)
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=[3, 5])):
+      self.state.event_stack[-1].resolve(self.state)
+
+    # Skip ahead to the player choosing to spend clues or use the bullwhip.
+    for _ in self.state.resolve_loop():
+      pass
+
+    self.assertIn(0, self.state.usables)
+    self.assertIn("Bullwhip0", self.state.usables[0])
+    self.state.event_stack.append(self.state.usables[0]["Bullwhip0"])
+
+    # Dice should still be shown while the player is choosing which one to reroll.
+    for _ in self.state.resolve_loop():
+      data = self.state.for_player(0)
+      self.assertIn("dice", data)
+      self.assertListEqual(data["dice"]["roll"], [3, 5])
+
+    self.assertTrue(self.state.event_stack)  # Choose a die to reroll should be on top.
+    self.assertIsInstance(self.state.event_stack[-1], events.MultipleChoice)
+    self.state.event_stack[-1].resolve(self.state, 3)
+
+    # As we approach the reroll, the original roll of 3, 5 should become None, 5.
+    for _ in self.state.resolve_loop():
+      data = self.state.for_player(0)
+      self.assertIn("dice", data)
+      self.assertListEqual(data["dice"]["roll"], [None, 5])
+
+    self.assertTrue(self.state.event_stack)  # Dice roll should be on top again.
+    self.assertIsInstance(self.state.event_stack[-1], events.DiceRoll)
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=4)):
+      self.state.event_stack[-1].resolve(self.state)
+
+    # Now that we have rerolled, we should see the new value of the die.
+    seen_new = False
+    for _ in self.state.resolve_loop():
+      data = self.state.for_player(0)
+      self.assertIn("dice", data)
+      if data["dice"]["roll"][0] == 4:
+        seen_new = True
+      if seen_new:
+        self.assertListEqual(data["dice"]["roll"], [4, 5])
+    data = self.state.for_player(0)
+    self.assertListEqual(data["dice"]["roll"], [4, 5])
 
 
 class MapChoiceTest(unittest.TestCase):
