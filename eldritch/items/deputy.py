@@ -34,7 +34,7 @@ class PatrolWagon(Card):
   def get_trigger(self, event, owner, state):
     if not isinstance(event, (events.Combat, events.Return)) or event.character != owner:
       return None
-    die = events.DiceRoll(owner, 1)
+    die = events.DiceRoll(owner, 1, name=self.name)
     discard = events.DiscardSpecific(owner, [self], to_box=True)
     cond = events.Conditional(owner, values.Die(die), None, {0: discard, 2: events.Nothing()})
     return events.Sequence([die, cond], owner)

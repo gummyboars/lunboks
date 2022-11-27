@@ -114,7 +114,7 @@ class YellowKing(AncientOne):
     for char in state.characters:
       if char.gone:
         continue
-      check = events.Check(char, "luck", self.luck_modifier)
+      check = events.Check(char, "luck", self.luck_modifier, name=self.name)
       checks.append(
           events.PassFail(char, check, events.Nothing(), events.Loss(char, {"sanity": 2}))
       )
@@ -178,7 +178,7 @@ class Wendigo(AncientOne):
     for char in state.characters:
       if char.gone:
         continue
-      check = events.Check(char, "fight", self.fight_modifier)
+      check = events.Check(char, "fight", self.fight_modifier, name=self.name)
       checks.append(
           events.PassFail(char, check, events.Nothing(), events.Loss(char, {"stamina": 2}))
       )
@@ -215,7 +215,7 @@ class BlackPharaoh(AncientOne):
     for char in state.characters:
       if char.gone:
         continue
-      check = events.Check(char, "lore", self.lore_modifier)
+      check = events.Check(char, "lore", self.lore_modifier, name=self.name)
       has_clues = values.AttributePrerequisite(char, "clues", 1, "at least")
       checks.append(
           events.Sequence([

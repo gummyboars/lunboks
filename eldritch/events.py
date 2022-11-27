@@ -590,7 +590,8 @@ class InvestigatorAttack(Turn):
     if self.check is None:
       attrs = state.ancient_one.attributes(state, self.character)
       self.check = Check(
-          self.character, "combat", state.ancient_one.combat_rating(state, self.character), attrs,
+          self.character, "combat", state.ancient_one.combat_rating(state, self.character),
+          attributes=attrs, name=state.ancient_one.name,
       )
     if not self.check.is_done():
       state.event_stack.append(self.check)
@@ -668,10 +669,11 @@ class AncientAttack(Turn):
 
 class DiceRoll(Event):
 
-  def __init__(self, character, count):
+  def __init__(self, character, count, name=None):
     super().__init__()
     self.character = character
     self.count = count
+    self.name = name
     self.roll = None
     self.sum = None
     self.successes = None
@@ -691,7 +693,8 @@ class DiceRoll(Event):
     if self.roll is None:
       if self.cancelled:
         return f"{self.character.name} did not roll dice"
-      return f"{self.character.name} rolls {self.count} dice"
+      count = values.Calculation(self.count, None, max, 0).value(state)
+      return f"{self.character.name} rolls {count} dice"
     if not self.roll:
       return f"{self.character.name} rolled no dice"
     return f"{self.character.name} rolled {' '.join(str(x) for x in self.roll)}"
@@ -2167,7 +2170,9 @@ class CastSpell(Event):
     self.spell.deactivatable = False
     self.spell.choice = self.choice
     if not self.check:
-      self.check = Check(self.character, "spell", self.spell.get_difficulty(state))
+      self.check = Check(
+          self.character, "spell", self.spell.get_difficulty(state), name=self.spell.name,
+      )
       self.spell.check = self.check
       state.event_stack.append(self.check)
       return
@@ -2482,13 +2487,14 @@ class ReturnGateToStack(Event):
 
 class Check(Event):
 
-  def __init__(self, character, check_type, modifier, attributes=None):
+  def __init__(self, character, check_type, modifier, *, name=None, attributes=None):
     # TODO: assert on check type
     super().__init__()
     self.character = character
     self.check_type = check_type
     self.modifier = modifier
     self.attributes = attributes
+    self.name = name
     self.dice: Optional[Event] = None
     self.pass_check: Optional[Event] = None
     self.roll = None
@@ -2507,7 +2513,7 @@ class Check(Event):
         num_dice = self.character.combat(state, self.attributes) + self.modifier
       else:
         num_dice = getattr(self.character, self.check_type)(state) + self.modifier
-      self.dice = DiceRoll(self.character, num_dice)
+      self.dice = DiceRoll(self.character, num_dice, name=self.name)
       state.event_stack.append(self.dice)
       return
 
@@ -2542,7 +2548,7 @@ class Check(Event):
 
     # self.spend finished, and self.bonus_dice is None
     self.spend = None
-    self.bonus_dice = BonusDiceRoll(self.character, 1)
+    self.bonus_dice = BonusDiceRoll(self.character, 1, name=self.name)
     state.event_stack.append(self.bonus_dice)
 
   @property
@@ -2610,7 +2616,7 @@ class RerollCheck(Event):
 
   def resolve(self, state):
     if self.dice is None:
-      self.dice = DiceRoll(self.character, len(self.check.roll))
+      self.dice = DiceRoll(self.character, len(self.check.roll), name=self.check.name)
       state.event_stack.append(self.dice)
       return
 
@@ -2654,7 +2660,7 @@ class RerollSpecific(Event):
       return
 
     if self.dice is None:
-      self.dice = DiceRoll(self.character, len(self.reroll_indexes))
+      self.dice = DiceRoll(self.character, len(self.reroll_indexes), name=self.check.name)
       state.event_stack.append(self.dice)
       return
 
@@ -3685,7 +3691,9 @@ class Combat(Event):
     # Horror check
     if self.monster.difficulty("horror", state, self.character) is not None and self.horror is None:
       self.horror = Check(
-          self.character, "horror", self.monster.difficulty("horror", state, self.character))
+          self.character, "horror", self.monster.difficulty("horror", state, self.character),
+          name=self.monster.visual_name,
+      )
       self.sanity_loss = Loss(
           self.character, {"sanity": self.monster.damage("horror", state, self.character)})
     if self.horror is not None:
@@ -3744,7 +3752,9 @@ class EvadeRound(Event):
       return
     if self.check is None:
       self.check = Check(
-          self.character, "evade", self.monster.difficulty("evade", state, self.character))
+          self.character, "evade", self.monster.difficulty("evade", state, self.character),
+          name=self.monster.visual_name,
+      )
     if not self.check.is_done():
       state.event_stack.append(self.check)
       return
@@ -3851,7 +3861,9 @@ class CombatRound(Event):
     if self.check is None:
       attrs = self.monster.attributes(state, self.character)
       self.check = Check(
-          self.character, "combat", self.monster.difficulty("combat", state, self.character), attrs)
+          self.character, "combat", self.monster.difficulty("combat", state, self.character),
+          attributes=attrs, name=self.monster.visual_name,
+      )
     if not self.check.is_done():
       state.event_stack.append(self.check)
       return
@@ -4199,7 +4211,10 @@ class GateCloseAttempt(Event):
     if self.check is None:
       difficulty = state.places[self.location_name].gate.difficulty(state)
       attribute = "lore" if self.choice.choice == "Close with lore" else "fight"
-      self.check = Check(self.character, attribute, difficulty)
+      self.check = Check(
+          self.character, attribute, difficulty,
+          name=state.places[self.location_name].gate.json_repr()["name"],
+      )
       state.event_stack.append(self.check)
       return
 

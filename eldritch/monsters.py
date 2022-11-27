@@ -68,6 +68,10 @@ class Monster:
       return self.name
     return f"{self.name}{self.idx}"
 
+  @property
+  def visual_name(self):
+    return self.name
+
   def json_repr(self, state, char):
     return {
         "name": self.name,
@@ -168,7 +172,7 @@ class LandSquid(Monster):
         if isinstance(char.place, places.CityPlace)
     ])
     first_player = state.characters[state.first_player]
-    roll = events.DiceRoll(first_player, 1)
+    roll = events.DiceRoll(first_player, 1, name=self.name)
     cond = events.Conditional(first_player, roll, "sum", {0: events.Nothing(), 4: seq})
     return events.Sequence([roll, cond])
 
@@ -449,6 +453,10 @@ class EventMonster(Monster):
     )
     self.pass_event = pass_event
     self.fail_event = fail_event
+
+  @property
+  def visual_name(self):
+    return None
 
   def get_interrupt(self, event, state):
     if isinstance(event, events.TakeTrophy):

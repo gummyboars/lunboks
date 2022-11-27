@@ -321,14 +321,26 @@ class GameState:
         roller = event
         break
     if roller is not None:
+      output["dice"] = {
+          "roll": roller.roll,
+          "count": None,
+          "prompt": None,
+          "check_type": getattr(roller, "check_type", None),
+          "name": roller.name,
+          "roller": self.characters.index(roller.character),
+      }
       if roller.count is not None:
-        output["dice"] = values.Calculation(roller.count, None, operator.add, bonus).value(self)
-      else:
-        output["dice"] = None
-      output["roll"] = roller.roll
-      output["roller"] = self.characters.index(roller.character)
+        dice_count = values.Calculation(roller.count, None, operator.add, bonus).value(self)
+        output["dice"]["count"] = dice_count
       if to_remove and roller.roll:
-        output["roll"] = [roll for idx, roll in enumerate(roller.roll) if idx not in to_remove]
+        output["dice"]["roll"] = [roll for i, roll in enumerate(roller.roll) if i not in to_remove]
+      if roller.name is None and current is not None:
+        output["dice"]["name"] = current
+      if not isinstance(self.event_stack[-1], events.ChoiceEvent):
+        if isinstance(roller, events.Check):
+          output["dice"]["prompt"] = f"{roller.character.name} makes a {roller.check_str()}"
+        elif roller.name is not None:
+          output["dice"]["prompt"] = f"{roller.character.name} rolls for {roller.name}"
 
     # Figure out the current choice.
     choice = None

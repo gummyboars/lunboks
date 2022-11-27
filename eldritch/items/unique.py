@@ -92,7 +92,7 @@ class AncientTablet(Item):
     if owner.movement_points < movement_cost:
       return None
 
-    rolls = events.DiceRoll(owner, 2)
+    rolls = events.DiceRoll(owner, 2, name=self.name)
     two_success = events.Draw(owner, "spells", 2, keep_count=2)
     one_success = events.Sequence(
         [events.Draw(owner, "spells", 1), events.Gain(owner, {"clues": 2})],
