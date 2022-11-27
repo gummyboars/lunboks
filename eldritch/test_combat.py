@@ -1134,14 +1134,15 @@ class CombatOutputTest(EventTest):
     # These items should show up as chosen until we start processing the combat check.
     for _ in generator:
       data = self.state.for_player(0)
-      if isinstance(self.state.event_stack[-1], CombatChoice) and self.state.event_stack[-1].done:
+      if isinstance(self.state.event_stack[-1], ActivateItem) and not self.char.hands_available():
         break
       self.assertCountEqual(data["choice"]["chosen"], ["Enchanted Knife0", ".38 Revolver0"])
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      # Once the combat starts, the items should show up as active until the combat is over.
       for _ in generator:
         data = self.state.for_player(0)
         self.assertIsNone(data["choice"])
-        if isinstance(self.state.event_stack[-1], CombatRound) and self.state.event_stack[-1].done:
+        if isinstance(self.state.event_stack[-1], TakeTrophy) and self.state.event_stack[-1].done:
           break
         self.assertTrue(data["characters"][0]["possessions"][0].active)
         self.assertTrue(data["characters"][0]["possessions"][2].active)

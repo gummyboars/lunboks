@@ -470,8 +470,6 @@ class GameState:
     return self.resolve_loop()  # Returns a generator object.
 
   def resolve_loop(self):
-    # NOTE: we may produce one message that is identical to the previous state.
-    yield None
     if not (self.event_stack or self.test_mode or self.game_stage in ("victory", "defeat")):
       self.next_turn()
       yield None
@@ -507,7 +505,8 @@ class GameState:
       if not event.is_done():
         continue
       if self.finish_event(event):
-        yield None
+        if event.animated():
+          yield None
       if self.trigger_stack[-1]:
         self.event_stack.append(self.trigger_stack[-1].pop())
         continue
