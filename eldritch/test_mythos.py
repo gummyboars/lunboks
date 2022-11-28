@@ -2096,8 +2096,7 @@ class Mythos18Test(EventTest):
     self.advance_turn(1, "encounter")
     choice = self.resolve_to_choice(CardSpendChoice)
     self.assertEqual(choice.choices, ["Downtown Card", "Restore 1 Sanity", "Restore All Sanity"])
-    choice.spend("dollars")
-    choice.spend("dollars")
+    self.spend("dollars", 2, choice)
     choice = self.resolve_to_choice(CardSpendChoice)
     choice.resolve(self.state, "Restore All Sanity")
     self.resolve_until_done()
@@ -2143,6 +2142,45 @@ class Mythos22Test(EventTest):
     self.tentacle_trees[1].place = self.state.places["Woods"]
     self.drawMythos()
     self.assertEqual(self.state.terror, 1)
+
+  def testNoMonstersReturnedFromOutskirts(self):
+    self.tentacle_trees[0].place = self.state.places["Outskirts"]
+    self.drawMythos()
+    self.assertEqual(self.state.terror, 0)
+    self.assertEqual(self.tentacle_trees[0].place.name, "Outskirts")
+
+
+class Mythos29Test(EventTest):
+  def setUp(self):
+    super().setUp()
+    self.mythos = Mythos29()
+    self.monster = monsters.Monster(
+        "FakeMonster", "fast", "plus", {"evade": 0, "combat": 0}, {"combat": 1}, 1
+    )
+    self.monster.place = self.state.monster_cup
+    self.state.monsters.append(self.monster)
+    self.state.mythos.append(self.mythos)
+    self.state.event_stack.append(Mythos(self.char))
+    with mock.patch.object(events.random, "sample", new=mock.MagicMock(return_value=[-1])):
+      # Always draw FakeMonster
+      self.resolve_until_done()
+
+  def testInvestigatorsReceiveLessMovement(self):
+    self.state.event_stack.append(Movement(self.char))
+    self.resolve_to_choice(CityMovement)
+    self.assertEqual(self.char.movement_points, self.char.speed(self.state) - 1)
+
+  def testFastMonstersMoveAsNormal(self):
+    # Mythos ability doesn't happen until after monster movement, so it moved 2 after spawning
+    self.assertEqual(self.monster.place.name, "Uptown")
+
+    # Headline: plus moves on black
+    self.state.mythos.append(Mythos23())
+    self.state.event_stack.append(Mythos(self.char))
+    self.resolve_until_done()
+    self.assertEqual(self.monster.place.name, "Southside")
+    self.assertEqual(self.monster.movement(self.state), "normal")
+
 
 
 class MythosPhaseTest(EventTest):

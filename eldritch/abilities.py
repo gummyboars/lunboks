@@ -206,43 +206,12 @@ class Research(assets.Asset):
     ], owner)
 
 
-class Physician(assets.Asset):
+class UpkeepRestoreStat(assets.Asset):
 
-  def __init__(self):
-    super().__init__("Physician")
-
-  def get_usable_trigger(self, event, owner, state):
-    if not isinstance(event, events.UpkeepActions):
-      return None
-    return self.get_usable(event, owner, state)
-
-  def get_usable_interrupt(self, event, owner, state):
-    if not isinstance(event, (events.UpkeepActions, events.SliderInput)):
-      return None
-    return self.get_usable(event, owner, state)
-
-  def get_usable(self, event, owner, state):
-    if self.exhausted:
-      return None
-    if event.character != owner:
-      return None
-    neighbors = [char for char in state.characters if char.place == owner.place]
-    eligible = [char for char in neighbors if char.stamina < char.max_stamina(state)]
-    if not eligible:
-      return None
-    gains = {idx: events.Gain(char, {"stamina": 1}, source=self)
-             for idx, char in enumerate(eligible)}
-    gains[len(eligible)] = events.Nothing()
-    choice = events.MultipleChoice(
-        owner, "Choose a character to heal", [char.name for char in eligible] + ["nobody"])
-    cond = events.Conditional(owner, choice, "choice_index", gains)
-    return events.Sequence([events.ExhaustAsset(owner, self), choice, cond], owner)
-
-
-class Psychology(assets.Asset):
-
-  def __init__(self):
-    super().__init__("Psychology")
+  def __init__(self, name, stat, verb):
+    super().__init__(name)
+    self.stat = stat
+    self.verb = verb
 
   def get_usable_trigger(self, event, owner, state):
     if not isinstance(event, events.UpkeepActions):
@@ -260,16 +229,27 @@ class Psychology(assets.Asset):
     if event.character != owner:
       return None
     neighbors = [char for char in state.characters if char.place == owner.place]
-    eligible = [char for char in neighbors if char.sanity < char.max_sanity(state)]
+    eligible = [
+        char for char in neighbors
+        if getattr(char, self.stat) < getattr(char, "max_"+self.stat)(state)
+    ]
     if not eligible:
       return None
-    gains = {idx: events.Gain(char, {"sanity": 1}, source=self)
+    gains = {idx: events.Gain(char, {self.stat: 1}, source=self)
              for idx, char in enumerate(eligible)}
     gains[len(eligible)] = events.Nothing()
     choice = events.MultipleChoice(
-        owner, "Choose a character to treat", [char.name for char in eligible] + ["nobody"])
+        owner, f"Choose a character to {self.verb}", [char.name for char in eligible] + ["nobody"])
     cond = events.Conditional(owner, choice, "choice_index", gains)
     return events.Sequence([events.ExhaustAsset(owner, self), choice, cond], owner)
+
+
+def Physician():
+  return UpkeepRestoreStat("Physician", "stamina", "heal")
+
+
+def Psychology():
+  return UpkeepRestoreStat("Psychology", "sanity", "treat")
 
 
 def CreateSpecials():

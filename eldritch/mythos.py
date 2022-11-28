@@ -443,7 +443,7 @@ class Mythos17(Environment):
       return None
     check = events.Check(event.character, "lore", -1)
     gain = events.Gain(event.character, {"clues": 1})
-    return events.PassFail(event.character, check, gain, events.Nothing)
+    return events.PassFail(event.character, check, gain, events.Nothing())
 
 
 class Mythos18(Environment):
@@ -489,9 +489,7 @@ class Mythos20(Headline):
 
   def create_event(self, state):
     seq = super().create_event(state)
-    seq.events.append(events.ReturnToCup(from_places=[
-        p.name for p in state.places if isinstance(p, places.Street)
-    ]))
+    seq.events.append(events.ReturnToCup(from_places=["streets"]))
 
 
 class Mythos21(Headline):
@@ -535,6 +533,7 @@ class Mythos24(Headline):
   def create_event(self, state):
     seq = super().create_event(state)
     seq.events.append(events.ReturnToCup(from_places=["Easttown", "Roadhouse", "Diner", "Police"]))
+    return seq
 
 
 class Mythos25(Environment):
@@ -542,11 +541,14 @@ class Mythos25(Environment):
     super().__init__("Mythos25", "Woods", "Square", {"square", "diamond"}, {"circle"}, "weather")
 
   def get_modifier(self, thing, attribute):
-    if attribute == "fight":
-      return -1
-    if attribute == "lore":
-      return 1
-    if thing.name == "Flame Matrix" and attribute == "toughness":
+    if isinstance(getattr(thing, "place", None), places.CityPlace):
+      if attribute == "fight":
+        return -1
+      if attribute == "lore":
+        return 1
+    # FAQ p10: If the phrase ___ is not within the text of the effect, then it affects investigators
+    # in the Other Worlds
+    if getattr(thing, "name", None) == "Flame Matrix" and attribute == "toughness":
       return 1
     return 0
 
@@ -612,23 +614,24 @@ class Mythos28(Headline):
   def create_event(self, state):
     first_player = state.characters[state.first_player]
     seq = super().create_event(state)
-    check = events.Check(first_player, "luck", -1)
-    pass_fail = events.PassFail(first_player, check, events.Nothing(), events.Curse(first_player))
-    seq.events.extend([check, pass_fail])
+    if not first_player.gone:
+      check = events.Check(first_player, "luck", -1)
+      pass_fail = events.PassFail(first_player, check, events.Nothing(), events.Curse(first_player))
+      seq.events.extend([check, pass_fail])
     return seq
 
 
 class Mythos29(Environment):
   def __init__(self):
-    super().__init__("Mythos30", "Society", "Lodge", {"plus"}, {"moon"}, "weather")
+    super().__init__("Mythos29", "Society", "Lodge", {"plus"}, {"moon"}, "weather")
 
   def get_override(self, thing, attribute):
     if isinstance(thing, monsters.Monster) and attribute == "fast":
-      return "normal"
+      return False
     return None
 
   def get_interrupt(self, event, state):
-    if isinstance(event, events.Movement):
+    if isinstance(event, events.CityMovement):
       return events.ChangeMovementPoints(event.character, -1)
     return None
 
