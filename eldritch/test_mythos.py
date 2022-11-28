@@ -2182,7 +2182,6 @@ class Mythos29Test(EventTest):
     self.assertEqual(self.monster.movement(self.state), "normal")
 
 
-
 class MythosPhaseTest(EventTest):
 
   def setUp(self):
