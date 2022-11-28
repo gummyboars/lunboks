@@ -425,7 +425,12 @@ class Mythos16(Environment):
       return None
     if event.character.place.name != self.activity_location:
       return None
-    return events.Purchase(event.character, "unique", draw_count=2, keep_count=2)
+    return events.BinaryChoice(
+        event.character,
+        "Shop at estate sale?", "Yes", "No",
+        events.Purchase(event.character, "unique", draw_count=2, keep_count=2),
+        events.Nothing(),
+    )
 
 
 class Mythos17(Environment):
