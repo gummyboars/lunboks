@@ -2257,7 +2257,7 @@ class Mythos29Test(EventTest):
     self.assertEqual(self.monster.place.name, "Uptown")
 
     # Headline: plus moves on black
-    self.state.mythos.append(Mythos23())
+    self.state.mythos.append(Mythos5())
     self.state.event_stack.append(Mythos(self.char))
     self.resolve_until_done()
     self.assertEqual(self.monster.place.name, "Southside")
