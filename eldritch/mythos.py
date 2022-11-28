@@ -171,7 +171,14 @@ class Mythos3(Environment):
     super().__init__("Mythos3", "Square", "Unnamable", {"square", "diamond"}, {"circle"}, "mystic")
 
   def get_interrupt(self, event, state):
-    return None  # TODO: prevent stamina gain
+    if (
+        isinstance(event, events.GainOrLoss)
+        and values.Calculation(event.gains["stamina"],
+                               operand=values.operator.gt, right=0).value(state)
+        and (event.source is None or event.source.name not in ("Physician", "Hospital"))
+    ):
+      return events.GainPrevention(self, event, "stamina", event.gains["stamina"])
+    return None
 
 
 class Mythos4(Headline):
@@ -181,8 +188,11 @@ class Mythos4(Headline):
 
   def create_event(self, state):
     seq = super().create_event(state)
-    seq.events.append(events.ReturnToCup(names={"Furry Beast", "Dream Flier"}))
-    # TODO: raise the terror level
+    cup_return = events.ReturnToCup(names={"Furry Beast", "Dream Flier"})
+    terrorize = events.Conditional(
+        None, cup_return, "returned", {0: events.Nothing(), 1: events.IncreaseTerror()}
+    )
+    seq.events.extend([cup_return, terrorize])
     return seq
 
 
@@ -495,6 +505,7 @@ class Mythos20(Headline):
   def create_event(self, state):
     seq = super().create_event(state)
     seq.events.append(events.ReturnToCup(from_places=["streets"]))
+    return seq
 
 
 class Mythos21(Headline):
