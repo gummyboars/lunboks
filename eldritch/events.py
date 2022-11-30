@@ -902,14 +902,13 @@ class GainOrLossPrevention(Event):
     return self.prevented is not None
 
   def log(self, state):
+    action = {"gains": "gain", "losses": "loss"}[self.gain_or_loss]
     if self.prevented is None:
       amount = self.amount.value(state) if isinstance(self.amount, values.Value) else self.amount
-      return (f"{self.prevention_source.name} will prevent {amount} {self.attribute}"
-              f" from {self.gain_or_loss}")
+      return f"{self.prevention_source.name} will prevent {amount} {self.attribute} {action}"
     if not self.prevented:
       return ""
-    return (f"{self.prevention_source.name} prevented {self.prevented} {self.attribute}"
-            f" from {self.gain_or_loss}")
+    return f"{self.prevention_source.name} prevented {self.prevented} {self.attribute} {action}"
 
 
 def LossPrevention(prevention_source, source_event, attribute, amount):
@@ -1314,6 +1313,17 @@ class ForceMovement(Event):
     self.done = False
 
   def resolve(self, state):
+    if (isinstance(self.location_name, str)
+            and getattr(state.places[self.location_name], "closed_until", None) is not None):
+      destinations = {place.name for place in state.places[
+          self.location_name].connections}.difference({self.character.place.name})
+      self.location_name = PlaceChoice(
+          self.character,
+          prompt=f"{self.location_name} is closed, choose another destination",
+          choices=list(destinations),
+      )
+      state.event_stack.append(self.location_name)
+      return
     if isinstance(self.location_name, MapChoice):
       assert self.location_name.is_done()
       if self.location_name.choice is None:

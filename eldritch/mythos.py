@@ -174,7 +174,7 @@ class Mythos3(Environment):
     if (
         isinstance(event, events.GainOrLoss)
         and values.Calculation(event.gains["stamina"],
-                               operand=values.operator.gt, right=0).value(state)
+                               operand=operator.gt, right=0).value(state)
         and (event.source is None or event.source.name not in ("Physician", "Hospital"))
     ):
       return events.GainPrevention(self, event, "stamina", event.gains["stamina"])
@@ -468,7 +468,7 @@ class Mythos18(Environment):
   def get_interrupt(self, event, state):
     if (
         isinstance(event, events.GainOrLoss)
-        and values.Calculation(event.gains["sanity"], operand=values.operator.gt, right=0).value(
+        and values.Calculation(event.gains["sanity"], operand=operator.gt, right=0).value(
             state)
         and (event.source is None or event.source.name not in ("Psychology", "Asylum"))
     ):
@@ -478,7 +478,7 @@ class Mythos18(Environment):
 
 class Mythos19(Headline):
   def __init__(self):
-    super().__init__("Mythos19", "WitchHouse", "Cave", {"moon"}, {"plus"}, activity_location="Cave")
+    super().__init__("Mythos19", "WitchHouse", "Cave", {"moon"}, {"plus"})
     self.active_until = None
 
   def create_event(self, state):
