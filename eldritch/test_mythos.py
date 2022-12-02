@@ -2264,6 +2264,89 @@ class Mythos29Test(EventTest):
     self.assertEqual(self.monster.movement(self.state), "normal")
 
 
+class Mythos42Test(EventTest):
+  def setUp(self):
+    super().setUp()
+    self.state.turn_number = 0
+    self.state.turn_phase = "mythos"
+    self.mythos = Mythos42()
+    self.state.mythos.append(self.mythos)
+    self.state.event_stack.append(Mythos(self.char))
+    self.resolve_until_done()
+    self.assertEqual(self.mythos, self.state.environment)
+    self.assertNotIn(self.mythos, self.state.mythos)
+
+  def testCostIsZero(self):
+    self.char.possessions.append(items.Voice(0))
+    self.char.possessions.append(items.DreadCurse(0))
+    self.advance_turn(0, "upkeep")
+    self.assertEqual(self.char.sanity, 5)
+    voice = self.resolve_to_usable(0, "Voice0")
+    self.state.event_stack.append(voice)
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      cast_choice = self.resolve_to_choice(MultipleChoice)
+      cast_choice.resolve(self.state, "Cast")
+      sliders = self.resolve_to_choice(SliderInput)
+      sliders.resolve(self.state, "done", None)
+      self.resolve_until_done()
+      self.assertEqual(self.char.sanity, 5)
+
+      self.state.event_stack.append(Combat(self.char, monsters.FormlessSpawn()))
+      fight_evade = self.resolve_to_choice(FightOrEvadeChoice)
+      fight_evade.resolve(self.state, "Fight")
+      curse = self.resolve_to_usable(0, "Dread Curse0")
+      self.state.event_stack.append(curse)
+      cast_choice = self.resolve_to_choice(MultipleChoice)
+      cast_choice.resolve(self.state, "Cast")
+      weapons = self.resolve_to_choice(CombatChoice)
+      weapons.resolve(self.state, "done")
+      self.resolve_until_done()
+      self.assertEqual(self.char.sanity, 5)
+
+  def testEnvironmentTakesPrecedence(self):
+    # FAQ p. 10
+    class Blight(GlobalEffect):
+      def __init__(self):
+        self.name = "TestEffect"
+
+      def get_modifier(self, thing, attribute, state):
+        if isinstance(thing, items.Spell) and attribute == "sanity_cost":
+          return 1
+        return 0
+
+    self.state.other_globals.append(Blight())
+    self.testCostIsZero()
+
+
+class Mythos51Test(EventTest):
+  def setUp(self):
+    super().setUp()
+    self.state.turn_number = 0
+    self.state.turn_phase = "mythos"
+    self.mythos = Mythos51()
+    self.state.mythos.append(self.mythos)
+    self.state.event_stack.append(Mythos(self.char))
+    self.resolve_until_done()
+    self.assertEqual(self.mythos, self.state.environment)
+    self.assertNotIn(self.mythos, self.state.mythos)
+
+  def testCannotUse(self):
+    self.char.possessions.append(items.Voice(0))
+    self.advance_turn(0, "upkeep")
+    self.assertEqual(self.char.sanity, 5)
+    sliders = self.resolve_to_choice(SliderInput)
+    sliders.resolve(self.state, "done", None)
+    self.resolve_until_done()
+    self.state.event_stack.append(Combat(self.char, monsters.Cultist()))
+
+    fight_evade = self.resolve_to_choice(FightOrEvadeChoice)
+    fight_evade.resolve(self.state, "Fight")
+    weapons = self.resolve_to_choice(CombatChoice)
+    self.assertFalse(self.state.usables)
+    weapons.resolve(self.state, "done")
+    self.resolve_until_done()
+
+
 class MythosPhaseTest(EventTest):
 
   def setUp(self):
