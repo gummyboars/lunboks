@@ -189,7 +189,7 @@ class GameState:
     for glob in self.globals():
       if not glob:
         continue
-      modifier += glob.get_modifier(thing, attribute)
+      modifier += glob.get_modifier(thing, attribute, self)
     return modifier
 
   def get_override(self, thing, attribute):
