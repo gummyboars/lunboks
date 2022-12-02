@@ -47,7 +47,7 @@ class MythosCard(GlobalEffect):
     self.black_dimensions = black_dimensions
     self.activity_location = activity_location
 
-  def create_event(self, state):  # pylint: disable=unused-argument
+  def create_event(self, state) -> events.Sequence:  # pylint: disable=unused-argument
     seq = []
     if self.gate_location is not None:
       seq.append(events.OpenGate(self.gate_location))
@@ -125,6 +125,37 @@ class Rumor(MythosCard):
         "progress": self.get_progress(state) if not self.failed else None,
         "max_progress": self.max_progress(state) if not self.failed else None,
     }
+
+
+def ReturnAndIncrease(monster_names):
+  cup_return = events.ReturnToCup(names=monster_names)
+  terrorize = events.Conditional(
+      None, cup_return, "returned", {0: events.Nothing(), 1: events.IncreaseTerror()}
+  )
+  return [cup_return, terrorize]
+
+
+def HealthWager(source, character, attribute, prompt, prize):
+  dice = events.DiceRoll(character, values.Calculation(character, attribute))
+  loss = events.Loss(
+      character,
+      {attribute: values.Calculation(
+          left=character, left_attr=attribute,
+          operand=operator.sub,
+          right=dice, right_attr="successes",
+      )}, source=source)
+  final = events.PassFail(
+      character,
+      values.Calculation(character, attribute),
+      prize,
+      events.Nothing()
+  )
+  yes_sequence = events.Sequence([dice, loss, final], character)
+  return events.BinaryChoice(
+      character,
+      prompt,
+      "Yes", "No", yes_sequence, events.Nothing()
+  )
 
 
 class Mythos1(Headline):
@@ -263,25 +294,9 @@ class Mythos8(Environment):
 
   def get_trigger(self, event, state):
     if isinstance(event, events.Movement) and event.character.place.name == self.activity_location:
-      dice = events.DiceRoll(event.character, values.Calculation(event.character, "stamina"))
-      loss = events.Loss(
-          event.character,
-          {"stamina": values.Calculation(
-              left=event.character, left_attr="stamina",
-              operand=operator.sub,
-              right=dice, right_attr="successes",
-          )}, source=self)
-      final = events.PassFail(
-          event.character,
-          values.Calculation(event.character, "stamina"),
-          events.Gain(event.character, {"clues": 3}),
-          events.Nothing()
-      )
-      yes_sequence = events.Sequence([dice, loss, final], event.character)
-      return events.BinaryChoice(
-          event.character,
-          "Delve into mysteries with your life force?",
-          "Yes", "No", yes_sequence, events.Nothing()
+      return HealthWager(
+          self, event.character, "stamina",
+          "Delve into mysteries with your life force?", events.Gain(event.character, {"clues": 3}),
       )
     return None
 
@@ -664,6 +679,161 @@ class Mythos30(Headline):
     return seq
 
 
+class Mythos31(Headline):
+  def __init__(self):
+    super().__init__("Mythos31", "Woods", "Square", {"slash", "triangle", "star"}, {"hex"})
+
+  def create_event(self, state):
+    seq = super().create_event(state)
+    seq.events.append(events.ReturnToCup(from_places=["locations"]))
+    return seq
+
+
+class Mythos32(Headline):
+  def __init__(self):
+    super().__init__("Mythos32", "Isle", "Science", {"circle"}, {"square", "diamond"})
+
+  def create_event(self, state):
+    seq = super().create_event(state)
+    seq.events.append(events.ReturnToCup(from_places=["FrenchHill", "WitchHouse", "Lodge"]))
+    return seq
+
+
+class Mythos33(Headline):
+  def __init__(self):
+    super().__init__("Mythos33", "Cave", "Roadhouse", {"circle"}, {"square", "diamond"})
+
+  def create_event(self, state):
+    seq = super().create_event(state)
+    seq.events.append(events.ReleaseMonstersToLocation("FrenchHill", 2))
+    return seq
+
+# TODO: Mythos34 return those lost in Time and Space
+
+
+class Mythos35(Headline):
+  def __init__(self):
+    super().__init__("Mythos35", "Roadhouse", "Square", {"moon"}, {"plus"})
+
+  def create_event(self, state):
+    seq = super().create_event(state)
+    seq.events.append(events.RespawnTrophies("Elder Thing", "Docks"))
+    return seq
+
+
+class Mythos36(Headline):
+  def __init__(self):
+    super().__init__("Mythos36", "Square", "Unnamable", {"circle"}, {"square", "diamond"})
+
+  def create_event(self, state) -> events.Sequence:
+    seq = super().create_event(state)
+    seq.events.append(events.ReturnToCup(from_places=["Merchant", "Unnamable", "Docks", "Isle"]))
+    return seq
+
+
+class Mythos37(Headline):
+  def __init__(self):
+    super().__init__("Mythos37", "Isle", "Science", {"moon"}, {"plus"})
+
+  def create_event(self, state) -> events.Sequence:
+    seq = super().create_event(state)
+    seq.events.append(events.ReleaseMonstersToLocation("Downtown", 2))
+    return seq
+
+
+class Mythos38(Environment):
+  def __init__(self):
+    super().__init__(
+        "Mythos38", "WitchHouse", "Cave", {"slash", "triangle", "star"}, {"hex"}, "mystic"
+    )
+
+  def get_modifier(self, thing, attribute, state):
+    if isinstance(thing, events.CloseGate) and attribute == "seal_clues":
+      return -2
+    return 0
+
+
+class Mythos39(Environment):
+  def __init__(self):
+    super().__init__("Mythos39", "Unnamable", "Woods", {"plus"}, {"moon"}, "mystic")
+
+  def get_override(self, thing, attribute):
+    if attribute == "can_seal":
+      return False
+    return None
+
+
+class Mythos40(Headline):
+  def __init__(self):
+    super().__init__("Mythos40", "Woods", "Society", {"circle"}, {"square", "diamond"})
+
+  def create_event(self, state) -> events.Sequence:
+    seq = super().create_event(state)
+    seq.events.append(events.ReturnToCup(from_places=["Uptown", "Hospital", "Shoppe", "Woods"]))
+    return seq
+
+
+class Mythos41(Headline):
+  def __init__(self):
+    super().__init__("Mythos41", "Lodge", "Graveyard", {"circle"}, {"square", "diamond"})
+
+  def create_event(self, state) -> events.Sequence:
+    seq = super().create_event(state)
+    seq.events.append(events.ReturnToCup(from_places=["Northside", "Shop", "Newspaper", "Train"]))
+    return seq
+
+
+class Mythos42(Environment):
+  def __init__(self):
+    super().__init__("Mythos42", "WitchHouse", "Cave",
+                     {"square", "diamond"}, {"circle"}, env_type="mystic")
+
+  def get_modifier(self, thing, attribute, state):
+    if isinstance(thing, items.Spell) and attribute == "sanity_cost":
+      return -float("inf")
+    return 0
+
+
+class Mythos43(Headline):
+  def __init__(self):
+    super().__init__("Mythos43", "WitchHouse", "Cave", {"square", "diamond"}, {"circle"})
+
+  def create_event(self, state) -> events.Sequence:
+    seq = super().create_event(state)
+    seq.events.append(events.ReturnToCup(from_places=["Rivertown", "Graveyard", "Cave", "Store"]))
+    return seq
+
+
+class Mythos44(Environment):
+  def __init__(self):
+    super().__init__("Mythos44", "Roadhouse", "Square", {"plus"}, {"moon"}, env_type="weather")
+
+  def create_event(self, state):
+    seq = super().create_event(state)
+    seq.events.extend([
+        events.ReturnMonsterFromBoard(None, monster)
+        for monster in state.monsters
+        if isinstance(monster.place, places.CityPlace) and monster.name == "Flame Matrix"
+    ])
+
+  def get_modifier(self, thing, attribute, state):
+    if isinstance(getattr(thing, "place", None), places.CityPlace):
+      if attribute == "speed":
+        return -1
+      if attribute == "sneak":
+        return 1
+    return 0
+
+  def get_interrupt(self, event, state):
+    if isinstance(event, events.CityMovement):
+      return events.ChangeMovementPoints(event.character, -1)
+    return None
+
+  def get_trigger(self, event, state):
+    # TODO: Figure out how to override the FlameMatrix deployment
+    return None
+
+
 class Mythos45(Environment):
 
   def __init__(self):
@@ -736,7 +906,8 @@ class Mythos50(Headline):
 
 class Mythos51(Environment):
   def __init__(self):
-    super().__init__("Mythos51", "Graveyard", "Isle", {"square", "diamond"}, {"circle"})
+    super().__init__("Mythos51", "Graveyard", "Isle", {"square", "diamond"}, {"circle"},
+                     env_type="mystic")
 
   def get_override(self, thing, attribute):
     if isinstance(thing, items.Spell) and attribute == "can_use":
@@ -752,7 +923,7 @@ class Mythos52(Environment):
     seq = super().create_event(state)
     seq.events.extend([
         events.ReturnMonsterFromBoard(None, monster)
-        for monster in self.state.monsters
+        for monster in state.monsters
         if isinstance(monster.place, places.CityPlace) and monster.name == "Haunter"
     ])
     return seq
@@ -784,7 +955,7 @@ class Mythos53(Headline):
 
 class Mythos55(Environment):
   def __init__(self):
-    super().__init__("Mythos55", "Isle", "Science", {"plus"}, {"moon"})
+    super().__init__("Mythos55", "Isle", "Science", {"plus"}, {"moon"}, "mystic")
 
   def get_modifier(self, thing, attribute, state):
     if (isinstance(thing, monsters.Monster)
@@ -839,28 +1010,13 @@ class Mythos58(Environment):
 
   def get_trigger(self, event, state):
     if isinstance(event, events.Movement) and event.character.place.name == self.activity_location:
-      dice = events.DiceRoll(event.character, values.Calculation(event.character, "sanity"))
-      loss = events.Loss(
-          event.character,
-          {"sanity": values.Calculation(
-              left=event.character, left_attr="sanity",
-              operand=operator.sub,
-              right=dice, right_attr="successes",
-          )}, source=self)
-      final = events.PassFail(
-          event.character,
-          values.Calculation(event.character, "sanity"),
+      return HealthWager(
+          self, event.character, "sanity",
+          "Deal with the Man in Black?",
           events.Sequence([
               events.Gain(event.character, {"clues": 1}),
               events.Draw(event.character, "spells", 1, 1)
           ], event.character),
-          events.Nothing()
-      )
-      yes_sequence = events.Sequence([dice, loss, final], event.character)
-      return events.BinaryChoice(
-          event.character,
-          "Deal with the Man in Black?",
-          "Yes", "No", yes_sequence, events.Nothing()
       )
     return None
 
@@ -924,6 +1080,18 @@ class Mythos59(Rumor):
     if isinstance(event, events.ProgressRumor) and event.rumor == self and self.should_fail(state):
       return events.EndRumor(self, failed=True, add_global=True)
     return super().get_trigger(event, state)
+
+
+class Mythos60(Environment):
+  def __init__(self):
+    super().__init__("Mythos60", "Woods", "Society", {"plus"}, {"moon"}, "urban")
+
+  def get_modifier(self, thing, attribute, state):
+    if (attribute == "toughness"
+            and (isinstance(thing, monsters.Cultist)
+                 or getattr(thing, "name", None) == "Flying Insect")):
+      return 1
+    return 0
 
 
 class ShuffleMythos(MythosCard):

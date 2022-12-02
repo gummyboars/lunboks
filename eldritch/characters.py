@@ -130,7 +130,11 @@ class Character:
   def get_usable_interrupts(self, event, state):
     interrupts = {
         pos.handle: pos.get_usable_interrupt(event, self, state)
-        for pos in self.possessions if pos.get_usable_interrupt(event, self, state)
+        for pos in self.possessions
+        if (
+            pos.get_usable_interrupt(event, self, state)
+            and state.get_override(pos, "can_use")
+        )
     }
     return interrupts
 
@@ -173,7 +177,9 @@ class Character:
   def get_usable_triggers(self, event, state):
     return {
         pos.handle: pos.get_usable_trigger(event, self, state)
-        for pos in self.possessions if pos.get_usable_trigger(event, self, state)
+        for pos in self.possessions
+        if pos.get_usable_trigger(event, self, state)
+        and state.get_override(pos, "can_use")
     }
 
   def get_spend_event(self, handle):

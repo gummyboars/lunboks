@@ -2142,7 +2142,10 @@ class CastSpell(Event):
       return
 
     if self.choice is None:
-      spend = values.ExactSpendPrerequisite({"sanity": self.spell.sanity_cost})
+      cost = max(self.spell.sanity_cost + state.get_modifier(self.spell, "sanity_cost"), 0)
+      spend = values.ExactSpendPrerequisite(
+          {"sanity": cost}
+      )
       self.choice = SpendChoice(
           self.character, f"Cast {self.spell.name}", ["Cast", "Cancel"], spends=[spend, None],
       )
@@ -3991,6 +3994,44 @@ class TakeTrophy(ForceTakeTrophy):
     return super().log(state)
 
 
+class RespawnTrophies(Event):
+  def __init__(self, monster_name, location_name):
+    super().__init__()
+    self.monster_name = monster_name
+    self.location_name = location_name
+    self.respawned_monsters = None
+
+  def resolve(self, state):
+    monsters = [
+        monster
+        for char in state.characters
+        for monster in char.trophies
+        if monster.name == self.monster_name
+    ]
+
+    place = state.places[self.location_name]
+    for monster in monsters:
+      monster.place = place
+      for char in state.characters:
+        if monster in char.trophies:
+          char.trophies.remove(monster)
+          break
+    self.respawned_monsters = monsters
+
+  def is_resolved(self):
+    return self.respawned_monsters is None
+
+  def log(self, state):
+    if self.cancelled and self.respawned_monsters is None:
+      return f"Respawning of {self.monster_name}s at {self.location_name} cancelled"
+    if self.respawned_monsters is None:
+      return f"{self.monster_name}s taken as trophies will respawn at {self.location_name}"
+    if self.respawned_monsters:
+      return f"{len(self.respawned_monsters)} {self.monster_name}(s) respawned at " \
+             f"{self.location_name}"
+    return f"No {self.monster_name}s to respawn at {self.location_name}"
+
+
 class MonsterAppears(Conditional):
 
   def __init__(self, character):
@@ -4141,7 +4182,8 @@ class GateCloseAttempt(Event):
       self.closed = False
       return
 
-    self.closed = CloseGate(self.character, self.location_name, can_take=True, can_seal=True)
+    self.closed = CloseGate(self.character, self.location_name, can_take=True,
+                            can_seal=state.get_override(self, "can_seal"))
     state.event_stack.append(self.closed)
 
   def is_resolved(self):
@@ -4215,7 +4257,7 @@ class CloseGate(Event):
       state.event_stack.append(self.return_monsters)
       return
 
-    if not self.can_seal:
+    if not (self.can_seal and state.get_override(self, "can_seal")):
       self.sealed = False
       return
 

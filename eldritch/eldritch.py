@@ -2,6 +2,7 @@ import collections
 import json
 import operator
 from random import SystemRandom
+from typing import List
 
 from eldritch import values
 from eldritch import places
@@ -193,7 +194,8 @@ class GameState:
     return modifier
 
   def get_override(self, thing, attribute):
-    override = None
+    override = True if attribute.startswith(("can_", "cannot_")) else None
+    # Anything not forbidden is permitted
     for glob in self.globals():
       if not glob:
         continue
@@ -205,7 +207,7 @@ class GameState:
       override = override and val
     return override
 
-  def globals(self):
+  def globals(self) -> List[mythos.GlobalEffect]:
     return [self.rumor, self.environment, self.ancient_one] + self.other_globals
 
   def gate_limit(self):
