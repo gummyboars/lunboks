@@ -2140,7 +2140,7 @@ class CombatWithBullwhipTest(EventTest):
     self.assertEqual(check.successes, 1)
     # Now that the bullwhip has been used, its special ability cannot be used again.
     self.assertFalse(self.state.usables)
-    spend.resolve(self.state, "Done")
+    spend.resolve(self.state, "Fail")
 
     fight_or_evade = self.resolve_to_choice(FightOrEvadeChoice)
     fight_or_evade.resolve(self.state, "Fight")
@@ -2151,7 +2151,7 @@ class CombatWithBullwhipTest(EventTest):
       spend = self.resolve_to_choice(SpendChoice)
       self.assertEqual(rand.call_count, 5)
     self.assertFalse(self.state.usables)
-    spend.resolve(self.state, "Done")
+    spend.resolve(self.state, "Pass")
     self.resolve_until_done()
 
 
@@ -2179,7 +2179,7 @@ class CombatWithShotgunTest(EventTest):
     # Fight (4) + Octopoid (-3) + Shotgun (4) = roll 5 dice
     with mock.patch.object(events.random, "randint", new=mock.Mock(side_effect=[6, 1, 1, 1, 1])):
       spend = self.resolve_to_choice(SpendChoice)
-      spend.resolve(self.state, "Done")
+      spend.resolve(self.state, "Fail")
     check = self.state.event_stack[-2]
     self.assertIsInstance(check, Check)
     self.assertEqual(check.successes, 2)
@@ -2192,7 +2192,7 @@ class CombatWithShotgunTest(EventTest):
 
     with mock.patch.object(events.random, "randint", new=mock.Mock(side_effect=[6, 6, 1, 1, 1])):
       spend = self.resolve_to_choice(SpendChoice)
-      spend.resolve(self.state, "Done")
+      spend.resolve(self.state, "Pass")
     check = self.state.event_stack[-2]
     self.assertIsInstance(check, Check)
     self.assertEqual(check.successes, 4)
@@ -2203,7 +2203,7 @@ class CombatWithShotgunTest(EventTest):
     self.choose_items(choice, ["Shotgun0"])
     with mock.patch.object(events.random, "randint", new=mock.Mock(side_effect=[5, 1, 1, 1, 1])):
       spend = self.resolve_to_choice(SpendChoice)
-      spend.resolve(self.state, "Done")
+      spend.resolve(self.state, "Fail")
     check = self.state.event_stack[-2]
     self.assertIsInstance(check, Check)
     self.assertEqual(check.successes, 1)
@@ -2216,7 +2216,7 @@ class CombatWithShotgunTest(EventTest):
 
     with mock.patch.object(events.random, "randint", new=mock.Mock(side_effect=[5, 4, 6, 1, 1])):
       spend = self.resolve_to_choice(SpendChoice)
-      spend.resolve(self.state, "Done")
+      spend.resolve(self.state, "Pass")
     check = self.state.event_stack[-2]
     self.assertIsInstance(check, Check)
     self.assertEqual(check.successes, 3)
@@ -2228,7 +2228,7 @@ class CombatWithShotgunTest(EventTest):
     self.choose_items(choice, ["Shotgun0"])
     with mock.patch.object(events.random, "randint", new=mock.Mock(side_effect=[5, 4, 1, 1, 1])):
       spend = self.resolve_to_choice(SpendChoice)
-      spend.resolve(self.state, "Done")
+      spend.resolve(self.state, "Fail")
     check = self.state.event_stack[-2]
     self.assertIsInstance(check, Check)
     self.assertEqual(check.successes, 2)
@@ -2241,7 +2241,7 @@ class CombatWithShotgunTest(EventTest):
 
     with mock.patch.object(events.random, "randint", new=mock.Mock(side_effect=[3, 4, 6, 1, 1])):
       spend = self.resolve_to_choice(SpendChoice)
-      spend.resolve(self.state, "Done")
+      spend.resolve(self.state, "Pass")
     check = self.state.event_stack[-2]
     self.assertIsInstance(check, Check)
     self.assertEqual(check.successes, 3)
@@ -2253,7 +2253,7 @@ class CombatWithShotgunTest(EventTest):
     self.choose_items(choice, ["Shotgun0"])
     with mock.patch.object(events.random, "randint", new=mock.Mock(side_effect=[6, 5, 1, 1, 1])):
       spend = self.resolve_to_choice(SpendChoice)
-      spend.resolve(self.state, "Done")
+      spend.resolve(self.state, "Fail")
     check = self.state.event_stack[-2]
     self.assertIsInstance(check, Check)
     self.assertEqual(check.successes, 2)
@@ -2266,7 +2266,7 @@ class CombatWithShotgunTest(EventTest):
 
     with mock.patch.object(events.random, "randint", new=mock.Mock(side_effect=[6, 5, 6, 1, 1])):
       spend = self.resolve_to_choice(SpendChoice)
-      spend.resolve(self.state, "Done")
+      spend.resolve(self.state, "Pass")
     check = self.state.event_stack[-2]
     self.assertIsInstance(check, Check)
     self.assertEqual(check.successes, 4)
@@ -2278,7 +2278,7 @@ class CombatWithShotgunTest(EventTest):
     self.choose_items(choice, ["Enchanted Blade0"])
     with mock.patch.object(events.random, "randint", new=mock.Mock(side_effect=[6, 5, 4, 1, 1])):
       spend = self.resolve_to_choice(SpendChoice)
-      spend.resolve(self.state, "Done")
+      spend.resolve(self.state, "Fail")
     check = self.state.event_stack[-2]
     self.assertIsInstance(check, Check)
     self.assertEqual(check.successes, 2)
@@ -2291,7 +2291,7 @@ class CombatWithShotgunTest(EventTest):
 
     with mock.patch.object(events.random, "randint", new=mock.Mock(side_effect=[6, 5, 6, 1, 1])):
       spend = self.resolve_to_choice(SpendChoice)
-      spend.resolve(self.state, "Done")
+      spend.resolve(self.state, "Pass")
     check = self.state.event_stack[-2]
     self.assertIsInstance(check, Check)
     self.assertEqual(check.successes, 3)
@@ -2302,7 +2302,7 @@ class CombatWithShotgunTest(EventTest):
     self.choose_items(choice, ["Shotgun0"])
     with mock.patch.object(events.random, "randint", new=mock.Mock(side_effect=[5, 4])):
       spend = self.resolve_to_choice(SpendChoice)
-      spend.resolve(self.state, "Done")
+      spend.resolve(self.state, "Fail")
     check = self.state.event_stack[-2]
     self.assertIsInstance(check, Check)
     self.assertEqual(check.successes, 1)
@@ -2315,7 +2315,7 @@ class CombatWithShotgunTest(EventTest):
 
     with mock.patch.object(events.random, "randint", new=mock.Mock(side_effect=[6, 4])):
       spend = self.resolve_to_choice(SpendChoice)
-      spend.resolve(self.state, "Done")
+      spend.resolve(self.state, "Pass")
     check = self.state.event_stack[-2]
     self.assertIsInstance(check, Check)
     self.assertEqual(check.successes, 2)

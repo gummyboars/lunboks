@@ -338,6 +338,7 @@ class GameState:
       if getattr(roller, "bad", None) is not None:
         output["dice"]["bad"] = roller.bad
       elif roller.roll:
+        # TODO: count extra succesess like the shotgun?
         output["dice"]["success"] = [
             roller.character.is_success(val, getattr(roller, "check_type", None))
             for val in roller.roll

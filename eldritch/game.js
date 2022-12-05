@@ -1241,6 +1241,12 @@ function addChoices(uichoice, choices, invalidChoices, remainingSpend) {
     let div = document.createElement("DIV");
     div.classList.add("choice");
     div.innerText = c;
+    if (c == "Pass") {
+      div.classList.add("success");
+    }
+    if (c == "Fail") {
+      div.classList.add("fail");
+    }
     div.onclick = function(e) { makeChoice(c); };
     if (invalidChoices != null && invalidChoices.includes(idx)) {
       div.classList.add("unchoosable");
@@ -1813,7 +1819,7 @@ function updateDice(dice, playerIdx, monsterList) {
   let allDice = diceDiv.getElementsByClassName("die");
   for (let die of allDice) {
     die.innerText = "?";
-    die.classList.remove("success", "bad");
+    die.classList.remove("success", "fail");
   }
 
   let remaining = dice.roll == null || roll.length < dice.count;
@@ -1823,7 +1829,7 @@ function updateDice(dice, playerIdx, monsterList) {
       return;
     }
     if (dice.bad != null && dice.bad.includes(val)) {
-      allDice[idx].classList.add("bad");
+      allDice[idx].classList.add("fail");
     }
     if (dice.success != null && idx < dice.success.length && dice.success[idx]) {
       allDice[idx].classList.add("success");

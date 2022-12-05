@@ -472,7 +472,7 @@ class EventMonster(Monster):
             or not event.check.is_done()):
       return None
 
-    if (event.check.successes or 0) < self.toughness(state, event.character):
+    if not event.check.success:
       return self.fail_event
     return None
 

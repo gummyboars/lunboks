@@ -104,10 +104,10 @@ def Abyss4(char) -> events.Event:
 
 
 def GreatHall4(char) -> events.Event:
-  check = events.Check(char, "fight", -1)
+  check = events.Check(char, "fight", -1, difficulty=2)
   spells = events.Draw(char, "spells", 3, keep_count=2)
   loss = events.Loss(char, {"stamina": 3})
-  return events.PassFail(char, check, loss, spells, min_successes=2)
+  return events.PassFail(char, check, loss, spells)
 
 
 def Other4(char) -> events.Event:
@@ -240,7 +240,12 @@ def Pluto11(char) -> events.Event:
 def GreatHall11(char) -> events.Event:
   check = events.Check(char, "luck", -1)
   dice_roll = events.DiceRoll(char, 1)
-  prison = events.PassFail(char, dice_roll, events.Delayed(char), events.MonsterAppears(char))
+  successes = values.Calculation(dice_roll, "successes")
+  monster = events.MonsterAppears(char)
+  delayed = events.Delayed(char)
+  prison = events.Sequence(
+      [dice_roll, events.Conditional(char, successes, None, {0: monster, 1: delayed})], char,
+  )
   return events.PassFail(char, check, events.Nothing(), prison)
 
 
@@ -274,13 +279,13 @@ def Other12(char) -> events.Event:
 
 
 def City13(char) -> events.Event:
-  check = events.Check(char, "sneak", -1)
+  check = events.Check(char, "sneak", -1, difficulty=2)
   escape = events.Sequence([
       events.Draw(char, "unique", 1),
       events.Return(char, char.place.info.name),
   ], char)
   captors = events.Loss(char, {"sanity": 3, "stamina": 1})
-  return events.PassFail(char, check, escape, captors, min_successes=2)
+  return events.PassFail(char, check, escape, captors)
 
 
 def Plateau13(char) -> events.Event:
@@ -327,9 +332,9 @@ def Other14(char) -> events.Event:
 
 
 def City15(char) -> events.Event:
-  check = events.Check(char, "lore", -2)
+  check = events.Check(char, "lore", -2, difficulty=2)
   spells = events.Draw(char, "spells", 2)
-  return events.PassFail(char, check, spells, events.Nothing(), min_successes=2)
+  return events.PassFail(char, check, spells, events.Nothing())
 
 
 def GreatHall15(char) -> events.Event:
@@ -350,10 +355,9 @@ def Plateau16(char) -> events.Event:
 
 
 def GreatHall16(char) -> events.Event:
-  check = events.Check(char, "luck", -1)
+  check = events.Check(char, "luck", -1, difficulty=2)
   draw = events.Draw(char, "skills", 1)
-  cond = events.Conditional(char, check, "successes", {0: events.Nothing(), 2: draw})
-  return events.Sequence([check, cond], char)
+  return events.PassFail(char, check, draw, events.Nothing())
 
 
 def Other16(char) -> events.Event:
@@ -364,9 +368,9 @@ def Other16(char) -> events.Event:
 
 
 def Plateau17(char) -> events.Event:
-  check = events.Check(char, "will", 0)
+  check = events.Check(char, "will", 0, difficulty=2)
   skill = events.Draw(char, "skills", 1)
-  return events.PassFail(char, check, skill, events.Nothing(), min_successes=2)
+  return events.PassFail(char, check, skill, events.Nothing())
 
 
 def GreatHall17(char) -> events.Event:
@@ -582,13 +586,13 @@ def Abyss27(char) -> events.Event:
 
 
 def Plateau27(char) -> events.Event:
-  check = events.Check(char, "fight", -1)
+  check = events.Check(char, "fight", -1, difficulty=2)
   victory = events.Sequence([
       events.Gain(char, {"clues": 1}),
       events.Draw(char, "unique", 1),
   ], char)
   defeat = events.Loss(char, {"sanity": 1, "stamina": 2})
-  return events.PassFail(char, check, victory, defeat, min_successes=2)
+  return events.PassFail(char, check, victory, defeat)
 
 
 def Other27(char) -> events.Event:
@@ -815,10 +819,10 @@ def City39(char) -> events.Event:
 
 
 def Dreamlands39(char) -> events.Event:
-  check = events.Check(char, "lore", -1)
+  check = events.Check(char, "lore", -1, difficulty=2)
   clues = events.Gain(char, {"clues": 4})
   loss = events.Loss(char, {"sanity": float("inf")})
-  return events.PassFail(char, check, clues, loss, min_successes=2)
+  return events.PassFail(char, check, clues, loss)
 
 
 def Other39(char) -> events.Event:
@@ -989,8 +993,8 @@ def Other47(char) -> events.Event:
 
 def SunkenCity48(char) -> events.Event:
   return events.PassFail(
-      char, events.Check(char, "speed", -1),
-      events.Gain(char, {"clues": 5}), events.Delayed(char), min_successes=2
+      char, events.Check(char, "speed", -1, difficulty=2),
+      events.Gain(char, {"clues": 5}), events.Delayed(char),
   )
 
 

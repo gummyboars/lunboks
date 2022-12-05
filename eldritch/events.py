@@ -597,14 +597,14 @@ class InvestigatorAttack(Turn):
       state.event_stack.append(self.check)
       return
 
-    if (self.check.successes or 0) > 0 and self.damage is None:
+    if self.check.success and self.damage is None:
       self.damage = DamageAncientOne(self.character, self.check.successes)
       state.event_stack.append(self.damage)
 
   def is_resolved(self):
     if self.check is None:
       return False
-    if self.check.is_done() and not self.check.successes:
+    if self.check.is_done() and not self.check.success:
       return True
     return self.damage is not None and self.damage.is_done()
 
@@ -2173,6 +2173,7 @@ class CastSpell(Event):
     if not self.check:
       self.check = Check(
           self.character, "spell", self.spell.get_difficulty(state), name=self.spell.name,
+          difficulty=self.spell.get_required_successes(state),
       )
       self.spell.check = self.check
       state.event_stack.append(self.check)
@@ -2183,9 +2184,9 @@ class CastSpell(Event):
       state.event_stack.append(self.exhaust)
       return
 
-    if (self.check.successes or 0) < self.spell.get_required_successes(state):
+    if not self.check.success:
       self.success = False
-      self.fail_message = f"({self.check.successes} < {self.spell.get_required_successes(state)})"
+      self.fail_message = f"({self.check.successes} < {self.check.difficulty})"
       return
 
     self.success = True
@@ -2488,12 +2489,14 @@ class ReturnGateToStack(Event):
 
 class Check(Event):
 
-  def __init__(self, character, check_type, modifier, *, name=None, attributes=None):
+  def __init__(self, character, check_type, modifier, *, difficulty=1, name=None, attributes=None):
     # TODO: assert on check type
+    assert difficulty > 0
     super().__init__()
     self.character = character
     self.check_type = check_type
     self.modifier = modifier
+    self.difficulty = difficulty
     self.attributes = attributes
     self.name = name
     self.dice: Optional[Event] = None
@@ -2506,7 +2509,7 @@ class Check(Event):
 
   def resolve(self, state):
     if self.pass_check is not None:
-      self.successes = float("inf")
+      self.successes = self.difficulty
       self.done = True
       return
     if self.dice is None:
@@ -2537,13 +2540,17 @@ class Check(Event):
         self.done = True
         return
       spend = values.ExactSpendPrerequisite({"clues": 1})
+      prompt_text = f"{self.character.name} has {self.successes} successes on a {self.check_str()}"
+      if self.successes is None:
+        prompt_text = f"{self.character.name} makes a {self.check_str()}"
       self.spend = SpendChoice(
-          self.character, "Spend Clues?", ["Spend", "Done"], spends=[spend, None],
+          self.character, prompt_text,
+          ["Spend", "Pass" if self.success else "Fail"], spends=[spend, None],
       )
       state.event_stack.append(self.spend)
       return
 
-    if self.spend.is_cancelled() or self.spend.choice == "Done":
+    if self.spend.is_cancelled() or self.spend.choice_index:
       self.done = True
       return
 
@@ -2562,23 +2569,35 @@ class Check(Event):
 
   def count_successes(self):
     self.successes = self.character.count_successes(self.roll, self.check_type)
+    if self.spend is not None:
+      self.spend.choices[1] = "Pass" if self.success else "Fail"
+      prompt_text = f"{self.character.name} has {self.successes} successes on a {self.check_str()}"
+      self.spend._prompt = prompt_text  # pylint: disable=protected-access
+
+  @property
+  def success(self):
+    if self.successes is None:
+      return None
+    return self.successes >= self.difficulty
 
   def is_resolved(self):
     return self.done
 
   def check_str(self):
-    return f"{self.check_type} {self.modifier:+d} check"
+    if self.difficulty == 1:
+      return f"{self.check_type} {self.modifier:+d} check"
+    return f"{self.check_type} {self.modifier:+d} [{self.difficulty}] check"
 
   def log(self, state):
     if self.pass_check:
-      return f"{self.character.name} passed check"
+      return f"{self.character.name} passed a {self.check_str()}"
     if self.cancelled and self.roll is None:
       return f"{self.character.name} did not make a {self.check_str()}"
     if self.roll is None:
       return f"{self.character.name} makes a {self.check_str()}"
     if not self.successes:
       return f"{self.character.name} failed a {self.check_str()}"
-    return f"{self.character.name} had {self.successes} successes on a {self.check_str()}"
+    return f"{self.character.name} passed a {self.check_str()} with {self.successes} successes"
 
   def animated(self):
     return True
@@ -2733,10 +2752,8 @@ class Conditional(Event):
     return ""
 
 
-def PassFail(character, condition, pass_result: Event, fail_result: Event, min_successes=1):
-  outcome = Conditional(
-      character, condition, "successes", {0: fail_result, min_successes: pass_result}
-  )
+def PassFail(character, condition, pass_result: Event, fail_result: Event):
+  outcome = Conditional(character, condition, "success", {0: fail_result, 1: pass_result})
   if isinstance(condition, values.Value):
     return outcome
   return Sequence([condition, outcome], character)
@@ -3703,12 +3720,12 @@ class Combat(Event):
         return
       if not self.sanity_loss.is_done():
         # Failed horror check
-        if (self.horror.successes or 0) < 1:
+        if not self.horror.success:
           state.event_stack.append(self.sanity_loss)
           return
         # Nightmarish for successful horror check
         nightmarish = self.monster.has_attribute("nightmarish", state, self.character)
-        if self.horror.successes >= 1 and nightmarish:
+        if self.horror.success and nightmarish:
           self.sanity_loss = Loss(
               self.character, {"sanity": self.monster.bypass_damage("horror", state)})
           state.event_stack.append(self.sanity_loss)
@@ -3759,7 +3776,7 @@ class EvadeRound(Event):
     if not self.check.is_done():
       state.event_stack.append(self.check)
       return
-    if not self.check.is_cancelled() and self.check.successes >= 1:
+    if self.check.success:
       self.pass_evade = PassEvadeRound(self)
       state.event_stack.append(self.pass_evade)
       return
@@ -3864,6 +3881,7 @@ class CombatRound(Event):
       self.check = Check(
           self.character, "combat", self.monster.difficulty("combat", state, self.character),
           attributes=attrs, name=self.monster.visual_name,
+          difficulty=self.monster.toughness(state, self.character),
       )
     if not self.check.is_done():
       state.event_stack.append(self.check)
@@ -3878,7 +3896,7 @@ class CombatRound(Event):
       return
 
     if self.defeated is None:
-      self.defeated = (self.check.successes or 0) >= self.monster.toughness(state, self.character)
+      self.defeated = bool(self.check.success)
 
     if not self.defeated:
       self.damage = Loss(
@@ -4220,7 +4238,7 @@ class GateCloseAttempt(Event):
       return
 
     assert self.check.is_done()
-    if self.check.is_cancelled() or not self.check.successes:
+    if not self.check.success:
       self.closed = False
       return
 

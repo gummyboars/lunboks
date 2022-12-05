@@ -708,7 +708,7 @@ class LodgeTest(EncounterTest):
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
       # They get the opportunity to spend clue tokens on this failed check, but don't.
       choice = self.resolve_to_choice(SpendChoice)
-    choice.resolve(self.state, "Done")
+    choice.resolve(self.state, "Fail")
     self.resolve_until_done()
     self.assertEqual(self.char.clues, 0)
     self.assertEqual(self.char.place.name, "FrenchHill")
@@ -2371,7 +2371,7 @@ class AsylumTest(EncounterTest):
     self.state.event_stack.append(encounters.Asylum5(self.char))
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       spend = self.resolve_to_choice(SpendChoice)
-      spend.resolve(self.state, "Done")
+      spend.resolve(self.state, "Pass")
     self.resolve_until_done()
     self.assertEqual(len(self.char.possessions), 1)
     self.assertEqual(self.char.possessions[0].name, "Marksman")
@@ -2382,7 +2382,7 @@ class AsylumTest(EncounterTest):
     self.state.event_stack.append(encounters.Asylum5(self.char))
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
       spend = self.resolve_to_choice(SpendChoice)
-      spend.resolve(self.state, "Done")
+      spend.resolve(self.state, "Fail")
     loss_choice = self.resolve_to_choice(MultipleChoice)
     self.assertCountEqual(loss_choice.invalid_choices.keys(), [0, 2, 3])
     loss_choice.resolve(self.state, "4 Clues")
@@ -2426,7 +2426,7 @@ class AsylumTest(EncounterTest):
     self.state.event_stack.append(encounters.Asylum5(self.char))
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
       spend = self.resolve_to_choice(SpendChoice)
-      spend.resolve(self.state, "Done")
+      spend.resolve(self.state, "Fail")
     loss_choice = self.resolve_to_choice(MultipleChoice)
     self.assertCountEqual(loss_choice.invalid_choices.keys(), [1, 2, 3])
     loss_choice.resolve(self.state, "Nothing")
@@ -2440,7 +2440,7 @@ class AsylumTest(EncounterTest):
     self.state.event_stack.append(encounters.Asylum5(self.char))
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
       spend = self.resolve_to_choice(SpendChoice)
-      spend.resolve(self.state, "Done")
+      spend.resolve(self.state, "Fail")
     loss_choice = self.resolve_to_choice(MultipleChoice)
     self.assertCountEqual(loss_choice.invalid_choices.keys(), [0])  # Can't choose nothing.
     loss_choice.resolve(self.state, "4 Clues")

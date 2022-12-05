@@ -538,10 +538,9 @@ def Society3(char):
 
 
 def Society4(char):
-  check = events.Check(char, "luck", -1)
+  check = events.Check(char, "luck", -1, difficulty=2)
   skill = events.Sequence([events.Draw(char, "skills", 1), events.Delayed(char)], char)
-  cond = events.Conditional(char, check, "successes", {0: events.Nothing(), 2: skill})
-  return events.Sequence([check, cond], char)
+  return events.PassFail(char, check, skill, events.Nothing())
 
 
 def Society5(char):
@@ -663,7 +662,8 @@ def Church5(char):
 def Church6(char):
   roll = events.DiceRoll(char, 1)
   doom = events.RemoveDoom(char)
-  chance = events.PassFail(char, roll, doom, events.Nothing())
+  cond = events.Conditional(char, roll, "successes", {0: events.Nothing(), 1: doom})
+  chance = events.Sequence([roll, cond], char)
   return events.BinarySpend(
       char, "clues", 1, "Spend a clue token for a chance to remove a Doom Token?",
       "Yes", "No", chance,
@@ -998,7 +998,7 @@ def Asylum4(char):
 
 
 def Asylum5(char):
-  check = events.Check(char, "will", -1)
+  check = events.Check(char, "will", -1, difficulty=2)
   clue_prereq = values.AttributePrerequisite(char, "clues", 4, "at least")
   clue_loss = events.Loss(char, {"clues": 4})
   spell_prereq = values.ItemDeckPrerequisite(char, "spells", 2, "at least")
@@ -1019,8 +1019,7 @@ def Asylum5(char):
   )
   lose = events.Sequence([choice, losses], char)
   skill = events.Draw(char, "skills", 1)
-  cond = events.Conditional(char, check, "successes", {0: lose, 2: skill})
-  return events.Sequence([check, cond], char)
+  return events.PassFail(char, check, skill, lose)
 
 
 def Asylum6(char):
@@ -1156,10 +1155,7 @@ def Docks3(char):
   dollars = events.Gain(char, {"dollars": values.Calculation(check, "successes", operator.mul, 3)})
   move = events.ForceMovement(char, "Merchant")
   stamina = events.Loss(char, {"stamina": 1})
-  cond = events.Conditional(
-      char, check, "successes", {0: events.Sequence([stamina, move], char), 1: dollars},
-  )
-  return events.Sequence([check, cond], char)
+  return events.PassFail(char, check, dollars, events.Sequence([stamina, move], char))
 
 
 def Docks4(char):

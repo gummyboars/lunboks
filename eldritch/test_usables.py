@@ -52,7 +52,7 @@ class ClueTokenTest(EventTest):
     self.assertEqual(len(self.state.event_stack), 2)
     self.assertEqual(self.state.event_stack[-1], self.check.spend)
 
-    choice.resolve(self.state, "Done")
+    choice.resolve(self.state, "Pass")
     self.resolve_until_done()
 
   def testSpendClueCancelledDie(self):
@@ -226,7 +226,7 @@ class ResearchTest(EventTest):
     self.assertEqual(check.successes, 2)  # 6s with the shotgun count for 2
     self.assertFalse(self.state.usables)
 
-    spend.resolve(self.state, "Done")
+    spend.resolve(self.state, "Pass")
     self.resolve_until_done()
 
   def testDeclineToUse(self):
@@ -249,7 +249,7 @@ class ResearchTest(EventTest):
 
     # The player making the check may decide that they're done without waiting for the player with
     # the Research ability to decide not to use it.
-    spend.resolve(self.state, "Done")
+    spend.resolve(self.state, "Fail")
     self.resolve_until_done()
 
 
@@ -1371,7 +1371,7 @@ class HunchesTest(EventTest):
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)) as rand:
       choice = self.resolve_to_choice(SpendChoice)
       self.assertEqual(rand.call_count, 3)
-    choice.resolve(self.state, "Done")
+    choice.resolve(self.state, "Pass")
 
 
 class MistsTest(EventTest):
@@ -1404,7 +1404,7 @@ class MistsTest(EventTest):
       spend_clues = self.resolve_to_choice(SpendChoice)
     self.assertIn(0, self.state.usables)
     self.assertIn("Mists0", self.state.usables[0])
-    spend_clues.resolve(self.state, "Done")
+    spend_clues.resolve(self.state, "Pass")
     self.resolve_until_done()
 
   def testFailToCast(self):
@@ -1438,7 +1438,7 @@ class MistsTest(EventTest):
       spend_choice = self.resolve_to_choice(SpendChoice)
       self.assertIsInstance(self.state.event_stack[-2], Check)
       self.assertEqual(self.state.event_stack[-2].check_type, "spell")
-    spend_choice.resolve(self.state, "Done")
+    spend_choice.resolve(self.state, "Pass")
     self.resolve_until_done()
 
   # TODO: test Elusive monsters
