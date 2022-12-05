@@ -765,7 +765,7 @@ class CloseGateTest(EventTest):
     choice.resolve(self.state, "Close with lore")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       choice = self.resolve_to_choice(SpendChoice)
-      choice.resolve(self.state, "Done")
+      choice.resolve(self.state, "Pass")
     seal_choice = self.resolve_to_choice(SpendChoice)
     self.assertEqual(seal_choice.choices[1], "No")
     seal_choice.resolve(self.state, "No")
@@ -785,7 +785,7 @@ class CloseGateTest(EventTest):
     choice.resolve(self.state, "Close with lore")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       choice = self.resolve_to_choice(SpendChoice)
-      choice.resolve(self.state, "Done")
+      choice.resolve(self.state, "Pass")
     seal_choice = self.resolve_to_choice(SpendChoice)
     self.spend("clues", 5, seal_choice)
     self.assertEqual(seal_choice.choices[0], "Yes")
@@ -1617,8 +1617,8 @@ class EnvironmentTests(EventTest):
     choice.resolve(self.state, "Close with fight")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       choice = self.resolve_to_choice(MultipleChoice)
-    self.assertListEqual(choice.choices, ["Spend", "Done"])
-    choice.resolve(self.state, "Done")
+    self.assertListEqual(choice.choices, ["Spend", "Pass"])
+    choice.resolve(self.state, "Pass")
     self.resolve_until_done()
 
   def testMythos44(self):
@@ -2223,7 +2223,7 @@ class Mythos14Test(EventTest):
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=1)):
       clues = self.resolve_to_choice(SpendChoice)
       self.assertEqual(self.char.clues, 2)
-      clues.resolve(self.state, "Done")
+      clues.resolve(self.state, "Fail")
       loss = self.resolve_to_choice(ItemLossChoice)
     loss.resolve(self.state, "done")
     self.resolve_until_done()
@@ -2238,7 +2238,7 @@ class Mythos14Test(EventTest):
     self.movement.resolve(self.state, "done")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       clues = self.resolve_to_choice(SpendChoice)
-      clues.resolve(self.state, "Done")
+      clues.resolve(self.state, "Pass")
       self.resolve_until_done()
     self.assertEqual(self.char.place.name, "Northside")
     self.assertEqual(self.char.clues, 1)
@@ -2488,8 +2488,8 @@ class Mythos38Test(EventTest):
     close_with.resolve(self.state, "Close with fight")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       spend_choice = self.resolve_to_choice(MultipleChoice)
-    self.assertListEqual(spend_choice.choices, ["Spend", "Done"])
-    spend_choice.resolve(self.state, "Done")
+    self.assertListEqual(spend_choice.choices, ["Spend", "Pass"])
+    spend_choice.resolve(self.state, "Pass")
     seal_choice = self.resolve_to_choice(MultipleChoice)
     self.assertListEqual(seal_choice.choices, ["Yes", "No"])
     self.spend("clues", 3, seal_choice)

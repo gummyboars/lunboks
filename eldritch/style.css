@@ -1075,11 +1075,17 @@ button:disabled {
   background: sienna;
   border: 1px solid black;
 }
-.die.success {
+.success {
   background: green;
 }
-.die.bad {
-  background: red;
+.choice.success:hover {
+  background: darkgreen;
+}
+.fail {
+  background: firebrick;
+}
+.choice.fail:hover {
+  background: darkred;
 }
 #roll {
   font-size: calc(min(1.25vw, 2vh));

@@ -981,7 +981,7 @@ class NextAwakenedTurnTestBase(NextTurnBase):
       for _ in self.state.resolve_loop():
         pass
       self.assertIsInstance(self.state.event_stack[-1], events.SpendChoice)
-      self.state.event_stack[-1].resolve(self.state, "Done")
+      self.state.event_stack[-1].resolve(self.state, self.state.event_stack[-1].choices[1])
       # It should stop at the next player's combat choice (or stop for the ancient one's attack).
       for _ in self.state.resolve_loop():
         if self.state.turn_phase != "attack":
@@ -1102,7 +1102,7 @@ class EndGameTest(NextTurnBase):
     for _ in self.state.resolve_loop():
       pass
     # Don't spend any clue tokens.
-    self.state.event_stack[-1].resolve(self.state, "Done")
+    self.state.event_stack[-1].resolve(self.state, "Pass")
     for _ in self.state.resolve_loop():
       pass
     self.assertFalse(self.state.event_stack)
@@ -1170,7 +1170,7 @@ class EndGameTest(NextTurnBase):
     for _ in self.state.resolve_loop():
       pass
     # Don't spend any clue tokens.
-    self.state.event_stack[-1].resolve(self.state, "Done")
+    self.state.event_stack[-1].resolve(self.state, "Fail")
     for _ in self.state.resolve_loop():
       pass
 
@@ -1651,7 +1651,7 @@ class RollDiceTest(unittest.TestCase):
 
     # Done spending.
     next_spend = self.state.event_stack[-1]
-    next_spend.resolve(self.state, "Done")
+    next_spend.resolve(self.state, next_spend.choices[1])
     for _ in self.state.resolve_loop():
       if not self.state.event_stack:
         break

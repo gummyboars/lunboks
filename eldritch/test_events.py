@@ -2087,8 +2087,8 @@ class ConditionalTest(EventTest):
   def testPassFailDifficulty(self):
     pass_event = events.Nothing()
     fail_event = events.Nothing()
-    check = events.Check(self.char, "luck", -1)
-    pf_event = events.PassFail(self.char, check, pass_event, fail_event, min_successes=2)
+    check = events.Check(self.char, "luck", -1, difficulty=2)
+    pf_event = events.PassFail(self.char, check, pass_event, fail_event)
 
     self.state.event_stack.append(pf_event)
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=[5, 3, 3, 3])):
@@ -2459,9 +2459,10 @@ class SpendChoiceTest(EventTest):
     self.char.clues = 2
     check = Check(self.char, "lore", 0)
     self.state.event_stack.append(check)
-    choice = self.resolve_to_choice(SpendChoice)
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=4)):
+      choice = self.resolve_to_choice(SpendChoice)
 
-    self.assertEqual(choice.choices, ["Spend", "Done"])
+    self.assertEqual(choice.choices, ["Spend", "Fail"])
     self.assertEqual(choice.remaining_spend, [{"clues": 1}, False])
     self.assertIn(0, self.state.spendables)
     self.assertEqual(self.state.spendables[0].keys(), {f"Research Materials{i}" for i in [0, 1]})
