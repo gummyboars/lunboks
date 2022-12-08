@@ -2115,6 +2115,11 @@ class Mythos18Test(EventTest):
     self.resolve_until_done()
     self.assertEqual(self.char.sanity, 2)
 
+  def testCanGainOtherStuff(self):
+    self.state.event_stack.append(Gain(self.char, {"dollars": 1}))
+    self.resolve_until_done()
+    self.assertEqual(self.char.dollars, 1)
+
 
 class Mythos19Test(EventTest):
   def setUp(self):
@@ -2161,6 +2166,22 @@ class Mythos19Test(EventTest):
     self.assertListEqual(
         sorted(choice.choices),
         ["Downtown", "Isle", "Northside", "Rivertown", "University", "Unnamable"]
+    )
+    with self.assertRaises(InvalidMove):
+      choice.resolve(self.state, "done")
+    choice.resolve(self.state, "Unnamable")
+
+  def testEncounterSendsToUnclosedStreets(self):
+    self.state.event_stack.append(CloseLocation("Isle"))
+    self.resolve_until_done()
+    self.char.place = self.state.places["Docks"]
+    self.assertTrue(self.state.places["Isle"].closed)
+    self.state.event_stack.append(encounters.Docks3(self.char))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=1)):
+      choice = self.resolve_to_choice(MapChoice)
+    self.assertListEqual(
+        sorted(choice.choices),
+        ["Downtown", "Northside", "Rivertown", "University", "Unnamable"]
     )
     with self.assertRaises(InvalidMove):
       choice.resolve(self.state, "done")

@@ -173,7 +173,7 @@ class Mythos3(Environment):
   def get_interrupt(self, event, state):
     if (
         isinstance(event, events.GainOrLoss)
-        and values.Calculation(event.gains["stamina"],
+        and values.Calculation(event.gains.get("stamina", 0),
                                operand=operator.gt, right=0).value(state)
         and (event.source is None or event.source.name not in ("Physician", "Hospital"))
     ):
@@ -468,7 +468,7 @@ class Mythos18(Environment):
   def get_interrupt(self, event, state):
     if (
         isinstance(event, events.GainOrLoss)
-        and values.Calculation(event.gains["sanity"], operand=operator.gt, right=0).value(
+        and values.Calculation(event.gains.get("sanity", 0), operand=operator.gt, right=0).value(
             state)
         and (event.source is None or event.source.name not in ("Psychology", "Asylum"))
     ):

@@ -1314,9 +1314,13 @@ class ForceMovement(Event):
 
   def resolve(self, state):
     if (isinstance(self.location_name, str)
-            and getattr(state.places[self.location_name], "closed_until", None) is not None):
-      destinations = {place.name for place in state.places[
-          self.location_name].connections}.difference({self.character.place.name})
+            and getattr(state.places[self.location_name], "closed", False)):
+      destinations = {
+          place.name
+          for place in state.places[self.location_name].connections
+          if not place.closed
+      }.difference({self.character.place.name})
+
       self.location_name = PlaceChoice(
           self.character,
           prompt=f"{self.location_name} is closed, choose another destination",

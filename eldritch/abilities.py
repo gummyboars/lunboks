@@ -240,6 +240,7 @@ class UpkeepRestoreStat(assets.Asset):
     gains[len(eligible)] = events.Nothing()
     choice = events.MultipleChoice(
         owner, f"Choose a character to {self.verb}", [char.name for char in eligible] + ["nobody"])
+    # TODO: Should choosing nobody not exhaust the ability?
     cond = events.Conditional(owner, choice, "choice_index", gains)
     return events.Sequence([events.ExhaustAsset(owner, self), choice, cond], owner)
 
