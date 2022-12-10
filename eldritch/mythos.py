@@ -197,6 +197,35 @@ class ReleaseMonstersHeadline(Headline):
     return seq
 
 
+class CloseLocationsHeadline(Headline):
+  def __init__(
+      self, name, gate_location, clue_location, white_dimensions, black_dimensions, close_places,
+      evict=True,
+  ):
+    super().__init__(name, gate_location, clue_location, white_dimensions, black_dimensions)
+    self.close_places = close_places
+    self.active_until = None
+    self.evict = evict
+
+  def create_event(self, state):
+    seq = super().create_event(state)
+    seq.events.extend([
+        events.CloseLocation(place, for_turns=1, evict=self.evict) for place in self.close_places
+    ])
+    seq.events.append(
+        events.AddGlobalEffect(self, active_until=state.turn_number + 1, source_deck="mythos")
+    )
+    return seq
+
+  def get_trigger(self, event, state):
+    if (
+            isinstance(event, events.Mythos)
+            and self.active_until is not None
+            and state.turn_number >= self.active_until):
+      return events.RemoveGlobalEffect(self, source_deck="mythos")
+    return None
+
+
 def HealthWager(source, character, attribute, prompt, prize):
   dice = events.DiceRoll(character, values.Calculation(character, attribute))
   loss = events.Loss(
@@ -366,16 +395,12 @@ class Mythos9(CityBonus):
     )
 
 
-class Mythos10(Headline):
+class Mythos10(CloseLocationsHeadline):
   def __init__(self):
-    super().__init__("Mythos10", "Isle", "Science", {"hex"}, {"slash", "triangle", "star"})
-
-  def create_event(self, state):
-    seq = super().create_event(state)
-    seq.events.append(events.CloseLocation("Store", for_turns=1))
-    seq.events.append(events.CloseLocation("Shop", for_turns=1))
-    seq.events.append(events.CloseLocation("Shoppe", for_turns=1))
-    return seq
+    super().__init__(
+        "Mythos10", "Isle", "Science", {"hex"}, {"slash", "triangle", "star"},
+        ["Store", "Shop", "Shoppe"]
+    )
 
 
 class Mythos11(ReturnMonstersHeadline):
@@ -527,26 +552,11 @@ class Mythos18(Environment):
     return None
 
 
-class Mythos19(Headline):
+class Mythos19(CloseLocationsHeadline):
   def __init__(self):
-    super().__init__("Mythos19", "WitchHouse", "Cave", {"moon"}, {"plus"})
-    self.active_until = None
-
-  def create_event(self, state):
-    seq = super().create_event(state)
-    seq.events.extend([
-        events.CloseLocation("Merchant", for_turns=1, evict=False),
-        events.AddGlobalEffect(self, active_until=state.turn_number + 1, source_deck="mythos")
-    ])
-    return seq
-
-  def get_trigger(self, event, state):
-    if (
-        isinstance(event, events.Mythos)
-            and self.active_until is not None
-            and state.turn_number >= self.active_until):
-      return events.RemoveGlobalEffect(self, source_deck="mythos")
-    return None
+    super().__init__(
+        "Mythos19", "WitchHouse", "Cave", {"moon"}, {"plus"}, ["Merchant"], evict=False
+    )
 
 
 class Mythos20(ReturnMonstersHeadline):
@@ -857,20 +867,12 @@ class Mythos48(ReturnAndIncreaseHeadline):
                      )
 
 
-class Mythos49(Headline):
+class Mythos49(CloseLocationsHeadline):
   def __init__(self):
-    super().__init__("Mythos49", "Woods", "Society", {"hex"}, {"slash", "triangle", "star"})
-
-  def create_event(self, state) -> events.Sequence:
-    seq = super().create_event(state)
-    seq.events.extend([
-        events.CloseLocation("Administration", 1),
-        events.CloseLocation("Library", 1),
-        events.CloseLocation("Science", 1),
-        events.AddGlobalEffect(self, "mythos", state.turn_number + 1)
-        # Minor rare interaction with shuffling
-    ])
-    return seq
+    super().__init__(
+        "Mythos49", "Woods", "Society", {"hex"}, {"slash", "triangle", "star"},
+        ["Administration", "Library", "Science"],
+    )
 
 
 class Mythos50(ReleaseMonstersHeadline):
@@ -940,16 +942,14 @@ class Mythos56(ReleaseMonstersHeadline):
     super().__init__("Mythos56", "WitchHouse", "Cave", {"moon"}, {"plus"}, "Northside")
 
 
-class Mythos57(Headline):
+class Mythos57(CloseLocationsHeadline):
   def __init__(self):
-    super().__init__("Mythos57", "WitchHouse", "Cave", {"hex"}, {"slash", "triangle", "star"})
+    super().__init__(
+        "Mythos57", "WitchHouse", "Cave", {"hex"}, {"slash", "triangle", "star"}, "Roadhouse"
+    )
 
   def create_event(self, state) -> events.Sequence:
     seq = super().create_event(state)
-    seq.events.extend([
-        events.CloseLocation("Roadhouse", for_turns=1),
-        events.AddGlobalEffect(self, source_deck="mythos", active_until=state.turn+1),
-    ])
     for char in state.characters:
       whiskies = [pos for pos in char.possessions if pos.name == "Whiskey"]
       if not whiskies:
@@ -958,10 +958,7 @@ class Mythos57(Headline):
       pass_fail = events.PassFail(
           char, check,
           events.Nothing(),
-          events.Sequence(
-              [events.Arrested(char)]
-              + [events.DiscardSpecific(char, whiskey) for whiskey in whiskies],
-              char)
+          events.Sequence([events.Arrested(char), events.DiscardSpecific(char, whiskies)], char)
       )
       char_seq = events.Sequence([check, pass_fail], char)
       seq.events.append(char_seq)
