@@ -802,7 +802,7 @@ class Mythos42(Environment):
 class Mythos43(ReturnMonstersHeadline):
   def __init__(self):
     super().__init__(
-        "Mythos43", "WitchHouse", "Cave", {"square", "diamond"}, {"circle"},
+        "Mythos43", "WitchHouse", "Cave", {"circle"}, {"square", "diamond"},
         from_places=["Rivertown", "Graveyard", "Cave", "Store"]
     )
 
