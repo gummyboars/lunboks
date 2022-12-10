@@ -2142,7 +2142,7 @@ class CastSpell(Event):
       return
 
     if self.choice is None:
-      cost = max(self.spell.sanity_cost + state.get_modifier(self.spell, "sanity_cost"), 0)
+      cost = self.spell.sanity_cost(state)
       spend = values.ExactSpendPrerequisite(
           {"sanity": cost}
       )
@@ -4019,7 +4019,7 @@ class RespawnTrophies(Event):
     self.respawned_monsters = monsters
 
   def is_resolved(self):
-    return self.respawned_monsters is None
+    return self.respawned_monsters is not None
 
   def log(self, state):
     if self.cancelled and self.respawned_monsters is None:
@@ -4182,8 +4182,7 @@ class GateCloseAttempt(Event):
       self.closed = False
       return
 
-    self.closed = CloseGate(self.character, self.location_name, can_take=True,
-                            can_seal=state.get_override(self, "can_seal"))
+    self.closed = CloseGate(self.character, self.location_name, can_take=True, can_seal=True)
     state.event_stack.append(self.closed)
 
   def is_resolved(self):

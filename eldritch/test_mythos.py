@@ -2348,6 +2348,22 @@ class Mythos51Test(EventTest):
       self.resolve_until_done()
 
 
+class Mythos55Test(EventTest):
+  def setUp(self):
+    super().setUp()
+    self.state.turn_number = 0
+    self.state.turn_phase = "mythos"
+    self.mythos = Mythos55()
+    self.state.mythos.append(self.mythos)
+    self.state.event_stack.append(Mythos(self.char))
+    self.resolve_until_done()
+    self.assertEqual(self.mythos, self.state.environment)
+    self.assertNotIn(self.mythos, self.state.mythos)
+
+  def testUndeadIgnoredByRedSign(self):
+    pass
+
+
 class MythosPhaseTest(EventTest):
 
   def setUp(self):

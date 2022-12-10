@@ -39,7 +39,7 @@ class Spell(Item):
   def __init__(self, name, idx, active_bonuses, hands, difficulty, sanity_cost):
     super().__init__(name, idx, "spells", active_bonuses, {}, hands, None)
     self.difficulty = difficulty
-    self.sanity_cost = sanity_cost
+    self._sanity_cost = sanity_cost
     self.in_use = False
     self.deactivatable = False
     self.choice = None
@@ -56,6 +56,9 @@ class Spell(Item):
 
   def get_cast_event(self, owner, state):  # pylint: disable=unused-argument
     return events.Nothing()
+
+  def sanity_cost(self, state):
+    return max(self._sanity_cost + state.get_modifier(self, "sanity_cost"), 0)
 
 
 class CombatSpell(Spell):
@@ -80,7 +83,7 @@ class CombatSpell(Spell):
       if self.deactivatable:
         return events.DeactivateSpell(owner, self)
       return None
-    if self.exhausted or owner.sanity < self.sanity_cost:
+    if self.exhausted or owner.sanity < self.sanity_cost(state):
       return None
     hands_available = owner.hands_available()
     if isinstance(event, events.CombatChoice):
@@ -161,7 +164,7 @@ class EnchantWeapon(CombatSpell):
 
     # Instead of immediately casting the spell, ask the user to make a choice. If they have no
     # valid choices (or if they choose nothing), then don't cast the spell at all.
-    spend = values.ExactSpendPrerequisite({"sanity": self.sanity_cost})
+    spend = values.ExactSpendPrerequisite({"sanity": self.sanity_cost(state)})
     choice = events.SinglePhysicalWeaponChoice(
         owner, "Choose a physical weapon to enchant", spend=spend,
     )
@@ -205,7 +208,7 @@ class FleshWard(Spell):
         not isinstance(event, events.GainOrLoss)
         or event.character != owner
         or "stamina" not in event.losses
-        or owner.sanity < self.sanity_cost
+        or owner.sanity < self.sanity_cost(state)
         or self.exhausted
     ):
       return None
@@ -285,7 +288,7 @@ class RedSign(CombatSpell):
     if not attributes and event.monster.toughness(state, event.character) == 1:
       return None
     choices = attributes + ["none", "Cancel"]
-    spend = values.ExactSpendPrerequisite({"sanity": self.sanity_cost})
+    spend = values.ExactSpendPrerequisite({"sanity": self.sanity_cost(state)})
     spends = [spend] * (len(choices)-1) + [None]
     choice = events.SpendChoice(owner, "Choose an ability to ignore", choices, spends=spends)
     return events.CastSpell(owner, self, choice=choice)
@@ -312,7 +315,7 @@ class Voice(Spell):
   def get_usable_trigger(self, event, owner, state):
     if not isinstance(event, events.UpkeepActions) or event.character != owner:
       return None
-    if self.exhausted or owner.sanity < self.sanity_cost:
+    if self.exhausted or owner.sanity < self.sanity_cost(state):
       return None
     return events.CastSpell(owner, self)
 
@@ -338,7 +341,7 @@ class FindGate(Spell):
     return True
 
   def get_usable_interrupt(self, event, owner, state):
-    if self.exhausted or owner.sanity < self.sanity_cost:
+    if self.exhausted or owner.sanity < self.sanity_cost(state):
       return None
     if not self.movement_in_other_world(owner, state):
       return None
@@ -347,7 +350,7 @@ class FindGate(Spell):
     return events.CastSpell(owner, self)
 
   def get_usable_trigger(self, event, owner, state):
-    if self.exhausted or owner.sanity < self.sanity_cost:
+    if self.exhausted or owner.sanity < self.sanity_cost(state):
       return None
     if not self.movement_in_other_world(owner, state):
       return None

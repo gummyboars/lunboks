@@ -960,8 +960,7 @@ class Mythos57(CloseLocationsHeadline):
           events.Nothing(),
           events.Sequence([events.Arrested(char), events.DiscardSpecific(char, whiskies)], char)
       )
-      char_seq = events.Sequence([check, pass_fail], char)
-      seq.events.append(char_seq)
+      seq.events.append(pass_fail)
     return seq
 
 
