@@ -507,7 +507,7 @@ def Graveyard6(char):
 
 
 def Graveyard7(char):
-  draw = events.DrawMonstersFromCup(1, char)
+  draw = events.DrawMonstersFromCup(1, char, to_board=False)
   return events.Sequence([draw, events.ForceTakeTrophy(char, draw)], char)
 
 

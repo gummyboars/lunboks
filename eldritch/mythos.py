@@ -127,12 +127,74 @@ class Rumor(MythosCard):
     }
 
 
-def ReturnAndIncrease(monster_names):
-  cup_return = events.ReturnToCup(names=monster_names)
-  terrorize = events.Conditional(
-      None, cup_return, "returned", {0: events.Nothing(), 1: events.IncreaseTerror()}
-  )
-  return [cup_return, terrorize]
+class CityBonus(Environment):
+  def __init__(
+      self, name, gate_location, clue_location, white_dimensions, black_dimensions, env_type,
+      bonus_skill, penalty_skill
+  ):
+    super().__init__(
+        self, name, gate_location, clue_location, white_dimensions, black_dimensions, env_type,
+    )
+    self.bonus_skill = bonus_skill
+    self.penalty_skill = penalty_skill
+
+  def get_modifier(self, thing, attribute, state):
+    if isinstance(getattr(thing, "place", None), places.CityPlace):
+      if attribute == self.penalty_skill:
+        return -1
+      if attribute == self.bonus_skill:
+        return 1
+    return 0
+
+
+class ReturnMonstersHeadline(Headline):
+  def __init__(
+      self, name, gate_location, clue_location, white_dimensions, black_dimensions, from_places
+  ):
+    super().__init__(name, gate_location, clue_location, white_dimensions, black_dimensions)
+    self.from_places = from_places
+
+  def create_event(self, state) -> events.Sequence:
+    assert self.from_places is not None
+    seq = super().create_event(state)
+    seq.events.append(events.ReturnToCup(from_places=self.from_places))
+    return seq
+
+
+class ReturnAndIncreaseHeadline(Headline):
+  def __init__(
+      self, name, gate_location, clue_location, white_dimensions, black_dimensions, monster_names
+  ):
+    super().__init__(name, gate_location, clue_location, white_dimensions, black_dimensions)
+    self.monster_names = monster_names
+
+  def create_event(self, state) -> events.Sequence:
+    assert self.monster_names is not None
+    seq = super().create_event(state)
+    cup_return = events.ReturnToCup(names=self.monster_names)
+    terrorize = events.Conditional(
+        None, cup_return, "returned", {0: events.Nothing(), 1: events.IncreaseTerror()}
+    )
+    seq.events.extend([cup_return, terrorize])
+    return seq
+
+
+class ReleaseMonstersHeadline(Headline):
+  def __init__(
+      self, name, gate_location, clue_location, white_dimensions, black_dimensions, to_places,
+      num_monsters=2
+  ):
+    super().__init__(name, gate_location, clue_location, white_dimensions, black_dimensions)
+    # In the expansions, there are some "Release to multiple locations" cards
+    self.to_places = [to_places] if isinstance(to_places, str) else to_places
+    self.num_monsters = num_monsters
+
+  def create_event(self, state) -> events.Sequence:
+    seq = super().create_event(state)
+    draw = events.DrawMonstersFromCup(self.num_monsters)
+    place = events.MonsterSpawnChoice(draw, self.to_places[0], open_gates=self.to_places)
+    seq.events.extend([draw, place])
+    return seq
 
 
 def HealthWager(source, character, attribute, prompt, prize):
@@ -213,44 +275,29 @@ class Mythos3(Environment):
     return None
 
 
-class Mythos4(Headline):
+class Mythos4(ReturnAndIncreaseHeadline):
 
   def __init__(self):
-    super().__init__("Mythos4", "Science", "WitchHouse", {"hex"}, {"slash", "triangle", "star"})
+    super().__init__("Mythos4", "Science", "WitchHouse", {"hex"}, {"slash", "triangle", "star"},
+                     monster_names={"Furry Beast", "Dream Flier"}
+                     )
 
-  def create_event(self, state):
-    seq = super().create_event(state)
-    cup_return = events.ReturnToCup(names={"Furry Beast", "Dream Flier"})
-    terrorize = events.Conditional(
-        None, cup_return, "returned", {0: events.Nothing(), 1: events.IncreaseTerror()}
+
+class Mythos5(ReturnMonstersHeadline):
+
+  def __init__(self):
+    super().__init__(
+        "Mythos5", "Square", "Unnamable", {"moon"}, {"plus"}, from_places={"Sky", "Outskirts"}
     )
-    seq.events.extend([cup_return, terrorize])
-    return seq
 
 
-class Mythos5(Headline):
+class Mythos6(CityBonus):
 
   def __init__(self):
-    super().__init__("Mythos5", "Square", "Unnamable", {"moon"}, {"plus"})
-
-  def create_event(self, state):
-    seq = super().create_event(state)
-    seq.events.append(events.ReturnToCup(from_places={"Sky", "Outskirts"}))
-    return seq
-
-
-class Mythos6(Environment):
-
-  def __init__(self):
-    super().__init__("Mythos6", "Graveyard", "Isle", {"plus"}, {"moon"}, "weather")
-
-  def get_modifier(self, thing, attribute, state):
-    if isinstance(getattr(thing, "place", None), places.CityPlace):
-      if attribute == "will":
-        return -1
-      if attribute == "sneak":
-        return 1
-    return 0
+    super().__init__(
+        "Mythos6", "Graveyard", "Isle", {"plus"}, {"moon"}, "weather",
+        bonus_skill="sneak", penalty_skill="will"
+    )
 
   def get_interrupt(self, event, state):
     if isinstance(event, events.MoveMonster) and event.monster.has_attribute("flying", state, None):
@@ -311,19 +358,12 @@ class Mythos8(Environment):
     return None
 
 
-class Mythos9(Environment):
+class Mythos9(CityBonus):
   def __init__(self):
     super().__init__(
-        "Mythos9", "Cave", "Roadhouse", {"square", "diamond"}, {"circle"}, "mystic"
+        "Mythos9", "Cave", "Roadhouse", {"square", "diamond"}, {"circle"}, "mystic",
+        bonus_skill="sneak", penalty_skill="luck"
     )
-
-  def get_modifier(self, thing, attribute, state):
-    if isinstance(getattr(thing, "place", None), places.CityPlace):
-      if attribute == "luck":
-        return -1
-      if attribute == "sneak":
-        return 1
-    return 0
 
 
 class Mythos10(Headline):
@@ -338,27 +378,21 @@ class Mythos10(Headline):
     return seq
 
 
-class Mythos11(Headline):
+class Mythos11(ReturnMonstersHeadline):
 
   def __init__(self):
-    super().__init__("Mythos11", "Cave", "Roadhouse", {"hex"}, {"slash", "triangle", "star"})
-
-  def create_event(self, state):
-    seq = super().create_event(state)
-    seq.events.append(events.ReturnToCup(from_places={"Southside", "House", "Church", "Society"}))
-    return seq
+    super().__init__(
+        "Mythos11", "Cave", "Roadhouse", {"hex"}, {"slash", "triangle", "star"},
+        from_places={"Southside", "House", "Church", "Society"}
+    )
 
 
-class Mythos12(Headline):
+class Mythos12(ReturnMonstersHeadline):
   def __init__(self):
-    super().__init__("Mythos12", "Square", "Unnamable", {"circle"}, {"square", "diamond"})
-
-  def create_event(self, state):
-    seq = super().create_event(state)
-    seq.events.append(events.ReturnToCup(
+    super().__init__(
+        "Mythos12", "Square", "Unnamable", {"circle"}, {"square", "diamond"},
         from_places={"University", "Library", "Administration", "Science"}
-    ))
-    return seq
+    )
 
 
 class Mythos13(Rumor):
@@ -515,14 +549,11 @@ class Mythos19(Headline):
     return None
 
 
-class Mythos20(Headline):
+class Mythos20(ReturnMonstersHeadline):
   def __init__(self):
-    super().__init__("Mythos20", "Cave", "Roadhouse", {"moon"}, {"plus"})
-
-  def create_event(self, state):
-    seq = super().create_event(state)
-    seq.events.append(events.ReturnToCup(from_places=["streets"]))
-    return seq
+    super().__init__(
+        "Mythos20", "Cave", "Roadhouse", {"moon"}, {"plus"}, from_places=["streets"]
+    )
 
 
 class Mythos21(Headline):
@@ -549,41 +580,32 @@ class Mythos22(Headline):
     return seq
 
 
-class Mythos23(Headline):
+class Mythos23(ReleaseMonstersHeadline):
   def __init__(self):
-    super().__init__("Mythos23", "Unnamable", "Woods", {"moon"}, {"plus"})
-
-  def create_event(self, state):
-    seq = super().create_event(state)
-    seq.events.append(events.ReleaseMonstersToLocation("Merchant"))
-    return seq
+    super().__init__("Mythos23", "Unnamable", "Woods", {"moon"}, {"plus"}, to_places="Merchant")
 
 
-class Mythos24(Headline):
+class Mythos24(ReturnMonstersHeadline):
   def __init__(self):
-    super().__init__("Mythos24", "WitchHouse", "Cave", {"circle"}, {"square", "diamond"})
-
-  def create_event(self, state):
-    seq = super().create_event(state)
-    seq.events.append(events.ReturnToCup(from_places=["Easttown", "Roadhouse", "Diner", "Police"]))
-    return seq
+    super().__init__(
+        "Mythos24", "WitchHouse", "Cave", {"circle"}, {"square", "diamond"},
+        from_places=["Easttown", "Roadhouse", "Diner", "Police"]
+    )
 
 
-class Mythos25(Environment):
+class Mythos25(CityBonus):
   def __init__(self):
-    super().__init__("Mythos25", "Woods", "Square", {"square", "diamond"}, {"circle"}, "weather")
+    super().__init__(
+        "Mythos25", "Woods", "Square", {"square", "diamond"}, {"circle"}, "weather",
+        bonus_skill="lore", penalty_skill="fight",
+    )
 
-  def get_modifier(self, thing, attribute):
-    if isinstance(getattr(thing, "place", None), places.CityPlace):
-      if attribute == "fight":
-        return -1
-      if attribute == "lore":
-        return 1
+  def get_modifier(self, thing, attribute, state):
     # FAQ p10: If the phrase ___ is not within the text of the effect, then it affects investigators
     # in the Other Worlds
     if getattr(thing, "name", None) == "Flame Matrix" and attribute == "toughness":
       return 1
-    return 0
+    return super().get_modifier(thing, attribute, state)
 
 
 class Mythos26(Environment):
@@ -669,44 +691,31 @@ class Mythos29(Environment):
     return None
 
 
-class Mythos30(Headline):
+class Mythos30(ReleaseMonstersHeadline):
   def __init__(self):
-    super().__init__("Mythos30", "Society", "Lodge", {"moon"}, {"plus"})
-
-  def create_event(self, state):
-    seq = super().create_event(state)
-    seq.events.append(events.ReleaseMonstersToLocation("University"))
-    return seq
+    super().__init__("Mythos30", "Society", "Lodge", {"moon"}, {"plus"}, "University")
 
 
-class Mythos31(Headline):
+class Mythos31(ReturnMonstersHeadline):
   def __init__(self):
-    super().__init__("Mythos31", "Woods", "Square", {"slash", "triangle", "star"}, {"hex"})
-
-  def create_event(self, state):
-    seq = super().create_event(state)
-    seq.events.append(events.ReturnToCup(from_places=["locations"]))
-    return seq
+    super().__init__(
+        "Mythos31", "Woods", "Square", {"slash", "triangle", "star"}, {"hex"},
+        from_places=["locations"]
+    )
 
 
-class Mythos32(Headline):
+class Mythos32(ReturnMonstersHeadline):
   def __init__(self):
-    super().__init__("Mythos32", "Isle", "Science", {"circle"}, {"square", "diamond"})
-
-  def create_event(self, state):
-    seq = super().create_event(state)
-    seq.events.append(events.ReturnToCup(from_places=["FrenchHill", "WitchHouse", "Lodge"]))
-    return seq
+    super().__init__(
+        "Mythos32", "Isle", "Science", {"circle"}, {"square", "diamond"},
+        from_places=["FrenchHill", "WitchHouse", "Lodge"]
+    )
 
 
-class Mythos33(Headline):
+class Mythos33(ReleaseMonstersHeadline):
   def __init__(self):
-    super().__init__("Mythos33", "Cave", "Roadhouse", {"circle"}, {"square", "diamond"})
-
-  def create_event(self, state):
-    seq = super().create_event(state)
-    seq.events.append(events.ReleaseMonstersToLocation("FrenchHill", 2))
-    return seq
+    super().__init__("Mythos33", "Cave", "Roadhouse", {"circle"}, {"square", "diamond"},
+                     "FrenchHill")
 
 # TODO: Mythos34 return those lost in Time and Space
 
@@ -721,24 +730,16 @@ class Mythos35(Headline):
     return seq
 
 
-class Mythos36(Headline):
+class Mythos36(ReturnMonstersHeadline):
   def __init__(self):
-    super().__init__("Mythos36", "Square", "Unnamable", {"circle"}, {"square", "diamond"})
-
-  def create_event(self, state) -> events.Sequence:
-    seq = super().create_event(state)
-    seq.events.append(events.ReturnToCup(from_places=["Merchant", "Unnamable", "Docks", "Isle"]))
-    return seq
+    super().__init__("Mythos36", "Square", "Unnamable", {"circle"}, {"square", "diamond"},
+                     from_places=["Merchant", "Unnamable", "Docks", "Isle"]
+                     )
 
 
-class Mythos37(Headline):
+class Mythos37(ReleaseMonstersHeadline):
   def __init__(self):
-    super().__init__("Mythos37", "Isle", "Science", {"moon"}, {"plus"})
-
-  def create_event(self, state) -> events.Sequence:
-    seq = super().create_event(state)
-    seq.events.append(events.ReleaseMonstersToLocation("Downtown", 2))
-    return seq
+    super().__init__("Mythos37", "Isle", "Science", {"moon"}, {"plus"}, "Downtown")
 
 
 class Mythos38(Environment):
@@ -763,24 +764,18 @@ class Mythos39(Environment):
     return None
 
 
-class Mythos40(Headline):
+class Mythos40(ReturnMonstersHeadline):
   def __init__(self):
-    super().__init__("Mythos40", "Woods", "Society", {"circle"}, {"square", "diamond"})
-
-  def create_event(self, state) -> events.Sequence:
-    seq = super().create_event(state)
-    seq.events.append(events.ReturnToCup(from_places=["Uptown", "Hospital", "Shoppe", "Woods"]))
-    return seq
+    super().__init__("Mythos40", "Woods", "Society", {"circle"}, {"square", "diamond"},
+                     from_places=["Uptown", "Hospital", "Shoppe", "Woods"]
+                     )
 
 
-class Mythos41(Headline):
+class Mythos41(ReturnMonstersHeadline):
   def __init__(self):
-    super().__init__("Mythos41", "Lodge", "Graveyard", {"circle"}, {"square", "diamond"})
-
-  def create_event(self, state) -> events.Sequence:
-    seq = super().create_event(state)
-    seq.events.append(events.ReturnToCup(from_places=["Northside", "Shop", "Newspaper", "Train"]))
-    return seq
+    super().__init__("Mythos41", "Lodge", "Graveyard", {"circle"}, {"square", "diamond"},
+                     from_places=["Northside", "Shop", "Newspaper", "Train"]
+                     )
 
 
 class Mythos42(Environment):
@@ -794,19 +789,20 @@ class Mythos42(Environment):
     return 0
 
 
-class Mythos43(Headline):
+class Mythos43(ReturnMonstersHeadline):
   def __init__(self):
-    super().__init__("Mythos43", "WitchHouse", "Cave", {"square", "diamond"}, {"circle"})
-
-  def create_event(self, state) -> events.Sequence:
-    seq = super().create_event(state)
-    seq.events.append(events.ReturnToCup(from_places=["Rivertown", "Graveyard", "Cave", "Store"]))
-    return seq
+    super().__init__(
+        "Mythos43", "WitchHouse", "Cave", {"square", "diamond"}, {"circle"},
+        from_places=["Rivertown", "Graveyard", "Cave", "Store"]
+    )
 
 
-class Mythos44(Environment):
+class Mythos44(CityBonus):
   def __init__(self):
-    super().__init__("Mythos44", "Roadhouse", "Square", {"plus"}, {"moon"}, env_type="weather")
+    super().__init__(
+        "Mythos44", "Roadhouse", "Square", {"plus"}, {"moon"}, env_type="weather",
+        bonus_skill="sneak", penalty_skill="speed",
+    )
 
   def create_event(self, state):
     seq = super().create_event(state)
@@ -816,21 +812,16 @@ class Mythos44(Environment):
         if isinstance(monster.place, places.CityPlace) and monster.name == "Flame Matrix"
     ])
 
-  def get_modifier(self, thing, attribute, state):
-    if isinstance(getattr(thing, "place", None), places.CityPlace):
-      if attribute == "speed":
-        return -1
-      if attribute == "sneak":
-        return 1
-    return 0
-
   def get_interrupt(self, event, state):
     if isinstance(event, events.CityMovement):
       return events.ChangeMovementPoints(event.character, -1)
     return None
 
-  def get_trigger(self, event, state):
-    # TODO: Figure out how to override the FlameMatrix deployment
+  def get_override(self, thing, attribute):
+    if (isinstance(thing, monsters.Monster)
+        and thing.name == "FlameMatrix"
+            and attribute == "can_draw_to_board"):
+      return False
     return None
 
 
@@ -849,34 +840,21 @@ class Mythos45(Environment):
     return 0
 
 
-class Mythos46(Headline):
+class Mythos46(ReleaseMonstersHeadline):
   def __init__(self):
-    super().__init__("Mythos46", "Woods", "Society", {"moon"}, {"plus"})
-
-  def create_event(self, state) -> events.Sequence:
-    seq = super().create_event(state)
-    seq.events.append(events.ReleaseMonstersToLocation("Easttown", 2))
-    return seq
+    super().__init__("Mythos46", "Woods", "Society", {"moon"}, {"plus"}, "Easttown")
 
 
-class Mythos47(Headline):
+class Mythos47(ReleaseMonstersHeadline):
   def __init__(self):
-    super().__init__("Mythos47", "Graveyard", "Isle", {"circle"}, {"square", "diamond"})
-
-  def create_event(self, state) -> events.Sequence:
-    seq = super().create_event(state)
-    seq.events.append(events.ReleaseMonstersToLocation("Uptown", 2))
-    return seq
+    super().__init__("Mythos47", "Graveyard", "Isle", {"circle"}, {"square", "diamond"}, "Uptown")
 
 
-class Mythos48(Headline):
+class Mythos48(ReturnAndIncreaseHeadline):
   def __init__(self):
-    super().__init__("Mythos48", "Isle", "Science", {"hex"}, {"slash", "triangle", "star"})
-
-  def create_event(self, state) -> events.Sequence:
-    seq = super().create_event(state)
-    seq.events.extend(ReturnAndIncrease({"Dimensional Shambler", "Hound"}))
-    return seq
+    super().__init__("Mythos48", "Isle", "Science", {"hex"}, {"slash", "triangle", "star"},
+                     monster_names={"Dimensional Shambler", "Hound"}
+                     )
 
 
 class Mythos49(Headline):
@@ -892,16 +870,12 @@ class Mythos49(Headline):
         events.AddGlobalEffect(self, "mythos", state.turn_number + 1)
         # Minor rare interaction with shuffling
     ])
-
-
-class Mythos50(Headline):
-  def __init__(self):
-    super().__init__("Mythos50", "Woods", "Society", {"circle"}, {"square", "diamond"})
-
-  def create_event(self, state) -> events.Sequence:
-    seq = super().create_event(state)
-    seq.events.append(events.ReleaseMonstersToLocation("Southside", 2))
     return seq
+
+
+class Mythos50(ReleaseMonstersHeadline):
+  def __init__(self):
+    super().__init__("Mythos50", "Woods", "Society", {"circle"}, {"square", "diamond"}, "Southside")
 
 
 class Mythos51(Environment):
@@ -915,9 +889,12 @@ class Mythos51(Environment):
     return None
 
 
-class Mythos52(Environment):
+class Mythos52(CityBonus):
   def __init__(self):
-    super().__init__("Mythos52", "Cave", "Roadhouse", {"plus"}, {"crescent"}, env_type="weather")
+    super().__init__(
+        "Mythos52", "Cave", "Roadhouse", {"plus"}, {"crescent"}, env_type="weather",
+        bonus_skill="will", penalty_skill="sneak",
+    )
 
   def create_event(self, state) -> events.Sequence:
     seq = super().create_event(state)
@@ -928,27 +905,20 @@ class Mythos52(Environment):
     ])
     return seq
 
-  def get_modifier(self, thing, attribute, state):
-    if isinstance(getattr(thing, "place", None), places.CityPlace):
-      if attribute == "sneak":
-        return -1
-      if attribute == "will":
-        return 1
-    return 0
-
-  def get_trigger(self, event, state):
-    # TODO: Override Haunter deployment
+  def get_override(self, thing, attribute):
+    if (isinstance(thing, monsters.Monster)
+        and thing.name == "Haunter"
+            and attribute == "can_draw_to_board"):
+      return False
     return None
 
 
-class Mythos53(Headline):
+class Mythos53(ReturnAndIncreaseHeadline):
   def __init__(self):
-    super().__init__("Mythos53", "Square", "Unnamable", {"hex"}, {"slash", "triangle", "star"})
-
-  def create_event(self, state) -> events.Sequence:
-    seq = super().create_event(state)
-    seq.events.extend(ReturnAndIncrease({"Land Squid", "Giant Worm"}))
-    return seq
+    super().__init__(
+        "Mythos53", "Square", "Unnamable", {"hex"}, {"slash", "triangle", "star"},
+        monster_names={"Land Squid", "Giant Worm"}
+    )
 
 
 # TODO: Mythos 54, may return from Other Worlds
@@ -965,14 +935,9 @@ class Mythos55(Environment):
     return 0
 
 
-class Mythos56(Headline):
+class Mythos56(ReleaseMonstersHeadline):
   def __init__(self):
-    super().__init__("Mythos56", "WitchHouse", "Cave", {"moon"}, {"plus"})
-
-  def create_event(self, state) -> events.Sequence:
-    seq = super().create_event(state)
-    seq.events.append(events.ReleaseMonstersToLocation("Northside", 2))
-    return seq
+    super().__init__("Mythos56", "WitchHouse", "Cave", {"moon"}, {"plus"}, "Northside")
 
 
 class Mythos57(Headline):
@@ -1094,6 +1059,35 @@ class Mythos60(Environment):
     return 0
 
 
+class Mythos64(Environment):
+  def __init__(self):
+    super().__init__("Mythos64", "Lodge", "Graveyard", {"square", "diamond"}, {"circle"}, "mystic")
+
+  def get_modifier(self, thing, attribute, state):
+    if (
+        isinstance(thing, monsters.Monster)
+        and thing.name in ("Ghoul", "Formless Spawn", "Giant Amoeba", "Subterranean Flier")
+        and attribute == "toughness"
+    ):
+      return 1
+    return 0
+
+
+class Mythos66(ReleaseMonstersHeadline):
+  def __init__(self):
+    super().__init__(
+        "Mythos66", "Isle", "Science", {"moon"}, {"plus"}, "Rivertown"
+    )
+
+
+class Mythos67(ReturnMonstersHeadline):
+  def __init__(self):
+    super().__init__(
+        "Mythos67", "Unnamable", "Woods", {"circle"}, {"square", "diamond"},
+        from_places=["Downtown", "Bank", "Asylum", "Square"]
+    )
+
+
 class ShuffleMythos(MythosCard):
 
   def __init__(self):  # pylint: disable=super-init-not-called
@@ -1106,6 +1100,13 @@ def CreateMythos():
       Mythos9(), Mythos10(), Mythos11(), Mythos12(), Mythos13(), Mythos14(), Mythos15(),
       Mythos16(), Mythos17(), Mythos18(), Mythos19(), Mythos20(), Mythos21(), Mythos22(),
       Mythos23(), Mythos24(), Mythos25(), Mythos26(), Mythos27(), Mythos28(), Mythos29(),
-      Mythos30(),
-      Mythos45(), Mythos59(), ShuffleMythos(),
+      Mythos30(), Mythos31(), Mythos32(), Mythos33(),  # Mythos34(),
+      Mythos35(), Mythos36(), Mythos37(), Mythos38(), Mythos39(), Mythos40(), Mythos41(),
+      Mythos42(), Mythos43(), Mythos44(), Mythos45(), Mythos46(), Mythos47(), Mythos48(),
+      Mythos49(), Mythos50(), Mythos51(), Mythos52(), Mythos53(),  # Mythos54(),
+      Mythos55(), Mythos56(), Mythos57(), Mythos58(), Mythos59(), Mythos60(),
+      # Mythos61(), Mythos62(), Mythos63(),
+      Mythos64(),  # Mythos65(),
+      Mythos66(), Mythos67(),
+      ShuffleMythos(),
   ]

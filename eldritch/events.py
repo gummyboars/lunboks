@@ -4035,7 +4035,7 @@ class RespawnTrophies(Event):
 class MonsterAppears(Conditional):
 
   def __init__(self, character):
-    draw = DrawMonstersFromCup(1, character)
+    draw = DrawMonstersFromCup(1, character, to_board=False)
     appears = Sequence([draw, EvadeOrCombat(character, draw)], character)
     unstable = values.PlaceUnstable(character.place)
     super().__init__(character, unstable, "", {0: Nothing(), 1: appears})
@@ -4573,16 +4573,19 @@ class RemoveDoom(Event):
 
 class DrawMonstersFromCup(Event):
 
-  def __init__(self, count=1, character=None):
+  def __init__(self, count=1, character=None, to_board=True):
     super().__init__()
     self.character = character
     self.count = count
     self.awaken: Optional[Event] = None
     self.monsters = None
+    self.to_board = to_board
 
   def resolve(self, state):
     monster_indexes = [
-        idx for idx, monster in enumerate(state.monsters) if monster.place == state.monster_cup
+        idx for idx, monster in enumerate(state.monsters)
+        if monster.place == state.monster_cup and (
+            not self.to_board or state.get_override(monster, "can_draw_to_board"))
     ]
     if len(monster_indexes) < self.count:
       self.awaken = Awaken()
@@ -4739,12 +4742,6 @@ class MonsterSpawnChoice(ChoiceEvent):
     if self.num_clears:
       text += f" the outskirts cleared {self.num_clears} times"
     return text
-
-
-def ReleaseMonstersToLocation(location, count=2):
-  draw = DrawMonstersFromCup(count)
-  place = MonsterSpawnChoice(draw, location, [location])
-  return Sequence([draw, place])
 
 
 class IncreaseTerror(Event):
