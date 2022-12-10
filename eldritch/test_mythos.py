@@ -2344,7 +2344,8 @@ class Mythos51Test(EventTest):
     weapons = self.resolve_to_choice(CombatChoice)
     self.assertFalse(self.state.usables)
     weapons.resolve(self.state, "done")
-    self.resolve_until_done()
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
 
 
 class MythosPhaseTest(EventTest):
