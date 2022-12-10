@@ -133,7 +133,7 @@ class CityBonus(Environment):
       bonus_skill, penalty_skill
   ):
     super().__init__(
-        self, name, gate_location, clue_location, white_dimensions, black_dimensions, env_type,
+        name, gate_location, clue_location, white_dimensions, black_dimensions, env_type,
     )
     self.bonus_skill = bonus_skill
     self.penalty_skill = penalty_skill
