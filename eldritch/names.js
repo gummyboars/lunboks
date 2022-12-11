@@ -190,6 +190,8 @@ monsterNames = [
 carefullyAdd(monsterNames);
 monsterBacks = monsterNames.map(name => name + " back");
 carefullyAdd(monsterBacks);
+monsterTexts = monsterNames.map(name => name + " text");
+carefullyAdd(monsterTexts);
 otherWorlds = [
   "Abyss",
   "Another Dimension",
