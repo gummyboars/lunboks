@@ -1904,6 +1904,64 @@ class RumorTest(EventTest):
     self.assertEqual(cultist.toughness(self.state, self.char), 1)
 
 
+class CityBonusTest(EventTest):
+  def setUp(self):
+    super().setUp()
+    self.mythos = Mythos6()
+    self.state.mythos.append(self.mythos)
+    self.advance_turn(0, "mythos")
+    self.resolve_until_done()
+    self.assertEqual(self.mythos, self.state.environment)
+
+  def testAppliesInCity(self):
+    self.assertTrue(isinstance(self.char.place, places.CityPlace))
+    bonus_check = Check(self.char, "sneak", -1)
+    self.state.event_stack.append(bonus_check)
+    self.resolve_until_done()
+    self.assertEqual(len(bonus_check.dice.roll), 4 - self.char.speed_sneak_slider)
+    penalty_check = Check(self.char, "will", 1)
+    self.state.event_stack.append(penalty_check)
+    self.resolve_until_done()
+    self.assertEqual(len(penalty_check.dice.roll), 4 - self.char.fight_will_slider)
+
+  def testDoesntApplyInOtherWorlds(self):
+    self.char.place = self.state.places["Pluto2"]
+    self.assertFalse(isinstance(self.char.place, places.CityPlace))
+    bonus_check = Check(self.char, "sneak", 0)
+    self.state.event_stack.append(bonus_check)
+    self.resolve_until_done()
+    self.assertEqual(len(bonus_check.dice.roll), 4 - self.char.speed_sneak_slider)
+    penalty_check = Check(self.char, "will", 0)
+    self.state.event_stack.append(penalty_check)
+    self.resolve_until_done()
+    self.assertEqual(len(penalty_check.dice.roll), 4 - self.char.fight_will_slider)
+
+
+class ReleaseMonstersTest(EventTest):
+  def testMonstersReleased(self):
+    self.state.monsters = monsters.CreateMonsters()
+    for idx, monster in enumerate(self.state.monsters):
+      monster.idx = idx
+      monster.place = self.state.monster_cup
+    mythos = Mythos23()
+    self.state.mythos.append(mythos)
+    self.advance_turn(1, "encounter")
+    self.resolve_until_done()
+    monsters_in_merchant = [mon for mon in self.state.monsters if mon.place.name == "Merchant"]
+    self.assertTrue(len(monsters_in_merchant), 2)
+
+
+class ReturnMonstersTest(EventTest):
+  def testMonstersReturned(self):
+    mythos = Mythos5()
+    self.state.mythos.append(mythos)
+    monster = self.state.monsters[0]
+    monster.place = self.state.places["Outskirts"]
+
+    self.advance_turn(1, "movement")
+    self.assertEqual(monster.place, self.state.monster_cup)
+
+
 class Mythos7Test(EventTest):
   def setUp(self):
     super().setUp()
@@ -2121,7 +2179,51 @@ class Mythos18Test(EventTest):
     self.assertEqual(self.char.dollars, 1)
 
 
-class Mythos19Test(EventTest):
+class CloseLocationTest(EventTest):
+  def setUp(self):
+    super().setUp()
+    # Make sure there's enough monsters to draw twice
+    self.store = self.state.places["Store"]
+    self.shop = self.state.places["Shop"]
+    self.shoppe = self.state.places["Shoppe"]
+    self.char.place = self.store
+
+    matrix = monsters.FlameMatrix()
+    matrix.place = self.state.monster_cup
+    self.state.monsters.append(matrix)
+
+    self.mythos = Mythos10()
+    self.state.mythos.append(self.mythos)
+    self.advance_turn(0, "mythos")
+    self.resolve_until_done()
+    self.assertEqual(self.store.closed_until, 2)
+    self.assertEqual(self.shop.closed_until, 2)
+    self.assertEqual(self.shoppe.closed_until, 2)
+    self.assertIn(self.mythos, self.state.globals())
+
+  def tearDown(self):
+    self.advance_turn(2, "movement")
+    self.assertIsNone(self.store.closed_until)
+    self.assertIsNone(self.shop.closed_until)
+    self.assertIsNone(self.shoppe.closed_until)
+    self.assertNotIn(self.mythos, self.state.globals())
+    choice = self.resolve_to_choice(CityMovement)
+    self.assertIn("Store", choice.choices)
+    self.assertIn("Shop", choice.choices)
+    self.assertIn("Shoppe", choice.choices)
+
+  def testEvicted(self):
+    self.advance_turn(1, "movement")
+    self.assertEqual(self.char.place.name, "Rivertown")
+    choice = self.resolve_to_choice(CityMovement)
+    self.assertNotIn("Store", choice.choices)
+    self.assertNotIn("Shop", choice.choices)
+    self.assertNotIn("Shoppe", choice.choices)
+    choice.resolve(self.state, "done")
+    self.resolve_until_done()
+
+
+class CloseStreetLocationTest(EventTest):
   def setUp(self):
     super().setUp()
     # Make sure there's enough monsters to draw twice
@@ -2197,13 +2299,14 @@ class Mythos19Test(EventTest):
     self.assertEqual(cultist.place.name, "Northside")
 
 
-class Mythos22Test(EventTest):
+class ReturnAndIncreaseHeadlineTest(EventTest):
   def setUp(self):
     super().setUp()
     self.tentacle_trees = [monsters.TentacleTree() for _ in range(3)]
     self.state.monsters.extend(self.tentacle_trees)
     # But not in the cup so they can't be drawn
     self.mythos = Mythos22()
+    self.assertTrue(isinstance(self.mythos, ReturnAndIncreaseHeadline))
 
   def drawMythos(self):
     self.state.mythos.append(self.mythos)
@@ -2361,7 +2464,24 @@ class Mythos55Test(EventTest):
     self.assertNotIn(self.mythos, self.state.mythos)
 
   def testUndeadIgnoredByRedSign(self):
-    pass
+    self.char.possessions.append(items.RedSign(0))
+    zombie = monsters.Zombie()
+    self.assertEqual(zombie.toughness(self.state, self.char), 2)
+    self.state.event_stack.append(Combat(self.char, zombie))
+    fight_flee = self.resolve_to_choice(FightOrEvadeChoice)
+    fight_flee.resolve(self.state, "Fight")
+    sign = self.resolve_to_usable(0, "Red Sign0")
+    self.state.event_stack.append(sign)
+    attr_to_cancel = self.resolve_to_choice(SpendChoice)
+    self.spend("sanity", 1, attr_to_cancel)
+    attr_to_cancel.resolve(self.state, "undead")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      weapons = self.resolve_to_choice(CombatChoice)
+    self.assertEqual(zombie.toughness(self.state, self.char), 1)
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=[5, 1, 1, 1])):
+      weapons.resolve(self.state, "done")
+      self.resolve_until_done()
+    self.assertEqual(zombie.toughness(self.state, self.char), 2)
 
 
 class MythosPhaseTest(EventTest):

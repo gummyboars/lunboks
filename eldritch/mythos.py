@@ -192,7 +192,7 @@ class ReleaseMonstersHeadline(Headline):
   def create_event(self, state) -> events.Sequence:
     seq = super().create_event(state)
     draw = events.DrawMonstersFromCup(self.num_monsters)
-    place = events.MonsterSpawnChoice(draw, self.to_places[0], open_gates=self.to_places)
+    place = events.MonsterSpawnChoice(draw, None, open_gates=self.to_places)
     seq.events.extend([draw, place])
     return seq
 
@@ -576,18 +576,11 @@ class Mythos21(Headline):
     return seq
 
 
-class Mythos22(Headline):
+class Mythos22(ReturnAndIncreaseHeadline):
   def __init__(self):
-    super().__init__("Mythos22", "Square", "Unnamable", {"hex"}, {"slash", "triangle", "star"})
-
-  def create_event(self, state):
-    seq = super().create_event(state)
-    cup_return = events.ReturnToCup(names=["Tentacle Tree"])
-    terrorize = events.Conditional(
-        None, cup_return, "returned", {0: events.Nothing(), 1: events.IncreaseTerror()}
+    super().__init__(
+        "Mythos22", "Square", "Unnamable", {"hex"}, {"slash", "triangle", "star"}, ["Tentacle Tree"]
     )
-    seq.events.extend([cup_return, terrorize])
-    return seq
 
 
 class Mythos23(ReleaseMonstersHeadline):
@@ -952,7 +945,7 @@ class Mythos57(CloseLocationsHeadline):
     seq = super().create_event(state)
     for char in state.characters:
       whiskies = [pos for pos in char.possessions if pos.name == "Whiskey"]
-      if not whiskies:
+      if not (whiskies and isinstance(char.place, places.CityPlace)):
         continue
       check = events.Check(char, "sneak", -1)
       pass_fail = events.PassFail(
