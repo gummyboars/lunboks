@@ -874,23 +874,26 @@ class SplitGain(Event):
     return ""
 
 
-class LossPrevention(Event):
+class GainOrLossPrevention(Event):
 
-  def __init__(self, prevention_source, source_event, attribute, amount):
+  def __init__(self, prevention_source, source_event, attribute, amount, gain_or_loss):
     assert isinstance(source_event, GainOrLoss)
     assert isinstance(amount, (int, values.Value)) or math.isinf(amount)
-    assert attribute in source_event.losses
+    assert gain_or_loss in {"gains", "losses"}
+    assert attribute in getattr(source_event, gain_or_loss)
     super().__init__()
     self.prevention_source = prevention_source
     self.source_event: GainOrLoss = source_event
     self.attribute = attribute
     self.amount = amount
+    self.gain_or_loss = gain_or_loss
     self.prevented = None
 
   def resolve(self, state):
+    gains_or_losses = getattr(self.source_event, self.gain_or_loss)
     reduced_loss = values.Calculation(
-        self.source_event.losses[self.attribute], None, operator.sub, self.amount)
-    self.source_event.losses[self.attribute] = reduced_loss
+        gains_or_losses[self.attribute], None, operator.sub, self.amount)
+    gains_or_losses[self.attribute] = reduced_loss
     self.prevented = self.amount
     if isinstance(self.amount, values.Value):
       self.prevented = self.amount.value(state)
@@ -899,12 +902,21 @@ class LossPrevention(Event):
     return self.prevented is not None
 
   def log(self, state):
+    action = {"gains": "gain", "losses": "loss"}[self.gain_or_loss]
     if self.prevented is None:
       amount = self.amount.value(state) if isinstance(self.amount, values.Value) else self.amount
-      return f"{self.prevention_source.name} will prevent {amount} {self.attribute} loss"
+      return f"{self.prevention_source.name} will prevent {amount} {self.attribute} {action}"
     if not self.prevented:
       return ""
-    return f"{self.prevention_source.name} prevented {self.prevented} {self.attribute} loss"
+    return f"{self.prevention_source.name} prevented {self.prevented} {self.attribute} {action}"
+
+
+def LossPrevention(prevention_source, source_event, attribute, amount):
+  return GainOrLossPrevention(prevention_source, source_event, attribute, amount, "losses")
+
+
+def GainPrevention(prevention_source, source_event, attribute, amount):
+  return GainOrLossPrevention(prevention_source, source_event, attribute, amount, "gains")
 
 
 class CapStatsAtMax(Event):
@@ -1301,6 +1313,21 @@ class ForceMovement(Event):
     self.done = False
 
   def resolve(self, state):
+    if (isinstance(self.location_name, str)
+            and getattr(state.places[self.location_name], "closed", False)):
+      destinations = {
+          place.name
+          for place in state.places[self.location_name].connections
+          if not place.closed
+      }.difference({self.character.place.name})
+
+      self.location_name = PlaceChoice(
+          self.character,
+          prompt=f"{self.location_name} is closed, choose another destination",
+          choices=list(destinations),
+      )
+      state.event_stack.append(self.location_name)
+      return
     if isinstance(self.location_name, MapChoice):
       assert self.location_name.is_done()
       if self.location_name.choice is None:
@@ -4670,6 +4697,12 @@ class MonsterSpawnChoice(ChoiceEvent):
     if self.num_clears:
       text += f" the outskirts cleared {self.num_clears} times"
     return text
+
+
+def ReleaseMonstersToLocation(location, count=2):
+  draw = DrawMonstersFromCup(count)
+  place = MonsterSpawnChoice(draw, location, [location])
+  return Sequence([draw, place])
 
 
 class IncreaseTerror(Event):

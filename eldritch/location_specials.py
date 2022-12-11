@@ -26,14 +26,15 @@ def CreateFixedEncounters():
       name="Restore 1 Sanity",
       prereq=lambda char: values.AttributeNotMaxedPrerequisite(char, "sanity"),
       spend=lambda char: None,
-      encounter=lambda char, state: events.Gain(char, {"sanity": 1}),
+      encounter=lambda char, state: events.Gain(char, {"sanity": 1}, source=state.places["Asylum"]),
   )
 
   restore_all_sanity = FixedEncounter(
       name="Restore All Sanity",
       prereq=lambda char: values.AttributeNotMaxedPrerequisite(char, "sanity"),
       spend=lambda char: values.ExactSpendPrerequisite({"dollars": 2}),
-      encounter=lambda char, state: events.Gain(char, {"sanity": float("inf")}),
+      encounter=lambda char, state: events.Gain(
+          char, {"sanity": float("inf")}, source=state.places["Asylum"]),
   )
 
   deputize = FixedEncounter(
@@ -77,14 +78,16 @@ def CreateFixedEncounters():
       name="Restore 1 Stamina",
       prereq=lambda char: values.AttributeNotMaxedPrerequisite(char, "stamina"),
       spend=lambda char: None,
-      encounter=lambda char, state: events.Gain(char, {"stamina": 1}),
+      encounter=lambda char, state: events.Gain(
+          char, {"stamina": 1}, source=state.places["Hospital"]),
   )
 
   restore_all_stamina = FixedEncounter(
       name="Restore All Stamina",
       prereq=lambda char: values.AttributeNotMaxedPrerequisite(char, "stamina"),
       spend=lambda char: values.ExactSpendPrerequisite({"dollars": 2}),
-      encounter=lambda char, state: events.Gain(char, {"stamina": float("inf")}),
+      encounter=lambda char, state: events.Gain(
+          char, {"stamina": float("inf")}, source=state.places["Hospital"]),
   )
 
   skill = FixedEncounter(

@@ -18,6 +18,9 @@ from eldritch import monsters
 from eldritch.mythos import *
 from eldritch import places
 from eldritch import assets
+from eldritch import abilities
+from eldritch import encounters
+from eldritch import location_specials
 from eldritch.test_events import EventTest, Canceller
 
 from game import InvalidMove, InvalidInput
@@ -2053,6 +2056,212 @@ class Mythos14Test(EventTest):
       self.resolve_until_done()
     self.assertEqual(self.char.place.name, "Northside")
     self.assertEqual(self.char.clues, 1)
+
+
+class Mythos18Test(EventTest):
+  def setUp(self):
+    super().setUp()
+    self.mythos = Mythos18()
+    self.state.mythos.append(self.mythos)
+    self.state.event_stack.append(Mythos(self.char))
+    self.resolve_until_done()
+    self.char.sanity = 2
+
+    specials = location_specials.CreateFixedEncounters()
+    for location_name, fixed_encounters in specials.items():
+      self.state.places[location_name].fixed_encounters.extend(fixed_encounters)
+    self.state.places["Downtown"].encounters.extend(
+        encounters.CreateEncounterCards()["Downtown"]
+    )
+
+  def testCanGainFromPsychology(self):
+    self.char.possessions.append(abilities.Psychology())
+    self.advance_turn(0, "upkeep")
+    self.state.event_stack.append(UpkeepActions(self.char))
+    psych = self.resolve_to_usable(0, "Psychology")
+    self.state.event_stack.append(psych)
+    char_choice = self.resolve_to_choice(MultipleChoice)
+    char_choice.resolve(self.state, "Dummy")
+    self.resolve_until_done()
+    self.assertEqual(self.char.sanity, 3)
+
+  def testCanGainAtAsylum(self):
+    self.char.dollars = 2
+    self.char.place = self.state.places["Asylum"]
+    self.advance_turn(0, "encounter")
+    choice = self.resolve_to_choice(CardSpendChoice)
+    choice.resolve(self.state, "Restore 1 Sanity")
+    self.resolve_until_done()
+    self.assertEqual(self.char.sanity, 3)
+    self.advance_turn(1, "encounter")
+    choice = self.resolve_to_choice(CardSpendChoice)
+    self.assertEqual(choice.choices, ["Downtown Card", "Restore 1 Sanity", "Restore All Sanity"])
+    self.spend("dollars", 2, choice)
+    choice = self.resolve_to_choice(CardSpendChoice)
+    choice.resolve(self.state, "Restore All Sanity")
+    self.resolve_until_done()
+    self.assertEqual(self.char.sanity, 5)
+
+  def testCantGainFromOthers(self):
+    # TODO: Healing stone maybe shouldn't even be usable?
+    self.char.possessions.append(items.HealingStone(0))
+    self.advance_turn(0, "upkeep")
+    self.state.event_stack.append(UpkeepActions(self.char))
+    stone = self.resolve_to_usable(0, "Healing Stone0")
+    self.state.event_stack.append(stone)
+    self.resolve_until_done()
+    self.assertEqual(self.char.sanity, 2)
+    self.state.event_stack.append(Gain(self.char, {"sanity": 3}))
+    self.resolve_until_done()
+    self.assertEqual(self.char.sanity, 2)
+
+  def testCanGainOtherStuff(self):
+    self.state.event_stack.append(Gain(self.char, {"dollars": 1}))
+    self.resolve_until_done()
+    self.assertEqual(self.char.dollars, 1)
+
+
+class Mythos19Test(EventTest):
+  def setUp(self):
+    super().setUp()
+    # Make sure there's enough monsters to draw twice
+    matrix = monsters.FlameMatrix()
+    matrix.place = self.state.monster_cup
+    self.state.monsters.append(matrix)
+
+    self.mythos = Mythos19()
+    self.state.mythos.append(self.mythos)
+    self.advance_turn(0, "mythos")
+    self.resolve_until_done()
+    self.merchant = self.state.places["Merchant"]
+    self.assertEqual(self.merchant.closed_until, 2)
+    self.assertIn(self.mythos, self.state.globals())
+
+  def tearDown(self):
+    self.advance_turn(2, "movement")
+    self.assertIsNone(self.merchant.closed_until)
+    self.assertNotIn(self.mythos, self.state.globals())
+
+  def testCharacterStuckInStreets(self):
+    self.char.place = self.merchant
+    self.state.event_stack.append(Movement(self.char))
+    choice = self.resolve_to_choice(CityMovement)
+    self.assertEqual(choice.choices, ["Merchant"])
+    choice.resolve(self.state, "done")
+
+  def testCharacterCantMoveThrough(self):
+    self.char.place = self.state.places["Northside"]
+    self.state.event_stack.append(Movement(self.char))
+    choice = self.resolve_to_choice(CityMovement)
+    self.assertNotIn("Merchant", choice.choices)
+    self.assertNotIn("University", choice.choices)
+    self.assertEqual(self.char.movement_points, self.char.speed(self.state))
+    choice.resolve(self.state, "done")
+
+  def testEncounterSendsToStreets(self):
+    self.char.place = self.state.places["Docks"]
+    self.state.event_stack.append(encounters.Docks3(self.char))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=1)):
+      choice = self.resolve_to_choice(MapChoice)
+    self.assertListEqual(
+        sorted(choice.choices),
+        ["Downtown", "Isle", "Northside", "Rivertown", "University", "Unnamable"]
+    )
+    with self.assertRaises(InvalidMove):
+      choice.resolve(self.state, "done")
+    choice.resolve(self.state, "Unnamable")
+
+  def testEncounterSendsToUnclosedStreets(self):
+    self.state.event_stack.append(CloseLocation("Isle"))
+    self.resolve_until_done()
+    self.char.place = self.state.places["Docks"]
+    self.assertTrue(self.state.places["Isle"].closed)
+    self.state.event_stack.append(encounters.Docks3(self.char))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=1)):
+      choice = self.resolve_to_choice(MapChoice)
+    self.assertListEqual(
+        sorted(choice.choices),
+        ["Downtown", "Northside", "Rivertown", "University", "Unnamable"]
+    )
+    with self.assertRaises(InvalidMove):
+      choice.resolve(self.state, "done")
+    choice.resolve(self.state, "Unnamable")
+
+  def testMonsterNotStuckInStreets(self):
+    cultist = next(monster for monster in self.state.monsters if monster.name == "Cultist")
+    cultist.place = self.merchant
+    # Moon on white
+    self.state.mythos.appendleft(Mythos5())
+    self.advance_turn(1, "mythos")
+    self.resolve_until_done()
+    self.assertEqual(cultist.place.name, "Northside")
+
+
+class Mythos22Test(EventTest):
+  def setUp(self):
+    super().setUp()
+    self.tentacle_trees = [monsters.TentacleTree() for _ in range(3)]
+    self.state.monsters.extend(self.tentacle_trees)
+    # But not in the cup so they can't be drawn
+    self.mythos = Mythos22()
+
+  def drawMythos(self):
+    self.state.mythos.append(self.mythos)
+    self.state.event_stack.append(Mythos(self.char))
+    self.resolve_until_done()
+
+  def testNoMonstersReturned(self):
+    self.drawMythos()
+    self.assertEqual(self.state.terror, 0)
+
+  def testOneMonsterReturned(self):
+    self.tentacle_trees[0].place = self.state.places["Square"]
+    self.drawMythos()
+    self.assertEqual(self.state.terror, 1)
+
+  def testTwoMonsterReturned(self):
+    self.tentacle_trees[0].place = self.state.places["Square"]
+    self.tentacle_trees[1].place = self.state.places["Woods"]
+    self.drawMythos()
+    self.assertEqual(self.state.terror, 1)
+
+  def testNoMonstersReturnedFromOutskirts(self):
+    self.tentacle_trees[0].place = self.state.places["Outskirts"]
+    self.drawMythos()
+    self.assertEqual(self.state.terror, 0)
+    self.assertEqual(self.tentacle_trees[0].place.name, "Outskirts")
+
+
+class Mythos29Test(EventTest):
+  def setUp(self):
+    super().setUp()
+    self.mythos = Mythos29()
+    self.monster = monsters.Monster(
+        "FakeMonster", "fast", "plus", {"evade": 0, "combat": 0}, {"combat": 1}, 1
+    )
+    self.monster.place = self.state.monster_cup
+    self.state.monsters.append(self.monster)
+    self.state.mythos.append(self.mythos)
+    self.state.event_stack.append(Mythos(self.char))
+    with mock.patch.object(events.random, "sample", new=mock.MagicMock(return_value=[-1])):
+      # Always draw FakeMonster
+      self.resolve_until_done()
+
+  def testInvestigatorsReceiveLessMovement(self):
+    self.state.event_stack.append(Movement(self.char))
+    self.resolve_to_choice(CityMovement)
+    self.assertEqual(self.char.movement_points, self.char.speed(self.state) - 1)
+
+  def testFastMonstersMoveAsNormal(self):
+    # Mythos ability doesn't happen until after monster movement, so it moved 2 after spawning
+    self.assertEqual(self.monster.place.name, "Uptown")
+
+    # Headline: plus moves on black
+    self.state.mythos.append(Mythos5())
+    self.state.event_stack.append(Mythos(self.char))
+    self.resolve_until_done()
+    self.assertEqual(self.monster.place.name, "Southside")
+    self.assertEqual(self.monster.movement(self.state), "normal")
 
 
 class MythosPhaseTest(EventTest):
