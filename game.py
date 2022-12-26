@@ -1,6 +1,8 @@
 import abc
 import asyncio
 import collections
+import dataclasses
+import enum
 from http import HTTPStatus
 import json
 import sys
@@ -51,6 +53,10 @@ def ValidatePlayer(playerdata):
 class CustomEncoder(json.JSONEncoder):
 
   def default(self, o):
+    if isinstance(o, enum.Enum):
+      return o.value
+    if dataclasses.is_dataclass(o):
+      return dataclasses.asdict(o)
     if hasattr(o, "json_repr"):
       return o.json_repr()
     return json.JSONEncoder.default(self, o)
