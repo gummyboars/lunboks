@@ -1,0 +1,112 @@
+<!DOCTYPE HTML>
+<html>
+  <meta content="text/html;charset=utf-8" http-equiv="Content-Type">
+  <meta content="utf-8" http-equiv="encoding">
+  <head>
+    <link rel="icon" href="data:;base64,iVBORw0KGgo=">
+    <link rel="stylesheet" href="style.css">
+  </head>
+  <script type="text/javascript" src="names.js"></script>
+  <script type="text/javascript" src="/assets.js"></script>
+  <script type="text/javascript" src="game.js"></script>
+  <script type="text/javascript" src="defaults.js"></script>
+  <script type="text/javascript" src="plugin.js"></script>
+  <body onload="init()">
+    <div id="ui">
+      <p id="errorText" class="noclick"></p>
+      <div id="uiload">
+        <div>Loading...</div>
+        <div id="loadbar">
+          <div id="loadingbar"></div>
+          <div id="errorbar"></div>
+          <span id="loadcount">&nbsp;</span>
+        </div>
+      </div>
+      <div id="uimain">
+        <div id="centerizer">
+          <div id="uijoin">
+            <div id="joinname">
+              <div>Name:</div>
+              <input type="text" id="joinnameinput" maxlength="16"></input>
+              <select id="joincolor" onchange="selectColor(event)">
+                <option value="">-</option>
+              </select>
+            </div>
+            <div id="joinbuttons">
+              <button id="start" disabled="true" class="joinbutton disabled" onclick="startGame(event)">Start</button>
+              <div class="buttonspacer"></div>
+              <button id="join" class="joinbutton active" onclick="joinGame(event)">Join</button>
+            </div>
+          </div>
+          <div id="resupply">
+            <div id="resupplynames" class="resupplycol">
+              <div id="resupplycoal" class="resupplyrsrc cnvcontainer"><canvas class="cnv"></canvas></div>
+              <div id="resupplyoil" class="resupplyrsrc cnvcontainer"><canvas class="cnv"></canvas></div>
+              <div id="resupplygas" class="resupplyrsrc cnvcontainer"><canvas class="cnv"></canvas></div>
+              <div id="resupplyuranium" class="resupplyrsrc cnvcontainer"><canvas class="cnv"></canvas></div>
+            </div>
+            <div id="stage1resupply" class="resupplycol">
+              <div class="resupplyheader"><div>1</div></div>
+              <div class="resupplycount"><div id="resupply1coal"></div></div>
+              <div class="resupplycount"><div id="resupply1oil"></div></div>
+              <div class="resupplycount"><div id="resupply1gas"></div></div>
+              <div class="resupplycount"><div id="resupply1uranium"></div></div>
+            </div>
+            <div id="stage2resupply" class="resupplycol">
+              <div class="resupplyheader"><div>2</div></div>
+              <div class="resupplycount"><div id="resupply2coal"></div></div>
+              <div class="resupplycount"><div id="resupply2oil"></div></div>
+              <div class="resupplycount"><div id="resupply2gas"></div></div>
+              <div class="resupplycount"><div id="resupply2uranium"></div></div>
+            </div>
+            <div id="stage3resupply" class="resupplycol">
+              <div class="resupplyheader"><div>3</div></div>
+              <div class="resupplycount"><div id="resupply3coal"></div></div>
+              <div class="resupplycount"><div id="resupply3oil"></div></div>
+              <div class="resupplycount"><div id="resupply3gas"></div></div>
+              <div class="resupplycount"><div id="resupply3uranium"></div></div>
+            </div>
+          </div>
+          <div id="market">
+            <div id="markettop" class="marketrow"></div>
+            <div id="marketbottom" class="marketrow"></div>
+            <div id="auction">
+              <input id="bid" type="number"></input>
+              <button id="bidbtn" value="Bid" onclick="makeBid()">Bid</button>
+              <button id="passbtn" value="Pass" onclick="passBid()">Pass</button>
+            </div>
+          </div>
+        </div>
+        <div id="board" class="cnvcontainer">
+          <canvas id="boardcnv" class="cnv"></canvas>
+        </div>
+        <div id="supply" class="cnvcontainer">
+          <canvas id="supplycnv"></canvas>
+          <div id="supplycnt"></div>
+        </div>
+      </div>
+      <div id="uiright">
+        <div id="toggles">
+          <div id="markettoggle" class="toggle" onclick="toggleMarket()">🏭</div>
+          <div id="resupplytoggle" class="toggle" onclick="toggleResupply()">📊</div>
+        </div>
+        <div id="phaseorder">
+          <div id="orderauction" class="orderitem">Auction</div>
+          <div id="ordermaterials" class="orderitem">Materials</div>
+          <div id="orderbuilding" class="orderitem">Building</div>
+          <div id="orderbureaucracy" class="orderitem">Bureaucracy</div>
+        </div>
+        <div id="buttons">
+          <div id="buttonrow">
+            <button id="confirmbtn" value="Confirm" onclick="doConfirm()">Confirm</button>
+            <button id="resetbtn" value="Reset" onclick="doReset()">Reset</button>
+            <button id="burnbtn" value="Burn" onclick="burn()">Burn</button>
+          </div>
+          <div id="pending"><input type="number" readonly="true"></input></div>
+        </div>
+      </div>
+    </div>
+    <div id="assets" style="display: hidden"></div>
+    <div id="defaultassets" style="display: hidden"></div>
+  </body>
+</html>

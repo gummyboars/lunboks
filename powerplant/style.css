@@ -1,0 +1,679 @@
+body {
+  margin: auto;
+  padding: 0px;
+  overflow: hidden;
+  width: min(100vw, 160vh);
+  height: min(62.5vw, 100vh);
+  color: black;
+}
+div {
+  display: block;
+  margin: 0px;
+}
+#errorText {
+  position: absolute;
+  top: 10px;
+  left: 50%; /* don't...don't ask */
+  margin-right: -50%;
+  transform: translateX(-50%);
+  text-align: center;
+  font-size: 36px;
+  color: maroon;
+  background: sienna;
+  z-index: 40; /* error should be shown over everything else */
+}
+#uiload {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 25%;
+  transform: translate(-50%, -50%);
+  z-index: 30;
+  color: black;
+  background: sienna;
+  font-size: 36px;
+  text-align: center;
+}
+#loadbar {
+  text-size: 28px;
+  position: relative;
+}
+#loadingbar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 0%;
+  height: 100%;
+  background: chocolate;
+  z-index: -1;
+}
+#errorbar {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 0%;
+  height: 100%;
+  background: crimson;
+  z-index: -1;
+}
+#ui {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: row;
+}
+#uiright {
+  position: relative;
+  width: 12%;
+  max-width: 12%;
+  background: darkgreen;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  max-height: min(62.5vw, 100vh);
+  row-gap: 2%;
+  /* overflow-x: hidden; */
+}
+#toggles {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-evenly;
+  align-items: center;
+  width: 100%;
+}
+.toggle {
+  font-size: min(1.25vw, 2vh);
+  cursor: pointer;
+}
+#buttons {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  order: 20;
+}
+#buttonrow {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-around;
+}
+#pending input {
+  width: min(2.5vw, 4vh);
+}
+#phaseorder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-size: min(1.25vw, 2vh);
+  order: 25;
+  width: 70%;
+}
+.orderitem {
+  width: 80%;
+}
+.orderitem.current {
+  color: white;
+  font-weight: bold;
+}
+#uimain {
+  width: 88%;
+  max-width: 88%;
+  height: 100%;
+  max-height: min(62.5vw, 100vh);
+  background: #D2A253;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+#centerizer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  pointer-events: none;
+  z-index: 2;
+}
+#uijoin {
+  display: none;
+  min-width: 50%;
+  pointer-events: auto;
+  flex-direction: column;
+  background-color: darkolivegreen;
+  row-gap: min(1vw, 1.6vh);
+  padding-top: min(1vw, 1.6vh);
+  padding-bottom: min(1vw, 1.6vh);
+}
+#uijoin.shown {
+  display: flex;
+}
+#joinname {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-around;
+  color: black;
+  font-weight: bold;
+  font-size: min(3vw, 4.8vh);
+  font-family: sans-serif;
+}
+#joinnameinput {
+  color: black;
+  font-weight: bold;
+  font-size: min(2.5vw, 4vh);
+  font-family: sans-serif;
+  background-color: olivedrab;
+}
+#joinbuttons {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-evenly;
+}
+.buttonspacer {
+  width: 50%;
+}
+.joinbutton {
+  cursor: pointer;
+  text-align: center;
+  outline: none;
+  border: none;
+  border-radius: min(1vw, 1.6vh);
+  box-shadow: 0 min(0.5vw, 0.8vh) #999;
+  font-size: min(2.5vw, 4vh);
+  background: darkcyan;
+  display: inline-block;
+  width: min(7vw, 11.2vh);
+}
+.joinbutton:active {
+  transform: translateY(min(0.25vw, 0.4vh));
+  box-shadow: 0 min(0.25vw, 0.4vh) #333;
+}
+.joinbutton:disabled {
+  pointer-events: none;
+}
+#resupply {
+  width: min(12.5vw, 20vh);
+  pointer-events: none;
+  position: absolute;
+  visibility: hidden;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  font-size: min(2vw, 3.2vh);
+  background-color: olive;
+}
+#resupply.shown {
+  pointer-events: auto;
+  position: relative;
+  visibility: visible;
+}
+.resupplycol {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  width: 25%;
+  height: 100%;
+}
+.resupplyrsrc {
+  position: relative;
+  width: min(2.5vw, 4vh);
+  height: min(2.5vw, 4vh);
+}
+.resupplyheader {
+  width: min(2.5vw, 4vh);
+  height: min(2.5vw, 4vh);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.resupplycount {
+  width: min(2.5vw, 4vh);
+  height: min(2.5vw, 4vh);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: white;
+}
+#market {
+  visibility: hidden;
+  display: flex;
+  pointer-events: none;
+  background: darkgreen;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+#market.shown {
+  pointer-events: auto;
+  visibility: visible;
+}
+.marketrow {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-evenly;
+}
+.marketplant {
+  width: min(15vw, 24vh);
+  height: min(15vw, 24vh);
+  position: relative;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.marketplant.disabled {
+  filter: grayscale(70%) brightness(70%);
+}
+.marketplant.auction {
+  cursor: pointer;
+  pointer-events: auto;
+}
+.marketplant.owned {
+  pointer-events: auto;
+}
+.storage {
+  width: 100%;
+  height: 25%;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-evenly;
+  z-index: 5;
+}
+.stored {
+  position: relative;
+  width: min(2.5vw, 4vh);
+  height: min(2.5vw, 4vh);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.owned .stored:hover {
+  cursor: pointer;
+}
+.storedcheck {
+  display: none;
+  font-size: min(1.5vw, 2.4vh);
+  z-index: 6;
+}
+.stored.toburn .storedcheck {
+  display: block;
+}
+#auction {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+}
+#board {
+  flex: 1 1 100%;
+  width: 100%;
+  background: darkgreen;
+  height: min(72vw, 115.2vh);
+  max-height: min(72vw, 115.2vh);
+  display: flex;
+  flex-direction: row;
+  position: relative;
+}
+.cnv {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+.city {
+  position: absolute;
+  height: calc(min(72vw, 115.2vh) / 28);
+  width: calc(min(72vw, 115.2vh) / 28);
+  cursor: pointer;
+  z-index: 1;
+  transform: translate(-50%, -50%);
+}
+#citycontainer {
+  position: absolute;
+  width: 51%;
+  height: 100%;
+  top: 0;
+  left: 24.5%;
+}
+.first {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 40%;
+}
+.second {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 40%;
+  height: 60%;
+}
+.third {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 40%;
+  height: 60%;
+}
+.house {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.housecnt {
+  width: 100%;
+  height: 66%;
+  border-radius: 50%;
+}
+.first .housecnt {
+  width: 40%;
+  height: 100%;
+}
+#supply {
+  width: min(80vw, 128vh);
+  min-height: min(8vw, 12.8vh);
+  height: min(8vw, 12.8vh);
+  background: orange;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+#supplycnt {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+}
+.rsrcbox {
+  width: 9.6%;
+  height: 87.5%;
+  display: flex;
+  flex-direction: column;
+}
+.row {
+  width: 100%;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+}
+.box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.coalrow {
+  height: 35%;
+}
+.coalbox {
+  width: 32%;
+}
+.oilrow {
+  height: 30%;
+}
+.oilbox {
+  width: 24%;
+}
+.utailbox {
+  width: 24%;
+}
+.gasrow {
+  height: 35%;
+}
+.gasbox {
+  width: 32%;
+}
+.ucnt {
+  width: 7.7%;
+  height: 87.5%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+}
+.urow {
+  width: 100%;
+  height: 41%;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+}
+.usmallbox {
+  width: 41%;
+  height: 100%;
+}
+.spacer {
+  width: 1%;
+}
+.resource {
+  width: 90%;
+  height: 90%;
+  position: relative;
+  display: block;
+  pointer-events: auto;
+}
+.usmallbox .resource {
+  width: 70%;
+  height: 70%;
+}
+.resource.hidden {
+  visibility: hidden;
+  pointer-events: none;
+}
+.resource.pending {
+  visibility: visible;
+  opacity: 70%;
+}
+.player {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-evenly;
+  position: relative;
+}
+.playername {
+  color: white;
+  font-size: min(2vw, 3.2vh);
+}
+.playerinfo {
+  width: 100%;
+  color: white;
+  font-size: min(1.25vw, 2vh);
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-evenly;
+}
+.playerplant {
+  width: 100%;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  color: white;
+  font-size: min(1.25vw, 2vh);
+  text-align: center;
+}
+.plantnum {
+  width: 20%;
+}
+.plantoutput {
+  width: 20%;
+}
+.plantstorage {
+  width: 40%;
+}
+.plantexpand {
+  position: absolute;
+  visibility: hidden;
+  padding: min(2.5vw, 4vh);
+  top: 50%;
+  left: 0;
+  transform: translate(-100%, -50%);
+  background: olive;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+.plantexpand.shown {
+  visibility: visible;
+  z-index: 4;
+}
+.forcehide {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translate(0%, -50%);
+  height: 100%;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background-color: gold;
+  font-size: min(1.25vw, 2vh);
+  cursor: pointer;
+}
+.defaultshow .forcehide {
+  display: flex;
+}
+.plantcnt {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  row-gap: min(1vw, 1.6vh);
+}
+/*
+.plantburn {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+*/
+.plantburn {
+  display: block;
+  width: 90%;
+  height: min(3vw, 4.8vh);
+  position: relative;
+  border-radius: min(1.5vw, 2.4vh);
+  overflow: hidden;
+}
+.discard .plantburn {
+  display: none;
+}
+.burncheck {
+  display: none;
+}
+.burnslider {
+  background-color: #ccc;
+  position: absolute;
+  border-radius: min(1.5vw, 2.4vh);
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  /* transition: all 0.8s ease-in; */
+  font-size: min(3vw, 4.8vh);
+  cursor: pointer;
+}
+.burnknob {
+  position: absolute;
+  transition: left 0.8s ease-in;
+  left: min(0.25vw, 0.4vh);
+  top: min(0.25vw, 0.4vh);
+  width: min(2.5vw, 4vh);
+  height: min(2.5vw, 4vh);
+  border-radius: 50%;
+  background-color: #000;
+  z-index: 10;
+  /* border: 1px solid #000; */
+}
+/*
+.burnslider:after {
+  content: "OFF";
+  position: absolute;
+  left: 50%;
+  top: 0;
+  transform: translate(-50%, 0%);
+  color: #666;
+}
+*/
+.burnknob:after {
+  content: "OFF";
+  position: absolute;
+  left: min(7.5vw, 12vh);
+  color: #666;
+  transform: translate(-50%, max(-0.4vw, -0.64vh));
+}
+.burnknob:before {
+  content: "BURN";
+  position: absolute;
+  right: min(7.5vw, 12vh);
+  color: #c00;
+  transform: translate(50%, max(-0.4vw, -0.64vh));
+}
+.burncheck:checked+.burnslider .burnknob {
+  left: calc(100% - min(3vw, 4.8vh));
+}
+.burncheck:disabled+.burnslider {
+  cursor: auto;
+}
+/*
+.burncheck:checked+.burnslider:after {
+  content: "BURN";
+  color: #c00;
+}
+*/
+/*
+.burntext {
+  text-decoration: line-through;
+  font-size: min(3vw, 4.8vh);
+}
+.burncheck {
+  width: min(2vw, 3.2vh);
+  height: min(2vw, 3.2vh);
+  order: 1;
+}
+.burncheck:checked + span {
+  text-decoration: none;
+}
+.burncheck:disabled + span {
+  color: darkgrey;
+}
+*/
+.plantdiscard {
+  cursor: pointer;
+  text-align: center;
+  outline: none;
+  border: none;
+  border-radius: min(1vw, 1.6vh);
+  box-shadow: 0 min(0.5vw, 0.8vh) #999;
+  font-size: min(2.5vw, 4vh);
+  background: indianred;
+  display: none;
+}
+.discard .plantdiscard {
+  display: inline-block;
+}
+.plantdiscard:active {
+  box-shadow: 0 min(0.25vw, 0.4vh) #666;
+  transform: translateY(min(0.25vw, 0.4vh));
+}
