@@ -5111,7 +5111,10 @@ class CloseLocation(Event):
   def resolve(self, state):
     until = state.turn_number + self.for_turns + 1
     place = state.places[self.location_name]
-    place.closed_until = until
+    if place.closed:
+      place.closed_until = max(place.closed_until, until)
+    else:
+      place.closed_until = until
     chars_in_place = [char for char in state.characters if char.place == place]
     monsters_in_place = [mon for mon in state.monsters if mon.place == place]
 

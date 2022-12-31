@@ -675,7 +675,7 @@ class Mythos28(Headline):
     if not first_player.gone:
       check = events.Check(first_player, "luck", -1)
       pass_fail = events.PassFail(first_player, check, events.Nothing(), events.Curse(first_player))
-      seq.events.extend([check, pass_fail])
+      seq.events.append(pass_fail)
     return seq
 
 
@@ -814,6 +814,7 @@ class Mythos44(CityBonus):
         for monster in state.monsters
         if isinstance(monster.place, places.CityPlace) and monster.name == "Flame Matrix"
     ])
+    return seq
 
   def get_interrupt(self, event, state):
     if isinstance(event, events.CityMovement):
@@ -887,7 +888,7 @@ class Mythos51(Environment):
 class Mythos52(CityBonus):
   def __init__(self):
     super().__init__(
-        "Mythos52", "Cave", "Roadhouse", {"plus"}, {"crescent"}, env_type="weather",
+        "Mythos52", "Cave", "Roadhouse", {"plus"}, {"moon"}, env_type="weather",
         bonus_skill="will", penalty_skill="sneak",
     )
 

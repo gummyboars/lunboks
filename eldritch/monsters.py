@@ -106,6 +106,7 @@ class Monster:
   def toughness(self, state, char):
     state_modifier = state.get_modifier(self, "toughness")
     char_modifier = char.get_modifier(self, "toughness") if char else 0
+    print(state_modifier, char_modifier)
     return max(self._toughness + (state_modifier or 0) + (char_modifier or 0), 1)
 
   def attributes(self, state, char):

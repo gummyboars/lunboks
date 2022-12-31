@@ -1535,6 +1535,25 @@ class EnvironmentTests(EventTest):
     self.assertEqual(self.char.place.name, "Easttown")
     self.assertIsNone(self.char.arrested_until)
 
+  def testMythos16(self):
+    pass
+
+  def testMythos17Pass(self):
+    pass
+
+  def testMythos17Fail(self):
+    pass
+
+  def testMythos35(self):
+    # Assert monsters respawned
+    pass
+
+  def testMythos39(self):
+    pass
+
+  def testMythos44(self):
+    pass
+
 
 class DrawMythosTest(EventTest):
 
@@ -2215,12 +2234,16 @@ class CloseLocationTest(EventTest):
   def testEvicted(self):
     self.advance_turn(1, "movement")
     self.assertEqual(self.char.place.name, "Rivertown")
+    self.assertEqual(self.char.movement_points, 4)
     choice = self.resolve_to_choice(CityMovement)
     self.assertNotIn("Store", choice.choices)
     self.assertNotIn("Shop", choice.choices)
     self.assertNotIn("Shoppe", choice.choices)
     choice.resolve(self.state, "done")
     self.resolve_until_done()
+
+  def testClosedForeverStaysClosed(self):
+    pass
 
 
 class CloseStreetLocationTest(EventTest):
@@ -2321,12 +2344,15 @@ class ReturnAndIncreaseHeadlineTest(EventTest):
     self.tentacle_trees[0].place = self.state.places["Square"]
     self.drawMythos()
     self.assertEqual(self.state.terror, 1)
+    self.assertEqual(self.tentacle_trees[0].place, self.state.monster_cup)
 
   def testTwoMonsterReturned(self):
     self.tentacle_trees[0].place = self.state.places["Square"]
     self.tentacle_trees[1].place = self.state.places["Woods"]
     self.drawMythos()
     self.assertEqual(self.state.terror, 1)
+    self.assertEqual(self.tentacle_trees[0].place, self.state.monster_cup)
+    self.assertEqual(self.tentacle_trees[1].place, self.state.monster_cup)
 
   def testNoMonstersReturnedFromOutskirts(self):
     self.tentacle_trees[0].place = self.state.places["Outskirts"]
@@ -2465,9 +2491,10 @@ class Mythos55Test(EventTest):
 
   def testUndeadIgnoredByRedSign(self):
     self.char.possessions.append(items.RedSign(0))
-    zombie = monsters.Zombie()
-    self.assertEqual(zombie.toughness(self.state, self.char), 2)
-    self.state.event_stack.append(Combat(self.char, zombie))
+    self.char.possessions.append(items.EnchantedKnife(0))
+    vampire = monsters.Vampire()
+    self.assertEqual(vampire.toughness(self.state, self.char), 3)
+    self.state.event_stack.append(Combat(self.char, vampire))
     fight_flee = self.resolve_to_choice(FightOrEvadeChoice)
     fight_flee.resolve(self.state, "Fight")
     sign = self.resolve_to_usable(0, "Red Sign0")
@@ -2477,11 +2504,14 @@ class Mythos55Test(EventTest):
     attr_to_cancel.resolve(self.state, "undead")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       weapons = self.resolve_to_choice(CombatChoice)
-    self.assertEqual(zombie.toughness(self.state, self.char), 1)
-    with mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=[5, 1, 1, 1])):
+    self.assertFalse(vampire.has_attribute("undead", self.state, self.char))
+    # TODO: Should the Red Sign undead cancelling get fed into the toughness calculation
+    # self.assertEqual(vampire.toughness(self.state, self.char), 1)
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=[5, 5, 1, 1])):
+      weapons.resolve(self.state, "Enchanted Knife0")
       weapons.resolve(self.state, "done")
       self.resolve_until_done()
-    self.assertEqual(zombie.toughness(self.state, self.char), 2)
+    self.assertEqual(vampire.toughness(self.state, self.char), 3)
 
 
 class MythosPhaseTest(EventTest):
