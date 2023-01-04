@@ -823,7 +823,7 @@ class Mythos44(CityBonus):
 
   def get_override(self, thing, attribute):
     if (isinstance(thing, monsters.Monster)
-        and thing.name == "FlameMatrix"
+        and thing.name == "Flame Matrix"
             and attribute == "can_draw_to_board"):
       return False
     return None
