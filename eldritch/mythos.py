@@ -152,10 +152,10 @@ class ReturnMonstersHeadline(Headline):
       self, name, gate_location, clue_location, white_dimensions, black_dimensions, from_places
   ):
     super().__init__(name, gate_location, clue_location, white_dimensions, black_dimensions)
+    assert from_places is not None
     self.from_places = from_places
 
   def create_event(self, state) -> events.Sequence:
-    assert self.from_places is not None
     seq = super().create_event(state)
     seq.events.append(events.ReturnToCup(from_places=self.from_places))
     return seq
@@ -166,10 +166,10 @@ class ReturnAndIncreaseHeadline(Headline):
       self, name, gate_location, clue_location, white_dimensions, black_dimensions, monster_names
   ):
     super().__init__(name, gate_location, clue_location, white_dimensions, black_dimensions)
+    assert monster_names is not None
     self.monster_names = monster_names
 
   def create_event(self, state) -> events.Sequence:
-    assert self.monster_names is not None
     seq = super().create_event(state)
     cup_return = events.ReturnToCup(names=self.monster_names)
     terrorize = events.Conditional(
@@ -822,6 +822,7 @@ class Mythos44(CityBonus):
     return None
 
   def get_override(self, thing, attribute):
+    # Should we be able to face these as monsters in other worlds?
     if (isinstance(thing, monsters.Monster)
         and thing.name == "Flame Matrix"
             and attribute == "can_draw_to_board"):
