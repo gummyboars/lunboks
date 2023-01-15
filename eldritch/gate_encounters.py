@@ -20,6 +20,26 @@ class GateCard:
     return self.encounters[world_name](character)
 
 
+def Abyss1(char):
+  check = events.Check(char, "luck", -1)
+  succeed = events.Return(char, char.place.info.name)
+  monster = events.MonsterAppears(char)
+  return events.PassFail(char, check, succeed, monster)
+
+def Celeano1(char):
+  check = events.Check(char, "sneak", -2)
+  spell = events.Draw(char, "spells", float("inf"))
+  stamina = events.Loss(char, {"stamina": 2})
+  return events.PassFail(char, check, spell, stamina)
+
+def Other1(char):
+  check = events.Check(char, "fight", -1)
+  spell = events.Draw(char, "spells", 1)
+  return events.PassFail(char, check, spell, events.Nothing())
+
+def 
+    
+  
 def Dreamlands10(char):
   check = events.Check(char, "luck", -1)
   loss = events.Loss(char, {"stamina": 1})
