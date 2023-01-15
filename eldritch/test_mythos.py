@@ -1355,16 +1355,19 @@ class ReturnToCupTest(EventTest):
     self.maniac = monsters.Maniac()
     self.dream_flier = monsters.DreamFlier()
     self.zombie = monsters.Zombie()
+    self.trophy = monsters.Zombie()
     self.furry_beast = monsters.FurryBeast()
     self.cultist.place = self.state.places["Southside"]
     self.maniac.place = self.state.places["Outskirts"]
     self.dream_flier.place = self.state.places["Sky"]
     self.furry_beast.place = self.state.places["Woods"]
     self.zombie.place = None
+    self.trophy.place = None
+    self.char.trophies.append(self.trophy)
     self.state.monsters.clear()
     self.state.monsters.extend([
-        self.cultist, self.maniac, self.dream_flier, self.zombie, self.furry_beast])
-    # TODO: also test for monster trophies
+        self.cultist, self.maniac, self.dream_flier, self.zombie, self.furry_beast, self.trophy
+    ])
 
   def testReturnByName(self):
     ret = ReturnToCup(names={"Dream Flier", "Maniac", "Zombie"})
@@ -1376,6 +1379,8 @@ class ReturnToCupTest(EventTest):
     self.assertEqual(self.dream_flier.place, self.state.monster_cup)
     self.assertEqual(self.maniac.place.name, "Outskirts")
     self.assertIsNone(self.zombie.place)
+    self.assertIsNone(self.trophy.place)
+    self.assertIn(self.trophy, self.char.trophies)
     self.assertEqual(self.cultist.place.name, "Southside")
 
   def testReturnByLocation(self):
@@ -1390,6 +1395,8 @@ class ReturnToCupTest(EventTest):
     self.assertEqual(self.maniac.place.name, "Outskirts")
     self.assertEqual(self.dream_flier.place.name, "Sky")
     self.assertIsNone(self.zombie.place)
+    self.assertIsNone(self.trophy.place)
+    self.assertIn(self.trophy, self.char.trophies)
 
   def testReturnInStreets(self):
     ret = ReturnToCup(from_places={"streets"})
@@ -1402,6 +1409,8 @@ class ReturnToCupTest(EventTest):
     self.assertEqual(self.furry_beast.place.name, "Woods")
     self.assertEqual(self.maniac.place.name, "Outskirts")
     self.assertEqual(self.dream_flier.place.name, "Sky")
+    self.assertIsNone(self.trophy.place)
+    self.assertIn(self.trophy, self.char.trophies)
 
   def testReturnInLocations(self):
     ret = ReturnToCup(from_places={"locations"})
@@ -1414,6 +1423,8 @@ class ReturnToCupTest(EventTest):
     self.assertEqual(self.furry_beast.place, self.state.monster_cup)
     self.assertEqual(self.maniac.place.name, "Outskirts")
     self.assertEqual(self.dream_flier.place.name, "Sky")
+    self.assertIsNone(self.trophy.place)
+    self.assertIn(self.trophy, self.char.trophies)
 
 
 class GlobalModifierTest(EventTest):
@@ -1624,8 +1635,7 @@ class EnvironmentTests(EventTest):
     with mock.patch.object(events.random, "sample", new=mock.MagicMock(return_value=idxs)):
       self.advance_turn(1, "encounter")
 
-    # TODO: fix the Mythos resolve order so that the one we draw to the board goes away
-    # self.assertEqual(fm1.place, self.state.monster_cup)
+    self.assertEqual(fm1.place, self.state.monster_cup)
     self.assertEqual(fm2.place, self.state.monster_cup)
     self.assertIsNone(fm3.place)
     self.assertIn(fm3, self.char.trophies)

@@ -809,11 +809,7 @@ class Mythos44(CityBonus):
 
   def create_event(self, state):
     seq = super().create_event(state)
-    seq.events.extend([
-        events.ReturnMonsterFromBoard(None, monster)
-        for monster in state.monsters
-        if isinstance(monster.place, places.CityPlace) and monster.name == "Flame Matrix"
-    ])
+    seq.events.append(events.ReturnToCup(names=["Flame Matrix"]))
     return seq
 
   def get_interrupt(self, event, state):
