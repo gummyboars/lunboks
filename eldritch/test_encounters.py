@@ -928,45 +928,45 @@ class LodgeTest(EncounterTest):
     self.state.event_stack.append(encounters.Sanctum6(self.char))
     # TODO: A monster appears
 
-  def testSanctum7Poor(self):
-    self.state.event_stack.append(encounters.Sanctum7(self.char))
-    choice = self.resolve_to_choice(SpendChoice)
-    with self.assertRaisesRegex(InvalidMove, "clues than you have"):
-      self.spend("clues", 1, choice)
-    with self.assertRaisesRegex(InvalidMove, "(2 clues|1 sanity), (2 clues|1 sanity)"):
-      choice.resolve(self.state, "Yes")
-    choice.resolve(self.state, "No")
-    self.resolve_until_done()
-
-  def testSanctum7Decline(self):
-    self.state.event_stack.append(encounters.Sanctum7(self.char))
-    self.char.clues = 2
-    choice = self.resolve_to_choice(SpendChoice)
-    choice.resolve(self.state, "No")
-    self.resolve_until_done()
-
-  def testSanctum7Fail(self):
-    self.state.event_stack.append(encounters.Sanctum7(self.char))
-    self.char.clues = 2
-    choice = self.resolve_to_choice(SpendChoice)
-    self.spend("clues", 2, choice)
-    self.spend("sanity", 1, choice)
-    choice.resolve(self.state, "Yes")
-    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=4)):
-      self.resolve_until_done()
-    self.assertEqual(self.char.clues, 0)
-    self.assertEqual(self.char.sanity, 2)
-
-  def testSanctum7Pass(self):
-    self.state.event_stack.append(encounters.Sanctum7(self.char))
-    self.char.clues = 2
-    choice = self.resolve_to_choice(SpendChoice)
-    self.spend("clues", 2, choice)
-    self.spend("sanity", 1, choice)
-    choice.resolve(self.state, "Yes")
-    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
-      # TODO: Choose gate to close
-      self.resolve_until_done()
+  # def testSanctum7Poor(self):
+  #   self.state.event_stack.append(encounters.Sanctum7(self.char))
+  #   choice = self.resolve_to_choice(SpendChoice)
+  #   with self.assertRaisesRegex(InvalidMove, "clues than you have"):
+  #     self.spend("clues", 1, choice)
+  #   with self.assertRaisesRegex(InvalidMove, "(2 clues|1 sanity), (2 clues|1 sanity)"):
+  #     choice.resolve(self.state, "Yes")
+  #   choice.resolve(self.state, "No")
+  #   self.resolve_until_done()
+  #
+  # def testSanctum7Decline(self):
+  #   self.state.event_stack.append(encounters.Sanctum7(self.char))
+  #   self.char.clues = 2
+  #   choice = self.resolve_to_choice(SpendChoice)
+  #   choice.resolve(self.state, "No")
+  #   self.resolve_until_done()
+  #
+  # def testSanctum7Fail(self):
+  #   self.state.event_stack.append(encounters.Sanctum7(self.char))
+  #   self.char.clues = 2
+  #   choice = self.resolve_to_choice(SpendChoice)
+  #   self.spend("clues", 2, choice)
+  #   self.spend("sanity", 1, choice)
+  #   choice.resolve(self.state, "Yes")
+  #   with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=4)):
+  #     self.resolve_until_done()
+  #   self.assertEqual(self.char.clues, 0)
+  #   self.assertEqual(self.char.sanity, 2)
+  #
+  # def testSanctum7Pass(self):
+  #   self.state.event_stack.append(encounters.Sanctum7(self.char))
+  #   self.char.clues = 2
+  #   choice = self.resolve_to_choice(SpendChoice)
+  #   self.spend("clues", 2, choice)
+  #   self.spend("sanity", 1, choice)
+  #   choice.resolve(self.state, "Yes")
+  #   with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+  #     # TODO: Choose gate to close
+  #     self.resolve_until_done()
 
 
 class WitchHouseTest(EncounterTest):
@@ -2186,34 +2186,34 @@ class ScienceTest(EncounterTest):
     self.assertEqual(self.char.stamina, 4)
     self.assertEqual(self.char.sanity, 3)
 
-  def testScience7NoHelp(self):
-    self.state.event_stack.append(encounters.Science7(self.char))
-    choice = self.resolve_to_choice(MultipleChoice)
-    choice.resolve(self.state, "No")
-    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=1)):
-      self.resolve_until_done()
-    self.assertEqual(self.char.stamina, 3)
-    self.assertEqual(self.char.place.name, "Science")
-
-  def testScience7FailConcious(self):
-    self.state.event_stack.append(encounters.Science7(self.char))
-    choice = self.resolve_to_choice(MultipleChoice)
-    choice.resolve(self.state, "Yes")
-    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=1)):
-      self.resolve_until_done()
-    self.assertEqual(self.char.stamina, 2)
-    self.assertEqual(self.char.place.name, "Hospital")
-
-  def testScience7FailUnconcious(self):
-    self.state.event_stack.append(encounters.Science7(self.char))
-    choice = self.resolve_to_choice(MultipleChoice)
-    choice.resolve(self.state, "Yes")
-    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=4)):
-      choice = self.resolve_to_choice(ItemLossChoice)
-    self.choose_items(choice, [])
-    self.resolve_until_done()
-    self.assertEqual(self.char.stamina, 1)
-    self.assertEqual(self.char.place.name, "Hospital")
+  # def testScience7NoHelp(self):
+  #   self.state.event_stack.append(encounters.Science7(self.char))
+  #   choice = self.resolve_to_choice(MultipleChoice)
+  #   choice.resolve(self.state, "No")
+  #   with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=1)):
+  #     self.resolve_until_done()
+  #   self.assertEqual(self.char.stamina, 3)
+  #   self.assertEqual(self.char.place.name, "Science")
+  #
+  # def testScience7FailConscious(self):
+  #   self.state.event_stack.append(encounters.Science7(self.char))
+  #   choice = self.resolve_to_choice(MultipleChoice)
+  #   choice.resolve(self.state, "Yes")
+  #   with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=1)):
+  #     self.resolve_until_done()
+  #   self.assertEqual(self.char.stamina, 2)
+  #   self.assertEqual(self.char.place.name, "Hospital")
+  #
+  # def testScience7FailUnconscious(self):
+  #   self.state.event_stack.append(encounters.Science7(self.char))
+  #   choice = self.resolve_to_choice(MultipleChoice)
+  #   choice.resolve(self.state, "Yes")
+  #   with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=4)):
+  #     choice = self.resolve_to_choice(ItemLossChoice)
+  #   self.choose_items(choice, [])
+  #   self.resolve_until_done()
+  #   self.assertEqual(self.char.stamina, 1)
+  #   self.assertEqual(self.char.place.name, "Hospital")
 
 
 class AsylumTest(EncounterTest):
@@ -4839,27 +4839,26 @@ class ShoppeTest(EncounterTest):
       self.resolve_until_done()
 
   def testShoppe6PassDecline(self):
-    # self.state.unique.append(items.Cross(0)) # Costs 3
-    # self.state.event_stack.append(encounters.Shoppe6(self.char))
-    # with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
-    #   buy = self.resolve_to_choice(MultipleChoice)
-    # self.assertEqual(buy.choices, ["Yes", "No"])
-    # buy.resolve(self.state, "No")
-    # self.resolve_until_done()
-    pass
+    self.state.unique.append(items.Cross(0))  # Costs 3
+    self.state.event_stack.append(encounters.Shoppe6(self.char))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      buy = self.resolve_to_choice(MultipleChoice)
+    self.assertEqual(buy.choices, ["Cross", "Nothing"])
+    buy.resolve(self.state, "Nothing")
+    self.resolve_until_done()
 
   def testShoppe6PassAccept(self):
-    # self.state.unique.append(items.Cross(0)) # Costs 3
-    # self.state.event_stack.append(encounters.Shoppe6(self.char))
-    # with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
-    #   buy = self.resolve_to_choice(MultipleChoice)
-    # self.assertEqual(buy.choices, ["Yes", "No"])
-    # buy.resolve(self.state, "Yes")
-    # self.resolve_until_done()
-    # self.assertEqual(self.char.dollars, 1)
-    # self.assertEqual(len(self.char.possessions), 1)
-    # self.assertEqual(self.char.possessions[0].name, "Cross")
-    pass
+    self.state.unique.append(items.Cross(0))  # Costs 3
+    self.state.event_stack.append(encounters.Shoppe6(self.char))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      buy = self.resolve_to_choice(MultipleChoice)
+    self.assertEqual(buy.choices, ["Cross", "Nothing"])
+    self.spend("dollars", 2, buy)
+    buy.resolve(self.state, "Cross")
+    self.resolve_until_done()
+    self.assertEqual(self.char.dollars, 1)
+    self.assertEqual(len(self.char.possessions), 1)
+    self.assertEqual(self.char.possessions[0].name, "Cross")
 
   def testShoppe6PassPoor(self):
     self.char.dollars = 2

@@ -22,7 +22,7 @@ class EncounterCard:
   def encounter_event(self, character, location_name):
     if location_name not in self.encounters:
       print(f"TODO: missing encounters for {self.name} at {location_name}")
-      return events.Nothing()
+      return events.Unimplemented()
     return self.encounters[location_name](character)
 
 
@@ -119,11 +119,11 @@ def Roadhouse3(char):
 
 
 def Roadhouse4(char):
-  return events.Nothing()  # TODO buying stuff
+  return events.Purchase(char, "common", 3, keep_count=3, discount_type="fixed", discount=-1)
 
 
 def Roadhouse5(char):
-  return events.Nothing()  # TODO monster cup
+  return events.MonsterAppears(char)
 
 
 def Roadhouse6(char):
@@ -299,7 +299,7 @@ def Sanctum5(char):
 
 
 def Sanctum6(char):
-  return events.Nothing()  # TODO: A monster appears
+  return events.MonsterAppears(char)
 
 
 def Sanctum7(char):
@@ -312,7 +312,8 @@ def Sanctum7(char):
       char, "Participate in a gating ceremony?", ["Yes", "No"], spends=[spend, None],
   )
   cond = events.Conditional(char, choice, "choice_index", {0: ceremony, 1: events.Nothing()})
-  return events.Sequence([choice, cond], char)
+  # return events.Sequence([choice, cond], char)
+  return events.Unimplemented()
 
 
 def WitchHouse1(char):
@@ -372,7 +373,7 @@ def Cave1(char):
   monster = events.Sequence(
       [
           san_loss,
-          # TODO: Implement a monster appears
+          events.MonsterAppears(char),
       ], char
   )
   draw = events.Draw(char, "common", 1)
@@ -390,8 +391,7 @@ def Cave3(char):
 
 
 def Cave4(char):
-  # TODO: A monster appears
-  return events.Nothing()
+  return events.MonsterAppears(char)
 
 
 def Cave5(char):
@@ -592,8 +592,8 @@ def House3(char):
 
 def House4(char):
   stay = events.Delayed(char)
-  common = events.Nothing()  # TODO: coming soon from Peter! draw and purchase
-  unique = events.Nothing()  # TODO: coming soon from Peter! draw and purchase
+  common = events.Purchase(char, "common", 1)
+  unique = events.Purchase(char, "unique", 1)
   item = events.BinaryChoice(
       char, "Purchase a common or unique item?", "Common", "Unique", common, unique,
   )
@@ -728,7 +728,7 @@ def Administration7(char):
 def Library1(char):
   check = events.Check(char, "will", -1)
   # TODO: this should be unaffected by the archaeologist
-  tome = events.Draw(char, "unique", 1)  # TODO: this is actually draw the first tome
+  tome = events.Draw(char, "unique", 1, target_type=items.Tome)
   move = events.ForceMovement(char, "University")
   return events.PassFail(char, check, tome, move)
 
@@ -811,7 +811,8 @@ def Science5(char):
 def Science6(char):
   check = events.Check(char, "luck", -1)
   success = events.Nothing()  # TODO: OH NO!!  Pick a new investigator...
-  return events.PassFail(char, check, success, events.Nothing())
+  # return events.PassFail(char, check, success, events.Nothing())
+  return events.Unimplemented()
 
 
 def Science7(char):
@@ -822,7 +823,8 @@ def Science7(char):
   move = events.ForceMovement(char, "Hospital")
   fail = events.Sequence([die, stamina, move], char)
   helping = events.PassFail(char, check, close_gates, fail)
-  return events.BinaryChoice(char, "Offer to help?", "Yes", "No", helping, events.Nothing())
+  return events.Unimplemented()
+  # return events.BinaryChoice(char, "Offer to help?", "Yes", "No", helping, events.Nothing())
 
 
 def Shop1(char):
@@ -860,14 +862,15 @@ def Shop4(char):
 def Shop5(char):
   # TODO: Oh Dear:  3 common items for sale, any player may purchase 1 or more
   # conflicts are decided by the player that drew the card
-  return events.Nothing()
+  return events.Unimplemented()
 
 
 def Shop6(char):
   check = events.Check(char, "luck", -1)
   common_unique = events.Nothing()  # TODO: purchase the top item of the common and/or unique deck
   common = events.Nothing()  # TODO: you may purchase the top item of the common deck
-  return events.PassFail(char, check, common_unique, common)
+  # return events.PassFail(char, check, common_unique, common)
+  return events.Unimplemented()
 
 
 def Shop7(char):
@@ -938,7 +941,7 @@ def Train3(char):
 
 
 def Train4(char):
-  return events.Nothing()  # TODO: draw the top common item and purchase it for +1 if you wish
+  return events.Purchase(char, "common", 1, discount=-1)
 
 
 def Train5(char):
@@ -1120,7 +1123,7 @@ def Square6(char):
   check = events.Check(char, "luck", -1)
   stamina = events.Loss(char, {"stamina": 1})
   lose = events.Sequence([stamina, events.Curse(char)], char)
-  buy = events.Nothing()  # TODO: Buying stuff
+  buy = events.Purchase(char, "unique", 1, discount=1)
   interact = events.PassFail(char, check, buy, lose)
   return events.BinaryChoice(
       char, "Interact with the gypsies?", "Yes", "No", interact, events.Nothing(),
@@ -1434,8 +1437,7 @@ def Shoppe5(char):
 
 def Shoppe6(char):
   check = events.Check(char, "lore", -1)
-  # TODO: Implement buying at a discount
-  underpriced = events.Nothing()
+  underpriced = events.Purchase(char, "unique", 1, discount_type="rate", discount=0.5)
   return events.PassFail(char, check, underpriced, events.Nothing())
 
 

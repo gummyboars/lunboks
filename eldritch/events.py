@@ -125,6 +125,10 @@ class Nothing(Event):
     return ""
 
 
+class Unimplemented(Nothing):
+  pass
+
+
 class Sequence(Event):
 
   def __init__(self, events, character=None):
@@ -1718,6 +1722,12 @@ class Encounter(Event):
 
     encounters = [
         card.encounter_event(self.character, location_name) for card in self.draw.cards]
+    if any([isinstance(enc, Unimplemented) for enc in encounters]):
+      # TODO: Implement all the encounters, but this is a stopgap to let us play
+      self.draw = None
+      self.event_stack.append(Nothing())
+      return
+
     choice = CardChoice(
         self.character, "Choose an Encounter", [card.name for card in self.draw.cards],
     )
@@ -1806,6 +1816,10 @@ class GateEncounter(Event):
       return
 
     encounters = [card.encounter_event(self.character, world_name) for card in self.cards]
+    if any(isinstance(enc, Unimplemented) for enc in encounters):
+      self.draw = None
+      self.event_stack.append(Nothing())
+      return
     choice = CardChoice(self.character, "Choose an Encounter", [card.name for card in self.cards])
     cond = Conditional(self.character, choice, "choice_index", dict(enumerate(encounters)))
     self.encounter = Sequence([choice, cond], self.character)
