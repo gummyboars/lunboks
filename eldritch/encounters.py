@@ -304,14 +304,14 @@ def Sanctum6(char):
 
 def Sanctum7(char):
   # TODO: there has to actually be a gate open for you to do this.
-  spend = values.ExactSpendPrerequisite({"clues": 2, "sanity": 1})
-  check = events.Check(char, "lore", -2)
-  close = events.Nothing()  # TODO: Close a gate
-  ceremony = events.PassFail(char, check, close, events.Nothing())
-  choice = events.SpendChoice(
-      char, "Participate in a gating ceremony?", ["Yes", "No"], spends=[spend, None],
-  )
-  cond = events.Conditional(char, choice, "choice_index", {0: ceremony, 1: events.Nothing()})
+  # spend = values.ExactSpendPrerequisite({"clues": 2, "sanity": 1})
+  # check = events.Check(char, "lore", -2)
+  # close = events.Nothing()  # TODO: Close a gate
+  # ceremony = events.PassFail(char, check, close, events.Nothing())
+  # choice = events.SpendChoice(
+  #     char, "Participate in a gating ceremony?", ["Yes", "No"], spends=[spend, None],
+  # )
+  # cond = events.Conditional(char, choice, "choice_index", {0: ceremony, 1: events.Nothing()})
   # return events.Sequence([choice, cond], char)
   return events.Unimplemented()
 
@@ -809,20 +809,20 @@ def Science5(char):
 
 
 def Science6(char):
-  check = events.Check(char, "luck", -1)
-  success = events.Nothing()  # TODO: OH NO!!  Pick a new investigator...
+  # check = events.Check(char, "luck", -1)
+  # success = events.Nothing()  # TODO: OH NO!!  Pick a new investigator...
   # return events.PassFail(char, check, success, events.Nothing())
   return events.Unimplemented()
 
 
 def Science7(char):
-  check = events.Check(char, "lore", -2)
-  die = events.DiceRoll(char, 1)
-  stamina = events.Loss(char, {"stamina": values.Die(die)})
-  close_gates = events.Nothing()  # TODO: close all of the gates!
-  move = events.ForceMovement(char, "Hospital")
-  fail = events.Sequence([die, stamina, move], char)
-  helping = events.PassFail(char, check, close_gates, fail)
+  # check = events.Check(char, "lore", -2)
+  # die = events.DiceRoll(char, 1)
+  # stamina = events.Loss(char, {"stamina": values.Die(die)})
+  # close_gates = events.Nothing()  # TODO: close all of the gates!
+  # move = events.ForceMovement(char, "Hospital")
+  # fail = events.Sequence([die, stamina, move], char)
+  # helping = events.PassFail(char, check, close_gates, fail)
   return events.Unimplemented()
   # return events.BinaryChoice(char, "Offer to help?", "Yes", "No", helping, events.Nothing())
 
@@ -866,9 +866,9 @@ def Shop5(char):
 
 
 def Shop6(char):
-  check = events.Check(char, "luck", -1)
-  common_unique = events.Nothing()  # TODO: purchase the top item of the common and/or unique deck
-  common = events.Nothing()  # TODO: you may purchase the top item of the common deck
+  # check = events.Check(char, "luck", -1)
+  # common_unique = events.Nothing()  # TODO: purchase the top item of the common and/or unique deck
+  # common = events.Nothing()  # TODO: you may purchase the top item of the common deck
   # return events.PassFail(char, check, common_unique, common)
   return events.Unimplemented()
 
