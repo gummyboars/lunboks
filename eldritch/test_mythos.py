@@ -2074,6 +2074,7 @@ class ReleaseMonstersTest(EventTest):
           self.state,
           {"Merchant": [monster_limit], "Outskirts": [monster_limit+1]}
       )
+      self.resolve_until_done()
 
 
 class ReturnMonstersTest(EventTest):
@@ -2307,13 +2308,13 @@ class Mythos18Test(EventTest):
 class CloseLocationTest(EventTest):
   def setUp(self):
     super().setUp()
-    # Make sure there's enough monsters to draw twice
     self.store = self.state.places["Store"]
     self.shop = self.state.places["Shop"]
     self.shoppe = self.state.places["Shoppe"]
     self.char.possessions.append(items.SunkenCityRuby(0))
     self.char.place = self.store
 
+    # Make sure there's enough monsters to draw twice
     matrix = monsters.FlameMatrix()
     matrix.place = self.state.monster_cup
     self.state.monsters.append(matrix)
@@ -2337,6 +2338,7 @@ class CloseLocationTest(EventTest):
     self.assertIsNone(self.shop.closed_until)
     self.assertIsNone(self.shoppe.closed_until)
     self.assertNotIn(self.mythos, self.state.globals())
+    self.assertIn(self.mythos, self.state.mythos)
     choice = self.resolve_to_choice(CityMovement)
     if not self.close_forever:
       self.assertIn("Store", choice.choices)
@@ -2353,12 +2355,6 @@ class CloseLocationTest(EventTest):
     self.assertNotIn("Shoppe", choice.choices)
     choice.resolve(self.state, "done")
     self.resolve_until_done()
-
-  def testClosedForeverStaysClosed(self):
-    self.advance_turn(1, "encounter")
-    self.resolve_until_done()
-    self.state.event_stack.append(IncreaseTerror(3))
-    self.close_forever = True
 
 
 class CloseStreetLocationTest(EventTest):
@@ -2576,9 +2572,11 @@ class Mythos51Test(EventTest):
 
   def testCannotUse(self):
     self.char.possessions.append(items.Voice(0))
+    self.char.possessions.append(items.DreadCurse(0))
     self.advance_turn(0, "upkeep")
     self.assertEqual(self.char.sanity, 5)
     sliders = self.resolve_to_choice(SliderInput)
+    self.assertFalse(self.state.usables)
     sliders.resolve(self.state, "done", None)
     self.resolve_until_done()
     self.state.event_stack.append(Combat(self.char, monsters.Cultist()))

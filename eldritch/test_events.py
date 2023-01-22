@@ -3511,6 +3511,8 @@ class CloseLocationTest(EventTest):
     self.resolve_until_done()
     self.assertTrue(self.state.places[place_name].closed)
     self.assertEqual(self.char.place.name, "Uptown")
+    self.state.event_stack.append(CloseLocation(place_name, for_turns=1))
+    self.resolve_until_done()
     self.advance_turn(self.state.turn_number + 5, "mythos")
     self.resolve_until_done()
     self.assertTrue(self.state.places[place_name].closed)
