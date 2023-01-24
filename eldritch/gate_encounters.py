@@ -79,8 +79,8 @@ def Pluto3(char) -> events.Event:
       values.ItemDeckCount(char, {"common", "unique", "spells"}), None, operator.floordiv, 2,
   )
   fail = events.Sequence([
-    events.LoseItems(char, lose_count),
-    events.Return(char, char.place.name)
+      events.LoseItems(char, lose_count),
+      events.Return(char, char.place.name)
   ], char)
   return events.PassFail(char, check, events.Nothing(), fail)
 
@@ -96,8 +96,8 @@ def Abyss4(char) -> events.Event:
   temple_check = events.Check(char, "luck", -1)
   temple = events.PassFail(char, temple_check, events.Draw(char, "unique", 1), events.Nothing())
   return events.Sequence([
-    check,
-    events.Conditional(char, check, "successes", {0: cave, 2: dreamlands, 3: temple}),
+      check,
+      events.Conditional(char, check, "successes", {0: cave, 2: dreamlands, 3: temple}),
   ], char)
 
 
@@ -119,8 +119,8 @@ def Dreamlands5(char) -> events.Event:
 def Abyss5(char) -> events.Event:
   check = events.Check(char, "luck", -1)
   fishy_object = events.Sequence([
-    events.Gain(char, {"dollars": 3}),
-    events.Draw(char, "unique", 1),
+      events.Gain(char, {"dollars": 3}),
+      events.Draw(char, "unique", 1),
   ], char)
   return events.PassFail(char, check, fishy_object, events.Nothing())
 
@@ -191,8 +191,8 @@ def Dreamlands9(char) -> events.Event:
   )
   lose_money_count = values.Calculation(char, "dollars", operator.floordiv, 2)
   loss = events.Sequence([
-    events.LoseItems(char, lose_item_count),
-    events.Loss(char, {"dollars": lose_money_count})
+      events.LoseItems(char, lose_item_count),
+      events.Loss(char, {"dollars": lose_money_count})
   ], char)
   return events.PassFail(char, check, events.Nothing(), loss)
 
@@ -262,8 +262,8 @@ def Other12(char) -> events.Event:
 def City13(char) -> events.Event:
   check = events.Check(char, "sneak", -1)
   escape = events.Sequence([
-    events.Draw(char, "unique", 1),
-    events.Return(char, char.place.name),
+      events.Draw(char, "unique", 1),
+      events.Return(char, char.place.name),
   ], char)
   captors = events.Loss(char, {"sanity": 3, "stamina": 1})
   return events.PassFail(char, check, escape, captors, min_successes=2)
@@ -290,8 +290,8 @@ def Other14(char) -> events.Event:
   check = events.Check(char, "fight", -1)
   rope = events.Return(char, char.place.name)
   fall = events.Sequence([
-    events.Loss(char, {"stamina": 2}),
-    events.Delayed(char),
+      events.Loss(char, {"stamina": 2}),
+      events.Delayed(char),
   ], char)
   return events.PassFail(char, check, rope, fall)
 
@@ -305,8 +305,8 @@ def City15(char) -> events.Event:
 def GreatHall15(char) -> events.Event:
   check = events.Check(char, "lore", 2)
   return events.Sequence([
-    check,
-    events.Gain(char, {"clues": values.Calculation(check, "successes")}),
+      check,
+      events.Gain(char, {"clues": values.Calculation(check, "successes")}),
   ])
 
 
