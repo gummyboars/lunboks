@@ -125,6 +125,10 @@ class Nothing(Event):
     return ""
 
 
+class Unimplemented(Nothing):
+  pass
+
+
 class Sequence(Event):
 
   def __init__(self, events, character=None):
@@ -2718,8 +2722,10 @@ class Conditional(Event):
     return ""
 
 
-def PassFail(character, condition, pass_result, fail_result):
-  outcome = Conditional(character, condition, "successes", {0: fail_result, 1: pass_result})
+def PassFail(character, condition, pass_result: Event, fail_result: Event, min_successes=1):
+  outcome = Conditional(
+      character, condition, "successes", {0: fail_result, min_successes: pass_result}
+  )
   if isinstance(condition, values.Value):
     return outcome
   return Sequence([condition, outcome], character)
