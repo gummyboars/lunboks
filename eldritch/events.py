@@ -93,9 +93,18 @@ class Event(metaclass=abc.ABCMeta):
 
 
 class ChoiceEvent(Event):
+  def __init__(self):
+    super().__init__()
+    self._choices = None
+
+  @property
+  def choices(self):
+    return self._choices
 
   @abc.abstractmethod
-  def resolve(self, state, choice=None) -> NoReturn:  # pylint: disable=arguments-differ
+  def resolve(
+      self, state, choice=None
+  ) -> NoReturn:  # pylint: disable=arguments-differ
     raise NotImplementedError
 
   @abc.abstractmethod
@@ -2773,7 +2782,7 @@ class MultipleChoice(ChoiceEvent):
     super().__init__()
     self.character = character
     self._prompt = prompt
-    self.choices = choices
+    self._choices = choices
     self.prereqs: List[Optional[values.Value]] = prereqs
     self._annotations = annotations
     self.invalid_choices = {}
@@ -3091,7 +3100,7 @@ class ItemChoice(ChoiceEvent):
     super().__init__()
     self.character = character
     self._prompt = prompt
-    self.choices = None
+    self._choices = None
     self.chosen = []
     if decks is None:
       decks = {"common", "unique", "spells", "tradables"}
@@ -3125,7 +3134,7 @@ class ItemChoice(ChoiceEvent):
       raise InvalidMove(f"Invalid choices: {', '.join(invalid_cards)}")
 
   def compute_choices(self, state):
-    self.choices = [
+    self._choices = [
         pos.handle for pos in self.character.possessions
         if (getattr(pos, "deck", None) in self.decks) and self._matches_type(pos)
     ]
@@ -3242,7 +3251,7 @@ class WeaponOrSpellLossChoice(ItemLossChoice):
     super().__init__(character, prompt, count)
 
   def compute_choices(self, state):
-    self.choices = [
+    self._choices = [
         pos.handle for pos in self.character.possessions
         if getattr(pos, "deck", None) == "spells" or getattr(pos, "item_type", None) == "weapon"
     ]
@@ -3257,7 +3266,7 @@ class SinglePhysicalWeaponChoice(SpendItemChoiceMixin, ItemCountChoice):
 
   def compute_choices(self, state):
     super().compute_choices(state)
-    self.choices = [
+    self._choices = [
         pos.handle for pos in self.character.possessions
         if pos.handle in self.choices
         and (pos.active_bonuses["physical"] or pos.passive_bonuses["physical"])
@@ -3281,7 +3290,7 @@ class MapChoice(ChoiceEvent, metaclass=abc.ABCMeta):
     super().__init__()
     self.character = character
     self._prompt = prompt
-    self.choices = None
+    self._choices = None
     self.none_choice = none_choice
     self.annotation = annotation
     self.choice = None
@@ -3334,9 +3343,9 @@ class PlaceChoice(MapChoice):
 
   def compute_choices(self, state):
     if self.fixed_choices is not None:
-      self.choices = self.fixed_choices
+      self._choices = self.fixed_choices
       return
-    self.choices = []
+    self._choices = []
     for name, place in state.places.items():
       if not isinstance(place, (places.Location, places.Street)):
         continue
@@ -3380,7 +3389,7 @@ class GateChoice(MapChoice):
         self.cancelled = True
         return
 
-    self.choices = []
+    self._choices = []
     for name, place in state.places.items():
       if not isinstance(place, (places.Location, places.Street)):
         continue
@@ -3439,7 +3448,7 @@ class NearestGateChoice(MapChoice):
       self.cancelled = True
       return
 
-    self.choices = []
+    self._choices = []
     nearest = None
     distances = {self.character.place.name: 0}
     queue = [self.character.place]
@@ -3477,12 +3486,12 @@ class MonsterOnBoardChoice(ChoiceEvent):
     super().__init__()
     self.character = character
     self._prompt = prompt
-    self.choices = []
+    self._choices = []
     self.chosen = None
 
   def compute_choices(self, state):
     # TODO: other ways of narrowing choices (e.g. streets only)
-    self.choices = [
+    self._choices = [
         mon.handle for mon in state.monsters
         if isinstance(mon.place, (places.CityPlace, places.Outskirts))
     ]

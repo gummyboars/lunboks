@@ -88,7 +88,7 @@ class EventTest(unittest.TestCase):
       not_finished["stack"] = self.state.event_stack
     self.assertFalse(not_finished)
 
-  def resolve_to_choice(self, event_class):
+  def resolve_to_choice(self, event_class) -> events.ChoiceEvent:
     self.resolve_loop()
     self.assertTrue(self.state.event_stack)
     self.assertIsInstance(self.state.event_stack[-1], event_class)
@@ -1979,6 +1979,18 @@ class ConditionalTest(EventTest):
     self.assertFalse(cond.result_map[0].is_resolved())
     self.assertFalse(cond.result_map[1].is_resolved())
     self.assertTrue(cond.result_map[2].is_resolved())
+
+  def testPassFailDifficulty(self):
+    pass_event = events.Nothing()
+    fail_event = events.Nothing()
+    check = events.Check(self.char, "luck", -1)
+    pf_event = events.PassFail(self.char, check, pass_event, fail_event, min_successes=2)
+
+    self.state.event_stack.append(pf_event)
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=[5, 3, 3, 3])):
+      self.resolve_until_done()
+    self.assertFalse(pass_event.is_resolved())
+    self.assertTrue(fail_event.is_resolved())
 
 
 class BinaryChoiceTest(EventTest):

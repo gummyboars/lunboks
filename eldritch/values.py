@@ -1,10 +1,15 @@
 import abc
 import collections
+import math
 import operator
 
 from eldritch import places
 
 OPER_MAP = {"at least": operator.ge, "at most": operator.le, "exactly": operator.eq}
+
+
+def ceildiv(lhs, rhs):
+  return int(math.ceil(lhs/rhs))
 
 
 class Value(metaclass=abc.ABCMeta):
