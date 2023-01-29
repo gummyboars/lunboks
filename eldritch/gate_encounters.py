@@ -363,6 +363,150 @@ def Other16(char) -> events.Event:
   return events.PassFail(char, check, gain, loss)
 
 
+def Plateau17(char) -> events.Event:
+  return events.Unimplemented()
+
+
+def GreatHall17(char) -> events.Event:
+  return events.Unimplemented()
+
+
+def Other17(char) -> events.Event:
+  return events.Unimplemented()
+
+
+def Plateau18(char) -> events.Event:
+  return events.Unimplemented()
+
+
+def City18(char) -> events.Event:
+  return events.Unimplemented()
+
+
+def Other18(char) -> events.Event:
+  return events.Unimplemented()
+
+
+def City19(char) -> events.Event:
+  return events.Unimplemented()
+
+
+def Dreamlands19(char) -> events.Event:
+  return events.Unimplemented()
+
+
+def Other19(char) -> events.Event:
+  return events.Unimplemented()
+
+
+def Dreamlands20(char) -> events.Event:
+  return events.Unimplemented()
+
+
+def GreatHall20(char) -> events.Event:
+  return events.Unimplemented()
+
+
+def Other20(char) -> events.Event:
+  return events.Unimplemented()
+
+
+def Dreamlands21(char) -> events.Event:
+  return events.Unimplemented()
+
+
+def GreatHall21(char) -> events.Event:
+  return events.Unimplemented()
+
+
+def Other21(char) -> events.Event:
+  return events.Unimplemented()
+
+
+def Plateau22(char) -> events.Event:
+  return events.Unimplemented()
+
+
+def Dreamlands22(char) -> events.Event:
+  return events.Unimplemented()
+
+
+def Other22(char) -> events.Event:
+  return events.Unimplemented()
+
+
+def Plateau23(char) -> events.Event:
+  return events.Unimplemented()
+
+
+def Dreamlands23(char) -> events.Event:
+  return events.Unimplemented()
+
+
+def Other23(char) -> events.Event:
+  return events.Unimplemented()
+
+
+def City24(char) -> events.Event:
+  return events.Unimplemented()
+
+
+def Dreamlands24(char) -> events.Event:
+  return events.Unimplemented()
+
+
+def Other24(char) -> events.Event:
+  return events.Unimplemented()
+
+
+def Abyss25(char) -> events.Event:
+  return events.Unimplemented()
+
+
+def Dreamlands25(char) -> events.Event:
+  return events.Unimplemented()
+
+
+def Other25(char) -> events.Event:
+  return events.Unimplemented()
+
+
+def Abyss26(char) -> events.Event:
+  return events.Unimplemented()
+
+
+def Plateau26(char) -> events.Event:
+  return events.Unimplemented()
+
+
+def Other26(char) -> events.Event:
+  return events.Unimplemented()
+
+
+def Abyss27(char) -> events.Event:
+  return events.Unimplemented()
+
+
+def Plateau27(char) -> events.Event:
+  return events.Unimplemented()
+
+
+def Other27(char) -> events.Event:
+  return events.Unimplemented()
+
+
+def Plateau28(char) -> events.Event:
+  return events.Unimplemented()
+
+
+def Dreamlands28(char) -> events.Event:
+  return events.Unimplemented()
+
+
+def Other28(char) -> events.Event:
+  return events.Unimplemented()
+
+
 def Plateau29(char) -> events.Event:
   check = events.Check(char, "speed", -1)
   loss = events.Loss(char, {"stamina": 2})
@@ -377,6 +521,234 @@ def Dreamlands29(char) -> events.Event:
 
 def Other29(char) -> events.Event:
   return events.Loss(char, {"stamina": 1})
+
+
+def Abyss30(char) -> events.Event:
+  return events.Unimplemented()
+
+
+def Dreamlands30(char) -> events.Event:
+  return events.Unimplemented()
+
+
+def Other30(char) -> events.Event:
+  return events.Unimplemented()
+
+
+def Plateau31(char) -> events.Event:
+  return events.Unimplemented()
+
+
+def SunkenCity31(char) -> events.Event:
+  return events.Unimplemented()
+
+
+def Other31(char) -> events.Event:
+  return events.Unimplemented()
+
+
+def Abyss32(char) -> events.Event:
+  return events.Unimplemented()
+
+
+def Other32(char) -> events.Event:
+  return events.Unimplemented()
+
+
+def SunkenCity32(char) -> events.Event:
+  return events.Unimplemented()
+
+
+def Abyss33(char) -> events.Event:
+  return events.Unimplemented()
+
+
+def Other33(char) -> events.Event:
+  return events.Unimplemented()
+
+
+def SunkenCity33(char) -> events.Event:
+  return events.Unimplemented()
+
+
+def Other34(char) -> events.Event:
+  return events.Unimplemented()
+
+
+def Dreamlands34(char) -> events.Event:
+  return events.Unimplemented()
+
+
+def SunkenCity34(char) -> events.Event:
+  return events.Unimplemented()
+
+
+def Other35(char) -> events.Event:
+  return events.Unimplemented()
+
+
+def Dreamlands35(char) -> events.Event:
+  return events.Unimplemented()
+
+
+def SunkenCity35(char) -> events.Event:
+  return events.Unimplemented()
+
+
+def Plateau36(char) -> events.Event:
+  return events.Unimplemented()
+
+
+def SunkenCity36(char) -> events.Event:
+  return events.Unimplemented()
+
+
+def Other36(char) -> events.Event:
+  return events.Unimplemented()
+
+
+def City37(char) -> events.Event:
+  return events.Unimplemented()
+
+
+def Pluto37(char) -> events.Event:
+  return events.Unimplemented()
+
+
+def Other37(char) -> events.Event:
+  return events.Unimplemented()
+
+
+def City38(char) -> events.Event:
+  return events.Unimplemented()
+
+
+def Dreamlands38(char) -> events.Event:
+  return events.Unimplemented()
+
+
+def Other38(char) -> events.Event:
+  return events.Unimplemented()
+
+
+def City39(char) -> events.Event:
+  return events.Unimplemented()
+
+
+def Dreamlands39(char) -> events.Event:
+  return events.Unimplemented()
+
+
+def Other39(char) -> events.Event:
+  return events.Unimplemented()
+
+
+def SunkenCity40(char) -> events.Event:
+  return events.Unimplemented()
+
+
+def City40(char) -> events.Event:
+  return events.Unimplemented()
+
+
+def Other40(char) -> events.Event:
+  return events.Unimplemented()
+
+
+def SunkenCity41(char) -> events.Event:
+  return events.Unimplemented()
+
+
+def City41(char) -> events.Event:
+  return events.Unimplemented()
+
+
+def Other41(char) -> events.Event:
+  return events.Unimplemented()
+
+
+def City42(char) -> events.Event:
+  return events.Unimplemented()
+
+
+def Pluto42(char) -> events.Event:
+  return events.Unimplemented()
+
+
+def Other42(char) -> events.Event:
+  return events.Unimplemented()
+
+
+def SunkenCity43(char) -> events.Event:
+  return events.Unimplemented()
+
+
+def Pluto43(char) -> events.Event:
+  return events.Unimplemented()
+
+
+def Other43(char) -> events.Event:
+  return events.Unimplemented()
+
+
+def SunkenCity44(char) -> events.Event:
+  return events.Unimplemented()
+
+
+def Dreamlands44(char) -> events.Event:
+  return events.Unimplemented()
+
+
+def Other44(char) -> events.Event:
+  return events.Unimplemented()
+
+
+def SunkenCity45(char) -> events.Event:
+  return events.Unimplemented()
+
+
+def Dreamlands45(char) -> events.Event:
+  return events.Unimplemented()
+
+
+def Other45(char) -> events.Event:
+  return events.Unimplemented()
+
+
+def Pluto46(char) -> events.Event:
+  return events.Unimplemented()
+
+
+def Dreamlands46(char) -> events.Event:
+  return events.Unimplemented()
+
+
+def Other46(char) -> events.Event:
+  return events.Unimplemented()
+
+
+def Pluto47(char) -> events.Event:
+  return events.Unimplemented()
+
+
+def Dreamlands47(char) -> events.Event:
+  return events.Unimplemented()
+
+
+def Other47(char) -> events.Event:
+  return events.Unimplemented()
+
+
+def SunkenCity48(char) -> events.Event:
+  return events.Unimplemented()
+
+
+def Pluto48(char) -> events.Event:
+  return events.Unimplemented()
+
+
+def Other48(char) -> events.Event:
+  return events.Unimplemented()
 
 
 def CreateGateCards():
@@ -414,6 +786,76 @@ def CreateGateCards():
       GateCard(
           "Gate16", {"green"}, {"Plateau": Plateau16, "Great Hall": GreatHall16, "Other": Other16}),
       GateCard(
+          "Gate17", {"green"}, {"Plateau": Plateau17, "Great Hall": GreatHall17, "Other": Other17}),
+      GateCard(
+          "Gate18", {"green"}, {"City": City18, "Plateau": Plateau18, "Other": Other18}),
+      GateCard(
+          "Gate19", {"green"}, {"Dreamlands": Dreamlands19, "City": City19, "Other": Other19}),
+      GateCard(
+          "Gate20", {"green"},
+          {"Dreamlands": Dreamlands20, "Great Hall": GreatHall20, "Other": Other20}),
+      GateCard(
+          "Gate21", {"green"},
+          {"Dreamlands": Dreamlands21, "Great Hall": GreatHall21, "Other": Other21}),
+      GateCard(
+          "Gate22",
+          {"green"}, {"Dreamlands": Dreamlands22, "Plateau": Plateau22, "Other": Other22}),
+      GateCard(
+          "Gate23",
+          {"green"}, {"Dreamlands": Dreamlands23, "Plateau": Plateau23, "Other": Other23}),
+      GateCard(
+          "Gate24", {"green"}, {"Dreamlands": Dreamlands24, "City": City24, "Other": Other24}),
+      GateCard(
+          "Gate25", {"red"}, {"Abyss": Abyss25, "Dreamlands": Dreamlands25, "Other": Other25}),
+      GateCard(
+          "Gate26", {"red"}, {"Abyss": Abyss26, "Plateau": Plateau26, "Other": Other26}),
+      GateCard(
+          "Gate27", {"red"}, {"Abyss": Abyss27, "Plateau": Plateau27, "Other": Other27}),
+      GateCard(
+          "Gate28", {"red"}, {"Plateau": Plateau28, "Dreamlands": Dreamlands28, "Other": Other28}),
+      GateCard(
           "Gate29", {"red"}, {"Plateau": Plateau29, "Dreamlands": Dreamlands29, "Other": Other29}),
+      GateCard(
+          "Gate30", {"red"}, {"Abyss": Abyss30, "Dreamlands": Dreamlands30, "Other": Other30}),
+      GateCard(
+          "Gate31", {"red"}, {"Sunken City": SunkenCity31, "Plateau": Plateau31, "Other": Other31}),
+      GateCard(
+          "Gate32", {"red"}, {"Sunken City": SunkenCity32, "Abyss": Abyss32, "Other": Other32}),
+      GateCard(
+          "Gate33", {"red"}, {"Sunken City": SunkenCity33, "Abyss": Abyss33, "Other": Other33}),
+      GateCard(
+          "Gate34", {"red"},
+          {"Sunken City": SunkenCity34, "Dreamlands": Dreamlands34, "Other": Other34}),
+      GateCard(
+          "Gate35", {"red"},
+          {"Sunken City": SunkenCity35, "Dreamlands": Dreamlands35, "Other": Other35}),
+      GateCard(
+          "Gate36", {"red"}, {"Sunken City": SunkenCity36, "Plateau": Plateau36, "Other": Other36}),
+      GateCard(
+          "Gate37", {"yellow"}, {"City": City37, "Pluto": Pluto37, "Other": Other37}),
+      GateCard(
+          "Gate38", {"yellow"}, {"City": City38, "Dreamlands": Dreamlands38, "Other": Other38}),
+      GateCard(
+          "Gate39", {"yellow"}, {"City": City39, "Dreamlands": Dreamlands39, "Other": Other39}),
+      GateCard(
+          "Gate40", {"yellow"}, {"Sunken City": SunkenCity40, "City": City40, "Other": Other40}),
+      GateCard(
+          "Gate41", {"yellow"}, {"Sunken City": SunkenCity41, "City": City41, "Other": Other41}),
+      GateCard(
+          "Gate42", {"yellow"}, {"City": City42, "Pluto": Pluto42, "Other": Other42}),
+      GateCard(
+          "Gate43", {"yellow"}, {"Sunken City": SunkenCity43, "Pluto": Pluto43, "Other": Other43}),
+      GateCard(
+          "Gate44", {"yellow"},
+          {"Sunken City": SunkenCity44, "Dreamlands": Dreamlands44, "Other": Other44}),
+      GateCard(
+          "Gate45", {"yellow"},
+          {"Sunken City": SunkenCity45, "Dreamlands": Dreamlands45, "Other": Other45}),
+      GateCard(
+          "Gate46", {"yellow"}, {"Pluto": Pluto46, "Dreamlands": Dreamlands46, "Other": Other46}),
+      GateCard(
+          "Gate47", {"yellow"}, {"Pluto": Pluto47, "Dreamlands": Dreamlands47, "Other": Other47}),
+      GateCard(
+          "Gate48", {"yellow"}, {"Sunken City": SunkenCity48, "Pluto": Pluto48, "Other": Other48}),
       GateCard("ShuffleGate", set(), {"Other": lambda char: events.Nothing()}),
   ]
