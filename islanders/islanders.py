@@ -701,11 +701,11 @@ class IslandersState:
     for idx, corner_list in self.foreign_landings.items():
       ret["landings"].extend([{"location": corner, "player": idx} for corner in corner_list])
 
-    is_over = (self.game_phase == "victory")
+    is_over = self.game_phase == "victory"
 
     ret["player_data"] = [player.json_for_player(is_over) for player in self.player_data]
     for idx in range(len(self.player_data)):
-      ret["player_data"][idx]["points"] = self.player_points(idx, visible=(not is_over))
+      ret["player_data"][idx]["points"] = self.player_points(idx, visible=not is_over)
     return ret
 
   def player_points(self, idx, visible):
