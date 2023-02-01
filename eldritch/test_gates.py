@@ -675,7 +675,7 @@ class Gate29Test(GateEncounterTest):
 class Dreamlands22Test(GateEncounterTest):
   def setUp(self):
     super().setUp()
-    self.char.place = self.state.places['Dreamlands1']
+    self.char.place = self.state.places["Dreamlands1"]
     self.state.event_stack.append(gate_encounters.Dreamlands22(self.char))
     self.assertEqual(self.char.dollars, 3)
 

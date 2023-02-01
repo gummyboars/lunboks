@@ -469,10 +469,10 @@ def Other22(char) -> events.Event:
 def Dreamlands23(char) -> events.Event:
   check = events.Check(char, "luck", -1)
   if char.place.name == "Dreamlands1":
-    next = events.ForceMovement(char, "Dreamlands2")
+    ride_to_next = events.ForceMovement(char, "Dreamlands2")
   else:
-    next = events.Return(char, char.place.info.name)
-  return events.PassFail(char, check, next, events.Nothing())
+    ride_to_next = events.Return(char, char.place.info.name)
+  return events.PassFail(char, check, ride_to_next, events.Nothing())
 
 
 def Plateau23(char) -> events.Event:
