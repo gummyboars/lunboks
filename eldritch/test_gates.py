@@ -672,5 +672,255 @@ class Gate29Test(GateEncounterTest):
     self.assertEqual(self.char.stamina, 4)
 
 
+class Dreamlands22Test(GateEncounterTest):
+  def setUp(self):
+    super().setUp()
+    self.char.place = self.state.places['Dreamlands1']
+    self.state.event_stack.append(gate_encounters.Dreamlands22(self.char))
+    self.assertEqual(self.char.dollars, 3)
+
+  def testFailWill(self):
+    side_effect = [3, 3] + [1, 1]
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=side_effect)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.dollars, 3)
+
+  def testPassLo(self):
+    side_effect = [3, 5] + [1, 1]
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=side_effect)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.dollars, 5)
+
+  def testPassMid(self):
+    side_effect = [3, 5] + [1, 4]
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=side_effect)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.dollars, 8)
+
+  def testPassHi(self):
+    side_effect = [3, 5] + [6, 6]
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=side_effect)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.dollars, 15)
+
+
+class Dreamlands23Test(GateEncounterTest):
+  def testFail(self):
+    self.char.place = self.state.places["Dreamlands1"]
+    self.state.event_stack.append(gate_encounters.Dreamlands23(self.char))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.place.name, "Dreamlands1")
+
+  def testPass1(self):
+    self.char.place = self.state.places["Dreamlands1"]
+    self.state.event_stack.append(gate_encounters.Dreamlands23(self.char))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.place.name, "Dreamlands2")
+
+  def testPass2(self):
+    self.char.place = self.state.places["Dreamlands2"]
+    self.state.event_stack.append(gate_encounters.Dreamlands23(self.char))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.place.name, "Lost")
+
+
+class Abyss26Test(GateEncounterTest):
+  def setUp(self):
+    super().setUp()
+    self.char.place = self.state.places["Abyss1"]
+    self.state.event_stack.append(gate_encounters.Abyss26(self.char))
+
+  def testFailOne(self):
+    side_effect = [3, 3] + [1]
+    self.assertEqual(self.char.stamina, 3)
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=side_effect)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.stamina, 2)
+
+
+  def testFailUnconscious(self):
+    side_effect = [3, 3] + [3]
+    self.assertEqual(self.char.stamina, 3)
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=side_effect)):
+      choice = self.resolve_to_choice(ItemLossChoice)
+    choice.resolve(self.state, "done")
+    self.resolve_until_done()
+    self.assertEqual(self.char.stamina, 1)
+    self.assertEqual(self.char.place.name, "Lost")
+
+  def testPassOne(self):
+    side_effect = [5, 3] + [1]
+    self.assertEqual(self.char.stamina, 3)
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=side_effect)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.stamina, 4)
+
+  def testPassMax(self):
+    side_effect = [5, 3] + [3]
+    self.assertEqual(self.char.stamina, 3)
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=side_effect)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.stamina, 5)
+
+
+
+class Other27Test(GateEncounterTest):
+  def setUp(self):
+    super().setUp()
+    self.state.event_stack.append(gate_encounters.Other27(self.char))
+    self.assertEqual(self.char.stamina, 3)
+    self.char.place = self.state.places["Dreamlands1"]
+
+  def testNoSuccesses(self):
+    side_effect = [3, 3, 3]
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=side_effect)):
+      choice = self.resolve_to_choice(ItemLossChoice)
+    choice.resolve(self.state, "done")
+    self.resolve_until_done()
+    self.assertEqual(self.char.stamina, 1)
+    self.assertEqual(self.char.place.name, "Lost")
+    self.assertEqual(self.char.clues, 0)
+
+  def testOneSuccess(self):
+    side_effect = [5, 3, 3]
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=side_effect)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.stamina, 1)
+    self.assertEqual(self.char.clues, 1)
+
+  def testTwoSuccesses(self):
+    side_effect = [5, 5, 3]
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=side_effect)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.stamina, 2)
+    self.assertEqual(self.char.clues, 2)
+
+  def testThreeSuccesses(self):
+    side_effect = [5, 5, 5]
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=side_effect)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.stamina, 3)
+    self.assertEqual(self.char.clues, 3)
+
+
+class PassOrLoseDiceTest(GateEncounterTest):
+  def setUp(self):
+    super().setUp()
+    self.char.place = self.state.places["Abyss1"]
+    self.state.event_stack.append(gate_encounters.Abyss30(self.char))
+    # Also Plateau31, SunkenCity36,
+
+  def testPass(self):
+    side_effect = [5, 5, 5]
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=side_effect)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.stamina, 3)
+
+  def testFail(self):
+    side_effect = [3] + [1]
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=side_effect)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.stamina, 2)
+
+  def testFailUnconscious(self):
+    side_effect = [3] + [3]
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=side_effect)):
+      loss = self.resolve_to_choice(ItemLossChoice)
+    loss.resolve(self.state, "done")
+    self.resolve_until_done()
+    self.assertEqual(self.char.stamina, 1)
+    self.assertEqual(self.char.place.name, "Lost")
+
+  def testModifier(self):
+    self.state.event_stack.pop()
+    self.state.event_stack.append(gate_encounters.Pluto43(self.char))
+    side_effect = [3, 3] + [3]
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=side_effect)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.stamina, 2)
+    self.assertEqual(self.char.sanity, 2)
+
+  def testModifierClipped(self):
+    self.state.event_stack.pop()
+    self.state.event_stack.append(gate_encounters.Pluto43(self.char))
+    side_effect = [3, 3] + [1]
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=side_effect)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.stamina, 3)
+
+  def testDoubleBarrelledDevoured(self):
+    self.state.event_stack.pop()
+    self.state.event_stack.append(gate_encounters.Pluto43(self.char))
+    side_effect = [3, 3] + [6]
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=side_effect)):
+      self.resolve_until_done()
+    self.assertTrue(self.char.gone)
+
+
+class SunkenCity41Test(GateEncounterTest):
+  def setUp(self):
+    super().setUp()
+    self.char.place = self.state.places["Sunken City1"]
+    self.state.event_stack.append(gate_encounters.SunkenCity41(self.char))
+
+  def testFail(self):
+    side_effect = [1]
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=side_effect)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.sanity, 2)
+
+  def testFailInsane(self):
+    side_effect = [3]
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=side_effect)):
+      loss = self.resolve_to_choice(ItemLossChoice)
+    loss.resolve(self.state, "done")
+    self.resolve_until_done()
+    self.assertEqual(self.char.sanity, 1)
+    self.assertEqual(self.char.place.name, "Lost")
+
+
+class Other47Test(GateEncounterTest):
+  def setUp(self):
+    super().setUp()
+    self.state.event_stack.append(gate_encounters.Other47(self.char))
+    self.assertEqual(self.char.sanity, 3)
+    self.char.place = self.state.places["Sunken City1"]
+
+  def testNoSuccesses(self):
+    side_effect = [3, 3, 3]
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=side_effect)):
+      choice = self.resolve_to_choice(ItemLossChoice)
+    choice.resolve(self.state, "done")
+    self.resolve_until_done()
+    self.assertEqual(self.char.sanity, 1)
+    self.assertEqual(self.char.place.name, "Lost")
+    self.assertEqual(self.char.clues, 0)
+
+  def testOneSuccess(self):
+    side_effect = [5, 3, 3]
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=side_effect)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.sanity, 1)
+    self.assertEqual(self.char.clues, 1)
+
+  def testTwoSuccesses(self):
+    side_effect = [5, 5, 3]
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=side_effect)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.sanity, 2)
+    self.assertEqual(self.char.clues, 2)
+
+  def testThreeSuccesses(self):
+    side_effect = [5, 5, 5]
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=side_effect)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.sanity, 3)
+    self.assertEqual(self.char.clues, 3)
+
+
+
 if __name__ == "__main__":
   unittest.main()
