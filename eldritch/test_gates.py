@@ -740,7 +740,6 @@ class Abyss26Test(GateEncounterTest):
       self.resolve_until_done()
     self.assertEqual(self.char.stamina, 2)
 
-
   def testFailUnconscious(self):
     side_effect = [3, 3] + [3]
     self.assertEqual(self.char.stamina, 3)
@@ -764,7 +763,6 @@ class Abyss26Test(GateEncounterTest):
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=side_effect)):
       self.resolve_until_done()
     self.assertEqual(self.char.stamina, 5)
-
 
 
 class Other27Test(GateEncounterTest):
@@ -919,7 +917,6 @@ class Other47Test(GateEncounterTest):
       self.resolve_until_done()
     self.assertEqual(self.char.sanity, 3)
     self.assertEqual(self.char.clues, 3)
-
 
 
 if __name__ == "__main__":

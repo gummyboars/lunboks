@@ -470,7 +470,7 @@ def Dreamlands23(char) -> events.Event:
   check = events.Check(char, "luck", -1)
   if char.place.name == "Dreamlands1":
     next = events.ForceMovement(char, "Dreamlands2")
-  else :
+  else:
     next = events.Return(char, char.place.info.name)
   return events.PassFail(char, check, next, events.Nothing())
 
@@ -513,15 +513,15 @@ def Abyss25(char) -> events.Event:
 
 def Dreamlands25(char) -> events.Event:
   check = events.Check(char, "speed", -2)
-  loss = events.Loss(char, {"stamina":2})
+  loss = events.Loss(char, {"stamina": 2})
   return events.PassFail(char, check, events.Nothing(), loss)
 
 
 def Other25(char) -> events.Event:
   check = events.Check(char, "luck", -2)
   chant = events.Sequence([
-    events.Gain(char, {"clues": 2}),
-    events.Draw(char, "spells", 1)
+      events.Gain(char, {"clues": 2}),
+      events.Draw(char, "spells", 1)
   ], char
   )
   return events.PassFail(char, check, chant, events.MonsterAppears(char))
@@ -557,8 +557,8 @@ def Abyss27(char) -> events.Event:
 def Plateau27(char) -> events.Event:
   check = events.Check(char, "fight", -1)
   victory = events.Sequence([
-    events.Gain(char, {"clues": 1}),
-    events.Draw(char, "unique", 1),
+      events.Gain(char, {"clues": 1}),
+      events.Draw(char, "unique", 1),
   ], char)
   defeat = events.Loss(char, {"sanity": 1, "stamina": 2})
   return events.PassFail(char, check, victory, defeat, min_successes=2)
@@ -591,8 +591,8 @@ def Plateau28(char) -> events.Event:
 def Dreamlands28(char) -> events.Event:
   check = events.Check(char, "sneak", -1)
   success = events.Sequence([
-    events.Gain(char, {"clues": 3}),
-    events.Return(char, char.place.info.name),
+      events.Gain(char, {"clues": 3}),
+      events.Return(char, char.place.info.name),
   ], char)
   return events.PassFail(char, check, success, events.Devoured(char))
 
@@ -637,8 +637,8 @@ def Other30(char) -> events.Event:
 def SunkenCity31(char) -> events.Event:
   check = events.Check(char, "luck", 0)
   pit = events.Sequence([
-    events.Loss(char, {"sanity": 1}),
-    events.Delayed(char),
+      events.Loss(char, {"sanity": 1}),
+      events.Delayed(char),
   ])
   return events.PassFail(char, check, events.Nothing(), pit)
 
@@ -688,8 +688,8 @@ def Other33(char) -> events.Event:
 def SunkenCity34(char) -> events.Event:
   check = events.Check(char, "fight", -2)
   shadow = events.Sequence([
-    events.Loss(char, {"stamina":2}),
-    events.Delayed(char)
+      events.Loss(char, {"stamina": 2}),
+      events.Delayed(char)
   ])
   return events.PassFail(char, check, events.Nothing(), shadow)
 
@@ -816,7 +816,7 @@ def SunkenCity41(char) -> events.Event:
   # Should I implement this as a luck -infinity PassOrLoseDice?
   die = events.DiceRoll(char, 1)
   seq = events.Sequence([
-    die, events.Loss(char, {"sanity": values.Calculation(die, "sum")})
+      die, events.Loss(char, {"sanity": values.Calculation(die, "sum")})
   ])
   return seq
 
@@ -869,8 +869,8 @@ def Other43(char) -> events.Event:
 def SunkenCity44(char) -> events.Event:
   check = events.Check(char, "will", 0)
   visage = events.Sequence([
-    events.Loss(char, {"stamina": 1}),
-    events.Delayed(char)
+      events.Loss(char, {"stamina": 1}),
+      events.Delayed(char)
   ])
   return events.PassFail(char, check, events.Nothing(), visage)
 
@@ -878,8 +878,8 @@ def SunkenCity44(char) -> events.Event:
 def Dreamlands44(char) -> events.Event:
   check = events.Check(char, "luck", 0)
   web = events.Sequence([
-    events.Loss(char, {"sanity": 2}),
-    events.Delayed(char)
+      events.Loss(char, {"sanity": 2}),
+      events.Delayed(char)
   ], char)
   return events.PassFail(char, check, events.Nothing(), web)
 
@@ -927,8 +927,8 @@ def Other46(char) -> events.Event:
 def Pluto47(char) -> events.Event:
   check = events.Check(char, "sneak", -2)
   space_mead = events.Sequence([
-    events.Gain(char, {"clues": 2}),
-    events.Return(char, char.place.info.name),
+      events.Gain(char, {"clues": 2}),
+      events.Return(char, char.place.info.name),
   ])
   return events.PassFail(char, check, space_mead, events.LostInTimeAndSpace(char))
 
@@ -971,8 +971,8 @@ def Pluto48(char) -> events.Event:
 
 def Other48(char) -> events.Event:
   knowledge = events.Sequence([
-    events.Draw(char, "spells", 1),
-    events.Loss(char, {"sanity": 1})
+      events.Draw(char, "spells", 1),
+      events.Loss(char, {"sanity": 1})
   ])
   return events.PassFail(char, events.Check(char, "lore", -2), events.Nothing(), knowledge)
 
