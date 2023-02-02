@@ -96,6 +96,26 @@ class FluxStabilizer(assets.Asset):
     super().__init__("Flux Stabilizer")
 
 
+class GuardianAngel(assets.Asset):
+  def __init__(self):
+    super().__init__("Guardian Angel")
+
+  def get_interrupt(self, event, owner, state):
+    if not isinstance(event, events.LostInTimeAndSpace) or event.character != owner:
+      return None
+
+    dest = events.ForceMovement(owner, "Church")
+
+    if len(state.event_stack) > 1:
+      parent = state.event_stack[-2]
+      if isinstance(parent, events.InsaneOrUnconscious) and parent.attribute == 'stamina':
+        dest = events.ForceMovement(owner, "Hospital")
+      elif isinstance(parent, events.InsaneOrUnconscious) and parent.attribute == 'sanity':
+        dest = events.ForceMovement(owner, "Asylum")
+
+    return events.Sequence([events.CancelEvent(event), dest], owner)
+
+
 class ExtraDraw(assets.Asset):
 
   def __init__(self, name, draw_type, deck, attribute="draw_count"):

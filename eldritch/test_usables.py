@@ -1306,6 +1306,37 @@ class PreventionTest(EventTest):
     self.assertEqual(self.char.sanity, 4)  # Spent on the enchant weapon cast.
 
 
+class GuardianTest(EventTest):
+  def setUp(self):
+    super().setUp()
+    self.char.possessions.append(abilities.GuardianAngel())
+    self.char.place = self.state.places["Dreamlands1"]
+    self.char.sanity = 3
+    self.char.stamina = 3
+
+  def testSanityLost(self):
+    self.state.event_stack.append(Loss(self.char, {"sanity": 5}))
+    choice = self.resolve_to_choice(ItemLossChoice)
+    choice.resolve(self.state, "done")
+    self.resolve_until_done()
+    self.assertEqual(self.char.place.name, "Asylum")
+    self.assertIsNone(self.char.delayed_until)
+
+  def testStaminaLost(self):
+    self.state.event_stack.append(Loss(self.char, {"stamina": 5}))
+    choice = self.resolve_to_choice(ItemLossChoice)
+    choice.resolve(self.state, "done")
+    self.resolve_until_done()
+    self.assertEqual(self.char.place.name, "Hospital")
+    self.assertIsNone(self.char.delayed_until)
+
+  def testGenericLost(self):
+    self.state.event_stack.append(LostInTimeAndSpace(self.char))
+    self.resolve_until_done()
+    self.assertEqual(self.char.place.name, "Church")
+    self.assertIsNone(self.char.delayed_until)
+
+
 class HunchesTest(EventTest):
 
   def testAddsBonusDieToAnyCheck(self):
