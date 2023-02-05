@@ -108,9 +108,9 @@ class GuardianAngel(assets.Asset):
 
     if len(state.event_stack) > 1:
       parent = state.event_stack[-2]
-      if isinstance(parent, events.InsaneOrUnconscious) and parent.attribute == 'stamina':
+      if isinstance(parent, events.InsaneOrUnconscious) and parent.attribute == "stamina":
         dest = events.ForceMovement(owner, "Hospital")
-      elif isinstance(parent, events.InsaneOrUnconscious) and parent.attribute == 'sanity':
+      elif isinstance(parent, events.InsaneOrUnconscious) and parent.attribute == "sanity":
         dest = events.ForceMovement(owner, "Asylum")
 
     return events.Sequence([events.CancelEvent(event), dest], owner)
@@ -277,6 +277,6 @@ def CreateSpecials():
   abilities = [
       FluxStabilizer(), Studious(), ShrewdDealer(), HometownAdvantage(), MagicalGift(),
       PsychicSensitivity(), Archaeology(), StrongMind(), StrongBody(), TrustFund(), Hunches(),
-      Physician(), Psychology(), Research(),
+      Physician(), Psychology(), Research(), GuardianAngel(),
   ]
   return {ability.name: ability for ability in abilities}
