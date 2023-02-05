@@ -444,7 +444,7 @@ class EventMonster(Monster):
 
   def __init__(self, name, rating, pass_event, fail_event, toughness=1, attributes=None):
     super().__init__(
-        name, "normal", "moon",  dict(evade=0, **rating),
+        name, "normal", "moon",  {"evade": 0, **rating},
         {"combat": 0, }, toughness, attributes or set()
     )
     self.pass_event = pass_event
