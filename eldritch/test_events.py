@@ -88,6 +88,7 @@ class EventTest(unittest.TestCase):
       not_finished["stack"] = self.state.event_stack
     self.assertFalse(not_finished)
 
+  # TODO: T=TypeVar("T", bound=events.ChoiceEvent")
   def resolve_to_choice(self, event_class) -> events.ChoiceEvent:
     self.resolve_loop()
     self.assertTrue(self.state.event_stack)

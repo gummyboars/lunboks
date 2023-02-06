@@ -360,7 +360,7 @@ def WitchHouse7(char):
   check = events.Check(char, "will", -2)
   spell = events.Draw(char, "spells", 1)
   lose_count = values.Calculation(
-      values.ItemDeckCount(char, {"common", "unique", "spells", "tradables"}), None,
+      values.ItemCount(char), None,
       operator.floordiv, 2,
   )
   loss = events.LoseItems(char, lose_count, "Which items are you missing when you wake up?")
@@ -637,7 +637,7 @@ def Church3(char):
   half_dollar_ceil = values.Calculation(dollars_up, None, operator.floordiv, 2)  # ceil(dollars/2)
   money = events.Loss(char, {"dollars": half_dollar_ceil})
   items_up = values.Calculation(
-      values.ItemDeckCount(char, {"common", "unique", "spells", "tradables"}), None,
+      values.ItemCount(char), None,
       operator.add, 1,
   )
   half_items_ceil = values.Calculation(items_up, None, operator.floordiv, 2)

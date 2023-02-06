@@ -76,7 +76,7 @@ def Abyss3(char) -> events.Event:
 def Pluto3(char) -> events.Event:
   check = events.Check(char, "sneak", -1)
   lose_count = values.Calculation(
-      values.ItemDeckCount(char, {"common", "unique", "spells", "tradables"}), None,
+      values.ItemCount(char), None,
       operator.floordiv, 2,
   )
   fail = events.Sequence([
@@ -130,7 +130,10 @@ def Abyss5(char) -> events.Event:
 def Other5(char) -> events.Event:
   check = events.Check(char, "luck", -1)
   gain = events.Gain(char, {"clues": values.Calculation(check, "successes")})
-  return events.Sequence([check, gain], char)
+  gain_cond = events.PassFail(
+      char, values.Calculation(check, "successes"), gain, events.Nothing()
+  )
+  return events.Sequence([check, gain_cond], char)
 
 
 def Dreamlands6(char) -> events.Event:
@@ -189,7 +192,7 @@ def Other8(char) -> events.Event:
 def Dreamlands9(char) -> events.Event:
   check = events.Check(char, "sneak", 0)
   lose_item_count = values.Calculation(
-      values.ItemDeckCount(char, {"common", "unique", "spells", "tradables"}), None,
+      values.ItemCount(char), None,
       values.ceildiv, 2,
   )
   lose_money_count = values.Calculation(char, "dollars", values.ceildiv, 2)
@@ -255,13 +258,10 @@ def Pluto12(char) -> events.Event:
   choice = events.BinaryChoice(
       char, "Lose spells or sanity?",
       "Lose 2 spells", "Lose 2 sanity",
-      spell_loss, san_loss
+      spell_loss, san_loss,
+      prereq=prereq
   )
-  # Enough spells to lose? If not, must lose sanity
-  return events.PassFail(
-      char, check, events.Nothing(),
-      events.PassFail(char, prereq, choice, san_loss)
-  )
+  return events.PassFail(char, check, events.Nothing(), choice)
 
 
 def GreatHall12(char) -> events.Event:
@@ -297,7 +297,7 @@ def Plateau13(char) -> events.Event:
 
 def Other13(char) -> events.Event:
   check = events.Check(char, "luck", -1)
-  return events.PassFail(char, check, events.Gain(char, {"clues": 1}), events.Nothing())
+  return events.PassFail(char, check, events.Gain(char, {"clues": 2}), events.Nothing())
 
 
 def City14(char) -> events.Event:
@@ -329,15 +329,16 @@ def Other14(char) -> events.Event:
 def City15(char) -> events.Event:
   check = events.Check(char, "lore", -2)
   spells = events.Draw(char, "spells", 2)
-  return events.PassFail(char, check, spells, events.Nothing())
+  return events.PassFail(char, check, spells, events.Nothing(), min_successes=2)
 
 
 def GreatHall15(char) -> events.Event:
   check = events.Check(char, "lore", 2)
-  return events.Sequence([
-      check,
-      events.Gain(char, {"clues": values.Calculation(check, "successes")}),
-  ])
+  gain = events.Gain(char, {"clues": values.Calculation(check, "successes")})
+  gain_cond = events.PassFail(
+      char, values.Calculation(check, "successes"), gain, events.Nothing()
+  )
+  return events.Sequence([check, gain_cond], char)
 
 
 def Other15(char) -> events.Event:

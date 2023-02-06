@@ -8,16 +8,16 @@ from unittest import mock
 from typing import cast
 
 # Hack to allow the test to be run directly instead of invoking python from the base dir.
-import eldritch.places
-
 if os.path.abspath(sys.path[0]) == os.path.dirname(os.path.abspath(__file__)):
   sys.path[0] = os.path.dirname(sys.path[0])
 
+from game import InvalidMove
 from eldritch import abilities
 from eldritch import gate_encounters
 from eldritch import events
 from eldritch.events import *
 from eldritch import items
+from eldritch import places
 from eldritch.test_events import EventTest
 
 
@@ -167,6 +167,31 @@ class Abyss4Test(GateEncounterTest):
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=side_effect)):
       self.resolve_until_done()
     self.assertEqual(len(self.char.possessions), 0)
+
+
+class Other5Test(GateEncounterTest):
+  def setUp(self):
+    super().setUp()
+    self.char.place = self.state.places["Great Hall1"]
+    self.state.event_stack.append(gate_encounters.Other5(self.char))
+
+  def testNoSuccesses(self):
+    side_effect = [3, 3]
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=side_effect)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.clues, 0)
+
+  def testOneSuccess(self):
+    side_effect = [5, 3]
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=side_effect)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.clues, 1)
+
+  def testTwoSuccess(self):
+    side_effect = [5, 5]
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=side_effect)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.clues, 2)
 
 
 class Dreamlands6Test(GateEncounterTest):
@@ -367,7 +392,12 @@ class Pluto12Test(GateEncounterTest):
 
   def testOnlyOneSpell(self):
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
-      self.resolve_until_done()
+      choice = self.resolve_to_choice(MultipleChoice)
+      self.assertListEqual(choice.choices, ["Lose 2 spells", "Lose 2 sanity"])
+    with self.assertRaisesRegex(InvalidMove, "do not have at least 2 spell"):
+      choice.resolve(self.state, "Lose 2 spells")
+    choice.resolve(self.state, "Lose 2 sanity")
+    self.resolve_until_done()
     self.assertEqual(self.char.sanity, 1)
     self.assertIn(self.spell1, self.char.possessions)
 
@@ -412,7 +442,7 @@ class Gate13Test(GateEncounterTest):
       self.resolve_until_done()
 
   def testCityPass(self):
-    diner: eldritch.places.Location = self.state.places["Diner"]
+    diner: places.Location = self.state.places["Diner"]
     diner.gate = next(gate for gate in self.state.gates if gate.name == "City")
     self.passCity()
     self.assertEqual(self.char.place.name, "Diner")
