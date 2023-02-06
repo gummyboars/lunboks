@@ -476,7 +476,7 @@ class Nun(Character):
     super().__init__("Nun", 3, 7, 4, 4, 3, 4, 4, 6, 1, "Church")
 
   def abilities(self):
-    return []  # TODO: Angel
+    return ["Guardian Angel"]
 
   def initial_attributes(self):
     return {"bless_curse": 1}
