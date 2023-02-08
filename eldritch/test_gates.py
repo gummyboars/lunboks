@@ -5,7 +5,6 @@ import os
 import sys
 import unittest
 from unittest import mock
-from typing import cast
 
 # Hack to allow the test to be run directly instead of invoking python from the base dir.
 if os.path.abspath(sys.path[0]) == os.path.dirname(os.path.abspath(__file__)):
@@ -104,7 +103,6 @@ class Gate3Test(GateEncounterTest):
     ])
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=4)):
       choice = self.resolve_to_choice(ItemLossChoice)
-      choice = cast(ItemLossChoice, choice)
     self.assertEqual(choice.count.value(self.state), 1)
     self.assertListEqual(
         choice.choices,
@@ -124,7 +122,6 @@ class Gate3Test(GateEncounterTest):
     ])
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=4)):
       choice = self.resolve_to_choice(ItemLossChoice)
-      choice = cast(ItemLossChoice, choice)
     self.assertEqual(choice.count.value(self.state), 2)
     self.assertListEqual(
         choice.choices,
@@ -241,7 +238,6 @@ class Dreamlands9Test(GateEncounterTest):
     self.char.possessions.append(self.tommy_gun)
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
       choice = self.resolve_to_choice(ItemLossChoice)
-      choice = cast(ItemLossChoice, choice)
     self.assertListEqual(choice.choices, ["Tommy Gun0"])
     self.assertEqual(choice.count.value(self.state), 1)
     choice.resolve(self.state, "Tommy Gun0")
@@ -254,7 +250,6 @@ class Dreamlands9Test(GateEncounterTest):
     self.char.possessions.append(self.knife)
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
       choice = self.resolve_to_choice(ItemLossChoice)
-      choice = cast(ItemLossChoice, choice)
     self.assertListEqual(choice.choices, ["Tommy Gun0", "Enchanted Knife0"])
     self.assertEqual(choice.count.value(self.state), 1)
     choice.resolve(self.state, "Tommy Gun0")
@@ -266,7 +261,6 @@ class Dreamlands9Test(GateEncounterTest):
     self.char.dollars = 1
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
       choice = self.resolve_to_choice(ItemLossChoice)
-      choice = cast(ItemLossChoice, choice)
     self.assertEqual(choice.count.value(self.state), 0)
     choice.resolve(self.state, "done")
     self.resolve_until_done()
@@ -276,7 +270,6 @@ class Dreamlands9Test(GateEncounterTest):
     self.char.dollars = 2
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
       choice = self.resolve_to_choice(ItemLossChoice)
-      choice = cast(ItemLossChoice, choice)
     self.assertEqual(choice.count.value(self.state), 0)
     choice.resolve(self.state, "done")
     self.resolve_until_done()
@@ -288,7 +281,6 @@ class Dreamlands9Test(GateEncounterTest):
     self.char.possessions.append(self.knife)
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
       choice = self.resolve_to_choice(ItemLossChoice)
-      choice = cast(ItemLossChoice, choice)
     self.assertListEqual(choice.choices, ["Tommy Gun0", "Enchanted Knife0"])
     self.assertEqual(choice.count.value(self.state), 1)
     choice.resolve(self.state, "Tommy Gun0")

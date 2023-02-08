@@ -3,13 +3,15 @@ import collections
 import math
 import operator
 from random import SystemRandom
-from typing import List, Dict, Optional, Union, NoReturn
+from typing import List, Dict, Optional, Union, NoReturn, TYPE_CHECKING
 
 from eldritch import places
 from eldritch import values
 
 from game import InvalidMove, InvalidInput
 
+if TYPE_CHECKING:
+  from eldritch.eldritch import GameState
 
 random = SystemRandom()
 
@@ -103,7 +105,7 @@ class ChoiceEvent(Event):
 
   @abc.abstractmethod
   def resolve(
-      self, state, choice=None
+      self, state: "GameState", choice=None
   ) -> NoReturn:  # pylint: disable=arguments-differ
     raise NotImplementedError
 

@@ -5,6 +5,7 @@ import os
 import sys
 import unittest
 from unittest import mock
+from typing import TypeVar, Type
 
 # Hack to allow the test to be run directly instead of invoking python from the base dir.
 if os.path.abspath(sys.path[0]) == os.path.dirname(os.path.abspath(__file__)):
@@ -23,6 +24,9 @@ from eldritch import mythos
 from eldritch import places
 from eldritch import values
 from eldritch import monsters
+
+
+ChoiceT = TypeVar("ChoiceT", bound=events.ChoiceEvent)
 
 
 class NoMythos(mythos.GlobalEffect):
@@ -88,8 +92,7 @@ class EventTest(unittest.TestCase):
       not_finished["stack"] = self.state.event_stack
     self.assertFalse(not_finished)
 
-  # TODO: T=TypeVar("T", bound=events.ChoiceEvent")
-  def resolve_to_choice(self, event_class) -> events.ChoiceEvent:
+  def resolve_to_choice(self, event_class: Type[ChoiceT]) -> ChoiceT:
     self.resolve_loop()
     self.assertTrue(self.state.event_stack)
     self.assertIsInstance(self.state.event_stack[-1], event_class)
