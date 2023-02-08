@@ -5,7 +5,6 @@ import os
 import sys
 import unittest
 from unittest import mock
-from typing import cast
 
 # Hack to allow the test to be run directly instead of invoking python from the base dir.
 if os.path.abspath(sys.path[0]) == os.path.dirname(os.path.abspath(__file__)):
