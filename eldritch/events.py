@@ -1715,17 +1715,17 @@ class Encounter(Event):
     if self.character.lodge_membership and self.location_name == "Lodge":
       location_name = "Sanctum"
 
-    if len(self.draw.cards) == 1 and state.test_mode:  # TODO: test this
-      self.encounter = self.draw.cards[0].encounter_event(self.character, location_name)
-      state.event_stack.append(self.encounter)
-      return
-
     encounters = [
         card.encounter_event(self.character, location_name) for card in self.draw.cards]
     if any(isinstance(enc, Unimplemented) for enc in encounters):
       # TODO: Implement all the encounters, but this is a stopgap to let us play
       self.draw = None
       state.event_stack.append(Nothing())
+      return
+
+    if len(self.draw.cards) == 1 and state.test_mode:  # TODO: test this
+      self.encounter = self.draw.cards[0].encounter_event(self.character, location_name)
+      state.event_stack.append(self.encounter)
       return
 
     choice = CardChoice(
@@ -1810,16 +1810,19 @@ class GateEncounter(Event):
       state.event_stack.append(self.draw)
       return
 
+    encounters = [card.encounter_event(self.character, world_name) for card in self.cards]
+    if any(isinstance(enc, Unimplemented) for enc in encounters):
+      self.draw = None
+      state.gate_cards.extend(self.cards)
+      self.cards = []
+      state.event_stack.append(Nothing())
+      return
+
     if len(self.cards) == 1 and state.test_mode:  # TODO: test this
       self.encounter = self.cards[0].encounter_event(self.character, world_name)
       state.event_stack.append(self.encounter)
       return
 
-    encounters = [card.encounter_event(self.character, world_name) for card in self.cards]
-    if any(isinstance(enc, Unimplemented) for enc in encounters):
-      self.draw = None
-      state.event_stack.append(Nothing())
-      return
     choice = CardChoice(self.character, "Choose an Encounter", [card.name for card in self.cards])
     cond = Conditional(self.character, choice, "choice_index", dict(enumerate(encounters)))
     self.encounter = Sequence([choice, cond], self.character)

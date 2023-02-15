@@ -370,12 +370,7 @@ def WitchHouse7(char):
 def Cave1(char):
   check = events.Check(char, "luck", 0)
   san_loss = events.Loss(char, {"sanity": 1})
-  monster = events.Sequence(
-      [
-          san_loss,
-          events.MonsterAppears(char),
-      ], char
-  )
+  monster = events.Sequence([san_loss, events.MonsterAppears(char)], char)
   draw = events.Draw(char, "common", 1)
   cond = events.Conditional(char, check, "successes", {0: monster, 1: san_loss, 2: draw})
   return events.Sequence([check, cond], char)

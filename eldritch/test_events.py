@@ -742,6 +742,19 @@ class EncounterPhaseTest(EventTest):
         [card.name for card in self.state.places["Rivertown"].encounters], orig_order,
     )
 
+  def testEncounterInLocationIsUnimplemented(self):
+    self.char.place = self.state.places["Cave"]
+    unimp_enc = mock.Mock(return_value=events.Unimplemented())
+    encounter = gate_encounters.Other29
+    self.state.places["Rivertown"].encounters = [
+        encounters.EncounterCard("Rivertown7", {"Cave": unimp_enc}),
+        encounters.EncounterCard("Rivertown6", {"Cave": encounter}),
+    ]
+    self.resolve_until_done()
+    self.assertEqual(self.char.stamina, 4)
+    self.assertTrue(unimp_enc.called)
+    self.assertEqual(len(self.state.places["Rivertown"].encounters), 2)
+
   def testEncounterInStreet(self):
     self.char.place = self.state.places["Rivertown"]
     self.resolve_until_done()
@@ -828,6 +841,20 @@ class OtherWoldPhaseTest(EventTest):
     self.char.place = self.state.places["Abyss1"]
     self.resolve_until_done()
     self.assertEqual(self.char.stamina, 4)
+
+  def testEncounterInWorldIsUnimplemented(self):
+    unimp_enc = mock.Mock(return_value=events.Unimplemented())
+    encounter = gate_encounters.Other29
+    self.state.gate_cards.extendleft([
+        gate_encounters.GateCard("FakeGate", {"red"}, {"Other": encounter}),
+        gate_encounters.GateCard("UnimplementedGate", {"red"}, {"Other": unimp_enc}),
+    ])
+    self.char.place = self.state.places["Abyss1"]
+    n_gate_cards = len(self.state.gate_cards)
+    self.resolve_until_done()
+    self.assertEqual(self.char.stamina, 4)
+    self.assertTrue(unimp_enc.called)
+    self.assertEqual(len(self.state.gate_cards), n_gate_cards)
 
   def testCancelOtherWorldEncounter(self):
     self.char.possessions.append(Canceller(GateEncounter))
