@@ -21,6 +21,11 @@ class City:
   occupants: List[int] = field(compare=False, default_factory=list)
   connections: Dict[str, int] = field(compare=False, default_factory=dict)
 
+  @classmethod
+  def parse_json(cls, data):
+    data["color"] = Color(data["color"])
+    return cls(**data)
+
 
 def connect(cities, name1, name2, cost):
   cities[name1].connections[name2] = cost

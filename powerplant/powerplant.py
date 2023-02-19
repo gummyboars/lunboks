@@ -67,6 +67,11 @@ class Player:
   plants: List[plantinfo.Plant] = field(default_factory=list)
   money: int = 50
 
+  @classmethod
+  def parse_json(cls, data):
+    data["plants"] = [plantinfo.Plant.parse_json(p) for p in data["plants"]]
+    return cls(**data)
+
 
 class TurnPhase(str, Enum):
   AUCTION = "auction"
@@ -139,6 +144,26 @@ class GameState:
       else:
         data[attr] = val
     return data
+
+  @classmethod
+  def parse_json(cls, gamedata):
+    players = [Player.parse_json(playerdata) for playerdata in gamedata["players"]]
+    state = cls(players, "Germany", "old")
+    state.cities = {name: cities.City.parse_json(data) for name, data in gamedata["cities"].items()}
+    state.plants = [plantinfo.Plant.parse_json(data) for data in gamedata["plants"]]
+    state.resources = {materials.Resource(rsrc): n for rsrc, n in gamedata["resources"].items()}
+    state.colors = {cities.Color(color) for color in gamedata["colors"]}
+    state.auction_passed = set(gamedata["auction_passed"])
+    state.market = [plantinfo.Plant.parse_json(data) for data in gamedata["market"]]
+    state.pending_buy = {materials.Resource(rsrc): n for rsrc, n in gamedata["pending_buy"].items()}
+
+    handled = {
+        "players", "cities", "plants", "resources", "colors", "auction_passed", "market",
+        "pending_buy",
+    }
+    for attr in state.__dict__.keys() - handled:
+      setattr(state, attr, gamedata[attr])
+    return state
 
   def for_player(self, player_idx):
     data = self.json_repr()

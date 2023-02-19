@@ -18,6 +18,12 @@ class Plant:
       return True
     return self.resource is Resource.HYBRID and resource in [Resource.COAL, Resource.OIL]
 
+  @classmethod
+  def parse_json(cls, data):
+    data["resource"] = Resource(data["resource"])
+    data["storage"] = {Resource(rsrc): count for rsrc, count in data["storage"].items()}
+    return cls(**data)
+
 
 def OldPlants():
   return [
