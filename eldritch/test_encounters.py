@@ -359,6 +359,30 @@ class RoadhouseTest(EncounterTest):
     self.assertEqual(self.char.stamina, 2)
     self.assertEqual(self.char.place.name, "Easttown")
 
+  def testRoadhouse4(self):
+    self.state.common.extend([
+        items.Cross(0),
+        items.Derringer18(0),
+        items.Automatic45(0)
+    ])
+    self.char.dollars = 10
+    self.state.event_stack.append(encounters.Roadhouse4(self.char))
+    choice = self.resolve_to_choice(MultipleChoice)
+    self.assertListEqual(
+        choice.choices, ["Cross", ".18 Derringer", ".45 Automatic", "Nothing"]
+    )
+    self.spend("dollars", 4, choice)
+    choice.resolve(self.state, ".18 Derringer")
+    more = self.resolve_to_choice(MultipleChoice)
+    self.assertListEqual(more.choices, ["Cross",  ".45 Automatic", "Nothing"])
+    self.spend("dollars", 6, more)
+    more.resolve(self.state, ".45 Automatic")
+    self.resolve_to_choice(MultipleChoice)
+
+  def testRoadhouse5(self):
+    self.state.event_stack.append(encounters.Roadhouse5(self.char))
+    self.resolve_to_choice(FightOrEvadeChoice)
+
   def testRoadhouse6Pass(self):
     self.state.event_stack.append(encounters.Roadhouse6(self.char))
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
@@ -926,47 +950,47 @@ class LodgeTest(EncounterTest):
 
   def testSanctum6(self):
     self.state.event_stack.append(encounters.Sanctum6(self.char))
-    # TODO: A monster appears
+    self.resolve_to_choice(FightOrEvadeChoice)
 
-  def testSanctum7Poor(self):
-    self.state.event_stack.append(encounters.Sanctum7(self.char))
-    choice = self.resolve_to_choice(SpendChoice)
-    with self.assertRaisesRegex(InvalidMove, "clues than you have"):
-      self.spend("clues", 1, choice)
-    with self.assertRaisesRegex(InvalidMove, "(2 clues|1 sanity), (2 clues|1 sanity)"):
-      choice.resolve(self.state, "Yes")
-    choice.resolve(self.state, "No")
-    self.resolve_until_done()
-
-  def testSanctum7Decline(self):
-    self.state.event_stack.append(encounters.Sanctum7(self.char))
-    self.char.clues = 2
-    choice = self.resolve_to_choice(SpendChoice)
-    choice.resolve(self.state, "No")
-    self.resolve_until_done()
-
-  def testSanctum7Fail(self):
-    self.state.event_stack.append(encounters.Sanctum7(self.char))
-    self.char.clues = 2
-    choice = self.resolve_to_choice(SpendChoice)
-    self.spend("clues", 2, choice)
-    self.spend("sanity", 1, choice)
-    choice.resolve(self.state, "Yes")
-    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=4)):
-      self.resolve_until_done()
-    self.assertEqual(self.char.clues, 0)
-    self.assertEqual(self.char.sanity, 2)
-
-  def testSanctum7Pass(self):
-    self.state.event_stack.append(encounters.Sanctum7(self.char))
-    self.char.clues = 2
-    choice = self.resolve_to_choice(SpendChoice)
-    self.spend("clues", 2, choice)
-    self.spend("sanity", 1, choice)
-    choice.resolve(self.state, "Yes")
-    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
-      # TODO: Choose gate to close
-      self.resolve_until_done()
+  # def testSanctum7Poor(self):
+  #   self.state.event_stack.append(encounters.Sanctum7(self.char))
+  #   choice = self.resolve_to_choice(SpendChoice)
+  #   with self.assertRaisesRegex(InvalidMove, "clues than you have"):
+  #     self.spend("clues", 1, choice)
+  #   with self.assertRaisesRegex(InvalidMove, "(2 clues|1 sanity), (2 clues|1 sanity)"):
+  #     choice.resolve(self.state, "Yes")
+  #   choice.resolve(self.state, "No")
+  #   self.resolve_until_done()
+  #
+  # def testSanctum7Decline(self):
+  #   self.state.event_stack.append(encounters.Sanctum7(self.char))
+  #   self.char.clues = 2
+  #   choice = self.resolve_to_choice(SpendChoice)
+  #   choice.resolve(self.state, "No")
+  #   self.resolve_until_done()
+  #
+  # def testSanctum7Fail(self):
+  #   self.state.event_stack.append(encounters.Sanctum7(self.char))
+  #   self.char.clues = 2
+  #   choice = self.resolve_to_choice(SpendChoice)
+  #   self.spend("clues", 2, choice)
+  #   self.spend("sanity", 1, choice)
+  #   choice.resolve(self.state, "Yes")
+  #   with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=4)):
+  #     self.resolve_until_done()
+  #   self.assertEqual(self.char.clues, 0)
+  #   self.assertEqual(self.char.sanity, 2)
+  #
+  # def testSanctum7Pass(self):
+  #   self.state.event_stack.append(encounters.Sanctum7(self.char))
+  #   self.char.clues = 2
+  #   choice = self.resolve_to_choice(SpendChoice)
+  #   self.spend("clues", 2, choice)
+  #   self.spend("sanity", 1, choice)
+  #   choice.resolve(self.state, "Yes")
+  #   with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+  #     # TODO: Choose gate to close
+  #     self.resolve_until_done()
 
 
 class WitchHouseTest(EncounterTest):
@@ -1484,6 +1508,42 @@ class HouseTest(EncounterTest):
       self.resolve_until_done()
     self.assertEqual(self.char.delayed_until, self.state.turn_number+2)
 
+  def testHouse4YesPassCommon(self):
+    self.char.dollars = 10
+    self.state.common.appendleft(items.Automatic45(0))
+    self.state.unique.appendleft(items.ObsidianStatue(0))
+    self.state.event_stack.append(encounters.House4(self.char))
+    choice = self.resolve_to_choice(MultipleChoice)
+    choice.resolve(self.state, "Yes")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      choice = self.resolve_to_choice(MultipleChoice)
+    self.assertListEqual(choice.choices, ["Common", "Unique"])
+    choice.resolve(self.state, "Common")
+    purchase = self.resolve_to_choice(MultipleChoice)
+    self.assertListEqual(purchase.choices, [".45 Automatic", "Nothing"])
+    self.spend("dollars", 5, purchase)
+    purchase.resolve(self.state, ".45 Automatic")
+    self.resolve_until_done()
+    self.assertEqual(self.char.dollars, 5)
+
+  def testHouse4YesPassUnique(self):
+    self.char.dollars = 10
+    self.state.common.appendleft(items.Automatic45(0))
+    self.state.unique.appendleft(items.ObsidianStatue(0))
+    self.state.event_stack.append(encounters.House4(self.char))
+    choice = self.resolve_to_choice(MultipleChoice)
+    choice.resolve(self.state, "Yes")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      choice = self.resolve_to_choice(MultipleChoice)
+    self.assertListEqual(choice.choices, ["Common", "Unique"])
+    choice.resolve(self.state, "Unique")
+    purchase = self.resolve_to_choice(MultipleChoice)
+    self.assertListEqual(purchase.choices, ["Obsidian Statue", "Nothing"])
+    self.spend("dollars", 4, purchase)
+    purchase.resolve(self.state, "Obsidian Statue")
+    self.resolve_until_done()
+    self.assertEqual(self.char.dollars, 6)
+
   def testHouse5(self):
     self.state.event_stack.append(encounters.House5(self.char))
     self.resolve_until_done()
@@ -1900,6 +1960,15 @@ class LibraryTest(EncounterTest):
     self.assertEqual(len(self.char.possessions), 0)
     self.assertEqual(len(self.state.unique), 2)
 
+  def testLibrary1Pass(self):
+    tome = items.Tome("DummyTome", 0, "unique", 100, 1)
+    self.state.event_stack.append(encounters.Library1(self.char))
+    self.state.unique.extend([items.HolyWater(0), tome, items.Cross(0)])
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+    self.assertListEqual(self.char.possessions, [tome])
+    self.assertEqual(len(self.state.unique), 2)
+
   def testLibrary2Fail(self):
     self.state.event_stack.append(encounters.Library2(self.char))
     self.state.unique.extend([items.HolyWater(0), items.Cross(0)])
@@ -2186,34 +2255,34 @@ class ScienceTest(EncounterTest):
     self.assertEqual(self.char.stamina, 4)
     self.assertEqual(self.char.sanity, 3)
 
-  def testScience7NoHelp(self):
-    self.state.event_stack.append(encounters.Science7(self.char))
-    choice = self.resolve_to_choice(MultipleChoice)
-    choice.resolve(self.state, "No")
-    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=1)):
-      self.resolve_until_done()
-    self.assertEqual(self.char.stamina, 3)
-    self.assertEqual(self.char.place.name, "Science")
-
-  def testScience7FailConcious(self):
-    self.state.event_stack.append(encounters.Science7(self.char))
-    choice = self.resolve_to_choice(MultipleChoice)
-    choice.resolve(self.state, "Yes")
-    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=1)):
-      self.resolve_until_done()
-    self.assertEqual(self.char.stamina, 2)
-    self.assertEqual(self.char.place.name, "Hospital")
-
-  def testScience7FailUnconcious(self):
-    self.state.event_stack.append(encounters.Science7(self.char))
-    choice = self.resolve_to_choice(MultipleChoice)
-    choice.resolve(self.state, "Yes")
-    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=4)):
-      choice = self.resolve_to_choice(ItemLossChoice)
-    self.choose_items(choice, [])
-    self.resolve_until_done()
-    self.assertEqual(self.char.stamina, 1)
-    self.assertEqual(self.char.place.name, "Hospital")
+  # def testScience7NoHelp(self):
+  #   self.state.event_stack.append(encounters.Science7(self.char))
+  #   choice = self.resolve_to_choice(MultipleChoice)
+  #   choice.resolve(self.state, "No")
+  #   with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=1)):
+  #     self.resolve_until_done()
+  #   self.assertEqual(self.char.stamina, 3)
+  #   self.assertEqual(self.char.place.name, "Science")
+  #
+  # def testScience7FailConscious(self):
+  #   self.state.event_stack.append(encounters.Science7(self.char))
+  #   choice = self.resolve_to_choice(MultipleChoice)
+  #   choice.resolve(self.state, "Yes")
+  #   with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=1)):
+  #     self.resolve_until_done()
+  #   self.assertEqual(self.char.stamina, 2)
+  #   self.assertEqual(self.char.place.name, "Hospital")
+  #
+  # def testScience7FailUnconscious(self):
+  #   self.state.event_stack.append(encounters.Science7(self.char))
+  #   choice = self.resolve_to_choice(MultipleChoice)
+  #   choice.resolve(self.state, "Yes")
+  #   with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=4)):
+  #     choice = self.resolve_to_choice(ItemLossChoice)
+  #   self.choose_items(choice, [])
+  #   self.resolve_until_done()
+  #   self.assertEqual(self.char.stamina, 1)
+  #   self.assertEqual(self.char.place.name, "Hospital")
 
 
 class AsylumTest(EncounterTest):
@@ -2709,6 +2778,22 @@ class SquareTest(EncounterTest):
     self.assertEqual(self.char.stamina, 2)
     self.assertEqual(self.char.bless_curse, -1)
 
+  def testSquare6InteractPass(self):
+    self.state.event_stack.append(encounters.Square6(self.char))
+    self.state.unique.append(items.ObsidianStatue(0))
+    self.char.dollars = 3
+    choice = self.resolve_to_choice(MultipleChoice)
+    choice.resolve(self.state, "Yes")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      shopping = self.resolve_to_choice(MultipleChoice)
+    self.assertListEqual(shopping.choices, ["Obsidian Statue", "Nothing"])
+    self.spend("dollars", 3, shopping)
+    shopping.resolve(self.state, "Obsidian Statue")
+    self.resolve_until_done()
+    self.assertEqual(self.char.dollars, 0)
+    self.assertEqual(self.char.stamina, 3)
+    self.assertEqual(self.char.bless_curse, 0)
+
   def testSquare7Pass(self):
     self.state.event_stack.append(encounters.Square7(self.char))
     # we know these aren't actually spells
@@ -3041,6 +3126,18 @@ class TrainTest(EncounterTest):
 
     self.assertEqual(self.char.stamina, 4)
     self.assertEqual(self.char.sanity, 4)
+
+  def testTrain4(self):
+    self.char.dollars = 6
+    self.state.event_stack.append(encounters.Train4(self.char))
+    choice = self.resolve_to_choice(MultipleChoice)
+    self.assertListEqual(choice.choices, ["Dynamite", "Nothing"])
+    self.spend("dollars", 5, choice)
+    choice.resolve(self.state, "Dynamite")
+    self.resolve_until_done()
+    self.assertEqual(len(self.char.possessions), 1)
+    self.assertEqual(self.char.possessions[0].name, "Dynamite")
+    self.assertEqual(self.char.dollars, 1)
 
   def testTrain5Move(self):
     self.state.event_stack.append(encounters.Train5(self.char))
@@ -4173,17 +4270,18 @@ class WoodsTest(EncounterTest):
 
 
 class CaveTest(EncounterTest):
+  def setUp(self):
+    super().setUp()
+    self.char.place = self.state.places["Cave"]
 
-  # TODO: a monster appears
-  #  def testCave1Zero(self):
-  #    self.char.lore_luck_slider = 3
-  #    self.state.common.append(items.Food(0))
-  #    self.state.event_stack.append(encounters.Cave1(self.char))
-  #    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=2)):
-  #      raise NotImplementedError("A monster appears")
-  #      self.resolve_until_monster()
-  #    self.assertEqual(len(self.state.common), 1)
-  #    self.assertEqual(self.char.sanity, 2)
+  def testCave1Zero(self):
+    self.char.lore_luck_slider = 3
+    self.state.common.append(items.Food(0))
+    self.state.event_stack.append(encounters.Cave1(self.char))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=2)):
+      self.resolve_to_choice(FightOrEvadeChoice)
+    self.assertEqual(len(self.state.common), 1)
+    self.assertEqual(self.char.sanity, 2)
 
   def testCave1ZeroInsane(self):
     self.char.lore_luck_slider = 3
@@ -4268,11 +4366,9 @@ class CaveTest(EncounterTest):
     self.assertEqual(self.char.stamina, 1)
     self.assertEqual(self.char.place.name, "Hospital")
 
-# TODO: a monster appears
-#  def testCave4(self):
-#    self.state.event_stack.append(encounters.Cave4(self.char))
-#    raise NotImplementedError("A monster appears!")
-#    self.resolve_until_monster()
+  def testCave4(self):
+    self.state.event_stack.append(encounters.Cave4(self.char))
+    self.resolve_to_choice(FightOrEvadeChoice)
 
   def testCave5Pass(self):
     self.char.stamina = 3
@@ -4839,27 +4935,26 @@ class ShoppeTest(EncounterTest):
       self.resolve_until_done()
 
   def testShoppe6PassDecline(self):
-    # self.state.unique.append(items.Cross(0)) # Costs 3
-    # self.state.event_stack.append(encounters.Shoppe6(self.char))
-    # with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
-    #   buy = self.resolve_to_choice(MultipleChoice)
-    # self.assertEqual(buy.choices, ["Yes", "No"])
-    # buy.resolve(self.state, "No")
-    # self.resolve_until_done()
-    pass
+    self.state.unique.append(items.Cross(0))  # Costs 3
+    self.state.event_stack.append(encounters.Shoppe6(self.char))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      buy = self.resolve_to_choice(MultipleChoice)
+    self.assertEqual(buy.choices, ["Cross", "Nothing"])
+    buy.resolve(self.state, "Nothing")
+    self.resolve_until_done()
 
   def testShoppe6PassAccept(self):
-    # self.state.unique.append(items.Cross(0)) # Costs 3
-    # self.state.event_stack.append(encounters.Shoppe6(self.char))
-    # with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
-    #   buy = self.resolve_to_choice(MultipleChoice)
-    # self.assertEqual(buy.choices, ["Yes", "No"])
-    # buy.resolve(self.state, "Yes")
-    # self.resolve_until_done()
-    # self.assertEqual(self.char.dollars, 1)
-    # self.assertEqual(len(self.char.possessions), 1)
-    # self.assertEqual(self.char.possessions[0].name, "Cross")
-    pass
+    self.state.unique.append(items.Cross(0))  # Costs 3
+    self.state.event_stack.append(encounters.Shoppe6(self.char))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      buy = self.resolve_to_choice(MultipleChoice)
+    self.assertEqual(buy.choices, ["Cross", "Nothing"])
+    self.spend("dollars", 2, buy)
+    buy.resolve(self.state, "Cross")
+    self.resolve_until_done()
+    self.assertEqual(self.char.dollars, 1)
+    self.assertEqual(len(self.char.possessions), 1)
+    self.assertEqual(self.char.possessions[0].name, "Cross")
 
   def testShoppe6PassPoor(self):
     self.char.dollars = 2
