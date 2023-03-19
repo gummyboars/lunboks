@@ -157,6 +157,7 @@ class Abyss4Test(GateEncounterTest):
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=side_effect)):
       self.resolve_until_done()
     self.assertListEqual(self.char.possessions, [key])
+    self.assertEqual(self.char.place.name, "Abyss2")
 
   def testThreeSuccessesFail(self):
     side_effect = [5, 5, 5, 3] + [3, 3]
@@ -164,6 +165,7 @@ class Abyss4Test(GateEncounterTest):
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=side_effect)):
       self.resolve_until_done()
     self.assertEqual(len(self.char.possessions), 0)
+    self.assertEqual(self.char.place.name, "Abyss2")
 
 
 class Other5Test(GateEncounterTest):
