@@ -193,31 +193,6 @@ class Other5Test(GateEncounterTest):
     self.assertEqual(self.char.clues, 2)
 
 
-class Other5Test(GateEncounterTest):
-  def setUp(self):
-    super().setUp()
-    self.char.place = self.state.places["Great Hall1"]
-    self.state.event_stack.append(gate_encounters.Other5(self.char))
-
-  def testNoSuccesses(self):
-    side_effect = [3, 3]
-    with mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=side_effect)):
-      self.resolve_until_done()
-    self.assertEqual(self.char.clues, 0)
-
-  def testOneSuccess(self):
-    side_effect = [5, 3]
-    with mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=side_effect)):
-      self.resolve_until_done()
-    self.assertEqual(self.char.clues, 1)
-
-  def testTwoSuccess(self):
-    side_effect = [5, 5]
-    with mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=side_effect)):
-      self.resolve_until_done()
-    self.assertEqual(self.char.clues, 2)
-
-
 class Dreamlands6Test(GateEncounterTest):
   def setUp(self):
     super().setUp()
