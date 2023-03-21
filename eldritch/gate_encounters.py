@@ -483,8 +483,14 @@ def Plateau23(char) -> events.Event:
 
 
 def Other23(char) -> events.Event:
+  check = events.Check(char, "luck", -1)
   draw = events.DrawMonstersFromCup(1, char)
-  return events.Sequence([draw, events.ForceTakeTrophy(char, draw)], char)
+  creature = events.Sequence([
+    draw,
+    events.ForceTakeTrophy(char, draw),
+    events.Gain(char, {"clues": 2})
+  ], char)
+  return events.PassFail(char, check, creature, events.Nothing())
 
 
 def Dreamlands24(char) -> events.Event:
@@ -533,7 +539,13 @@ def Abyss26(char) -> events.Event:
   val = values.Calculation(die, "sum")
   gain = events.Sequence([die, events.Gain(char, {"stamina": val})], char)
   loss = events.Sequence([die, events.Loss(char, {"stamina": val})], char)
-  return events.PassFail(char, check, gain, loss)
+  return events.BinaryChoice(
+      "Eat the mushrooms?",
+      "Yes",
+      "No",
+      events.PassFail(char, check, gain, loss),
+      events.Nothing(),
+  )
 
 
 def Plateau26(char) -> events.Event:
@@ -711,7 +723,7 @@ def Other34(char) -> events.Event:
 def SunkenCity35(char) -> events.Event:
   return events.PassFail(
       char, events.Check(char, "fight", -1),
-      events.Gain(char, {"sanity": 2, "stamina": 2}), events.Nothing()
+      events.Nothing(), events.Loss(char, {"stamina": 3}),
   )
 
 
@@ -739,7 +751,7 @@ def Plateau36(char) -> events.Event:
 
 def Other36(char) -> events.Event:
   return events.PassFail(
-      char, events.Check(char, "luck", -2), events.Draw(char, "spells", 1), events.Nothing()
+      char, events.Check(char, "luck", -1), events.Draw(char, "unique", 1), events.Nothing()
   )
 
 
@@ -842,7 +854,7 @@ def City42(char) -> events.Event:
 
 def Pluto42(char) -> events.Event:
   return events.PassFail(
-      char, events.Check(char, "fight", -1),
+      char, events.Check(char, "luck", -2),
       events.Gain(char, {"clues": 2}), events.Delayed(char)
   )
 
@@ -914,7 +926,7 @@ def Pluto46(char) -> events.Event:
 
 
 def Dreamlands46(char) -> events.Event:
-  return events.Loss(char, {"sanity": 2})
+  return events.Loss(char, {"sanity": 1})
 
 
 def Other46(char) -> events.Event:
@@ -974,7 +986,7 @@ def Other48(char) -> events.Event:
       events.Draw(char, "spells", 1),
       events.Loss(char, {"sanity": 1})
   ])
-  return events.PassFail(char, events.Check(char, "lore", -2), events.Nothing(), knowledge)
+  return events.PassFail(char, events.Check(char, "lore", -2), knowledge, events.Nothing())
 
 
 def CreateGateCards():
