@@ -891,11 +891,7 @@ class Mythos52(CityBonus):
 
   def create_event(self, state) -> events.Sequence:
     seq = super().create_event(state)
-    seq.events.extend([
-        events.ReturnMonsterFromBoard(None, monster)
-        for monster in state.monsters
-        if isinstance(monster.place, places.CityPlace) and monster.name == "Haunter"
-    ])
+    seq.events.append(events.ReturnToCup("Haunter"))
     return seq
 
   def get_override(self, thing, attribute):
@@ -924,6 +920,7 @@ class Mythos55(Environment):
     if (isinstance(thing, monsters.Monster)
        and thing.has_attribute("undead", state, None)
        and attribute == "toughness"):
+      # TODO: Check interaction with Red Sign
       return 1
     return 0
 
@@ -936,7 +933,7 @@ class Mythos56(ReleaseMonstersHeadline):
 class Mythos57(CloseLocationsHeadline):
   def __init__(self):
     super().__init__(
-        "Mythos57", "WitchHouse", "Cave", {"hex"}, {"slash", "triangle", "star"}, "Roadhouse"
+        "Mythos57", "WitchHouse", "Cave", {"hex"}, {"slash", "triangle", "star"}, ["Roadhouse"]
     )
 
   def create_event(self, state) -> events.Sequence:

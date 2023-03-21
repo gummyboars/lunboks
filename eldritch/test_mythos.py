@@ -2063,12 +2063,14 @@ class ReleaseMonstersTest(EventTest):
 
     for idx, monster in enumerate(self.state.monsters):
       monster.idx = idx
-      monster.place = lodge if idx < monster_limit - 3 else self.state.monster_cup
+      monster.place = lodge if idx < monster_limit - 2 else self.state.monster_cup
     mythos = Mythos23()
     self.state.mythos.appendleft(mythos)
     self.state.event_stack.append(Mythos(self.char))
-    mock_ret = [monster_limit, monster_limit + 1]
-    with mock.patch.object(events.random, "sample", new=mock.MagicMock(return_value=mock_ret)):
+    mock_ret1 = [monster_limit - 1]
+    mock_ret2 = [monster_limit, monster_limit + 1]
+    draws = mock_ret1, mock_ret2
+    with mock.patch.object(events.random, "sample", new=mock.MagicMock(side_effect=draws)):
       placement_choice = self.resolve_to_choice(MonsterSpawnChoice)
       placement_choice.resolve(
           self.state,
@@ -2327,6 +2329,7 @@ class CloseLocationTest(EventTest):
     self.assertEqual(self.shop.closed_until, 2)
     self.assertEqual(self.shoppe.closed_until, 2)
     self.assertIn(self.mythos, self.state.globals())
+    self.assertNotIn(self.mythos, self.state.mythos)
     self.close_forever = False
 
   def tearDown(self):
@@ -2470,6 +2473,29 @@ class ReturnAndIncreaseHeadlineTest(EventTest):
     self.drawMythos()
     self.assertEqual(self.state.terror, 0)
     self.assertEqual(self.tentacle_trees[0].place.name, "Outskirts")
+
+
+class Mythos38Test(EventTest):
+  def testFewerCluesToSeal(self):
+    self.state.environment = Mythos38()
+    self.char.clues = 3
+    place = "Woods"
+    self.char.place = self.state.places[place]
+    self.state.places[place].gate = gates.Gate("Dummy", 0, 0, "hex")
+    self.state.event_stack.append(GateCloseAttempt(self.char, self.char.place.name))
+    close_with = self.resolve_to_choice(MultipleChoice)
+    self.assertListEqual(close_with.choices, ["Close with fight", "Close with lore", "Don't close"])
+    close_with.resolve(self.state, "Close with fight")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      spend_choice = self.resolve_to_choice(MultipleChoice)
+    self.assertListEqual(spend_choice.choices, ["Spend", "Done"])
+    spend_choice.resolve(self.state, "Done")
+    seal_choice = self.resolve_to_choice(MultipleChoice)
+    self.assertListEqual(seal_choice.choices, ["Yes", "No"])
+    self.spend("clues", 3, seal_choice)
+    seal_choice.resolve(self.state, "Yes")
+    self.resolve_until_done()
+    self.assertFalse(self.state.places[place].is_unstable(self.state))
 
 
 class Mythos29Test(EventTest):
@@ -2625,6 +2651,63 @@ class Mythos55Test(EventTest):
       weapons.resolve(self.state, "done")
       self.resolve_until_done()
     self.assertEqual(vampire.toughness(self.state, self.char), 3)
+
+
+class Mythos57Test(EventTest):
+  def setUp(self):
+    super().setUp()
+    self.whiskey0 = items.Whiskey(0)
+    self.char.possessions.append(self.whiskey0)
+    self.state.mythos.appendleft(Mythos57())
+
+  def tearDown(self):
+    self.assertEqual(self.state.places["Roadhouse"].closed_until, 2)
+
+  def testLoseWhiskeyWhenArrested(self):
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=1)):
+      self.advance_turn(1, "movement")
+    self.assertFalse(self.char.possessions)
+    self.assertEqual(self.char.place.name, "Police")
+    self.assertEqual(self.char.arrested_until, 2)
+
+  def testMultipleWhiskeyOneCheck(self):
+    self.char.speed_sneak_slider -= 1
+    whiskey1 = items.Whiskey(1)
+    self.char.possessions.append(whiskey1)
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=[5, 1, ])):
+      self.advance_turn(1, "movement")
+    self.assertIsNone(self.char.arrested_until)
+    self.assertListEqual(self.char.possessions, [self.whiskey0, whiskey1])
+
+
+class Mythos58Test(EventTest):
+  def setUp(self):
+    super().setUp()
+    self.spell = items.Voice(0)
+    self.state.spells.append(self.spell)
+    self.char.place = self.state.places["FrenchHill"]
+    self.state.environment = Mythos58()
+    self.advance_turn(0, "movement")
+    movement = self.resolve_to_choice(CityMovement)
+    movement.resolve(self.state, "done")
+    deal = self.resolve_to_choice(events.MultipleChoice)
+    deal.resolve(self.state, "Yes")
+
+  def testWagerReward(self):
+    self.char.sanity = 4
+    rolls = [5, 5, 1, 1]
+    self.assertEqual(self.char.sanity, len(rolls))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=rolls)):
+      self.resolve_until_done()
+
+    self.assertEqual(self.char.sanity, 2)
+    self.assertEqual(self.char.clues, 1)
+    self.assertListEqual(self.char.possessions, [self.spell])
+
+  def testDevoured(self):
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=1)):
+      self.resolve_until_done()
+    self.assertTrue(self.char.gone)
 
 
 class MythosPhaseTest(EventTest):

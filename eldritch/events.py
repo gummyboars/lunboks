@@ -4217,7 +4217,7 @@ class CloseGate(Event):
     self.seal_choice: Optional[ChoiceEvent] = None
     self.sealed = None
 
-  def resolve(self, state):
+  def resolve(self, state: "eldritch.GameState"):
     if isinstance(self.location_name, MapChoice):
       if self.location_name.is_cancelled() or self.location_name.choice is None:
         self.cancelled = True
@@ -4591,6 +4591,7 @@ class DrawMonstersFromCup(Event):
       state.event_stack.append(self.awaken)
       return
     self.monsters = random.sample(monster_indexes, self.count)
+    assert len(self.monsters) == self.count, f"Should be {self.count}, drew {len(self.monsters)}"
 
   def is_resolved(self):
     if self.awaken is not None:
