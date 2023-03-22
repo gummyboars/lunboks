@@ -708,9 +708,18 @@ class Abyss26Test(GateEncounterTest):
     self.char.place = self.state.places["Abyss1"]
     self.state.event_stack.append(gate_encounters.Abyss26(self.char))
 
+  def testDontEat(self):
+    eat = self.resolve_to_choice(MultipleChoice)
+    eat.resolve(self.state, "No")
+    self.resolve_until_done()
+    self.assertEqual(self.char.stamina, 3)
+    self.assertEqual(self.char.place.name, "Abyss1")
+
   def testFailOne(self):
     side_effect = [3, 3] + [1]
     self.assertEqual(self.char.stamina, 3)
+    eat = self.resolve_to_choice(MultipleChoice)
+    eat.resolve(self.state, "Yes")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=side_effect)):
       self.resolve_until_done()
     self.assertEqual(self.char.stamina, 2)
@@ -718,6 +727,8 @@ class Abyss26Test(GateEncounterTest):
   def testFailUnconscious(self):
     side_effect = [3, 3] + [3]
     self.assertEqual(self.char.stamina, 3)
+    eat = self.resolve_to_choice(MultipleChoice)
+    eat.resolve(self.state, "Yes")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=side_effect)):
       choice = self.resolve_to_choice(ItemLossChoice)
     choice.resolve(self.state, "done")
@@ -728,6 +739,8 @@ class Abyss26Test(GateEncounterTest):
   def testPassOne(self):
     side_effect = [5, 3] + [1]
     self.assertEqual(self.char.stamina, 3)
+    eat = self.resolve_to_choice(MultipleChoice)
+    eat.resolve(self.state, "Yes")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=side_effect)):
       self.resolve_until_done()
     self.assertEqual(self.char.stamina, 4)
@@ -735,6 +748,8 @@ class Abyss26Test(GateEncounterTest):
   def testPassMax(self):
     side_effect = [5, 3] + [3]
     self.assertEqual(self.char.stamina, 3)
+    eat = self.resolve_to_choice(MultipleChoice)
+    eat.resolve(self.state, "Yes")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=side_effect)):
       self.resolve_until_done()
     self.assertEqual(self.char.stamina, 5)
@@ -892,6 +907,42 @@ class Other47Test(GateEncounterTest):
       self.resolve_until_done()
     self.assertEqual(self.char.sanity, 3)
     self.assertEqual(self.char.clues, 3)
+
+
+class Other48Test(GateEncounterTest):
+  def setUp(self):
+    super().setUp()
+    self.spell = items.Voice(0)
+    self.state.spells.append(self.spell)
+    self.state.event_stack.append(gate_encounters.Other48(self.char))
+    self.char.sanity = 3
+    self.char.lore_luck_slider += 1
+    self.char.place = self.state.places["Dreamlands1"]
+
+  def testFail(self):
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=1)):
+      self.resolve_until_done()
+    self.assertFalse(self.char.possessions)
+    self.assertEqual(self.char.sanity, 3)
+    self.assertEqual(self.char.place.name, "Dreamlands1")
+
+  def testPass(self):
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+    self.assertListEqual(self.char.possessions, [self.spell])
+    self.assertEqual(self.char.sanity, 2)
+    self.assertEqual(self.char.place.name, "Dreamlands1")
+
+  def testPassInsane(self):
+    self.char.sanity = 1
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      choice = self.resolve_to_choice(ItemLossChoice)
+    choice.resolve(self.state, "done")
+    self.resolve_until_done()
+    self.assertListEqual(self.char.possessions, [self.spell])
+    self.assertEqual(self.char.sanity, 1)
+    self.assertEqual(self.char.place.name, "Lost")
+    self.assertEqual(self.char.lose_turn_until, self.state.turn_number + 2)
 
 
 if __name__ == "__main__":

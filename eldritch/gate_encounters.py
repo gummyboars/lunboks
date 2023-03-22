@@ -486,9 +486,9 @@ def Other23(char) -> events.Event:
   check = events.Check(char, "luck", -1)
   draw = events.DrawMonstersFromCup(1, char)
   creature = events.Sequence([
-    draw,
-    events.ForceTakeTrophy(char, draw),
-    events.Gain(char, {"clues": 2})
+      draw,
+      events.ForceTakeTrophy(char, draw),
+      events.Gain(char, {"clues": 2})
   ], char)
   return events.PassFail(char, check, creature, events.Nothing())
 
@@ -540,6 +540,7 @@ def Abyss26(char) -> events.Event:
   gain = events.Sequence([die, events.Gain(char, {"stamina": val})], char)
   loss = events.Sequence([die, events.Loss(char, {"stamina": val})], char)
   return events.BinaryChoice(
+      char,
       "Eat the mushrooms?",
       "Yes",
       "No",
