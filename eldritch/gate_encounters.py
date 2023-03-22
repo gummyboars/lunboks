@@ -826,7 +826,6 @@ def Other40(char) -> events.Event:
 
 
 def SunkenCity41(char) -> events.Event:
-  # Should I implement this as a luck -infinity PassOrLoseDice?
   die = events.DiceRoll(char, 1)
   seq = events.Sequence([
       die, events.Loss(char, {"sanity": values.Calculation(die, "sum")})
