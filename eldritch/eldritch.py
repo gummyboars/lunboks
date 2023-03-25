@@ -29,7 +29,9 @@ random = SystemRandom()
 
 class GameState:
 
-  DEQUE_ATTRIBUTES = {"common", "unique", "spells", "skills", "allies", "boxed_allies", "gates"}
+  DEQUE_ATTRIBUTES = {
+      "common", "unique", "spells", "skills", "allies", "specials", "boxed_allies", "gates"
+  }
   HIDDEN_ATTRIBUTES = {
       "event_stack", "interrupt_stack", "trigger_stack", "log_stack", "mythos", "gate_cards",
   }
@@ -70,7 +72,7 @@ class GameState:
     self.allies = collections.deque()
     self.boxed_allies = collections.deque()  # Church expansion
     self.tradables = []
-    self.specials = []
+    self.specials = collections.deque()
     self.mythos = collections.deque()
     self.gates = collections.deque()
     self.gate_cards = collections.deque()
@@ -115,6 +117,7 @@ class GameState:
     self.turn_number = 0
     self.turn_phase = "upkeep"
     self.ancient_one = ancient_ones.DummyAncient()
+    self.specials.extend(items.CreateSpecials())
     self.test_mode = True
 
   def initialize(self):
@@ -146,8 +149,8 @@ class GameState:
     self.allies.extend(assets.CreateAllies())
     self.tradables.extend(items.CreateTradables())
     self.specials.extend(items.CreateSpecials())
-    all_cards = self.common + self.unique + self.spells + self.skills + self.allies
-    all_cards += self.tradables + self.specials
+    all_cards = self.common + self.unique + self.spells + self.skills + self.allies + self.specials
+    all_cards += self.tradables
     handles = [card.handle for card in all_cards]
     assert len(handles) == len(set(handles)), f"Card handles {handles} are not unique"
 

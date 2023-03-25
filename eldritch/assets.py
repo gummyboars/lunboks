@@ -273,6 +273,44 @@ class Deputy(Card):
     return None
 
 
+class BlessingOrCurse(Card):
+  def __init__(self, kind, idx):
+    assert kind in ["Blessing", "Curse"]
+    super().__init__(kind, idx, "specials", {}, {})
+    self.opposite = "Curse" if kind == "Blessing" else "Blessing"
+    self.must_roll = False
+
+  def get_trigger(self, event, owner, state):
+    if isinstance(event, events.UpkeepActions) and event.character == owner:
+      if self.must_roll:
+        roll = events.DiceRoll(owner, 1)
+        return events.Conditional(
+            owner, roll, "sum",
+            {1: events.DiscardSpecific(owner, self), 2: events.Nothing()}
+        )
+      self.must_roll = True
+
+    if isinstance(event, events.KeepDrawn) and self.name in event.kept:
+      selves = [p for p in event.character.possessions if p.name == self.name]
+      _, *duplicates = sorted(selves, key=lambda x: x.must_roll)
+      if duplicates:
+        return events.DiscardSpecific(event.character, duplicates)
+      if self.opposite in [p.name for p in event.character.possessions]:
+        return events.Sequence([
+            events.DiscardNamed(event.character, self.name),
+            events.DiscardNamed(event.character, self.opposite),
+        ], event.character)
+    return None
+
+
+def Blessing(idx):
+  return BlessingOrCurse("Blessing", idx)
+
+
+def Curse(idx):
+  return BlessingOrCurse("Curse", idx)
+
+
 def CreateAllies():
   return [
       ally() for ally in [

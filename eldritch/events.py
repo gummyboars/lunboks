@@ -1199,37 +1199,10 @@ class LostInTimeAndSpace(Sequence):
     super().__init__([ForceMovement(character, "Lost"), LoseTurn(character)], character)
 
 
-class BlessCurse(Event):
-
-  def __init__(self, character, positive):
-    super().__init__()
-    self.character = character
-    self.adjustment = 1 if positive else -1
-    self.change = None
-
-  def resolve(self, state):
-    old_val = self.character.bless_curse
-    new_val = min(max(old_val + self.adjustment, -1), 1)
-    self.character.bless_curse = new_val
-    self.change = new_val - old_val
-    if new_val != 0:
-      self.character.bless_curse_start = state.turn_number + 2
-    else:
-      self.character.bless_curse_start = None
-
-  def is_resolved(self):
-    return self.change is not None
-
-  def log(self, state):
-    if self.cancelled and self.change is None:
-      return f"{self.character.name} was not " + ("blessed" if self.adjustment > 0 else "cursed")
-    if self.change is None:
-      return f"{self.character.name} will be " + ("blessed" if self.adjustment > 0 else "cursed")
-    if not self.change:
-      return f"nothing changed for {self.character.name}"
-    if self.character.bless_curse:
-      return f"{self.character.name} became " + ("blessed" if self.change > 0 else "cursed")
-    return f"{self.character.name} lost their " + ("blessing" if self.change < 0 else "curse")
+def BlessCurse(character, positive):
+  if positive:
+    return DrawSpecific(character, "specials", "Blessing")
+  return DrawSpecific(character, "specials", "Curse")
 
 
 def Bless(character):

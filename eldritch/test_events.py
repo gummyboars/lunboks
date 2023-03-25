@@ -1208,7 +1208,7 @@ class InsaneUnconsciousTest(EventTest):
     self.assertCountEqual(
         [item.name for item in self.state.tradables], ["Deputy's Revolver", "Patrol Wagon"],
     )
-    self.assertEqual([item.name for item in self.state.specials], ["Deputy"])
+    self.assertIn("Deputy", [item.name for item in self.state.specials])
 
 
 class SplitGainTest(EventTest):
@@ -1359,32 +1359,34 @@ class StatusChangeTest(EventTest):
     self.assertEqual(member.change, 1)
 
   def testDoubleBlessed(self):
+    self.state.event_stack.append(Bless(self.char))
+    self.resolve_until_done()
+    self.char.possessions[0].must_roll = True
+
     bless = Bless(self.char)
     self.assertFalse(bless.is_resolved())
-    self.char.bless_curse = 1
-    self.char.bless_curse_start = 1
-
     self.state.event_stack.append(bless)
     self.resolve_until_done()
 
     self.assertTrue(bless.is_resolved())
     self.assertEqual(self.char.bless_curse, 1)
-    self.assertEqual(self.char.bless_curse_start, self.state.turn_number + 2)
-    self.assertEqual(bless.change, 0)
+    self.assertEqual([p.name for p in self.char.possessions], ["Blessing"])
+    self.assertFalse(self.char.possessions[0].must_roll)
 
   def testCursedWhileBlessed(self):
+    self.state.event_stack.append(Bless(self.char))
+    self.resolve_until_done()
+    self.char.possessions[0].must_roll = True
+
     curse = Curse(self.char)
     self.assertFalse(curse.is_resolved())
-    self.char.bless_curse = 1
-    self.char.bless_curse_start = 1
 
     self.state.event_stack.append(curse)
     self.resolve_until_done()
 
     self.assertTrue(curse.is_resolved())
     self.assertEqual(self.char.bless_curse, 0)
-    self.assertIsNone(self.char.bless_curse_start)
-    self.assertEqual(curse.change, -1)
+    self.assertListEqual(self.char.possessions, [])
 
   def testArrested(self):
     self.assertEqual(self.char.place.name, "Diner")
@@ -1842,9 +1844,9 @@ class CheckTest(EventTest):
 
   @mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=[4]))
   def testCheckBlessed(self):
+    self.char.possessions.append(items.Blessing(0))
     check = Check(self.char, "sneak", 0)
     self.assertEqual(self.char.sneak(self.state), 1)
-    self.char.bless_curse = 1
     self.assertFalse(check.is_resolved())
 
     self.state.event_stack.append(check)
