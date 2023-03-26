@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 from collections import deque
+import functools
 import os
 import sys
 import unittest
@@ -70,6 +71,40 @@ class DrawGateEncounter(EventTest):
     self.assertEqual(len(self.state.gate_cards), card_count)
     self.assertEqual(self.state.gate_cards[-1].name, "Gate3")
     self.assertTrue("shuffled" in str(self.state.event_log[0]))
+
+
+class AllGatesMeta(type):
+
+  def __new__(mcs, name, bases, dct):
+    all_gate_cards = gate_encounters.CreateGateCards()
+    other_worlds = places.CreateOtherWorlds()
+    names = {world.info.name for world in other_worlds.values()}
+    for card in all_gate_cards:
+      if card.name.startswith("Shuffle"):
+        continue
+      for world, encounter in card.encounters.items():
+        loc = world if world != "Other" else (names - card.encounters.keys()).pop()
+
+        def thetest(self, loc, encounter):
+          self.char.place = self.state.places[loc+"1"]
+          self.state.event_stack.append(encounter(self.char))
+          with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=6)):
+            self.resolve_loop()
+            if not self.state.event_stack:
+              return
+            if isinstance(self.state.event_stack[-1], MultipleChoice):
+              return
+            if isinstance(self.state.event_stack[-1], ItemLossChoice):
+              return
+            self.assertFalse(self.state.event_stack[-1])
+
+        dct[f"test{card.name}{world}"] = functools.partialmethod(thetest, loc, encounter)
+
+    return super().__new__(mcs, name, bases, dct)
+
+
+class AllGatesTest(EventTest, metaclass=AllGatesMeta):
+  pass
 
 
 class GateEncounterTest(EventTest):
