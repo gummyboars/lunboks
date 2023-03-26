@@ -382,19 +382,19 @@ def Other29(char) -> events.Event:
 def CreateGateCards():
   return [
       GateCard(
-          "Gate1", {"blue"}, {"Abyss": Abyss1, "GreatHall": GreatHall1, "Other": Other1}),
+          "Gate1", {"blue"}, {"Abyss": Abyss1, "Great Hall": GreatHall1, "Other": Other1}),
       GateCard(
           "Gate2", {"blue"}, {"Abyss": Abyss2, "Pluto": Pluto2, "Other": Other2}),
       GateCard(
           "Gate3", {"blue"}, {"Abyss": Abyss3, "Pluto": Pluto3, "Other": Other3}),
       GateCard(
-          "Gate4", {"blue"}, {"Abyss": Abyss4, "GreatHall": GreatHall4, "Other": Other4}),
+          "Gate4", {"blue"}, {"Abyss": Abyss4, "Great Hall": GreatHall4, "Other": Other4}),
       GateCard(
           "Gate5", {"blue"}, {"Dreamlands": Dreamlands5, "Abyss": Abyss5, "Other": Other5}),
       GateCard(
-          "Gate6", {"blue"}, {"Dreamlands": Dreamlands6, "GreatHall": GreatHall6, "Other": Other6}),
+          "Gate6", {"blue"}, {"Dreamlands": Dreamlands6, "Great Hall": GreatHall6, "Other": Other6}),
       GateCard(
-          "Gate7", {"blue"}, {"Dreamlands": Dreamlands7, "GreatHall": GreatHall7, "Other": Other7}),
+          "Gate7", {"blue"}, {"Dreamlands": Dreamlands7, "Great Hall": GreatHall7, "Other": Other7}),
       GateCard(
           "Gate8", {"blue"}, {"Dreamlands": Dreamlands8, "Pluto": Pluto8, "Other": Other8}),
       GateCard(
@@ -402,15 +402,15 @@ def CreateGateCards():
       GateCard(
           "Gate10", {"blue"}, {"Dreamlands": Dreamlands10, "Abyss": Abyss10, "Other": Other10}),
       GateCard(
-          "Gate11", {"blue"}, {"Pluto": Pluto11, "GreatHall": GreatHall11, "Other": Other11}),
+          "Gate11", {"blue"}, {"Pluto": Pluto11, "Great Hall": GreatHall11, "Other": Other11}),
       GateCard(
-          "Gate12", {"blue"}, {"Pluto": Pluto12, "GreatHall": GreatHall12, "Other": Other12}),
+          "Gate12", {"blue"}, {"Pluto": Pluto12, "Great Hall": GreatHall12, "Other": Other12}),
       GateCard(
           "Gate13", {"green"}, {"City": City13, "Plateau": Plateau13, "Other": Other13}),
       GateCard(
-          "Gate14", {"green"}, {"City": City14, "GreatHall": GreatHall14, "Other": Other14}),
+          "Gate14", {"green"}, {"City": City14, "Great Hall": GreatHall14, "Other": Other14}),
       GateCard(
-          "Gate15", {"green"}, {"City": City15, "GreatHall": GreatHall15, "Other": Other15}),
+          "Gate15", {"green"}, {"City": City15, "Great Hall": GreatHall15, "Other": Other15}),
       GateCard(
           "Gate16", {"green"}, {"Plateau": Plateau16, "Great Hall": GreatHall16, "Other": Other16}),
       GateCard(
