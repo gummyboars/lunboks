@@ -392,9 +392,11 @@ def CreateGateCards():
       GateCard(
           "Gate5", {"blue"}, {"Dreamlands": Dreamlands5, "Abyss": Abyss5, "Other": Other5}),
       GateCard(
-          "Gate6", {"blue"}, {"Dreamlands": Dreamlands6, "Great Hall": GreatHall6, "Other": Other6}),
+          "Gate6", {"blue"},
+          {"Dreamlands": Dreamlands6, "Great Hall": GreatHall6, "Other": Other6}),
       GateCard(
-          "Gate7", {"blue"}, {"Dreamlands": Dreamlands7, "Great Hall": GreatHall7, "Other": Other7}),
+          "Gate7", {"blue"},
+          {"Dreamlands": Dreamlands7, "Great Hall": GreatHall7, "Other": Other7}),
       GateCard(
           "Gate8", {"blue"}, {"Dreamlands": Dreamlands8, "Pluto": Pluto8, "Other": Other8}),
       GateCard(

@@ -75,7 +75,7 @@ class DrawGateEncounter(EventTest):
 
 class AllGatesMeta(type):
 
-  def __new__(cls, name, bases, dct):
+  def __new__(mcs, name, bases, dct):
     all_gate_cards = gate_encounters.CreateGateCards()
     other_worlds = places.CreateOtherWorlds()
     names = {world.info.name for world in other_worlds.values()}
@@ -100,7 +100,7 @@ class AllGatesMeta(type):
 
         dct[f"test{card.name}{world}"] = functools.partialmethod(thetest, loc, encounter)
 
-    return super().__new__(cls, name, bases, dct)
+    return super().__new__(mcs, name, bases, dct)
 
 
 class AllGatesTest(EventTest, metaclass=AllGatesMeta):
