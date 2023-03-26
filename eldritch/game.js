@@ -2540,8 +2540,42 @@ function renderMonsterBackToDiv(div, monsterData) {
     ctx.fillStyle = colors[monsterData.movement];
   }
   ctx.fillRect(0, 0, cnv.width, cnv.height);
-  ctx.fillStyle = "whitesmoke";
+  ctx.fillStyle = "#e5dada";
   ctx.fillRect(cnv.width / 20, cnv.height / 20, 9 * cnv.width / 10, 9 * cnv.height / 10);
+
+  // Render any special card text. TODO: can we reuse code from assets.js?
+  ctx.save();
+  let imgData = imageInfo[monsterData.name + " text"];
+  if (imgData != null && imgData.srcnum != null && imgData.filternum != null) {
+    let img = document.getElementById("img" + imgData.srcnum);
+    let mask = document.getElementById("img" + imgData.filternum);
+    if (img != null & mask != null) {
+      let renderWidth, renderHeight, origWidth, origHeight;
+      origWidth = mask.naturalWidth || mask.width;
+      origHeight = mask.naturalHeight || mask.height;
+      renderWidth = cnv.width * 9 / 10;
+      renderHeight = renderWidth / origWidth * origHeight;
+      let scale = (imgData.scale || 1) * (cnv.width * 9 / 10) / origWidth;
+      let renderBottom = cnv.height * 13 / 20;
+      let renderCenter = renderBottom - (renderHeight / 2);
+      ctx.translate(cnv.width/2, renderCenter);
+      ctx.beginPath();
+      ctx.moveTo(-renderWidth/2, -renderHeight/2);
+      ctx.lineTo(renderWidth/2, -renderHeight/2);
+      ctx.lineTo(renderWidth/2, renderHeight/2);
+      ctx.lineTo(-renderWidth/2, renderHeight/2);
+      ctx.closePath();
+      ctx.clip();
+
+      ctx.save();
+      ctx.rotate(Math.PI * (imgData.rotation || 0) / 180);
+      ctx.scale(scale, scale);
+      ctx.drawImage(img, (-imgData.xoff || 0), (-imgData.yoff || 0));
+      ctx.restore();
+    }
+  }
+  ctx.restore();
+  // End special card text.
 
   let fontSize;
 
