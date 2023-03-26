@@ -2170,7 +2170,10 @@ class CastSpell(Event):
       return
 
     if self.choice is None:
-      spend = values.ExactSpendPrerequisite({"sanity": self.spell.sanity_cost})
+      cost = self.spell.sanity_cost(state)
+      spend = values.ExactSpendPrerequisite(
+          {"sanity": cost}
+      )
       self.choice = SpendChoice(
           self.character, f"Cast {self.spell.name}", ["Cast", "Cancel"], spends=[spend, None],
       )
@@ -4021,10 +4024,48 @@ class TakeTrophy(ForceTakeTrophy):
     return super().log(state)
 
 
+class RespawnTrophies(Event):
+  def __init__(self, monster_name, location_name):
+    super().__init__()
+    self.monster_name = monster_name
+    self.location_name = location_name
+    self.respawned_monsters = None
+
+  def resolve(self, state):
+    monsters = [
+        monster
+        for char in state.characters
+        for monster in char.trophies
+        if monster.name == self.monster_name
+    ]
+
+    place = state.places[self.location_name]
+    for monster in monsters:
+      monster.place = place
+      for char in state.characters:
+        if monster in char.trophies:
+          char.trophies.remove(monster)
+          break
+    self.respawned_monsters = monsters
+
+  def is_resolved(self):
+    return self.respawned_monsters is not None
+
+  def log(self, state):
+    if self.cancelled and self.respawned_monsters is None:
+      return f"Respawning of {self.monster_name}s at {self.location_name} cancelled"
+    if self.respawned_monsters is None:
+      return f"{self.monster_name}s taken as trophies will respawn at {self.location_name}"
+    if self.respawned_monsters:
+      return f"{len(self.respawned_monsters)} {self.monster_name}(s) respawned at " \
+             f"{self.location_name}"
+    return f"No {self.monster_name}s to respawn at {self.location_name}"
+
+
 class MonsterAppears(Conditional):
 
   def __init__(self, character):
-    draw = DrawMonstersFromCup(1, character)
+    draw = DrawMonstersFromCup(1, character, to_board=False)
     appears = Sequence([draw, EvadeOrCombat(character, draw)], character)
     unstable = values.PlaceUnstable(character.place)
     super().__init__(character, unstable, "", {0: Nothing(), 1: appears})
@@ -4206,7 +4247,7 @@ class CloseGate(Event):
     self.seal_choice: Optional[ChoiceEvent] = None
     self.sealed = None
 
-  def resolve(self, state):
+  def resolve(self, state: "eldritch.GameState"):
     if isinstance(self.location_name, MapChoice):
       if self.location_name.is_cancelled() or self.location_name.choice is None:
         self.cancelled = True
@@ -4245,7 +4286,7 @@ class CloseGate(Event):
       state.event_stack.append(self.return_monsters)
       return
 
-    if not self.can_seal:
+    if not (self.can_seal and state.get_override(self, "can_seal")):
       self.sealed = False
       return
 
@@ -4561,22 +4602,26 @@ class RemoveDoom(Event):
 
 class DrawMonstersFromCup(Event):
 
-  def __init__(self, count=1, character=None):
+  def __init__(self, count=1, character=None, to_board=True):
     super().__init__()
     self.character = character
     self.count = count
     self.awaken: Optional[Event] = None
     self.monsters = None
+    self.to_board = to_board
 
   def resolve(self, state):
     monster_indexes = [
-        idx for idx, monster in enumerate(state.monsters) if monster.place == state.monster_cup
+        idx for idx, monster in enumerate(state.monsters)
+        if monster.place == state.monster_cup and (
+            not self.to_board or state.get_override(monster, "can_draw_to_board"))
     ]
     if len(monster_indexes) < self.count:
       self.awaken = Awaken()
       state.event_stack.append(self.awaken)
       return
     self.monsters = random.sample(monster_indexes, self.count)
+    assert len(self.monsters) == self.count, f"Should be {self.count}, drew {len(self.monsters)}"
 
   def is_resolved(self):
     if self.awaken is not None:
@@ -4727,12 +4772,6 @@ class MonsterSpawnChoice(ChoiceEvent):
     if self.num_clears:
       text += f" the outskirts cleared {self.num_clears} times"
     return text
-
-
-def ReleaseMonstersToLocation(location, count=2):
-  draw = DrawMonstersFromCup(count)
-  place = MonsterSpawnChoice(draw, location, [location])
-  return Sequence([draw, place])
 
 
 class IncreaseTerror(Event):
@@ -5103,7 +5142,10 @@ class CloseLocation(Event):
   def resolve(self, state):
     until = state.turn_number + self.for_turns + 1
     place = state.places[self.location_name]
-    place.closed_until = until
+    if place.closed:
+      place.closed_until = max(place.closed_until, until)
+    else:
+      place.closed_until = until
     chars_in_place = [char for char in state.characters if char.place == place]
     monsters_in_place = [mon for mon in state.monsters if mon.place == place]
 

@@ -73,12 +73,12 @@ class SquidFace(AncientOne):
   def __init__(self):
     super().__init__("Squid Face", 13, set(), -6)
 
-  def get_modifier(self, thing, attribute):
+  def get_modifier(self, thing, attribute, state):
     if isinstance(thing, monsters.Cultist):
       return {"horrordifficulty": -2, "horrordamage": 2}.get(attribute, 0)
     if isinstance(thing, characters.Character):
       return {"max_sanity": -1, "max_stamina": -1}.get(attribute, 0)
-    return super().get_modifier(thing, attribute)
+    return super().get_modifier(thing, attribute, state)
 
   def attack(self, state):
     self.doom = min(self.doom + 1, self.max_doom)
@@ -97,12 +97,12 @@ class YellowKing(AncientOne):
   def awaken(self, state):
     self._combat_rating = state.terror
 
-  def get_modifier(self, thing, attribute):
+  def get_modifier(self, thing, attribute, state):
     if isinstance(thing, monsters.Cultist):
       return {"combatdifficulty": -3}.get(attribute, 0)
     if isinstance(thing, events.GateCloseAttempt) and attribute == "seal_clues":
       return 3
-    return super().get_modifier(thing, attribute)
+    return super().get_modifier(thing, attribute, state)
 
   def get_override(self, thing, attribute):
     if isinstance(thing, monsters.Cultist) and attribute == "flying":
@@ -134,10 +134,10 @@ class ChaosGod(AncientOne):
   def attack(self, state):
     return AncientOneAttack([])
 
-  def get_modifier(self, thing, attribute):
+  def get_modifier(self, thing, attribute, state):
     if isinstance(thing, monsters.Maniac):
       return {"toughness": 1}.get(attribute, 0)
-    return super().get_modifier(thing, attribute)
+    return super().get_modifier(thing, attribute, state)
 
   def json_repr(self, state):
     data = super().json_repr(state)
@@ -168,10 +168,10 @@ class Wendigo(AncientOne):
       pass
     return None
 
-  def get_modifier(self, thing, attribute):
+  def get_modifier(self, thing, attribute, state):
     if isinstance(thing, monsters.Cultist):
       return {"toughness": 2}.get(attribute, 0)
-    return super().get_modifier(thing, attribute)
+    return super().get_modifier(thing, attribute, state)
 
   def attack(self, state):
     checks = []
