@@ -4405,45 +4405,42 @@ class OpenGate(Event):
       self.opened = False
       return
 
+    if self.opened is None:
+      self.opened = state.places[self.location_name].gate is None
+      if self.opened:
+        if not state.gates:
+          state.event_stack.append(Awaken())
+          return
+        # TODO: should drawing a gate be its own event?
+        state.places[self.location_name].gate = state.gates.popleft()
+        state.places[self.location_name].clues = 0
+        self.add_doom = AddDoom()
+        state.event_stack.append(self.add_doom)
+        return
+
     if self.draw_monsters is None:
-      if state.places[self.location_name].gate is not None:  # Monster surge
-        self.opened = False
+      if not self.opened:  # Monster surge
         open_gates = [place for place in state.places.values() if getattr(place, "gate", None)]
         count = max(len(open_gates), len(state.characters))
       else:  # Regular gate opening
-        self.opened = True
         count = 2 if len(state.characters) > 4 else 1
       self.draw_monsters = DrawMonstersFromCup(count)
       state.event_stack.append(self.draw_monsters)
       return
 
-    if self.opened and self.add_doom is None:
-      self.add_doom = AddDoom()
-      state.event_stack.append(self.add_doom)
-      return
-
+    spawn_gates = [self.location_name]
     if not self.opened:  # Monster surge
-      gates = [
+      spawn_gates = [
           name for name, place in state.places.items()
           if getattr(place, "gate", None) and place.is_unstable(state)
       ]
-      self.spawn = MonsterSpawnChoice(self.draw_monsters, self.location_name, gates)
-      state.event_stack.append(self.spawn)
-      return
-
-    if not state.gates:
-      state.event_stack.append(Awaken())
-      return
-    # TODO: should drawing a gate be its own event?
-    state.places[self.location_name].gate = state.gates.popleft()
-    state.places[self.location_name].clues = 0
-    self.spawn = MonsterSpawnChoice(self.draw_monsters, self.location_name, [self.location_name])
+    self.spawn = MonsterSpawnChoice(self.draw_monsters, self.location_name, spawn_gates)
     state.event_stack.append(self.spawn)
 
   def is_resolved(self):
-    if self.draw_monsters is not None:
-      return self.spawn is not None and self.spawn.is_done()
-    return (self.opened is False) or (self.opened and self.add_doom)
+    if self.draw_monsters is None:
+      return self.opened is False
+    return self.spawn is not None and self.spawn.is_done()
 
   def log(self, state):
     location_name = self.location_name
