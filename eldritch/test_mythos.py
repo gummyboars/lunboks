@@ -2657,7 +2657,9 @@ class Mythos57Test(EventTest):
   def setUp(self):
     super().setUp()
     self.whiskey0 = items.Whiskey(0)
+    self.whiskey1 = items.Whiskey(1)
     self.char.possessions.append(self.whiskey0)
+    self.char.possessions.append(self.whiskey1)
     self.state.mythos.appendleft(Mythos57())
 
   def tearDown(self):
@@ -2672,12 +2674,10 @@ class Mythos57Test(EventTest):
 
   def testMultipleWhiskeyOneCheck(self):
     self.char.speed_sneak_slider -= 1
-    whiskey1 = items.Whiskey(1)
-    self.char.possessions.append(whiskey1)
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=[5, 1, ])):
       self.advance_turn(1, "movement")
     self.assertIsNone(self.char.arrested_until)
-    self.assertListEqual(self.char.possessions, [self.whiskey0, whiskey1])
+    self.assertListEqual(self.char.possessions, [self.whiskey0, self.whiskey1])
 
 
 class Mythos58Test(EventTest):
