@@ -70,7 +70,7 @@ class Event(metaclass=abc.ABCMeta):
     self.cancelled = False
 
   @abc.abstractmethod
-  def resolve(self, state) -> NoReturn:
+  def resolve(self, state: "GameState") -> NoReturn:
     # resolve should return True if the event was resolved, False otherwise.
     # For example, an event that requires a check to be made should add that check to the end
     # of the event stack, and then return False. It will be called again when the check is
@@ -4254,6 +4254,50 @@ class RespawnTrophies(Event):
     return f"No [{self.monster_name}]s to respawn at [{self.location_name}]"
 
 
+class TakeGateTrophy(Event):
+  def __init__(self, character, gate):
+    super().__init__()
+    self.character = character
+    self.gate = gate
+    self.done = False
+
+  def resolve(self, state):
+    if isinstance(self.gate, GateChoice):
+      if self.gate.is_cancelled():
+        self.cancelled = True
+        return
+      self.gate = state.places[self.gate.choice].gate
+    if self.gate == "draw":
+      if state.gates:
+        self.gate = state.gates.popleft()
+      else:
+        # According to my reading, No Gate Markers only awakens the ancient one when a gate opens
+        self.gate = None
+
+    for place in state.places:
+      if getattr(state.places[place], "gate", None) is self.gate:
+        state.places[place].gate = None
+
+    if self.gate:
+      self.character.trophies.append(self.gate)
+    self.done = True
+
+  def is_resolved(self):
+    return self.done
+
+  def log(self, state):
+    if self.cancelled and not self.done:
+      return f"{self.character.name} did not take a gate trophy"
+    if self.done and self.gate is None:
+      return f"{self.character.name} tried to draw a gate, but there were none"
+    if not self.done:
+      return f"{self.character.name} takes a gate trophy"
+    return f"{self.character.name} took a {self.gate.name} gate trophy"
+
+  def animated(self):
+    return True
+
+
 class MonsterAppears(Conditional):
 
   def __init__(self, character):
@@ -4441,6 +4485,8 @@ class CloseGate(Event):
     self.location_name: Union[MapChoice, str] = location_name
     self.gate = None
     self.can_take = can_take
+    self.take_gate = None
+    self.closed_until = None
     self.can_seal = can_seal
     self.return_monsters = None
     self.seal_choice: Optional[ChoiceEvent] = None
@@ -4458,19 +4504,27 @@ class CloseGate(Event):
       if self.gate is None:
         self.cancelled = True
         return
+      state.places[self.location_name].gate = None
 
       if self.can_take:
-        # TODO: event for taking a gate trophy
-        self.character.trophies.append(self.gate)
+        # self.character.trophies.append(self.gate)
+        if self.take_gate is None:
+          self.take_gate = TakeGateTrophy(self.character, self.gate)
+          state.event_stack.append(self.take_gate)
+          return
       else:
         state.gates.append(self.gate)
-      state.places[self.location_name].gate = None
+
+    if self.closed_until is None:
       closed_until = state.places[self.location_name].closed_until or -1
       if closed_until > state.turn_number:
+        self.closed_until = CloseLocation(self.location_name, closed_until - state.turn_number - 1)
         state.event_stack.append(
-            CloseLocation(self.location_name, closed_until - state.turn_number - 1)
+            self.closed_until
         )
         return
+      else:
+        self.closed_until = False
 
     if not self.return_monsters:
       monsters_to_return = []

@@ -1746,6 +1746,15 @@ class TakeTrophyTest(EventTest):
     self.assertEqual(self.state.monsters[0].place, self.state.monster_cup)
 
 
+class TestTakeGateTrophy(EventTest):
+  # Note that CloseGate handles most of the normal behavior.
+  def testDrawGateTrophy(self):
+    top_gate = self.state.gates[0]
+    self.state.event_stack.append(TakeGateTrophy(self.char, "draw"))
+    self.resolve_until_done()
+    self.assertIn(top_gate, self.char.trophies)
+
+
 class ReturnMonstersAndGatesTest(EventTest):
 
   def testReturnMonster(self):
