@@ -702,6 +702,14 @@ class Dreamlands23Test(GateEncounterTest):
     self.assertEqual(self.char.place.name, "Lost")
 
 
+class Other23(GateEncounterTest):
+    pass
+
+
+class Other24(GateEncounterTest):
+    pass
+
+
 class Abyss26Test(GateEncounterTest):
   def setUp(self):
     super().setUp()
@@ -792,6 +800,10 @@ class Other27Test(GateEncounterTest):
       self.resolve_until_done()
     self.assertEqual(self.char.stamina, 3)
     self.assertEqual(self.char.clues, 3)
+
+
+class Dreamlands28Test(GateEncounterTest):
+    pass
 
 
 class PassOrLoseDiceTest(GateEncounterTest):

@@ -376,7 +376,7 @@ def GreatHall17(char) -> events.Event:
 
 
 def Other17(char) -> events.Event:
-  return events.Draw(char, "spell", 1)
+  return events.Draw(char, "spells", 1)
 
 
 def City18(char) -> events.Event:
@@ -703,7 +703,7 @@ def SunkenCity34(char) -> events.Event:
   shadow = events.Sequence([
       events.Loss(char, {"stamina": 2}),
       events.Delayed(char)
-  ])
+  ], char)
   return events.PassFail(char, check, events.Nothing(), shadow)
 
 
@@ -829,7 +829,7 @@ def SunkenCity41(char) -> events.Event:
   die = events.DiceRoll(char, 1)
   seq = events.Sequence([
       die, events.Loss(char, {"sanity": values.Calculation(die, "sum")})
-  ])
+  ], char)
   return seq
 
 
@@ -883,7 +883,7 @@ def SunkenCity44(char) -> events.Event:
   visage = events.Sequence([
       events.Loss(char, {"stamina": 1}),
       events.Delayed(char)
-  ])
+  ], char)
   return events.PassFail(char, check, events.Nothing(), visage)
 
 
@@ -941,7 +941,7 @@ def Pluto47(char) -> events.Event:
   space_mead = events.Sequence([
       events.Gain(char, {"clues": 2}),
       events.Return(char, char.place.info.name),
-  ])
+  ], char)
   return events.PassFail(char, check, space_mead, events.LostInTimeAndSpace(char))
 
 
