@@ -665,12 +665,13 @@ class GameState:
 
     # Must fight monsters when you end your movement.
     if isinstance(event, (events.CityMovement, events.WagonMove, events.Return)):
-      nearby_monsters = [mon for mon in self.monsters if mon.place == event.character.place]
-      if nearby_monsters:
-        auto_evade = isinstance(event, events.Return)
-        triggers.append(events.EvadeOrFightAll(event.character, nearby_monsters, auto_evade))
-      if isinstance(event.character.place, places.Location) and event.character.place.clues:
-        triggers.append(events.CollectClues(event.character, event.character.place.name))
+      if self.turn_phase == "movement":
+        nearby_monsters = [mon for mon in self.monsters if mon.place == event.character.place]
+        if nearby_monsters:
+          auto_evade = isinstance(event, events.Return)
+          triggers.append(events.EvadeOrFightAll(event.character, nearby_monsters, auto_evade))
+        if isinstance(event.character.place, places.Location) and event.character.place.clues:
+          triggers.append(events.CollectClues(event.character, event.character.place.name))
 
     # Pulled through a gate if it opens on top of you.
     # Ancient one awakens if gate limit has been hit.

@@ -425,6 +425,48 @@ class MovementTest(EventTest):
     self.assertEqual(self.char.place.name, "Easttown")
     self.assertEqual(self.char.movement_points, 3)
 
+  def testEndMovementOnMonster(self):
+    maniac = next(monster for monster in self.state.monsters if monster.name == "Maniac")
+    self.char.speed_sneak_slider = 0
+    self.char.place = self.state.places["Rivertown"]
+    maniac.place = self.state.places["Easttown"]
+    self.advance_turn(self.state.turn_number, "movement")
+    movement = self.resolve_to_choice(CityMovement)
+    movement.resolve(self.state, "Easttown")
+    movement = self.resolve_to_choice(CityMovement)
+    movement.resolve(self.state, "done")
+
+    choice = self.resolve_to_choice(FightOrEvadeChoice)
+    self.assertEqual(choice.choices, ["Fight", "Evade"])
+    choice.resolve(self.state, "Evade")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+
+  def testReturnFromGateToMonster(self):
+    maniac = next(monster for monster in self.state.monsters if monster.name == "Maniac")
+    gate = self.state.gates.popleft()
+    self.state.places["Graveyard"].gate = gate
+    self.char.place = self.state.places[gate.name + "2"]
+    maniac.place = self.state.places["Graveyard"]
+    self.advance_turn(self.state.turn_number, "movement")
+
+    # When you return, you should get the choice to
+    choice = self.resolve_to_choice(FightOrEvadeChoice)
+    choice.resolve(self.state, "Ignore")
+    self.resolve_until_done()
+
+  def testReturnFromGateCard(self):
+    maniac = next(monster for monster in self.state.monsters if monster.name == "Maniac")
+    gate = self.state.gates.popleft()
+    self.state.places["Graveyard"].gate = gate
+    self.char.place = self.state.places[gate.name + "2"]
+    maniac.place = self.state.places["Graveyard"]
+    self.state.turn_phase = "otherworld"
+
+    # Return during the otherworld encounter phase. The player does not encounter monsters.
+    self.state.event_stack.append(gate_encounters.Dreamlands8(self.char))
+    self.resolve_until_done()
+
   def testMoveOneSpaceToMonster(self):
     maniac = next(monster for monster in self.state.monsters if monster.name == "Maniac")
     self.char.place = self.state.places["Rivertown"]
