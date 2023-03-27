@@ -670,8 +670,11 @@ class GameState:
         if nearby_monsters:
           auto_evade = isinstance(event, events.Return)
           triggers.append(events.EvadeOrFightAll(event.character, nearby_monsters, auto_evade))
-        if isinstance(event.character.place, places.Location) and event.character.place.clues:
-          triggers.append(events.CollectClues(event.character, event.character.place.name))
+
+    # Collect clues when done with movement.
+    if isinstance(event, events.Movement):
+      if isinstance(event.character.place, places.Location) and event.character.place.clues:
+        triggers.append(events.CollectClues(event.character, event.character.place.name))
 
     # Pulled through a gate if it opens on top of you.
     # Ancient one awakens if gate limit has been hit.
