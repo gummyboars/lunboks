@@ -1053,14 +1053,14 @@ class MaxSanityStaminaTest(EventTest):
 class CollectCluesTest(EventTest):
 
   def testCollectNoClues(self):
-    collect = CollectClues(self.char, "Diner")
+    collect = CollectClues(self.char, self.state.places["Diner"])
     self.state.event_stack.append(collect)
     self.resolve_until_done()
     self.assertEqual(collect.picked_up, 0)
     self.assertEqual(self.char.clues, 0)
 
   def testCollectTwoClues(self):
-    collect = CollectClues(self.char, "Diner")
+    collect = CollectClues(self.char, self.state.places["Diner"])
     self.state.event_stack.append(collect)
     self.state.places["Diner"].clues = 2
     self.resolve_until_done()
@@ -1069,7 +1069,7 @@ class CollectCluesTest(EventTest):
     self.assertEqual(self.char.clues, 2)
 
   def testCancelCollection(self):
-    collect = CollectClues(self.char, "Diner")
+    collect = CollectClues(self.char, self.state.places["Diner"])
     self.state.event_stack.append(collect)
     self.state.places["Diner"].clues = 2
     self.char.possessions.append(Canceller(GainOrLoss))
