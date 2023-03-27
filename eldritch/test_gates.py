@@ -703,11 +703,11 @@ class Dreamlands23Test(GateEncounterTest):
 
 
 class Other23(GateEncounterTest):
-    pass
+  pass
 
 
 class Other24(GateEncounterTest):
-    pass
+  pass
 
 
 class Abyss26Test(GateEncounterTest):
@@ -803,7 +803,7 @@ class Other27Test(GateEncounterTest):
 
 
 class Dreamlands28Test(GateEncounterTest):
-    pass
+  pass
 
 
 class PassOrLoseDiceTest(GateEncounterTest):
