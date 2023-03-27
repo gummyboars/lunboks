@@ -1080,6 +1080,37 @@ class CollectCluesTest(EventTest):
     self.assertEqual(self.state.places["Diner"].clues, 2)
     self.assertEqual(self.char.clues, 0)
 
+  def testCollectWhenMovementDone(self):
+    self.state.places["Graveyard"].clues = 1
+    self.char.place = self.state.places["Graveyard"]
+    self.advance_turn(self.state.turn_number, "movement")
+    movement = self.resolve_to_choice(CityMovement)
+    movement.resolve(self.state, "done")
+    self.resolve_until_done()
+    self.assertEqual(self.char.clues, 1)
+    self.assertEqual(self.state.places["Graveyard"].clues, 0)
+
+  def testCollectCluesAfterMonsters(self):
+    maniac = next(monster for monster in self.state.monsters if monster.name == "Maniac")
+    maniac.place = self.state.places["Graveyard"]
+    self.char.speed_sneak_slider = 0
+    self.state.places["Graveyard"].clues = 1
+    self.char.place = self.state.places["Graveyard"]
+    self.advance_turn(self.state.turn_number, "movement")
+    movement = self.resolve_to_choice(CityMovement)
+    movement.resolve(self.state, "done")
+
+    choice = self.resolve_to_choice(FightOrEvadeChoice)
+    # Before fighting the monter, the character should not have picked up clues.
+    self.assertEqual(self.char.clues, 0)
+    self.assertEqual(self.state.places["Graveyard"].clues, 1)
+
+    choice.resolve(self.state, "Evade")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.clues, 1)
+    self.assertEqual(self.state.places["Graveyard"].clues, 0)
+
 
 class InsaneUnconsciousTest(EventTest):
 
