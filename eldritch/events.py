@@ -956,55 +956,30 @@ class CapStatsAtMax(Event):
     return True
 
 
-class CollectClues(Event):
+class CollectClues(GainOrLoss):
 
   def __init__(self, character, place):
-    super().__init__()
-    self.character = character
+    super().__init__(character, {"clues": values.Calculation(place, "clues")}, {})
     self.place = place
-    self.gain: Optional[Event] = None
-    self.picked_up = None
-    self.done = False
 
   def resolve(self, state):
-    if self.picked_up is None:
-      if self.character.place.name != self.place:
-        self.cancelled = True
-        return
-      self.picked_up = state.places[self.place].clues
+    super().resolve(state)
+    self.place.clues -= (self.picked_up or 0)
 
-    if not self.picked_up:
-      self.done = True
-      return
-
-    if self.gain is None:
-      self.gain = Gain(self.character, {"clues": self.picked_up})
-      state.event_stack.append(self.gain)
-      return
-
-    if self.gain.is_cancelled():
-      self.picked_up = None
-      self.cancelled = True
-      return
-    state.places[self.place].clues -= self.picked_up
-    self.done = True
-    return
-
-  def is_resolved(self):
-    return self.done
+  @property
+  def picked_up(self):
+    if self.final_adjustments is None:
+      return None
+    return self.final_adjustments.get("clues", 0)
 
   def log(self, state):
-    if self.cancelled and (self.gain is None or self.gain.is_cancelled()):
-      return f"{self.character.name} did not pick up clues at {self.place}"
-    if self.done:
+    if self.cancelled:
+      return f"{self.character.name} did not pick up clues at {self.place.name}"
+    if self.is_resolved():
       if self.picked_up:
-        return f"{self.character.name} picked up {self.picked_up} clues at {self.place}"
-      return f"no clues for {self.character.name} at {self.place}"
-    if self.picked_up is None:
-      return f"{self.character.name} will pick up clues at {self.place}"
-    if not self.picked_up:
-      return f"no clues for {self.character.name} at {self.place}"
-    return f"{self.character.name} will pick up {self.picked_up} clues at {self.place}"
+        return f"{self.character.name} picked up {self.picked_up} clues"
+      return f"no clues for {self.character.name} at {self.place.name}"
+    return f"{self.character.name} will pick up {self.place.clues} clues at {self.place.name}"
 
 
 class StackClearMixin:
