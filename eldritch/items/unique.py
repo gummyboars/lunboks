@@ -115,7 +115,9 @@ class BlueWatcher(Item):
     super().__init__("Blue Watcher", idx, "unique", {}, {}, None, 4)
 
   def get_usable_interrupt(self, event, owner, state):
-    if not isinstance(event, (events.Check, events.CombatChoice)) or event.is_done():
+    if not isinstance(event, (events.SpendChoice, events.DiceRoll, events.CombatChoice)):
+      return None
+    if event.is_done():
       return None
     if not owner == event.character:
       return None
@@ -136,16 +138,27 @@ class BlueWatcher(Item):
           events.DiscardSpecific(owner, [self]),
           events.Loss(owner, {"stamina": 2})
       ], owner)
-    if isinstance(state.event_stack[-2], events.GateCloseAttempt):
-      if event.check_type in ("fight", "lore") and len(state.event_stack) > 1:
-        return events.Sequence(
-            [
-                events.DiscardSpecific(owner, [self]),
-                events.PassCheck(owner, event, self),
-                events.Loss(owner, {"stamina": 2})
-            ],
-            owner
-        )
+    if len(state.event_stack) < 3:
+      return None
+    # GateCloseAttempt -> Check -> DiceRoll/SpendChoice
+    if not isinstance(state.event_stack[-3], events.GateCloseAttempt):
+      return None
+    if state.event_stack[-2] != state.event_stack[-3].check:
+      return None
+    if isinstance(event, events.SpendChoice):
+      return events.Sequence([
+          events.PassCheck(owner, state.event_stack[-2], self),
+          events.DiscardSpecific(owner, [self]),
+          events.CancelEvent(event),
+          events.Loss(owner, {"stamina": 2})
+      ], owner)
+    if isinstance(event, events.DiceRoll) and event == state.event_stack[-2].dice:
+      return events.Sequence([
+          events.PassCheck(owner, state.event_stack[-2], self),
+          events.DiscardSpecific(owner, [self]),
+          events.CancelEvent(event),
+          events.Loss(owner, {"stamina": 2})
+      ], owner)
     return None
 
 

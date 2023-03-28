@@ -2,6 +2,7 @@
 
 import os
 import sys
+import unittest
 from unittest import mock
 
 # Hack to allow the test to be run directly instead of invoking python from the base dir.
@@ -255,36 +256,65 @@ class BlueWatcherTest(EventTest):
     self.assertIn(monster, self.char.trophies)
     self.assertIn(self.watcher, self.char.possessions)
 
-  def testPassFightClose(self):
+  def testCloseGateAfterRoll(self):
+    self.char.clues = 1
     gate = self.state.gates.popleft()
     self.state.places["Diner"].gate = gate
     self.state.event_stack.append(events.GateCloseAttempt(self.char, "Diner"))
     choice = self.resolve_to_choice(events.MultipleChoice)
     choice.resolve(self.state, "Close with fight")
-    watcher = self.resolve_to_usable(0, "Blue Watcher0")
-    self.state.event_stack.append(watcher)
+    self.resolve_to_usable(0, "Blue Watcher0")
+    self.state.done_using[0] = True  # Decline to use before rolling the dice
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=1)):
-      seal = self.resolve_to_choice(events.SpendChoice)
+      self.resolve_to_choice(events.SpendChoice)
+    self.assertIn(0, self.state.usables)
+    self.assertIn("Blue Watcher0", self.state.usables[0])
+    self.state.event_stack.append(self.state.usables[0]["Blue Watcher0"])
+    seal = self.resolve_to_choice(events.SpendChoice)
+    self.assertListEqual(seal.choices, ["Yes", "No"])
     seal.resolve(self.state, "No")
     self.resolve_until_done()
     self.assertEqual(self.char.stamina, 3)
     self.assertNotIn(self.watcher, self.char.possessions)
     self.assertIn(gate, self.char.trophies)
 
-  def testPassLoreClose(self):
-    gate = self.state.gates[0]
+  def testCloseGateBeforeRoll(self):
+    self.char.clues = 1
+    gate = self.state.gates.popleft()
     self.state.places["Diner"].gate = gate
     self.state.event_stack.append(events.GateCloseAttempt(self.char, "Diner"))
     choice = self.resolve_to_choice(events.MultipleChoice)
     choice.resolve(self.state, "Close with lore")
-    watcher = self.resolve_to_usable(0, "Blue Watcher0")
-    self.state.event_stack.append(watcher)
-    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=1)):
-      seal = self.resolve_to_choice(events.SpendChoice)
+    self.resolve_to_usable(0, "Blue Watcher0")  # Use before rolling the dice
+    self.state.event_stack.append(self.state.usables[0]["Blue Watcher0"])
+    seal = self.resolve_to_choice(events.SpendChoice)
+    self.assertListEqual(seal.choices, ["Yes", "No"])
     seal.resolve(self.state, "No")
     self.resolve_until_done()
     self.assertEqual(self.char.stamina, 3)
     self.assertNotIn(self.watcher, self.char.possessions)
+    self.assertIn(gate, self.char.trophies)
+
+  def testDeclineToUseGateClose(self):
+    self.char.clues = 1
+    gate = self.state.gates.popleft()
+    self.state.places["Diner"].gate = gate
+    self.state.event_stack.append(events.GateCloseAttempt(self.char, "Diner"))
+    choice = self.resolve_to_choice(events.MultipleChoice)
+    choice.resolve(self.state, "Close with fight")
+    self.resolve_to_usable(0, "Blue Watcher0")
+    self.state.done_using[0] = True
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      choice = self.resolve_to_choice(events.SpendChoice)
+    self.assertIn(0, self.state.usables)
+    self.assertIn("Blue Watcher0", self.state.usables[0])
+    choice.resolve(self.state, "Pass")
+    seal = self.resolve_to_choice(events.SpendChoice)
+    self.assertListEqual(seal.choices, ["Yes", "No"])
+    seal.resolve(self.state, "No")
+    self.resolve_until_done()
+    self.assertEqual(self.char.stamina, 5)
+    self.assertIn(self.watcher, self.char.possessions)
     self.assertIn(gate, self.char.trophies)
 
   def testCantUseOnOtherFightOrLore(self):
@@ -710,3 +740,7 @@ class SilverKeyTest(EventTest):
     self.assertEqual(self.char.place.name, "Rivertown")
     self.assertEqual(self.char.movement_points, 2)
     self.assertEqual(self.key.tokens["stamina"], 1)
+
+
+if __name__ == "__main__":
+  unittest.main()
