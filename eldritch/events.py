@@ -142,6 +142,12 @@ class Unimplemented(Nothing):
   pass
 
 
+class Animate(Nothing):
+
+  def animated(self):
+    return True
+
+
 class Sequence(Event):
 
   def __init__(self, events, character=None):
@@ -5071,19 +5077,23 @@ class MoveMonster(Event):
       self.monster.place = self.destination
       return
 
-    num_moves = 1
-    if movement == "fast":
-      num_moves = 2
+    # TODO: other movement types (stalker, aquatic)
 
     self.destination = False
-    for _ in range(num_moves):
-      if self.color in getattr(self.monster.place, "movement", {}):
-        self.destination = self.monster.place.movement[self.color]
-        self.monster.place = self.destination
-      if [char for char in state.characters if char.place == self.monster.place]:
-        break
+    if self.color in getattr(self.monster.place, "movement", {}):
+      self.destination = self.monster.place.movement[self.color]
+      self.monster.place = self.destination
 
-    # TODO: other movement types (stalker, aquatic)
+    # Hack: second move for fast monsters. Mark this event as not resolved, then append a Nothing()
+    # to the stack so that we attempt to resolve movement again. Use move_event to track this.
+    # We do it this way so that both of the monster's moves are animated.
+    if movement == "fast" and self.move_event is None:
+      if [char for char in state.characters if char.place == self.monster.place]:
+        return
+      self.destination = None
+      self.move_event = Animate()
+      state.event_stack.append(self.move_event)
+      return
 
   def is_resolved(self):
     return self.destination is not None

@@ -1084,10 +1084,14 @@ class MoveMonsterTest(EventTest):
     self.state.monsters[0].place = self.state.places["Rivertown"]
     self.char.place = self.state.places["FrenchHill"]
 
-    self.state.event_stack.append(MoveMonsters({"square"}, {"circle", "moon"}))
+    move = MoveMonsters({"square"}, {"circle", "moon"})
+    self.state.event_stack.append(move)
     self.resolve_until_done()
 
     self.assertEqual(self.state.monsters[0].place.name, "FrenchHill")
+    move_fast = move.moves.events[0]
+    self.assertTrue(move_fast.is_resolved())
+    self.assertEqual(move_fast.destination.name, "FrenchHill")
 
   def testFlyingMonsterMovement(self):
     self.state.monsters.clear()
