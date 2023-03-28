@@ -251,7 +251,8 @@ def GreatHall11(char) -> events.Event:
 
 def Other11(char) -> events.Event:
   check = events.Check(char, "luck", -1)
-  weapon = events.Draw(char, "common", 1, target_type=items.Weapon)
+  look = events.LookAtItems(char, "common", 1, target_type="weapon")
+  weapon = events.Sequence([look, events.KeepDrawn(char, look)], char)
   return events.PassFail(char, check, weapon, events.Nothing())
 
 
