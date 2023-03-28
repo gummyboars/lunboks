@@ -44,6 +44,7 @@ class DummyPlace(Dummy):
 
   def __init__(self, **kwargs):
     self.sealed = False
+    self.gate = None
     super().__init__(**kwargs)
 
   def is_unstable(self, state):  # pylint: disable=unused-argument
@@ -195,6 +196,24 @@ class StabilityTest(unittest.TestCase):
     place.sealed = True
     self.assertEqual(stable.value(state), 1)
     self.assertEqual(unstable.value(state), 0)
+
+
+class OpenGatesTest(unittest.TestCase):
+
+  def testOpenGates(self):
+    state = DummyState()
+    place1 = DummyPlace(name="one", gate="hello")
+    place2 = DummyPlace(name="two", gate="goodbye")
+    place3 = DummyPlace(name="three")
+    state.places = {"one": place1, "two": place2, "three": place3}
+    gates = OpenGates()
+    count = OpenGateCount()
+    self.assertCountEqual(gates.value(state), ["one", "two"])
+    self.assertEqual(count.value(state), 2)
+    place2.gate = None
+    place1.gate = None
+    self.assertCountEqual(gates.value(state), [])
+    self.assertEqual(count.value(state), 0)
 
 
 class UnsuccessfulDiceTest(unittest.TestCase):
