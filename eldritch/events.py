@@ -2334,6 +2334,69 @@ class DiscardSpecific(Event):
     return True
 
 
+class LoseSpecific(DiscardSpecific):
+  def log(self, state):
+    if self.cancelled and self.discarded is None:
+      return f"{self.character.name} could not lose the items"
+    if self.discarded is None:
+      if isinstance(self.items, ItemChoice):
+        text = f"{self.character.name} will lose the chosen items"
+      else:
+        text = f"{self.character.name} will lose " + ", ".join(item.name for item in self.items)
+      if not self.to_box:
+        return text
+      return text + " to the box"
+    if not self.discarded:
+      text = f"{self.character.name} did not have items to lose"
+    else:
+      text = f"{self.character.name} lost " + ", ".join(item.name for item in self.discarded)
+    if not self.to_box:
+      return text
+    return text + " to the box"
+
+
+def LoseNamed(character, name, to_box=False):
+  items = [item for item in character.possessions if item.name == name]
+  return LoseSpecific(character, items, to_box)
+
+
+class RollToLose(Event):
+  def __init__(self, character, item):
+    super().__init__()
+    self.character = character
+    self.item = item
+    self.roll = None
+    self.lose = None
+    self.done = False
+
+  def resolve(self, state) -> NoReturn:
+    if self.roll is None:
+      self.roll = DiceRoll(self.character, 1)
+      state.event_stack.append(self.roll)
+      return
+
+    if self.roll.sum == 1 and self.lose is None:
+      self.lose = LoseSpecific(self.character, [self.item])
+      state.event_stack.append(self.lose)
+      return
+
+    self.done = True
+
+  def is_resolved(self) -> bool:
+    return self.done
+
+  def log(self, state):
+    if self.cancelled and self.roll is None:
+      return f"{self.character.name} did not roll to lose the {self.item.name}"
+    if self.cancelled:
+      return f"{self.character.name} could not lose the {self.item.name}"
+    if self.done:
+      if self.lose is not None:
+        return f"{self.character.name} rolled a 1 and lost the {self.item.name}"
+      return f"{self.character.name} keeps the {self.item.name}"
+    return "How tf did we get here?"
+
+
 class DiscardNamed(Event):
 
   def __init__(self, character, item_name):
@@ -4508,6 +4571,51 @@ class AddToken(Event):
       return f"{self.n_tokens} {self.token_type.title()} token(s) added to {self.asset.name}"
     return (f"{self.n_tokens} {self.token_type.title()} token(s) prevented"
             f" from being added to {self.asset.name}")
+
+  def animated(self):
+    return True
+
+
+class RemoveToken(Event):
+  def __init__(self, asset, token_type, character=None, n_tokens=1):
+    assert token_type in asset.tokens
+    self.asset = asset
+    self.token_type = token_type
+    self.character = character
+    self.removed = False
+    self.resolved_zero = False
+    self.done = False
+    self.n_tokens = n_tokens
+    super().__init__()
+
+  def is_resolved(self):
+    return self.done
+
+  def resolve(self, state):
+    token_type = self.token_type
+    asset = self.asset
+
+    if not self.removed and asset.tokens[self.token_type] > 0:
+      asset.tokens[self.token_type] -= self.n_tokens
+      self.removed = True
+
+    if ((not self.resolved_zero) and (asset.tokens[token_type] == 0)):
+      state.event_stack.append(self.asset.get_zero_tokens_event(token_type, self.character))
+      self.resolved_zero = True
+      return
+
+    self.done = True
+
+  def log(self, state):
+    if not self.removed:
+      return (f"{self.n_tokens} {self.token_type.title()} tokens to be removed from "
+              f"{self.asset.name}")
+    if self.resolved_zero:
+      return f"{self.asset.name} has reached 0 tokens"
+    if self.done and not self.cancelled:
+      return f"{self.n_tokens} {self.token_type.title()} token(s) removed from {self.asset.name}"
+    return (f"{self.n_tokens} {self.token_type.title()} token(s) prevented"
+            f" from being removed from {self.asset.name}")
 
   def animated(self):
     return True

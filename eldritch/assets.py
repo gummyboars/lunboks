@@ -73,6 +73,9 @@ class Asset(metaclass=abc.ABCMeta):
   def get_max_token_event(self, token_type, owner):
     return events.Nothing()
 
+  def get_zero_tokens_event(self, token_type, owner):
+    return events.Nothing()
+
   def json_repr(self):
     return {attr: getattr(self, attr, None) for attr in self.JSON_ATTRS}
 
@@ -273,34 +276,47 @@ class Deputy(Card):
     return None
 
 
-class BlessingOrCurse(Card):
-  def __init__(self, kind, idx):
-    assert kind in ["Blessing", "Curse"]
-    super().__init__(kind, idx, "specials", {}, {})
-    self.opposite = "Curse" if kind == "Blessing" else "Blessing"
-    self.must_roll = False
+class SelfDiscardingCard(Card):
+  def __init__(self, name, idx, active_bonuses=None, passive_bonuses=None):
+    active_bonuses = active_bonuses or {}
+    passive_bonuses = passive_bonuses or {}
+    super().__init__(
+        name, idx, "specials", active_bonuses=active_bonuses, passive_bonuses=passive_bonuses
+    )
+    self.tokens["elder_sign"] = 0
 
   def get_trigger(self, event, owner, state):
     if isinstance(event, events.UpkeepActions) and event.character == owner:
-      if self.must_roll:
-        roll = events.DiceRoll(owner, 1)
-        return events.Conditional(
-            owner, roll, "sum",
-            {1: events.DiscardSpecific(owner, self), 2: events.Nothing()}
-        )
-      self.must_roll = True
+      if self.tokens["elder_sign"]:
+        return events.RollToLose(owner, self)
+      return events.AddToken(self, "elder_sign", owner)
+    return None
 
+
+class BlessingOrCurse(SelfDiscardingCard):
+  def __init__(self, name, idx):
+    assert name in ["Blessing", "Curse"]
+    super().__init__(name, idx)
+    self.opposite = "Curse" if name == "Blessing" else "Blessing"
+
+  def get_trigger(self, event, owner, state):
     if isinstance(event, events.KeepDrawn) and self.name in event.kept:
       selves = [p for p in event.character.possessions if p.name == self.name]
-      _, *duplicates = sorted(selves, key=lambda x: x.must_roll)
+      kept, *duplicates = sorted(selves, key=lambda x: x.tokens["elder_sign"])
       if duplicates:
-        return events.DiscardSpecific(event.character, duplicates)
+        return events.Sequence([
+            events.DiscardSpecific(event.character, duplicates),
+            events.RemoveToken(kept, "elder_sign", owner),
+        ], owner)
       if self.opposite in [p.name for p in event.character.possessions]:
         return events.Sequence([
-            events.DiscardNamed(event.character, self.name),
-            events.DiscardNamed(event.character, self.opposite),
+            events.LoseNamed(event.character, self.name),
+            events.LoseNamed(event.character, self.opposite),
         ], event.character)
-    return None
+    return super().get_trigger(event, owner, state)
+
+  def __repr__(self):
+    return f"<{self.name} - {self.tokens}>"
 
 
 def Blessing(idx):

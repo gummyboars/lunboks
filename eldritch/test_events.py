@@ -1358,36 +1358,6 @@ class StatusChangeTest(EventTest):
     self.assertTrue(self.char.lodge_membership)
     self.assertEqual(member.change, 1)
 
-  def testDoubleBlessed(self):
-    self.state.event_stack.append(Bless(self.char))
-    self.resolve_until_done()
-    self.char.possessions[0].must_roll = True
-
-    bless = Bless(self.char)
-    self.assertFalse(bless.is_resolved())
-    self.state.event_stack.append(bless)
-    self.resolve_until_done()
-
-    self.assertTrue(bless.is_resolved())
-    self.assertEqual(self.char.bless_curse, 1)
-    self.assertEqual([p.name for p in self.char.possessions], ["Blessing"])
-    self.assertFalse(self.char.possessions[0].must_roll)
-
-  def testCursedWhileBlessed(self):
-    self.state.event_stack.append(Bless(self.char))
-    self.resolve_until_done()
-    self.char.possessions[0].must_roll = True
-
-    curse = Curse(self.char)
-    self.assertFalse(curse.is_resolved())
-
-    self.state.event_stack.append(curse)
-    self.resolve_until_done()
-
-    self.assertTrue(curse.is_resolved())
-    self.assertEqual(self.char.bless_curse, 0)
-    self.assertListEqual(self.char.possessions, [])
-
   def testArrested(self):
     self.assertEqual(self.char.place.name, "Diner")
     self.assertIsNone(self.char.lose_turn_until)

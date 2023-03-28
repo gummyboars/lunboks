@@ -158,6 +158,8 @@ otherNames = [
   "Deputy",
   "Deputy's Revolver",
   "Patrol Wagon",
+  "Blessing",
+  "Curse",
 ];
 carefullyAdd(otherNames);
 monsterNames = [
