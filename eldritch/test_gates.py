@@ -16,6 +16,7 @@ from eldritch import gate_encounters
 from eldritch import events
 from eldritch.events import *
 from eldritch import items
+from eldritch import monsters
 from eldritch import places
 from eldritch.test_events import EventTest
 
@@ -703,11 +704,77 @@ class Dreamlands23Test(GateEncounterTest):
 
 
 class Other23(GateEncounterTest):
-  pass
+  def setUp(self):
+    super().setUp()
+    self.char.place = self.state.places["City1"]
+    self.state.event_stack.append(gate_encounters.Other23(self.char))
+
+  def testFail(self):
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
+      self.resolve_until_done()
+    self.assertFalse(self.char.trophies)
+
+  def testDrawNormal(self):
+    with (mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)),
+          mock.patch.object(events.random, "sample", new=mock.MagicMock(return_value=[0]))
+          ):
+      self.resolve_until_done()
+    self.assertEqual(self.char.trophies, [self.state.monsters[0]])
+
+  def testDrawEndless(self):
+    self.state.monsters.insert(0, monsters.Haunter())
+    with (mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)),
+          mock.patch.object(events.random, "sample", new=mock.MagicMock(return_value=[0]))
+          ):
+      self.resolve_until_done()
+    monster = self.state.monsters[0]
+    self.assertEqual(self.char.trophies, [monster])
+    self.assertTrue(monster.has_attribute("endless", self.state, self.char))
 
 
 class Other24(GateEncounterTest):
-  pass
+  def setUp(self):
+    super().setUp()
+    self.char.place = self.state.places["Plateau1"]
+    self.state.event_stack.append(gate_encounters.Other24(self.char))
+    self.voice = items.Voice(0)
+    self.state.spells.append(self.voice)
+
+  def testDecline(self):
+    choice = self.resolve_to_choice(MultipleChoice)
+    self.assertListEqual(choice.choices, ["Yes", "No"])
+    choice.resolve(self.state, "No")
+    self.resolve_until_done()
+
+  def testAcceptPass(self):
+    choice = self.resolve_to_choice(MultipleChoice)
+    self.assertListEqual(choice.choices, ["Yes", "No"])
+    choice.resolve(self.state, "Yes")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+    self.assertListEqual(self.char.possessions, [self.voice])
+
+  def testAcceptFail(self):
+    self.char.sanity = 5
+    choice = self.resolve_to_choice(MultipleChoice)
+    self.assertListEqual(choice.choices, ["Yes", "No"])
+    choice.resolve(self.state, "Yes")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
+      self.resolve_until_done()
+    self.assertFalse(self.char.possessions)
+    self.assertEqual(self.char.sanity, 2)
+
+  def testAcceptFailInsane(self):
+    choice = self.resolve_to_choice(MultipleChoice)
+    self.assertListEqual(choice.choices, ["Yes", "No"])
+    choice.resolve(self.state, "Yes")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
+      loss = self.resolve_to_choice(ItemLossChoice)
+    loss.resolve(self.state, "done")
+    self.resolve_until_done()
+    self.assertFalse(self.char.possessions)
+    self.assertEqual(self.char.sanity, 1)
+    self.assertEqual(self.char.place.name, "Lost")
 
 
 class Abyss26Test(GateEncounterTest):
@@ -803,7 +870,24 @@ class Other27Test(GateEncounterTest):
 
 
 class Dreamlands28Test(GateEncounterTest):
-  pass
+  def setUp(self):
+    super().setUp()
+    self.char.place = self.state.places["Dreamlands1"]
+    self.state.event_stack.append(gate_encounters.Dreamlands28(self.char))
+    gate = next(gate for gate in self.state.gates if gate.name == "Dreamlands")
+    self.state.gates.remove(gate)
+    self.state.places["Woods"].gate = gate
+
+  def testPass(self):
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=6)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.clues, 3)
+    self.assertEqual(self.char.place.name, "Woods")
+
+  def testFail(self):
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
+      self.resolve_until_done()
+    self.assertTrue(self.char.gone)
 
 
 class PassOrLoseDiceTest(GateEncounterTest):

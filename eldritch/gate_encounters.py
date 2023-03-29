@@ -383,7 +383,14 @@ def City18(char) -> events.Event:
   check = events.Check(char, "sneak", -1)
   draw = events.Draw(char, "unique", draw_count=2, keep_count=1)
   lost = events.LostInTimeAndSpace(char)
-  return events.PassFail(char, check, draw, lost)
+  return events.BinaryChoice(
+      char,
+      "Infiltrate the structures?",
+      "Yes",
+      "No",
+      events.PassFail(char, check, draw, lost),
+      events.Nothing(),
+  )
 
 
 def Plateau18(char) -> events.Event:
@@ -510,7 +517,14 @@ def Other24(char) -> events.Event:
   check = events.Check(char, "sneak", -1)
   steal = events.Draw(char, "spells", 1)
   pain = events.Loss(char, {"sanity": 3})
-  return events.PassFail(char, check, steal, pain)
+  return events.BinaryChoice(
+      char,
+      "Steal the scroll?",
+      "Yes",
+      "No",
+      events.PassFail(char, check, steal, pain),
+      events.Nothing(),
+  )
 
 
 def Abyss25(char) -> events.Event:
@@ -597,7 +611,10 @@ def Other27(char) -> events.Event:
 
 def Plateau28(char) -> events.Event:
   check = events.Check(char, "sneak", -1)
-  rites = events.Loss(char, {"sanity": 3, "stamina": 3})
+  rites = events.Sequence([
+      events.Loss(char, {"sanity": 3, "stamina": 3}),
+      events.Delayed(char),
+  ], char)
   return events.PassFail(char, check, events.Nothing(), rites)
 
 
@@ -652,7 +669,7 @@ def SunkenCity31(char) -> events.Event:
   pit = events.Sequence([
       events.Loss(char, {"sanity": 1}),
       events.Delayed(char),
-  ])
+  ], char)
   return events.PassFail(char, check, events.Nothing(), pit)
 
 
@@ -985,7 +1002,7 @@ def Other48(char) -> events.Event:
   knowledge = events.Sequence([
       events.Draw(char, "spells", 1),
       events.Loss(char, {"sanity": 1})
-  ])
+  ], char)
   return events.PassFail(char, events.Check(char, "lore", -2), knowledge, events.Nothing())
 
 
