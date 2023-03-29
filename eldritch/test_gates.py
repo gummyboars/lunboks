@@ -715,17 +715,17 @@ class Other23(GateEncounterTest):
     self.assertFalse(self.char.trophies)
 
   def testDrawNormal(self):
-    with (mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)),
-          mock.patch.object(events.random, "sample", new=mock.MagicMock(return_value=[0]))
-          ):
+    with mock.patch.object(
+        events.random, "randint", new=mock.MagicMock(return_value=5)
+    ), mock.patch.object(events.random, "sample", new=mock.MagicMock(return_value=[0])):
       self.resolve_until_done()
     self.assertEqual(self.char.trophies, [self.state.monsters[0]])
 
   def testDrawEndless(self):
     self.state.monsters.insert(0, monsters.Haunter())
-    with (mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)),
-          mock.patch.object(events.random, "sample", new=mock.MagicMock(return_value=[0]))
-          ):
+    with mock.patch.object(
+        events.random, "randint", new=mock.MagicMock(return_value=5)
+    ), mock.patch.object(events.random, "sample", new=mock.MagicMock(return_value=[0])):
       self.resolve_until_done()
     monster = self.state.monsters[0]
     self.assertEqual(self.char.trophies, [monster])
