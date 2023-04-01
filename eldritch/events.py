@@ -3,7 +3,9 @@ import collections
 import math
 import operator
 from random import SystemRandom
-from typing import List, Dict, Optional, Union, NoReturn, TYPE_CHECKING
+from typing import (
+    Collection, List, Dict, Optional, Union, NoReturn, TYPE_CHECKING,
+)
 
 from eldritch import places
 from eldritch import values
@@ -2731,6 +2733,25 @@ def PassFail(character, condition, pass_result: Event, fail_result: Event, min_s
   if isinstance(condition, values.Value):
     return outcome
   return Sequence([condition, outcome], character)
+
+
+def PassOrLoseDice(
+    char,
+    stat: str,
+    modifier: int,
+    attribute: Union[Collection, str],
+    n_dice: int = 1,
+    adjustment: int = 0,
+) -> Event:
+  check = Check(char, stat, modifier)
+  die = DiceRoll(char, n_dice)
+  amt = values.Calculation(die, "sum", operand=operator.add, right=adjustment)
+  if isinstance(attribute, str):
+    attribute = [attribute]
+  loss = Loss(char, {attr: amt for attr in attribute})
+
+  seq = Sequence([die, loss], char)
+  return PassFail(char, check, Nothing(), seq)
 
 
 class Arrested(Event):
