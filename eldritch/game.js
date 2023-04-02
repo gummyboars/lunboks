@@ -1073,10 +1073,8 @@ function addMonsterChoices(uichoice, cardChoice, monsters, invalidChoices, annot
       otherChoices.push(monster);
       continue;
     }
-    let holder = document.createElement("DIV");
-    holder.classList.add("cardholder");
-    let div = document.createElement("DIV");
-    div.classList.add("visualchoice", "monsterchoice");
+    let [holder, div, cnv] = addVisual(cardChoice, ["visualchoice", "monsterchoice"], null, annotations && annotations[idx]);
+    div.removeChild(cnv);
     let frontDiv = document.createElement("DIV");
     frontDiv.classList.add("fightchoice", "cnvcontainer");
     let backDiv = document.createElement("DIV");
@@ -1098,14 +1096,6 @@ function addMonsterChoices(uichoice, cardChoice, monsters, invalidChoices, annot
     backDiv.appendChild(backCnv);
     div.appendChild(frontDiv);
     div.appendChild(backDiv);
-    holder.appendChild(div);
-    let desc = document.createElement("DIV");
-    desc.classList.add("desc");
-    if (annotations != null && annotations.length > idx && annotations[idx] != null) {
-      desc.innerText = formatServerString(annotations[idx]);
-    }
-    holder.appendChild(desc);
-    cardChoice.appendChild(holder);
     renderAssetToDiv(frontDiv, monster.name);
     renderMonsterBackToDiv(backDiv, monster);
   }
@@ -1119,43 +1109,48 @@ function addMonsterChoices(uichoice, cardChoice, monsters, invalidChoices, annot
 }
 
 function showMonster(cardChoice, monster) {
-  let holder = document.createElement("DIV");
-  holder.classList.add("cardholder");
-  let div = document.createElement("DIV");
-  div.classList.add("fightchoice", "monsterback");
-  div.monsterInfo = monster;
-  let cnv = document.createElement("CANVAS");
-  cnv.classList.add("markercnv");  // TODO: use a better class name for this
-  div.appendChild(cnv);
-  holder.appendChild(div);
-  cardChoice.appendChild(holder);
+  let [holder, div, cnv] = addVisual(cardChoice, ["fightchoice", "monsterback"], monster, null);
   renderMonsterBackToDiv(div, monster);
 }
 
 function showActionSource(cardChoice, name) {
+  let [holder, div, cnv] = addVisual(cardChoice, ["cardchoice", "cnvcontainer"], null, null);
+  renderAssetToDiv(div, name);
+}
+
+function addVisual(cardChoice, classes, monster, descText) {
   let holder = document.createElement("DIV");
   holder.classList.add("cardholder");
   let div = document.createElement("DIV");
-  div.classList.add("cardchoice", "cnvcontainer");
+  div.classList.add(...classes);
+  if (monster != null) {
+    div.monsterInfo = monster;
+  }
   let cnv = document.createElement("CANVAS");
   cnv.classList.add("markercnv");  // TODO: use a better class name for this
   div.appendChild(cnv);
   holder.appendChild(div);
   cardChoice.appendChild(holder);
-  renderAssetToDiv(div, name);
+  if (descText != null) {
+    let desc = document.createElement("DIV");
+    desc.classList.add("desc");
+    desc.innerText = formatServerString(descText);
+    holder.appendChild(desc);
+  }
+  return [holder, div, cnv];
 }
 
 function addFightOrEvadeChoices(uichoice, cardChoice, monster, choices, invalidChoices, remainingSpend, annotations) {
   for (let [idx, choice] of choices.entries()) {
-    let holder = document.createElement("DIV");
-    holder.classList.add("cardholder");
-    let div = document.createElement("DIV");
-    div.classList.add("visualchoice", "fightchoice");
+    let descText = choice;
+    if (annotations && annotations[idx] != null) {
+      descText += " (" + formatServerString(annotations[idx]) + ")";
+    }
+    let holder, div, cnv;
     if (choice == "Fight") {
-      div.classList.add("monsterback");
-      div.monsterInfo = monster;
+      [holder, div, cnv] = addVisual(cardChoice, ["visualchoice", "fightchoice", "monsterback"], monster, descText);
     } else {
-      div.classList.add("cnvcontainer");
+      [holder, div, cnv] = addVisual(cardChoice, ["visualchoice", "fightchoice", "cnvcontainer"], null, descText);
     }
     div.onclick = function(e) { makeChoice(choice); };
     if (invalidChoices != null && invalidChoices.includes(idx)) {
@@ -1165,19 +1160,6 @@ function addFightOrEvadeChoices(uichoice, cardChoice, monster, choices, invalidC
       holder.classList.add("mustspend");
       div.onclick = function(e) { defaultSpend(rem, choice); };
     }
-    let cnv = document.createElement("CANVAS");
-    cnv.classList.add("markercnv");  // TODO: use a better class name for this
-    div.appendChild(cnv);
-    holder.appendChild(div);
-    let desc = document.createElement("DIV");
-    desc.classList.add("desc");
-    if (annotations != null && annotations.length > idx && annotations[idx] != null) {
-      desc.innerText = choice + " (" + formatServerString(annotations[idx]) + ")";
-    } else {
-      desc.innerText = choice;
-    }
-    holder.appendChild(desc);
-    cardChoice.appendChild(holder);
     if (choice == "Fight") {
       renderMonsterBackToDiv(div, monster);
     } else {
@@ -1218,13 +1200,10 @@ function addCardChoices(uichoice, cardChoice, cards, invalidChoices, remainingSp
     }
     uniqueCards.add(card);
     count++;
-    let holder = document.createElement("DIV");
-    holder.classList.add("cardholder");
+    let [holder, div, cnv] = addVisual(cardChoice, ["visualchoice", "cardchoice", "cnvcontainer"], null, annotations && annotations[idx]);
     if (sortUniq) {
       holder.style.order = cardToOrder[card];
     }
-    let div = document.createElement("DIV");
-    div.classList.add("visualchoice", "cardchoice", "cnvcontainer");
     div.onclick = function(e) { makeChoice(card); };
     if (invalidChoices != null && invalidChoices.includes(idx)) {
       holder.classList.add("unchoosable");
@@ -1233,17 +1212,6 @@ function addCardChoices(uichoice, cardChoice, cards, invalidChoices, remainingSp
       holder.classList.add("mustspend");
       div.onclick = function(e) { defaultSpend(rem, card); };
     }
-    let cnv = document.createElement("CANVAS");
-    cnv.classList.add("markercnv");  // TODO: use a better class name for this
-    div.appendChild(cnv);
-    holder.appendChild(div);
-    let desc = document.createElement("DIV");
-    desc.classList.add("desc");
-    if (annotations != null && annotations.length > idx) {
-      desc.innerText = formatServerString(annotations[idx]);
-    }
-    holder.appendChild(desc);
-    cardChoice.appendChild(holder);
     renderAssetToDiv(div, card);
   }
   let scrollParent = cardChoice.parentNode;
@@ -1758,8 +1726,7 @@ function toggleGlobals(e, frontCard) {
       continue;
     }
     count++;
-    let holder = document.createElement("DIV");
-    holder.classList.add("cardholder");
+    let [holder, container, cnv] = addVisual(globalCards, ["bigmythoscard", "cnvcontainer"], null, cont.annotation);
     if (frontCard != null) {
       if (cont.name == frontCard) {
         toDisplay = holder;
@@ -1767,19 +1734,6 @@ function toggleGlobals(e, frontCard) {
         holder.classList.add("unchoosable");
       }
     }
-    let container = document.createElement("DIV");
-    container.classList.add("bigmythoscard", "cnvcontainer");
-    let cnv = document.createElement("CANVAS");
-    cnv.classList.add("markercnv");  // TODO: use a better class name for this
-    container.appendChild(cnv);
-    holder.appendChild(container);
-    let desc = document.createElement("DIV");
-    desc.classList.add("desc");
-    if (cont.annotation) {
-      desc.innerText = cont.annotation;
-    }
-    holder.appendChild(desc);
-    globalCards.appendChild(holder);
     renderAssetToDiv(container, cont.name);
   }
   if (count > 4) {
