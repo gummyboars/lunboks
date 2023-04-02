@@ -2368,7 +2368,7 @@ class RollToLose(Event):
 
   def resolve(self, state) -> NoReturn:
     if self.roll is None:
-      self.roll = DiceRoll(self.character, 1)
+      self.roll = DiceRoll(self.character, 1, name=self.item.name, bad=[1])
       state.event_stack.append(self.roll)
       return
 
