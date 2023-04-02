@@ -1199,18 +1199,27 @@ class LostInTimeAndSpace(Sequence):
     super().__init__([ForceMovement(character, "Lost"), LoseTurn(character)], character)
 
 
-def BlessCurse(character, positive):
-  if positive:
-    return DrawSpecific(character, "specials", "Blessing")
-  return DrawSpecific(character, "specials", "Curse")
+class BlessCurse(Sequence):
+  def __init__(self, character, positive):
+    if positive:
+      self.card = "Blessing"
+    else:
+      self.card = "Curse"
+    draw = DrawNamed(character, "specials", self.card)
+    super().__init__([
+      draw,
+      KeepDrawn(character, draw)], character
+    )
 
 
-def Bless(character):
-  return BlessCurse(character, True)
+class Bless(BlessCurse):
+  def __init__(self, character):
+    super().__init__(character, True)
 
 
-def Curse(character):
-  return BlessCurse(character, False)
+class Curse(BlessCurse):
+  def __init__(self, character):
+    super().__init__(character, False)
 
 
 class MembershipChange(Event):
