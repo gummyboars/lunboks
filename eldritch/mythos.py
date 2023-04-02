@@ -1009,7 +1009,7 @@ class Mythos59(Rumor):
       return None
     num_spells = 3 if len(state.characters) <= 4 else 4
     discard_choice = events.ItemCountChoice(
-        event.character, "Choose spells to discard", num_spells, decks={"spells"},
+        event.character, "Choose spells to discard", num_spells, decks={"spells"}, select_type="x",
     )
     success = [
         discard_choice,

@@ -132,7 +132,7 @@ def Roadhouse6(char):
   move = events.ForceMovement(char, "Easttown")
   dollars = events.Loss(char, {"dollars": float("inf")})
   prereq = values.ItemCountPrerequisite(char, 1, "at least")
-  choice = events.ItemCountChoice(char, "Choose an item to lose", 1)
+  choice = events.ItemCountChoice(char, "Choose an item to lose", 1, select_type="x")
   discard = events.DiscardSpecific(char, choice)
   item = events.Sequence([choice, discard], char)
   loss = events.BinaryChoice(

@@ -1087,17 +1087,15 @@ class WarlockCombatTest(PinataCombatBaseTestMixin, EventTest):
 
 class CombatOutputTest(EventTest):
 
-  def setUp(self):
-    super().setUp()
+  def testCombatChoiceWithActivateItems(self):
     self.char.possessions.extend([items.EnchantedKnife(0), items.Wither(0), items.Revolver38(0)])
     cultist = monsters.Cultist()
-    self.combat = Combat(self.char, cultist)
-    self.state.event_stack.append(self.combat)
+    combat = Combat(self.char, cultist)
+    self.state.event_stack.append(combat)
 
     fight_or_flee = self.resolve_to_choice(FightOrEvadeChoice)
     fight_or_flee.resolve(self.state, "Fight")
 
-  def testCombatChoiceWithActivateItems(self):
     for _ in self.state.resolve_loop():
       if not isinstance(self.state.event_stack[-1], CombatChoice):
         data = self.state.for_player(0)
@@ -1107,6 +1105,8 @@ class CombatOutputTest(EventTest):
     data = self.state.for_player(0)
     self.assertIsNotNone(data["choice"])
     self.assertEqual(data["choice"].get("items"), ["Enchanted Knife0", ".38 Revolver0"])
+    self.assertEqual(data["choice"]["monster"]["name"], "Cultist")
+    self.assertEqual(data["choice"].get("select_type"), "hands")
 
     choose_weapons.resolve(self.state, "Enchanted Knife0")
     for _ in self.state.resolve_loop():
@@ -1114,6 +1114,7 @@ class CombatOutputTest(EventTest):
       self.assertIsNotNone(data["choice"])
       self.assertEqual(data["choice"].get("items"), ["Enchanted Knife0", ".38 Revolver0"])
       self.assertIn("Enchanted Knife0", data["choice"].get("chosen"))
+      self.assertEqual(data["choice"]["monster"]["name"], "Cultist")
 
     choose_weapons = self.state.event_stack[-1]
     self.assertIsInstance(choose_weapons, CombatChoice)
@@ -1125,6 +1126,7 @@ class CombatOutputTest(EventTest):
       self.assertEqual(data["choice"].get("items"), ["Enchanted Knife0", ".38 Revolver0"])
       self.assertIn("Enchanted Knife0", data["choice"].get("chosen"))
       self.assertIn(".38 Revolver0", data["choice"].get("chosen"))
+      self.assertEqual(data["choice"]["monster"]["name"], "Cultist")
 
     choose_weapons = self.state.event_stack[-1]
     self.assertIsInstance(choose_weapons, CombatChoice)
@@ -1137,6 +1139,7 @@ class CombatOutputTest(EventTest):
       if isinstance(self.state.event_stack[-1], ActivateItem) and not self.char.hands_available():
         break
       self.assertCountEqual(data["choice"]["chosen"], ["Enchanted Knife0", ".38 Revolver0"])
+      self.assertEqual(data["choice"]["monster"]["name"], "Cultist")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       # Once the combat starts, the items should show up as active until the combat is over.
       for _ in generator:
@@ -1150,6 +1153,34 @@ class CombatOutputTest(EventTest):
     for _ in generator:
       self.assertIsNone(data["choice"])
     self.assertFalse(self.state.event_stack)
+
+  def testCombatChoiceWithEventMonster(self):
+    self.state.event_stack.append(encounters.Bank3(self.char))
+    for _ in self.state.resolve_loop():
+      if not isinstance(self.state.event_stack[-1], CombatChoice):
+        data = self.state.for_player(0)
+        self.assertIsNone(data["choice"])
+
+    choose_weapons = self.state.event_stack[-1]
+    self.assertIsInstance(choose_weapons, CombatChoice)
+    data = self.state.for_player(0)
+    self.assertIsNotNone(data["choice"])
+    self.assertIsNone(data["choice"].get("monster"))
+    self.assertEqual(data["choice"].get("select_type"), "hands")
+
+  def testCombatChoiceWithAncientOne(self):
+    self.state.event_stack.append(events.InvestigatorAttack(self.char))
+    for _ in self.state.resolve_loop():
+      if not isinstance(self.state.event_stack[-1], CombatChoice):
+        data = self.state.for_player(0)
+        self.assertIsNone(data["choice"])
+
+    choose_weapons = self.state.event_stack[-1]
+    self.assertIsInstance(choose_weapons, CombatChoice)
+    data = self.state.for_player(0)
+    self.assertIsNotNone(data["choice"])
+    self.assertIsNone(data["choice"].get("monster"))
+    self.assertEqual(data["choice"].get("select_type"), "hands")
 
 
 class ElderThingCombatTest(EventTest):

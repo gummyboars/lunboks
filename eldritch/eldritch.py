@@ -396,6 +396,9 @@ class GameState:
       elif isinstance(choice, events.ItemChoice):
         output["choice"]["chosen"] = [item.handle for item in choice.chosen]
         output["choice"]["items"] = choice.choices or []
+        output["choice"]["select_type"] = choice.select_type
+        if isinstance(choice, events.CombatChoice) and getattr(choice.monster, "visual_name", None):
+          output["choice"]["monster"] = choice.monster.json_repr(self, choice.character)
       elif isinstance(choice, events.MonsterSpawnChoice):
         output["choice"]["to_spawn"] = choice.to_spawn
       elif isinstance(choice, events.MonsterOnBoardChoice):
