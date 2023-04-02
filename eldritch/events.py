@@ -1207,8 +1207,8 @@ class BlessCurse(Sequence):
       self.card = "Curse"
     draw = DrawNamed(character, "specials", self.card)
     super().__init__([
-      draw,
-      KeepDrawn(character, draw)], character
+        draw,
+        KeepDrawn(character, draw)], character
     )
 
 
