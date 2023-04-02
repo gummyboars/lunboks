@@ -104,9 +104,10 @@ class NunStoryTest(StoryTest):
     self.assertEqual(self.story.tokens["clue"], 1)
 
   def testPassFromSelfBless(self):
-    with mock_randint(return_value=2):
+    with mock_randint(return_value=2) as mock_rand:
       self.advance_turn(1, "encounter")
       self.resolve_until_done()
+      self.assertEqual(mock_rand.call_count, 1)
 
     self.state.event_stack.append(events.Bless(self.char))
     self.resolve_until_done()
@@ -116,15 +117,18 @@ class NunStoryTest(StoryTest):
     self.assertListEqual(
         [p.name for p in self.char.possessions], ["Blessing", self.story.results[True]]
     )
-    self.assertFalse(self.char.possessions[0].tokens["elder_sign"])
+    self.assertFalse(self.char.possessions[0].tokens["must_roll"])
 
-    self.advance_turn(2, "movement")
-    with mock_randint(1):
-      self.resolve_to_usable(0, self.story.results[True])
+    with mock_randint(1) as mock_rand:
+      self.advance_turn(2, "movement")
+      self.assertIn(0, self.state.usables)
       self.assertEqual(self.state.turn_phase, "upkeep")
+      self.assertEqual(mock_rand.call_count, 1)
+      self.assertIsInstance(self.state.event_stack[-1], events.DiceRoll)
+      self.assertEqual(self.state.event_stack[-1].roll, [1])
       self.state.done_using[0] = True
-    self.advance_turn(2, "movement")
-    self.assertFalse(self.gangster.possessions)
+      self.advance_turn(2, "movement")
+      self.assertFalse(self.gangster.possessions)
 
   def testFail(self):
     self.state.event_stack.append(events.Curse(self.char))

@@ -146,7 +146,6 @@ class NunStory(Story):
         and event.is_resolved()
         and values.ItemNameCount(owner, "Curse").value(state) == 1
     ):
-      print(values.ItemNameCount(owner, "Curse").value(state), owner.possessions)
       return self.advance_story(owner, False)
     return super().get_trigger(event, owner, state)
 
