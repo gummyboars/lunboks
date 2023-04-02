@@ -4523,8 +4523,7 @@ class CloseGate(Event):
             self.closed_until
         )
         return
-      else:
-        self.closed_until = False
+      self.closed_until = False
 
     if not self.return_monsters:
       monsters_to_return = []

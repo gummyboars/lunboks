@@ -2,6 +2,7 @@ import abc
 from eldritch import events
 from eldritch import assets
 from eldritch import characters
+from eldritch import values
 
 
 class StoryResult(assets.Card, metaclass=abc.ABCMeta):
@@ -13,11 +14,10 @@ class StoryResult(assets.Card, metaclass=abc.ABCMeta):
 
   def get_trigger(self, event, owner, state):
     if isinstance(event, events.KeepDrawn) and event.drawn == [self]:
-      print("Triggering on", event, owner, state)
-      return self.get_create_event(owner)
+      return self.get_in_play_event(owner)
     return None
 
-  def get_create_event(self, owner: characters.Character):
+  def get_in_play_event(self, owner: characters.Character):  # pylint: disable=unused-argument
     return events.Nothing()
 
 
@@ -27,51 +27,43 @@ class Story(assets.Card, metaclass=abc.ABCMeta):
     super().__init__(name, None, "specials", active_bonuses={}, passive_bonuses={})
     self.results = {True: pass_result, False: fail_result}
 
-  @abc.abstractmethod
-  def get_pass_asset(self) -> StoryResult:
-    pass
-
-  @abc.abstractmethod
-  def get_fail_asset(self) -> StoryResult:
-    pass
-
   def advance_story(self, character, pass_story):
     return events.Sequence([
-      events.DiscardSpecific(character, [self]),
-      events.DrawSpecific(character, "specials", self.results[pass_story])
-    ])
+        events.DiscardSpecific(character, [self]),
+        events.DrawSpecific(character, "specials", self.results[pass_story])
+    ], character)
 
 
-class SweetDreams(StoryResult):
+class DrifterStoryPass(StoryResult):
   def __init__(self):
     super().__init__("Sweet Dreams", passive_bonuses={"speed": 1, "luck": 1})
 
 
-class LivingNightmare(StoryResult):
+class DrifterStoryFail(StoryResult):
   def __init__(self):
     super().__init__("Living Nightmare")
 
-  def get_create_event(self, owner: characters.Character):
+  def get_in_play_event(self, owner: characters.Character):
     allies = [
-      ally
-      for ally in owner.possessions
-      if getattr(ally, "deck", None) == "allies" and ally.name != "Dog"
+        ally
+        for ally in owner.possessions
+        if getattr(ally, "deck", None) == "allies" and ally.name != "Dog"
     ]
     return events.DiscardSpecific(owner, allies)
 
   def get_interrupt(self, event, owner, state):
     if not getattr(event, "character", None) == owner:
-      return
+      return super().get_interrupt(event, owner, state)
     if (
         (isinstance(event, events.KeepDrawn)
          and (getattr(event.drawn, "deck", None) == "allies"))
         or (isinstance(event, (events.DrawNamed, events.DrawItems)) and event.deck == "allies")
     ):
       return events.CancelEvent(event)
-    return
+    return super().get_interrupt(event, owner, state)
 
 
-class PowerfulNightmares(Story):
+class DrifterStory(Story):
   def __init__(self):
     super().__init__(
         "Powerful Nightmares", "Sweet Dreams", "Living Nightmare"
@@ -84,21 +76,84 @@ class PowerfulNightmares(Story):
         and (event.gate.name == "Dreamlands")
     ):
       return self.advance_story(owner, True)
-    elif (
-      isinstance(event, events.AddDoom)
-      and state.ancient_one.doom >= 5
+    if (
+        isinstance(event, events.AddDoom)
+        and state.ancient_one.doom >= 5
     ):
       return self.advance_story(owner, False)
-    return None
+    return super().get_trigger(event, owner, state)
 
   def get_pass_asset(self) -> StoryResult:
-      return SweetDreams()
+    return DrifterStoryPass()
 
   def get_fail_asset(self) -> StoryResult:
-    return LivingNightmare()
+    return DrifterStoryFail()
+
+
+class NunStoryPass(StoryResult):
+  def __init__(self):
+    super().__init__("Fear No Evil")
+
+  def get_interrupt(self, event, owner, state):
+    if isinstance(event, events.Curse) and event.character == owner:
+      return events.CancelEvent(event)
+    return super().get_interrupt(event, owner, state)
+
+  def get_usable_trigger(self, event, owner, state):
+    if isinstance(event, events.DiceRoll) and state.turn_phase == "upkeep":
+      # Note: I see nothing that says it has to be one of her dice
+      # TODO: Allow user to select a die to reroll
+      to_reroll = [0]
+      # to_reroll = events.ChooseDie(event)
+      return events.Sequence([
+          events.ExhaustAsset(owner, self),
+          events.RerollSpecific(state.event_stack[-2].character, state.event_stack[-2], to_reroll),
+      ], owner)
+    return None
+
+  def get_in_play_event(self, owner: characters.Character):
+    return events.Bless(owner)
+
+
+class NunStoryFail(StoryResult):
+  def __init__(self):
+    super().__init__("I Shall Not Want")
+
+  def get_in_play_event(self, owner: characters.Character):
+    return events.Sequence([
+        events.DiscardNamed(owner, "Curse"),
+        events.Bless(owner)
+    ], owner)
+
+
+class NunStory(Story):
+  def __init__(self):
+    super().__init__("He Is My Shepherd", "Fear No Evil", "I Shall Not Want")
+    self.max_tokens["clue"] = 2
+    self.tokens["clue"] = 0
+
+  def get_max_token_event(self, token_type, owner):
+    if token_type == "clue":
+      return self.advance_story(owner, True)
+    return events.Nothing()
+
+  def get_trigger(self, event, owner, state):
+    if isinstance(event, events.Bless):
+      return events.AddToken(self, "clue", owner)
+    if (
+        isinstance(event, events.BlessCurse)
+        and (event.character == owner)
+        and event.is_resolved()
+        and values.ItemNameCount(owner, "Curse").value(state) == 1
+    ):
+      print(values.ItemNameCount(owner, "Curse").value(state), owner.possessions)
+      return self.advance_story(owner, False)
+    return super().get_trigger(event, owner, state)
 
 
 def CreateStories():
   return [
-    SweetDreams(), LivingNightmare(), PowerfulNightmares()
+      DrifterStoryPass(), DrifterStoryFail(), DrifterStory(),
+      NunStoryPass(), NunStoryFail(), NunStory(),
+
   ]

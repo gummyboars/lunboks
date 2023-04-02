@@ -1,8 +1,11 @@
 from eldritch.test_events import EventTest
 from eldritch import assets
+from eldritch import characters
 from eldritch import events
 from eldritch import gates
 from eldritch import stories
+
+from eldritch.test_specials import mock_randint
 
 
 class StoryTest(EventTest):
@@ -12,10 +15,11 @@ class StoryTest(EventTest):
     self.state.allies.extend(assets.CreateAllies())
 
 
-class NightmaresTest(StoryTest):
+class DrifterStoryTest(StoryTest):
   def setUp(self):
     super().setUp()
-    self.story = stories.PowerfulNightmares()
+    self.story = next(story for story in self.state.specials if story.name == "Powerful Nightmares")
+    self.state.specials.remove(self.story)
     self.char.possessions.append(self.story)
 
   def testDontPassStory(self):
@@ -79,3 +83,56 @@ class NightmaresTest(StoryTest):
     self.assertListEqual(
         [p.name for p in self.char.possessions],
         ["Powerful Nightmares", "Dog", "Arm Wrestler", "Old Professor"])
+
+
+class NunStoryTest(StoryTest):
+  def setUp(self):
+    super().setUp()
+    self.state.event_stack.append(events.Bless(self.char))
+    self.resolve_until_done()
+
+    self.story = next(story for story in self.state.specials if isinstance(story, stories.NunStory))
+    self.state.specials.remove(self.story)
+    self.char.possessions.append(self.story)
+    self.gangster = characters.Gangster()
+    self.gangster.place = self.state.places["Woods"]
+    self.state.characters.append(self.gangster)
+
+    self.assertEqual(self.story.tokens["clue"], 0)
+    self.state.event_stack.append(events.Bless(self.gangster))
+    self.resolve_until_done()
+    self.assertEqual(self.story.tokens["clue"], 1)
+
+  def testPassFromSelfBless(self):
+    with mock_randint(return_value=2):
+      self.advance_turn(1, "encounter")
+      self.resolve_until_done()
+
+    self.state.event_stack.append(events.Bless(self.char))
+    self.resolve_until_done()
+    self.assertNotIn(self.story, self.char.possessions)
+    self.assertIn(self.story.results[True], [p.name for p in self.char.possessions])
+    self.assertIn("Blessing", [p.name for p in self.char.possessions])
+    self.assertListEqual(
+        [p.name for p in self.char.possessions], ["Blessing", self.story.results[True]]
+    )
+    self.assertFalse(self.char.possessions[0].tokens["elder_sign"])
+
+    self.advance_turn(2, "movement")
+    with mock_randint(1):
+      self.resolve_to_usable(0, self.story.results[True])
+      self.assertEqual(self.state.turn_phase, "upkeep")
+      self.state.done_using[0] = True
+    self.advance_turn(2, "movement")
+    self.assertFalse(self.gangster.possessions)
+
+  def testFail(self):
+    self.state.event_stack.append(events.Curse(self.char))
+    self.resolve_until_done()
+    self.assertEqual(self.char.bless_curse, 0)
+    self.assertIn(self.story, self.char.possessions)
+    self.state.event_stack.append(events.Curse(self.char))
+    self.resolve_until_done()
+    self.assertEqual(self.char.bless_curse, 1)
+    self.assertNotIn(self.story, self.char.possessions)
+    self.assertIn(self.story.results[False], [p.name for p in self.char.possessions])

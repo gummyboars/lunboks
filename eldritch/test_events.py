@@ -92,6 +92,13 @@ class EventTest(unittest.TestCase):
       not_finished["stack"] = self.state.event_stack
     self.assertFalse(not_finished)
 
+  def resolve_to_slider_input(self) -> SliderInput:
+    # SliderInput has a different resolve() signature than a Choice
+    self.resolve_loop()
+    self.assertTrue(self.state.event_stack)
+    self.assertIsInstance(self.state.event_stack[-1], SliderInput)
+    return self.state.event_stack[-1]
+
   def resolve_to_choice(self, event_class: Type[ChoiceT]) -> ChoiceT:
     self.resolve_loop()
     self.assertTrue(self.state.event_stack)
@@ -149,8 +156,11 @@ class EventTest(unittest.TestCase):
           break
         continue
       if self.state.turn_phase == "upkeep":
-        self.assertIsInstance(self.state.event_stack[-1], events.SliderInput)
-        self.state.event_stack[-1].resolve(self.state, "done", None)
+        # self.assertIsInstance(self.state.event_stack[-1], events.SliderInput)
+        if isinstance(self.state.event_stack[-1], events.SliderInput):
+          self.state.event_stack[-1].resolve(self.state, "done", None)
+        else:
+          return
       elif self.state.turn_phase == "movement":
         self.assertIsInstance(self.state.event_stack[-1], events.CityMovement)
         self.state.event_stack[-1].resolve(self.state, "done")
@@ -228,7 +238,7 @@ class UpkeepTest(EventTest):
   def testReceiveFocus(self):
     self.char.focus_points = 0
     self.state.event_stack.append(Upkeep(self.char))
-    self.resolve_to_choice(SliderInput)
+    self.resolve_to_slider_input()
     self.assertEqual(self.char.focus_points, 2)
 
   def testUpkeepRolls(self):
@@ -240,7 +250,7 @@ class SliderTest(EventTest):
   def setUp(self):
     super().setUp()
     self.state.event_stack.append(Upkeep(self.char))
-    self.sliders = self.resolve_to_choice(SliderInput)
+    self.sliders = self.resolve_to_slider_input()
     self.assertFalse(self.sliders.is_resolved())
 
   def testMoveSliders(self):
@@ -406,7 +416,7 @@ class LostInTimeAndSpaceTest(EventTest):
 
     choice = self.resolve_to_choice(PlaceChoice)
     choice.resolve(self.state, "Uptown")
-    self.resolve_to_choice(SliderInput)
+    self.resolve_to_slider_input()
     self.assertEqual(self.char.place.name, "Uptown")
     self.assertFalse(self.char.explored)
 
