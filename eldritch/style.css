@@ -175,10 +175,6 @@ button:disabled {
   flex-direction: column;
   align-items: center;
   justify-content: flex-start;
-  background-color: sienna;
-}
-.cardholder.unchoosable {
-  background-color: darkgrey;
 }
 .cardchoice {
   width: calc(min(15vw, 24vh));
@@ -206,7 +202,13 @@ button:disabled {
   cursor: not-allowed;
 }
 .desc {
+  width: 100%;
   font-size: calc(min(2vw, 3.2vh));
+  text-align: center;
+  background-color: sienna;
+}
+.unchoosable .desc {
+  background-color: darkgrey;
 }
 .choice {
   flex: 0 0 auto;
