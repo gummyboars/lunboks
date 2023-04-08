@@ -121,6 +121,15 @@ function renderDefaultToCanvas(cnv, width, height, assetName, variant) {
   if (otherWorlds.includes(assetName)) {
     return renderOtherWorld(cnv, assetName, width, height);
   }
+  if (assetName == "Gate Back") {
+    return renderTextCircle(cnv, "Gate", "palegoldenrod", "black", 0.3);
+  }
+  if (assetName == "Gate Card") {
+    return renderTextRectangle(cnv, assetName, "palegoldenrod", "black");
+  }
+  if (assetName == "Mythos Card") {
+    return renderTextRectangle(cnv, "Mythos", "white", "black");
+  }
   if (assetName.startsWith("Gate ")) {
     return renderTextCircle(cnv, assetName.substring(5), "palegoldenrod", "black", 0.3);
   }

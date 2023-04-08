@@ -175,6 +175,15 @@ button:disabled {
   flex-direction: column;
   align-items: center;
   justify-content: flex-start;
+  backface-visibility: hidden;
+  transition: transform 0.8s;
+  position: relative;
+}
+.cardholder.rotated {
+  transform: rotateY(-180deg);
+}
+.cardholder.entering {
+  transform: translateY(100%) rotateY(-180deg);
 }
 .cardchoice {
   width: calc(min(15vw, 24vh));
@@ -189,6 +198,20 @@ button:disabled {
   position: relative;
   width: calc(min(15vw, 24vh));
   height: calc(min(15vw, 24vh));
+}
+.visualback {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform: rotateY(180deg);
+  backface-visibility: hidden;
+  transition: transform 0.8s;
+}
+.rotated .visualback {
+  transform: none;
+}
+.entering .visualback {
+  transform: none;
 }
 .visualchoice {
   position: relative;

@@ -12,6 +12,7 @@ pendingName = null;
 monsterChoice = {};
 charChoice = null;
 ancientChoice = null;
+oldCurrent = null;
 runningAnim = [];
 messageQueue = [];
 statTimeout = null;
@@ -313,16 +314,16 @@ function handleData(data) {
   updateCharacterSheets(data.characters, data.pending_chars, data.player_idx, data.first_player, data.choice);
   updateBottomText(data.game_stage, data.turn_phase, data.characters, data.turn_idx, data.player_idx, data.host);
   updateGlobals(data.environment, data.rumor, data.other_globals);
-  updateCurrentCard(data.current);
   updatePlaces(data.places, data.activity);
   updateCharacters(data.characters);
   updateSliderButton(data.sliders);
-  updateChoices(data.choice);
+  let oldVisuals = updateChoices(data.choice, data.current);
   updateMonsters(data.monsters);
   updateMonsterChoices(data.choice, data.monsters);
   updatePlaceBoxes(data.places, data.activity);
   updateUsables(data.usables, data.spendables, data.choice);
   updateDice(data.dice, data.player_idx, data.monsters);
+  updateCurrentCard(data.current);
   updateEventLog(data.event_log);
   if (!stepping && messageQueue.length && !runningAnim.length) {
     let msg = messageQueue.shift();
@@ -958,7 +959,7 @@ function scrollCards(e, dir) {
   cardScroller.scrollLeft = cardScroller.scrollLeft + amount;
 }
 
-function updateChoices(choice) {
+function updateChoices(choice, current) {
   let btn = document.getElementById("doneitems");
   let uichoice = document.getElementById("uichoice");
   let uicardchoice = document.getElementById("uicardchoice");
@@ -989,7 +990,7 @@ function updateChoices(choice) {
   }
   if (choice == null || choice.to_spawn != null || choice.board_monster != null) {
     document.getElementById("charoverlay").classList.remove("shown");
-    return;
+    return [];
   }
   // Set display style for uichoice div.
   if (choice.items == null) {
@@ -1004,7 +1005,14 @@ function updateChoices(choice) {
   while (uichoice.getElementsByClassName("choice").length) {
     uichoice.removeChild(uichoice.getElementsByClassName("choice")[0]);
   }
+  let oldVisuals = [];
   while (uicardchoice.getElementsByClassName("cardholder").length) {
+    let first = uicardchoice.getElementsByClassName("cardholder")[0];
+    if (first.getElementsByClassName("cnvcontainer").length) {
+      oldVisuals.push(first.getElementsByClassName("cnvcontainer")[0].assetName);
+    } else if (first.getElementsByClassName("monsterback").length) {
+      oldVisuals.push(first.getElementsByClassName("monsterback")[0].monsterInfo.name);
+    }
     uicardchoice.removeChild(uicardchoice.getElementsByClassName("cardholder")[0]);
   }
   // Set prompt.
@@ -1022,15 +1030,16 @@ function updateChoices(choice) {
     if (choice.places != null) {
       updatePlaceChoices(uichoice, choice.places, choice.annotations);
     } else if (choice.cards != null) {
-      addCardChoices(uichoice, uicardchoice, choice.cards, choice.invalid_choices, choice.remaining_spend, choice.annotations, choice.sort_uniq);
+      addCardChoices(uichoice, uicardchoice, choice.cards, choice.invalid_choices, choice.remaining_spend, choice.annotations, choice.sort_uniq, oldVisuals, current);
     } else if (choice.monsters != null) {
-      addMonsterChoices(uichoice, uicardchoice, choice.monsters, choice.invalid_choices, choice.annotations);
+      addMonsterChoices(uichoice, uicardchoice, choice.monsters, choice.invalid_choices, choice.annotations, oldVisuals, current);
     } else if (choice.monster != null) {
-      addFightOrEvadeChoices(uichoice, uicardchoice, choice.monster, choice.choices, choice.invalid_choices, choice.remaining_spend, choice.annotations);
+      addFightOrEvadeChoices(uichoice, uicardchoice, choice.monster, choice.choices, choice.invalid_choices, choice.remaining_spend, choice.annotations, oldVisuals, current);
     } else {
       addChoices(uichoice, choice.choices, choice.invalid_choices, choice.remaining_spend);
     }
   }
+  return oldVisuals;
 }
 
 function updateMonsterChoices(choice, monsterList) {
@@ -1066,14 +1075,14 @@ function updateMonsterChoices(choice, monsterList) {
   }
 }
 
-function addMonsterChoices(uichoice, cardChoice, monsters, invalidChoices, annotations) {
+function addMonsterChoices(uichoice, cardChoice, monsters, invalidChoices, annotations, oldVisuals) {
   let otherChoices = [];
   for (let [idx, monster] of monsters.entries()) {
     if (typeof(monster) == "string") {
       otherChoices.push(monster);
       continue;
     }
-    let [holder, div, cnv] = addVisual(cardChoice, ["visualchoice", "monsterchoice"], null, annotations && annotations[idx]);
+    let [holder, div, cnv] = addVisual(cardChoice, "monster", true, false, null, annotations && annotations[idx]);
     div.removeChild(cnv);
     let frontDiv = document.createElement("DIV");
     frontDiv.classList.add("fightchoice", "cnvcontainer");
@@ -1109,28 +1118,46 @@ function addMonsterChoices(uichoice, cardChoice, monsters, invalidChoices, annot
 }
 
 function showMonster(cardChoice, monster) {
-  let [holder, div, cnv] = addVisual(cardChoice, ["fightchoice", "monsterback"], monster, null);
+  let [holder, div, cnv] = addVisual(cardChoice, "fight", false, false, monster, null);
   renderMonsterBackToDiv(div, monster);
 }
 
 function showActionSource(cardChoice, name) {
-  let [holder, div, cnv] = addVisual(cardChoice, ["cardchoice", "cnvcontainer"], null, null);
+  let [holder, div, cnv] = addVisual(cardChoice, "card", false, false, null, null);
   renderAssetToDiv(div, name);
 }
 
-function addVisual(cardChoice, classes, monster, descText) {
+function addVisual(cardChoice, visualType, isChoice, hasBack, monster, descText) {
+  let classNames = {
+    "fight": "fightchoice",
+    "monster": "monsterchoice",
+    "card": "cardchoice",
+    "mythos": "bigmythoscard",
+  };
   let holder = document.createElement("DIV");
   holder.classList.add("cardholder");
   let div = document.createElement("DIV");
-  div.classList.add(...classes);
+  div.classList.toggle("visualchoice", isChoice);
+  div.classList.add(classNames[visualType]);
   if (monster != null) {
+    div.classList.add("monsterback");
     div.monsterInfo = monster;
+  } else {
+    div.classList.add("cnvcontainer");
   }
   let cnv = document.createElement("CANVAS");
   cnv.classList.add("markercnv");  // TODO: use a better class name for this
   div.appendChild(cnv);
   holder.appendChild(div);
   cardChoice.appendChild(holder);
+  if (hasBack) {
+    let backDiv = document.createElement("DIV");
+    backDiv.classList.add(classNames[visualType], "visualback", "cnvcontainer");
+    let backCnv = document.createElement("CANVAS");
+    backCnv.classList.add("markercnv");
+    backDiv.appendChild(backCnv);
+    holder.appendChild(backDiv);
+  }
   if (descText != null) {
     let desc = document.createElement("DIV");
     desc.classList.add("desc");
@@ -1140,7 +1167,7 @@ function addVisual(cardChoice, classes, monster, descText) {
   return [holder, div, cnv];
 }
 
-function addFightOrEvadeChoices(uichoice, cardChoice, monster, choices, invalidChoices, remainingSpend, annotations) {
+function addFightOrEvadeChoices(uichoice, cardChoice, monster, choices, invalidChoices, remainingSpend, annotations, oldVisuals) {
   for (let [idx, choice] of choices.entries()) {
     let descText = choice;
     if (annotations && annotations[idx] != null) {
@@ -1148,9 +1175,9 @@ function addFightOrEvadeChoices(uichoice, cardChoice, monster, choices, invalidC
     }
     let holder, div, cnv;
     if (choice == "Fight") {
-      [holder, div, cnv] = addVisual(cardChoice, ["visualchoice", "fightchoice", "monsterback"], monster, descText);
+      [holder, div, cnv] = addVisual(cardChoice, "fight", true, false, monster, descText);
     } else {
-      [holder, div, cnv] = addVisual(cardChoice, ["visualchoice", "fightchoice", "cnvcontainer"], null, descText);
+      [holder, div, cnv] = addVisual(cardChoice, "fight", true, false, null, descText);
     }
     div.onclick = function(e) { makeChoice(choice); };
     if (invalidChoices != null && invalidChoices.includes(idx)) {
@@ -1168,7 +1195,7 @@ function addFightOrEvadeChoices(uichoice, cardChoice, monster, choices, invalidC
   }
 }
 
-function addCardChoices(uichoice, cardChoice, cards, invalidChoices, remainingSpend, annotations, sortUniq) {
+function addCardChoices(uichoice, cardChoice, cards, invalidChoices, remainingSpend, annotations, sortUniq, oldVisuals, current) {
   if (!cards) {
     return;
   }
@@ -1200,9 +1227,30 @@ function addCardChoices(uichoice, cardChoice, cards, invalidChoices, remainingSp
     }
     uniqueCards.add(card);
     count++;
-    let [holder, div, cnv] = addVisual(cardChoice, ["visualchoice", "cardchoice", "cnvcontainer"], null, annotations && annotations[idx]);
+    let [holder, div, cnv] = addVisual(cardChoice, "card", true, true, null, annotations && annotations[idx]);
     if (sortUniq) {
       holder.style.order = cardToOrder[card];
+    }
+    let shouldAnimate = false;
+    let match = card.match(/([^0-9]*)/);
+    if (match != null && assetNames.includes(match[1] + " Card")) {
+      shouldAnimate = true;
+    }
+    if (oldVisuals.includes(card) || card == oldCurrent) {
+      shouldAnimate = false;
+    }
+    if (shouldAnimate) {
+      holder.classList.add("entering");
+      runningAnim.push(true);
+      let lastAnim = function() { doneAnimating(holder); finishAnim(); };
+      let firstAnim = function() {
+        holder.ontransitionend = lastAnim;
+        holder.ontransitioncancel = lastAnim;
+        holder.classList.remove("rotated");
+      };
+      holder.ontransitionend = firstAnim;
+      holder.ontransitioncancel = firstAnim;
+      setTimeout(function() { holder.classList.remove("entering"); holder.classList.add("rotated"); }, 10);
     }
     div.onclick = function(e) { makeChoice(card); };
     if (invalidChoices != null && invalidChoices.includes(idx)) {
@@ -1211,6 +1259,9 @@ function addCardChoices(uichoice, cardChoice, cards, invalidChoices, remainingSp
       let rem = remainingSpend[idx];
       holder.classList.add("mustspend");
       div.onclick = function(e) { defaultSpend(rem, card); };
+    }
+    if (shouldAnimate) {
+      renderAssetToDiv(holder.getElementsByClassName("visualback")[0], match[1] + " Card");
     }
     renderAssetToDiv(div, card);
   }
@@ -1466,11 +1517,18 @@ function getNodeTranslation(div, destParent) {
 }
 
 function updatePlaces(places, activity) {
+  let oldGates = [];
+  for (let gateCont of document.getElementsByClassName("gatecontainer")) {
+    if (gateCont.handle != null) {
+      oldGates.push(gateCont.handle);
+    }
+  }
   for (let placeName in places) {
     let place = places[placeName];
+    let handle = place.gate != null ? place.gate.handle : "nothing";
     let gateDiv = document.getElementById("place" + placeName + "gate");
     if (gateDiv != null) {  // Some places cannot have gates.
-      updateGate(place, gateDiv);
+      updateGate(place, gateDiv, !oldGates.includes(handle));
     }
     if (place.sealed != null) {
       updateSeal(place);
@@ -1573,11 +1631,52 @@ function updateActivity(placeName, activity) {
   }
 }
 
-function updateGate(place, gateDiv) {
+function updateGate(place, gateDiv, shouldAnimate) {
   let gateCont = gateDiv.getElementsByClassName("gatecontainer")[0];
   if (place.gate) {
+    let gateName = place.gate.name;
     gateDiv.classList.add("placegatepresent");
-    renderAssetToDiv(gateCont, place.gate.name);
+    gateCont.handle = place.gate.handle;
+    if (shouldAnimate) {
+      let [holder, div, cnv] = addVisual(document.getElementById("enteringscroll"), "fight", false, true, null, null);
+      holder.classList.add("entering");
+      let gateBack = holder.getElementsByClassName("visualback")[0];
+      renderAssetToDiv(gateBack, "Gate Back");
+      runningAnim.push(true);
+      let lastAnim = function() { 
+        doneAnimating(holder);
+        renderAssetToDiv(gateCont, gateName);
+        holder.parentNode.removeChild(holder);
+        finishAnim();
+      };
+      let moveToBoard = function() {
+        doneAnimating(holder);
+        holder.style.transformOrigin = "top left";
+        let oldRect = holder.getBoundingClientRect();
+        let newRect = gateCont.getBoundingClientRect();
+        let diffX = Math.floor(newRect.left - oldRect.left);
+        let diffY = Math.floor(newRect.top - oldRect.top);
+        let scaleFactor = (newRect.right - newRect.left) / (oldRect.right - oldRect.left);
+        setTimeout(function() { 
+          holder.ontransitionend = lastAnim;
+          holder.ontransitioncancel = lastAnim;
+          holder.style.transform = "translateX(" + diffX + "px) translateY(" + diffY + "px) scale(" + scaleFactor+ ")";
+        }, 10);
+      };
+      let turnAround = function() {
+        doneAnimating(holder);
+        holder.ontransitionend = moveToBoard;
+        holder.ontransitioncancel = moveToBoard;
+        holder.classList.remove("rotated");
+      };
+      holder.ontransitionend = turnAround;
+      holder.ontransitioncancel = turnAround;
+      setTimeout(function() { holder.classList.remove("entering"); holder.classList.add("rotated"); }, 10);
+
+      renderAssetToDiv(div, gateName);
+    } else {
+      renderAssetToDiv(gateCont, gateName);
+    }
   } else {
     clearAssetFromDiv(gateCont);
     gateDiv.classList.remove("placegatepresent");
@@ -1692,6 +1791,7 @@ function updateGlobals(env, rumor, otherGlobals) {
 }
 
 function updateCurrentCard(current) {
+  oldCurrent = current;
   let currDiv = document.getElementById("currentcard");
   if (current == null) {
     // TODO: because rendering happens in a promise, clearing the asset from the div can
@@ -1726,7 +1826,7 @@ function toggleGlobals(e, frontCard) {
       continue;
     }
     count++;
-    let [holder, container, cnv] = addVisual(globalCards, ["bigmythoscard", "cnvcontainer"], null, cont.annotation);
+    let [holder, container, cnv] = addVisual(globalCards, "mythos", false, false, null, cont.annotation);
     if (frontCard != null) {
       if (cont.name == frontCard) {
         toDisplay = holder;
