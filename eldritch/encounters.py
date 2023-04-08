@@ -1,7 +1,6 @@
 import operator
 
 from eldritch import events
-from eldritch import items
 from eldritch import mythos
 from eldritch import values
 from eldritch.monsters import EventMonster
@@ -403,8 +402,9 @@ def Cave5(char):
 def Cave6(char):
   prereq = values.ItemPrerequisite(char, "Whiskey")
   check = events.Check(char, "luck", -2)
-  ally = events.GainAllyOrReward(  # TODO: this should be unaffected by the salesman
-      char, "Tough Guy", events.Draw(char, "common", draw_count=1, target_type=items.Weapon),
+  look = events.LookAtItems(char, "common", 1, target_type="weapon")
+  ally = events.GainAllyOrReward(
+      char, "Tough Guy", events.Sequence([look, events.KeepDrawn(char, look)], char),
   )
   give_whiskey = events.DiscardNamed(char, "Whiskey")
   gain = events.PassFail(char, check, ally, events.Nothing())
@@ -417,7 +417,8 @@ def Cave7(char):
   check = events.Check(char, "luck", 0)
   evil = events.Loss(char, {"sanity": 1, "stamina": 1})
   diary = events.GainOrLoss(char, gains={"clues": 1}, losses={"sanity": 1})
-  tome = events.Draw(char, "unique", 1)  # TODO: this is actually draw the first tome
+  look = events.LookAtItems(char, "unique", 1, target_type="tome")
+  tome = events.Sequence([look, events.KeepDrawn(char, look)], char)
   cond = events.Conditional(char, check, "successes", {0: evil, 1: diary, 2: tome})
   read = events.Sequence([check, cond], char)
   return events.BinaryChoice(char, "Do you read the book?", "Yes", "No", read, events.Nothing())
@@ -724,8 +725,8 @@ def Administration7(char):
 
 def Library1(char):
   check = events.Check(char, "will", -1)
-  # TODO: this should be unaffected by the archaeologist
-  tome = events.Draw(char, "unique", 1, target_type=items.Tome)
+  look = events.LookAtItems(char, "unique", 1, target_type="tome")
+  tome = events.Sequence([look, events.KeepDrawn(char, look)], char)
   move = events.ForceMovement(char, "University")
   return events.PassFail(char, check, tome, move)
 

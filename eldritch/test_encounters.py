@@ -4583,16 +4583,17 @@ class CaveTest(EncounterTest):
     self.assertEqual(self.char.place.name, "Asylum")
 
   def testCave7Two(self):
-    pass
-# TODO: Draw first tome
-#    self.char.lore_luck_slider = 2
-#    self.state.event_stack.append(encounters.Cave7(self.char))
-#    choice = self.resolve_to_choice(MultipleChoice)
-#    self.assertEqual(choice.choices, ["Yes", "No"])
-#    choice.resolve(self.state, "Yes")
-#    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
-#      self.resolve_until_done()
-#    raise NotImplementedError("No Tomes implemented")
+    tome = items.Tome("DummyTome", 0, "unique", 100, 1)
+    self.state.unique.extend([items.HolyWater(0), tome, items.Cross(0)])
+    self.char.lore_luck_slider = 2
+    self.state.event_stack.append(encounters.Cave7(self.char))
+    choice = self.resolve_to_choice(MultipleChoice)
+    self.assertEqual(choice.choices, ["Yes", "No"])
+    choice.resolve(self.state, "Yes")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+    self.assertListEqual(self.char.possessions, [tome])
+    self.assertEqual(len(self.state.unique), 2)
 
 
 class StoreTest(EncounterTest):

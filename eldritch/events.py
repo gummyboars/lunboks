@@ -1365,7 +1365,7 @@ class ForceMovement(Event):
     return True
 
 
-class DrawItems(Event):
+class LookAtItems(Event):
 
   def __init__(self, character, deck, draw_count, prompt="Choose a card", target_type=None):
     assert deck in DECKS
@@ -1388,7 +1388,7 @@ class DrawItems(Event):
         if not deck:
           break
         top = deck.popleft()
-        if self.target_type is None or isinstance(top, self.target_type):
+        if self.target_type is None or getattr(top, "item_type", None) == self.target_type:
           self.drawn.append(top)
         else:
           deck.append(top)
@@ -1409,6 +1409,10 @@ class DrawItems(Event):
       return (f"{self.character.name} draws {self.draw_count} {self.target_type} "
               + f"cards from the {self.deck} deck")
     return f"{self.character.name} drew " + ", ".join(c.name for c in self.drawn)
+
+
+class DrawItems(LookAtItems):
+  pass
 
 
 class KeepDrawn(Event):

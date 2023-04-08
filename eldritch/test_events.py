@@ -1516,7 +1516,7 @@ class DrawRandomTest(EventTest):
     self.assertFalse(self.state.common)
 
   def testDrawSpecificTypeTop(self):
-    draw = Draw(self.char, "common", 1, target_type=items.Weapon)
+    draw = Draw(self.char, "common", 1, target_type="weapon")
     tommygun = items.TommyGun(0)
     self.state.common.extend([tommygun, items.Food(0)])
     self.assertFalse(draw.is_resolved())
@@ -1527,7 +1527,7 @@ class DrawRandomTest(EventTest):
     self.assertEqual([item.name for item in self.state.common], ["Food"])
 
   def testDrawSpecificTypeMiddle(self):
-    draw = Draw(self.char, "common", 1, target_type=items.Weapon)
+    draw = Draw(self.char, "common", 1, target_type="weapon")
     tommygun = items.TommyGun(0)
     self.state.common.extend([items.Food(0), tommygun, items.Dynamite(0)])
     self.assertFalse(draw.is_resolved())
@@ -1538,7 +1538,7 @@ class DrawRandomTest(EventTest):
     self.assertEqual([item.name for item in self.state.common], ["Dynamite", "Food"])
 
   def testDrawSpecificTypeNone(self):
-    draw = Draw(self.char, "common", 1, target_type=items.ResearchMaterials)
+    draw = Draw(self.char, "common", 1, target_type="tome")
     tommygun = items.TommyGun(0)
     self.state.common.extend([items.Food(0), tommygun, items.Dynamite(0)])
     self.assertFalse(draw.is_resolved())
