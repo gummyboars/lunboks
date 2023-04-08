@@ -246,6 +246,7 @@ for (let i = 1; i <= 67; i++) {
   mythosCards.push("Mythos" + i);
 }
 carefullyAdd(mythosCards, true);
+carefullyAdd(["Gate Back", "Gate Card", "Mythos Card"], false);
 neighborhoodNames = [
   "Northside",
   "Downtown",
