@@ -3991,13 +3991,12 @@ class WoodsTest(EncounterTest):
 
   def testWoods3Pass(self):
     self.state.event_stack.append(encounters.Woods3(self.char))
-    # TODO: implement shotgun
-    # self.state.common.append((items.Shotgun(0)))
+    self.state.common.append(items.Shotgun(0))
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       self.resolve_until_done()
-    # self.assertEqual(len(self.state.common), 0)
-    # self.assertEqual(len(self.char.common), 1)
-    # self.assertEqual(self.char.common[0].name, "Shotgun")
+    self.assertEqual(len(self.state.common), 0)
+    self.assertEqual(len(self.char.possessions), 1)
+    self.assertEqual(self.char.possessions[0].name, "Shotgun")
 
   def testWoods3Fail(self):
     self.state.event_stack.append(encounters.Woods3(self.char))
@@ -4664,16 +4663,16 @@ class StoreTest(EncounterTest):
     self.assertEqual(len(self.state.common), 3)
 
   def testStore5PassSalesman(self):
-    # TODO: Implement the salesman drawing an extra card
-    # raise NotImplementedError("Salesman should get to draw an extra common card")
-    # self.character = characters.Salesman()
-    # self.char.lore_luck_slider = 2
-    # self.state.common.extend([
-    #     items.Revolver38(0), items.Cross(0), items.TommyGun(0), items.Dynamite(0)])
-    # self.state.event_stack.append(encounters.Store5(self.char))
-    # with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=2)):
-    #   self.resolve_until_done()
-    pass
+    self.char.possessions.append(abilities.ShrewdDealer())
+    self.char.lore_luck_slider = 2
+    self.state.common.extend([
+        items.Revolver38(0), items.Cross(0), items.TommyGun(0), items.Dynamite(0)])
+    self.state.event_stack.append(encounters.Store5(self.char))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      choice = self.resolve_to_choice(MultipleChoice)
+    self.assertEqual(len(choice.choices), 4)
+    choice.resolve(self.state, choice.choices[3])
+    self.resolve_until_done()
 
   def testStore6Decline(self):
     self.char.lore_luck_slider = 2
