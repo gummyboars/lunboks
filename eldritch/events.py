@@ -153,6 +153,8 @@ class Sequence(Event):
   def __init__(self, events, character=None):
     super().__init__()
     self.events: List[Event] = events
+    if not self.events:
+      self.events = [Nothing()]
     self.idx = 0
     self.character = character
 
