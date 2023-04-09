@@ -1678,8 +1678,36 @@ function updateGate(place, gateDiv, shouldAnimate) {
       renderAssetToDiv(gateCont, gateName);
     }
   } else {
-    clearAssetFromDiv(gateCont);
-    gateDiv.classList.remove("placegatepresent");
+    let dest = null;
+    for (let trophy of document.getElementsByClassName("trophy")) {
+      if (trophy.handle == gateCont.handle) {
+        dest = trophy;
+        break;
+      }
+    }
+    gateCont.handle = null;
+    if (dest != null) {
+      runningAnim.push(true);
+      let lastAnim = function() {
+        doneAnimating(gateCont);
+        gateCont.style.transform = "none";
+        clearAssetFromDiv(gateCont);
+        gateDiv.classList.remove("placegatepresent");
+        finishAnim();
+      };
+      gateCont.style.transformOrigin = "top left";
+      let oldRect = gateCont.getBoundingClientRect();
+      let newRect = dest.getBoundingClientRect();
+      let diffX = Math.floor(newRect.left - oldRect.left);
+      let diffY = Math.floor(newRect.top - oldRect.top);
+      let scaleFactor = (newRect.right - newRect.left) / (oldRect.right - oldRect.left);
+      gateCont.ontransitionend = lastAnim;
+      gateCont.ontransitioncancel = lastAnim;
+      gateCont.style.transform = "translateX(" + diffX + "px) translateY(" + diffY + "px) scale(" + scaleFactor+ ")";
+    } else {
+      clearAssetFromDiv(gateCont);
+      gateDiv.classList.remove("placegatepresent");
+    }
   }
 }
 

@@ -968,6 +968,7 @@ button:disabled {
   top: 0;
   height: calc(min(80vw, 128vh) * 2 / 29);
   width: calc(min(80vw, 128vh) * 2 / 29);
+  transition: transform 0.8s;
 }
 .placeleft .placegate {
   left: 0;
