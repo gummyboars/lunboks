@@ -1202,10 +1202,10 @@ class LostInTimeAndSpace(Sequence):
 class BlessCurse(Sequence):
   def __init__(self, character, positive):
     if positive:
-      self.card = "Blessing"
+      card = "Blessing"
     else:
-      self.card = "Curse"
-    draw = DrawNamed(character, "specials", self.card)
+      card = "Curse"
+    draw = DrawNamed(character, "specials", card)
     super().__init__([
         draw,
         KeepDrawn(character, draw)], character
@@ -2354,18 +2354,6 @@ class DiscardSpecific(Event):
     return True
 
 
-class LoseSpecific(DiscardSpecific):
-  def __init__(self, character, items, to_box=False):
-    super().__init__(character, items, to_box)
-    self._verb = "lose"
-    self._verb_past = "lost"
-
-
-def LoseNamed(character, name, to_box=False):
-  items = values.NamedPossessions(character, name)
-  return LoseSpecific(character, items, to_box)
-
-
 class RollToLose(Event):
   def __init__(self, character, item):
     super().__init__()
@@ -2382,7 +2370,7 @@ class RollToLose(Event):
       return
 
     if self.roll.sum == 1 and self.lose is None:
-      self.lose = LoseSpecific(self.character, [self.item])
+      self.lose = DiscardSpecific(self.character, [self.item])
       state.event_stack.append(self.lose)
       return
 

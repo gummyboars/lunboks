@@ -310,8 +310,8 @@ class BlessingOrCurse(SelfDiscardingCard):
         ], owner)
       if self.opposite in [p.name for p in event.character.possessions]:
         return events.Sequence([
-            events.LoseNamed(event.character, self.name),
-            events.LoseNamed(event.character, self.opposite),
+            events.DiscardNamed(event.character, self.name),
+            events.DiscardNamed(event.character, self.opposite),
         ], event.character)
     return super().get_trigger(event, owner, state)
 
