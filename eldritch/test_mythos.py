@@ -1290,6 +1290,17 @@ class MoveMonsterTest(EventTest):
     self.assertEqual(buddy.stamina, 4)
     self.assertEqual(self.char.stamina, 5)
 
+  def testLandSquidAllCharactersInOtherWorlds(self):
+    self.state.monsters.clear()
+    self.state.monsters.append(monsters.LandSquid())
+    self.state.monsters[-1].idx = 0
+    self.state.monsters[-1].place = self.state.places["Isle"]
+    self.char.place = self.state.places["Another Dimension1"]
+    self.state.event_stack.append(events.MoveMonsters({"hex"}, {"slash", "triangle", "star"}))
+    # Assertions are made in resolve_until_done() that make sure a sequence with no events will
+    # be resolved correctly and not corrupt the triggers stack.
+    self.resolve_until_done()
+
   def testLandSquidMovementUnconscious(self):
     self.state.monsters.clear()
     self.state.monsters.append(monsters.LandSquid())
