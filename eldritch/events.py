@@ -1205,45 +1205,28 @@ class LostInTimeAndSpace(Sequence):
     super().__init__([ForceMovement(character, "Lost"), LoseTurn(character)], character)
 
 
-class BlessCurse(Event):
-
+class BlessCurse(Sequence):
+  # TODO: make a subclass of conditional?
   def __init__(self, character, positive):
-    super().__init__()
-    self.character = character
-    self.adjustment = 1 if positive else -1
-    self.change = None
-
-  def resolve(self, state):
-    old_val = self.character.bless_curse
-    new_val = min(max(old_val + self.adjustment, -1), 1)
-    self.character.bless_curse = new_val
-    self.change = new_val - old_val
-    if new_val != 0:
-      self.character.bless_curse_start = state.turn_number + 2
+    if positive:
+      card = "Blessing"
     else:
-      self.character.bless_curse_start = None
-
-  def is_resolved(self):
-    return self.change is not None
-
-  def log(self, state):
-    if self.cancelled and self.change is None:
-      return f"{self.character.name} was not " + ("blessed" if self.adjustment > 0 else "cursed")
-    if self.change is None:
-      return f"{self.character.name} will be " + ("blessed" if self.adjustment > 0 else "cursed")
-    if not self.change:
-      return f"nothing changed for {self.character.name}"
-    if self.character.bless_curse:
-      return f"{self.character.name} became " + ("blessed" if self.change > 0 else "cursed")
-    return f"{self.character.name} lost their " + ("blessing" if self.change < 0 else "curse")
+      card = "Curse"
+    draw = DrawNamed(character, "specials", card)
+    super().__init__([
+        draw,
+        KeepDrawn(character, draw)], character
+    )
 
 
-def Bless(character):
-  return BlessCurse(character, True)
+class Bless(BlessCurse):
+  def __init__(self, character):
+    super().__init__(character, True)
 
 
-def Curse(character):
-  return BlessCurse(character, False)
+class Curse(BlessCurse):
+  def __init__(self, character):
+    super().__init__(character, False)
 
 
 class MembershipChange(Event):
@@ -2322,6 +2305,8 @@ class DiscardSpecific(Event):
     self.items = items
     self.to_box = to_box
     self.discarded = None
+    self._verb = "discard"
+    self._verb_past = "discarded"
 
   def resolve(self, state):
     if isinstance(self.items, ItemChoice):
@@ -2330,6 +2315,9 @@ class DiscardSpecific(Event):
         self.cancelled = True
         return
       self.items = self.items.chosen
+
+    if isinstance(self.items, values.Value):
+      self.items = self.items.value(state)
 
     self.discarded = []
     for item in self.items:
@@ -2350,25 +2338,67 @@ class DiscardSpecific(Event):
 
   def log(self, state):
     if self.cancelled and self.discarded is None:
-      return f"{self.character.name} could not discard the items"
+      return f"{self.character.name} could not {self._verb} the items"
     if self.discarded is None:
       if isinstance(self.items, ItemChoice):
-        text = f"{self.character.name} will discard the chosen items"
+        text = f"{self.character.name} will {self._verb} the chosen items"
       else:
-        text = f"{self.character.name} will discard " + ", ".join(item.name for item in self.items)
+        text = (
+            f"{self.character.name} will {self._verb} "
+            + ", ".join(item.name for item in self.items)
+        )
       if not self.to_box:
         return text
       return text + " to the box"
     if not self.discarded:
-      text = f"{self.character.name} did not have items to discard"
+      text = f"{self.character.name} did not have items to {self._verb}"
     else:
-      text = f"{self.character.name} discarded " + ", ".join(item.name for item in self.discarded)
+      text = f"{self.character.name} {self._verb_past} "
+      text += ", ".join(item.name for item in self.discarded)
     if not self.to_box:
       return text
     return text + " to the box"
 
   def animated(self):
     return True
+
+
+class RollToLose(Event):
+  def __init__(self, character, item):
+    super().__init__()
+    self.character = character
+    self.item = item
+    self.roll = None
+    self.lose = None
+    self.done = False
+
+  def resolve(self, state) -> None:
+    if self.roll is None:
+      self.roll = DiceRoll(self.character, 1, name=self.item.name, bad=[1])
+      state.event_stack.append(self.roll)
+      return
+
+    if self.roll.sum == 1 and self.lose is None:
+      # TODO: allow the item to determine its own bad stuff
+      self.lose = DiscardSpecific(self.character, [self.item])
+      state.event_stack.append(self.lose)
+      return
+
+    self.done = True
+
+  def is_resolved(self) -> bool:
+    return self.done
+
+  def log(self, state):
+    if self.cancelled and self.roll is None:
+      return f"{self.character.name} did not roll to lose the {self.item.name}"
+    if self.cancelled:
+      return f"{self.character.name} could not lose the {self.item.name}"
+    if self.done:
+      if self.lose is not None:
+        return f"{self.character.name} rolled a 1 and lost the {self.item.name}"
+      return f"{self.character.name} keeps the {self.item.name}"
+    return f"{self.character.name} to roll for their {self.item.name}"
 
 
 class DiscardNamed(Event):
@@ -4532,6 +4562,7 @@ class AddToken(Event):
     self.character = character
     self.added = False
     self.resolved_max = False
+    self.resolved_zero = False
     self.done = False
     self.n_tokens = n_tokens
     super().__init__()
@@ -4544,7 +4575,7 @@ class AddToken(Event):
     asset = self.asset
 
     if not self.added:
-      asset.tokens[self.token_type] += self.n_tokens
+      asset.tokens[self.token_type] = max(asset.tokens[self.token_type] + self.n_tokens, 0)
       self.added = True
 
     if ((not self.resolved_max)
@@ -4552,21 +4583,32 @@ class AddToken(Event):
       state.event_stack.append(self.asset.get_max_token_event(token_type, self.character))
       self.resolved_max = True
       return
+    if (not self.resolved_zero) and (asset.tokens[token_type] == 0):
+      state.event_stack.append(self.asset.get_zero_tokens_event(token_type, self.character))
+      self.resolved_zero = True
+      return
 
     self.done = True
 
   def log(self, state):
+    verb = "added" if self.n_tokens > 0 else "removed"
     if not self.added:
-      return f"{self.n_tokens} {self.token_type.title()} tokens to be added to {self.asset.name}"
+      return f"{self.n_tokens} {self.token_type.title()} tokens to be {verb} to {self.asset.name}"
     if self.resolved_max:
       return f"{self.asset.name} has reached its maximum of {self.token_type.title()} tokens"
+    if self.resolved_zero:
+      return f"{self.asset.name} has reached zero {self.token_type.title()} tokens"
     if self.done and not self.cancelled:
-      return f"{self.n_tokens} {self.token_type.title()} token(s) added to {self.asset.name}"
+      return f"{self.n_tokens} {self.token_type.title()} token(s) {verb} to {self.asset.name}"
     return (f"{self.n_tokens} {self.token_type.title()} token(s) prevented"
-            f" from being added to {self.asset.name}")
+            f" from being {verb} to {self.asset.name}")
 
   def animated(self):
     return True
+
+
+def RemoveToken(asset, token_type, character=None, n_tokens=1):
+  return AddToken(asset, token_type, character, -n_tokens)
 
 
 class AllyToBox(Event):

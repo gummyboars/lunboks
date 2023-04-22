@@ -389,6 +389,10 @@ class SpendTrophiesEncounterTest(FixedEncounterBaseTest):
     )
 
   def testCannotBecomeDeputyIfSomeoneElseIs(self):
+    self.assertIn("Deputy", [c.name for c in self.state.specials])
+    deputy = next(c for c in self.state.specials if c.name == "Deputy")
+    self.state.specials.remove(deputy)
+
     self.state.tradables.extend([items.DeputysRevolver(), items.PatrolWagon()])
     self.char.trophies.append(self.state.gates.popleft())
     self.char.place = self.state.places["Police"]

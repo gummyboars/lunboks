@@ -267,7 +267,6 @@ class DeputyTest(EventTest):
 
   def testBecomingDeputyGivesItems(self):
     self.state.tradables.extend(items.CreateTradables())
-    self.state.specials.extend(items.CreateSpecials())
     self.state.event_stack.append(DrawSpecific(self.char, "specials", "Deputy"))
     self.resolve_until_done()
     self.assertEqual(len(self.char.possessions), 3)
@@ -290,7 +289,6 @@ class DeputyTest(EventTest):
     self.state.characters.append(buddy)
 
     self.state.tradables.extend(items.CreateTradables())
-    self.state.specials.extend(items.CreateSpecials())
 
     self.state.event_stack.append(DrawSpecific(buddy, "specials", "Deputy"))
     self.resolve_until_done()
@@ -302,19 +300,17 @@ class DeputyTest(EventTest):
 
   def testDeputyCardsReturnIfDevoured(self):
     self.state.tradables.extend([items.DeputysRevolver(), items.PatrolWagon()])
-    self.state.specials.append(assets.Deputy())
     self.state.event_stack.append(DrawSpecific(self.char, "specials", "Deputy"))
     self.resolve_until_done()
 
     self.assertFalse(self.state.tradables)
-    self.assertFalse(self.state.specials)
+    self.assertNotIn("Deputy", [c.name for c in self.state.specials])
 
     self.state.event_stack.append(Devoured(self.char))
     self.resolve_until_done()
 
     self.assertEqual(len(self.state.tradables), 2)
-    self.assertEqual(len(self.state.specials), 1)
-    self.assertEqual(self.state.specials[0].name, "Deputy")
+    self.assertIn("Deputy", [c.name for c in self.state.specials])
 
 
 class WagonTest(EventTest):

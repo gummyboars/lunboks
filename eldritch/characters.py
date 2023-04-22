@@ -30,8 +30,6 @@ class Character:
     self.possessions = []  # includes special abilities, skills, and allies
     self.trophies = []
     # TODO: maybe the blessings, retainers, bank loans, and lodge memberships should be possessions.
-    self.bless_curse = 0  # -1 for curse, +1 for blessed
-    self.bless_curse_start = None
     self.retainer_start = None
     self.bank_loan_start = None
     self.lodge_membership = False
@@ -120,6 +118,14 @@ class Character:
   @property
   def focus(self):
     return self._focus
+
+  @property
+  def bless_curse(self):
+    if "Blessing" in [p.name for p in self.possessions]:
+      return 1
+    if "Curse" in [p.name for p in self.possessions]:
+      return -1
+    return 0
 
   def get_interrupts(self, event, state):
     return [
@@ -485,10 +491,10 @@ class Nun(Character):
     return ["Guardian Angel"]
 
   def initial_attributes(self):
-    return {"bless_curse": 1}
+    return {}
 
   def fixed_possessions(self):
-    return {"common": ["Cross"], "unique": ["Holy Water"]}
+    return {"common": ["Cross"], "unique": ["Holy Water"], "specials": ["Blessing"]}
 
   def random_possessions(self):
     return {"spells": 2, "skills": 1}

@@ -1285,8 +1285,9 @@ class SocietyTest(EncounterTest):
     self.assertEqual(self.char.bless_curse, -1)
 
   def testSociety3FailBless(self):
+    self.state.event_stack.append(events.Bless(self.char))
+    self.resolve_until_done()
     self.state.event_stack.append(encounters.Society3(self.char))
-    self.char.bless_curse = 1
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
       self.resolve_until_done()
     self.assertEqual(self.char.sanity, 3)
@@ -1701,7 +1702,8 @@ class ChurchTest(EncounterTest):
     self.assertEqual(self.char.bless_curse, 1)
 
   def testChurch2Curse(self):
-    self.char.bless_curse = -1
+    self.state.event_stack.append(events.Curse(self.char))
+    self.resolve_until_done()
     self.state.event_stack.append(encounters.Church2(self.char))
     self.resolve_until_done()
     self.assertEqual(self.char.bless_curse, 0)
@@ -1901,7 +1903,7 @@ class AdministrationTest(EncounterTest):
     choice.resolve(self.state, "Yes")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=2)):
       self.resolve_until_done()
-    self.assertEqual(len(self.char.possessions), 0)
+    self.assertEqual(len(self.char.possessions), 1)
     self.assertEqual(len(self.state.spells), 2)
     self.assertEqual(self.char.bless_curse, -1)
 
@@ -2124,13 +2126,15 @@ class ScienceTest(EncounterTest):
     self.assertEqual(self.char.bless_curse, 1)
 
   def testScience1Bless(self):
-    self.char.bless_curse = 1
+    self.state.event_stack.append(events.Bless(self.char))
+    self.resolve_until_done()
     self.state.event_stack.append(encounters.Science1(self.char))
     self.resolve_until_done()
     self.assertEqual(self.char.bless_curse, 1)
 
   def testScience1Curse(self):
-    self.char.bless_curse = -1
+    self.state.event_stack.append(events.Curse(self.char))
+    self.resolve_until_done()
     self.state.event_stack.append(encounters.Science1(self.char))
     self.resolve_until_done()
     self.assertEqual(self.char.bless_curse, 0)
@@ -2645,7 +2649,8 @@ class BankTest(EncounterTest):
     self.assertEqual(self.char.bless_curse, -1)
 
   def testBank4FailBless(self):
-    self.char.bless_curse = 1
+    self.state.event_stack.append(events.Bless(self.char))
+    self.resolve_until_done()
     self.state.event_stack.append(encounters.Bank4(self.char))
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=2)):
       self.resolve_until_done()

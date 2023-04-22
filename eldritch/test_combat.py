@@ -2254,7 +2254,9 @@ class CombatWithShotgunTest(EventTest):
     self.resolve_until_done()
 
   def testShotgunBlessed(self):
-    self.char.bless_curse = 1
+    self.state.event_stack.append(events.Bless(self.char))
+    self.resolve_until_done()
+    self.assertEqual(self.char.bless_curse, 1)
     choice = self.start(monsters.Octopoid())
     self.choose_items(choice, ["Shotgun0"])
     with mock.patch.object(events.random, "randint", new=mock.Mock(side_effect=[5, 4, 1, 1, 1])):
@@ -2279,7 +2281,8 @@ class CombatWithShotgunTest(EventTest):
     self.resolve_until_done()
 
   def testShotgunCursed(self):
-    self.char.bless_curse = -1
+    self.state.event_stack.append(events.Curse(self.char))
+    self.resolve_until_done()
     choice = self.start(monsters.Octopoid())
     self.choose_items(choice, ["Shotgun0"])
     with mock.patch.object(events.random, "randint", new=mock.Mock(side_effect=[6, 5, 1, 1, 1])):

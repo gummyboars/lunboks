@@ -73,6 +73,9 @@ class Asset(metaclass=abc.ABCMeta):
   def get_max_token_event(self, token_type, owner):
     return events.Nothing()
 
+  def get_zero_tokens_event(self, token_type, owner):
+    return events.Nothing()
+
   def json_repr(self):
     return {attr: getattr(self, attr, None) for attr in self.JSON_ATTRS}
 
@@ -271,6 +274,57 @@ class Deputy(Card):
           events.DrawSpecific(owner, "tradables", "Patrol Wagon"),
       ], owner)
     return None
+
+
+class SelfDiscardingCard(Card):
+  def __init__(self, name, idx, active_bonuses=None, passive_bonuses=None):
+    active_bonuses = active_bonuses or {}
+    passive_bonuses = passive_bonuses or {}
+    super().__init__(
+        name, idx, "specials", active_bonuses=active_bonuses, passive_bonuses=passive_bonuses
+    )
+    self.tokens["must_roll"] = 0
+
+  def get_trigger(self, event, owner, state):
+    if isinstance(event, events.UpkeepActions) and event.character == owner:
+      if self.tokens["must_roll"]:
+        return events.RollToLose(owner, self)
+      return events.AddToken(self, "must_roll", owner)
+    return None
+
+
+class BlessingOrCurse(SelfDiscardingCard):
+  def __init__(self, name, idx):
+    assert name in ["Blessing", "Curse"]
+    super().__init__(name, idx)
+    self.opposite = "Curse" if name == "Blessing" else "Blessing"
+
+  def get_trigger(self, event, owner, state):
+    if isinstance(event, events.KeepDrawn) and self.name in event.kept:
+      selves = [p for p in event.character.possessions if p.name == self.name]
+      kept, *duplicates = sorted(selves, key=lambda x: x.tokens["must_roll"])
+      if duplicates:
+        return events.Sequence([
+            events.DiscardSpecific(event.character, duplicates),
+            events.RemoveToken(kept, "must_roll", owner),
+        ], owner)
+      if self.opposite in [p.name for p in event.character.possessions]:
+        return events.Sequence([
+            events.DiscardNamed(event.character, self.name),
+            events.DiscardNamed(event.character, self.opposite),
+        ], event.character)
+    return super().get_trigger(event, owner, state)
+
+  def __repr__(self):
+    return f"<{self.name} - {self.tokens}>"
+
+
+def Blessing(idx):
+  return BlessingOrCurse("Blessing", idx)
+
+
+def Curse(idx):
+  return BlessingOrCurse("Curse", idx)
 
 
 def CreateAllies():
