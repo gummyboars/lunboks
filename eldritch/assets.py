@@ -283,13 +283,13 @@ class SelfDiscardingCard(Card):
     super().__init__(
         name, idx, "specials", active_bonuses=active_bonuses, passive_bonuses=passive_bonuses
     )
-    self.tokens["elder_sign"] = 0
+    self.tokens["must_roll"] = 0
 
   def get_trigger(self, event, owner, state):
     if isinstance(event, events.UpkeepActions) and event.character == owner:
-      if self.tokens["elder_sign"]:
+      if self.tokens["must_roll"]:
         return events.RollToLose(owner, self)
-      return events.AddToken(self, "elder_sign", owner)
+      return events.AddToken(self, "must_roll", owner)
     return None
 
 
@@ -302,11 +302,11 @@ class BlessingOrCurse(SelfDiscardingCard):
   def get_trigger(self, event, owner, state):
     if isinstance(event, events.KeepDrawn) and self.name in event.kept:
       selves = [p for p in event.character.possessions if p.name == self.name]
-      kept, *duplicates = sorted(selves, key=lambda x: x.tokens["elder_sign"])
+      kept, *duplicates = sorted(selves, key=lambda x: x.tokens["must_roll"])
       if duplicates:
         return events.Sequence([
             events.DiscardSpecific(event.character, duplicates),
-            events.RemoveToken(kept, "elder_sign", owner),
+            events.RemoveToken(kept, "must_roll", owner),
         ], owner)
       if self.opposite in [p.name for p in event.character.possessions]:
         return events.Sequence([

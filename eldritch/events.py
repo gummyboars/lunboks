@@ -1200,6 +1200,7 @@ class LostInTimeAndSpace(Sequence):
 
 
 class BlessCurse(Sequence):
+  # TODO: make a subclass of conditional?
   def __init__(self, character, positive):
     if positive:
       card = "Blessing"
@@ -2331,8 +2332,6 @@ class DiscardSpecific(Event):
     if self.discarded is None:
       if isinstance(self.items, ItemChoice):
         text = f"{self.character.name} will {self._verb} the chosen items"
-      elif isinstance(self.items, values.NamedPossessions):
-        text = f"{self.character.name} will {self._verb} their {self.items.item_name}(s)"
       else:
         text = (
             f"{self.character.name} will {self._verb} "
@@ -2363,13 +2362,14 @@ class RollToLose(Event):
     self.lose = None
     self.done = False
 
-  def resolve(self, state) -> NoReturn:
+  def resolve(self, state) -> None:
     if self.roll is None:
       self.roll = DiceRoll(self.character, 1, name=self.item.name, bad=[1])
       state.event_stack.append(self.roll)
       return
 
     if self.roll.sum == 1 and self.lose is None:
+      # TODO: allow the item to determine its own bad stuff
       self.lose = DiscardSpecific(self.character, [self.item])
       state.event_stack.append(self.lose)
       return
