@@ -302,17 +302,17 @@ def Sanctum6(char):
 
 
 def Sanctum7(char):
-  # TODO: there has to actually be a gate open for you to do this.
-  # spend = values.ExactSpendPrerequisite({"clues": 2, "sanity": 1})
-  # check = events.Check(char, "lore", -2)
-  # close = events.Nothing()  # TODO: Close a gate
-  # ceremony = events.PassFail(char, check, close, events.Nothing())
-  # choice = events.SpendChoice(
-  #     char, "Participate in a gating ceremony?", ["Yes", "No"], spends=[spend, None],
-  # )
-  # cond = events.Conditional(char, choice, "choice_index", {0: ceremony, 1: events.Nothing()})
-  # return events.Sequence([choice, cond], char)
-  return events.Unimplemented()
+  check = events.Check(char, "lore", -2)
+  choose_gate = events.GateChoice(char, "Choose a gate to close", annotation="Close")
+  close = events.Sequence([choose_gate, events.CloseGate(char, choose_gate, False, False)], char)
+  ceremony = events.PassFail(char, check, close, events.Nothing())
+  spend = values.ExactSpendPrerequisite({"clues": 2, "sanity": 1})
+  choice = events.SpendChoice(
+      char, "Participate in a gating ceremony?", ["Yes", "No"], spends=[spend, None],
+  )
+  cond = events.Conditional(char, choice, "choice_index", {0: ceremony, 1: events.Nothing()})
+  participate = events.Sequence([choice, cond], char)
+  return events.Conditional(char, values.OpenGateCount(), "", {0: events.Nothing(), 1: participate})
 
 
 def WitchHouse1(char):

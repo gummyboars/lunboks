@@ -952,45 +952,73 @@ class LodgeTest(EncounterTest):
     self.state.event_stack.append(encounters.Sanctum6(self.char))
     self.resolve_to_choice(FightOrEvadeChoice)
 
-  # def testSanctum7Poor(self):
-  #   self.state.event_stack.append(encounters.Sanctum7(self.char))
-  #   choice = self.resolve_to_choice(SpendChoice)
-  #   with self.assertRaisesRegex(InvalidMove, "clues than you have"):
-  #     self.spend("clues", 1, choice)
-  #   with self.assertRaisesRegex(InvalidMove, "(2 clues|1 sanity), (2 clues|1 sanity)"):
-  #     choice.resolve(self.state, "Yes")
-  #   choice.resolve(self.state, "No")
-  #   self.resolve_until_done()
-  #
-  # def testSanctum7Decline(self):
-  #   self.state.event_stack.append(encounters.Sanctum7(self.char))
-  #   self.char.clues = 2
-  #   choice = self.resolve_to_choice(SpendChoice)
-  #   choice.resolve(self.state, "No")
-  #   self.resolve_until_done()
-  #
-  # def testSanctum7Fail(self):
-  #   self.state.event_stack.append(encounters.Sanctum7(self.char))
-  #   self.char.clues = 2
-  #   choice = self.resolve_to_choice(SpendChoice)
-  #   self.spend("clues", 2, choice)
-  #   self.spend("sanity", 1, choice)
-  #   choice.resolve(self.state, "Yes")
-  #   with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=4)):
-  #     self.resolve_until_done()
-  #   self.assertEqual(self.char.clues, 0)
-  #   self.assertEqual(self.char.sanity, 2)
-  #
-  # def testSanctum7Pass(self):
-  #   self.state.event_stack.append(encounters.Sanctum7(self.char))
-  #   self.char.clues = 2
-  #   choice = self.resolve_to_choice(SpendChoice)
-  #   self.spend("clues", 2, choice)
-  #   self.spend("sanity", 1, choice)
-  #   choice.resolve(self.state, "Yes")
-  #   with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
-  #     # TODO: Choose gate to close
-  #     self.resolve_until_done()
+  def testSanctum7Poor(self):
+    self.state.places["Woods"].gate = self.state.gates.popleft()
+    self.state.event_stack.append(encounters.Sanctum7(self.char))
+    choice = self.resolve_to_choice(SpendChoice)
+    with self.assertRaisesRegex(InvalidMove, "clues than you have"):
+      self.spend("clues", 1, choice)
+    with self.assertRaisesRegex(InvalidMove, "(2 clues|1 sanity), (2 clues|1 sanity)"):
+      choice.resolve(self.state, "Yes")
+    choice.resolve(self.state, "No")
+    self.resolve_until_done()
+    self.assertTrue(self.state.places["Woods"].gate)
+
+  def testSanctum7Decline(self):
+    self.state.places["Woods"].gate = self.state.gates.popleft()
+    self.state.event_stack.append(encounters.Sanctum7(self.char))
+    self.char.clues = 2
+    choice = self.resolve_to_choice(SpendChoice)
+    choice.resolve(self.state, "No")
+    self.resolve_until_done()
+    self.assertTrue(self.state.places["Woods"].gate)
+
+  def testSanctum7Fail(self):
+    self.char.lore_luck_slider = 3
+    self.state.places["Woods"].gate = self.state.gates.popleft()
+    self.state.event_stack.append(encounters.Sanctum7(self.char))
+    self.char.clues = 2
+    choice = self.resolve_to_choice(SpendChoice)
+    self.spend("clues", 2, choice)
+    self.spend("sanity", 1, choice)
+    choice.resolve(self.state, "Yes")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=4)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.clues, 0)
+    self.assertEqual(self.char.sanity, 2)
+    self.assertTrue(self.state.places["Woods"].gate)
+
+  def testSanctum7Pass(self):
+    self.char.lore_luck_slider = 3
+    self.state.places["Woods"].gate = self.state.gates.popleft()
+    self.state.event_stack.append(encounters.Sanctum7(self.char))
+    self.char.clues = 2
+    choice = self.resolve_to_choice(SpendChoice)
+    self.spend("clues", 2, choice)
+    self.spend("sanity", 1, choice)
+    choice.resolve(self.state, "Yes")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+    self.assertIsNone(self.state.places["Woods"].gate)
+    self.assertListEqual(self.char.trophies, [])
+
+  def testSanctum7MultipleChoice(self):
+    self.char.lore_luck_slider = 3
+    self.state.places["Woods"].gate = self.state.gates.popleft()
+    self.state.places["Isle"].gate = self.state.gates.popleft()
+    self.state.event_stack.append(encounters.Sanctum7(self.char))
+    self.char.clues = 2
+    choice = self.resolve_to_choice(SpendChoice)
+    self.spend("clues", 2, choice)
+    self.spend("sanity", 1, choice)
+    choice.resolve(self.state, "Yes")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      choice = self.resolve_to_choice(GateChoice)
+    choice.resolve(self.state, "Isle")
+    self.resolve_until_done()
+    self.assertIsNone(self.state.places["Isle"].gate)
+    self.assertTrue(self.state.places["Woods"].gate)
+    self.assertListEqual(self.char.trophies, [])
 
 
 class WitchHouseTest(EncounterTest):

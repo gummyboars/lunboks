@@ -246,6 +246,16 @@ class UnsuccessfulDice(Value):
     ]
 
 
+class OpenGates(Value):
+
+  def value(self, state):
+    return [place.name for place in state.places.values() if getattr(place, "gate", None)]
+
+
+def OpenGateCount():
+  return Calculation(OpenGates(), None, len)
+
+
 class SpendValue(metaclass=abc.ABCMeta):
 
   SPEND_TYPES = {
