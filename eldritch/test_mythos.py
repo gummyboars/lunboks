@@ -2599,6 +2599,17 @@ class Mythos42Test(EventTest):
     self.testCostIsZero()
 
 
+class Mythos44Test(EventTest):
+
+  def testReducesMovementPoints(self):
+    self.assertEqual(self.char.speed(self.state), 4)
+    self.state.environment = Mythos44()
+    self.assertEqual(self.char.speed(self.state), 3)
+    self.state.event_stack.append(Movement(self.char))
+    self.resolve_to_choice(CityMovement)
+    self.assertEqual(self.char.movement_points, 3)
+
+
 class Mythos51Test(EventTest):
   def setUp(self):
     super().setUp()

@@ -94,7 +94,7 @@ def CreateFixedEncounters():
       name="skills",  # Make it the name of the deck so it shows up in CardChoice
       prereq=lambda char: None,
       spend=lambda char: values.ExactSpendPrerequisite({"dollars": 8}),
-      encounter=lambda char, state: events.Draw(char, "skills", 2, "Keep one spell"),
+      encounter=lambda char, state: events.Draw(char, "skills", 2, "Keep one skill"),
   )
 
   clues = FixedEncounter(

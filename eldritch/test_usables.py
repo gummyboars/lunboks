@@ -993,11 +993,11 @@ class VoiceTest(EventTest):
       self.resolve_until_done()
       self.assertEqual(rand.call_count, 5)
 
-    # Also validate that it applies to movement points.
+    # Also validate that it does not apply to movement points.
     self.state.turn_phase = "movement"
     self.state.event_stack.append(Movement(self.char))
     self.resolve_to_choice(CityMovement)
-    self.assertEqual(self.char.movement_points, 5)
+    self.assertEqual(self.char.movement_points, 4)
 
   def testCastFailure(self):
     self.state.event_stack.append(events.UpkeepActions(self.char))
