@@ -748,6 +748,17 @@ class InitializePlayersTest(unittest.TestCase):
         science_clue_missing = name == "Scientist"
         self.assertEqual(state.places["Science"].clues, 1-int(science_clue_missing))
 
+  def testInitializeSquidFace(self):
+    state = eldritch.GameState()
+    state.ancient_one = ancient_ones.SquidFace()
+    state.handle_join(None, "Researcher")
+    state.handle_start()
+    self.assertEqual(len(state.characters), 1)
+    self.assertEqual(state.characters[0].max_stamina(state), 4)
+    self.assertEqual(state.characters[0].max_sanity(state), 4)
+    self.assertEqual(state.characters[0].stamina, 4)
+    self.assertEqual(state.characters[0].sanity, 4)
+
 
 class NextTurnBase(unittest.TestCase):
 

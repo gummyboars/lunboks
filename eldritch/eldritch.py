@@ -1223,6 +1223,8 @@ class GameState:
       else:
         assert self.characters[idx].gone
         self.characters[idx] = self.all_characters[name]
+      self.all_characters[name].stamina = self.all_characters[name].max_stamina(self)
+      self.all_characters[name].sanity = self.all_characters[name].max_sanity(self)
 
     new_characters.sort(key=self.characters.index)  # Sort by order in self.characters.
     self.pending_chars.clear()
