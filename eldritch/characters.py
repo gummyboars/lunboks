@@ -115,6 +115,12 @@ class Character:
   def spell(self, state):
     return self.lore(state) + self.bonus("spell", state)
 
+  def movement_speed(self):
+    speed = self._speed_sneak[self.speed_sneak_slider][0]
+    for pos in self.possessions:
+      speed += getattr(pos, "passive_bonuses", {}).get("speed", 0)
+    return speed
+
   @property
   def focus(self):
     return self._focus

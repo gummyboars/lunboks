@@ -350,7 +350,7 @@ class Movement(Turn):
         else:
           self.move = Return(self.character, self.character.place.info.name)
       elif isinstance(self.character.place, places.CityPlace):
-        self.character.movement_points = self.character.speed(state)
+        self.character.movement_points = self.character.movement_speed()
         self.move = CityMovement(self.character)
       else:
         self.move = Nothing()
