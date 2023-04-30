@@ -275,10 +275,6 @@ class GameState:
     if self.rumor and self.rumor.activity_location:
       output["activity"][self.rumor.activity_location].append((self.rumor.name, "3"))
 
-    char = None
-    if char_idx is not None and char_idx < len(self.characters):
-      char = self.characters[char_idx]
-
     top_event = self.event_stack[-1] if self.event_stack else None
 
     # Figure out the current encounter/mythos card being resolved.
@@ -370,7 +366,9 @@ class GameState:
       if not isinstance(event, (events.ActivateChosenItems, events.ActivateItem)):
         break
     output["choice"] = None
-    if choice and choice.character == char:
+    output["chooser"] = None
+    if choice:
+      output["chooser"] = self.characters.index(choice.character)
       output["choice"] = {"prompt": choice.prompt()}
       output["choice"]["annotations"] = choice.annotations(self)
       output["choice"]["invalid_choices"] = list(getattr(choice, "invalid_choices", {}).keys())
@@ -410,11 +408,11 @@ class GameState:
         raise RuntimeError(f"Unknown choice type {choice.__class__.__name__}")
 
     if top_event and isinstance(top_event, events.SliderInput) and not top_event.is_done():
-      if top_event.character == char:
-        output["sliders"] = {"prompt": top_event.prompt()}
-        # TODO: distinguish between pending/current sliders, pending/current focus.
-        for name, value in top_event.pending.items():
-          output["characters"][char_idx]["sliders"][name]["selection"] = value
+      output["sliders"] = {"prompt": top_event.prompt()}
+      output["chooser"] = self.characters.index(top_event.character)
+      # TODO: distinguish between pending/current sliders, pending/current focus.
+      for name, value in top_event.pending.items():
+        output["characters"][output["chooser"]]["sliders"][name]["selection"] = value
 
     output["spendables"] = None
     output["usables"] = None
