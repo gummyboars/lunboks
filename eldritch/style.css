@@ -1026,6 +1026,10 @@ button:disabled {
 .unselectable:hover {
   color: rgba(0, 0, 0, 1);
 }
+.hoverable:hover {
+  background-color: rgba(255, 255, 255, 0.7);
+  color: rgba(0, 0, 0, 1);
+}
 .selectable:hover {
   background-color: rgba(0, 255, 0, 0.7);
   color: rgba(0, 0, 0, 1);

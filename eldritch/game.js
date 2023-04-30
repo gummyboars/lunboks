@@ -307,21 +307,23 @@ function handleData(data) {
   allAncients = data.all_ancients;
   pendingName = data.pending_name;
   chosenAncient = (data.ancient_one == null) ? null : data.ancient_one.name;
+  let myChoice = data.chooser == data.player_idx ? data.choice : null;
+  let mySpendables = data.chooser == data.player_idx ? data.spendables : null;
   updateAvailableCharacters(data.characters, data.pending_chars);
   updateCharacterSelect(data.characters, data.player_idx);
   updateAncientSelect(data.game_stage, data.host);
   updateAncientOne(data.ancient_one, data.terror);
-  updateCharacterSheets(data.characters, data.pending_chars, data.player_idx, data.first_player, data.choice);
+  updateCharacterSheets(data.characters, data.pending_chars, data.player_idx, data.first_player, myChoice);
   updateBottomText(data.game_stage, data.turn_phase, data.characters, data.turn_idx, data.player_idx, data.host);
   updateGlobals(data.environment, data.rumor, data.other_globals);
   updatePlaces(data.places, data.activity);
   updateCharacters(data.characters);
-  updateSliderButton(data.sliders);
-  let oldVisuals = updateChoices(data.choice, data.current);
+  updateSliderButton(data.sliders, data.chooser == data.player_idx);
+  let oldVisuals = updateChoices(data.choice, data.current, data.chooser == data.player_idx, data.characters[data.chooser]);
   updateMonsters(data.monsters);
-  updateMonsterChoices(data.choice, data.monsters);
+  updateMonsterChoices(myChoice, data.monsters);
   updatePlaceBoxes(data.places, data.activity);
-  updateUsables(data.usables, data.spendables, data.choice);
+  updateUsables(data.usables, mySpendables, myChoice);
   updateDice(data.dice, data.player_idx, data.monsters);
   updateCurrentCard(data.current);
   updateEventLog(data.event_log);
@@ -923,9 +925,11 @@ function updateMonsters(monster_list) {
   }
 }
 
-function updateSliderButton(sliders) {
+function updateSliderButton(sliders, isMySliders) {
   if (sliders) {
     document.getElementById("uiprompt").innerText = formatServerString(sliders.prompt);
+  }
+  if (sliders && isMySliders) {
     document.getElementById("donesliders").style.display = "inline-block";
   } else {
     document.getElementById("donesliders").style.display = "none";
@@ -959,7 +963,7 @@ function scrollCards(e, dir) {
   cardScroller.scrollLeft = cardScroller.scrollLeft + amount;
 }
 
-function updateChoices(choice, current) {
+function updateChoices(choice, current, isMyChoice, chooser) {
   let btn = document.getElementById("doneitems");
   let uichoice = document.getElementById("uichoice");
   let uicardchoice = document.getElementById("uicardchoice");
@@ -973,6 +977,7 @@ function updateChoices(choice, current) {
   }
   for (let place of document.getElementsByClassName("placeinnerselect")) {
     place.classList.remove("selectable");
+    place.classList.remove("hoverable");
     place.classList.remove("unselectable");
     place.innerText = "";
   }
@@ -983,7 +988,7 @@ function updateChoices(choice, current) {
   document.getElementById("cardchoicescroll").style.display = "none";
   btn.style.display = "none";
   cardtoggle.style.display = "none";
-  if (choice != null && choice.board_monster != null) {
+  if (choice != null && choice.board_monster != null && isMyChoice) {
     monsterBox.classList.add("choosable");
   } else {
     monsterBox.classList.remove("choosable");
@@ -993,7 +998,7 @@ function updateChoices(choice, current) {
     return [];
   }
   // Set display style for uichoice div.
-  if (choice.items == null) {
+  if (choice.items == null && isMyChoice) {
     uichoice.style.display = "flex";
   }
   if (choice.cards != null || choice.monster != null || choice.monsters != null) {
@@ -1016,27 +1021,43 @@ function updateChoices(choice, current) {
     uicardchoice.removeChild(uicardchoice.getElementsByClassName("cardholder")[0]);
   }
   // Set prompt.
-  document.getElementById("uiprompt").innerText = formatServerString(choice.prompt);
-  document.getElementById("charoverlay").classList.toggle("shown", choice.items != null || choice.spendable != null);
-  if (choice.items != null) {
-    for (let pos of pDiv.getElementsByClassName("possession")) {
-      pos.classList.toggle("choosable", choice.items.includes(pos.handle));
+  let promptText = formatServerString(choice.prompt);
+  let chooserName = serverNames[chooser.name] ?? chooser.name;
+  if (!isMyChoice) {
+    if (promptText.startsWith("Choose")) {
+      promptText = chooserName + " must " + promptText.charAt(0).toLowerCase() + promptText.slice(1);
+    } else if (promptText.startsWith(chooserName)) {
+      // Do nothing: the name of the player is already in the text.
+    } else {
+      promptText = chooserName + " must choose: " + promptText;
     }
-    btn.style.display = "inline-block";
+  }
+  document.getElementById("uiprompt").innerText = promptText;
+  let showOverlay = isMyChoice && (choice.items != null || choice.spendable != null);
+  document.getElementById("charoverlay").classList.toggle("shown", showOverlay);
+  if (choice.items != null) {
+    if (isMyChoice) {
+      for (let pos of pDiv.getElementsByClassName("possession")) {
+        pos.classList.toggle("choosable", choice.items.includes(pos.handle));
+      }
+      btn.style.display = "inline-block";
+    }
     if (choice.monster != null) {
       showMonster(uicardchoice, choice.monster);  // TODO: update show/hide button text
     }
-  } else {
+  } else {  // choice.items == null
     if (choice.places != null) {
-      updatePlaceChoices(uichoice, choice.places, choice.annotations);
+      updatePlaceChoices(uichoice, choice.places, choice.annotations, isMyChoice);
     } else if (choice.cards != null) {
-      addCardChoices(uichoice, uicardchoice, choice.cards, choice.invalid_choices, choice.remaining_spend, choice.annotations, choice.sort_uniq, oldVisuals, current);
+      addCardChoices(uichoice, uicardchoice, choice.cards, choice.invalid_choices, choice.remaining_spend, choice.annotations, choice.sort_uniq, oldVisuals, current, isMyChoice);
     } else if (choice.monsters != null) {
-      addMonsterChoices(uichoice, uicardchoice, choice.monsters, choice.invalid_choices, choice.annotations, oldVisuals, current);
+      addMonsterChoices(uichoice, uicardchoice, choice.monsters, choice.invalid_choices, choice.annotations, oldVisuals, current, isMyChoice);
     } else if (choice.monster != null) {
-      addFightOrEvadeChoices(uichoice, uicardchoice, choice.monster, choice.choices, choice.invalid_choices, choice.remaining_spend, choice.annotations, oldVisuals, current);
+      addFightOrEvadeChoices(uichoice, uicardchoice, choice.monster, choice.choices, choice.invalid_choices, choice.remaining_spend, choice.annotations, oldVisuals, current, isMyChoice);
     } else {
-      addChoices(uichoice, choice.choices, choice.invalid_choices, choice.remaining_spend);
+      if (isMyChoice) {
+        addChoices(uichoice, choice.choices, choice.invalid_choices, choice.remaining_spend);
+      }
     }
   }
   return oldVisuals;
@@ -1075,14 +1096,14 @@ function updateMonsterChoices(choice, monsterList) {
   }
 }
 
-function addMonsterChoices(uichoice, cardChoice, monsters, invalidChoices, annotations, oldVisuals) {
+function addMonsterChoices(uichoice, cardChoice, monsters, invalidChoices, annotations, oldVisuals, current, isMyChoice) {
   let otherChoices = [];
   for (let [idx, monster] of monsters.entries()) {
     if (typeof(monster) == "string") {
       otherChoices.push(monster);
       continue;
     }
-    let [holder, div, cnv] = addVisual(cardChoice, "monster", true, false, null, annotations && annotations[idx]);
+    let [holder, div, cnv] = addVisual(cardChoice, "monster", isMyChoice, false, null, annotations && annotations[idx]);
     div.removeChild(cnv);
     let frontDiv = document.createElement("DIV");
     frontDiv.classList.add("fightchoice", "cnvcontainer");
@@ -1090,7 +1111,9 @@ function addMonsterChoices(uichoice, cardChoice, monsters, invalidChoices, annot
     backDiv.classList.add("fightchoice", "monsterback");
     backDiv.monsterInfo = monster;
     let handle = monster.handle;
-    div.onclick = function(e) { makeChoice(handle); };
+    if (isMyChoice) {
+      div.onclick = function(e) { makeChoice(handle); };
+    }
     if (invalidChoices != null && invalidChoices.includes(idx)) {
       holder.classList.add("unchoosable");
       holder.style.order = 1;
@@ -1114,7 +1137,9 @@ function addMonsterChoices(uichoice, cardChoice, monsters, invalidChoices, annot
   } else {
     scrollParent.classList.remove("overflowing");
   }
-  addChoices(uichoice, otherChoices, [], []);
+  if (isMyChoice) {
+    addChoices(uichoice, otherChoices, [], []);
+  }
 }
 
 function showMonster(cardChoice, monster) {
@@ -1167,7 +1192,7 @@ function addVisual(cardChoice, visualType, isChoice, hasBack, monster, descText)
   return [holder, div, cnv];
 }
 
-function addFightOrEvadeChoices(uichoice, cardChoice, monster, choices, invalidChoices, remainingSpend, annotations, oldVisuals) {
+function addFightOrEvadeChoices(uichoice, cardChoice, monster, choices, invalidChoices, remainingSpend, annotations, oldVisuals, current, isMyChoice) {
   for (let [idx, choice] of choices.entries()) {
     let descText = choice;
     if (annotations && annotations[idx] != null) {
@@ -1175,17 +1200,21 @@ function addFightOrEvadeChoices(uichoice, cardChoice, monster, choices, invalidC
     }
     let holder, div, cnv;
     if (choice == "Fight") {
-      [holder, div, cnv] = addVisual(cardChoice, "fight", true, false, monster, descText);
+      [holder, div, cnv] = addVisual(cardChoice, "fight", isMyChoice, false, monster, descText);
     } else {
-      [holder, div, cnv] = addVisual(cardChoice, "fight", true, false, null, descText);
+      [holder, div, cnv] = addVisual(cardChoice, "fight", isMyChoice, false, null, descText);
     }
-    div.onclick = function(e) { makeChoice(choice); };
+    if (isMyChoice) {
+      div.onclick = function(e) { makeChoice(choice); };
+    }
     if (invalidChoices != null && invalidChoices.includes(idx)) {
       holder.classList.add("unchoosable");
     } else if (remainingSpend != null && remainingSpend.length > idx && remainingSpend[idx]) {
       let rem = remainingSpend[idx];
       holder.classList.add("mustspend");
-      div.onclick = function(e) { defaultSpend(rem, choice); };
+      if (isMyChoice) {
+        div.onclick = function(e) { defaultSpend(rem, choice); };
+      }
     }
     if (choice == "Fight") {
       renderMonsterBackToDiv(div, monster);
@@ -1195,7 +1224,7 @@ function addFightOrEvadeChoices(uichoice, cardChoice, monster, choices, invalidC
   }
 }
 
-function addCardChoices(uichoice, cardChoice, cards, invalidChoices, remainingSpend, annotations, sortUniq, oldVisuals, current) {
+function addCardChoices(uichoice, cardChoice, cards, invalidChoices, remainingSpend, annotations, sortUniq, oldVisuals, current, isMyChoice) {
   if (!cards) {
     return;
   }
@@ -1227,7 +1256,7 @@ function addCardChoices(uichoice, cardChoice, cards, invalidChoices, remainingSp
     }
     uniqueCards.add(card);
     count++;
-    let [holder, div, cnv] = addVisual(cardChoice, "card", true, true, null, annotations && annotations[idx]);
+    let [holder, div, cnv] = addVisual(cardChoice, "card", isMyChoice, true, null, annotations && annotations[idx]);
     if (sortUniq) {
       holder.style.order = cardToOrder[card];
     }
@@ -1252,13 +1281,17 @@ function addCardChoices(uichoice, cardChoice, cards, invalidChoices, remainingSp
       holder.ontransitioncancel = firstAnim;
       setTimeout(function() { holder.classList.remove("entering"); holder.classList.add("rotated"); }, 10);
     }
-    div.onclick = function(e) { makeChoice(card); };
+    if (isMyChoice) {
+      div.onclick = function(e) { makeChoice(card); };
+    }
     if (invalidChoices != null && invalidChoices.includes(idx)) {
       holder.classList.add("unchoosable");
     } else if (remainingSpend != null && remainingSpend.length > idx && remainingSpend[idx]) {
       let rem = remainingSpend[idx];
       holder.classList.add("mustspend");
-      div.onclick = function(e) { defaultSpend(rem, card); };
+      if (isMyChoice) {
+        div.onclick = function(e) { defaultSpend(rem, card); };
+      }
     }
     if (shouldAnimate) {
       renderAssetToDiv(holder.getElementsByClassName("visualback")[0], match[1] + " Card");
@@ -1271,7 +1304,9 @@ function addCardChoices(uichoice, cardChoice, cards, invalidChoices, remainingSp
   } else {
     scrollParent.classList.remove("overflowing");
   }
-  addChoices(uichoice, notFound, newInvalid, newRemainingSpend);
+  if (isMyChoice) {
+    addChoices(uichoice, notFound, newInvalid, newRemainingSpend);
+  }
 }
 
 function addChoices(uichoice, choices, invalidChoices, remainingSpend) {
@@ -1711,10 +1746,11 @@ function updateGate(place, gateDiv, shouldAnimate) {
   }
 }
 
-function updatePlaceChoices(uichoice, places, annotations) {
+function updatePlaceChoices(uichoice, places, annotations, isMyChoice) {
   let notFound = [];
   for (let place of document.getElementsByClassName("placeinnerselect")) {
     place.classList.remove("selectable");
+    place.classList.remove("hoverable");
     place.classList.add("unselectable");
     place.innerText = "❌";
   }
@@ -1724,7 +1760,11 @@ function updatePlaceChoices(uichoice, places, annotations) {
       notFound.push(placeName);
       continue;
     }
-    place.classList.add("selectable");
+    if (isMyChoice) {
+      place.classList.add("selectable");
+    } else {
+      place.classList.add("hoverable");
+    }
     place.classList.remove("unselectable");
     place.innerText = "Choose";
     if (annotations != null && annotations.length > idx) {
@@ -1733,7 +1773,7 @@ function updatePlaceChoices(uichoice, places, annotations) {
       place.innerText = "Choose";
     }
   }
-  if (notFound.length) {
+  if (isMyChoice && notFound.length) {
     addChoices(uichoice, notFound);
   }
 }
