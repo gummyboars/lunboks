@@ -2,6 +2,7 @@ import abc
 import collections
 
 from eldritch import events
+from eldritch import values
 
 
 CHECK_TYPES = {"speed", "sneak", "fight", "will", "lore", "luck"}
@@ -284,13 +285,26 @@ class SelfDiscardingCard(Card):
         name, idx, "specials", active_bonuses=active_bonuses, passive_bonuses=passive_bonuses
     )
     self.tokens["must_roll"] = 0
+    self.upkeep_bad_rolls = [1]
 
   def get_trigger(self, event, owner, state):
+    if isinstance(event, events.KeepDrawn) and self.name in event.kept:
+      selves = [p for p in event.character.possessions if p.name == self.name]
+      kept, *duplicates = sorted(selves, key=lambda x: x.tokens["must_roll"])
+      if duplicates:
+        return events.Sequence([
+          events.DiscardSpecific(event.character, duplicates),
+          events.RemoveToken(kept, "must_roll", owner),
+        ], owner)
+
     if isinstance(event, events.UpkeepActions) and event.character == owner:
       if self.tokens["must_roll"]:
-        return events.RollToLose(owner, self)
+        return events.RollToMaintain(owner, self)
       return events.AddToken(self, "must_roll", owner)
     return None
+
+  def upkeep_penalty(self, character):
+    return events.DiscardSpecific(character, [self])
 
 
 class BlessingOrCurse(SelfDiscardingCard):
@@ -301,13 +315,6 @@ class BlessingOrCurse(SelfDiscardingCard):
 
   def get_trigger(self, event, owner, state):
     if isinstance(event, events.KeepDrawn) and self.name in event.kept:
-      selves = [p for p in event.character.possessions if p.name == self.name]
-      kept, *duplicates = sorted(selves, key=lambda x: x.tokens["must_roll"])
-      if duplicates:
-        return events.Sequence([
-            events.DiscardSpecific(event.character, duplicates),
-            events.RemoveToken(kept, "must_roll", owner),
-        ], owner)
       if self.opposite in [p.name for p in event.character.possessions]:
         return events.Sequence([
             events.DiscardNamed(event.character, self.name),
@@ -325,6 +332,58 @@ def Blessing(idx):
 
 def Curse(idx):
   return BlessingOrCurse("Curse", idx)
+
+
+class Retainer(SelfDiscardingCard):
+  def __init__(self, idx):
+    super().__init__("Retainer", idx)
+
+  def get_interrupt(self, event, owner, state):
+    if isinstance(event, events.UpkeepActions) and event.character == owner:
+      return events.Gain(owner, {"dollars": 2})
+
+
+class BankLoan(SelfDiscardingCard):
+  def __init__(self, idx):
+    super().__init__("Bank Loan", idx)
+    self.upkeep_bad_rolls = [1, 2, 3]
+
+  def upkeep_penalty(self, character):
+    prereq = values.ExactSpendPrerequisite({"dollars": 1})
+    interest = events.Loss(character, {"dollars": 1})
+    default = events.Sequence(
+        [
+          events.LoseItems(
+              character,
+              values.ItemCount(character),
+          ),
+          events.DiscardSpecific(character, [self]),
+          events.DrawSpecific(character, "special", "Bad Credit"),
+        ],
+        character
+    )
+    choice = events.SpendChoice(
+        character,
+        "Pay interest on loan?", "Yes", "No",
+        interest, default,
+        prereq=prereq,
+    )
+
+  def get_trigger(self, event, owner, state):
+    if isinstance(event, events.KeepDrawn) and self.name in event.kept:
+      selves = [p for p in event.character.possessions if p.name == self.name]
+      kept, *duplicates = sorted(selves, key=lambda x: x.tokens["must_roll"])
+      if duplicates:
+        return events.Sequence([
+          events.DiscardSpecific(event.character, duplicates),
+          events.RemoveToken(kept, "must_roll", owner),
+        ], owner)
+    return super().get_trigger(event, owner, state)
+
+  def get_usable_interrupt(self, event, owner, state):
+    if values.ExactSpendPrerequisite({"dollars": 10}):
+      return events.SpendChoice
+
 
 
 def CreateAllies():

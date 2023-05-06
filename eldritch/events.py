@@ -7,6 +7,7 @@ from typing import (
     Collection, List, Dict, Optional, Union, NoReturn, TYPE_CHECKING,
 )
 
+from eldritch import assets
 from eldritch import places
 from eldritch import values
 
@@ -2365,13 +2366,13 @@ class DiscardSpecific(Event):
     return True
 
 
-class RollToLose(Event):
-  def __init__(self, character, item):
+class RollToMaintain(Event):
+  def __init__(self, character, item: assets.SelfDiscardingCard):
     super().__init__()
     self.character = character
     self.item = item
     self.roll = None
-    self.lose = None
+    self.penalty = None
     self.done = False
 
   def resolve(self, state) -> None:
@@ -2380,10 +2381,10 @@ class RollToLose(Event):
       state.event_stack.append(self.roll)
       return
 
-    if self.roll.sum == 1 and self.lose is None:
+    if self.roll.sum in self.item.upkeep_bad_rolls and self.penalty is None:
       # TODO: allow the item to determine its own bad stuff
-      self.lose = DiscardSpecific(self.character, [self.item])
-      state.event_stack.append(self.lose)
+      self.penalty = self.item.upkeep_penalty(self.character)
+      state.event_stack.append(self.penalty)
       return
 
     self.done = True
@@ -2393,12 +2394,12 @@ class RollToLose(Event):
 
   def log(self, state):
     if self.cancelled and self.roll is None:
-      return f"{self.character.name} did not roll to lose the {self.item.name}"
+      return f"{self.character.name} did not roll to check penalty for {self.item.name}"
     if self.cancelled:
-      return f"{self.character.name} could not lose the {self.item.name}"
+      return f"{self.character.name} could not pay the penalty for {self.item.name}"
     if self.done:
-      if self.lose is not None:
-        return f"{self.character.name} rolled a 1 and lost the {self.item.name}"
+      if self.penalty is not None:
+        return f"{self.character.name} rolled poorly and paid the penalty for {self.item.name}"
       return f"{self.character.name} keeps the {self.item.name}"
     return f"{self.character.name} to roll for their {self.item.name}"
 

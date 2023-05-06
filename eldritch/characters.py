@@ -30,7 +30,6 @@ class Character:
     self.possessions = []  # includes special abilities, skills, and allies
     self.trophies = []
     # TODO: maybe the blessings, retainers, bank loans, and lodge memberships should be possessions.
-    self.retainer_start = None
     self.bank_loan_start = None
     self.lodge_membership = False
     self.delayed_until = None
@@ -353,10 +352,10 @@ class Photographer(Character):
     return ["Hometown Advantage"]
 
   def initial_attributes(self):
-    return {"dollars": 1, "clues": 1, "retainer_start": 0}
+    return {"dollars": 1, "clues": 1}
 
   def fixed_possessions(self):
-    return {}
+    return {"special": ["Retainer"]}
 
   def random_possessions(self):
     return {"common": 1, "unique": 2, "skills": 1}

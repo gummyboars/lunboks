@@ -98,3 +98,16 @@ class BlessingTest(CurseBlessTest):
     self.assertTrue(curse.is_resolved())
     self.assertEqual(self.char.bless_curse, 0)
     self.assertListEqual(self.char.possessions, [self.dummy_possession])
+
+
+class BankLoanTest(EventTest):
+  def testBasicLoanFlow(self):
+    pass
+
+  def testDefaultWithDerringer(self):
+    pass
+
+
+class RetainerTest(EventTest):
+  def testBasicRetainerFlow(self):
+    pass
