@@ -1,6 +1,6 @@
 import operator
 from eldritch import events, values
-from .base import Item, Weapon, OneshotWeapon
+from .base import Item, Weapon, OneshotWeapon, Tome
 
 __all__ = [
     "CreateUnique", "EnchantedKnife", "EnchantedBlade", "HolyWater", "MagicLamp", "MagicPowder",
@@ -350,3 +350,97 @@ class SunkenCityRuby(Item):
     if isinstance(event, events.CityMovement) and event.character == owner:
       return events.ChangeMovementPoints(owner, 3)
     return None
+
+# Tomes
+
+
+class TibetanTome(Tome):
+  def __init__(self, idx):
+    super().__init__("Tibetan Tome", idx, "unique", 3, 2)
+    self.max_tokens["stamina"] = 2
+
+  def read_event(self, owner):
+    check = events.Check(owner, "lore", -1)
+    success = events.Sequence([
+        events.Draw(owner, "spells", 1),
+        events.Loss(owner, {"sanity": 1}, source=self),
+        events.AddToken(self, "stamina", owner),
+    ], owner
+    )
+    return events.PassFail(owner, check, success, events.Nothing())
+
+
+class MysticismTome(Tome):
+  def __init__(self, idx):
+    super().__init__("Mysticism Tome", idx, "unique", 5, 2)
+
+  def read_event(self, owner):
+    check = events.Check(owner, "lore", -2)
+    success = events.Sequence([
+        events.Draw(owner, "skills", 1),
+        events.DiscardSpecific(owner, [self])
+    ], owner
+    )
+    return events.PassFail(owner, check, success, events.Nothing())
+
+
+class BlackMagicTome(Tome):
+  def __init__(self, idx):
+    super().__init__("Black Magic Tome", idx, "unique", 3, 2)
+
+  def read_event(self, owner):
+    check = events.Check(owner, "lore", -2)
+    success = events.Sequence([
+        events.Draw(owner, "spells", 1),
+        events.GainOrLoss(owner, gains={"clues": 1}, losses={"sanity": 2}, source=self),
+        events.DiscardSpecific(owner, [self])
+    ], owner
+    )
+    return events.PassFail(owner, check, success, events.Nothing())
+
+
+class BlackBook(Tome):
+  def __init__(self, idx):
+    super().__init__("Black Book", idx, "unique", 3, 1)
+
+  def read_event(self, owner):
+    check = events.Check(owner, "lore", -1)
+    success = events.Sequence([
+        events.Draw(owner, "spells", 1),
+        events.Loss(owner, losses={"sanity": 1}, source=self),
+        events.DiscardSpecific(owner, [self])
+    ], owner
+    )
+    return events.PassFail(owner, check, success, events.Nothing())
+
+
+class BookOfTheDead(Tome):
+  "Necronomicon"
+
+  def __init__(self, idx):
+    super().__init__("Book of the Dead", idx, "unique", 6, 2)
+
+  def read_event(self, owner):
+    check = events.Check(owner, "lore", -2)
+    success = events.Sequence([
+        events.Draw(owner, "spells", 1),
+        events.Loss(owner, losses={"sanity": 2}, source=self),
+    ], owner
+    )
+    return events.PassFail(owner, check, success, events.Nothing())
+
+
+class YellowPlay(Tome):
+  "The King in Yellow"
+
+  def __init__(self, idx):
+    super().__init__("Yellow Play", idx, "unique", 2, 2)
+
+  def read_event(self, owner):
+    check = events.Check(owner, "lore", -2)
+    success = events.Sequence([
+        events.GainOrLoss(owner, gains={"clues": 4}, losses={"sanity": 1}, source=self),
+        events.DiscardSpecific(owner, [self])
+    ], owner
+    )
+    return events.PassFail(owner, check, success, events.Nothing())
