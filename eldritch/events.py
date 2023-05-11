@@ -1232,35 +1232,10 @@ class Curse(BlessCurse):
     super().__init__(character, False)
 
 
-class MembershipChange(Event):
-
-  def __init__(self, character, positive):
-    super().__init__()
-    self.character = character
-    self.positive = positive
-    self.change = None
-
-  def resolve(self, state):
-    old_status = self.character.lodge_membership
-    self.character.lodge_membership = self.positive
-    self.change = int(self.character.lodge_membership) - int(old_status)
-
-  def is_resolved(self):
-    return self.change is not None
-
-  def start_str(self):
-    return ""  # TODO
-
-  def log(self, state):
-    if self.cancelled and self.change is None:
-      return f"nothing changed for {self.character.name}"
-    if self.change is not None:
-      if self.change < 0:
-        return f"{self.character.name} lost their Lodge membership"
-      return f"{self.character.name} became a member of the Silver Twilight Lodge"
-    if self.positive:
-      return f"{self.character.name} will become a member of the Silver Twilight Lodge"
-    return f"{self.character.name} will lose their Lodge membership"
+def MembershipChange(character, positive):
+  if positive:
+    return DrawSpecific(character, "specials", "Silver Twilight Lodge Membership")
+  return DiscardNamed(character, "Silver Twilight Lodge Membership")
 
 
 class StatusChange(Event):
@@ -1290,6 +1265,15 @@ class StatusChange(Event):
         "bank_loan_start": {-1: " lost their bank loan??", 1: " received a bank loan"},
     }
     return self.character.name + status_map[self.attr][self.change]
+
+
+class TakeBankLoan(Sequence):
+  def __init__(self, character):
+    draw = DrawNamed(character, "specials", "Bank Loan")
+    super().__init__(
+        [draw, KeepDrawn(character, draw)],
+        character
+    )
 
 
 class ForceMovement(Event):
@@ -2367,7 +2351,7 @@ class DiscardSpecific(Event):
 
 
 class RollToMaintain(Event):
-  def __init__(self, character, item: assets.SelfDiscardingCard):
+  def __init__(self, character, item: "assets.SelfDiscardingCard"):
     super().__init__()
     self.character = character
     self.item = item

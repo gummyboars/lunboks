@@ -26,7 +26,7 @@ from eldritch import values
 from eldritch import monsters
 
 
-ChoiceT = TypeVar("ChoiceT", bound=events.ChoiceEvent)
+ChoiceT = TypeVar("ChoiceT", bound=Union[events.ChoiceEvent, events.SliderInput])
 
 
 class NoMythos(mythos.GlobalEffect):
@@ -1336,18 +1336,6 @@ class StatusChangeTest(EventTest):
     self.assertEqual(lose_turn.until, self.char.lose_turn_until)
     self.assertIsNone(self.char.delayed_until)
 
-  def testLoseRetainer(self):
-    status = StatusChange(self.char, "retainer", positive=False)
-    self.assertFalse(status.is_resolved())
-    self.char.retainer_start = 2
-
-    self.state.event_stack.append(status)
-    self.resolve_until_done()
-
-    self.assertTrue(status.is_resolved())
-    self.assertIsNone(self.char.retainer_start)
-    self.assertEqual(status.change, -1)
-
   def testBecomeMember(self):
     member = MembershipChange(self.char, True)
     self.assertFalse(self.char.lodge_membership)
@@ -1356,7 +1344,18 @@ class StatusChangeTest(EventTest):
     self.resolve_until_done()
 
     self.assertTrue(self.char.lodge_membership)
-    self.assertEqual(member.change, 1)
+
+  def testAlreadyMember(self):
+    self.char.possessions.append(assets.LodgeMembership(13))
+    self.assertTrue(self.char.lodge_membership)
+
+    self.state.event_stack.append(MembershipChange(self.char, True))
+    self.resolve_until_done()
+
+    self.assertEqual(
+        len([p for p in self.char.possessions if isinstance(p, assets.LodgeMembership)]),
+        1,
+    )
 
   def testArrested(self):
     self.assertEqual(self.char.place.name, "Diner")

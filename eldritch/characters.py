@@ -29,9 +29,6 @@ class Character:
     self.clues = 0
     self.possessions = []  # includes special abilities, skills, and allies
     self.trophies = []
-    # TODO: maybe the blessings, retainers, bank loans, and lodge memberships should be possessions.
-    self.bank_loan_start = None
-    self.lodge_membership = False
     self.delayed_until = None
     self.lose_turn_until = None
     self.arrested_until = None
@@ -131,6 +128,10 @@ class Character:
     if "Curse" in [p.name for p in self.possessions]:
       return -1
     return 0
+
+  @property
+  def lodge_membership(self):
+    return "Silver Twilight Lodge Membership" in [p.name for p in self.possessions]
 
   def get_interrupts(self, event, state):
     return [
@@ -355,7 +356,7 @@ class Photographer(Character):
     return {"dollars": 1, "clues": 1}
 
   def fixed_possessions(self):
-    return {"special": ["Retainer"]}
+    return {"specials": ["Retainer"]}
 
   def random_possessions(self):
     return {"common": 1, "unique": 2, "skills": 1}

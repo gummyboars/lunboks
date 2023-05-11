@@ -69,7 +69,7 @@ class DrawEncounterTest(EncounterTest):
 
   def testDrawLodgeEncounterWithMembership(self):
     self.char.place = self.state.places["Lodge"]
-    self.char.lodge_membership = True
+    self.char.possessions.append(assets.LodgeMembership(0))
     self.state.places["FrenchHill"].encounters = [
         encounters.EncounterCard(
             "FrenchHill5", {"Lodge": encounters.Lodge5, "Sanctum": encounters.Sanctum5},
@@ -896,7 +896,7 @@ class LodgeTest(EncounterTest):
     self.assertEqual(self.char.clues, 3)
 
   def testSanctum4Poor(self):
-    self.char.lodge_membership = True
+    self.char.possessions.append(assets.LodgeMembership(0))
     self.char.dollars = 2
     self.state.event_stack.append(encounters.Sanctum4(self.char))
     choice = self.resolve_to_choice(SpendChoice)
@@ -911,7 +911,7 @@ class LodgeTest(EncounterTest):
     self.assertEqual(self.char.sanity, 1)
 
   def testSanctum4Decline(self):
-    self.char.lodge_membership = True
+    self.char.possessions.append(assets.LodgeMembership(0))
     self.char.dollars = 3
     self.state.event_stack.append(encounters.Sanctum4(self.char))
     choice = self.resolve_to_choice(SpendChoice)
@@ -921,7 +921,7 @@ class LodgeTest(EncounterTest):
     self.assertEqual(self.char.sanity, 1)
 
   def testSanctum4Accept(self):
-    self.char.lodge_membership = True
+    self.char.possessions.append(assets.LodgeMembership(0))
     self.char.dollars = 3
     self.state.event_stack.append(encounters.Sanctum4(self.char))
     choice = self.resolve_to_choice(SpendChoice)
@@ -1889,13 +1889,15 @@ class AdministrationTest(EncounterTest):
     self.state.event_stack.append(encounters.Administration3(self.char))
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       self.resolve_until_done()
-    self.assertEqual(self.char.retainer_start, self.state.turn_number+2)
+    retainer = next(p for p in self.char.possessions if isinstance(p, assets.Retainer))
+    self.assertIn(retainer, self.char.possessions)
+    self.assertFalse(retainer.tokens["must_roll"])
 
   def testAdministration3Fail(self):
     self.state.event_stack.append(encounters.Administration3(self.char))
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=2)):
       self.resolve_until_done()
-    self.assertIsNone(self.char.retainer_start)
+    self.assertNotIn("Retainer", [p.name for p in self.char.possessions])
 
   def testAdminiatration4NoHelp(self):
     self.state.event_stack.append(encounters.Administration4(self.char))
@@ -3042,12 +3044,16 @@ class NewspaperTest(EncounterTest):
   def testNewspaper3(self):
     self.state.event_stack.append(encounters.Newspaper3(self.char))
     self.resolve_until_done()
-    self.assertEqual(self.char.retainer_start, self.state.turn_number+2)
+    retainer = next(p for p in self.char.possessions if isinstance(p, assets.Retainer))
+    self.assertIn(retainer, self.char.possessions)
+    self.assertFalse(retainer.tokens["must_roll"])
 
   def testNewspaper4(self):
     self.state.event_stack.append(encounters.Newspaper4(self.char))
     self.resolve_until_done()
-    self.assertEqual(self.char.retainer_start, self.state.turn_number+2)
+    retainer = next(p for p in self.char.possessions if isinstance(p, assets.Retainer))
+    self.assertIn(retainer, self.char.possessions)
+    self.assertFalse(retainer.tokens["must_roll"])
 
   def testNewspaper5Pass(self):
     self.state.event_stack.append(encounters.Newspaper5(self.char))

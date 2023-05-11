@@ -293,8 +293,8 @@ class SelfDiscardingCard(Card):
       kept, *duplicates = sorted(selves, key=lambda x: x.tokens["must_roll"])
       if duplicates:
         return events.Sequence([
-          events.DiscardSpecific(event.character, duplicates),
-          events.RemoveToken(kept, "must_roll", owner),
+            events.DiscardSpecific(event.character, duplicates),
+            events.RemoveToken(kept, "must_roll", owner),
         ], owner)
 
     if isinstance(event, events.UpkeepActions) and event.character == owner:
@@ -341,6 +341,7 @@ class Retainer(SelfDiscardingCard):
   def get_interrupt(self, event, owner, state):
     if isinstance(event, events.UpkeepActions) and event.character == owner:
       return events.Gain(owner, {"dollars": 2})
+    return None
 
 
 class BankLoan(SelfDiscardingCard):
@@ -349,41 +350,71 @@ class BankLoan(SelfDiscardingCard):
     self.upkeep_bad_rolls = [1, 2, 3]
 
   def upkeep_penalty(self, character):
-    prereq = values.ExactSpendPrerequisite({"dollars": 1})
-    interest = events.Loss(character, {"dollars": 1})
     default = events.Sequence(
         [
-          events.LoseItems(
-              character,
-              values.ItemCount(character),
-          ),
-          events.DiscardSpecific(character, [self]),
-          events.DrawSpecific(character, "special", "Bad Credit"),
+            events.LoseItems(
+                character,
+                values.ItemCount(character),
+            ),
+            events.DiscardSpecific(character, [self]),
+            events.DrawSpecific(character, "specials", "Bad Credit"),
         ],
         character
     )
-    choice = events.SpendChoice(
+    return events.BinarySpend(
         character,
+        "dollars",
+        1,
         "Pay interest on loan?", "Yes", "No",
-        interest, default,
-        prereq=prereq,
+        events.Nothing(),
+        default,
     )
 
   def get_trigger(self, event, owner, state):
-    if isinstance(event, events.KeepDrawn) and self.name in event.kept:
-      selves = [p for p in event.character.possessions if p.name == self.name]
-      kept, *duplicates = sorted(selves, key=lambda x: x.tokens["must_roll"])
-      if duplicates:
-        return events.Sequence([
-          events.DiscardSpecific(event.character, duplicates),
-          events.RemoveToken(kept, "must_roll", owner),
-        ], owner)
+    if isinstance(event, events.TakeBankLoan):
+      return events.Gain(owner, {"dollars": 10}, self)
     return super().get_trigger(event, owner, state)
 
-  def get_usable_interrupt(self, event, owner, state):
-    if values.ExactSpendPrerequisite({"dollars": 10}):
-      return events.SpendChoice
+  def get_usable_trigger(self, event, owner, state):
+    if (
+        # TODO: Usable "anytime"
+        isinstance(event, events.Upkeep) and event.character == owner
+    ):
+      return events.BinarySpend(
+          owner,
+          "dollars", 10,
+          "Pay off loan?", "Yes", "No",
+          events.DiscardSpecific(owner, [self]),
+      )
+    return None
 
+
+class BadCredit(Asset):
+  def __init__(self, idx):
+    super().__init__("Bad Credit", idx)
+
+  def get_interrupt(self, event, owner, state):
+    if (
+        isinstance(event, events.TakeBankLoan)
+        and event.character == owner
+    ):
+      return events.CancelEvent(event)
+    return None
+
+
+class LodgeMembership(Card):
+  def __init__(self, idx):
+    super().__init__("Silver Twilight Lodge Membership", idx, "specials", {}, {})
+
+  def get_interrupt(self, event, owner, state):
+    if (
+        isinstance(event, events.KeepDrawn)
+        and len([c for c in event.draw.drawn if isinstance(c, LodgeMembership)]) > 0
+        and event.character == owner
+        and event.character.lodge_membership
+    ):
+      return events.CancelEvent(event)
+    return None
 
 
 def CreateAllies():
