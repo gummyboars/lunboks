@@ -1,5 +1,5 @@
 import abc
-from typing import Optional, TYPE_CHECKING
+from typing import Optional, TYPE_CHECKING, Union
 
 from eldritch import events, places, characters, monsters, values, mythos
 from eldritch.events import AncientOneAttack
@@ -11,7 +11,9 @@ if TYPE_CHECKING:
 
 class AncientOne(mythos.GlobalEffect, metaclass=abc.ABCMeta):
   # pylint: disable=unused-argument
-  def __init__(self, name, max_doom, attributes, combat_rating):
+  def __init__(
+      self, name: str, max_doom: int, attributes: set, combat_rating: Union[int, float]
+  ):
     self.name = name
     self.max_doom = max_doom
     self.doom = 0
@@ -241,7 +243,148 @@ class BlackPharaoh(AncientOne):
     self.lore_modifier -= 1
 
 
-# TODO: Black Goat of the Woods, Serpent God, Key and Gate
+class BlackGoat(AncientOne):
+  def __init__(self):
+    super().__init__("Black Goat of the Woods", 12, {"physical immunity"}, -5)
+    self.sneak_modifier = 1
+
+  def get_modifier(self, thing, attribute, state):
+    if isinstance(thing, monsters.Monster) and attribute == "toughness":
+      return 1
+    return super().get_modifier(thing, attribute, state)
+
+  def get_override(self, thing, attribute):
+    if thing.name == "Tentacle Tree" and attribute == "endless":
+      return True
+    return super().get_override(thing, attribute)
+
+  def get_trigger(self, event, state):
+    if not isinstance(event, (events.Awaken, events.AncientOneAttack)):
+      return None
+    checks = []
+    for char in state.characters:
+      if char.gone:
+        continue
+      has_trophies = values.AttributePrerequisite(char, "n_monster_trophies", 1, "at least")
+      checks.append(events.PassFail(char, has_trophies, events.Nothing(), events.Devoured(char)))
+    return events.Sequence(checks)
+
+  def attack(self, state):
+    checks = []
+    for char in state.characters:
+      if char.gone:
+        continue
+      check = events.Check(char, "sneak", self.sneak_modifier, name=self.name)
+      checks.append(
+          events.Sequence([
+              events.PassFail(
+                  char, check, events.Nothing(),
+                  events.BinarySpend(
+                      char, "toughness", 1, "Lose one monster trophy or be devoured",
+                      "Spend", "Be Devoured",
+                      events.Nothing(), events.Devoured(char)
+                  )
+              ),
+          ], char)
+      )
+
+  def escalate(self, state):
+    self.sneak_modifier -= 1
+
+
+class SerpentGod(AncientOne):
+  def __init__(self):
+    super().__init__("Serpent God", 10, {}, -3)
+    self.speed_modifier = 1
+
+  def get_modifier(self, thing, attribute, state):
+    if isinstance(thing, monsters.Cultist):
+      if attribute == "combat_difficulty":
+        return -1
+      if attribute == "combat_damage":
+        return 3
+    return 0
+
+  def get_trigger(self, event, state):
+    if isinstance(event, events.LostInTimeAndSpace):
+      return events.AddToken(self, "doom")
+    if (
+        isinstance(event, events.PassCombatRound)
+        and isinstance(event.combat_round.monster, monsters.Cultist)
+    ):
+      return events.AddToken(self, "doom")
+    if isinstance(event, events.Awaken):
+      per_character = []
+      for char in state.characters:
+        assert isinstance(char, characters.Character)
+        if char.gone:
+          continue
+        if char.bless_curse == -1:
+          per_character.append(events.Devoured(char))
+        else:
+          per_character.append(events.Curse(char))
+      return events.Sequence(per_character)
+
+    return None
+
+  def attack(self, state):
+    checks = []
+    for char in state.characters:
+      if char.gone:
+        continue
+      check = events.Check(char, "speed", self.speed_modifier, name=self.name)
+      checks.append(
+          events.Sequence([
+              events.PassFail(
+                  char, check,
+                  events.Nothing(), events.Loss(char, {"sanity": 1, "stamina": 1})
+              ),
+          ], char)
+      )
+
+  def escalate(self, state):
+    self.speed_modifier -= 1
+
+
+class SpaceBubbles(AncientOne):
+  def __init__(self):
+    super().__init__("Space Bubbles", 12, {"magical_immunity"}, -5)
+    self.will_modifier = 1
+
+  def get_trigger(self, event, state):
+    if isinstance(event, events.Awaken):
+      to_devour = []
+      for char in state.characters:
+        assert isinstance(char, characters.Character)
+        if char.n_gate_trophies == 0:
+          to_devour.append(events.Devoured(char))
+      return events.Sequence(to_devour)
+    if isinstance(event, events.LostInTimeAndSpace):
+      return events.Devoured(event.character)
+    return None
+
+  def attack(self, state):
+    checks = []
+    for char in state.characters:
+      if char.gone:
+        continue
+      check = events.Check(char, "speed", self.will_modifier, name=self.name)
+      checks.append(
+          events.Sequence([
+              events.PassFail(
+                  char, check,
+                  events.Nothing(),
+                  events.BinarySpend(
+                      char, "gates", 1, "Lose one gate trophy or be devoured",
+                      "Lose", "Be Devoured",
+                      events.Nothing(), events.Devoured(char)
+                  )
+              ),
+          ], char)
+      )
+
+  def escalate(self, state):
+    self.will_modifier -= 1
 
 
 def AncientOnes():

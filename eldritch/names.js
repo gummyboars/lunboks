@@ -215,6 +215,9 @@ ancientOneDoomMax = {
   "God of Chaos": 14,
   "Wendigo": 11,
   "The Thousand Masks": 11,
+  "Black Goat of the Woods": 12,
+  "Serpent God": 10,
+  "Space Bubbles": 12,
 }
 ancientOnes = Object.keys(ancientOneDoomMax);
 carefullyAdd(ancientOnes);
