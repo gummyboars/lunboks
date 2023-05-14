@@ -8,7 +8,7 @@ __all__ = [
     "AncientTablet", "EnchantedJewelry", "GateBox", "HealingStone", "BlueWatcher", "SunkenCityRuby",
     "ObsidianStatue", "OuterGodlyFlute", "SilverKey", "PallidMask",
     # TODO: AlienStatue, DragonsEye, ElderSign, WardingStatue
-    # TODO: Tomes
+    "TibetanTome", "MysticismTome", "BlackMagicTome", "BlackBook", "BookOfTheDead", "YellowPlay",
 ]
 
 
@@ -30,6 +30,12 @@ def CreateUnique():
       MagicLamp: 1,
       MagicPowder: 2,
       SwordOfGlory: 1,
+      TibetanTome: 1,
+      MysticismTome: 2,
+      BlackMagicTome: 2,
+      BlackBook: 2,
+      BookOfTheDead: 1,
+      YellowPlay: 2,
   }
   uniques = []
   for item, count in counts.items():
@@ -358,13 +364,14 @@ class TibetanTome(Tome):
   def __init__(self, idx):
     super().__init__("Tibetan Tome", idx, "unique", 3, 2)
     self.max_tokens["stamina"] = 2
+    self.tokens["stamina"] = 0
 
   def read_event(self, owner):
     check = events.Check(owner, "lore", -1)
     success = events.Sequence([
         events.Draw(owner, "spells", 1),
-        events.Loss(owner, {"sanity": 1}, source=self),
         events.AddToken(self, "stamina", owner),
+        events.Loss(owner, {"sanity": 1}, source=self),
     ], owner
     )
     return events.PassFail(owner, check, success, events.Nothing())
@@ -392,8 +399,8 @@ class BlackMagicTome(Tome):
     check = events.Check(owner, "lore", -2)
     success = events.Sequence([
         events.Draw(owner, "spells", 1),
+        events.DiscardSpecific(owner, [self]),
         events.GainOrLoss(owner, gains={"clues": 1}, losses={"sanity": 2}, source=self),
-        events.DiscardSpecific(owner, [self])
     ], owner
     )
     return events.PassFail(owner, check, success, events.Nothing())
@@ -407,16 +414,14 @@ class BlackBook(Tome):
     check = events.Check(owner, "lore", -1)
     success = events.Sequence([
         events.Draw(owner, "spells", 1),
+        events.DiscardSpecific(owner, [self]),
         events.Loss(owner, losses={"sanity": 1}, source=self),
-        events.DiscardSpecific(owner, [self])
     ], owner
     )
     return events.PassFail(owner, check, success, events.Nothing())
 
 
 class BookOfTheDead(Tome):
-  "Necronomicon"
-
   def __init__(self, idx):
     super().__init__("Book of the Dead", idx, "unique", 6, 2)
 
@@ -431,16 +436,14 @@ class BookOfTheDead(Tome):
 
 
 class YellowPlay(Tome):
-  "The King in Yellow"
-
   def __init__(self, idx):
     super().__init__("Yellow Play", idx, "unique", 2, 2)
 
   def read_event(self, owner):
     check = events.Check(owner, "lore", -2)
     success = events.Sequence([
+        events.DiscardSpecific(owner, [self]),
         events.GainOrLoss(owner, gains={"clues": 4}, losses={"sanity": 1}, source=self),
-        events.DiscardSpecific(owner, [self])
     ], owner
     )
     return events.PassFail(owner, check, success, events.Nothing())
