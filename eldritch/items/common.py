@@ -6,7 +6,7 @@ __all__ = [
     "CreateCommon",
     "Automatic45", "Axe", "Bullwhip", "CavalrySaber", "Cross", "Derringer18", "Dynamite",
     "Knife", "Revolver38", "Rifle", "Shotgun", "TommyGun", "AncientTome", "DarkCloak",
-    "Food", "Lantern", "ResearchMaterials", "Whiskey",
+    "Food", "Lantern", "ResearchMaterials", "Whiskey", "OldJournal",
 ]
 
 
@@ -15,7 +15,7 @@ def CreateCommon():
   for item in [
       AncientTome, Automatic45, DarkCloak, Derringer18, Revolver38, Dynamite, Rifle, Shotgun,
       TommyGun, Food, ResearchMaterials, Bullwhip, Cross, CavalrySaber, Knife, Whiskey, Axe,
-      Lantern,
+      Lantern, OldJournal
   ]:
     common.extend([item(0), item(1)])
   return common
