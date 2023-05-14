@@ -742,5 +742,19 @@ class SilverKeyTest(EventTest):
     self.assertEqual(self.key.tokens["stamina"], 1)
 
 
+class TomeTest(EventTest):
+  def testTomes(self):
+    unique_tomes = [
+        items.TibetanTome, items.BlackMagicTome, items.BlackBook, items.BookOfTheDead,
+        items.MysticismTome, items.YellowPlay
+    ]
+    for i, tome_class in enumerate(unique_tomes):
+      tome = tome_class(0)
+      self.char.possessions = [tome]
+      self.advance_turn(i, "movement")
+      self.resolve_to_choice(events.CityMovement)
+      self.assertIn(tome.handle, self.state.usables[0])
+
+
 if __name__ == "__main__":
   unittest.main()

@@ -6,7 +6,7 @@ __all__ = [
     "CreateCommon",
     "Automatic45", "Axe", "Bullwhip", "CavalrySaber", "Cross", "Derringer18", "Dynamite",
     "Knife", "Revolver38", "Rifle", "Shotgun", "TommyGun", "AncientTome", "DarkCloak",
-    "Food", "Lantern", "ResearchMaterials", "Whiskey",
+    "Food", "Lantern", "ResearchMaterials", "Whiskey", "OldJournal",
 ]
 
 
@@ -15,7 +15,7 @@ def CreateCommon():
   for item in [
       AncientTome, Automatic45, DarkCloak, Derringer18, Revolver38, Dynamite, Rifle, Shotgun,
       TommyGun, Food, ResearchMaterials, Bullwhip, Cross, CavalrySaber, Knife, Whiskey, Axe,
-      Lantern,
+      Lantern, OldJournal
   ]:
     common.extend([item(0), item(1)])
   return common
@@ -135,7 +135,19 @@ class AncientTome(Tome):
     return events.PassFail(owner, check, success, events.Nothing())
 
 
+class OldJournal(Tome):
+  def __init__(self, idx):
+    super().__init__("OldJournal", idx, "common", 1, 1)
+
+  def read_event(self, owner):
+    check = events.Check(owner, "lore", -1)
+    success = events.Sequence(
+        [events.Gain(owner, {"clues": 3}), events.DiscardSpecific(owner, [self])], owner
+    )
+    return events.PassFail(owner, check, success, events.Nothing())
+
 # Other
+
 
 def DarkCloak(idx):
   return Item("Dark Cloak", idx, "common", {}, {"evade": 1}, None, 2)
