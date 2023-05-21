@@ -2361,7 +2361,7 @@ class RollToMaintain(Event):
 
   def resolve(self, state) -> None:
     if self.roll is None:
-      self.roll = DiceRoll(self.character, 1, name=self.item.name, bad=[1])
+      self.roll = DiceRoll(self.character, 1, name=self.item.name, bad=self.item.upkeep_bad_rolls)
       state.event_stack.append(self.roll)
       return
 
@@ -2378,7 +2378,7 @@ class RollToMaintain(Event):
 
   def log(self, state):
     if self.cancelled and self.roll is None:
-      return f"{self.character.name} did not roll to check penalty for {self.item.name}"
+      return f"{self.character.name} did not roll for {self.item.name}"
     if self.cancelled:
       return f"{self.character.name} could not pay the penalty for {self.item.name}"
     if self.done:

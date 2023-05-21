@@ -2,6 +2,7 @@ from unittest import mock
 from typing import cast
 
 import eldritch.eldritch
+import game
 from eldritch.test_events import EventTest
 from eldritch import assets
 from eldritch import events
@@ -135,6 +136,8 @@ class BankLoanTest(EventTest):
     with mock_randint(1) as roll:
       self.advance_turn(3, "upkeep")
       interest = self.resolve_to_choice(events.SpendChoice)
+      with self.assertRaises(game.InvalidMove):
+        interest.resolve(self.state, "No")
       self.spend("dollars", 1, interest)
       interest.resolve(self.state, "Yes")
       choice = self.resolve_to_choice(events.SliderInput)

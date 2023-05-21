@@ -361,14 +361,20 @@ class BankLoan(SelfDiscardingCard):
         ],
         character
     )
-    return events.BinarySpend(
+    interest = events.SpendChoice(
         character,
-        "dollars",
-        1,
-        "Pay interest on loan?", "Yes", "No",
-        events.Nothing(),
-        default,
+        "Pay interest on loan",
+        choices=["Yes", "No"],
+        prereqs=[
+          values.AttributePrerequisite(character, "dollars", 1, "at least"),
+          values.AttributePrerequisite(character, "dollars", 0, "exactly"),
+        ],
+        spends=[values.ExactSpendPrerequisite({"dollars": 1}), None],
     )
+    return events.Sequence([
+      interest,
+      events.Conditional(character, interest, "choice_index", {0: events.Nothing(), 1: default})
+    ], character)
 
   def get_trigger(self, event, owner, state):
     if isinstance(event, events.TakeBankLoan):
