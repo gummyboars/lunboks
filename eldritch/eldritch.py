@@ -772,6 +772,7 @@ class GameState:
     if ancient not in self.all_ancients:
       raise InvalidMove(f"Unknown ancient one {ancient}")
     self.ancient_one = self.all_ancients[ancient]
+    self.ancient_one.setup(self)
 
   def handle_start(self):
     if self.game_stage != "setup":

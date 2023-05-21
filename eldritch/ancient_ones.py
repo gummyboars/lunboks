@@ -1,9 +1,12 @@
 import abc
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 
 from eldritch import events, places, characters, monsters, values, mythos
 from eldritch.events import AncientOneAttack
 from eldritch.characters import Character
+
+if TYPE_CHECKING:
+  from eldritch.eldritch import GameState
 
 
 class AncientOne(mythos.GlobalEffect, metaclass=abc.ABCMeta):
@@ -24,6 +27,9 @@ class AncientOne(mythos.GlobalEffect, metaclass=abc.ABCMeta):
     raise NotImplementedError
 
   def escalate(self, state):
+    pass
+
+  def setup(self, state):
     pass
 
   # TODO: dedup with monster
@@ -86,6 +92,11 @@ class SquidFace(AncientOne):
         # TODO: Each character lowers max sanity or stamina
         events.AddDoom()
     ])
+
+  def setup(self, state: "GameState"):
+    for char in state.characters:
+      char.sanity = char.max_sanity(state)
+      char.stamina = char.max_stamina(state)
 
 
 class YellowKing(AncientOne):
