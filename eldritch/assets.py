@@ -366,14 +366,14 @@ class BankLoan(SelfDiscardingCard):
         "Pay interest on loan",
         choices=["Yes", "No"],
         prereqs=[
-          values.AttributePrerequisite(character, "dollars", 1, "at least"),
-          values.AttributePrerequisite(character, "dollars", 0, "exactly"),
+            values.AttributePrerequisite(character, "dollars", 1, "at least"),
+            values.AttributePrerequisite(character, "dollars", 0, "exactly"),
         ],
         spends=[values.ExactSpendPrerequisite({"dollars": 1}), None],
     )
     return events.Sequence([
-      interest,
-      events.Conditional(character, interest, "choice_index", {0: events.Nothing(), 1: default})
+        interest,
+        events.Conditional(character, interest, "choice_index", {0: events.Nothing(), 1: default})
     ], character)
 
   def get_trigger(self, event, owner, state):
