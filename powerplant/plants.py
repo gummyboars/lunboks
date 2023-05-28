@@ -72,19 +72,76 @@ def OldPlants():
   ]
 
 
+def NewPlants():
+  return [
+      Plant(cost=1, resource=Resource.COAL, intake=3, output=1, plus=True),
+      Plant(cost=2, resource=Resource.OIL, intake=2, output=1, plus=True),
+      Plant(cost=3, resource=Resource.COAL, intake=1, output=1, plus=True),
+      Plant(cost=4, resource=Resource.HYBRID, intake=1, output=1, plus=True),
+      Plant(cost=5, resource=Resource.HYBRID, intake=3, output=2, plus=True),
+      Plant(cost=6, resource=Resource.GAS, intake=1, output=2, plus=True),
+      Plant(cost=7, resource=Resource.OIL, intake=2, output=2, plus=True),
+      Plant(cost=8, resource=Resource.URANIUM, intake=1, output=2, plus=True),
+      Plant(cost=9, resource=Resource.COAL, intake=3, output=3, plus=True),
+      Plant(cost=10, resource=Resource.GREEN, intake=0, output=1, plus=True),
+      Plant(cost=11, resource=Resource.GREEN, intake=0, output=1, plus=True),
+      Plant(cost=12, resource=Resource.OIL, intake=1, output=2, plus=True),
+      Plant(cost=13, resource=Resource.HYBRID, intake=1, output=2, plus=True),
+      Plant(cost=14, resource=Resource.COAL, intake=3, output=4, plus=True),
+      Plant(cost=15, resource=Resource.GREEN, intake=0, output=2, plus=True),
+      Plant(cost=16, resource=Resource.GREEN, intake=0, output=2, plus=True),
+      Plant(cost=19, resource=Resource.URANIUM, intake=1, output=3, plus=True),
+      Plant(cost=20, resource=Resource.OIL, intake=1, output=3, plus=True),
+      Plant(cost=21, resource=Resource.GAS, intake=3, output=5, plus=True),
+      Plant(cost=22, resource=Resource.OIL, intake=2, output=4, plus=True),
+      Plant(cost=23, resource=Resource.COAL, intake=2, output=4, plus=True),
+      Plant(cost=24, resource=Resource.URANIUM, intake=1, output=4, plus=True),
+      Plant(cost=25, resource=Resource.OIL, intake=3, output=5, plus=True),
+      Plant(cost=26, resource=Resource.GREEN, intake=0, output=3, plus=True),
+      Plant(cost=27, resource=Resource.GAS, intake=1, output=4, plus=True),
+      Plant(cost=28, resource=Resource.COAL, intake=3, output=5, plus=True),
+      Plant(cost=29, resource=Resource.HYBRID, intake=3, output=5, plus=True),
+      Plant(cost=30, resource=Resource.COAL, intake=1, output=4, plus=True),
+      Plant(cost=31, resource=Resource.URANIUM, intake=1, output=5, plus=True),
+      Plant(cost=32, resource=Resource.GREEN, intake=0, output=4, plus=True),
+      Plant(cost=33, resource=Resource.GAS, intake=2, output=5, plus=True),
+      Plant(cost=34, resource=Resource.COAL, intake=3, output=6, plus=True),
+      Plant(cost=35, resource=Resource.COAL, intake=1, output=5, plus=True),
+      Plant(cost=36, resource=Resource.HYBRID, intake=2, output=6, plus=True),
+      Plant(cost=37, resource=Resource.OIL, intake=3, output=7, plus=True),
+      Plant(cost=38, resource=Resource.URANIUM, intake=1, output=6, plus=True),
+      Plant(cost=39, resource=Resource.GREEN, intake=0, output=5, plus=True),
+      Plant(cost=40, resource=Resource.OIL, intake=1, output=6, plus=True),
+      Plant(cost=42, resource=Resource.GAS, intake=2, output=7, plus=True),
+      Plant(cost=44, resource=Resource.GREEN, intake=0, output=6, plus=True),
+      Plant(cost=46, resource=Resource.COAL, intake=2, output=7, plus=True),
+      Plant(cost=50, resource=Resource.URANIUM, intake=2, output=8, plus=True),
+      # Plant(cost=52, resource=Resource.GAS, intake=3, output=8, plus=True),
+      # Plant(cost=54, resource=Resource.OIL, intake=2, output=8, plus=True),
+      # Plant(cost=57, resource=Resource.OIL, intake=3, output=9, plus=True),
+      # Plant(cost=60, resource=Resource.GREEN, intake=0, output=8, plus=True),
+  ]
+
+
 def CreatePlants(which):
   if which == "old":
     return OldPlants()
+  if which == "new":
+    return NewPlants()
   raise RuntimeError(f"Unknown power plants {which}")
 
 
 def FixedPlants(which):
   if which == "old":
     return [3, 4, 5, 6, 7, 8, 9, 10]
+  if which == "new":
+    return [1, 2, 3, 4, 5, 6, 7, 8]
   raise RuntimeError(f"Unknown power plants {which}")
 
 
 def TopPlant(which):
   if which == "old":
     return 13
+  if which == "new":
+    return 11
   raise RuntimeError(f"Unknown power plants {which}")
