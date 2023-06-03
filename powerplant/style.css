@@ -174,9 +174,54 @@ div {
   display: flex;
   flex-direction: row;
   justify-content: space-evenly;
+  align-items: center;
+}
+#joincolor {
+  width: min(3vw, 4.8vh);
+  height: min(3vw, 4.8vh);
+  position: relative;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid black;
+  border-radius: 10%;
+  box-shadow: min(0.2vw, 0.32vh) min(0.2vw, 0.32vh) #333;
+  transform: translate(-5%, -5%);
+}
+#joincolor.selected {
+  transform: none;
+  box-shadow: min(0.1vw, 0.16vh) min(0.1vw, 0.16vh) #333;
+}
+#colorlist {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  margin: 0;
+  padding: 0;
+  display: none;
+  flex-direction: column;
+}
+#joincolor.selected #colorlist {
+  display: flex;
+}
+.coloritem {
+  width: min(3vw, 4.8vh);
+  height: min(3vw, 4.8vh);
+  background-color: darkolivegreen;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.coloritem:hover {
+  background-color: olivedrab;
+}
+.innercolor {
+  width: 80%;
+  height: 80%;
 }
 .buttonspacer {
-  width: 50%;
+  width: 10%;
 }
 .joinbutton {
   cursor: pointer;
