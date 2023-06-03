@@ -87,6 +87,7 @@ class GameState:
   def __init__(self, players, region, plantlist):
     self.players = players
     self.cities = cities.CreateCities(region)
+    self.all_cities = cities.CreateCities(region)
     self.plants = plantinfo.CreatePlants(plantlist)
     self.resources = cities.StartingResources(region)
     self.colors = set()
@@ -149,6 +150,9 @@ class GameState:
   def parse_json(cls, gamedata):
     players = [Player.parse_json(playerdata) for playerdata in gamedata["players"]]
     state = cls(players, "Germany", "old")
+    state.all_cities = {
+        name: cities.City.parse_json(data) for name, data in gamedata["all_cities"].items()
+    }
     state.cities = {name: cities.City.parse_json(data) for name, data in gamedata["cities"].items()}
     state.plants = [plantinfo.Plant.parse_json(data) for data in gamedata["plants"]]
     state.resources = {materials.Resource(rsrc): n for rsrc, n in gamedata["resources"].items()}
