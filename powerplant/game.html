@@ -28,12 +28,23 @@
             <div id="joinname">
               <div>Name:</div>
               <input type="text" id="joinnameinput" maxlength="16"></input>
-              <select id="joincolor" onchange="selectColor(event)">
-                <option value="">-</option>
-              </select>
+              <div id="joincolor" onclick="toggleColor(event)">
+                <div id="colortext">?</div>
+                <ul id="colorlist">
+                  <li class="coloritem">?</li>
+                </ul>
+              </div>
             </div>
             <div id="joinbuttons">
               <button id="start" disabled="true" class="joinbutton disabled" onclick="startGame(event)">Start</button>
+              <div class="buttonspacer"></div>
+              <select id="region" onchange="selectOptions(event)">
+                <option value="Germany">Germany</option>
+              </select>
+              <select id="plantlist" onchange="selectOptions(event)">
+                <option value="old">Old Plants</option>
+                <option value="new">New Plants</option>
+              </select>
               <div class="buttonspacer"></div>
               <button id="join" class="joinbutton active" onclick="joinGame(event)">Join</button>
             </div>

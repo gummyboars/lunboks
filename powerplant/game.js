@@ -124,7 +124,17 @@ function joinGame() {
   ws.send(JSON.stringify({
     "type": "join",
     "name": document.getElementById("joinnameinput").value,
-    "color": null,
+    "color": document.getElementById("joincolor").color,
+  }));
+}
+
+function selectOptions() {
+  ws.send(JSON.stringify({
+    "type": "options",
+    "options": {
+      "region": document.getElementById("region").value,
+      "plantlist": document.getElementById("plantlist").value,
+    },
   }));
 }
 
@@ -189,6 +199,29 @@ function clickCity(city, color) {
     "type": "region",
     "region": color,
   }));
+}
+
+function toggleColor(e) {
+  document.getElementById("joincolor").classList.toggle("selected");
+}
+
+function chooseColor(color) {
+  let joinDiv = document.getElementById("joincolor");
+  joinDiv.color = color;
+  for (child of joinDiv.children) {
+    if (child.classList.contains("innercolor")) {
+      joinDiv.removeChild(child);
+    }
+  }
+  if (color == null) {
+    document.getElementById("colortext").innerText = "?";
+    return;
+  }
+  document.getElementById("colortext").innerText = "";
+  let inner = document.createElement("DIV");
+  inner.classList.add("innercolor");
+  inner.style.backgroundColor = color;
+  document.getElementById("joincolor").appendChild(inner);
 }
 
 function toggleBurn(e) {
@@ -461,7 +494,7 @@ function onmsg(e) {
   if (data.to_choose != null && data.colors != null && data.to_choose == data.colors.length) {
     regionsDone = true;
   }
-  updateJoinWindow(data.started, data.host, data.player_idx, data.players);
+  updateJoinWindow(data.started, data.host, data.player_idx, data.players, data.options, data.colors);
   updateSupplyRates(data.players, data.turn_order != null);
   updateCities(data.cities, data.pending_build, data.players, data.turn_idx);
   updateResources(data.resources, data.pending_buy);
@@ -476,14 +509,54 @@ function onmsg(e) {
   oldPhase = regionsDone ? data.phase : null;
 }
 
-function updateJoinWindow(started, host, playerIdx, players) {
+function updateJoinWindow(started, host, playerIdx, players, options, colors) {
   document.getElementById("uijoin").classList.toggle("shown", !started);
-  console.log(players);
-  console.log(playerIdx);
-  console.log(host);
   if (players.length > 1 && playerIdx != null && host) {
     document.getElementById("start").classList.remove("disabled");
     document.getElementById("start").disabled = false;
+  } else {
+    document.getElementById("start").classList.add("disabled");
+    document.getElementById("start").disabled = true;
+  }
+  if (!started) {
+    let joinColor = document.getElementById("joincolor");
+    let ul = document.getElementById("colorlist");
+    let toDelete = [];
+    let found = [];
+    for (let opt of ul.children) {
+      if (opt.color == null) {  // random
+        opt.style.order = colors.length;
+        opt.onclick = function(e) { chooseColor(null); };
+        continue;
+      }
+      let idx = colors.indexOf(opt.color);
+      if (idx < 0) {
+        toDelete.push(opt);
+      } else {
+        opt.style.order = idx;
+        found.push(opt.color);
+      }
+    }
+    for (let c of colors) {
+      if (!found.includes(c)) {
+        let opt = document.createElement("LI");
+        opt.classList.add("coloritem");
+        opt.color = c;
+        let inner = document.createElement("DIV");
+        inner.classList.add("innercolor");
+        inner.style.backgroundColor = c;
+        opt.appendChild(inner);
+        ul.appendChild(opt);
+        opt.onclick = function(e) { chooseColor(c); };
+      }
+    }
+    for (let d of toDelete) {
+      ul.removeChild(d);
+    }
+    for (let name in options) {
+      document.getElementById(name).value = options[name];
+      document.getElementById(name).disabled = !host;
+    }
   }
 }
 

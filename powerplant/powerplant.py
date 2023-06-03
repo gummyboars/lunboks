@@ -760,6 +760,7 @@ class PowerPlantGame(BaseGame):
           "started": False,
           "options": self.options,
           "players": [],
+          "colors": sorted(self.COLORS - {p.get("color") for p in self.pending_players.values()})
       }
       for sess in sorted(self.pending_players):
         data["players"].append(self.pending_players[sess])
@@ -811,11 +812,20 @@ class PowerPlantGame(BaseGame):
     if self.game is not None:
       raise InvalidPlayer("The game has already started.")
     if session in self.pending_players:
-      raise InvalidPlayer("You have already joined the game.")
+      old = self.pending_players.pop(session)
+      try:
+        self.join_player(session, data)
+      except:
+        self.pending_players[session] = old
+        raise
+      return
 
     if len(self.pending_players) >= 6:
       raise TooManyPlayers("There are no open slots.")
 
+    self.join_player(session, data)
+
+  def join_player(self, session, data):
     ValidatePlayer(data)
     player_name = data["name"].strip()
     player_color = data.get("color")
