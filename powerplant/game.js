@@ -24,6 +24,9 @@ pendingPlant = null;
 plantDivs = [];
 // For updating cities in-place.
 cityDivs = {};
+connDivs = {};
+// For figuring out which connections to highlight.
+chosenColors = [];
 // For swapping resources between plants.
 dragged = null;
 draggedFrom = null;
@@ -199,6 +202,34 @@ function clickCity(city, color) {
     "type": "region",
     "region": color,
   }));
+}
+
+function hoverRegion(color) {
+  if (regionsDone) {
+    color = null;
+  }
+  for (let cityDiv of document.getElementsByClassName("city")) {
+    cityDiv.classList.toggle("hovered", cityDiv.classList.contains("region"+color));
+  }
+  if (regionsDone) {
+    return;
+  }
+  let colorList = [];
+  for (let c of chosenColors) {
+    colorList.push(c+color);
+    colorList.push(color+c);
+  }
+  colorList.push(color+color);
+  for (let connDiv of document.getElementsByClassName("conn")) {
+    let hover = false;
+    for (let c of colorList) {
+      if (connDiv.classList.contains(c)) {
+        hover = true;
+        break;
+      }
+    }
+    connDiv.classList.toggle("hovered", hover);
+  }
 }
 
 function toggleColor(e) {
@@ -428,9 +459,16 @@ function hideDefaultPlant(plantExpand) {
   plantExpand.classList.add("temphide");
 }
 
-function placeCities(cities) {
+function placeCities(cities, colors) {
+  if (cities == null) {
+    return;
+  }
+  chosenColors = colors;
   let boardCnv = document.getElementById("boardcnv");
   for (let city in cities) {
+    if (cityDivs[city] != null) {
+      continue;
+    }
     let color = cities[city].color;
     let div = document.createElement("DIV");
     div.classList.add("city", "region"+color);
@@ -443,6 +481,60 @@ function placeCities(cities) {
     div.onclick = function(e) { clickCity(city, color); };
     document.getElementById("board").appendChild(div);
     cityDivs[city] = div;
+  }
+  for (let city in cityDivs) {
+    let chosen = false;
+    for (let color of colors) {
+      if (cityDivs[city].classList.contains("region"+color)) {
+        chosen = true;
+        break;
+      }
+    }
+    cityDivs[city].classList.toggle("chosen", chosen);
+    if (!regionsDone && !chosen) {
+      cityDivs[city].onmouseenter = function(e) { hoverRegion(cities[city].color); };
+      cityDivs[city].onmouseleave = function(e) { hoverRegion(null); };
+    }
+  }
+  for (let city in cities) {
+    for (let connCity in cities[city].connections) {
+      if (connDivs[city+","+connCity] != null || connDivs[connCity+","+city] != null) {
+        continue;
+      }
+      let div = document.createElement("DIV");
+      div.classList.add("conn");
+      div.classList.add(cities[city].color+cities[connCity].color, cities[connCity].color+cities[city].color);
+      let pcta, pctb;
+      pcta = cityDivs[city].style.top;
+      pctb = cityDivs[connCity].style.top;
+      pcta = Number(pcta.substring(0, pcta.length-1));
+      pctb = Number(pctb.substring(0, pctb.length-1));
+      div.style.top = ((pcta + pctb)/2) + "%";
+      pcta = cityDivs[city].style.left;
+      pctb = cityDivs[connCity].style.left;
+      pcta = Number(pcta.substring(0, pcta.length-1));
+      pctb = Number(pctb.substring(0, pctb.length-1));
+      div.style.left = ((pcta + pctb)/2) + "%";
+      document.getElementById("board").appendChild(div);
+      connDivs[city+","+connCity] = div;
+    }
+  }
+  let colorList = [];
+  for (let color of chosenColors) {
+    for (let c of chosenColors) {
+      colorList.push(color+c);
+      colorList.push(c+color);
+    }
+  }
+  for (let conn in connDivs) {
+    let chosen = false;
+    for (let c of colorList) {
+      if (connDivs[conn].classList.contains(c)) {
+        chosen = true;
+        break;
+      }
+    }
+    connDivs[conn].classList.toggle("chosen", chosen);
   }
 }
 
@@ -488,9 +580,7 @@ function onmsg(e) {
     setTimeout(clearError, 100);
     return;
   }
-  if (data.cities != null && Object.keys(cityDivs).length == 0) {
-    placeCities(data.cities);
-  }
+  placeCities(data.all_cities, data.colors);
   if (data.to_choose != null && data.colors != null && data.to_choose == data.colors.length) {
     regionsDone = true;
   }

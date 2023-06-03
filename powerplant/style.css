@@ -382,6 +382,34 @@ div {
   cursor: pointer;
   z-index: 1;
   transform: translate(-50%, -50%);
+  background-color: #999;
+  opacity: 75%;
+}
+.city.chosen {
+  background-color: transparent;
+  opacity: 100%;
+}
+.city.hovered {
+  background-color: transparent;
+  opacity: 100%;
+}
+.conn {
+  position: absolute;
+  height: calc(min(48vw, 76.8vh) / 28);
+  width: calc(min(48vw, 76.8vh) / 28);
+  z-index: 1;
+  transform: translate(-50%, -50%);
+  background-color: #999;
+  opacity: 75%;
+  border-radius: 50%;
+}
+.conn.chosen {
+  background-color: transparent;
+  opacity: 0;
+}
+.conn.hovered {
+  background-color: transparent;
+  opacity: 0;
 }
 #citycontainer {
   position: absolute;
