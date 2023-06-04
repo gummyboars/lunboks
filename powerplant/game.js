@@ -589,7 +589,7 @@ function onmsg(e) {
   updateCities(data.cities, data.pending_build, data.players, data.turn_idx);
   updateResources(data.resources, data.pending_buy);
   updatePending(data.pending_spend);
-  updatePlayers(data.players, data.turn_order, data.player_idx, data.pending_spend);
+  updatePlayers(data.players, data.turn_order, data.player_idx, data.pending_spend, data.turn_idx, data.winner);
   updateMarket(data.market, data.phase);
   updateAuction(data.auction_bid, data.auction_plant_idx, data.phase == "auction" && data.auction_idx == data.player_idx);
   maybeShowExpandedPlants(data.phase, data.player_idx, data.auction_discard_idx);
@@ -722,7 +722,7 @@ function updatePending(pendingSpend) {
   document.getElementById("pending").firstChild.value = pendingSpend;
 }
 
-function updatePlayers(players, turnOrder, playerIdx, pendingSpend) {
+function updatePlayers(players, turnOrder, playerIdx, pendingSpend, turnIdx, winner) {
   if (players == null) {
     return;
   }
@@ -735,7 +735,7 @@ function updatePlayers(players, turnOrder, playerIdx, pendingSpend) {
     if (turnOrder != null) {
       order = turnOrder.indexOf(idx);
     }
-    updatePlayer(pdiv, player, order, idx, playerIdx == idx);
+    updatePlayer(pdiv, player, order, idx, playerIdx == idx, turnIdx == idx, winner);
   }
   while (document.getElementsByClassName("player").length > players.length) {
     let allPlayerDivs = document.getElementsByClassName("player");
@@ -748,9 +748,26 @@ function createPlayer(idx, player) {
   let div = document.createElement("DIV");
   div.id = "player" + idx;
   div.classList.add("player");
+  let nameCont = document.createElement("DIV");
+  nameCont.classList.add("namecont");
   let name = document.createElement("DIV");
   name.classList.add("playername");
-  div.appendChild(name);
+  nameCont.appendChild(name);
+  div.appendChild(nameCont);
+  let arrowLeft = document.createElement("DIV");
+  arrowLeft.classList.add("arrow", "arrowleft", "hidden");
+  let leftText = document.createElement("DIV");
+  leftText.classList.add("arrowtext");
+  leftText.innerText = "🔺";
+  arrowLeft.appendChild(leftText);
+  let arrowRight = document.createElement("DIV");
+  arrowRight.classList.add("arrow", "arrowright", "hidden");
+  let rightText = document.createElement("DIV");
+  rightText.classList.add("arrowtext");
+  rightText.innerText = "🔺";
+  arrowRight.appendChild(rightText);
+  nameCont.appendChild(arrowLeft);
+  nameCont.appendChild(arrowRight);
   let info = document.createElement("DIV");
   info.classList.add("playerinfo");
   div.appendChild(info);
@@ -783,9 +800,15 @@ function createPlayer(idx, player) {
   return div;
 }
 
-function updatePlayer(div, player, ordering, idx, owned) {
+function updatePlayer(div, player, ordering, idx, owned, isTurn, winner) {
   div.style.background = player.color;
   div.style.order = ordering;
+  let name = player.name;
+  for (let arrow of div.getElementsByClassName("arrow")) {
+    arrow.classList.toggle("hidden", !isTurn || winner != null);
+    arrow.classList.toggle("winner", winner != null && winner.includes(idx));
+    arrow.firstChild.innerText = (winner != null && winner.includes(idx)) ? "🏆" : "🔺";
+  }
   div.getElementsByClassName("playername")[0].innerText = player.name;
   div.getElementsByClassName("infocities")[0].getElementsByTagName("SPAN")[1].innerText = (playerCityCounts[idx] ?? 0);
   let powerCount = 0;
