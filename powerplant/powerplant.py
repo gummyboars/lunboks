@@ -112,6 +112,8 @@ class GameState:
     self.pending_buy = {}
     self.pending_build = []
     self.pending_spend = 0
+    self.powered = {}
+    self.winner = None
     self.setup_plants(plantlist)
 
   def setup_plants(self, plantlist):
@@ -173,7 +175,7 @@ class GameState:
     data = self.json_repr()
     data["players"] = [asdict(player) for player in self.players]
     for idx, playerdict in enumerate(data["players"]):
-      if idx != player_idx:
+      if idx != player_idx and not self.winner:
         playerdict["money"] = None
     data["plants"] = len(self.plants)
     del data["phase_idx"]
@@ -182,6 +184,9 @@ class GameState:
     return data
 
   def handle(self, player_idx, data):
+    if self.winner is not None:
+      raise InvalidMove("The game is over.")
+
     if len(self.colors) < self.to_choose:  # Still choosing regions
       if data.get("type") != "region":
         raise InvalidMove("The game will not begin until the play area has been determined")
@@ -622,8 +627,9 @@ class GameState:
       output += plant.output
 
     operated = len([c for c in self.cities.values() if self.turn_idx in c.occupants])
-    powered = min(output, operated, len(PAYMENTS)-1)
-    self.players[self.turn_idx].money += PAYMENTS[powered]
+    self.powered[self.turn_idx] = min(output, operated)
+    payable = min(self.powered[self.turn_idx], len(PAYMENTS)-1)
+    self.players[self.turn_idx].money += PAYMENTS[payable]
 
     self.next_turn()
 
@@ -660,8 +666,18 @@ class GameState:
         self.remove_plant(self.market[0])
 
     # The phase is over; move to the next phase.
-    # Remove a power plant (depending on game stage)
     if phase is TurnPhase.BUREAUCRACY:
+      # If at least one player has enough cities connected, end the game.
+      built = collections.defaultdict(int)
+      for city in self.cities.values():
+        for idx in city.occupants:
+          built[idx] += 1
+      max_built = max(built.values()) if built else 0
+      if max_built >= self.end_game_count:
+        self.find_winner()
+        return
+
+      # Remove a power plant (depending on game stage)
       if self.plants:
         if self.stage_idx < 2:
           cycle = self.market[-1]
@@ -699,6 +715,22 @@ class GameState:
     self.auction_passed = set()
     self.auction_bought = {}
     return
+
+  def find_winner(self):
+    scores = []
+    for idx, player in enumerate(self.players):
+      built = len([c for c in self.cities.values() if idx in c.occupants])
+      money = player.money
+      powered = self.powered[idx]
+      scores.append((powered, money, built, idx))
+    scores.sort(reverse=True)
+    best = scores[0][:-1]
+    self.winner = []
+    for score in scores:
+      if score[:-1] == best:
+        self.winner.append(score[-1])
+      else:
+        break
 
   def reorder_players(self):
     counts = collections.defaultdict(int)

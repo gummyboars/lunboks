@@ -563,9 +563,48 @@ div {
   justify-content: space-evenly;
   position: relative;
 }
+.namecont {
+  position: relative;
+}
 .playername {
   color: white;
   font-size: min(2vw, 3.2vh);
+}
+.arrow {
+  position: absolute;
+  top: 0;
+  transform-origin: center;
+  font-size: min(1.5vw, 2.4vh);
+  filter: grayscale(100%) brightness(200);
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.arrow.hidden {
+  visibility: hidden;
+}
+.arrowleft {
+  left: 0;
+}
+.arrowleft .arrowtext {
+  transform: translateX(-120%) rotate(90deg);
+}
+.arrowright {
+  right: 0;
+}
+.arrowright .arrowtext {
+  transform: translateX(120%) rotate(-90deg);
+}
+.arrow.winner {
+  filter: none;
+  visibility: visible;
+}
+.arrowleft.winner .arrowtext {
+  transform: translateX(-120%);
+}
+.arrowright.winner .arrowtext {
+  transform: translateX(120%);
 }
 .playerinfo {
   width: 100%;
