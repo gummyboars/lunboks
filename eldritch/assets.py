@@ -364,7 +364,7 @@ class BankLoan(SelfDiscardingCard):
     interest = events.SpendChoice(
         character,
         "Pay interest on loan",
-        choices=["Yes", "No"],
+        choices=["Pay", "Default"],
         prereqs=[
             values.AttributePrerequisite(character, "dollars", 1, "at least"),
             values.AttributePrerequisite(character, "dollars", 0, "exactly"),

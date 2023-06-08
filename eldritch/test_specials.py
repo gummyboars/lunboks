@@ -139,7 +139,7 @@ class BankLoanTest(EventTest):
       with self.assertRaises(game.InvalidMove):
         interest.resolve(self.state, "No")
       self.spend("dollars", 1, interest)
-      interest.resolve(self.state, "Yes")
+      interest.resolve(self.state, "Pay")
       choice = self.resolve_to_choice(events.SliderInput)
       choice.resolve(self.state, "done", "done")
       payoff = self.resolve_to_usable(0, "Bank Loan0")
@@ -163,6 +163,7 @@ class BankLoanTest(EventTest):
       self.assertEqual(roll.call_count, 1)
     self.assertEqual(self.char.dollars, 0)
     self.assertNotIn("Bank Loan", [p.name for p in self.char.possessions])
+    self.assertNotIn("Bad Credit", [p.name for p in self.char.possessions])
     self.assertFalse(self.char.possessions)
 
   def defaultSequence(self) -> events.ItemLossChoice:
@@ -181,7 +182,7 @@ class BankLoanTest(EventTest):
       self.resolve_until_done()
       self.advance_turn(2, "upkeep")
       interest = self.resolve_to_choice(events.SpendChoice)
-      interest.resolve(self.state, "No")
+      interest.resolve(self.state, "Default")
       self.assertEqual(roll.call_count, 1)
       return self.resolve_to_choice(events.ItemLossChoice)
 
@@ -198,13 +199,19 @@ class BankLoanTest(EventTest):
     self.assertListEqual([p.name for p in self.char.possessions], ["Bad Credit"])
 
   def testDefaultWithDerringer(self):
-    self.char.possessions = [items.Derringer18(0), items.Wither(0), items.MagicPowder(0)]
+    self.char.possessions = [
+        items.Derringer18(0), items.Wither(0), items.MagicPowder(0), items.LodgeMembership(0)
+    ]
+    self.char.dollars = 0
     loss_choice = self.defaultSequence()
     loss_choice.resolve(self.state, "Wither0")
     loss_choice.resolve(self.state, "Magic Powder0")
     loss_choice.resolve(self.state, "done")
     self.resolve_to_choice(events.SliderInput)
-    self.assertListEqual([p.name for p in self.char.possessions], [".18 Derringer", "Bad Credit"])
+    self.assertListEqual(
+        [p.name for p in self.char.possessions],
+        [".18 Derringer", "Silver Twilight Lodge Membership", "Bad Credit"]
+    )
 
 
 class RetainerTest(EventTest):

@@ -125,6 +125,14 @@ class ItemCountTest(unittest.TestCase):
     char.possessions.clear()
     self.assertEqual(count.value(None), 0)
 
+  def testNoItemName(self):
+    char = DummyChar()
+    char.possessions.extend([Dummy(name="Food"), Dummy(name="Water")])
+    none = NoItemName(char, "Gold")
+    self.assertTrue(none.value(None))
+    char.possessions.append(Dummy(name="Gold"))
+    self.assertFalse(none.value(None))
+
   def testItemDeckCount(self):
     char = DummyChar()
     count = ItemCount(char)
