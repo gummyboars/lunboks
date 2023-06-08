@@ -691,7 +691,7 @@ def Administration2(char):
 
 def Administration3(char):
   check = events.Check(char, "will", -1)
-  retainer = events.StatusChange(char, "retainer")
+  retainer = events.DrawSpecific(char, "specials", "Retainer")
   return events.PassFail(char, check, retainer, events.Nothing())
 
 
@@ -895,7 +895,7 @@ def Newspaper2(char):
 
 
 def Newspaper3(char):
-  return events.StatusChange(char, "retainer")
+  return events.DrawSpecific(char, "specials", "Retainer")
 
 
 def Newspaper4(char):

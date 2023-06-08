@@ -2,6 +2,7 @@ import abc
 import collections
 
 from eldritch import events
+from eldritch import values
 
 
 CHECK_TYPES = {"speed", "sneak", "fight", "will", "lore", "luck"}
@@ -284,20 +285,7 @@ class SelfDiscardingCard(Card):
         name, idx, "specials", active_bonuses=active_bonuses, passive_bonuses=passive_bonuses
     )
     self.tokens["must_roll"] = 0
-
-  def get_trigger(self, event, owner, state):
-    if isinstance(event, events.UpkeepActions) and event.character == owner:
-      if self.tokens["must_roll"]:
-        return events.RollToLose(owner, self)
-      return events.AddToken(self, "must_roll", owner)
-    return None
-
-
-class BlessingOrCurse(SelfDiscardingCard):
-  def __init__(self, name, idx):
-    assert name in ["Blessing", "Curse"]
-    super().__init__(name, idx)
-    self.opposite = "Curse" if name == "Blessing" else "Blessing"
+    self.upkeep_bad_rolls = [1]
 
   def get_trigger(self, event, owner, state):
     if isinstance(event, events.KeepDrawn) and self.name in event.kept:
@@ -308,6 +296,25 @@ class BlessingOrCurse(SelfDiscardingCard):
             events.DiscardSpecific(event.character, duplicates),
             events.RemoveToken(kept, "must_roll", owner),
         ], owner)
+
+    if isinstance(event, events.UpkeepActions) and event.character == owner:
+      if self.tokens["must_roll"]:
+        return events.RollToMaintain(owner, self)
+      return events.AddToken(self, "must_roll", owner)
+    return None
+
+  def upkeep_penalty(self, character):
+    return events.DiscardSpecific(character, [self])
+
+
+class BlessingOrCurse(SelfDiscardingCard):
+  def __init__(self, name, idx):
+    assert name in ["Blessing", "Curse"]
+    super().__init__(name, idx)
+    self.opposite = "Curse" if name == "Blessing" else "Blessing"
+
+  def get_trigger(self, event, owner, state):
+    if isinstance(event, events.KeepDrawn) and self.name in event.kept:
       if self.opposite in [p.name for p in event.character.possessions]:
         return events.Sequence([
             events.DiscardNamed(event.character, self.name),
@@ -325,6 +332,95 @@ def Blessing(idx):
 
 def Curse(idx):
   return BlessingOrCurse("Curse", idx)
+
+
+class Retainer(SelfDiscardingCard):
+  def __init__(self, idx):
+    super().__init__("Retainer", idx)
+
+  def get_interrupt(self, event, owner, state):
+    if isinstance(event, events.UpkeepActions) and event.character == owner:
+      return events.Gain(owner, {"dollars": 2})
+    return None
+
+
+class BankLoan(SelfDiscardingCard):
+  def __init__(self, idx):
+    super().__init__("Bank Loan", idx)
+    self.upkeep_bad_rolls = [1, 2, 3]
+
+  def upkeep_penalty(self, character):
+    default = events.Sequence(
+        [
+            events.LoseItems(
+                character,
+                values.ItemCount(character),
+            ),
+            events.DiscardSpecific(character, [self]),
+            events.DrawSpecific(character, "specials", "Bad Credit"),
+        ],
+        character
+    )
+    interest = events.SpendChoice(
+        character,
+        "Pay interest on loan",
+        choices=["Pay", "Default"],
+        prereqs=[
+            values.AttributePrerequisite(character, "dollars", 1, "at least"),
+            values.AttributePrerequisite(character, "dollars", 0, "exactly"),
+        ],
+        spends=[values.ExactSpendPrerequisite({"dollars": 1}), None],
+    )
+    return events.Sequence([
+        interest,
+        events.Conditional(character, interest, "choice_index", {0: events.Nothing(), 1: default})
+    ], character)
+
+  def get_trigger(self, event, owner, state):
+    if isinstance(event, events.TakeBankLoan):
+      return events.Gain(owner, {"dollars": 10}, self)
+    return super().get_trigger(event, owner, state)
+
+  def get_usable_trigger(self, event, owner, state):
+    if (
+        # TODO: Usable "anytime"
+        isinstance(event, events.Upkeep) and event.character == owner
+    ):
+      return events.BinarySpend(
+          owner,
+          "dollars", 10,
+          "Pay off loan?", "Yes", "No",
+          events.DiscardSpecific(owner, [self]),
+      )
+    return None
+
+
+class BadCredit(Asset):
+  def __init__(self, idx):
+    super().__init__("Bad Credit", idx)
+
+  def get_interrupt(self, event, owner, state):
+    if (
+        isinstance(event, events.TakeBankLoan)
+        and event.character == owner
+    ):
+      return events.CancelEvent(event)
+    return None
+
+
+class LodgeMembership(Card):
+  def __init__(self, idx):
+    super().__init__("Silver Twilight Lodge Membership", idx, "specials", {}, {})
+
+  def get_interrupt(self, event, owner, state):
+    if (
+        isinstance(event, events.KeepDrawn)
+        and len([c for c in event.draw.drawn if isinstance(c, LodgeMembership)]) > 0
+        and event.character == owner
+        and event.character.lodge_membership
+    ):
+      return events.CancelEvent(event)
+    return None
 
 
 def CreateAllies():

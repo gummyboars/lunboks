@@ -22,6 +22,13 @@ def CreateFixedEncounters():
       encounter=lambda char, state: events.Purchase(char, "unique", 3, must_buy=True),
   )
 
+  take_loan = FixedEncounter(
+      name="Take Bank Loan",
+      prereq=lambda char: values.NoItemName(char, "Bad Credit"),
+      spend=lambda char: None,
+      encounter=lambda char, state: events.TakeBankLoan(char)
+  )
+
   restore_sanity = FixedEncounter(
       name="Restore 1 Sanity",
       prereq=lambda char: values.AttributeNotMaxedPrerequisite(char, "sanity"),
@@ -113,7 +120,7 @@ def CreateFixedEncounters():
 
   return {
       "Shop": [purchase_unique],
-      # TODO: Bank
+      "Bank": [take_loan],
       "Asylum": [restore_sanity, restore_all_sanity],
       "Police": [deputize],
       "Store": [purchase_common],

@@ -144,6 +144,16 @@ class ItemNameCount(Value):
     return sum(item.name == self.item_name for item in self.character.possessions)
 
 
+class NoItemName(Value):
+  def __init__(self, character, item_name):
+    super().__init__(error_fmt=f"You have a {item_name}")
+    self.character = character
+    self.item_name = item_name
+
+  def value(self, state):
+    return sum(item.name == self.item_name for item in self.character.possessions) == 0
+
+
 class ItemPrerequisite(Calculation):
 
   def __init__(self, character, item_name, threshold=1, operand="at least"):

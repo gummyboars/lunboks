@@ -7,6 +7,7 @@ from typing import (
     Collection, List, Dict, Optional, Union, NoReturn, TYPE_CHECKING,
 )
 
+from eldritch import assets
 from eldritch import places
 from eldritch import values
 
@@ -1231,35 +1232,10 @@ class Curse(BlessCurse):
     super().__init__(character, False)
 
 
-class MembershipChange(Event):
-
-  def __init__(self, character, positive):
-    super().__init__()
-    self.character = character
-    self.positive = positive
-    self.change = None
-
-  def resolve(self, state):
-    old_status = self.character.lodge_membership
-    self.character.lodge_membership = self.positive
-    self.change = int(self.character.lodge_membership) - int(old_status)
-
-  def is_resolved(self):
-    return self.change is not None
-
-  def start_str(self):
-    return ""  # TODO
-
-  def log(self, state):
-    if self.cancelled and self.change is None:
-      return f"nothing changed for {self.character.name}"
-    if self.change is not None:
-      if self.change < 0:
-        return f"{self.character.name} lost their Lodge membership"
-      return f"{self.character.name} became a member of the Silver Twilight Lodge"
-    if self.positive:
-      return f"{self.character.name} will become a member of the Silver Twilight Lodge"
-    return f"{self.character.name} will lose their Lodge membership"
+def MembershipChange(character, positive):
+  if positive:
+    return DrawSpecific(character, "specials", "Silver Twilight Lodge Membership")
+  return DiscardNamed(character, "Silver Twilight Lodge Membership")
 
 
 class StatusChange(Event):
@@ -1289,6 +1265,15 @@ class StatusChange(Event):
         "bank_loan_start": {-1: " lost their bank loan??", 1: " received a bank loan"},
     }
     return self.character.name + status_map[self.attr][self.change]
+
+
+class TakeBankLoan(Sequence):
+  def __init__(self, character):
+    draw = DrawNamed(character, "specials", "Bank Loan")
+    super().__init__(
+        [draw, KeepDrawn(character, draw)],
+        character
+    )
 
 
 class ForceMovement(Event):
@@ -2365,25 +2350,25 @@ class DiscardSpecific(Event):
     return True
 
 
-class RollToLose(Event):
-  def __init__(self, character, item):
+class RollToMaintain(Event):
+  def __init__(self, character, item: "assets.SelfDiscardingCard"):
     super().__init__()
     self.character = character
     self.item = item
     self.roll = None
-    self.lose = None
+    self.penalty = None
     self.done = False
 
   def resolve(self, state) -> None:
     if self.roll is None:
-      self.roll = DiceRoll(self.character, 1, name=self.item.name, bad=[1])
+      self.roll = DiceRoll(self.character, 1, name=self.item.name, bad=self.item.upkeep_bad_rolls)
       state.event_stack.append(self.roll)
       return
 
-    if self.roll.sum == 1 and self.lose is None:
+    if self.roll.sum in self.item.upkeep_bad_rolls and self.penalty is None:
       # TODO: allow the item to determine its own bad stuff
-      self.lose = DiscardSpecific(self.character, [self.item])
-      state.event_stack.append(self.lose)
+      self.penalty = self.item.upkeep_penalty(self.character)
+      state.event_stack.append(self.penalty)
       return
 
     self.done = True
@@ -2393,12 +2378,12 @@ class RollToLose(Event):
 
   def log(self, state):
     if self.cancelled and self.roll is None:
-      return f"{self.character.name} did not roll to lose the {self.item.name}"
+      return f"{self.character.name} did not roll for {self.item.name}"
     if self.cancelled:
-      return f"{self.character.name} could not lose the {self.item.name}"
+      return f"{self.character.name} could not pay the penalty for {self.item.name}"
     if self.done:
-      if self.lose is not None:
-        return f"{self.character.name} rolled a 1 and lost the {self.item.name}"
+      if self.penalty is not None:
+        return f"{self.character.name} rolled poorly and paid the penalty for {self.item.name}"
       return f"{self.character.name} keeps the {self.item.name}"
     return f"{self.character.name} to roll for their {self.item.name}"
 
