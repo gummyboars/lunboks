@@ -276,17 +276,16 @@ class BlackGoat(AncientOne):
         continue
       check = events.Check(char, "sneak", self.sneak_modifier, name=self.name)
       checks.append(
-          events.Sequence([
-              events.PassFail(
-                  char, check, events.Nothing(),
-                  events.BinarySpend(
-                      char, "toughness", 1, "Lose one monster trophy or be devoured",
-                      "Spend", "Be Devoured",
-                      events.Nothing(), events.Devoured(char)
-                  )
-              ),
-          ], char)
+          events.PassFail(
+              char, check, events.Nothing(),
+              events.BinarySpend(
+                  char, "monsters", 1, "Lose one monster trophy or be devoured",
+                  "Spend", "Be Devoured",
+                  events.Nothing(), events.Devoured(char)
+              )
+          )
       )
+    return AncientOneAttack(checks)
 
   def escalate(self, state):
     self.sneak_modifier -= 1
@@ -312,7 +311,7 @@ class SerpentGod(AncientOne):
         isinstance(event, events.PassCombatRound)
         and isinstance(event.combat_round.monster, monsters.Cultist)
     ):
-      return events.AddToken(self, "doom")
+      return events.AddDoom(character=event.character)
     if isinstance(event, events.Awaken):
       per_character = []
       for char in state.characters:
@@ -334,13 +333,12 @@ class SerpentGod(AncientOne):
         continue
       check = events.Check(char, "speed", self.speed_modifier, name=self.name)
       checks.append(
-          events.Sequence([
-              events.PassFail(
-                  char, check,
-                  events.Nothing(), events.Loss(char, {"sanity": 1, "stamina": 1})
-              ),
-          ], char)
+          events.PassFail(
+              char, check,
+              events.Nothing(), events.Loss(char, {"sanity": 1, "stamina": 1})
+          )
       )
+    return AncientOneAttack(checks)
 
   def escalate(self, state):
     self.speed_modifier -= 1
