@@ -785,6 +785,7 @@ class GameState:
     self.turn_number = -1
     self.turn_phase = "mythos"
     self.initialize()
+    self.ancient_one.setup(self)
     seq = self.add_pending_players()
     if any(char.name == "Scientist" for char in self.characters):
       self.places["Science"].clues = 0
