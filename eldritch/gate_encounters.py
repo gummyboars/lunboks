@@ -107,7 +107,10 @@ def GreatHall4(char) -> events.Event:
   check = events.Check(char, "fight", -1, difficulty=2)
   spells = events.Draw(char, "spells", 3, keep_count=2)
   loss = events.Loss(char, {"stamina": 3})
-  return events.PassFail(char, check, loss, spells)
+  return events.BinaryChoice(
+      char, "Read the book?", "Yes", "No",
+      events.PassFail(char, check, spells, loss), events.Nothing()
+  )
 
 
 def Other4(char) -> events.Event:

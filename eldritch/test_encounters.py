@@ -3565,9 +3565,18 @@ class UnnamableTest(EncounterTest):
     self.assertEqual(self.char.stamina, 1)
     self.assertEqual(self.char.place.name, "Unnamable")
 
+  def testUnnamable5Decline(self):
+    self.state.event_stack.append(encounters.Unnamable5(self.char))
+    self.state.unique.extend([items.Cross(0), items.HolyWater(0)])
+    choice = self.resolve_to_choice(MultipleChoice)
+    choice.resolve(self.state, "No")
+    self.resolve_until_done()
+
   def testUnnamable5Pass(self):
     self.state.event_stack.append(encounters.Unnamable5(self.char))
     self.state.unique.extend([items.Cross(0), items.HolyWater(0)])
+    choice = self.resolve_to_choice(MultipleChoice)
+    choice.resolve(self.state, "Yes")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       self.resolve_until_done()
     self.assertEqual(self.char.stamina, 3)
@@ -3579,6 +3588,8 @@ class UnnamableTest(EncounterTest):
   def testUnnamable5Fail(self):
     self.state.event_stack.append(encounters.Unnamable5(self.char))
     self.state.unique.extend([items.Cross(0), items.HolyWater(0)])
+    choice = self.resolve_to_choice(MultipleChoice)
+    choice.resolve(self.state, "Yes")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=2)):
       self.resolve_until_done()
     self.assertEqual(self.char.stamina, 1)

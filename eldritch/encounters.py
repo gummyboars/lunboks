@@ -1217,7 +1217,11 @@ def Unnamable5(char):
   check = events.Check(char, "luck", -1)
   unique = events.Draw(char, "unique", 1)
   loss = events.Loss(char, {"sanity": 1, "stamina": 2})
-  return events.PassFail(char, check, unique, loss)
+  return events.BinaryChoice(
+      char, "Reach in?", "Yes", "No",
+      events.PassFail(char, check, unique, loss),
+      events.Nothing()
+  )
 
 
 def Unnamable6(char):
