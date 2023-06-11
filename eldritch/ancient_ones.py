@@ -293,7 +293,7 @@ class BlackGoat(AncientOne):
 
 class SerpentGod(AncientOne):
   def __init__(self):
-    super().__init__("Serpent God", 10, {}, -3)
+    super().__init__("Serpent God", 10, set(), -3)
     self.speed_modifier = 1
 
   def get_modifier(self, thing, attribute, state):
@@ -306,7 +306,7 @@ class SerpentGod(AncientOne):
 
   def get_trigger(self, event, state):
     if isinstance(event, events.LostInTimeAndSpace):
-      return events.AddToken(self, "doom")
+      return events.AddDoom()
     if (
         isinstance(event, events.PassCombatRound)
         and isinstance(event.combat_round.monster, monsters.Cultist)
@@ -368,18 +368,17 @@ class SpaceBubbles(AncientOne):
         continue
       check = events.Check(char, "speed", self.will_modifier, name=self.name)
       checks.append(
-          events.Sequence([
-              events.PassFail(
-                  char, check,
-                  events.Nothing(),
-                  events.BinarySpend(
-                      char, "gates", 1, "Lose one gate trophy or be devoured",
-                      "Lose", "Be Devoured",
-                      events.Nothing(), events.Devoured(char)
-                  )
-              ),
-          ], char)
+          events.PassFail(
+              char, check,
+              events.Nothing(),
+              events.BinarySpend(
+                  char, "gates", 1, "Lose one gate trophy or be devoured",
+                  "Lose", "Be Devoured",
+                  events.Nothing(), events.Devoured(char)
+              )
+          )
       )
+    return AncientOneAttack(checks)
 
   def escalate(self, state):
     self.will_modifier -= 1
