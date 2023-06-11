@@ -772,7 +772,6 @@ class GameState:
     if ancient not in self.all_ancients:
       raise InvalidMove(f"Unknown ancient one {ancient}")
     self.ancient_one = self.all_ancients[ancient]
-    self.ancient_one.setup(self)
 
   def handle_start(self):
     if self.game_stage != "setup":
@@ -786,6 +785,7 @@ class GameState:
     self.turn_number = -1
     self.turn_phase = "mythos"
     self.initialize()
+    self.ancient_one.setup(self)
     seq = self.add_pending_players()
     if any(char.name == "Scientist" for char in self.characters):
       self.places["Science"].clues = 0
