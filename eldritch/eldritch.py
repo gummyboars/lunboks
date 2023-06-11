@@ -300,7 +300,7 @@ class GameState:
           else:
             seq = getattr(event.encounter, "events", [])
             if seq and seq[0].is_resolved():
-              current = event.cards[seq.choice_index].name
+              current = event.cards[seq[0].choice_index].name
         # For mythos cards, there is a single drawn card.
         if isinstance(event, events.Mythos) and event.draw and event.draw.card:
           current = event.draw.card.name
