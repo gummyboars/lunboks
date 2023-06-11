@@ -765,6 +765,28 @@ class WardingStatueTest(EventTest):
     self.assertFalse(self.char.possessions)
     self.assertEqual(self.char.stamina, starting_stamina)
 
+  def testCombatDamageDontUse(self):
+    starting_stamina = self.char.stamina
+    statue = items.WardingStatue(0)
+    self.char.possessions.append(statue)
+    monster = monsters.Cultist()
+    self.state.event_stack.append(events.Combat(self.char, monster))
+    choice = self.resolve_to_choice(events.FightOrEvadeChoice)
+    choice.resolve(self.state, "Fight")
+    weapon_choice = self.resolve_to_choice(events.CombatChoice)
+    weapon_choice.resolve(self.state, "done")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=1)):
+      _ = self.resolve_to_usable(0, "Warding Statue0")
+      self.state.done_using[0] = True
+    fight_flee = self.resolve_to_choice(events.FightOrEvadeChoice)
+    fight_flee.resolve(self.state, "Fight")
+    weapon_choice = self.resolve_to_choice(events.CombatChoice)
+    weapon_choice.resolve(self.state, "done")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+    self.assertListEqual(self.char.possessions, [statue])
+    self.assertEqual(self.char.stamina, starting_stamina - 1)
+
   def testCancelAncientOne(self):
     self.char.possessions.append(items.WardingStatue(0))
     self.state.ancient_one = ancient_ones.Wendigo()
