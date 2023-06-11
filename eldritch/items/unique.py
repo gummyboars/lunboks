@@ -7,7 +7,8 @@ __all__ = [
     "SwordOfGlory",
     "AncientTablet", "EnchantedJewelry", "GateBox", "HealingStone", "BlueWatcher", "SunkenCityRuby",
     "ObsidianStatue", "OuterGodlyFlute", "SilverKey", "PallidMask",
-    # TODO: AlienStatue, DragonsEye, ElderSign, WardingStatue
+    # TODO: AlienStatue, DragonsEye, ElderSign
+    "WardingStatue",
     "TibetanTome", "MysticismTome", "BlackMagicTome", "BlackBook", "BookOfTheDead", "YellowPlay",
 ]
 
@@ -30,6 +31,7 @@ def CreateUnique():
       MagicLamp: 1,
       MagicPowder: 2,
       SwordOfGlory: 1,
+      WardingStatue: 1,
       TibetanTome: 1,
       MysticismTome: 2,
       BlackMagicTome: 2,
@@ -356,6 +358,31 @@ class SunkenCityRuby(Item):
     if isinstance(event, events.CityMovement) and event.character == owner:
       return events.ChangeMovementPoints(owner, 3)
     return None
+
+
+class WardingStatue(Item):
+  def __init__(self, idx):
+    super().__init__("Warding Statue", idx, "unique", {}, {}, None, 6)
+
+  def get_usable_interrupt(self, event, owner, state):
+    discard = events.DiscardSpecific(owner, [self])
+    if isinstance(event, events.AncientAttack):
+      return events.Sequence(
+          [discard, events.CancelEvent(event)],
+          owner
+      )
+    if (
+        isinstance(event, events.GainOrLoss)
+        and len(state.event_stack) > 1
+        and isinstance(state.event_stack[-2], events.CombatRound)
+        and state.event_stack[-2].damage == event
+    ):
+      return events.Sequence(
+          [discard, events.LossPrevention(self, event, "stamina", float("inf"))],
+          owner
+      )
+    return None
+
 
 # Tomes
 

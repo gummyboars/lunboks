@@ -9,6 +9,7 @@ from unittest import mock
 if os.path.abspath(sys.path[0]) == os.path.dirname(os.path.abspath(__file__)):
   sys.path[0] = os.path.dirname(sys.path[0])
 
+from eldritch import ancient_ones
 from eldritch import characters
 from eldritch import encounters
 from eldritch import events
@@ -740,6 +741,38 @@ class SilverKeyTest(EventTest):
     self.assertEqual(self.char.place.name, "Rivertown")
     self.assertEqual(self.char.movement_points, 2)
     self.assertEqual(self.key.tokens["stamina"], 1)
+
+
+class WardingStatueTest(EventTest):
+  def testCombatDamage(self):
+    starting_stamina = self.char.stamina
+    self.char.possessions.append(items.WardingStatue(0))
+    monster = monsters.Cultist()
+    self.state.event_stack.append(events.Combat(self.char, monster))
+    choice = self.resolve_to_choice(events.FightOrEvadeChoice)
+    choice.resolve(self.state, "Fight")
+    weapon_choice = self.resolve_to_choice(events.CombatChoice)
+    weapon_choice.resolve(self.state, "done")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=1)):
+      statue = self.resolve_to_usable(0, "Warding Statue0")
+      self.state.event_stack.append(statue)
+    fight_flee = self.resolve_to_choice(events.FightOrEvadeChoice)
+    fight_flee.resolve(self.state, "Fight")
+    weapon_choice = self.resolve_to_choice(events.CombatChoice)
+    weapon_choice.resolve(self.state, "done")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+    self.assertFalse(self.char.possessions)
+    self.assertEqual(self.char.stamina, starting_stamina)
+
+  def testCancelAncientOne(self):
+    self.char.possessions.append(items.WardingStatue(0))
+    self.state.ancient_one = ancient_ones.Wendigo()
+    self.state.event_stack.append(events.Awaken())
+    self.resolve_until_done()
+    self.advance_turn(0, "ancient")
+    self.state.event_stack.append(events.AncientAttack(None))
+    self.resolve_to_usable(0, "Warding Statue0")
 
 
 class TomeTest(EventTest):
