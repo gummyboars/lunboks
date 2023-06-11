@@ -346,7 +346,7 @@ class SerpentGod(AncientOne):
 
 class SpaceBubbles(AncientOne):
   def __init__(self):
-    super().__init__("Space Bubbles", 12, {"magical_immunity"}, -5)
+    super().__init__("Space Bubbles", 12, {"magical immunity"}, -5)
     self.will_modifier = 1
 
   def get_trigger(self, event, state):
@@ -383,7 +383,21 @@ class SpaceBubbles(AncientOne):
   def escalate(self, state):
     self.will_modifier -= 1
 
+  def get_override(self, thing, attribute):
+    if isinstance(thing, monsters.Cultist) and attribute == "magical immunity":
+      return True
+    return None
+
+  def get_modifier(self, thing, attribute, state):
+    if isinstance(thing, monsters.Cultist) and attribute == "combat_difficulty":
+      return -2
+    return 0
+
+
+
 
 def AncientOnes():
-  ancients = [SquidFace, YellowKing, ChaosGod, Wendigo, BlackPharaoh]
+  ancients = [
+    SquidFace, YellowKing, ChaosGod, Wendigo, BlackPharaoh, BlackGoat, SerpentGod, SpaceBubbles
+  ]
   return {ancient().name: ancient() for ancient in ancients}
