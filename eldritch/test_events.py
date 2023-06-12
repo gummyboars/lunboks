@@ -1690,7 +1690,7 @@ class DiscardNamedTest(EventTest):
     self.assertFalse(discard.is_resolved())
     self.state.event_stack.append(discard)
     self.resolve_until_done()
-    self.assertEqual(discard.log(self.state), "Dummy did not have a Food to discard")
+    self.assertEqual(discard.log(self.state), "[Dummy] did not have a [Food] to discard")
 
   def testDiscardClearsTokens(self):
     silver_key = items.SilverKey(0)

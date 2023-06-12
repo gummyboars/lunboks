@@ -347,7 +347,7 @@ class MonsterSurgeTest(EventTest):
 
     with self.assertRaisesRegex(InvalidMove, "minimum of 1"):
       surge.resolve(self.state, {"Woods": [5, 1], "WitchHouse": [0, 6]})
-    with self.assertRaisesRegex(InvalidMove, "place 2 monsters on Woods"):
+    with self.assertRaisesRegex(InvalidMove, "place 2 monsters on \\[Woods\\]"):
       surge.resolve(self.state, {"Woods": [5], "Isle": [1], "WitchHouse": [6, 0]})
     with self.assertRaisesRegex(InvalidMove, "maximum of 2"):
       surge.resolve(self.state, {"Woods": [0, 1, 5, 6]})
