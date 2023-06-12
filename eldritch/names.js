@@ -143,7 +143,9 @@ allyNames = [
 carefullyAdd(allyNames, true);
 abilityNames = [
   "Studious",
+  "Scrounge",
   "Shrewd Dealer",
+  "Psychology",
   "Hometown Advantage",
   "Magical Gift",
   "Psychic Sensitivity",
@@ -151,11 +153,11 @@ abilityNames = [
   "Trust Fund",
   "Hunches",
   "Flux Stabilizer",
-  "Strong Body",
-  "Archaeology",
-  "Physician",
-  "Psychology",
   "Research",
+  "Guardian Angel",
+  "Physician",
+  "Archaeology",
+  "Strong Body",
 ];
 carefullyAdd(abilityNames, true);
 otherNames = [
@@ -164,6 +166,9 @@ otherNames = [
   "Patrol Wagon",
   "Blessing",
   "Curse",
+  "Retainer",
+  "Bank Loan",
+  "Lodge Membership",
 ];
 carefullyAdd(otherNames, true);
 monsterNames = [

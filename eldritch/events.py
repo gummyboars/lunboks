@@ -1234,8 +1234,8 @@ class Curse(BlessCurse):
 
 def MembershipChange(character, positive):
   if positive:
-    return DrawSpecific(character, "specials", "Silver Twilight Lodge Membership")
-  return DiscardNamed(character, "Silver Twilight Lodge Membership")
+    return DrawSpecific(character, "specials", "Lodge Membership")
+  return DiscardNamed(character, "Lodge Membership")
 
 
 class StatusChange(Event):

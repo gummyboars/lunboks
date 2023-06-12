@@ -410,7 +410,7 @@ class BadCredit(Asset):
 
 class LodgeMembership(Card):
   def __init__(self, idx):
-    super().__init__("Silver Twilight Lodge Membership", idx, "specials", {}, {})
+    super().__init__("Lodge Membership", idx, "specials", {}, {})
 
   def get_interrupt(self, event, owner, state):
     if (
