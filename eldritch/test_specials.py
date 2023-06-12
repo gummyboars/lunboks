@@ -210,7 +210,7 @@ class BankLoanTest(EventTest):
     self.resolve_to_choice(events.SliderInput)
     self.assertListEqual(
         [p.name for p in self.char.possessions],
-        [".18 Derringer", "Silver Twilight Lodge Membership", "Bad Credit"]
+        [".18 Derringer", "Lodge Membership", "Bad Credit"]
     )
 
 

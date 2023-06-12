@@ -131,7 +131,7 @@ class Character:
 
   @property
   def lodge_membership(self):
-    return "Silver Twilight Lodge Membership" in [p.name for p in self.possessions]
+    return "Lodge Membership" in [p.name for p in self.possessions]
 
   def get_interrupts(self, event, state):
     return [
