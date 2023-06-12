@@ -354,9 +354,9 @@ class GameState:
         output["dice"]["name"] = current
       if not isinstance(self.event_stack[-1], events.ChoiceEvent):
         if isinstance(roller, events.Check):
-          output["dice"]["prompt"] = f"{roller.character.name} makes a {roller.check_str()}"
+          output["dice"]["prompt"] = f"[{roller.character.name}] makes a {roller.check_str()}"
         elif roller.name is not None:
-          output["dice"]["prompt"] = f"{roller.character.name} rolls for {roller.name}"
+          output["dice"]["prompt"] = f"[{roller.character.name}] rolls for [{roller.name}]"
 
     # Figure out the current choice.
     choice = None

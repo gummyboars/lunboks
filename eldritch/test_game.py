@@ -1522,7 +1522,7 @@ class RollDiceTest(unittest.TestCase):
       self.assertIn("name", data["dice"])
       self.assertEqual(data["dice"]["name"], "Northside1")
       self.assertIn("prompt", data["dice"])
-      self.assertIn("rolls for Northside1", data["dice"]["prompt"])
+      self.assertIn("rolls for [Northside1]", data["dice"]["prompt"])
       self.assertIn("bad", data["dice"])
       self.assertListEqual(data["dice"]["bad"], [1, 2])
 

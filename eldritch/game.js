@@ -256,13 +256,27 @@ function showError(errText) {
   document.getElementById("errorText").innerText = errText;
 }
 
+function replacer(match, p1) {
+  if (serverNames[p1] != null) {
+    return serverNames[p1];
+  }
+  if (!isNaN(parseInt(p1))) {
+    return match;
+  }
+  return p1;
+};
+
+function formatServerString(str) {
+  let regex = new RegExp("\\[([^\\]]*)\\]", "g");
+  return str.replace(regex, replacer);
+}
+
 function onmsg(e) {
   let data = JSON.parse(e.data);
   if (data.type == "error") {
     document.getElementById("errorText").holdSeconds = 3;
     document.getElementById("errorText").style.opacity = 1.0;
-    // document.getElementById("errorText").innerText = formatServerString(data.message);
-    document.getElementById("errorText").innerText = data.message;
+    document.getElementById("errorText").innerText = formatServerString(data.message);
     setTimeout(clearError, 100);
     return;
   }
@@ -842,7 +856,8 @@ function toggleMonsters(placeDiv, name) {
     showMonsters(placeDiv, name);
     return;
   }
-  if (document.getElementById("monsterdetailsname").innerText != name) {
+  let sname = serverNames[name] ?? name;
+  if (document.getElementById("monsterdetailsname").innerText != sname) {
     showMonsters(placeDiv, name);
     return;
   }
@@ -854,7 +869,8 @@ function showMonsters(placeDiv, name) {
   while (box.children.length) {
     box.removeChild(box.firstChild);
   }
-  document.getElementById("monsterdetailsname").innerText = name;
+  let sname = serverNames[name] ?? name;
+  document.getElementById("monsterdetailsname").innerText = sname;
   document.getElementById("monsterdetails").style.display = "flex";
   for (let monsterDiv of placeDiv.getElementsByClassName("monster")) {
     let container = document.createElement("DIV");
@@ -908,7 +924,7 @@ function updateMonsters(monster_list) {
 
 function updateSliderButton(sliders) {
   if (sliders) {
-    document.getElementById("uiprompt").innerText = sliders.prompt;
+    document.getElementById("uiprompt").innerText = formatServerString(sliders.prompt);
     document.getElementById("donesliders").style.display = "inline-block";
   } else {
     document.getElementById("donesliders").style.display = "none";
@@ -992,7 +1008,7 @@ function updateChoices(choice) {
     uicardchoice.removeChild(uicardchoice.getElementsByClassName("cardholder")[0]);
   }
   // Set prompt.
-  document.getElementById("uiprompt").innerText = choice.prompt;
+  document.getElementById("uiprompt").innerText = formatServerString(choice.prompt);
   document.getElementById("charoverlay").classList.toggle("shown", choice.items != null || choice.spendable != null);
   if (choice.items != null) {
     for (let pos of pDiv.getElementsByClassName("possession")) {
@@ -1086,7 +1102,7 @@ function addMonsterChoices(uichoice, cardChoice, monsters, invalidChoices, annot
     let desc = document.createElement("DIV");
     desc.classList.add("desc");
     if (annotations != null && annotations.length > idx && annotations[idx] != null) {
-      desc.innerText = annotations[idx];
+      desc.innerText = formatServerString(annotations[idx]);
     }
     holder.appendChild(desc);
     cardChoice.appendChild(holder);
@@ -1156,7 +1172,7 @@ function addFightOrEvadeChoices(uichoice, cardChoice, monster, choices, invalidC
     let desc = document.createElement("DIV");
     desc.classList.add("desc");
     if (annotations != null && annotations.length > idx && annotations[idx] != null) {
-      desc.innerText = choice + " (" + annotations[idx] + ")";
+      desc.innerText = choice + " (" + formatServerString(annotations[idx]) + ")";
     } else {
       desc.innerText = choice;
     }
@@ -1224,7 +1240,7 @@ function addCardChoices(uichoice, cardChoice, cards, invalidChoices, remainingSp
     let desc = document.createElement("DIV");
     desc.classList.add("desc");
     if (annotations != null && annotations.length > idx) {
-      desc.innerText = annotations[idx];
+      desc.innerText = formatServerString(annotations[idx]);
     }
     holder.appendChild(desc);
     cardChoice.appendChild(holder);
@@ -1243,7 +1259,7 @@ function addChoices(uichoice, choices, invalidChoices, remainingSpend) {
   for (let [idx, c] of choices.entries()) {
     let div = document.createElement("DIV");
     div.classList.add("choice");
-    div.innerText = c;
+    div.innerText = serverNames[c] ?? c;
     if (c == "Pass") {
       div.classList.add("success");
     }
@@ -1617,7 +1633,7 @@ function updatePlaceChoices(uichoice, places, annotations) {
     place.classList.remove("unselectable");
     place.innerText = "Choose";
     if (annotations != null && annotations.length > idx) {
-      place.innerText = annotations[idx];
+      place.innerText = formatServerString(annotations[idx]);
     } else {
       place.innerText = "Choose";
     }
@@ -1639,7 +1655,8 @@ function updateBottomText(gameStage, turnPhase, characters, turnIdx, playerIdx, 
     return;
   }
   if (turnIdx != null) {
-    uiprompt.innerText = characters[turnIdx].name + "'s " + turnPhase + " phase";
+    let name = serverNames[characters[turnIdx].name] ?? characters[turnIdx].name;
+    uiprompt.innerText = name + "'s " + turnPhase + " phase";
   }
 }
 
@@ -1801,7 +1818,7 @@ function updateDice(dice, playerIdx, monsterList) {
     }
   }
   if (dice.prompt) {
-    document.getElementById("uiprompt").innerText = dice.prompt;
+    document.getElementById("uiprompt").innerText = formatServerString(dice.prompt);
   }
 
   let roll = dice.roll || [];
@@ -1881,7 +1898,7 @@ function updateEventLog(eventLog) {
 function createLogDiv(logEvent, parentNode, depth) {
   let logDiv = document.createElement("DIV");
   let textSpan = document.createElement("SPAN");
-  textSpan.innerText = logEvent.text;
+  textSpan.innerText = formatServerString(logEvent.text);
   textSpan.style.marginLeft = depth + "ch";
   logDiv.append(textSpan);
   logDiv.classList.add("logevent");
