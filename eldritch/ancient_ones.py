@@ -394,10 +394,8 @@ class SpaceBubbles(AncientOne):
     return 0
 
 
-
-
 def AncientOnes():
   ancients = [
-    SquidFace, YellowKing, ChaosGod, Wendigo, BlackPharaoh, BlackGoat, SerpentGod, SpaceBubbles
+      SquidFace, YellowKing, ChaosGod, Wendigo, BlackPharaoh, BlackGoat, SerpentGod, SpaceBubbles
   ]
   return {ancient().name: ancient() for ancient in ancients}
