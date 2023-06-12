@@ -133,6 +133,14 @@ class Character:
   def lodge_membership(self):
     return "Silver Twilight Lodge Membership" in [p.name for p in self.possessions]
 
+  @property
+  def n_monster_trophies(self):
+    return len([t for t in self.trophies if isinstance(t, monsters.Monster)])
+
+  @property
+  def n_gate_trophies(self):
+    return len([t for t in self.trophies if isinstance(t, gates.Gate)])
+
   def get_interrupts(self, event, state):
     return [
         p.get_interrupt(event, self, state) for p in self.possessions
