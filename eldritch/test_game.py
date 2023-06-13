@@ -1089,6 +1089,13 @@ class TradingWhenAwakenedTest(NextTurnBase):
 
 class EndGameTest(NextTurnBase):
 
+  def testInstantDefeatFromAwakening(self):
+    self.state.ancient_one = ancient_ones.ChaosGod()
+    self.state.event_stack.append(events.AddDoom(count=float("inf")))
+    for _ in self.state.resolve_loop():
+      pass
+    self.assertEqual(self.state.game_stage, "defeat")
+
   def testAncientOneHasCorrectHealthWhenAwakened(self):
     self.state.event_stack.append(events.AddDoom(count=float("inf")))
     for _ in self.state.resolve_loop():

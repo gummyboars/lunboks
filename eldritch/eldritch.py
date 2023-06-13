@@ -662,7 +662,7 @@ class GameState:
 
     # If the ancient one's doom track is full, it wakes up.
     if isinstance(event, events.AddDoom) and self.ancient_one.doom == self.ancient_one.max_doom:
-      if self.game_stage != "awakened":
+      if self.game_stage == "slumber":
         triggers.append(events.Awaken())
 
     # Insane/Unconscious after sanity/stamina loss.
