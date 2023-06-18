@@ -1035,6 +1035,9 @@ function updateChoices(choice, current, isMyChoice, chooser) {
   document.getElementById("uiprompt").innerText = promptText;
   let showOverlay = isMyChoice && (choice.items != null || choice.spendable != null);
   document.getElementById("charoverlay").classList.toggle("shown", showOverlay);
+  if (choice.spell != null && choice.cards == null) {
+    showActionSource(document.getElementById("uicardchoice"), choice.spell);
+  }
   if (choice.items != null) {
     if (isMyChoice) {
       for (let pos of pDiv.getElementsByClassName("possession")) {

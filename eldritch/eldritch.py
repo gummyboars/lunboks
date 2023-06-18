@@ -354,22 +354,29 @@ class GameState:
         elif roller.name is not None:
           output["dice"]["prompt"] = f"[{roller.character.name}] rolls for [{roller.name}]"
 
-    # Figure out the current choice.
+    # Figure out the current choice, and the spell it belongs to (if any).
     choice = None
+    spell = None
     for event in reversed(self.event_stack):
+      if isinstance(event, events.CastSpell) and event.choice == choice:
+        spell = event.spell
+        break
+      if choice is not None:
+        break
       if isinstance(event, events.ChoiceEvent):
         # Always show the combat choice even when it's done to avoid flickering of the chosen
         # items between completion of the combat choice and activation.
         if isinstance(event, events.CombatChoice) or not event.is_done():
           choice = event
-        break
-      if not isinstance(event, (events.ActivateChosenItems, events.ActivateItem)):
+        continue
+      if not isinstance(event, (events.ActivateChosenItems, events.ActivateItem, events.CastSpell)):
         break
     output["choice"] = None
     output["chooser"] = None
     if choice:
       output["chooser"] = self.characters.index(choice.character)
       output["choice"] = {"prompt": choice.prompt()}
+      output["choice"]["spell"] = spell.name if spell else None
       output["choice"]["annotations"] = choice.annotations(self)
       output["choice"]["invalid_choices"] = list(getattr(choice, "invalid_choices", {}).keys())
       if isinstance(choice, events.SpendMixin):
