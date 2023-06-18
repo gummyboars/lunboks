@@ -63,7 +63,7 @@ commonNames = [
   "Lantern",
   "Map",
   "Motorcycle",
-  "Old Journal",
+  "OldJournal",
   "Research Materials",
   "Rifle",
   "Shotgun",
