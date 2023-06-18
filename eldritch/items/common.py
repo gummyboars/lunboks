@@ -128,7 +128,7 @@ class AncientTome(Tome):
     super().__init__("Ancient Tome", idx, "common", 4, 2)
 
   def read_event(self, owner):
-    check = events.Check(owner, "lore", -1)
+    check = events.Check(owner, "lore", -1, name=self.name)
     success = events.Sequence(
         [events.Draw(owner, "spells", 1), events.DiscardSpecific(owner, [self])], owner,
     )
@@ -140,7 +140,7 @@ class OldJournal(Tome):
     super().__init__("OldJournal", idx, "common", 1, 1)
 
   def read_event(self, owner):
-    check = events.Check(owner, "lore", -1)
+    check = events.Check(owner, "lore", -1, name=self.name)
     success = events.Sequence(
         [events.Gain(owner, {"clues": 3}), events.DiscardSpecific(owner, [self])], owner
     )

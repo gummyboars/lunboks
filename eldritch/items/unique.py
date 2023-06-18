@@ -394,7 +394,7 @@ class TibetanTome(Tome):
     self.tokens["stamina"] = 0
 
   def read_event(self, owner):
-    check = events.Check(owner, "lore", -1)
+    check = events.Check(owner, "lore", -1, name=self.name)
     success = events.Sequence([
         events.Draw(owner, "spells", 1),
         events.AddToken(self, "stamina", owner),
@@ -409,7 +409,7 @@ class MysticismTome(Tome):
     super().__init__("Mysticism Tome", idx, "unique", 5, 2)
 
   def read_event(self, owner):
-    check = events.Check(owner, "lore", -2)
+    check = events.Check(owner, "lore", -2, name=self.name)
     success = events.Sequence([
         events.Draw(owner, "skills", 1),
         events.DiscardSpecific(owner, [self])
@@ -423,7 +423,7 @@ class BlackMagicTome(Tome):
     super().__init__("Black Magic Tome", idx, "unique", 3, 2)
 
   def read_event(self, owner):
-    check = events.Check(owner, "lore", -2)
+    check = events.Check(owner, "lore", -2, name=self.name)
     success = events.Sequence([
         events.Draw(owner, "spells", 1),
         events.DiscardSpecific(owner, [self]),
@@ -438,7 +438,7 @@ class BlackBook(Tome):
     super().__init__("Black Book", idx, "unique", 3, 1)
 
   def read_event(self, owner):
-    check = events.Check(owner, "lore", -1)
+    check = events.Check(owner, "lore", -1, name=self.name)
     success = events.Sequence([
         events.Draw(owner, "spells", 1),
         events.DiscardSpecific(owner, [self]),
@@ -453,7 +453,7 @@ class BookOfTheDead(Tome):
     super().__init__("Book of the Dead", idx, "unique", 6, 2)
 
   def read_event(self, owner):
-    check = events.Check(owner, "lore", -2)
+    check = events.Check(owner, "lore", -2, name=self.name)
     success = events.Sequence([
         events.Draw(owner, "spells", 1),
         events.Loss(owner, losses={"sanity": 2}, source=self),
@@ -467,7 +467,7 @@ class YellowPlay(Tome):
     super().__init__("Yellow Play", idx, "unique", 2, 2)
 
   def read_event(self, owner):
-    check = events.Check(owner, "lore", -2)
+    check = events.Check(owner, "lore", -2, name=self.name)
     success = events.Sequence([
         events.DiscardSpecific(owner, [self]),
         events.GainOrLoss(owner, gains={"clues": 4}, losses={"sanity": 1}, source=self),
