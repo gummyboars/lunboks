@@ -15,7 +15,7 @@ class Asset(metaclass=abc.ABCMeta):
 
   # pylint: disable=unused-argument
 
-  JSON_ATTRS = {"name", "handle", "active", "exhausted", "hands", "bonuses", "max_tokens", "tokens"}
+  JSON_ATTRS = {"name", "handle", "active", "exhausted", "hands", "max_tokens", "tokens"}
 
   def __init__(self, name, idx=None):
     self._name = name
@@ -78,7 +78,11 @@ class Asset(metaclass=abc.ABCMeta):
     return events.Nothing()
 
   def json_repr(self):
-    return {attr: getattr(self, attr, None) for attr in self.JSON_ATTRS}
+    result = {attr: getattr(self, attr, None) for attr in self.JSON_ATTRS}
+    hands_used = getattr(self, "hands_used", None)
+    if hands_used:
+      result["hands_used"] = hands_used()  # pylint: disable=not-callable
+    return result
 
   @classmethod
   def parse_json(cls, data):
