@@ -1182,7 +1182,7 @@ class EndGameTest(NextTurnBase):
     spend_choice.spend("sanity")
     for _ in self.state.resolve_loop():
       pass
-    spend_choice.resolve(self.state, "Cast")
+    spend_choice.resolve(self.state, "Heal")
     for _ in self.state.resolve_loop():
       pass
 

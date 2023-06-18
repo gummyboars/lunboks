@@ -2651,8 +2651,8 @@ class BankTest(EncounterTest):
     self.assertIn(0, self.state.usables)
     self.assertEqual(self.state.usables[0].keys(), {"Wither0"})  # Red Sign is unusable: no monster.
     self.state.event_stack.append(self.state.usables[0]["Wither0"])
-    choice = self.resolve_to_choice(SpendChoice)
-    choice.resolve(self.state, "Cast")
+    choice = self.resolve_to_choice(CardSpendChoice)
+    choice.resolve(self.state, "Wither")
 
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       choose_weapons = self.resolve_to_choice(CombatChoice)
@@ -3794,8 +3794,8 @@ class HospitalTest(EncounterTest):
     self.state.event_stack.append(encounters.Hospital2(self.char))
     choose_weapons = self.resolve_to_choice(CombatChoice)
     self.state.event_stack.append(self.state.usables[0]["Wither0"])
-    cast_choice = self.resolve_to_choice(SpendChoice)
-    cast_choice.resolve(self.state, "Cast")
+    cast_choice = self.resolve_to_choice(CardSpendChoice)
+    cast_choice.resolve(self.state, "Wither")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       choose_weapons = self.resolve_to_choice(CombatChoice)
     self.choose_items(choose_weapons, [])

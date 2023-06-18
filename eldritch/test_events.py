@@ -3098,9 +3098,9 @@ class CastSpellTest(EventTest):
     self.assertEqual(self.char.hands_available(), 2)
 
     self.state.event_stack.append(CastSpell(self.char, shrivelling))
-    choice = self.resolve_to_choice(SpendChoice)
+    choice = self.resolve_to_choice(CardSpendChoice)
     self.spend("sanity", 1, choice)
-    choice.resolve(self.state, "Cast")
+    choice.resolve(self.state, "Shrivelling")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       self.resolve_until_done()
 
@@ -3116,9 +3116,9 @@ class CastSpellTest(EventTest):
     self.assertEqual(self.char.hands_available(), 2)
 
     self.state.event_stack.append(CastSpell(self.char, shrivelling))
-    choice = self.resolve_to_choice(SpendChoice)
+    choice = self.resolve_to_choice(CardSpendChoice)
     self.spend("sanity", 1, choice)
-    choice.resolve(self.state, "Cast")
+    choice.resolve(self.state, "Shrivelling")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
       self.resolve_until_done()
 
@@ -3135,9 +3135,9 @@ class CastSpellTest(EventTest):
     self.assertEqual(self.char.hands_available(), 2)
 
     self.state.event_stack.append(CastSpell(self.char, shrivelling))
-    choice = self.resolve_to_choice(SpendChoice)
+    choice = self.resolve_to_choice(CardSpendChoice)
     self.spend("sanity", 1, choice)
-    choice.resolve(self.state, "Cast")
+    choice.resolve(self.state, "Shrivelling")
     self.resolve_until_done()
 
     self.assertTrue(shrivelling.in_use)
@@ -3148,7 +3148,7 @@ class CastSpellTest(EventTest):
   def testCancelledSpellCost(self):
     shrivelling = items.Shrivelling(0)
     self.char.possessions.append(shrivelling)
-    self.char.possessions.append(Canceller(SpendChoice))
+    self.char.possessions.append(Canceller(CardSpendChoice))
     self.assertEqual(self.char.sanity, 5)
     self.assertEqual(self.char.hands_available(), 2)
 
@@ -3172,9 +3172,9 @@ class CastSpellTest(EventTest):
 
     cast = CastSpell(self.char, shrivelling)
     self.state.event_stack.append(cast)
-    choice = self.resolve_to_choice(SpendChoice)
+    choice = self.resolve_to_choice(CardSpendChoice)
     self.spend("sanity", 1, choice)
-    choice.resolve(self.state, "Cast")
+    choice.resolve(self.state, "Shrivelling")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       self.resolve_until_done()
 

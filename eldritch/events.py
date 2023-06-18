@@ -2143,8 +2143,9 @@ class CastSpell(Event):
       spend = values.ExactSpendPrerequisite(
           {"sanity": cost}
       )
-      self.choice = SpendChoice(
-          self.character, f"Cast [{self.spell.name}]", ["Cast", "Cancel"], spends=[spend, None],
+      self.choice = CardSpendChoice(
+          self.character, f"Cast [{self.spell.name}]",
+          [self.spell.name, "Cancel"], spends=[spend, None],
       )
 
     if not self.choice.is_done():
