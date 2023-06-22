@@ -502,6 +502,12 @@ class GameState:
       self.handle_remove_trophy(data.get("char"), data.get("handle"))
     elif data.get("type") == "redo_sliders":
       self.handle_redo_sliders(data.get("char"))
+    elif data.get("type") == "set_encounter":
+      self.handle_set_card(data.get("card"))
+    elif data.get("type") == "set_mythos":
+      self.handle_set_card(data.get("card"))
+    elif data.get("type") == "set_gate":
+      self.handle_set_card(data.get("card"))
     else:
       raise UnknownMove(data.get("type"))
 
@@ -1070,6 +1076,31 @@ class GameState:
     chars = [char for char in self.characters if char.name == name]
     assert len(chars) == 1
     self.event_stack.append(events.SliderInput(chars[0], free=True))
+
+  def handle_set_card(self, name):
+    if name.startswith("Mythos"):
+      cards = [card for card in self.mythos if card.name == name]
+      assert len(cards) == 1
+      self.mythos.remove(cards[0])
+      self.mythos.appendleft(cards[0])
+      return
+    if name.startswith("Gate"):
+      cards = [card for card in self.gate_cards if card.name == name]
+      assert len(cards) == 1
+      self.gate_cards.remove(cards[0])
+      self.gate_cards.appendleft(cards[0])
+      return
+    for place in self.places.values():
+      if not isinstance(getattr(place, "encounters", None), list):
+        continue
+      cards = [card for card in place.encounters if card.name == name]
+      if len(cards) != 1:
+        continue
+      place.encounters.remove(cards[0])
+      place.encounters.insert(0, cards[0])
+      break
+    else:
+      raise InvalidMove(f"Card {name} not found")
 
   def handle_slider(self, char_idx, name, value):
     assert self.event_stack
