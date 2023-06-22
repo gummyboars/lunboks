@@ -295,7 +295,7 @@ locationNames = [
   "Isle",
 ];
 carefullyAdd(locationNames, true);
-tokens = ["Dollar", "Clue", "Sanity", "Stamina", "Slider", "Seal", "Doom", "Activity"];
+tokens = ["Dollar", "Clue", "Sanity", "Stamina", "Slider", "Seal", "Doom", "Closed", "Activity"];
 carefullyAdd(tokens, false);
 terrors = [];
 for (let i = 0; i < 11; i++) {

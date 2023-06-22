@@ -850,6 +850,11 @@ function updateCharacters(newCharacters) {
     } else {
       animateMovingDiv(characterMarkers[character.name], place);
     }
+    if (character.delayed_until != null || character.lose_turn_until != null || character.arrested_until != null) {
+      characterMarkers[character.name].getElementsByClassName("markercontainer")[0].classList.add("delayed");
+    } else {
+      characterMarkers[character.name].getElementsByClassName("markercontainer")[0].classList.remove("delayed");
+    }
   }
 }
 
@@ -1574,6 +1579,9 @@ function updatePlaces(places, activity) {
     if (place.clues != null) {
       updateClues(place);
     }
+    if (place.closed != null) {
+      updateClosed(place);
+    }
     updateActivity(placeName, activity[placeName]);
   }
 }
@@ -1631,6 +1639,28 @@ function updateSeal(place) {
     sealDiv.appendChild(cnvContainer);
     charsDiv.appendChild(sealDiv);
     renderAssetToDiv(cnvContainer, "Seal");
+  }
+}
+
+function updateClosed(place) {
+  let charsDiv = document.getElementById("place" + place.name + "chars");
+  if (charsDiv == null) {  // The sky is a special case.
+    return;
+  }
+  let isClosed = charsDiv.getElementsByClassName("closed").length;
+  if (!place.closed && isClosed) {
+    charsDiv.removeChild(charsDiv.getElementsByClassName("closed")[0]);
+  } else if (place.closed && !isClosed) {
+    let closedDiv = document.createElement("DIV");
+    closedDiv.classList.add("closed");
+    let cnvContainer = document.createElement("DIV");
+    cnvContainer.classList.add("closedcontainer", "cnvcontainer");
+    let cnv = document.createElement("CANVAS");
+    cnv.classList.add("cluecnv");
+    cnvContainer.appendChild(cnv);
+    closedDiv.appendChild(cnvContainer);
+    charsDiv.appendChild(closedDiv);
+    renderAssetToDiv(cnvContainer, "Closed");
   }
 }
 

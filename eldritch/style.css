@@ -800,6 +800,10 @@ button:disabled {
   width: calc(min(80vw, 128vh) / 29);
   height: calc(min(80vw, 128vh) * 3 / 58);
 }
+.markercontainer.delayed {
+  transform: rotate(90deg);
+  transform-origin: center;
+}
 .markercnv {
   position: absolute;
   top: 0;
@@ -1045,6 +1049,13 @@ button:disabled {
 .placeleft .gate {
   left: 0;
 }
+.closed {
+  align-self: center;
+  position: relative;
+  height: calc(min(80vw, 128vh) / 20);
+  width: calc(min(80vw, 128vh) / 32);
+  order: 2;
+}
 .clue, .seal {
   align-self: center;
   position: relative;
@@ -1063,6 +1074,14 @@ button:disabled {
 }
 .seal, .activity {
   order: 1;
+}
+.closedcontainer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: calc(min(80vw, 128vh) / 20);
+  width: calc(min(80vw, 128vh) / 32);
+  z-index: 11;
 }
 .cluecontainer {
   position: absolute;
