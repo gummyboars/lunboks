@@ -215,6 +215,12 @@ function continueInit(gameId) {
   for (let name of monsterNames) {
     addOptionToSelect("trophychoice", name);
   }
+  for (let i = 1; i < 67; i++) {
+    addOptionToSelect("nextmythoschoice", "Mythos" + i);
+  }
+  for (let i = 1; i < 50; i++) {
+    addOptionToSelect("nextgatechoice", "Gate" + i);
+  }
 
   window.addEventListener("resize", function() {
     clearTimeout(statTimeout);
@@ -352,6 +358,16 @@ function changePlaceChoice(e) {
   let name = document.getElementById("placechoice").value;
   for (let elem of document.getElementsByClassName("placetext")) {
     elem.innerText = name;
+  }
+  let nextCardChoice = document.getElementById("nextcardchoice");
+  while (nextCardChoice.children.length) {
+    nextCardChoice.removeChild(nextCardChoice.firstChild);
+  }
+  for (let i = 1; i <= 7; i++) {
+    let opt = document.createElement("OPTION");
+    opt.value = name + i;
+    opt.label = name + i;
+    nextCardChoice.appendChild(opt);
   }
 }
 
@@ -532,6 +548,21 @@ function removeTrophy(e) {
 function redoSliders(e) {
   let charName = document.getElementById("playerchoice").value;
   ws.send(JSON.stringify({"type": "redo_sliders", "char": charName}));
+}
+
+function setEncounter(e) {
+  let encName = document.getElementById("nextcardchoice").value;
+  ws.send(JSON.stringify({"type": "set_encounter", "card": encName}));
+}
+
+function setMythos(e) {
+  let mythName = document.getElementById("nextmythoschoice").value;
+  ws.send(JSON.stringify({"type": "set_mythos", "card": mythName}));
+}
+
+function setGate(e) {
+  let gateName = document.getElementById("nextgatechoice").value;
+  ws.send(JSON.stringify({"type": "set_gate", "card": gateName}));
 }
 
 function bringTop(e) {
