@@ -2198,6 +2198,10 @@ function drawChosenChar(character) {
   updateInitialStats(sheet, character);
   let sliders = sheet.getElementsByClassName("sliders")[0];
   renderAssetToDiv(sliders, character.name + " sliders");
+  let focus = sheet.getElementsByClassName("focus")[0];
+  renderAssetToDiv(focus, character.name + " focus");
+  let home = sheet.getElementsByClassName("home")[0];
+  renderAssetToDiv(home, character.name + " home");
 
   updateInitialPossessions(sheet, character);
 
@@ -2247,6 +2251,7 @@ function updateCharacterSheets(characters, pendingCharacters, playerIdx, firstPl
         addOptionToSelect("playerchoice", charName);
       }
       updateInitialStats(sheet, allCharacters[charName]);
+      updateFocusHome(sheet, allCharacters[charName]);
       updateSliders(sheet, allCharacters[charName], false);
       updateInitialPossessions(sheet, allCharacters[charName]);
       // TODO: some characters may start with trophies.
@@ -2366,6 +2371,22 @@ function createCharacterSheet(idx, character, rightUI, isPlayer) {
     }
   }
   charTop.appendChild(charStats);
+
+  let focusHome = document.createElement("DIV");
+  focusHome.classList.add("focushome");
+  let focus = document.createElement("DIV");
+  focus.classList.add("focus", "cnvcontainer");
+  let focusCnv = document.createElement("CANVAS");
+  focusCnv.classList.add("worldcnv");
+  focus.appendChild(focusCnv);
+  focusHome.appendChild(focus);
+  let home = document.createElement("DIV");
+  home.classList.add("home", "cnvcontainer");
+  let homeCnv = document.createElement("CANVAS");
+  homeCnv.classList.add("worldcnv");
+  home.appendChild(homeCnv);
+  focusHome.appendChild(home);
+  div.appendChild(focusHome);
 
   let sliderCont = document.createElement("DIV");
   sliderCont.classList.add("slidercont");
@@ -2496,6 +2517,7 @@ function updateCharacterSheet(sheet, character, order, isPlayer, choice, spent) 
     selectType = choice.select_type;
   }
   updateCharacterStats(sheet, character, isPlayer, spent, spendable);
+  updateFocusHome(sheet, character);
   updateSliders(sheet, character, isPlayer);
   updatePossessions(sheet, character.possessions, isPlayer, spent, chosen, selectType);
   updateTrophies(sheet, character, isPlayer, spent);
@@ -2634,6 +2656,13 @@ function updateStats() {
     ctx.fill();
     ctx.restore();
   });
+}
+
+function updateFocusHome(sheet, character) {
+  let focus = sheet.getElementsByClassName("focus")[0];
+  renderAssetToDiv(focus, character.name + " focus");
+  let home = sheet.getElementsByClassName("home")[0];
+  renderAssetToDiv(home, character.name + " home");
 }
 
 function updateSliders(sheet, character, isPlayer) {
