@@ -112,6 +112,14 @@ function renderDefaultToCanvas(cnv, width, height, assetName, variant) {
   if (assetName.endsWith(" picture")) {
     return renderTextRectangle(cnv, assetName.substring(0, assetName.length - 8), "silver", "black");
   }
+  if (assetName.endsWith(" focus")) {
+    let focus = characterData[assetName.substring(0, assetName.length - 6)]["focus"];
+    return renderTextRectangle(cnv, "Focus: " + focus, "silver", "black");
+  }
+  if (assetName.endsWith(" home")) {
+    let home = characterData[assetName.substring(0, assetName.length - 5)]["home"];
+    return renderTextRectangle(cnv, home, "silver", "black");
+  }
   if (monsterNames.includes(assetName)) {
     return renderTextRectangle(cnv, assetName, "black", "white");
   }
@@ -269,7 +277,7 @@ function renderSliders(cnv, charName) {
     let textX = 1.25 * cnv.width / 11;
     ctx.fillText(name, textX, textY);
 
-    let sliderValue = characterSliders[charName][idx];
+    let sliderValue = characterData[charName]["sliders"][idx];
     let sliderIncrement = (idx % 2 == 0) ? 1 : -1;
     let xoff = (idx % 4 == 2 || idx % 4 == 3) ? 2 : 1;
     for (let j = 1; j < 5; j++) {

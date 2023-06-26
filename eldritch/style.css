@@ -1244,6 +1244,23 @@ button:disabled {
 .dollars {
   order: 4;
 }
+.focushome {
+  width: calc(min(20vw, 32vh));
+  height: calc(min(20vw, 32vh) / 16);
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+}
+.collapsed .focushome {
+  max-height: 0;
+  overflow-y: hidden;
+}
+.focus, .home {
+  width: calc(min(10vw, 16vh));
+  height: calc(min(20vw, 32vh) / 16);
+  position: relative;
+}
 .slidercont {
   width: calc(min(20vw, 32vh));
   height: calc(min(20vw, 32vh) * 7 / 16);

@@ -14,30 +14,34 @@ function carefullyAdd(names, isName) {
   }
 }
 
-characterSliders = {
-  "Student": [1, 4, 1, 4, 1, 4],
-  "Drifter": [0, 6, 2, 5, 0, 3],
-  "Salesman": [2, 3, 1, 6, 0, 4],
-  "Psychologist": [0, 3, 1, 4, 2, 5],
-  "Photographer": [2, 3, 2, 4, 0, 4],
-  "Magician": [2, 4, 1, 3, 2, 3],
-  "Author": [1, 3, 0, 5, 1, 5],
-  "Professor": [0, 5, 0, 3, 3, 4],
-  "Dilettante": [0, 4, 1, 5, 1, 5],
-  "Private Eye": [3, 4, 2, 3, 0, 3],
-  "Scientist": [1, 5, 1, 3, 2, 4],
-  "Researcher": [1, 5, 0, 5, 1, 3],
-  "Nun": [1, 4, 0, 4, 1, 6],
-  "Doctor": [0, 5, 0, 4, 2, 4],
-  "Archaeologist": [1, 3, 2, 3, 1, 5],
-  "Gangster": [2, 4, 3, 4, 0, 3],
+characterData = {
+  "Student": {"sliders": [1, 4, 1, 4, 1, 4], "focus": 3, "home": "Bank"},
+  "Drifter": {"sliders": [0, 6, 2, 5, 0, 3], "focus": 1, "home": "Docks"},
+  "Salesman": {"sliders": [2, 3, 1, 6, 0, 4], "focus": 1, "home": "Store"},
+  "Psychologist": {"sliders": [0, 3, 1, 4, 2, 5], "focus": 2, "home": "Asylum"},
+  "Photographer": {"sliders": [2, 3, 2, 4, 0, 4], "focus": 2, "home": "Newspaper"},
+  "Magician": {"sliders": [2, 4, 1, 3, 2, 3], "focus": 2, "home": "Shoppe"},
+  "Author": {"sliders": [1, 3, 0, 5, 1, 5], "focus": 2, "home": "Diner"},
+  "Professor": {"sliders": [0, 5, 0, 3, 3, 4], "focus": 2, "home": "Administration"},
+  "Dilettante": {"sliders": [0, 4, 1, 5, 1, 5], "focus": 1, "home": "Train"},
+  "Private Eye": {"sliders": [3, 4, 2, 3, 0, 3], "focus": 3, "home": "Police"},
+  "Scientist": {"sliders": [1, 5, 1, 3, 2, 4], "focus": 1, "home": "Science"},
+  "Researcher": {"sliders": [1, 5, 0, 5, 1, 3], "focus": 2, "home": "Library"},
+  "Nun": {"sliders": [1, 4, 0, 4, 1, 6], "focus": 1, "home": "Church"},
+  "Doctor": {"sliders": [0, 5, 0, 4, 2, 4], "focus": 2, "home": "Hospital"},
+  "Archaeologist": {"sliders": [1, 3, 2, 3, 1, 5], "focus": 2, "home": "Shop"},
+  "Gangster": {"sliders": [2, 4, 3, 4, 0, 3], "focus": 1, "home": "House"},
 };
-characterNames = Object.keys(characterSliders);
+characterNames = Object.keys(characterData);
 carefullyAdd(characterNames, true);
 characterTitles = characterNames.map(name => name + " title");
 carefullyAdd(characterTitles, false);
 characterPictures = characterNames.map(name => name + " picture");
 carefullyAdd(characterPictures, false);
+characterFocus = characterNames.map(name => name + " focus");
+carefullyAdd(characterFocus, false);
+characterHome = characterNames.map(name => name + " home");
+carefullyAdd(characterHome, false);
 characterSliderNames = characterNames.map(name => name + " sliders");
 carefullyAdd(characterSliderNames, false);
 sliderLocations = [];
