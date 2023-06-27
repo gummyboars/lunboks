@@ -383,6 +383,7 @@ class GameState:
         output["choice"]["spendable"] = list(choice.spendable)
         output["choice"]["spent"] = choice.spend_map
         output["choice"]["remaining_spend"] = choice.remaining_spend
+        output["choice"]["remaining_max"] = choice.remaining_max
 
       if isinstance(choice, events.CardChoice):
         output["choice"]["cards"] = choice.choices

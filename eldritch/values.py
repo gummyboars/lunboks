@@ -291,6 +291,9 @@ class SpendValue(metaclass=abc.ABCMeta):
         if spend_type not in self.spend_types() and spend_count
     }
 
+  def remaining_max(self, state):
+    return self.remaining_spend(state)
+
   @abc.abstractmethod
   def spend_types(self):
     raise NotImplementedError
@@ -359,6 +362,14 @@ class RangeSpendPrerequisite(SpendValue):
     if spent < spend_min:
       remaining[self.spend_type] = spend_min - spent
     elif spent > spend_max:
+      remaining[self.spend_type] = spend_max - spent
+    return remaining
+
+  def remaining_max(self, state):
+    remaining = super().remaining_spend(state)
+    spend_max = self.spend_max.value(state) if isinstance(self.spend_max, Value) else self.spend_max
+    spent = sum(self.spend_map[self.spend_type].values())
+    if spent != spend_max:
       remaining[self.spend_type] = spend_max - spent
     return remaining
 

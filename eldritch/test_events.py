@@ -2201,6 +2201,7 @@ class SpendChoiceTest(EventTest):
     self.resolve_to_choice(SpendChoice)
 
     self.assertEqual(choice.remaining_spend, [{"dollars": 1}, False])
+    self.assertEqual(choice.remaining_max, [{"dollars": 1}, False])
     with self.assertRaisesRegex(InvalidMove, "additional 1 dollars"):
       choice.resolve(self.state, "Food")
     self.assertFalse(choice.is_done())
@@ -2216,6 +2217,7 @@ class SpendChoiceTest(EventTest):
     self.resolve_to_choice(SpendChoice)
 
     self.assertEqual(choice.remaining_spend, [{"dollars": 1}, False])
+    self.assertEqual(choice.remaining_max, [{"dollars": 1}, False])
     with self.assertRaisesRegex(InvalidMove, "additional 1 dollars"):
       choice.resolve(self.state, "Food")
 
@@ -2261,19 +2263,23 @@ class SpendChoiceTest(EventTest):
     self.resolve_to_choice(SpendChoice)
 
     self.assertEqual(choice.remaining_spend, [{"dollars": 2}, False])
+    self.assertEqual(choice.remaining_max, [{"dollars": 4}, False])
     with self.assertRaisesRegex(InvalidMove, "additional 2 dollars"):
       choice.resolve(self.state, "Yes")
 
     self.spend("dollars", 2, choice)
     self.assertEqual(choice.remaining_spend, [False, {"dollars": -2}])
+    self.assertEqual(choice.remaining_max, [{"dollars": 2}, {"dollars": -2}])
     with self.assertRaisesRegex(InvalidMove, "overspent 2 dollars"):
       choice.resolve(self.state, "No")
 
     self.spend("dollars", 2, choice)
     self.assertEqual(choice.remaining_spend, [False, {"dollars": -4}])
+    self.assertEqual(choice.remaining_max, [False, {"dollars": -4}])
 
     self.spend("dollars", 2, choice)
     self.assertEqual(choice.remaining_spend, [{"dollars": -2}, {"dollars": -6}])
+    self.assertEqual(choice.remaining_max, [{"dollars": -2}, {"dollars": -6}])
     with self.assertRaisesRegex(InvalidMove, "overspent 2 dollars"):
       choice.resolve(self.state, "Yes")
 
@@ -2288,6 +2294,7 @@ class SpendChoiceTest(EventTest):
     self.state.event_stack.append(choice)
     self.resolve_to_choice(SpendChoice)
     self.assertEqual(choice.remaining_spend, [{"stamina": 1, "sanity": 1}, False])
+    self.assertEqual(choice.remaining_max, [{"stamina": 1, "sanity": 1}, False])
     with self.assertRaisesRegex(InvalidMove, "1 (stamina|sanity), 1 (stamina|sanity)"):
       choice.resolve(self.state, "Sign")
     self.spend("stamina", 1, choice)
@@ -2301,7 +2308,7 @@ class SpendChoiceTest(EventTest):
     self.assertEqual(self.char.sanity, 4)
     self.assertEqual(self.char.stamina, 4)
 
-  def testMultilpeSpendInvalidatesSingle(self):
+  def testMultipleSpendInvalidatesSingle(self):
     stam = values.ExactSpendPrerequisite({"stamina": 1})
     san = values.ExactSpendPrerequisite({"sanity": 1})
     choice = SpendChoice(self.char, "choose", ["A", "B", "C"], spends=[stam, san, None])
@@ -2313,6 +2320,9 @@ class SpendChoiceTest(EventTest):
     self.resolve_to_choice(SpendChoice)
     self.assertEqual(
         choice.remaining_spend, [{"sanity": -1}, {"stamina": -1}, {"sanity": -1, "stamina": -1}],
+    )
+    self.assertEqual(
+        choice.remaining_max, [{"sanity": -1}, {"stamina": -1}, {"sanity": -1, "stamina": -1}],
     )
     choice.unspend("stamina")
     self.resolve_to_choice(SpendChoice)
@@ -2328,6 +2338,7 @@ class SpendChoiceTest(EventTest):
     choice = self.resolve_to_choice(SpendChoice)
 
     self.assertEqual(choice.remaining_spend, [{"gates": 1}, False])
+    self.assertEqual(choice.remaining_max, [{"gates": 1}, False])
     self.assertIn(0, self.state.spendables)
     self.assertCountEqual(self.state.spendables[0].keys(), ["Gate Abyss0", "Gate Abyss1"])
     self.toggle_spend(0, "Gate Abyss1", choice)
@@ -2364,6 +2375,7 @@ class SpendChoiceTest(EventTest):
     choice = self.resolve_to_choice(SpendChoice)
 
     self.assertEqual(choice.remaining_spend, [{"toughness": 2}, False])
+    self.assertEqual(choice.remaining_max, [{"toughness": 2}, False])
     self.assertIn(0, self.state.spendables)
     self.assertEqual(self.state.spendables[0].keys(), {"Cultist", "Vampire", "Dream Flier"})
     self.toggle_spend(0, "Cultist", choice)
@@ -2397,6 +2409,7 @@ class SpendChoiceTest(EventTest):
     choice = self.resolve_to_choice(SpendChoice)
 
     self.assertEqual(choice.remaining_spend, [{"toughness": 2}, False])
+    self.assertEqual(choice.remaining_max, [{"toughness": 2}, False])
     self.assertIn(0, self.state.spendables)
     self.assertEqual(self.state.spendables[0].keys(), {"Maniac"})
     self.toggle_spend(0, "Maniac", choice)

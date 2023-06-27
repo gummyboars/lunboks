@@ -3047,11 +3047,13 @@ class SpendItemChoiceMixin(SpendMixin):
     self.spend_prereq = spend
     self.spendable = spend.spend_types()
     self.remaining_spend = True
+    self.remaining_max = True
     spend.spend_event = self
 
   def compute_choices(self, state):
     super().compute_choices(state)
     self.remaining_spend = self.spend_prereq.remaining_spend(state) or False
+    self.remaining_max = self.spend_prereq.remaining_max(state) or False
 
   def resolve(self, state, choice=None):
     if choice == "done" and not self.chosen:
@@ -3087,6 +3089,7 @@ class SpendMultiChoiceMixin(SpendMixin):
     self.spends = []
     self.spendable = set()
     self.remaining_spend = [value is not None for value in spends]
+    self.remaining_max = [value is not None for value in spends]
     for spend in spends:
       spend = spend or values.SpendNothing()
       assert isinstance(spend, values.SpendValue)
@@ -3097,6 +3100,7 @@ class SpendMultiChoiceMixin(SpendMixin):
   def compute_choices(self, state):
     super().compute_choices(state)
     self.remaining_spend = [spend.remaining_spend(state) or False for spend in self.spends]
+    self.remaining_max = [spend.remaining_max(state) or False for spend in self.spends]
 
   def resolve(self, state, choice=None):
     if choice not in self.choices:

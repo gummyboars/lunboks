@@ -261,6 +261,7 @@ class SpendTest(unittest.TestCase):
     spend.spend_event = Dummy(spend_map=collections.defaultdict(dict))
     # Prerequisite starts unsatisfied.
     self.assertEqual(spend.remaining_spend(state), {"dollars": 1})
+    self.assertEqual(spend.remaining_max(state), {"dollars": 1})
     # Spend one dollar, the prereq is satisfied.
     spend.spend_event.spend_map["dollars"]["dollars"] = 1
     self.assertEqual(spend.remaining_spend(state), {})
@@ -270,6 +271,7 @@ class SpendTest(unittest.TestCase):
     # Spend an extra dollar, now no longer satisfied.
     spend.spend_event.spend_map["dollars"]["dollars"] = 2
     self.assertEqual(spend.remaining_spend(state), {"dollars": -1})
+    self.assertEqual(spend.remaining_max(state), {"dollars": -1})
 
   def testSpendZeroPrerequisite(self):
     state = DummyState()
@@ -277,24 +279,31 @@ class SpendTest(unittest.TestCase):
     spend.spend_event = Dummy(spend_map=collections.defaultdict(dict))
     # This can happen when trying to buy an item that has been discounted to zero dollars.
     self.assertEqual(spend.remaining_spend(state), {})
+    self.assertEqual(spend.remaining_max(state), {})
     spend.spend_event.spend_map["dollars"]["dollars"] = 1
     self.assertEqual(spend.remaining_spend(state), {"dollars": -1})
+    self.assertEqual(spend.remaining_max(state), {"dollars": -1})
     # Should be satisfied both when not present and when present but 0.
     spend.spend_event.spend_map["dollars"]["dollars"] = 0
     self.assertEqual(spend.remaining_spend(state), {})
+    self.assertEqual(spend.remaining_max(state), {})
 
   def testRangePrerequisite(self):
     state = DummyState()
     spend = RangeSpendPrerequisite("dollars", 1, 6)
     spend.spend_event = Dummy(spend_map=collections.defaultdict(dict))
     self.assertEqual(spend.remaining_spend(state), {"dollars": 1})
+    self.assertEqual(spend.remaining_max(state), {"dollars": 6})
 
     spend.spend_event.spend_map["dollars"]["dollars"] = 1
     self.assertEqual(spend.remaining_spend(state), {})
+    self.assertEqual(spend.remaining_max(state), {"dollars": 5})
     spend.spend_event.spend_map["dollars"]["dollars"] = 6
     self.assertEqual(spend.remaining_spend(state), {})
+    self.assertEqual(spend.remaining_max(state), {})
     spend.spend_event.spend_map["dollars"]["dollars"] = 7
     self.assertEqual(spend.remaining_spend(state), {"dollars": -1})
+    self.assertEqual(spend.remaining_max(state), {"dollars": -1})
 
   def testDynamicRange(self):
     state = DummyState()
@@ -303,12 +312,16 @@ class SpendTest(unittest.TestCase):
     spend.spend_event = Dummy(spend_map=collections.defaultdict(dict))
 
     self.assertEqual(spend.remaining_spend(state), {"sanity": 1})
+    self.assertEqual(spend.remaining_max(state), {"sanity": 3})
     spend.spend_event.spend_map["sanity"]["sanity"] = 1
     self.assertEqual(spend.remaining_spend(state), {})
+    self.assertEqual(spend.remaining_max(state), {"sanity": 2})
     spend.spend_event.spend_map["sanity"]["sanity"] = 3
     self.assertEqual(spend.remaining_spend(state), {})
+    self.assertEqual(spend.remaining_max(state), {})
     char.sanity = 2
     self.assertEqual(spend.remaining_spend(state), {"sanity": -1})
+    self.assertEqual(spend.remaining_max(state), {"sanity": -1})
 
   def testSpendMultipleTypes(self):
     state = DummyState()
@@ -327,6 +340,7 @@ class SpendTest(unittest.TestCase):
     state = DummyState()
     spend = ExactSpendPrerequisite({"dollars": 1, "clues": 2})
     spend.spend_event = Dummy(spend_map=collections.defaultdict(dict))
+    self.assertEqual(spend.remaining_spend(state), {"dollars": 1, "clues": 2})
     self.assertEqual(spend.remaining_spend(state), {"dollars": 1, "clues": 2})
 
     spend.spend_event.spend_map["dollars"]["dollars"] = 1
@@ -363,6 +377,7 @@ class SpendToughnessTest(unittest.TestCase):
     # A gate does not count as 5 toughness for TougnessSpend.
     spend.spend_event.spend_map["toughness"].clear()
     self.assertEqual(spend.remaining_spend(state), {"gates": -1, "toughness": 5})
+    self.assertEqual(spend.remaining_max(state), {"gates": -1, "toughness": 5})
 
   def testToughnessOverspend(self):
     state = DummyState()
@@ -385,6 +400,7 @@ class SpendToughnessTest(unittest.TestCase):
     spend = ToughnessOrGatesSpend(10)
     spend.spend_event = Dummy(spend_map=collections.defaultdict(dict))
     self.assertEqual(spend.remaining_spend(state), {"toughness": 10})
+    self.assertEqual(spend.remaining_max(state), {"toughness": 10})
 
     spend.spend_event.spend_map["toughness"]["Some monster"] = 4
     spend.spend_event.spend_map["gates"]["Some gate"] = 1
