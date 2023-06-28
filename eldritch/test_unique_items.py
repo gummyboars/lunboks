@@ -581,8 +581,11 @@ class GateBoxTest(EventTest):
     self.resolve_to_choice(events.GateChoice)
     self.assertIn("Gate Box0", self.state.usables[0])
     self.state.handle_give(0, 1, "Gate Box0", None)
-    self.state.done_using[0] = True
-    # Dummy now no longer has the choice
+    # Dummy now only has one choice, but it is not chosen for them - they still have the ability
+    # to continue to trade if they wish.
+    choice = self.resolve_to_choice(events.GateChoice)
+    self.assertEqual(choice.choices, ["Woods"])
+    choice.resolve(self.state, "Woods")
     self.resolve_until_done()
     self.state.next_turn()
     # Nun has no one to trade with, so automatically uses the gate box

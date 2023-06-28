@@ -2934,7 +2934,7 @@ class MonsterChoice(ChoiceEvent):
   def compute_choices(self, state):
     self.invalid_choices = {idx: True for idx, val in enumerate(self._annotations) if val}
     valid_choices = [idx for idx in range(len(self.monsters)) if idx not in self.invalid_choices]
-    if len(valid_choices) == 1:
+    if len(valid_choices) == 1 and not state.usables:  # Do not auto-choose if player can interrupt.
       self.choice = self.monsters[valid_choices[0]]
 
   def resolve(self, state, choice=None):
@@ -3504,7 +3504,7 @@ class GateChoice(MapChoice):
     if not self.choices:
       self.cancelled = True
       return
-    if len(self.choices) == 1 and self.none_choice is None:
+    if len(self.choices) == 1 and self.none_choice is None and not state.usables:
       self.choice = self.choices[0]
 
   def log(self, state):
@@ -3574,7 +3574,7 @@ class NearestGateChoice(MapChoice):
     if not self.choices:
       self.cancelled = True
       return
-    if len(self.choices) == 1 and self.none_choice is None:
+    if len(self.choices) == 1 and self.none_choice is None and not state.usables:
       self.choice = self.choices[0]
 
   def log(self, state):

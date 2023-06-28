@@ -428,6 +428,7 @@ class GameState:
       output["spendables"] = list(self.spendables[char_idx].keys())
     if self.usables.get(char_idx):
       output["usables"] = list(self.usables[char_idx].keys())
+    output["autochoose"] = not bool(self.usables)
     return output
 
   @classmethod
@@ -658,7 +659,7 @@ class GameState:
     }
     if self.turn_phase == "movement":
       # If the character is in another world with another character, let them trade before moving.
-      if isinstance(event, (events.ForceMovement, events.GateChoice)):
+      if isinstance(event, (events.ForceMovement, events.GateChoice)) and not event.is_done():
         if len([char for char in self.characters if char.place == event.character.place]) > 1:
           i[self.characters.index(event.character)]["trade"] = events.Nothing()
     return {char_idx: interrupts for char_idx, interrupts in i.items() if interrupts}
