@@ -1078,8 +1078,8 @@ function updateChoices(choice, current, isMyChoice, chooser) {
     setCardButtonText();
   }
   // Clean out any old choices it may have.
-  while (uichoice.getElementsByClassName("choice").length) {
-    uichoice.removeChild(uichoice.getElementsByClassName("choice")[0]);
+  for (let child of uichoice.getElementsByClassName("choice")) {
+    child.classList.add("todelete");
   }
   // Set prompt.
   let promptText = formatServerString(choice.prompt);
@@ -1113,16 +1113,19 @@ function updateChoices(choice, current, isMyChoice, chooser) {
     if (choice.places != null) {
       updatePlaceChoices(uichoice, choice.places, choice.annotations, isMyChoice);
     } else if (choice.cards != null) {
-      addCardChoices(uichoice, uicardchoice, choice.cards, choice.invalid_choices, choice.remaining_spend, choice.annotations, choice.sort_uniq, current, isMyChoice);
+      addCardChoices(uichoice, uicardchoice, choice.cards, choice.invalid_choices, choice.spent, choice.remaining_spend, choice.remaining_max, choice.annotations, choice.sort_uniq, current, isMyChoice);
     } else if (choice.monsters != null) {
       addMonsterChoices(uichoice, uicardchoice, choice.monsters, choice.invalid_choices, choice.annotations, current, isMyChoice);
     } else if (choice.monster != null) {
       addFightOrEvadeChoices(uichoice, uicardchoice, choice.monster, choice.choices, choice.invalid_choices, choice.annotations, current, isMyChoice);
     } else {
       if (isMyChoice) {
-        addChoices(uichoice, choice.choices, choice.invalid_choices, choice.remaining_spend);
+        addChoices(uichoice, choice.choices, choice.invalid_choices, choice.spent, choice.remaining_spend, choice.remaining_max);
       }
     }
+  }
+  while (uichoice.getElementsByClassName("todelete").length) {
+    uichoice.removeChild(uichoice.getElementsByClassName("todelete")[0]);
   }
 }
 
@@ -1181,7 +1184,7 @@ function addMonsterChoices(uichoice, cardChoice, monsters, invalidChoices, annot
     scrollParent.classList.remove("overflowing");
   }
   if (isMyChoice) {
-    addChoices(uichoice, otherChoices, [], []);
+    addChoices(uichoice, otherChoices, [], {}, [], []);
   }
 }
 
@@ -1303,7 +1306,7 @@ function addFightOrEvadeChoices(uichoice, cardChoice, monster, choices, invalidC
   }
 }
 
-function addCardChoices(uichoice, cardChoice, cards, invalidChoices, remainingSpend, annotations, sortUniq, current, isMyChoice) {
+function addCardChoices(uichoice, cardChoice, cards, invalidChoices, spent, remainingSpend, remainingMax, annotations, sortUniq, current, isMyChoice) {
   if (!cards) {
     return;
   }
@@ -1319,6 +1322,7 @@ function addCardChoices(uichoice, cardChoice, cards, invalidChoices, remainingSp
   let notFound = [];
   let newInvalid = [];
   let newRemainingSpend = [];
+  let newMaxSpend = [];
   for (let [idx, card] of cards.entries()) {
     if (!assetNames.includes(card)) {
       if (invalidChoices != null && invalidChoices.includes(idx)) {
@@ -1326,6 +1330,9 @@ function addCardChoices(uichoice, cardChoice, cards, invalidChoices, remainingSp
       }
       if (remainingSpend != null && remainingSpend.length > idx) {
         newRemainingSpend.push(remainingSpend[idx]);
+      }
+      if (remainingMax != null && remainingMax.length > idx) {
+        newMaxSpend.push(remainingMax[idx]);
       }
       notFound.push(card);
       continue;
@@ -1368,11 +1375,15 @@ function addCardChoices(uichoice, cardChoice, cards, invalidChoices, remainingSp
     holder.classList.remove("unchoosable", "mustspend");
     if (invalidChoices != null && invalidChoices.includes(idx)) {
       holder.classList.add("unchoosable");
-    } else if (remainingSpend != null && remainingSpend.length > idx && remainingSpend[idx]) {
-      let rem = remainingSpend[idx];
-      holder.classList.add("mustspend");
-      if (isMyChoice) {
-        div.onclick = function(e) { defaultSpend(rem, card); };
+    } else if (remainingMax != null && remainingMax.length > idx && remainingMax[idx]) {
+      let rem = remainingMax[idx];
+      let spentPct = spentPercent(spent, rem);
+      holder.getElementsByClassName("desc")[0].style.backgroundPosition = "left " + (100-spentPct) + "% top";
+      if (remainingSpend[idx]) {
+        holder.classList.add("mustspend");
+        if (isMyChoice) {
+          div.onclick = function(e) { defaultSpend(rem, card); };
+        }
       }
     }
   }
@@ -1383,15 +1394,27 @@ function addCardChoices(uichoice, cardChoice, cards, invalidChoices, remainingSp
     scrollParent.classList.remove("overflowing");
   }
   if (isMyChoice) {
-    addChoices(uichoice, notFound, newInvalid, newRemainingSpend);
+    addChoices(uichoice, notFound, newInvalid, spent, newRemainingSpend, newMaxSpend);
   }
 }
 
-function addChoices(uichoice, choices, invalidChoices, remainingSpend) {
+function addChoices(uichoice, choices, invalidChoices, spent, remainingSpend, remainingMax) {
+  let nameToDiv = {};
+  for (let child of uichoice.getElementsByClassName("choice")) {
+    nameToDiv[child.innerText] = child;
+  }
   for (let [idx, c] of choices.entries()) {
-    let div = document.createElement("DIV");
+    choiceText = serverNames[c] ?? c;
+    let div = nameToDiv[choiceText];
+    if (div == null) {
+      div = document.createElement("DIV");
+      uichoice.appendChild(div);
+    }
+    div.innerText = choiceText;
+    // Start with a clean slate and redo all class list calculations.
+    div.classList.remove("success", "fail", "unchoosable", "mustspend", "choosable", "todelete");
+    div.style.removeProperty("background-position");
     div.classList.add("choice");
-    div.innerText = serverNames[c] ?? c;
     if (c == "Pass") {
       div.classList.add("success");
     }
@@ -1401,15 +1424,50 @@ function addChoices(uichoice, choices, invalidChoices, remainingSpend) {
     div.onclick = function(e) { makeChoice(c); };
     if (invalidChoices != null && invalidChoices.includes(idx)) {
       div.classList.add("unchoosable");
-    } else if (remainingSpend != null && remainingSpend.length > idx && remainingSpend[idx]) {
-      let rem = remainingSpend[idx];
-      div.classList.add("mustspend");
-      div.onclick = function(e) { defaultSpend(rem, c); };
+    } else if (remainingMax != null && remainingMax.length > idx && remainingMax[idx]) {
+      let rem = remainingMax[idx];
+      let spentPct = spentPercent(spent, rem);
+      div.style.backgroundPosition = "left " + (100-spentPct) + "% top";
+      if (remainingSpend[idx]) {
+        div.classList.add("mustspend");
+        div.onclick = function(e) { defaultSpend(rem, c); };
+      } else {
+        div.classList.add("choosable");
+      }
     } else {
       div.classList.add("choosable");
     }
-    uichoice.appendChild(div);
   }
+}
+
+function spentPercent(spent, remaining) {
+  if (spent == null) {
+    return 0;
+  }
+  let totalSpent = 0;
+  for (let spendType in spent) {
+    for (let handle in spent[spendType]) {
+      totalSpent += spent[spendType][handle];
+    }
+  }
+  let totalRem = 0;
+  let overSpent = 0;
+  for (let spendType in remaining) {
+    if (remaining[spendType]) {
+      totalRem += Math.abs(remaining[spendType]);
+    }
+    if (remaining[spendType] < 0) {
+      overSpent -= remaining[spendType];
+    }
+  }
+  if (overSpent > 0) {
+    return 0; // TODO: decide what to do with this later
+  }
+  let totalSpendable = totalSpent + totalRem;
+  if (totalSpendable == 0) {
+    return 0;
+  }
+  return 100 * totalSpent / totalSpendable;
 }
 
 function updateUsables(usables, spendables, choice) {
@@ -1874,7 +1932,7 @@ function updatePlaceChoices(uichoice, places, annotations, isMyChoice) {
     }
   }
   if (isMyChoice && notFound.length) {
-    addChoices(uichoice, notFound);
+    addChoices(uichoice, notFound, [], {}, [], []);
   }
 }
 
@@ -2626,9 +2684,10 @@ function updateCharacterStats(sheet, character, isPlayer, spent, spendable) {
         renderAssetToDiv(movingStat, assetName);
         moveAndTranslateNode(movingStat, spendDiv, "abs");
         runningAnim.push(true);
-        movingStat.ontransitionend = function() { movingStat.classList.remove("moving"); doneAnimating(movingStat); finishAnim(); };
-        movingStat.ontransitioncancel = function() { movingStat.classList.remove("moving"); doneAnimating(movingStat); finishAnim(); };
+        movingStat.ontransitionend = function() { movingStat.classList.remove("moving"); doneAnimating(movingStat); };
+        movingStat.ontransitioncancel = function() { movingStat.classList.remove("moving"); doneAnimating(movingStat); };
         setTimeout(function() { movingStat.classList.add("moving"); movingStat.style.transform = "none"; }, 10);
+        setTimeout(finishAnim, 300);  // We are okay starting on the next update before this is done animating.
       }
       let removable = [];
       let maxRemovable = spendDiv.getElementsByClassName(name).length;
@@ -2639,9 +2698,10 @@ function updateCharacterStats(sheet, character, isPlayer, spent, spendable) {
         // TODO: find some way to make it visible for the whole journey
         moveAndTranslateNode(toRemove, statDiv, "abs");
         runningAnim.push(true);
-        toRemove.ontransitionend = function() { toRemove.parentNode.removeChild(toRemove); finishAnim(); };
-        toRemove.ontransitioncancel = function() { toRemove.parentNode.removeChild(toRemove); finishAnim(); };
+        toRemove.ontransitionend = function() { toRemove.parentNode.removeChild(toRemove); };
+        toRemove.ontransitioncancel = function() { toRemove.parentNode.removeChild(toRemove); };
         setTimeout(function() { toRemove.classList.add("moving"); toRemove.style.transform = "none"; }, 10);
+        setTimeout(finishAnim, 300);
       }
     }
   }
