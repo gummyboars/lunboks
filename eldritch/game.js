@@ -17,6 +17,7 @@ oldVisuals = {};
 runningAnim = [];
 messageQueue = [];
 statTimeout = null;
+autoClickTimeout = null;
 cardsStyle = "flex";
 stepping = false;
 statNames = {"stamina": "Stamina", "sanity": "Sanity", "clues": "Clue", "dollars": "Dollar"};
@@ -327,7 +328,7 @@ function handleData(data) {
   updateCharacters(data.characters);
   updateSliderButton(data.sliders, data.chooser == data.player_idx);
   markVisualsForDeletion();
-  updateChoices(data.choice, data.current, data.chooser == data.player_idx, data.characters[data.chooser]);
+  updateChoices(data.choice, data.current, data.chooser == data.player_idx, data.characters[data.chooser], data.autochoose);
   updateMonsters(data.monsters);
   updateMonsterChoices(myChoice, data.monsters);
   updatePlaceBoxes(data.places, data.activity);
@@ -1034,7 +1035,7 @@ function deleteUnusedVisuals() {
   oldVisuals = {};
 }
 
-function updateChoices(choice, current, isMyChoice, chooser) {
+function updateChoices(choice, current, isMyChoice, chooser, autoChoose) {
   let btn = document.getElementById("doneitems");
   let uichoice = document.getElementById("uichoice");
   let uicardchoice = document.getElementById("uicardchoice");
@@ -1113,7 +1114,7 @@ function updateChoices(choice, current, isMyChoice, chooser) {
     if (choice.places != null) {
       updatePlaceChoices(uichoice, choice.places, choice.annotations, isMyChoice);
     } else if (choice.cards != null) {
-      addCardChoices(uichoice, uicardchoice, choice.cards, choice.invalid_choices, choice.spent, choice.remaining_spend, choice.remaining_max, choice.annotations, choice.sort_uniq, current, isMyChoice);
+      addCardChoices(uichoice, uicardchoice, choice.cards, choice.invalid_choices, choice.spent, choice.remaining_spend, choice.remaining_max, choice.annotations, choice.sort_uniq, current, isMyChoice, autoChoose);
     } else if (choice.monsters != null) {
       addMonsterChoices(uichoice, uicardchoice, choice.monsters, choice.invalid_choices, choice.annotations, current, isMyChoice);
     } else if (choice.monster != null) {
@@ -1251,7 +1252,7 @@ function addVisual(cardChoice, handle, name, visualType, choice, backName, monst
     holder.getElementsByClassName("desc")[0].innerText = formatServerString(descText);
   }
   if (choice != null) {
-    div.onclick = function(e) { makeChoice(choice); };
+    div.onclick = function(e) { clearTimeout(autoClickTimeout); autoClickTimeout = null; makeChoice(choice); };
   } else {
     div.onclick = null;
   }
@@ -1306,7 +1307,7 @@ function addFightOrEvadeChoices(uichoice, cardChoice, monster, choices, invalidC
   }
 }
 
-function addCardChoices(uichoice, cardChoice, cards, invalidChoices, spent, remainingSpend, remainingMax, annotations, sortUniq, current, isMyChoice) {
+function addCardChoices(uichoice, cardChoice, cards, invalidChoices, spent, remainingSpend, remainingMax, annotations, sortUniq, current, isMyChoice, autoChoose) {
   if (!cards) {
     return;
   }
@@ -1323,6 +1324,13 @@ function addCardChoices(uichoice, cardChoice, cards, invalidChoices, spent, rema
   let newInvalid = [];
   let newRemainingSpend = [];
   let newMaxSpend = [];
+  let autoClick = false;
+  if (cards.length == 1 && isMyChoice && autoChoose && assetNames.includes(cards[0])) {
+    if (annotations == null || annotations.length == 0) {
+      annotations = ["OK"];
+    }
+    autoClick = true;
+  }
   for (let [idx, card] of cards.entries()) {
     if (!assetNames.includes(card)) {
       if (invalidChoices != null && invalidChoices.includes(idx)) {
@@ -1353,13 +1361,23 @@ function addCardChoices(uichoice, cardChoice, cards, invalidChoices, spent, rema
     if (sortUniq) {
       holder.style.order = cardToOrder[card];
     }
+    if (autoClick) {
+      holder.classList.add("willchoose");
+    }
     if ((oldVisuals["cardchoice"] != null && oldVisuals["cardchoice"][card] != null) || card == oldCurrent) {
       shouldAnimate = false;
     }
     if (shouldAnimate) {
       holder.classList.add("entering");
       runningAnim.push(true);
-      let lastAnim = function() { doneAnimating(holder); finishAnim(); };
+      let lastAnim = function() {
+        doneAnimating(holder);
+        if (autoClick) {
+          holder.classList.add("autochoose");
+          autoClickTimeout = setTimeout(function() { makeChoice(card); }, 6000);
+        }
+        finishAnim();
+      };
       let firstAnim = function() {
         holder.ontransitionend = lastAnim;
         holder.ontransitioncancel = lastAnim;
@@ -1368,6 +1386,11 @@ function addCardChoices(uichoice, cardChoice, cards, invalidChoices, spent, rema
       holder.ontransitionend = firstAnim;
       holder.ontransitioncancel = firstAnim;
       setTimeout(function() { holder.classList.add("rotated"); holder.classList.remove("entering"); }, 10);
+    } else {  // No animation
+      if (autoClick) {
+        holder.classList.add("autochoose");
+        autoClickTimeout = setTimeout(function() { makeChoice(card); }, 6000);
+      }
     }
     if (holder.getElementsByClassName("desc").length > 0) {
       holder.getElementsByClassName("desc")[0].style.removeProperty("background-position");

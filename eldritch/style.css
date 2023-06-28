@@ -242,6 +242,14 @@ button:disabled {
   background-color: darkgrey;
   background: linear-gradient(to right, darkgrey 50%, darkgrey 50%);
 }
+.willchoose .desc {
+  transition: none;
+  background-position: right;
+}
+.autochoose .desc {
+  transition: background-position 6s linear;
+  background-position: left;
+}
 .choice {
   flex: 0 0 auto;
   border: 1px solid black;
