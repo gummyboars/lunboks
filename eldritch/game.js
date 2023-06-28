@@ -13,6 +13,7 @@ monsterChoice = {};
 charChoice = null;
 ancientChoice = null;
 oldCurrent = null;
+oldVisuals = {};
 runningAnim = [];
 messageQueue = [];
 statTimeout = null;
@@ -325,13 +326,15 @@ function handleData(data) {
   updatePlaces(data.places, data.activity);
   updateCharacters(data.characters);
   updateSliderButton(data.sliders, data.chooser == data.player_idx);
-  let oldVisuals = updateChoices(data.choice, data.current, data.chooser == data.player_idx, data.characters[data.chooser]);
+  markVisualsForDeletion();
+  updateChoices(data.choice, data.current, data.chooser == data.player_idx, data.characters[data.chooser]);
   updateMonsters(data.monsters);
   updateMonsterChoices(myChoice, data.monsters);
   updatePlaceBoxes(data.places, data.activity);
   updateUsables(data.usables, mySpendables, myChoice);
   updateDice(data.dice, data.player_idx, data.monsters);
   updateCurrentCard(data.current);
+  deleteUnusedVisuals();
   updateEventLog(data.event_log);
   if (!stepping && messageQueue.length && !runningAnim.length) {
     let msg = messageQueue.shift();
@@ -999,6 +1002,38 @@ function scrollCards(e, dir) {
   cardScroller.scrollLeft = cardScroller.scrollLeft + amount;
 }
 
+function markVisualsForDeletion() {
+  oldVisuals = {};
+  let uicardchoice = document.getElementById("uicardchoice");
+  for (let holder of uicardchoice.getElementsByClassName("cardholder")) {
+    holder.classList.add("todelete");
+    let found = false;
+    for (let className of ["fightchoice", "monsterchoice", "cardchoice", "bigmythoscard"]) {
+      for (let child of holder.children) {
+        if (child.classList.contains(className)) {
+          if (oldVisuals[className] == null) {
+            oldVisuals[className] = {};
+          }
+          oldVisuals[className][holder.handle] = holder;
+          found = true;
+          break;
+        }
+      }
+      if (found) {
+        break;
+      }
+    }
+  }
+}
+
+function deleteUnusedVisuals() {
+  let uicardchoice = document.getElementById("uicardchoice");
+  while (uicardchoice.getElementsByClassName("todelete").length) {
+    uicardchoice.removeChild(uicardchoice.getElementsByClassName("todelete")[0]);
+  }
+  oldVisuals = {};
+}
+
 function updateChoices(choice, current, isMyChoice, chooser) {
   let btn = document.getElementById("doneitems");
   let uichoice = document.getElementById("uichoice");
@@ -1031,7 +1066,7 @@ function updateChoices(choice, current, isMyChoice, chooser) {
   }
   if (choice == null || choice.to_spawn != null || choice.board_monster != null) {
     document.getElementById("charoverlay").classList.remove("shown");
-    return [];
+    return;
   }
   // Set display style for uichoice div.
   if (choice.items == null && isMyChoice) {
@@ -1045,16 +1080,6 @@ function updateChoices(choice, current, isMyChoice, chooser) {
   // Clean out any old choices it may have.
   while (uichoice.getElementsByClassName("choice").length) {
     uichoice.removeChild(uichoice.getElementsByClassName("choice")[0]);
-  }
-  let oldVisuals = [];
-  while (uicardchoice.getElementsByClassName("cardholder").length) {
-    let first = uicardchoice.getElementsByClassName("cardholder")[0];
-    if (first.getElementsByClassName("cnvcontainer").length) {
-      oldVisuals.push(first.getElementsByClassName("cnvcontainer")[0].assetName);
-    } else if (first.getElementsByClassName("monsterback").length) {
-      oldVisuals.push(first.getElementsByClassName("monsterback")[0].monsterInfo.name);
-    }
-    uicardchoice.removeChild(uicardchoice.getElementsByClassName("cardholder")[0]);
   }
   // Set prompt.
   let promptText = formatServerString(choice.prompt);
@@ -1088,18 +1113,17 @@ function updateChoices(choice, current, isMyChoice, chooser) {
     if (choice.places != null) {
       updatePlaceChoices(uichoice, choice.places, choice.annotations, isMyChoice);
     } else if (choice.cards != null) {
-      addCardChoices(uichoice, uicardchoice, choice.cards, choice.invalid_choices, choice.remaining_spend, choice.annotations, choice.sort_uniq, oldVisuals, current, isMyChoice);
+      addCardChoices(uichoice, uicardchoice, choice.cards, choice.invalid_choices, choice.remaining_spend, choice.annotations, choice.sort_uniq, current, isMyChoice);
     } else if (choice.monsters != null) {
-      addMonsterChoices(uichoice, uicardchoice, choice.monsters, choice.invalid_choices, choice.annotations, oldVisuals, current, isMyChoice);
+      addMonsterChoices(uichoice, uicardchoice, choice.monsters, choice.invalid_choices, choice.annotations, current, isMyChoice);
     } else if (choice.monster != null) {
-      addFightOrEvadeChoices(uichoice, uicardchoice, choice.monster, choice.choices, choice.invalid_choices, choice.remaining_spend, choice.annotations, oldVisuals, current, isMyChoice);
+      addFightOrEvadeChoices(uichoice, uicardchoice, choice.monster, choice.choices, choice.invalid_choices, choice.annotations, current, isMyChoice);
     } else {
       if (isMyChoice) {
         addChoices(uichoice, choice.choices, choice.invalid_choices, choice.remaining_spend);
       }
     }
   }
-  return oldVisuals;
 }
 
 function updateMonsterChoices(choice, monsterList) {
@@ -1135,40 +1159,20 @@ function updateMonsterChoices(choice, monsterList) {
   }
 }
 
-function addMonsterChoices(uichoice, cardChoice, monsters, invalidChoices, annotations, oldVisuals, current, isMyChoice) {
+function addMonsterChoices(uichoice, cardChoice, monsters, invalidChoices, annotations, current, isMyChoice) {
   let otherChoices = [];
   for (let [idx, monster] of monsters.entries()) {
     if (typeof(monster) == "string") {
       otherChoices.push(monster);
       continue;
     }
-    let [holder, div, cnv] = addVisual(cardChoice, "monster", isMyChoice, false, null, annotations && annotations[idx]);
-    div.removeChild(cnv);
-    let frontDiv = document.createElement("DIV");
-    frontDiv.classList.add("fightchoice", "cnvcontainer");
-    let backDiv = document.createElement("DIV");
-    backDiv.classList.add("fightchoice", "monsterback");
-    backDiv.monsterInfo = monster;
-    let handle = monster.handle;
-    if (isMyChoice) {
-      div.onclick = function(e) { makeChoice(handle); };
-    }
+    let [holder, div] = addVisual(cardChoice, monster.handle, monster.name, "monster", isMyChoice ? monster.handle : null, null, monster, annotations && annotations[idx]);
     if (invalidChoices != null && invalidChoices.includes(idx)) {
       holder.classList.add("unchoosable");
       holder.style.order = 1;
     } else {
       holder.style.order = 0;
     }
-    let frontCnv = document.createElement("CANVAS");
-    frontCnv.classList.add("markercnv");  // TODO: use a better class name for this
-    frontDiv.appendChild(frontCnv);
-    let backCnv = document.createElement("CANVAS");
-    backCnv.classList.add("markercnv");  // TODO: use a better class name for this
-    backDiv.appendChild(backCnv);
-    div.appendChild(frontDiv);
-    div.appendChild(backDiv);
-    renderAssetToDiv(frontDiv, monster.name);
-    renderMonsterBackToDiv(backDiv, monster);
   }
   let scrollParent = cardChoice.parentNode;
   if (monsters.length > 4) {
@@ -1182,88 +1186,124 @@ function addMonsterChoices(uichoice, cardChoice, monsters, invalidChoices, annot
 }
 
 function showMonster(cardChoice, monster) {
-  let [holder, div, cnv] = addVisual(cardChoice, "fight", false, false, monster, null);
-  renderMonsterBackToDiv(div, monster);
+  addVisual(cardChoice, monster.handle, monster.name, "fight", null, null, monster, null);
 }
 
 function showActionSource(cardChoice, name) {
-  let [holder, div, cnv] = addVisual(cardChoice, "card", false, false, null, null);
-  renderAssetToDiv(div, name);
+  addVisual(cardChoice, name, name, "card", null, null, null, null);
 }
 
-function addVisual(cardChoice, visualType, isChoice, hasBack, monster, descText) {
+function addVisual(cardChoice, handle, name, visualType, choice, backName, monster, descText) {
   let classNames = {
     "fight": "fightchoice",
     "monster": "monsterchoice",
     "card": "cardchoice",
     "mythos": "bigmythoscard",
   };
-  let holder = document.createElement("DIV");
-  holder.classList.add("cardholder");
-  let div = document.createElement("DIV");
-  div.classList.toggle("visualchoice", isChoice);
-  div.classList.add(classNames[visualType]);
-  if (monster != null) {
-    div.classList.add("monsterback");
-    div.monsterInfo = monster;
-  } else {
-    div.classList.add("cnvcontainer");
+  let className = classNames[visualType];
+  let holder = null;
+  let div = null;
+  let cnv = null;
+  if (oldVisuals[className] != null && oldVisuals[className][handle] != null) {
+    holder = oldVisuals[className][handle];
+    div = holder.getElementsByClassName(className)[0];
+    cnv = div.getElementsByClassName("markercnv")[0];
+    div.classList.toggle("visualchoice", choice != null);
   }
-  let cnv = document.createElement("CANVAS");
-  cnv.classList.add("markercnv");  // TODO: use a better class name for this
-  div.appendChild(cnv);
-  holder.appendChild(div);
-  cardChoice.appendChild(holder);
-  if (hasBack) {
-    let backDiv = document.createElement("DIV");
+  if (holder == null) {  // Does not exist - create a new one.
+    holder = document.createElement("DIV");
+    holder.classList.add("cardholder");
+    div = document.createElement("DIV");
+    div.classList.toggle("visualchoice", choice != null);
+    div.classList.add(classNames[visualType]);
+    cnv = document.createElement("CANVAS");
+    cnv.classList.add("markercnv");  // TODO: use a better class name for this
+    div.appendChild(cnv);
+    holder.appendChild(div);
+    cardChoice.appendChild(holder);
+  }
+
+  let backDiv = null;
+  let backCnv = null;
+  let desc = null;
+  if (backName != null && holder.getElementsByClassName("visualback").length == 0) {
+    backDiv = document.createElement("DIV");
     backDiv.classList.add(classNames[visualType], "visualback", "cnvcontainer");
-    let backCnv = document.createElement("CANVAS");
+    backCnv = document.createElement("CANVAS");
     backCnv.classList.add("markercnv");
     backDiv.appendChild(backCnv);
     holder.appendChild(backDiv);
+  } else if (backName == null && holder.getElementsByClassName("visualback").length > 0) {
+    holder.removeChild(holder.getElementsByClassName("visualback")[0]);
   }
-  if (descText != null) {
-    let desc = document.createElement("DIV");
+  if (descText != null && holder.getElementsByClassName("desc").length == 0) {
+    desc = document.createElement("DIV");
     desc.classList.add("desc");
-    desc.innerText = formatServerString(descText);
     holder.appendChild(desc);
+  } else if (descText == null && holder.getElementsByClassName("desc").length > 0) {
+    holder.removeChild(holder.getElementsByClassName("desc")[0]);
   }
-  return [holder, div, cnv];
+
+  if (descText != null) {
+    holder.getElementsByClassName("desc")[0].innerText = formatServerString(descText);
+  }
+  if (choice != null) {
+    div.onclick = function(e) { makeChoice(choice); };
+  } else {
+    div.onclick = null;
+  }
+
+  div.classList.remove("monsterback", "cnvcontainer");  // reset
+  if (className == "monsterchoice") {
+    while (div.children.length > 0) {
+      div.removeChild(div.firstChild);
+    }
+    let frontDiv = document.createElement("DIV");
+    frontDiv.classList.add("fightchoice", "cnvcontainer");
+    let backDiv = document.createElement("DIV");
+    backDiv.classList.add("fightchoice", "monsterback");
+    backDiv.monsterInfo = monster;
+    let frontCnv = document.createElement("CANVAS");
+    frontCnv.classList.add("markercnv");  // TODO: use a better class name for this
+    frontDiv.appendChild(frontCnv);
+    let backCnv = document.createElement("CANVAS");
+    backCnv.classList.add("markercnv");  // TODO: use a better class name for this
+    backDiv.appendChild(backCnv);
+    div.appendChild(frontDiv);
+    div.appendChild(backDiv);
+    renderAssetToDiv(frontDiv, monster.name);
+    renderMonsterBackToDiv(backDiv, monster);
+  } else if (monster != null) {
+    div.classList.add("monsterback");
+    div.monsterInfo = monster;
+    renderMonsterBackToDiv(div, monster);
+  } else {
+    div.classList.add("cnvcontainer");
+    renderAssetToDiv(div, name);
+  }
+  if (backName != null) {
+    renderAssetToDiv(holder.getElementsByClassName("visualback")[0], backName);
+  }
+  holder.classList.remove("todelete");
+  holder.handle = handle;
+  return [holder, div];
 }
 
-function addFightOrEvadeChoices(uichoice, cardChoice, monster, choices, invalidChoices, remainingSpend, annotations, oldVisuals, current, isMyChoice) {
+function addFightOrEvadeChoices(uichoice, cardChoice, monster, choices, invalidChoices, annotations, current, isMyChoice) {
   for (let [idx, choice] of choices.entries()) {
     let descText = choice;
     if (annotations && annotations[idx] != null) {
       descText += " (" + formatServerString(annotations[idx]) + ")";
     }
     let holder, div, cnv;
-    if (choice == "Fight") {
-      [holder, div, cnv] = addVisual(cardChoice, "fight", isMyChoice, false, monster, descText);
-    } else {
-      [holder, div, cnv] = addVisual(cardChoice, "fight", isMyChoice, false, null, descText);
-    }
-    if (isMyChoice) {
-      div.onclick = function(e) { makeChoice(choice); };
-    }
+    [holder, div] = addVisual(cardChoice, monster.handle + choice, monster.name, "fight", isMyChoice ? choice : null, null, choice == "Fight" ? monster : null, descText);
     if (invalidChoices != null && invalidChoices.includes(idx)) {
       holder.classList.add("unchoosable");
-    } else if (remainingSpend != null && remainingSpend.length > idx && remainingSpend[idx]) {
-      let rem = remainingSpend[idx];
-      holder.classList.add("mustspend");
-      if (isMyChoice) {
-        div.onclick = function(e) { defaultSpend(rem, choice); };
-      }
-    }
-    if (choice == "Fight") {
-      renderMonsterBackToDiv(div, monster);
-    } else {
-      renderAssetToDiv(div, monster.name);
     }
   }
 }
 
-function addCardChoices(uichoice, cardChoice, cards, invalidChoices, remainingSpend, annotations, sortUniq, oldVisuals, current, isMyChoice) {
+function addCardChoices(uichoice, cardChoice, cards, invalidChoices, remainingSpend, annotations, sortUniq, current, isMyChoice) {
   if (!cards) {
     return;
   }
@@ -1295,16 +1335,18 @@ function addCardChoices(uichoice, cardChoice, cards, invalidChoices, remainingSp
     }
     uniqueCards.add(card);
     count++;
-    let [holder, div, cnv] = addVisual(cardChoice, "card", isMyChoice, true, null, annotations && annotations[idx]);
+    let match = card.match(/(.*[^0-9])([0-9]*)$/);
+    let backName = null;
+    let shouldAnimate = false;
+    if (match != null && assetNames.includes(match[1] + " Card")) {
+      shouldAnimate = true;
+      backName = match[1] + " Card";
+    }
+    let [holder, div] = addVisual(cardChoice, card, card, "card", isMyChoice ? card : null, backName, null, annotations && annotations[idx]);
     if (sortUniq) {
       holder.style.order = cardToOrder[card];
     }
-    let shouldAnimate = false;
-    let match = card.match(/([^0-9]*)/);
-    if (match != null && assetNames.includes(match[1] + " Card")) {
-      shouldAnimate = true;
-    }
-    if (oldVisuals.includes(card) || card == oldCurrent) {
+    if ((oldVisuals["cardchoice"] != null && oldVisuals["cardchoice"][card] != null) || card == oldCurrent) {
       shouldAnimate = false;
     }
     if (shouldAnimate) {
@@ -1318,11 +1360,12 @@ function addCardChoices(uichoice, cardChoice, cards, invalidChoices, remainingSp
       };
       holder.ontransitionend = firstAnim;
       holder.ontransitioncancel = firstAnim;
-      setTimeout(function() { holder.classList.remove("entering"); holder.classList.add("rotated"); }, 10);
+      setTimeout(function() { holder.classList.add("rotated"); holder.classList.remove("entering"); }, 10);
     }
-    if (isMyChoice) {
-      div.onclick = function(e) { makeChoice(card); };
+    if (holder.getElementsByClassName("desc").length > 0) {
+      holder.getElementsByClassName("desc")[0].style.removeProperty("background-position");
     }
+    holder.classList.remove("unchoosable", "mustspend");
     if (invalidChoices != null && invalidChoices.includes(idx)) {
       holder.classList.add("unchoosable");
     } else if (remainingSpend != null && remainingSpend.length > idx && remainingSpend[idx]) {
@@ -1332,10 +1375,6 @@ function addCardChoices(uichoice, cardChoice, cards, invalidChoices, remainingSp
         div.onclick = function(e) { defaultSpend(rem, card); };
       }
     }
-    if (shouldAnimate) {
-      renderAssetToDiv(holder.getElementsByClassName("visualback")[0], match[1] + " Card");
-    }
-    renderAssetToDiv(div, card);
   }
   let scrollParent = cardChoice.parentNode;
   if (count > 4) {
@@ -1737,10 +1776,8 @@ function updateGate(place, gateDiv, shouldAnimate) {
     gateDiv.classList.add("placegatepresent");
     gateCont.handle = place.gate.handle;
     if (shouldAnimate) {
-      let [holder, div, cnv] = addVisual(document.getElementById("enteringscroll"), "fight", false, true, null, null);
+      let [holder, div] = addVisual(document.getElementById("enteringscroll"), place.gate.handle, place.gate.name, "fight", null, "Gate Back", null, null);
       holder.classList.add("entering");
-      let gateBack = holder.getElementsByClassName("visualback")[0];
-      renderAssetToDiv(gateBack, "Gate Back");
       runningAnim.push(true);
       let lastAnim = function() { 
         doneAnimating(holder);
@@ -1772,7 +1809,6 @@ function updateGate(place, gateDiv, shouldAnimate) {
       holder.ontransitioncancel = turnAround;
       setTimeout(function() { holder.classList.remove("entering"); holder.classList.add("rotated"); }, 10);
 
-      renderAssetToDiv(div, gateName);
     } else {
       renderAssetToDiv(gateCont, gateName);
     }
@@ -1958,7 +1994,7 @@ function toggleGlobals(e, frontCard) {
       continue;
     }
     count++;
-    let [holder, container, cnv] = addVisual(globalCards, "mythos", false, false, null, cont.annotation);
+    let [holder, container] = addVisual(globalCards, cont.name, cont.name, "mythos", null, null, null, cont.annotation);
     if (frontCard != null) {
       if (cont.name == frontCard) {
         toDisplay = holder;
@@ -1966,7 +2002,6 @@ function toggleGlobals(e, frontCard) {
         holder.classList.add("unchoosable");
       }
     }
-    renderAssetToDiv(container, cont.name);
   }
   if (count > 4) {
     globalScroll.classList.add("overflowing");
@@ -1986,9 +2021,6 @@ function updateDice(dice, playerIdx, monsterList) {
     return;
   }
   if (dice.name != null) {  // Show the monster/card that is causing this dice roll.
-    while (uicardchoice.getElementsByClassName("cardholder").length) {
-      uicardchoice.removeChild(uicardchoice.getElementsByClassName("cardholder")[0]);
-    }
     document.getElementById("cardchoicescroll").style.display = cardsStyle;
     document.getElementById("togglecards").style.display = "inline-block";
     setCardButtonText();
