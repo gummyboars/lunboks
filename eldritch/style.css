@@ -220,7 +220,7 @@ button:disabled {
   cursor: pointer;
 }
 .mustspend .visualchoice {
-  cursor: not-allowed;
+  cursor: grab;
 }
 .unchoosable .visualchoice {
   filter: grayscale(70%) brightness(70%);
@@ -230,15 +230,25 @@ button:disabled {
   width: 100%;
   font-size: calc(min(2vw, 3.2vh));
   text-align: center;
-  background-color: sienna;
+  background: linear-gradient(to right, sienna 50%, #D2A253 50%);
+  background-size: 200% 100%;
+  background-position: left;
+  transition: background-position 0.5s linear;
+}
+.mustspend .desc {
+  background-position: right;
 }
 .unchoosable .desc {
   background-color: darkgrey;
+  background: linear-gradient(to right, darkgrey 50%, darkgrey 50%);
 }
 .choice {
   flex: 0 0 auto;
   border: 1px solid black;
-  background: sienna;
+  background: linear-gradient(to right, sienna 50%, transparent 50%);
+  background-size: 200% 100%;
+  background-position: left;
+  transition: background-position 0.5s linear;
   padding-left: 0.25em;
   padding-right: 0.25em;
   text-align: center;
@@ -247,14 +257,17 @@ button:disabled {
   cursor: pointer;
 }
 .choice.choosable:hover {
-  background: saddlebrown;
+  background: linear-gradient(to right, saddlebrown 50%, transparent 50%);
+  background-size: 200% 100%;
 }
 .choice.mustspend {
-  cursor: not-allowed;
+  cursor: grab;
+  background-position: right;
 }
 .choice.unchoosable {
   cursor: not-allowed;
   background: darkgrey;
+  background: linear-gradient(to right, darkgrey 50%, darkgrey 50%);
   text-decoration: line-through;
 }
 #uimonsterchoice {
