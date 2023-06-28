@@ -184,6 +184,7 @@ button:disabled {
 }
 .cardholder.entering {
   transform: translateY(100%) rotateY(-180deg);
+  transition: none;
 }
 .cardchoice {
   width: calc(min(15vw, 24vh));
@@ -212,6 +213,7 @@ button:disabled {
 }
 .entering .visualback {
   transform: none;
+  transition: none;
 }
 .visualchoice {
   position: relative;
@@ -662,6 +664,9 @@ button:disabled {
   position: relative;
   width: calc(min(15vw, 24vh));
   height: calc(min(15vw, 24vh) * 3 / 2);
+}
+.unchoosable .bigmythoscard {
+  filter: grayscale(70%) brightness(70%);
 }
 #ancientandplaces {
   width: 25%;
