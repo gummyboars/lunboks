@@ -1443,6 +1443,9 @@ button:disabled {
   font-size: calc(min(1.5vw, 2.4vh));
   font-weight: bold;
 }
+.chosencheck.check {
+  filter: sepia(90%) hue-rotate(90deg) brightness(130%);
+}
 .possession.active .chosencheck {
   color: black;
 }

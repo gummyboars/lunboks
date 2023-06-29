@@ -1508,7 +1508,7 @@ function updateUsables(usables, spendables, choice) {
   let posList = pDiv.getElementsByClassName("possession");
   let trophyList = tDiv.getElementsByClassName("trophy");
   let usableList = usables || [];
-  usableList.concat(spendables || []);
+  usableList = usableList.concat(spendables || []);
   let anyPosUsable = false;
   let anyTrophyUsable = false;
   for (let pos of posList) {
@@ -2915,6 +2915,7 @@ function updatePossession(div, info, spent, chosen, selectType) {
   let chosenDiv = div.getElementsByClassName("chosencheck")[0];
   chosenDiv.innerText = showText;
   div.classList.toggle("chosen", chosen.includes(info.handle));
+  div.classList.toggle("check", showText == "✔️");
   if (selectType == "hands" || selectType == null) {
     div.classList.toggle("active", Boolean(info.active));
   } else {
