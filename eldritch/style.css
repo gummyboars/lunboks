@@ -1300,6 +1300,9 @@ button:disabled {
   height: calc(min(20vw, 32vh) * 7 / 16);
   position: relative;
 }
+.sliders.usable {
+  z-index: 4;
+}
 .slider {
   position: absolute;
   transform: translateX(-50%) translateY(50%);
