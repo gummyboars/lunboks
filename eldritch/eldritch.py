@@ -418,9 +418,8 @@ class GameState:
     if top_event and isinstance(top_event, events.SliderInput) and not top_event.is_done():
       output["sliders"] = {"prompt": top_event.prompt()}
       output["chooser"] = self.characters.index(top_event.character)
-      # TODO: distinguish between pending/current sliders, pending/current focus.
       for name, value in top_event.pending.items():
-        output["characters"][output["chooser"]]["sliders"][name]["selection"] = value
+        output["sliders"][name] = {"selection": value}
 
     output["spendables"] = None
     output["usables"] = None
