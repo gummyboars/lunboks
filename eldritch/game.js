@@ -2871,6 +2871,9 @@ function createPossession(info, isPlayer, sheet) {
   chosenDiv.classList.add("chosencheck");
   chosenDiv.innerText = "✔️";
   div.appendChild(chosenDiv);
+  let tokensDiv = document.createElement("DIV");
+  tokensDiv.classList.add("tokens");
+  div.appendChild(tokensDiv);
   div.onmouseenter = bringTop;
   div.onmouseleave = returnBottom;
   let handle = info.handle;
@@ -2923,6 +2926,28 @@ function updatePossession(div, info, spent, chosen, selectType) {
   }
   div.classList.toggle("spent", spent[info.handle] != null);
   div.classList.toggle("exhausted", Boolean(info.exhausted));
+
+  // Update tokens.
+  let tokensDiv = div.getElementsByClassName("tokens")[0];
+  let tokenInfo = info.tokens || {};
+  for (let tokenType in statNames) {
+    let numTokens = tokensDiv.getElementsByClassName(tokenType).length;
+    let expectedNum = tokenInfo[tokenType] || 0;
+    while (numTokens > expectedNum) {
+      tokensDiv.removeChild(tokensDiv.getElementsByClassName(tokenType)[0]);
+      numTokens--;
+    }
+    while (numTokens < expectedNum) {
+      let tokenDiv = document.createElement("DIV");
+      tokenDiv.classList.add("token", "cnvcontainer", tokenType);
+      let cnv = document.createElement("CANVAS");
+      cnv.classList.add("markercnv");
+      tokenDiv.appendChild(cnv);
+      tokensDiv.appendChild(tokenDiv);
+      renderAssetToDiv(tokenDiv, statNames[tokenType]);
+      numTokens++;
+    }
+  }
 }
 
 function updateTrophies(sheet, character, isPlayer, spent) {
