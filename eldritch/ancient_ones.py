@@ -254,7 +254,7 @@ class BlackGoat(AncientOne):
     return super().get_modifier(thing, attribute, state)
 
   def get_override(self, thing, attribute):
-    if thing.name == "Tentacle Tree" and attribute == "endless":
+    if getattr(thing, "name", None) == "Tentacle Tree" and attribute == "endless":
       return True
     return super().get_override(thing, attribute)
 
