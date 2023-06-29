@@ -862,8 +862,8 @@ class HealTest(EventTest):
     self.state.turn_phase = "upkeep"
 
   def testHeal(self):
-    upkeep = events.UpkeepActions(self.char)
-    self.state.event_stack.append(upkeep)
+    sliders = events.SliderInput(self.char)
+    self.state.event_stack.append(sliders)
     self.resolve_to_usable(0, "Heal0", CastSpell)
 
     self.state.event_stack.append(self.state.usables[0]["Heal0"])
@@ -878,15 +878,17 @@ class HealTest(EventTest):
       choice = self.resolve_to_choice(MultipleChoice)
     self.assertEqual(choice.choices, ["Dummy"])
     choice.resolve(self.state, "Dummy")
-    self.resolve_until_done()
+    self.resolve_to_choice(events.SliderInput)
 
     self.assertEqual(self.char.stamina, 4)
     self.assertEqual(self.char.sanity, 4)
     self.assertTrue(self.char.possessions[0].exhausted)
+    sliders.resolve(self.state, "done", None)
+    self.resolve_until_done()
 
   def testHealCapped(self):
-    upkeep = events.UpkeepActions(self.char)
-    self.state.event_stack.append(upkeep)
+    sliders = events.SliderInput(self.char)
+    self.state.event_stack.append(sliders)
     self.resolve_to_usable(0, "Heal0", CastSpell)
 
     self.state.event_stack.append(self.state.usables[0]["Heal0"])
@@ -898,15 +900,17 @@ class HealTest(EventTest):
       choice = self.resolve_to_choice(MultipleChoice)
     self.assertEqual(choice.choices, ["Dummy"])
     choice.resolve(self.state, "Dummy")
-    self.resolve_until_done()
+    self.resolve_to_choice(events.SliderInput)
 
     self.assertEqual(self.char.stamina, 5)
     self.assertEqual(self.char.sanity, 4)
     self.assertTrue(self.char.possessions[0].exhausted)
+    sliders.resolve(self.state, "done", None)
+    self.resolve_until_done()
 
   def testHealFailCast(self):
-    upkeep = events.UpkeepActions(self.char)
-    self.state.event_stack.append(upkeep)
+    sliders = events.SliderInput(self.char)
+    self.state.event_stack.append(sliders)
     self.resolve_to_usable(0, "Heal0", CastSpell)
 
     self.state.event_stack.append(self.state.usables[0]["Heal0"])
@@ -915,11 +919,13 @@ class HealTest(EventTest):
     self.spend("sanity", 1, choice)
     choice.resolve(self.state, "Heal")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=4)):
-      self.resolve_until_done()
+      self.resolve_to_choice(events.SliderInput)
 
     self.assertEqual(self.char.stamina, 3)
     self.assertEqual(self.char.sanity, 4)
     self.assertTrue(self.char.possessions[0].exhausted)
+    sliders.resolve(self.state, "done", None)
+    self.resolve_until_done()
 
   def testMultipleOptions(self):
     all_chars = characters.CreateCharacters()
@@ -934,8 +940,8 @@ class HealTest(EventTest):
     self.state.characters.append(nun)
     self.state.characters.append(doctor)
 
-    upkeep = events.UpkeepActions(self.char)
-    self.state.event_stack.append(upkeep)
+    sliders = events.SliderInput(self.char)
+    self.state.event_stack.append(sliders)
     self.resolve_to_usable(0, "Heal0", CastSpell)
 
     self.state.event_stack.append(self.state.usables[0]["Heal0"])
@@ -947,12 +953,14 @@ class HealTest(EventTest):
       choice = self.resolve_to_choice(MultipleChoice)
     self.assertEqual(choice.choices, ["Dummy", "Nun"])
     choice.resolve(self.state, "Nun")
-    self.resolve_until_done()
+    self.resolve_to_choice(events.SliderInput)
 
     self.assertEqual(nun.stamina, 3)
     self.assertEqual(self.char.stamina, 3)
     self.assertEqual(self.char.sanity, 4)
     self.assertTrue(self.char.possessions[0].exhausted)
+    sliders.resolve(self.state, "done", None)
+    self.resolve_until_done()
 
   def testCanOnlyCastDuringOwnUpkeep(self):
     buddy = characters.Character("Buddy", 5, 5, 4, 4, 4, 4, 4, 4, 4, "Square")
@@ -961,9 +969,17 @@ class HealTest(EventTest):
     self.state.characters.append(buddy)
     buddy.stamina = 1
 
-    upkeep = events.UpkeepActions(buddy)
-    self.state.event_stack.append(upkeep)
-    self.resolve_until_done()  # Never stops to ask the player to use heal.
+    sliders = events.SliderInput(buddy)
+    self.state.event_stack.append(sliders)
+    self.resolve_to_choice(events.SliderInput)
+    self.assertFalse(self.state.usables)
+
+  def testDeclineToUse(self):
+    sliders = events.SliderInput(self.char)
+    self.state.event_stack.append(sliders)
+    self.resolve_to_usable(0, "Heal0", CastSpell)
+    sliders.resolve(self.state, "done", None)
+    self.resolve_until_done()
 
 
 class VoiceTest(EventTest):
@@ -974,18 +990,20 @@ class VoiceTest(EventTest):
     self.char.possessions.append(items.Voice(0))
 
   def testCastSuccess(self):
-    self.state.event_stack.append(events.UpkeepActions(self.char))
+    self.state.event_stack.append(events.SliderInput(self.char))
     voice = self.resolve_to_usable(0, "Voice0", CastSpell)
     self.state.event_stack.append(voice)
     cast = self.resolve_to_choice(CardSpendChoice)
     self.spend("sanity", 1, cast)
     cast.resolve(self.state, "Voice")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
-      self.resolve_until_done()
+      sliders = self.resolve_to_choice(SliderInput)
 
     self.assertTrue(self.char.possessions[0].exhausted)
     self.assertTrue(self.char.possessions[0].active)
     self.assertEqual(self.char.sanity, 4)
+    sliders.resolve(self.state, "done", None)
+    self.resolve_until_done()
 
     # Validate that this applies to checks.
     self.state.event_stack.append(Check(self.char, "fight", 0))
@@ -1000,18 +1018,20 @@ class VoiceTest(EventTest):
     self.assertEqual(self.char.movement_points, 4)
 
   def testCastFailure(self):
-    self.state.event_stack.append(events.UpkeepActions(self.char))
+    self.state.event_stack.append(events.SliderInput(self.char))
     voice = self.resolve_to_usable(0, "Voice0", CastSpell)
     self.state.event_stack.append(voice)
     cast = self.resolve_to_choice(CardSpendChoice)
     self.spend("sanity", 1, cast)
     cast.resolve(self.state, "Voice")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
-      self.resolve_until_done()
+      sliders = self.resolve_to_choice(SliderInput)
 
     self.assertTrue(self.char.possessions[0].exhausted)
     self.assertFalse(self.char.possessions[0].active)
     self.assertEqual(self.char.sanity, 4)
+    sliders.resolve(self.state, "done", None)
+    self.resolve_until_done()
 
     self.state.event_stack.append(Check(self.char, "fight", 0))
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)) as rand:
@@ -1020,14 +1040,16 @@ class VoiceTest(EventTest):
 
   def testDeactivatesAtEndOfTurn(self):
     self.char.place = self.state.places["Easttown"]
-    self.state.event_stack.append(events.UpkeepActions(self.char))
+    self.state.event_stack.append(events.SliderInput(self.char))
     voice = self.resolve_to_usable(0, "Voice0", CastSpell)
     self.state.event_stack.append(voice)
     cast = self.resolve_to_choice(CardSpendChoice)
     self.spend("sanity", 1, cast)
     cast.resolve(self.state, "Voice")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
-      self.resolve_until_done()
+      sliders = self.resolve_to_choice(SliderInput)
+    sliders.resolve(self.state, "done", None)
+    self.resolve_until_done()
 
     self.advance_turn(0, "mythos")
     self.assertTrue(self.char.possessions[0].exhausted)
@@ -1042,16 +1064,18 @@ class VoiceTest(EventTest):
     self.assertFalse(self.char.possessions[0].active)
 
   def testStaysActiveAfterCombat(self):
-    self.state.event_stack.append(events.UpkeepActions(self.char))
+    self.state.event_stack.append(events.SliderInput(self.char))
     voice = self.resolve_to_usable(0, "Voice0", CastSpell)
     self.state.event_stack.append(voice)
     cast = self.resolve_to_choice(CardSpendChoice)
     self.spend("sanity", 1, cast)
     cast.resolve(self.state, "Voice")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
-      self.resolve_until_done()
+      sliders = self.resolve_to_choice(SliderInput)
     self.assertTrue(self.char.possessions[0].exhausted)
     self.assertTrue(self.char.possessions[0].active)
+    sliders.resolve(self.state, "done", None)
+    self.resolve_until_done()
 
     cultist = monsters.Cultist()
     self.state.event_stack.append(Combat(self.char, cultist))
@@ -1064,6 +1088,13 @@ class VoiceTest(EventTest):
     self.assertTrue(self.char.possessions[0].exhausted)
     self.assertTrue(self.char.possessions[0].active)
 
+  def testDeclineToUse(self):
+    sliders = events.SliderInput(self.char)
+    self.state.event_stack.append(sliders)
+    self.resolve_to_usable(0, "Voice0", CastSpell)
+    sliders.resolve(self.state, "done", None)
+    self.resolve_until_done()
+
 
 class PhysicianTest(EventTest):
 
@@ -1075,18 +1106,20 @@ class PhysicianTest(EventTest):
     self.state.turn_phase = "upkeep"
 
   def testPhysician(self):
-    upkeep = events.UpkeepActions(self.char)
-    self.state.event_stack.append(upkeep)
+    sliders = events.SliderInput(self.char)
+    self.state.event_stack.append(sliders)
     self.resolve_to_usable(0, "Physician", Sequence)
 
     self.state.event_stack.append(self.state.usables[0]["Physician"])
     choice = self.resolve_to_choice(MultipleChoice)
     self.assertEqual(choice.choices, ["Dummy", "nobody"])
     choice.resolve(self.state, "Dummy")
-    self.resolve_until_done()
+    self.resolve_to_choice(SliderInput)
 
     self.assertEqual(self.char.stamina, 4)
     self.assertTrue(self.char.possessions[0].exhausted)
+    sliders.resolve(self.state, "done", None)
+    self.resolve_until_done()
 
   def testMultipleOptions(self):
     nun = characters.CreateCharacters()["Nun"]
@@ -1095,19 +1128,28 @@ class PhysicianTest(EventTest):
     self.state.all_characters["Nun"] = nun
     self.state.characters.append(nun)
 
-    upkeep = events.UpkeepActions(self.char)
-    self.state.event_stack.append(upkeep)
+    sliders = events.SliderInput(self.char)
+    self.state.event_stack.append(sliders)
     self.resolve_to_usable(0, "Physician", Sequence)
 
     self.state.event_stack.append(self.state.usables[0]["Physician"])
     choice = self.resolve_to_choice(MultipleChoice)
     self.assertEqual(choice.choices, ["Dummy", "Nun", "nobody"])
     choice.resolve(self.state, "Nun")
-    self.resolve_until_done()
+    self.resolve_to_choice(SliderInput)
 
     self.assertEqual(nun.stamina, 2)
     self.assertEqual(self.char.stamina, 3)
     self.assertTrue(self.char.possessions[0].exhausted)
+    sliders.resolve(self.state, "done", None)
+    self.resolve_until_done()
+
+  def testDeclineToUse(self):
+    sliders = events.SliderInput(self.char)
+    self.state.event_stack.append(sliders)
+    self.resolve_to_usable(0, "Physician", Sequence)
+    sliders.resolve(self.state, "done", None)
+    self.resolve_until_done()
 
 
 class ExtraDrawTest(EventTest):

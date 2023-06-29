@@ -227,8 +227,9 @@ class Heal(Spell):
     super().__init__("Heal", idx, {}, 0, 1, 1)
 
   def get_usable_interrupt(self, event, owner, state):
-    if not self.exhausted and isinstance(event, events.UpkeepActions) and event.character == owner:
-      return events.CastSpell(owner, self)
+    if not self.exhausted and isinstance(event, events.SliderInput) and event.character == owner:
+      if not event.is_done():
+        return events.CastSpell(owner, self)
     return None
 
   def get_cast_event(self, owner, state):
@@ -312,8 +313,8 @@ class Voice(Spell):
         0, -1, 1,
     )
 
-  def get_usable_trigger(self, event, owner, state):
-    if not isinstance(event, events.UpkeepActions) or event.character != owner:
+  def get_usable_interrupt(self, event, owner, state):
+    if not isinstance(event, events.SliderInput) or event.character != owner or event.is_done():
       return None
     if self.exhausted or owner.sanity < self.sanity_cost(state):
       return None
