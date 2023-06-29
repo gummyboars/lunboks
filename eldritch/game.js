@@ -2850,6 +2850,9 @@ function updatePossessions(sheet, possessions, isPlayer, spent, chosen, selectTy
     pDiv.removeChild(div);
   }
   for (let handle in handleToInfo) {
+    if (handle.startsWith("Bad Credit")) {
+      continue;
+    }
     let div = createPossession(handleToInfo[handle], isPlayer, pDiv);
     updatePossession(div, handleToInfo[div.handle], spent, chosen, selectType);
   }

@@ -23,7 +23,7 @@ def CreateFixedEncounters():
   )
 
   take_loan = FixedEncounter(
-      name="Take Bank Loan",
+      name="Bank Loan",
       prereq=lambda char: values.NoItemName(char, "Bad Credit"),
       spend=lambda char: None,
       encounter=lambda char, state: events.TakeBankLoan(char)
