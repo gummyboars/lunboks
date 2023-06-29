@@ -2937,6 +2937,9 @@ function updateTrophies(sheet, character, isPlayer, spent) {
       toRemove.push(div);
       continue;
     }
+    if (div.monsterInfo != null) {
+      div.monsterInfo = handleToInfo[div.handle];
+    }
     updateTrophy(div, spent);
     delete handleToInfo[div.handle];
   }
