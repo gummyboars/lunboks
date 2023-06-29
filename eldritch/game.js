@@ -2870,9 +2870,9 @@ function createPossession(info, isPlayer, sheet) {
 function updatePossession(div, info, spent, chosen, selectType) {
   // Note that the hands must be recomputed every time (e.g. for the axe).
   let handsText = "✔️";
-  if (info.hands_used) {
-    handsText = "✋".repeat(info.hands_used);
-  } else if (info.hands_used != null) {
+  if (info.hands) {
+    handsText = "✋".repeat(info.hands);
+  } else if (info.hands != null) {
     handsText = "✊";
   }
   let selectText = "✔️";
