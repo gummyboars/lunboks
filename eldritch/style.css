@@ -1310,6 +1310,12 @@ button:disabled {
 .you .slider:hover {
   opacity: 0.5;
 }
+.slider.orig {
+  opacity: 0.4;
+}
+.slider.pending {
+  opacity: 0.9;
+}
 .slider.chosen {
   opacity: 1;
 }

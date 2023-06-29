@@ -321,7 +321,7 @@ function handleData(data) {
   updateCharacterSelect(data.characters, data.player_idx);
   updateAncientSelect(data.game_stage, data.host);
   updateAncientOne(data.ancient_one, data.terror);
-  updateCharacterSheets(data.characters, data.pending_chars, data.player_idx, data.first_player, myChoice);
+  updateCharacterSheets(data.characters, data.pending_chars, data.player_idx, data.first_player, myChoice, data.chooser == data.player_idx ? data.sliders : null);
   updateBottomText(data.game_stage, data.turn_phase, data.characters, data.turn_idx, data.player_idx, data.host);
   updateGlobals(data.environment, data.rumor, data.other_globals);
   updatePlaces(data.places, data.activity);
@@ -2336,7 +2336,7 @@ function drawChosenChar(character) {
   }
 }
 
-function updateCharacterSheets(characters, pendingCharacters, playerIdx, firstPlayer, choice) {
+function updateCharacterSheets(characters, pendingCharacters, playerIdx, firstPlayer, choice, sliders) {
   // We're going to fix the visibility of the spendDiv first so that animations of the player
   // (un)spending their stats works correctly.
   let spendable = null;
@@ -2365,7 +2365,7 @@ function updateCharacterSheets(characters, pendingCharacters, playerIdx, firstPl
       }
       updateInitialStats(sheet, allCharacters[charName]);
       updateFocusHome(sheet, allCharacters[charName]);
-      updateSliders(sheet, allCharacters[charName], false);
+      updateSliders(sheet, allCharacters[charName], false, null);
       updateInitialPossessions(sheet, allCharacters[charName]);
       // TODO: some characters may start with trophies.
     }
@@ -2394,7 +2394,7 @@ function updateCharacterSheets(characters, pendingCharacters, playerIdx, firstPl
     if (order < 0) {
       order += characters.length;
     }
-    updateCharacterSheet(sheet, character, order, playerIdx == idx, choice, spent);
+    updateCharacterSheet(sheet, character, order, playerIdx == idx, choice, spent, sliders);
   }
 
   // Remove any sheets that are no longer needed.
@@ -2619,7 +2619,7 @@ function switchTab(tabName) {
   }
 }
 
-function updateCharacterSheet(sheet, character, order, isPlayer, choice, spent) {
+function updateCharacterSheet(sheet, character, order, isPlayer, choice, spent, sliders) {
   sheet.style.order = order;
   let chosen = [];
   let spendable = null;
@@ -2631,7 +2631,7 @@ function updateCharacterSheet(sheet, character, order, isPlayer, choice, spent) 
   }
   updateCharacterStats(sheet, character, isPlayer, spent, spendable);
   updateFocusHome(sheet, character);
-  updateSliders(sheet, character, isPlayer);
+  updateSliders(sheet, character, isPlayer, sliders);
   updatePossessions(sheet, character.possessions, isPlayer, spent, chosen, selectType);
   updateTrophies(sheet, character, isPlayer, spent);
   fixTransformOrigins(sheet);
@@ -2780,15 +2780,31 @@ function updateFocusHome(sheet, character) {
   renderAssetToDiv(home, character.name + " home");
 }
 
-function updateSliders(sheet, character, isPlayer) {
+function updateSliders(sheet, character, isPlayer, pendingSliders) {
   let sliders = sheet.getElementsByClassName("sliders")[0];
   renderAssetToDiv(sliders, character.name + " sliders");
   for (let slider of sliders.getElementsByClassName("slider")) {
-    slider.classList.remove("chosen");
+    slider.classList.remove("chosen", "orig", "pending");
   }
-  for (let [idx, [sliderName, sliderInfo]] of Object.entries(character.sliders).entries()) {
-    let chosen = sheet.getElementsByClassName("slider" + idx + "" + sliderInfo.selection)[0];
-    chosen.classList.add("chosen");
+  if (pendingSliders == null) {
+    for (let [idx, [sliderName, sliderInfo]] of Object.entries(character.sliders).entries()) {
+      let chosen = sheet.getElementsByClassName("slider" + idx + "" + sliderInfo.selection)[0];
+      chosen.classList.add("chosen");
+    }
+  } else {
+    for (let [idx, [sliderName, sliderInfo]] of Object.entries(character.sliders).entries()) {
+      let pendingValue = pendingSliders[sliderName].selection;
+      let oldValue = sliderInfo.selection;
+      if (pendingValue == oldValue) {
+        let chosen = sheet.getElementsByClassName("slider" + idx + "" + oldValue)[0];
+        chosen.classList.add("chosen");
+      } else {
+        let pending = sheet.getElementsByClassName("slider" + idx + "" + pendingValue)[0];
+        pending.classList.add("pending");
+        let orig = sheet.getElementsByClassName("slider" + idx + "" + oldValue)[0];
+        orig.classList.add("orig");
+      }
+    }
   }
 }
 
