@@ -2787,11 +2787,13 @@ function updateSliders(sheet, character, isPlayer, pendingSliders) {
     slider.classList.remove("chosen", "orig", "pending");
   }
   if (pendingSliders == null) {
+    sliders.classList.remove("usable");
     for (let [idx, [sliderName, sliderInfo]] of Object.entries(character.sliders).entries()) {
       let chosen = sheet.getElementsByClassName("slider" + idx + "" + sliderInfo.selection)[0];
       chosen.classList.add("chosen");
     }
   } else {
+    sliders.classList.add("usable");
     for (let [idx, [sliderName, sliderInfo]] of Object.entries(character.sliders).entries()) {
       let pendingValue = pendingSliders[sliderName].selection;
       let oldValue = sliderInfo.selection;
