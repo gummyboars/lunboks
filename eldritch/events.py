@@ -212,7 +212,6 @@ class Upkeep(Turn):
     self.focus_given = False
     self.reappear: Optional[Event] = None
     self.refresh: Optional[RefreshAssets] = None
-    self.actions: Optional[UpkeepActions] = None
     self.sliders: Optional[SliderInput] = None
     self.done = False
 
@@ -232,10 +231,6 @@ class Upkeep(Turn):
       self.refresh = RefreshAssets(self.character)
       state.event_stack.append(self.refresh)
       return
-    if self.actions is None:
-      self.actions = UpkeepActions(self.character)
-      state.event_stack.append(self.actions)
-      return
     if self.sliders is None:
       self.sliders = SliderInput(self.character)
       state.event_stack.append(self.sliders)
@@ -249,19 +244,6 @@ class Upkeep(Turn):
     if self.cancelled and not self.focus_given:
       return f"[{self.character.name}]'s upkeep was skipped"
     return f"[{self.character.name}]'s upkeep"
-
-
-class UpkeepActions(Nothing):
-
-  def __init__(self, character):
-    super().__init__()
-    self.character = character
-
-  def flatten(self):
-    return True
-
-  def log(self, state):
-    return ""
 
 
 class SliderInput(Event):

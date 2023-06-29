@@ -229,23 +229,13 @@ class HealingStone(Item):
   def __init__(self, idx):
     super().__init__("Healing Stone", idx, "unique", {}, {}, None, 8)
 
-  # Copied get_usable{_trigger,_interrupt,} from Physician ability
-  def get_usable_trigger(self, event, owner, state):
-    if not isinstance(event, events.UpkeepActions):
-      return None
-    return self.get_usable(event, owner, state)
-
   def get_usable_interrupt(self, event, owner, state):
-    if not isinstance(event, (events.UpkeepActions, events.SliderInput)):
+    if event.is_done() or not isinstance(event, events.SliderInput):
       return None
-    return self.get_usable(event, owner, state)
-
-  def get_usable(self, event, owner, state):
     if self.exhausted:
       return None
     if event.character != owner:
       return None
-    # End copy-paste
 
     available = [
         attr for attr in ["stamina", "sanity"]

@@ -142,8 +142,11 @@ class HealingStoneTest(EventTest):
     self.advance_turn(0, "upkeep")
 
   def testNotUsableWhenFull(self):
-    upkeep = events.UpkeepActions(self.char)
-    self.state.event_stack.append(upkeep)
+    sliders = events.SliderInput(self.char)
+    self.state.event_stack.append(sliders)
+    self.resolve_to_choice(events.SliderInput)
+    self.assertNotIn(0, self.state.usables)
+    sliders.resolve(self.state, "done", None)
     self.resolve_until_done()
 
   def testNotUsableOutsideUpkeep(self):
@@ -154,38 +157,53 @@ class HealingStoneTest(EventTest):
   def testSanityOnly(self):
     self.char.sanity = 3
     self.char.stamina = 5
-    upkeep = events.UpkeepActions(self.char)
-    self.state.event_stack.append(upkeep)
+    sliders = events.SliderInput(self.char)
+    self.state.event_stack.append(sliders)
     stone = self.resolve_to_usable(0, "Healing Stone0")
     self.state.event_stack.append(stone)
-    self.resolve_until_done()
+    self.resolve_to_choice(events.SliderInput)
     self.assertEqual(self.char.sanity, 4)
     self.assertEqual(self.char.stamina, 5)
+    sliders.resolve(self.state, "done", None)
+    self.resolve_until_done()
 
   def testStaminaOnly(self):
     self.char.sanity = 5
     self.char.stamina = 3
-    upkeep = events.UpkeepActions(self.char)
-    self.state.event_stack.append(upkeep)
+    sliders = events.SliderInput(self.char)
+    self.state.event_stack.append(sliders)
     stone = self.resolve_to_usable(0, "Healing Stone0")
     self.state.event_stack.append(stone)
-    self.resolve_until_done()
+    self.resolve_to_choice(events.SliderInput)
     self.assertEqual(self.char.sanity, 5)
     self.assertEqual(self.char.stamina, 4)
+    sliders.resolve(self.state, "done", None)
+    self.resolve_until_done()
 
   def testBothSanityAndStamina(self):
     self.char.sanity = 3
     self.char.stamina = 3
-    upkeep = events.UpkeepActions(self.char)
-    self.state.event_stack.append(upkeep)
+    sliders = events.SliderInput(self.char)
+    self.state.event_stack.append(sliders)
     stone = self.resolve_to_usable(0, "Healing Stone0")
     self.state.event_stack.append(stone)
     choice = self.resolve_to_choice(events.MultipleChoice)
     self.assertEqual(choice.choices, ["1 Stamina", "1 Sanity"])
     choice.resolve(self.state, "1 Stamina")
-    self.resolve_until_done()
+    self.resolve_to_choice(events.SliderInput)
     self.assertEqual(self.char.sanity, 3)
     self.assertEqual(self.char.stamina, 4)
+    sliders.resolve(self.state, "done", None)
+    self.resolve_until_done()
+
+  def testDeclineToUse(self):
+    self.char.sanity = 5
+    self.char.stamina = 3
+    sliders = events.SliderInput(self.char)
+    self.state.event_stack.append(sliders)
+    self.resolve_to_usable(0, "Healing Stone0")
+    sliders.resolve(self.state, "done", None)
+    self.resolve_until_done()
 
   def testDiscardOnAwaken(self):
     self.assertIn(self.stone, self.char.possessions)

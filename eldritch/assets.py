@@ -267,7 +267,7 @@ class Deputy(Card):
     super().__init__("Deputy", None, "specials", {}, {})
 
   def get_trigger(self, event, owner, state):
-    if isinstance(event, events.UpkeepActions) and event.character == owner:
+    if isinstance(event, events.RefreshAssets) and event.character == owner:
       return events.Gain(owner, {"dollars": 1})
     if isinstance(event, events.KeepDrawn) and self.name in event.kept:
       return events.Sequence([
@@ -297,7 +297,7 @@ class SelfDiscardingCard(Card):
             events.RemoveToken(kept, "must_roll", owner),
         ], owner)
 
-    if isinstance(event, events.UpkeepActions) and event.character == owner:
+    if isinstance(event, events.RefreshAssets) and event.character == owner:
       if self.tokens["must_roll"]:
         return events.RollToMaintain(owner, self)
       return events.AddToken(self, "must_roll", owner)
@@ -338,9 +338,13 @@ class Retainer(SelfDiscardingCard):
   def __init__(self, idx):
     super().__init__("Retainer", idx)
 
-  def get_interrupt(self, event, owner, state):
-    if isinstance(event, events.UpkeepActions) and event.character == owner:
-      return events.Gain(owner, {"dollars": 2})
+  def get_trigger(self, event, owner, state):
+    if isinstance(event, events.RefreshAssets) and event.character == owner:
+      roll = super().get_trigger(event, owner, state)
+      gain = events.Gain(owner, {"dollars": 2})
+      if roll is not None:
+        return events.Sequence([gain, roll], owner)
+      return gain
     return None
 
 
@@ -381,11 +385,9 @@ class BankLoan(SelfDiscardingCard):
       return events.Gain(owner, {"dollars": 10}, self)
     return super().get_trigger(event, owner, state)
 
-  def get_usable_trigger(self, event, owner, state):
-    if (
-        # TODO: Usable "anytime"
-        isinstance(event, events.Upkeep) and event.character == owner
-    ):
+  def get_usable_interrupt(self, event, owner, state):
+    if isinstance(event, events.SliderInput) and event.character == owner and not event.is_done():
+      # TODO: Usable "anytime"
       return events.BinarySpend(
           owner,
           "dollars", 10,

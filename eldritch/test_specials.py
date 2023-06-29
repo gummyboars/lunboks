@@ -118,18 +118,16 @@ class BankLoanTest(EventTest):
     with mock_randint(1) as roll:
       self.advance_turn(1, "upkeep")
       choice = self.resolve_to_choice(events.SliderInput)
-      choice.resolve(self.state, "done", "done")
       payoff = self.resolve_to_usable(0, "Bank Loan0")
-      self.state.done_using[0] = True
+      choice.resolve(self.state, "done", "done")
       self.resolve_until_done()
       self.assertEqual(roll.call_count, 0)  # Don't roll on your first turn
 
     with mock_randint(4) as roll:
       self.advance_turn(2, "upkeep")
       choice = self.resolve_to_choice(events.SliderInput)
-      choice.resolve(self.state, "done", "done")
       payoff = self.resolve_to_usable(0, "Bank Loan0")
-      self.state.done_using[0] = True
+      choice.resolve(self.state, "done", "done")
       self.resolve_until_done()
       self.assertEqual(roll.call_count, 1)
 
@@ -141,10 +139,9 @@ class BankLoanTest(EventTest):
       self.spend("dollars", 1, interest)
       interest.resolve(self.state, "Pay")
       choice = self.resolve_to_choice(events.SliderInput)
-      choice.resolve(self.state, "done", "done")
       payoff = self.resolve_to_usable(0, "Bank Loan0")
+      choice.resolve(self.state, "done", "done")
       # Probably shouldn't be usable if you're too poor
-      self.state.done_using[0] = True
       self.resolve_until_done()
       self.assertEqual(roll.call_count, 1)
 
@@ -153,12 +150,12 @@ class BankLoanTest(EventTest):
     with mock_randint(5) as roll:
       self.advance_turn(4, "upkeep")
       choice = self.resolve_to_choice(events.SliderInput)
-      choice.resolve(self.state, "done", "done")
       payoff = self.resolve_to_usable(0, "Bank Loan0")
       self.state.event_stack.append(payoff)
       payoff_choice = self.resolve_to_choice(events.SpendChoice)
       self.spend("dollars", 10, payoff_choice)
       payoff_choice.resolve(self.state, "Yes")
+      choice.resolve(self.state, "done", "done")
       self.resolve_until_done()
       self.assertEqual(roll.call_count, 1)
     self.assertEqual(self.char.dollars, 0)
@@ -176,9 +173,8 @@ class BankLoanTest(EventTest):
     with mock_randint(3) as roll:
       self.advance_turn(1, "upkeep")
       choice = self.resolve_to_choice(events.SliderInput)
-      choice.resolve(self.state, "done", "done")
       self.resolve_to_usable(0, "Bank Loan0")
-      self.state.done_using[0] = True
+      choice.resolve(self.state, "done", "done")
       self.resolve_until_done()
       self.advance_turn(2, "upkeep")
       interest = self.resolve_to_choice(events.SpendChoice)

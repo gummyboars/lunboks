@@ -191,7 +191,7 @@ class TrustFund(assets.Asset):
     super().__init__("Trust Fund")
 
   def get_trigger(self, event, owner, state):
-    if isinstance(event, events.UpkeepActions) and event.character == owner:
+    if isinstance(event, events.RefreshAssets) and event.character == owner:
       return events.Gain(owner, {"dollars": 1})
     return None
 
@@ -233,17 +233,9 @@ class UpkeepRestoreStat(assets.Asset):
     self.stat = stat
     self.verb = verb
 
-  def get_usable_trigger(self, event, owner, state):
-    if not isinstance(event, events.UpkeepActions):
-      return None
-    return self.get_usable(event, owner, state)
-
   def get_usable_interrupt(self, event, owner, state):
-    if not isinstance(event, (events.UpkeepActions, events.SliderInput)):
+    if event.is_done() or not isinstance(event, events.SliderInput):
       return None
-    return self.get_usable(event, owner, state)
-
-  def get_usable(self, event, owner, state):
     if self.exhausted:
       return None
     if event.character != owner:

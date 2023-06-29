@@ -2278,13 +2278,15 @@ class Mythos18Test(EventTest):
   def testCanGainFromPsychology(self):
     self.char.possessions.append(abilities.Psychology())
     self.advance_turn(0, "upkeep")
-    self.state.event_stack.append(UpkeepActions(self.char))
+    self.state.event_stack.append(SliderInput(self.char))
     psych = self.resolve_to_usable(0, "Psychology")
     self.state.event_stack.append(psych)
     char_choice = self.resolve_to_choice(MultipleChoice)
     char_choice.resolve(self.state, "Dummy")
-    self.resolve_until_done()
+    sliders = self.resolve_to_choice(SliderInput)
     self.assertEqual(self.char.sanity, 3)
+    sliders.resolve(self.state, "done", None)
+    self.resolve_until_done()
 
   def testCanGainAtAsylum(self):
     self.char.dollars = 2
@@ -2307,11 +2309,13 @@ class Mythos18Test(EventTest):
     # TODO: Healing stone maybe shouldn't even be usable?
     self.char.possessions.append(items.HealingStone(0))
     self.advance_turn(0, "upkeep")
-    self.state.event_stack.append(UpkeepActions(self.char))
+    self.state.event_stack.append(SliderInput(self.char))
     stone = self.resolve_to_usable(0, "Healing Stone0")
     self.state.event_stack.append(stone)
-    self.resolve_until_done()
+    sliders = self.resolve_to_choice(SliderInput)
     self.assertEqual(self.char.sanity, 2)
+    sliders.resolve(self.state, "done", None)
+    self.resolve_until_done()
     self.state.event_stack.append(Gain(self.char, {"sanity": 3}))
     self.resolve_until_done()
     self.assertEqual(self.char.sanity, 2)
