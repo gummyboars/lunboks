@@ -142,5 +142,5 @@ germanCities = [
   "LUBECK",
 ];
 
-assetNames = ["Germany", "supply", "coal", "oil", "gas", "uranium", "stage3"].concat(germanCities).concat(plantNames);
+assetNames = ["Germany", "supply", "payments", "coal", "oil", "gas", "uranium", "stage3"].concat(germanCities).concat(plantNames);
 serverNames = {};
