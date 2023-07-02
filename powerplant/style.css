@@ -242,6 +242,23 @@ div {
 .joinbutton:disabled {
   pointer-events: none;
 }
+#payments {
+  width: min(12.5vw, 20vh);
+  height: min(12.5vw, 20vh);
+  position: absolute;
+  visibility: hidden;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  font-size: min(2vw, 3.2vh);
+  background-color: olive;
+}
+#payments.shown {
+  pointer-events: auto;
+  position: relative;
+  visibility: visible;
+}
 #resupply {
   width: min(12.5vw, 20vh);
   pointer-events: none;

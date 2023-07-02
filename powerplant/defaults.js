@@ -167,6 +167,9 @@ function renderDefaultToCanvas(cnv, width, height, assetName, variant) {
   if (assetName == "supply") {
     return renderSupply(cnv, width, height);
   }
+  if (assetName == "payments") {
+    return null;
+  }
   if (assetName == "coal") {
     return renderCoal(cnv, width, height, width/2, height/2);
   }

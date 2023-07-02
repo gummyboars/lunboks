@@ -48,6 +48,7 @@ function continueInit(gameId) {
   ws = new WebSocket("ws://" + window.location.hostname + ":8081/" + gameId);
   ws.onmessage = onmsg;
 
+  renderAssetToDiv(document.getElementById("payments"), "payments");
   renderAssetToDiv(document.getElementById("board"), "Germany");
   renderAssetToDiv(document.getElementById("supply"), "supply");
   let supp = document.getElementById("supplycnt");
@@ -121,6 +122,11 @@ function toggleMarket() {
 function toggleResupply() {
   let resupply = document.getElementById("resupply");
   resupply.classList.toggle("shown");
+}
+
+function togglePayments() {
+  let payments = document.getElementById("payments");
+  payments.classList.toggle("shown");
 }
 
 function joinGame() {
@@ -795,8 +801,6 @@ function createPlayer(idx, player) {
   forceHide.appendChild(hideText);
   forceHide.onclick = function(e) { hideDefaultPlant(plantExpand); };
   document.getElementById("uiright").appendChild(div);
-  div.onmouseenter = function(e) { showPlants(plantExpand); };
-  div.onmouseleave = function(e) { hidePlants(plantExpand); };
   return div;
 }
 
@@ -821,18 +825,18 @@ function updatePlayer(div, player, ordering, idx, owned, isTurn, winner) {
 }
 
 function updatePlants(playerDiv, plants, owned) {
+  let plantExpand = playerDiv.getElementsByClassName("plantexpand")[0];
   let playerPlants = playerDiv.getElementsByClassName("playerplant");
   while (playerDiv.getElementsByClassName("playerplant").length > plants.length) {
     playerDiv.removeChild(playerDiv.getElementsByClassName("playerplant")[0]);
   }
   while (playerDiv.getElementsByClassName("playerplant").length < plants.length) {
-    createPlant(playerDiv);
+    createPlant(playerDiv, plantExpand);
   }
   for (let [idx, plant] of plants.entries()) {
     updatePlant(playerPlants[idx], plant);
   }
 
-  let plantExpand = playerDiv.getElementsByClassName("plantexpand")[0];
   while (plantExpand.getElementsByClassName("plantcnt").length > plants.length) {
     plantExpand.removeChild(plantExpand.getElementsByClassName("plantcnt")[0]);
   }
@@ -845,7 +849,7 @@ function updatePlants(playerDiv, plants, owned) {
   }
 }
 
-function createPlant(playerDiv) {
+function createPlant(playerDiv, plantExpand) {
   let div = document.createElement("DIV");
   div.classList.add("playerplant");
   let num = document.createElement("DIV");
@@ -858,6 +862,8 @@ function createPlant(playerDiv) {
   div.appendChild(output);
   div.appendChild(storage);
   playerDiv.appendChild(div);
+  div.onmouseenter = function(e) { showPlants(plantExpand); };
+  div.onmouseleave = function(e) { hidePlants(plantExpand); };
 }
 
 function updatePlant(plantDiv, plant) {
