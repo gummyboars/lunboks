@@ -14,6 +14,7 @@ charChoice = null;
 ancientChoice = null;
 oldCurrent = null;
 oldVisuals = {};
+gainedClues = [];
 runningAnim = [];
 messageQueue = [];
 statTimeout = null;
@@ -317,6 +318,7 @@ function handleData(data) {
   chosenAncient = (data.ancient_one == null) ? null : data.ancient_one.name;
   let myChoice = data.chooser == data.player_idx ? data.choice : null;
   let mySpendables = data.chooser == data.player_idx ? data.spendables : null;
+  removeDummyObjects();
   updateAvailableCharacters(data.characters, data.pending_chars);
   updateCharacterSelect(data.characters, data.player_idx);
   updateAncientSelect(data.game_stage, data.host);
@@ -324,7 +326,8 @@ function handleData(data) {
   updateCharacterSheets(data.characters, data.pending_chars, data.player_idx, data.first_player, myChoice, data.chooser == data.player_idx ? data.sliders : null);
   updateBottomText(data.game_stage, data.turn_phase, data.characters, data.turn_idx, data.player_idx, data.host);
   updateGlobals(data.environment, data.rumor, data.other_globals);
-  updatePlaces(data.places, data.activity);
+  updatePlaces(data.places, data.activity, data.current);
+  animateClues(data.current);
   updateCharacters(data.characters);
   updateSliderButton(data.sliders, data.chooser == data.player_idx);
   markVisualsForDeletion();
@@ -864,6 +867,13 @@ function start(e) {
 
 function doneSliders(e) {
   ws.send(JSON.stringify({"type": "set_slider", "name": "done"}));
+}
+
+function removeDummyObjects() {
+  let enterDiv = document.getElementById("enteringscroll");
+  while (enterDiv.getElementsByClassName("dummy").length > 0) {
+    enterDiv.removeChild(enterDiv.getElementsByClassName("dummy")[0]);
+  }
 }
 
 function updateCharacters(newCharacters) {
@@ -1710,7 +1720,7 @@ function getNodeTranslation(div, destParent) {
   return "translateX(" + diffX + "px) translateY(" + diffY + "px)";
 }
 
-function updatePlaces(places, activity) {
+function updatePlaces(places, activity, current) {
   let oldGates = [];
   for (let gateCont of document.getElementsByClassName("gatecontainer")) {
     if (gateCont.handle != null) {
@@ -1728,7 +1738,7 @@ function updatePlaces(places, activity) {
       updateSeal(place);
     }
     if (place.clues != null) {
-      updateClues(place);
+      updateClues(place, current);
     }
     if (place.closed != null) {
       updateClosed(place);
@@ -1752,14 +1762,26 @@ function updatePlaceBoxes(places, activity) {
   }
 }
 
-function updateClues(place) {
+function updateClues(place, current) {
   let charsDiv = document.getElementById("place" + place.name + "chars");
   let numClues = charsDiv.getElementsByClassName("clue").length;
-  while (numClues > place.clues) {
-    charsDiv.removeChild(charsDiv.getElementsByClassName("clue")[0]);
-    numClues--;
+  for (let i = 0; i < numClues - place.clues; i++) {
+    let dest = gainedClues.length > 0 ? gainedClues.pop() : null;
+    let clueDiv = charsDiv.getElementsByClassName("clue")[0];
+    if (dest != null) {
+      runningAnim.push(true);
+      moveAndTranslateNode(clueDiv, dest, "abs");
+      clueDiv.ontransitionend = function() { clueDiv.parentNode.removeChild(clueDiv); finishAnim(); };
+      clueDiv.ontransitioncancel = function() { clueDiv.parentNode.removeChild(clueDiv); finishAnim(); };
+      setTimeout(function() { clueDiv.classList.add("moving"); clueDiv.style.transform = "none"; }, 10);
+    } else {
+      charsDiv.removeChild(clueDiv);
+    }
   }
-  while (numClues < place.clues) {
+  let shouldAnimate = current != null && current.startsWith("Mythos");
+  let enterDiv = document.getElementById("enteringscroll");
+  let addedClues = [];
+  for (let i = 0; i < place.clues - numClues; i++) {
     let clueDiv = document.createElement("DIV");
     clueDiv.classList.add("clue");
     let cnvContainer = document.createElement("DIV");
@@ -1768,9 +1790,87 @@ function updateClues(place) {
     cnv.classList.add("cluecnv");
     cnvContainer.appendChild(cnv);
     clueDiv.appendChild(cnvContainer);
-    charsDiv.appendChild(clueDiv);
+    if (shouldAnimate) {
+      clueDiv.classList.add("entering");
+      enterDiv.appendChild(clueDiv);
+      addedClues.push(clueDiv);
+    } else {
+      charsDiv.appendChild(clueDiv);
+    }
     renderAssetToDiv(cnvContainer, "Clue");
-    numClues++;
+  }
+  for (let i = addedClues.length-1; i >=0; i--) {
+    let c = addedClues[i];
+    runningAnim.push(true);  // One animation per clue.
+    let lastAnim = function() {
+      doneAnimating(c);
+      finishAnim();
+    };
+    let moveToBoard = function() {
+      doneAnimating(c);
+      let sibling = c.nextSibling;
+      moveAndTranslateNode(c, charsDiv, "moving");
+      c.ontransitionend = lastAnim;
+      c.ontransitioncancel = lastAnim;
+      setTimeout(function() { c.classList.add("moving"); c.style.transform = "none"; }, 10);
+      // In order for this animation to work, you must keep the number of clues in this div
+      // constant so that future clues you animate don't shift when this clue is removed.
+      let dummyClue = document.createElement("DIV");
+      dummyClue.classList.add("clue", "dummy");
+      enterDiv.insertBefore(dummyClue, sibling);
+    };
+    setTimeout(function() {
+      c.ontransitionend = moveToBoard;
+      c.ontransitioncancel = moveToBoard;
+      c.classList.add("moving");
+      c.classList.remove("entering");
+    }, 10);
+  }
+}
+
+function animateClues(current) {
+  if (current == null || !current.startsWith("Mythos")) {
+    return;
+  }
+  let enterDiv = document.getElementById("enteringscroll");
+  while (gainedClues.length > 0) {
+    runningAnim.push(true);  // One animation per clue.
+    let dest = gainedClues.pop();
+    let clueDiv = document.createElement("DIV");
+    clueDiv.classList.add("clue");
+    let cnvContainer = document.createElement("DIV");
+    cnvContainer.classList.add("cluecontainer", "cnvcontainer");
+    let cnv = document.createElement("CANVAS");
+    cnv.classList.add("cluecnv");
+    cnvContainer.appendChild(cnv);
+    clueDiv.appendChild(cnvContainer);
+    clueDiv.classList.add("entering");
+    enterDiv.appendChild(clueDiv);
+    renderAssetToDiv(cnvContainer, "Clue");
+    let lastAnim = function() {
+      doneAnimating(clueDiv);
+      clueDiv.parentNode.removeChild(clueDiv);
+      finishAnim();
+    };
+    let moveToSheet = function() {
+      doneAnimating(clueDiv);
+      let sibling = clueDiv.nextSibling;
+      moveAndTranslateNode(clueDiv, dest, "moving");
+      clueDiv.ontransitionend = lastAnim;
+      clueDiv.ontransitioncancel = lastAnim;
+      setTimeout(function() { clueDiv.classList.add("abs", "moving"); clueDiv.style.transform = "none"; }, 10);
+      // In order for this animation to work, you must keep the number of clues in this div
+      // constant so that future clues you animate don't shift when this clue is removed.
+      let dummyClue = document.createElement("DIV");
+      dummyClue.classList.add("clue", "dummy");
+      enterDiv.insertBefore(dummyClue, sibling);
+    };
+    setTimeout(function() {
+      clueDiv.ontransitionend = moveToSheet;
+      clueDiv.ontransitioncancel = moveToSheet;
+      clueDiv.classList.add("moving");
+      clueDiv.classList.remove("entering");
+    }, 10);
   }
 }
 
@@ -2337,6 +2437,7 @@ function drawChosenChar(character) {
 }
 
 function updateCharacterSheets(characters, pendingCharacters, playerIdx, firstPlayer, choice, sliders) {
+  gainedClues = [];  // Reset this before updating all characters.
   // We're going to fix the visibility of the spendDiv first so that animations of the player
   // (un)spending their stats works correctly.
   let spendable = null;
@@ -2725,6 +2826,10 @@ function updateCharacterStats(sheet, character, isPlayer, spent, spendable) {
         toRemove.ontransitioncancel = function() { toRemove.parentNode.removeChild(toRemove); };
         setTimeout(function() { toRemove.classList.add("moving"); toRemove.style.transform = "none"; }, 10);
         setTimeout(finishAnim, 300);
+      }
+    } else {
+      for (let i = 0; i < newValue - oldValue; i++) {
+        gainedClues.push(statDiv);
       }
     }
   }

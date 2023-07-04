@@ -138,6 +138,9 @@ button:disabled {
   pointer-events: auto;
   z-index: 20;
 }
+#enteringscroll {
+  justify-content: center;
+}
 .cardscrollbtn {
   font-size: calc(min(1.25vw, 2vh));
   height: calc(min(15vw, 24vh) * 25 / 16);
@@ -1088,6 +1091,16 @@ button:disabled {
   width: calc(min(80vw, 128vh) * 3 / 118);
   height: calc(min(80vw, 128vh) * 3 / 118);
 }
+.clue.moving {
+  transition: transform 0.8s;
+}
+.clue.entering {
+  transform: translateY(400%);
+  transition: none;
+}
+.clue.hidden {
+  visibility: hidden;
+}
 .activity {
   align-self: center;
   position: relative;
@@ -1253,7 +1266,7 @@ button:disabled {
   cursor: pointer;
   z-index: 4;
 }
-.stats.abs {
+.abs {
   position: absolute;
   top: 0;
   left: 0;
