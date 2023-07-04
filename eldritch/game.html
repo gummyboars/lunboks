@@ -22,58 +22,58 @@
           <span id="loadcount">&nbsp;</span>
         </div>
       </div>
-      <div id="uimain">
-        <div id="centerizer">
-          <div id="giveselect">
-            <div id="givetext">How much do you want to give?</div>
-            <div id="givebottom">
-              <datalist id="giveoptions">
-                <option value="0" label="0"></option>
-              </datalist>
-              <input type="range" min="0" value="0" list="giveoptions" id="giveslider" oninput="updateGive(value)"></input>
-              <output for="giveslider" id="givevalue">0</output>
-            </div>
-            <div id="givebuttons">
-              <button onclick="cancelGive(event)">Cancel</button>
-              <div class="spacer"></div>
-              <button onclick="finishGive(event)">Give</button>
-            </div>
+      <div id="centerizer">
+        <div id="giveselect">
+          <div id="givetext">How much do you want to give?</div>
+          <div id="givebottom">
+            <datalist id="giveoptions">
+              <option value="0" label="0"></option>
+            </datalist>
+            <input type="range" min="0" value="0" list="giveoptions" id="giveslider" oninput="updateGive(value)"></input>
+            <output for="giveslider" id="givevalue">0</output>
           </div>
-          <div id="selectors">
-            <div id="charselect">
-              <div id="charchoices" class="bigchoices">
-                <div id="prevchar" class="choicebutton" onclick="prevChar(event)">◀️</div>
-                <div id="charchoice"></div>
-                <div id="nextchar" class="choicebutton" onclick="nextChar(event)">▶️</div>
-              </div>
-              <div class="selectbutton"><button id="choosecharbutton" onclick="selectChar(event)">Choose</button></div>
-            </div>
-            <div id="ancientselect">
-              <div id="ancientchoices" class="bigchoices">
-                <div id="prevancient" class="choicebutton" onclick="prevAncient(event)">◀️</div>
-                <div id="ancientchoice" class="cnvcontainer"><canvas></canvas></div>
-                <div id="nextancient" class="choicebutton" onclick="nextAncient(event)">▶️</div>
-              </div>
-              <div class="selectbutton"><button id="chooseancientbutton" onclick="selectAncient(event)">Choose</button></div>
-            </div>
-          </div>
-          <div id="cardchoicescroll" class="cardscroll">
-            <div id="scrollcardsleft" class="cardscrollbtn" onclick="scrollCards(event, -1)">◀️</div>
-            <div id="uicardchoice" class="cardscroller"></div>
-            <div id="scrollcardsright" class="cardscrollbtn" onclick="scrollCards(event, 1)">▶️</div>
-          </div>
-          <div id="globalscroll" class="cardscroll">
-            <div id="scrollglobalsleft" class="cardscrollbtn" onclick="scrollCards(event, -1)">◀️</div>
-            <div id="globalcards" class="cardscroller"></div>
-            <div id="scrollglobalsright" class="cardscrollbtn" onclick="scrollCards(event, 1)">▶️</div>
-          </div>
-          <div id="enteringscroll" class="cardscroll"></div>
-          <div id="monsterdetails">
-            <div id="monsterdetailsname"></div>
-            <div id="monsterdetailsbox"></div>
-            <div id="hidemonsters"><button onclick="hideMonsters(event)">Close</button></div>
+          <div id="givebuttons">
+            <button onclick="cancelGive(event)">Cancel</button>
+            <div class="spacer"></div>
+            <button onclick="finishGive(event)">Give</button>
           </div>
         </div>
+        <div id="selectors">
+          <div id="charselect">
+            <div id="charchoices" class="bigchoices">
+              <div id="prevchar" class="choicebutton" onclick="prevChar(event)">◀️</div>
+              <div id="charchoice"></div>
+              <div id="nextchar" class="choicebutton" onclick="nextChar(event)">▶️</div>
+            </div>
+            <div class="selectbutton"><button id="choosecharbutton" onclick="selectChar(event)">Choose</button></div>
+          </div>
+          <div id="ancientselect">
+            <div id="ancientchoices" class="bigchoices">
+              <div id="prevancient" class="choicebutton" onclick="prevAncient(event)">◀️</div>
+              <div id="ancientchoice" class="cnvcontainer"><canvas></canvas></div>
+              <div id="nextancient" class="choicebutton" onclick="nextAncient(event)">▶️</div>
+            </div>
+            <div class="selectbutton"><button id="chooseancientbutton" onclick="selectAncient(event)">Choose</button></div>
+          </div>
+        </div>
+        <div id="cardchoicescroll" class="cardscroll">
+          <div id="scrollcardsleft" class="cardscrollbtn" onclick="scrollCards(event, -1)">◀️</div>
+          <div id="uicardchoice" class="cardscroller"></div>
+          <div id="scrollcardsright" class="cardscrollbtn" onclick="scrollCards(event, 1)">▶️</div>
+        </div>
+        <div id="globalscroll" class="cardscroll">
+          <div id="scrollglobalsleft" class="cardscrollbtn" onclick="scrollCards(event, -1)">◀️</div>
+          <div id="globalcards" class="cardscroller"></div>
+          <div id="scrollglobalsright" class="cardscrollbtn" onclick="scrollCards(event, 1)">▶️</div>
+        </div>
+        <div id="monsterdetails">
+          <div id="monsterdetailsname"></div>
+          <div id="monsterdetailsbox"></div>
+          <div id="hidemonsters"><button onclick="hideMonsters(event)">Close</button></div>
+        </div>
+      </div>
+      <div id="enteringscroll" class="cardscroll"></div>
+      <div id="uimain">
         <div id="worlds"></div>
         <div id="board" class="cnvcontainer">
           <canvas id="boardcanvas"></canvas>
