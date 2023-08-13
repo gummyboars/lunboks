@@ -59,6 +59,7 @@ commonNames = [
   "Axe",
   "Bullwhip",
   "Cavalry Saber",
+  "Cigarette Case",
   "Cross",
   "Dark Cloak",
   "Dynamite",

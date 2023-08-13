@@ -15,6 +15,7 @@ from game import InvalidMove, InvalidInput
 
 if TYPE_CHECKING:
   from eldritch.eldritch import GameState
+  from eldritch import items
 
 random = SystemRandom()
 
@@ -1528,9 +1529,9 @@ class SellChosen(Event):
 
 
 def Sell(char, decks, sell_count=1, discount_type="fixed", discount=0, prompt="Sell item?"):
-  items = ItemCountChoice(char, prompt, sell_count, min_count=0, decks=decks)
-  sell = SellChosen(char, items, discount_type=discount_type, discount=discount)
-  return Sequence([items, sell], char)
+  items_to_sell = ItemCountChoice(char, prompt, sell_count, min_count=0, decks=decks)
+  sell = SellChosen(char, items_to_sell, discount_type=discount_type, discount=discount)
+  return Sequence([items_to_sell, sell], char)
 
 
 class PurchaseDrawn(Event):
@@ -1623,12 +1624,12 @@ class PurchaseDrawn(Event):
 
 def Purchase(char, deck, draw_count, discount_type="fixed", discount=0, keep_count=1,
              target_type=None, prompt="Buy items?", must_buy=False):
-  items = DrawItems(char, deck, draw_count, target_type=target_type)
+  items_to_buy = DrawItems(char, deck, draw_count, target_type=target_type)
   buy = PurchaseDrawn(
-      char, items, discount_type=discount_type, discount=discount, keep_count=keep_count,
+      char, items_to_buy, discount_type=discount_type, discount=discount, keep_count=keep_count,
       prompt=prompt, sort_uniq=math.isinf(draw_count), must_buy=must_buy,
   )
-  return Sequence([items, buy], char)
+  return Sequence([items_to_buy, buy], char)
 
 
 class Encounter(Event):
@@ -2277,10 +2278,14 @@ def LoseItems(character, count, prompt=None, decks=None, item_type=None):
 
 class DiscardSpecific(Event):
 
-  def __init__(self, character, items, to_box=False):
+  def __init__(
+          self,
+          character,
+          items_to_discard: "Union[ItemChoice, values.Value, List[items.Item]]",
+          to_box=False):
     super().__init__()
     self.character = character
-    self.items = items
+    self.items = items_to_discard
     self.to_box = to_box
     self.discarded = None
     self._verb = "discard"
