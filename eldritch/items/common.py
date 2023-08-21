@@ -7,6 +7,7 @@ __all__ = [
     "Automatic45", "Axe", "Bullwhip", "CavalrySaber", "Cross", "Derringer18", "Dynamite",
     "Knife", "Revolver38", "Rifle", "Shotgun", "TommyGun", "AncientTome", "DarkCloak",
     "Food", "Lantern", "ResearchMaterials", "Whiskey", "OldJournal",
+    "Map", "Motorcycle", "CigaretteCase"
 ]
 
 
@@ -149,6 +150,21 @@ class OldJournal(Tome):
 # Other
 
 
+class CigaretteCase(Item):
+  def __init__(self, idx):
+    super().__init__("Cigarette Case", idx, "common", {}, {}, None, 1)
+
+  def get_usable_interrupt(self, event, owner, state):
+    if not isinstance(event, events.SpendChoice) or event.is_done() or event.character != owner:
+      return None
+    if len(state.event_stack) < 2 or not isinstance(state.event_stack[-2], events.Check):
+      return None
+    return events.Sequence([
+        events.DiscardSpecific(owner, [self]),
+        events.RerollCheck(state.event_stack[-2].character, state.event_stack[-2]),
+    ], owner)
+
+
 def DarkCloak(idx):
   return Item("Dark Cloak", idx, "common", {}, {"evade": 1}, None, 2)
 
@@ -174,6 +190,28 @@ class Food(Item):
 
 def Lantern(idx):
   return Item("Lantern", idx, "common", {}, {"luck": 1}, None, 3)
+
+
+class SpeedBoost(Item):
+  def __init__(self, name, idx, deck, price, boost_amount: int):
+    super().__init__(name, idx, deck, {}, {}, None, price)
+    self.boost_amount = boost_amount
+
+  def get_usable_interrupt(self, event, owner, state):
+    if isinstance(event, events.CityMovement) and event.character == owner and not self.exhausted:
+      return events.Sequence([
+          events.ChangeMovementPoints(owner, self.boost_amount),
+          events.ExhaustAsset(owner, self)
+      ])
+    return None
+
+
+def Map(idx):
+  return SpeedBoost("Map", idx, "common", 2, 1)
+
+
+def Motorcycle(idx):
+  return SpeedBoost("Motorcycle", idx, "common", 4, 2)
 
 
 class ResearchMaterials(Item):

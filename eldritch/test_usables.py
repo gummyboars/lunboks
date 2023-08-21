@@ -253,6 +253,54 @@ class ResearchTest(EventTest):
     self.resolve_until_done()
 
 
+class CigaretteTest(EventTest):
+
+  def setUp(self):
+    super().setUp()
+    self.char.possessions.append(items.CigaretteCase(0))
+
+  def testUseOnOwnCheck(self):
+    self.char.clues = 2
+    check = Check(self.char, "speed", 0)
+    self.state.event_stack.append(check)
+
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=4)):
+      self.resolve_to_usable(0, "Cigarette Case0", Sequence)
+    self.assertFalse(check.is_resolved())
+    self.assertEqual(len(self.state.event_stack), 2)
+    self.assertEqual(self.state.event_stack[-1], check.spend)
+    self.assertEqual(len(self.state.usables), 1)
+    self.assertEqual(check.roll, [4, 4, 4, 4])
+
+    self.state.event_stack.append(self.state.usables[0]["Cigarette Case0"])
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_to_choice(SpendChoice)
+
+    self.assertFalse(self.state.usables)
+    self.assertEqual(check.roll, [5, 5, 5, 5])
+
+  def testCantUseOnSomeoneElsesCheck(self):
+    buddy = characters.Character("Buddy", 5, 5, 4, 4, 4, 4, 4, 4, 4, "Square")
+    buddy.place = self.state.places["Square"]
+    self.state.all_characters["Buddy"] = buddy
+    self.state.characters.append(buddy)
+
+    buddy.clues = 2
+    buddy.possessions.append(items.Shotgun(0))
+
+    cultist = monsters.Cultist()
+    combat = CombatRound(buddy, cultist)
+    self.state.event_stack.append(combat)
+    combat_choice = self.resolve_to_choice(CombatChoice)
+    self.choose_items(combat_choice, ["Shotgun0"])
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=4)):
+      self.resolve_to_choice(events.SpendChoice)
+    check = self.state.event_stack[-2]
+    self.assertIsInstance(check, Check)
+    self.assertEqual(check.successes, 0)
+    self.assertNotIn(0, self.state.usables)
+
+
 class TrustFundTest(EventTest):
 
   def testGainADollarDuringUpkeep(self):
