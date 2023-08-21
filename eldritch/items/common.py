@@ -198,7 +198,7 @@ class SpeedBoost(Item):
     self.boost_amount = boost_amount
 
   def get_usable_interrupt(self, event, owner, state):
-    if isinstance(event, events.Movement) and event.character == owner and not self.exhausted:
+    if isinstance(event, events.CityMovement) and event.character == owner and not self.exhausted:
       return events.Sequence([
           events.ChangeMovementPoints(owner, self.boost_amount),
           events.ExhaustAsset(owner, self)
