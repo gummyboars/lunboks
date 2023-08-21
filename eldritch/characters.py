@@ -118,7 +118,7 @@ class BaseCharacter(metaclass=abc.ABCMeta):
   def bonus(self, check_name, state, attributes=None):
     modifier = state.get_modifier(self, check_name)
     for pos in self.possessions:
-      bonus = pos.get_bonus(check_name, attributes)
+      bonus = pos.get_bonus(check_name, attributes, self, state)
       if attributes and check_name in {"magical", "physical"}:
         if check_name + " immunity" in attributes:
           bonus = 0
@@ -624,11 +624,13 @@ class Gangster(Character):
     return {"unique": 1, "skills": 1}
 
 
+from eldritch.expansions.seaside import characters as seaside_characters
+
 def CreateCharacters():
   return {
       c.name: c for c in [
           Student(), Drifter(), Salesman(), Psychologist(), Photographer(), Magician(), Author(),
           Professor(), Dilettante(), PrivateEye(), Scientist(), Researcher(), Nun(), Doctor(),
-          Archaeologist(), Gangster(),
+          Archaeologist(), Gangster(), seaside_characters.Spy()
       ]
   }

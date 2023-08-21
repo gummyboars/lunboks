@@ -284,7 +284,7 @@ class SliderInput(Event):
     pending = self.pending.copy()
     pending[name] = value
     if not self.free:
-      if self.character.focus_cost(pending) > self.character.focus_points:
+      if self.character.focus_cost(pending) > self.character.slider_focus_available:
         raise InvalidMove("You do not have enough focus.")
     self.pending = pending
 
@@ -303,6 +303,34 @@ class SliderInput(Event):
     if self.done:
       return f"[{self.character.name}] set sliders"
     return f"[{self.character.name}] must set sliders"
+
+
+class MoveSliders(Event):
+  def __init__(self, character, slider_dests: dict):
+    super().__init__()
+    self.character = character
+    self.slider_dests = slider_dests
+    self.done = False
+
+  def resolve(self, state):
+    for slider, val in self.slider_dests.items():
+      setattr(self.character, slider, val)
+    self.done = True
+
+  def is_resolved(self) -> bool:
+    return self.done
+
+  def log(self, state):
+    if self.cancelled:
+      return f"Force movement of {self.character.name}'s sliders was cancelled"
+    if self.done:
+      return f"[{self.character.name}] sliders set to: {self.slider_dests}"
+    return f"[{self.character.name}] sliders will be moved"
+
+
+
+  def animated(self) -> bool:
+    return True
 
 
 class Movement(Turn):

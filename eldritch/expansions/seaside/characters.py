@@ -2,6 +2,23 @@ from eldritch import characters
 from eldritch import events
 
 
+class Secretary(characters.Character):
+  def __init__(self):
+    super().__init__("Secretary", 4, 6, 5, 4, 4, 4, 4, 3, 2, "Hospital")
+
+  def abilities(self):
+    return ["Synergy", "Team Player"]
+
+  def initial_attributes(self):
+    return {"dollars": 4, "clues": 2}
+
+  def fixed_possessions(self):
+    return {"unique": ["Yellow Play"]}
+
+  def random_possessions(self):
+    return {"common": 2, "unique": 1, "spells": 1, "skills": 1}
+
+
 class Spy(characters.BaseCharacter):
   _slider_names = ["fight_sneak", "lore_will", "speed_luck"]
 
@@ -44,12 +61,6 @@ class Spy(characters.BaseCharacter):
       speed + getattr(pos, "passive_bonuses", {}).get("speed", 0)
     return speed
 
-  def get_interrupts(self, event, state):
-    if isinstance(event, events.Upkeep) and event.character == self:
-      self.fight_sneak_slider = 0
-      self.lore_will_slider = 0
-      self.speed_luck_slider = 0
-
   def max_stamina(self, state):
     return self._max_stamina + self.bonus("max_stamina", state)
 
@@ -63,7 +74,11 @@ class Spy(characters.BaseCharacter):
     return {"dollars": 4, "clues": 2}
 
   def fixed_possessions(self):
-    return {"common": ["Cigarette Case"]}
+    return {
+        "common": [
+            # "Cigarette Case"
+        ]
+    }
 
   def random_possessions(self):
     return {"common": 2, "unique": 2, "skills": 1}
@@ -71,7 +86,9 @@ class Spy(characters.BaseCharacter):
   def focus_cost(self, pending_sliders):
     return sum(pending_sliders[name] for name in self.sliders())
 
+  @property
   def slider_focus_available(self):
-    abnormal_focus =  5
+    abnormal_focus = 5
     for pos in self.possessions:
       abnormal_focus += pos.get_bonus("abnormal_focus", [])
+    return abnormal_focus
