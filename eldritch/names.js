@@ -164,6 +164,8 @@ abilityNames = [
   "Physician",
   "Archaeology",
   "Strong Body",
+  "Abnormal Focus",
+  "Breaking the Limits",
 ];
 carefullyAdd(abilityNames, true);
 otherNames = [

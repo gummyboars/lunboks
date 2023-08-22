@@ -29,10 +29,10 @@ class BaseCharacter(metaclass=abc.ABCMeta):
 
   def get_json(self, state):
     attrs = [
-      "name", "stamina", "sanity", "focus",
-      "movement_points", "focus_points",
-      "dollars", "clues", "possessions",  # TODO: special cards
-      "delayed_until", "lose_turn_until", "arrested_until", "gone",
+        "name", "stamina", "sanity", "focus",
+        "movement_points", "focus_points",
+        "dollars", "clues", "possessions",  # TODO: special cards
+        "delayed_until", "lose_turn_until", "arrested_until", "gone",
     ]
     data = {attr: getattr(self, attr) for attr in attrs}
     for numeric in ["delayed_until", "lose_turn_until", "arrested_until"]:
@@ -41,8 +41,8 @@ class BaseCharacter(metaclass=abc.ABCMeta):
     data["sliders"] = OrderedDict()
     for slider in self._slider_names:
       data["sliders"][slider] = {
-        "pairs": getattr(self, "_" + slider),
-        "selection": getattr(self, slider + "_slider"),
+          "pairs": getattr(self, "_" + slider),
+          "selection": getattr(self, slider + "_slider"),
       }
     data["trophies"] = []
     for trophy in self.trophies:
@@ -95,7 +95,6 @@ class BaseCharacter(metaclass=abc.ABCMeta):
   def max_sanity(self, state):
     pass
 
-  @property
   @abc.abstractmethod
   def movement_speed(self):
     pass
@@ -198,25 +197,25 @@ class BaseCharacter(metaclass=abc.ABCMeta):
 
   def get_interrupts(self, event, state):
     return [
-      p.get_interrupt(event, self, state) for p in self.possessions
-      if p.get_interrupt(event, self, state)
+        p.get_interrupt(event, self, state) for p in self.possessions
+        if p.get_interrupt(event, self, state)
     ]
 
   def get_usable_interrupts(self, event, state):
     interrupts = {
-      pos.handle: pos.get_usable_interrupt(event, self, state)
-      for pos in self.possessions
-      if (
-          pos.get_usable_interrupt(event, self, state)
-          and state.get_override(pos, "can_use")
-      )
+        pos.handle: pos.get_usable_interrupt(event, self, state)
+        for pos in self.possessions
+        if (
+            pos.get_usable_interrupt(event, self, state)
+            and state.get_override(pos, "can_use")
+        )
     }
     return interrupts
 
   def get_spendables(self, event, state):
     spendables = {
-      pos.handle: pos.get_spend_amount(event, self, state)
-      for pos in self.possessions if pos.get_spend_amount(event, self, state) is not None
+        pos.handle: pos.get_spend_amount(event, self, state)
+        for pos in self.possessions if pos.get_spend_amount(event, self, state) is not None
     }
     if isinstance(event, events.SpendMixin) and event.character == self and not event.is_done():
       spent_handles = event.spent_handles()
@@ -238,23 +237,23 @@ class BaseCharacter(metaclass=abc.ABCMeta):
     triggers = []
     if isinstance(event, events.DiscardSpecific):
       triggers.extend([
-        p.get_trigger(event, self, state) for p in event.discarded
-        if p.get_trigger(event, self, state)
+          p.get_trigger(event, self, state) for p in event.discarded
+          if p.get_trigger(event, self, state)
       ])
     if isinstance(event, events.DiscardNamed) and event.discarded:
       trig = event.discarded.get_trigger(event, self, state)
       triggers.extend([trig] if trig else [])
     return triggers + [
-      p.get_trigger(event, self, state) for p in self.possessions
-      if p.get_trigger(event, self, state)
+        p.get_trigger(event, self, state) for p in self.possessions
+        if p.get_trigger(event, self, state)
     ]
 
   def get_usable_triggers(self, event, state):
     return {
-      pos.handle: pos.get_usable_trigger(event, self, state)
-      for pos in self.possessions
-      if pos.get_usable_trigger(event, self, state)
-         and state.get_override(pos, "can_use")
+        pos.handle: pos.get_usable_trigger(event, self, state)
+        for pos in self.possessions
+        if pos.get_usable_trigger(event, self, state)
+        and state.get_override(pos, "can_use")
     }
 
   def get_spend_event(self, handle):
@@ -624,9 +623,8 @@ class Gangster(Character):
     return {"unique": 1, "skills": 1}
 
 
-from eldritch.expansions.seaside import characters as seaside_characters
-
 def CreateCharacters():
+  from eldritch.expansions.seaside import characters as seaside_characters
   return {
       c.name: c for c in [
           Student(), Drifter(), Salesman(), Psychologist(), Photographer(), Magician(), Author(),

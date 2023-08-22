@@ -266,7 +266,7 @@ class SliderInput(Event):
       if not self.free:
         if self.character.focus_cost(self.pending) > self.character.slider_focus_available:
           raise InvalidMove("You do not have enough focus.")
-        self.character.spend_slider_focus( self.character.focus_cost(self.pending))
+        self.character.spend_slider_focus(self.character.focus_cost(self.pending))
       for slider_name, slider_value in self.pending.items():
         setattr(self.character, slider_name + "_slider", slider_value)
       self.done = True
@@ -291,7 +291,9 @@ class SliderInput(Event):
   def prompt(self):
     if self.free:
       return f"[{self.character.name}] to set sliders anywhere"
-    remaining_focus = self.character.slider_focus_available - self.character.focus_cost(self.pending)
+    remaining_focus = (
+        self.character.slider_focus_available - self.character.focus_cost(self.pending)
+    )
     return f"[{self.character.name}] to set sliders ({remaining_focus} focus remaining)"
 
   def is_resolved(self):
@@ -326,8 +328,6 @@ class MoveSliders(Event):
     if self.done:
       return f"[{self.character.name}] sliders set to: {self.slider_dests}"
     return f"[{self.character.name}] sliders will be moved"
-
-
 
   def animated(self) -> bool:
     return True
@@ -4629,6 +4629,24 @@ class AddToken(Event):
 
   def animated(self):
     return True
+
+
+class AddTokenMap(Sequence):
+  def __init__(self, asset, token_map, character=None):
+    super().__init__(None, character)
+    self.asset = asset
+    self.token_map = token_map
+
+  def resolve(self, state):
+    if isinstance(self.token_map, values.Value):
+      self.token_map = {k: v for m in self.token_map.value(state).values() for k, v in m.items()}
+
+    if len(self.events) == 1 and isinstance(self.events[0], Nothing):
+      self.events = [
+          AddToken(self.asset, token_type, self.character, n_tokens)
+          for token_type, n_tokens in self.token_map.items()
+      ]
+    super().resolve(state)
 
 
 def RemoveToken(asset, token_type, character=None, n_tokens=1):

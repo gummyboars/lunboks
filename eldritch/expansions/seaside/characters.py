@@ -1,5 +1,4 @@
 from eldritch import characters
-from eldritch import events
 
 
 class Secretary(characters.Character):
@@ -58,7 +57,7 @@ class Spy(characters.BaseCharacter):
   def movement_speed(self):
     speed = self._speed_luck[self.speed_luck_slider][0]
     for pos in self.possessions:
-      speed + getattr(pos, "passive_bonuses", {}).get("speed", 0)
+      speed += getattr(pos, "passive_bonuses", {}).get("speed", 0)
     return speed
 
   def max_stamina(self, state):
@@ -90,5 +89,5 @@ class Spy(characters.BaseCharacter):
   def slider_focus_available(self):
     abnormal_focus = 5
     for pos in self.possessions:
-      abnormal_focus += pos.get_bonus("abnormal_focus", [])
+      abnormal_focus += pos.get_bonus("abnormal_focus", [], self, None)
     return abnormal_focus

@@ -392,6 +392,51 @@ class RangeSpendPrerequisite(SpendValue):
     return f"{spend_min}-{spend_max} {self.SPEND_TYPES[self.spend_type]}"
 
 
+class FlexibleRangeSpendPrerequisite(SpendValue):
+  def __init__(self, spend_types: list, spend_min: float, spend_max: float):
+    assert all(spend_type in self.SPEND_TYPES for spend_type in spend_types)
+    super().__init__()
+    self.spend_types_ = spend_types
+    self.spend_min = spend_min
+    self.spend_max = spend_max
+
+  def remaining_spend(self, state):
+    remaining = super().remaining_spend(state)
+
+    spend_min = self.spend_min.value(state) if isinstance(self.spend_min, Value) else self.spend_min
+    spend_max = self.spend_max.value(state) if isinstance(self.spend_max, Value) else self.spend_max
+    spent = sum(
+        value for spend_type in self.spend_types_ for value in self.spend_map[spend_type].values()
+    )
+
+    for spend_type in self.spend_types_:
+      if spent < spend_min:
+        remaining[spend_type] = spend_min - spent
+      elif spent > spend_max:
+        remaining[spend_type] = spend_max - spent
+    return remaining
+
+  def remaining_max(self, state):
+    remaining = super().remaining_spend(state)
+    spend_max = self.spend_max.value(state) if isinstance(self.spend_max, Value) else self.spend_max
+    spent = sum(
+        value for spend_type in self.spend_types_ for value in self.spend_map[spend_type].values()
+    )
+    if spent != spend_max:
+      for spend_type in self.spend_types_:
+        remaining[spend_type] = spend_max - spent
+    return remaining
+
+  def spend_types(self):
+    return set(self.spend_types_)
+
+  def annotation(self, state):
+    spend_min = self.spend_min.value(state) if isinstance(self.spend_min, Value) else self.spend_min
+    spend_max = self.spend_max.value(state) if isinstance(self.spend_max, Value) else self.spend_max
+    spend_types = ", ".join(self.SPEND_TYPES[spend_type] for spend_type in self.spend_types_)
+    return f"{spend_min}-{spend_max} ({spend_types})"
+
+
 class ToughnessSpendBase(SpendValue, metaclass=abc.ABCMeta):
 
   def __init__(self, toughness):

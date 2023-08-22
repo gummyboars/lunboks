@@ -1,8 +1,10 @@
+import typing
+
 from eldritch import assets
 from eldritch import characters
 from eldritch import events
+from eldritch import values
 
-import typing
 if typing.TYPE_CHECKING:
   from eldritch.eldritch import GameState
 
@@ -14,19 +16,20 @@ class AbnormalFocus(assets.Asset):
   def get_interrupt(self, event, owner: characters.BaseCharacter, state):
     if isinstance(event, events.Upkeep) and event.character == owner:
       return events.MoveSliders(owner, {slider + "_slider": 0 for slider in owner.sliders()})
+    return None
 
 
 class BreakingTheLimits(assets.Asset):
   def __init__(self):
     super().__init__("Breaking the Limits")
-    self.tokens['sanity'] = 0
-    self.tokens['stamina'] = 0
+    self.tokens["sanity"] = 0
+    self.tokens["stamina"] = 0
 
   def get_interrupt(self, event, owner, state):
     if isinstance(event, events.Upkeep) and event.character == owner:
       return events.Sequence([
-          events.RemoveToken(self, "sanity", owner, self.tokens['sanity']),
-          events.RemoveToken(self, "stamina", owner, self.tokens['stamina']),
+          events.RemoveToken(self, "sanity", owner, self.tokens["sanity"]),
+          events.RemoveToken(self, "stamina", owner, self.tokens["stamina"]),
       ], owner)
     return None
 
@@ -38,7 +41,16 @@ class BreakingTheLimits(assets.Asset):
         or (owner.stamina == 1 and owner.sanity == 1)
     ):
       return None
-    return events.SpendChoice()
+    spend = events.SpendChoice(
+        owner, prompt="Break the limits?",
+        choices=["No", "Yes"],
+        spends=[None, values.FlexibleRangeSpendPrerequisite(["sanity", "stamina"], 1, 3)]
+    )
+
+    return events.Sequence([
+        spend,
+        events.AddTokenMap(self, values.Calculation(spend, "spend_map"), owner)
+    ], owner)
 
   def get_bonus(self, check_type, attributes, owner, state):
     if check_type == "abnormal_focus":
@@ -99,3 +111,4 @@ class TeamPlayerBonus(assets.Card):
   def get_interrupt(self, event, owner, state):
     if isinstance(event, events.Upkeep) and event.character == owner:
       return events.DiscardSpecific(owner, self)
+    return None

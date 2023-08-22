@@ -1,3 +1,4 @@
+from eldritch.expansions.seaside import abilities as seaside_abilities
 from eldritch import assets
 from eldritch import events
 from eldritch import values
@@ -265,13 +266,11 @@ def Psychology():
   return UpkeepRestoreStat("Psychology", "sanity", "treat")
 
 
-from eldritch.expansions.seaside import abilities as seaside_abilities
-
 def CreateSpecials():
   abilities = [
       FluxStabilizer(), Studious(), ShrewdDealer(), HometownAdvantage(), MagicalGift(),
       PsychicSensitivity(), Archaeology(), StrongMind(), StrongBody(), TrustFund(), Hunches(),
       Physician(), Psychology(), Research(), GuardianAngel(),
-    seaside_abilities.BreakingTheLimits(), seaside_abilities.AbnormalFocus(),
+      seaside_abilities.BreakingTheLimits(), seaside_abilities.AbnormalFocus(),
   ]
   return {ability.name: ability for ability in abilities}
