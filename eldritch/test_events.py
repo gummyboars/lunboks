@@ -3741,6 +3741,7 @@ class CloseLocationTest(EventTest):
     self.resolve_until_done()
     place = self.state.places[place_name]
     place.gate = self.state.gates.popleft()
+    self.state.places["Isle"].gate = self.state.gates.popleft()  # Don't immediately win.
     monster = next(iter(self.state.monsters))
     monster.place = place
     self.char.place = place

@@ -500,6 +500,8 @@ class GameState:
     pass  # TODO
 
   def handle(self, char_idx, data):
+    if self.game_stage in ["victory", "defeat"]:
+      raise InvalidMove("The game is over")
     if data.get("type") == "start":
       self.handle_start()
       return self.resolve_loop()
@@ -619,6 +621,8 @@ class GameState:
       if self.finish_event(event):
         if event.animated():
           yield None
+      if self.game_stage in ["victory", "defeat"]:
+        break
       if self.trigger_stack[-1]:
         self.event_stack.append(self.trigger_stack[-1].pop())
         continue
@@ -806,6 +810,22 @@ class GameState:
     # Spells deactivate at the end of an entire combat.
     if isinstance(event, (events.Combat, events.InvestigatorAttack, events.InsaneOrUnconscious)):
       triggers.append(events.DeactivateCombatSpells(event.character))
+
+    # If 6 gates are sealed or all gates are closed with enough trophies, win the game.
+    if isinstance(event, events.CloseGate):
+      gate_count = len([p for p in self.places.values() if getattr(p, "gate", None)])
+      seal_count = len([p for p in self.places.values() if getattr(p, "sealed", False)])
+      trophy_count = len([
+          g for char in self.characters for g in char.trophies if isinstance(g, gates.Gate)
+      ])
+      if seal_count >= 6:
+        self.game_stage = "victory"
+        self.event_stack.clear()
+        self.event_log.append(events.EventLog("The players have won by sealing 6 gates.", False))
+      elif gate_count == 0 and trophy_count >= len(self.characters):
+        self.game_stage = "victory"
+        self.event_stack.clear()
+        self.event_log.append(events.EventLog("The players have won by closing all gates.", False))
 
     triggers.extend(
       sum([char.get_triggers(event, self) for char in self.characters if not char.gone], [])
@@ -1288,6 +1308,7 @@ class GameState:
   def next_awaken_turn(self):
     if all(char.gone for char in self.characters):
       self.game_stage = "defeat"
+      self.event_log.append(events.EventLog("The players were all devoured.", False))
       return
     if self.turn_phase == "ancient":
       self.turn_number += 1

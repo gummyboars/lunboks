@@ -1082,21 +1082,77 @@ class TradingWhenAwakenedTest(NextTurnBase):
       self.state.handle_give(1, 2, "dollars", 1)
 
 
-class EndGameTest(NextTurnBase):
-  def testInstantDefeatFromAwakening(self):
-    self.state.ancient_one = ancient_ones.ChaosGod()
-    self.state.event_stack.append(events.AddDoom(count=float("inf")))
-    for _ in self.state.resolve_loop():
-      pass
-    self.assertEqual(self.state.game_stage, "defeat")
+class WinGameTest(NextTurnBase):
+  def testWinBySealingGates(self):
+    for place in ["Isle", "Cave", "Woods", "Square", "Science"]:
+      self.state.places[place].sealed = True
+    self.state.characters[0].place = self.state.places["Society"]
+    self.state.places["Society"].gate = self.state.gates.popleft()
+    self.state.characters[0].explored = True
+    self.state.characters[0].clues = 5
 
-  def testAncientOneHasCorrectHealthWhenAwakened(self):
-    self.state.event_stack.append(events.AddDoom(count=float("inf")))
+    self.state.turn_phase = "encounter"
+    self.state.event_stack.append(events.EncounterPhase(self.state.characters[0]))
     for _ in self.state.resolve_loop():
       pass
-    self.assertEqual(self.state.turn_phase, "upkeep")
-    self.assertEqual(self.state.turn_idx, 1)
-    self.assertEqual(self.state.ancient_one.health, 30)
+    self.assertIsInstance(self.state.event_stack[-1], events.MultipleChoice)
+    self.assertEqual(self.state.event_stack[-1].prompt(), "Close the gate?")
+    self.state.event_stack[-1].resolve(self.state, "Close with lore")
+    # Close the gate by passing a lore check.
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      for _ in self.state.resolve_loop():
+        pass
+      self.state.handle_roll(0)
+      for _ in self.state.resolve_loop():
+        pass
+      self.state.event_stack[-1].resolve(self.state, "Pass")
+      for _ in self.state.resolve_loop():
+        pass
+
+    # Spend five clue tokens to seal the gate.
+    self.assertIsInstance(self.state.event_stack[-1], events.MultipleChoice)
+    for _ in range(5):
+      self.state.event_stack[-1].spend("clues")
+    for _ in self.state.resolve_loop():
+      pass
+    self.state.event_stack[-1].resolve(self.state, "Yes")
+    for _ in self.state.resolve_loop():
+      pass
+
+    self.assertEqual(self.state.game_stage, "victory")
+
+  def testWinByClosingAllGates(self):
+    self.state.characters[1].trophies.append(self.state.gates.popleft())
+    self.state.characters[2].trophies.append(self.state.gates.popleft())
+    self.state.characters[0].place = self.state.places["Society"]
+    self.state.places["Society"].gate = self.state.gates.popleft()
+    self.state.characters[0].explored = True
+
+    self.state.turn_phase = "encounter"
+    self.state.event_stack.append(events.EncounterPhase(self.state.characters[0]))
+    for _ in self.state.resolve_loop():
+      pass
+    self.assertIsInstance(self.state.event_stack[-1], events.MultipleChoice)
+    self.assertEqual(self.state.event_stack[-1].prompt(), "Close the gate?")
+    self.state.event_stack[-1].resolve(self.state, "Close with lore")
+    # Close the gate by passing a lore check.
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      for _ in self.state.resolve_loop():
+        pass
+      self.state.handle_roll(0)
+      for _ in self.state.resolve_loop():
+        pass
+      self.state.event_stack[-1].resolve(self.state, "Pass")
+      for _ in self.state.resolve_loop():
+        pass
+
+    # Decline to seal the gate.
+    self.assertIsInstance(self.state.event_stack[-1], events.MultipleChoice)
+    self.state.event_stack[-1].resolve(self.state, "No")
+    for _ in self.state.resolve_loop():
+      pass
+
+    self.assertEqual(self.state.game_stage, "victory")
 
   def testDealFinalDamageToAncientOne(self):
     self.state.game_stage = "awakened"
@@ -1121,8 +1177,24 @@ class EndGameTest(NextTurnBase):
     self.state.event_stack[-1].resolve(self.state, "Pass")
     for _ in self.state.resolve_loop():
       pass
-    self.assertFalse(self.state.event_stack)
     self.assertEqual(self.state.game_stage, "victory")
+
+
+class LoseGameTest(NextTurnBase):
+  def testInstantDefeatFromAwakening(self):
+    self.state.ancient_one = ancient_ones.ChaosGod()
+    self.state.event_stack.append(events.AddDoom(count=float("inf")))
+    for _ in self.state.resolve_loop():
+      pass
+    self.assertEqual(self.state.game_stage, "defeat")
+
+  def testAncientOneHasCorrectHealthWhenAwakened(self):
+    self.state.event_stack.append(events.AddDoom(count=float("inf")))
+    for _ in self.state.resolve_loop():
+      pass
+    self.assertEqual(self.state.turn_phase, "upkeep")
+    self.assertEqual(self.state.turn_idx, 1)
+    self.assertEqual(self.state.ancient_one.health, 30)
 
   def testLastCharacterDevoured(self):
     self.state.game_stage = "awakened"
@@ -1144,7 +1216,6 @@ class EndGameTest(NextTurnBase):
     with mock.patch.object(self.state.ancient_one, "attack", new=devour):
       for _ in self.state.resolve_loop():
         pass
-    self.assertFalse(self.state.event_stack)
     self.assertEqual(self.state.game_stage, "defeat")
 
   def testLastCharacterDevouredDuringUpkeep(self):
@@ -1191,7 +1262,6 @@ class EndGameTest(NextTurnBase):
     for _ in self.state.resolve_loop():
       pass
 
-    self.assertFalse(self.state.event_stack)
     self.assertEqual(self.state.game_stage, "defeat")
 
 

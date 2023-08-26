@@ -139,6 +139,7 @@ class ChaosGod(AncientOne):
 
   def awaken(self, state):
     state.game_stage = "defeat"  # TODO: do we want to do this through an event?
+    state.event_log.append(events.EventLog("The ancient one devoured the world.", False))
 
   def attack(self, state):
     return AncientOneAttack([])
