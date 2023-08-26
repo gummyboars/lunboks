@@ -728,7 +728,7 @@ class GameState:
       loc = self.places[event.location_name]
       chars = [char for char in self.characters if char.place == loc]
       if chars:
-        triggers.append(events.PullThroughGate(chars, loc.gate.name))
+        triggers.append(events.PullThroughGate(chars))
 
     # Non-spell items deactivate at the end of a combat round.
     deactivates = (events.CombatRound, events.InvestigatorAttack, events.InsaneOrUnconscious)

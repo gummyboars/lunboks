@@ -83,43 +83,73 @@ class DrawEncounterTest(EncounterTest):
       self.resolve_until_done()
     self.assertEqual(self.char.bless_curse, -1)
 
-  def testDrawEncounterFromChoice(self):
+
+class MoveAndEncounterTest(EncounterTest):
+
+  def testMoveEncounterFromChoice(self):
     self.char.place = self.state.places["Graveyard"]
     self.state.places["University"].encounters = [
         encounters.EncounterCard("University2", {"Administration": encounters.Administration2})]
     choice = PlaceChoice(self.char, "choose a place", choice_filters={"locations"})
-    enc = Encounter(self.char, choice)
+    enc = MoveAndEncounter(self.char, choice)
     self.state.event_stack.append(Sequence([choice, enc], self.char))
     loc_choice = self.resolve_to_choice(PlaceChoice)
     loc_choice.resolve(self.state, "Administration")
     self.resolve_until_done()
     self.assertEqual(self.char.clues, 1)
+    self.assertEqual(self.char.place.name, "Administration")
 
-  def testDrawEncounterInStreet(self):
+  def testMoveEncounterInStreet(self):
     self.char.place = self.state.places["Graveyard"]
     self.char.sanity = 3
     self.state.places["Rivertown"].encounters = [
         encounters.EncounterCard("Rivertown6", {"Graveyard": encounters.Graveyard6})]
     choice = PlaceChoice(self.char, "choose a place", choice_filters={"locations", "streets"})
-    enc = Encounter(self.char, choice)
+    enc = MoveAndEncounter(self.char, choice)
     self.state.event_stack.append(Sequence([choice, enc], self.char))
     loc_choice = self.resolve_to_choice(PlaceChoice)
     loc_choice.resolve(self.state, "University")
     self.resolve_until_done()
     self.assertEqual(self.char.sanity, 3)
+    self.assertEqual(self.char.place.name, "University")
 
-  def testDrawEncounterNoChoices(self):
+  def testMoveEncounterNoChoices(self):
     self.char.place = self.state.places["Graveyard"]
     self.char.sanity = 3
     self.state.places["Rivertown"].encounters = [
         encounters.EncounterCard("Rivertown6", {"Graveyard": encounters.Graveyard6})]
     choice = PlaceChoice(self.char, "choose a place", choice_filters={"closed"})
-    enc = Encounter(self.char, choice)
+    enc = MoveAndEncounter(self.char, choice)
     self.state.event_stack.append(Sequence([choice, enc], self.char))
     self.resolve_until_done()
     self.assertEqual(self.char.sanity, 3)
+    self.assertEqual(self.char.place.name, "Graveyard")
 
-  # TODO: add a test for a gate.
+  def testMoveEncounterCancelled(self):
+    self.char.place = self.state.places["Graveyard"]
+    self.char.sanity = 3
+    self.state.places["Rivertown"].encounters = [
+        encounters.EncounterCard("Rivertown6", {"Graveyard": encounters.Graveyard6})]
+    choice = PlaceChoice(self.char, "choose a place", none_choice="No")
+    enc = MoveAndEncounter(self.char, choice)
+    self.state.event_stack.append(Sequence([choice, enc], self.char))
+    loc_choice = self.resolve_to_choice(PlaceChoice)
+    loc_choice.resolve(self.state, "No")
+    self.resolve_until_done()
+    self.assertEqual(self.char.sanity, 3)
+    self.assertEqual(self.char.place.name, "Graveyard")
+
+  def testMoveEncounterAtGate(self):
+    self.char.place = self.state.places["Graveyard"]
+    self.state.places["Woods"].gate = self.state.gates.popleft()
+    choice = PlaceChoice(self.char, "choose a place", choice_filters={"locations"})
+    enc = MoveAndEncounter(self.char, choice)
+    self.state.event_stack.append(Sequence([choice, enc], self.char))
+    loc_choice = self.resolve_to_choice(PlaceChoice)
+    loc_choice.resolve(self.state, "Woods")
+    self.resolve_until_done()
+    self.assertEqual(self.char.sanity, 3)
+    self.assertEqual(self.char.place.name, self.state.places["Woods"].gate.name + "1")
 
 
 class DinerTest(EncounterTest):
@@ -4836,7 +4866,7 @@ class Shoppe2Test(EncounterTest):
     self.char.place = self.state.places["Shoppe"]
 
   def testRevealTopCard(self):
-    self.state.event_stack.append(events.Encounter(self.char, "Shoppe"))
+    self.state.event_stack.append(events.Encounter(self.char))
     choice = self.resolve_to_choice(PlaceChoice)
     self.assertCountEqual(
         choice.choices,
@@ -4850,7 +4880,7 @@ class Shoppe2Test(EncounterTest):
   def testCanChooseClosedStreet(self):
     self.state.event_stack.append(events.CloseLocation("Merchant", for_turns=1, evict=False))
     self.resolve_until_done()
-    self.state.event_stack.append(events.Encounter(self.char, "Shoppe"))
+    self.state.event_stack.append(events.Encounter(self.char))
     choice = self.resolve_to_choice(PlaceChoice)
     self.assertIn("Merchant", choice.choices)
     choice.resolve(self.state, "Merchant")
@@ -4859,7 +4889,7 @@ class Shoppe2Test(EncounterTest):
     self.assertEqual(self.state.other_globals[0].json_repr(self.state)["name"], "Merchant1")
 
   def testChooseOwnLocation(self):
-    self.state.event_stack.append(events.Encounter(self.char, "Shoppe"))
+    self.state.event_stack.append(events.Encounter(self.char))
     choice = self.resolve_to_choice(PlaceChoice)
     self.assertIn("Uptown", choice.choices)
     choice.resolve(self.state, "Uptown")
@@ -4874,14 +4904,14 @@ class Shoppe2Test(EncounterTest):
     self.state.all_characters["Buddy"] = buddy
     self.state.characters.append(buddy)
 
-    self.state.event_stack.append(events.Encounter(self.char, "Shoppe"))
+    self.state.event_stack.append(events.Encounter(self.char))
     choice = self.resolve_to_choice(PlaceChoice)
     choice.resolve(self.state, "Rivertown")
     self.resolve_until_done()
     self.assertEqual(len(self.state.other_globals), 1)
     self.assertEqual(self.state.other_globals[0].json_repr(self.state)["name"], "Rivertown2")
 
-    self.state.event_stack.append(events.Encounter(buddy, "Store"))
+    self.state.event_stack.append(events.Encounter(buddy))
     self.resolve_until_done()
     self.assertEqual(buddy.dollars, 0)  # Make sure we got the right encounter.
     self.assertFalse(self.state.other_globals)  # The revealer should now be gone.
