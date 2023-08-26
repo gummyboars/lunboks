@@ -3,6 +3,7 @@ from eldritch import assets
 from eldritch import characters
 from eldritch import events
 from eldritch import gates
+from eldritch import monsters
 from eldritch import stories
 
 from eldritch.test_specials import mock_randint
@@ -83,6 +84,58 @@ class DrifterStoryTest(StoryTest):
     self.assertListEqual(
         [p.name for p in self.char.possessions],
         ["Powerful Nightmares", "Dog", "Arm Wrestler", "Old Professor"])
+
+
+class GangsterStoryTest(StoryTest):
+  def setUp(self):
+    super().setUp()
+    self.story = next(
+        story for story in self.state.specials if isinstance(story, stories.GangsterStory)
+    )
+    self.state.specials.remove(self.story)
+    self.state.monsters = monsters.CreateMonsters()
+    self.char.possessions.append(self.story)
+
+  def passStory(self):
+    orig_max_sanity = self.char.max_sanity(self.state)
+    trophies = events.Sequence([
+        events.ForceTakeTrophy(self.char, monster)
+        for monster in self.state.monsters[:5]
+    ], self.char
+    )
+    self.state.event_stack.append(trophies)
+    self.resolve_until_done()
+    self.assertIn("This One's for Louis", [p.name for p in self.char.possessions])
+    self.assertEqual(self.char.max_sanity(self.state), orig_max_sanity + 1)
+
+  def failStory(self):
+    self.state.event_stack.append(events.Gain(self.char, {"dollars": 5}))
+    self.resolve_until_done()
+    self.assertIn("Crime Doesn't Pay", [p.name for p in self.char.possessions])
+
+  def testPassAtMaxSanity(self):
+    self.char.sanity = self.char.max_sanity(self.state)
+    orig_sanity = self.char.sanity
+    self.passStory()
+    self.assertEqual(self.char.sanity, orig_sanity + 1)
+
+  def testPassNotAtMaxSanity(self):
+    orig_sanity = 1
+    self.char.sanity = orig_sanity
+    self.passStory()
+    self.assertEqual(self.char.sanity, orig_sanity + 1)
+
+    self.state.event_stack.append(events.TakeTrophy(self.char, self.state.monsters[-1]))
+    self.resolve_until_done()
+    self.assertEqual(self.char.sanity, orig_sanity + 2)
+
+  def testFail(self):
+    self.char.dollars = 10
+    self.failStory()
+    self.assertEqual(self.char.dollars, 0)
+    self.state.event_stack.append(events.Gain(self.char, {"dollars": 1}))
+    self.resolve_until_done()
+    self.assertEqual(self.char.dollars, 0)
 
 
 class NunStoryTest(StoryTest):

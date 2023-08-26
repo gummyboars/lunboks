@@ -312,6 +312,17 @@ class BaseCharacter(metaclass=abc.ABCMeta):
   def spend_slider_focus(self, focus_spent_to_slide):
     self.focus_points -= focus_spent_to_slide
 
+  def get_override(self, other, attribute):
+    override = True if attribute.startswith(("can_", "cannot_")) else None
+    for pos in self.possessions:
+      val = pos.get_override(other, attribute)  # pylint: disable=assignment-from-none
+      if val is None:
+        continue
+      if override is None:
+        override = val
+      override = override and val
+    return override
+
 
 class Character(BaseCharacter):
   """A character with the standard sliders"""

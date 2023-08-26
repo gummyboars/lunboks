@@ -1,7 +1,8 @@
 import abc
-from eldritch import events
 from eldritch import assets
 from eldritch import characters
+from eldritch import events
+from eldritch import monsters
 from eldritch import values
 
 
@@ -83,11 +84,53 @@ class DrifterStory(Story):
       return self.advance_story(owner, False)
     return super().get_trigger(event, owner, state)
 
-  def get_pass_asset(self) -> StoryResult:
-    return DrifterStoryPass()
 
-  def get_fail_asset(self) -> StoryResult:
-    return DrifterStoryFail()
+class GangsterStoryPass(StoryResult):
+  def __init__(self):
+    super().__init__("This One's for Louis", {"max_sanity": 1})
+
+  def get_in_play_event(self, owner: characters.Character):
+    print("Gangster Story Pass now in play")
+    return events.Gain(owner, {"sanity": 1}, self)
+
+  def get_trigger(self, event, owner, state):
+    if isinstance(event, events.TakeTrophy) and event.character == owner:
+      return events.Gain(owner, {"sanity": 1}, self)
+    return super().get_trigger(event, owner, state)
+
+
+class GangsterStoryFail(StoryResult):
+  def __init__(self):
+    super().__init__("Crime Doesn't Pay")
+
+  def get_in_play_event(self, owner: characters.Character):
+    return events.Loss(owner, {"dollars": owner.dollars})
+
+  def get_interrupt(self, event, owner, state):
+    if (
+        isinstance(event, events.GainOrLoss)
+        and event.character == owner
+        and "dollars" in event.gains
+    ):
+      return events.GainOrLossPrevention(self, event, "dollars", float("inf"), "gains")
+    return None
+
+
+class GangsterStory(Story):
+  def __init__(self):
+    super().__init__("For a Friend", "This One's for Louis", "Crime Doesn't Pay")
+
+  def get_trigger(self, event, owner: characters.Character, state):
+    n_trophies = len([t for t in owner.trophies if isinstance(t, monsters.Monster)])
+    if isinstance(event, events.ForceTakeTrophy) and n_trophies >= 5:
+      return self.advance_story(owner, True)
+    if (
+        isinstance(event, events.GainOrLoss)
+        and (event.character == owner)
+        and (event.gains.get("dollars", 0) >= 5)
+    ):
+      return self.advance_story(owner, False)
+    return super().get_trigger(event, owner, state)
 
 
 class NunStoryPass(StoryResult):
@@ -153,6 +196,7 @@ class NunStory(Story):
 def CreateStories():
   return [
       DrifterStoryPass(), DrifterStoryFail(), DrifterStory(),
+      GangsterStoryPass(), GangsterStoryFail(), GangsterStory(),
       NunStoryPass(), NunStoryFail(), NunStory(),
 
   ]
