@@ -235,7 +235,8 @@ function placeLocations() {
   for (let [placeType, places] of [["location", locations], ["street", streets]]) {
     for (let name in places) {
       let div = document.getElementById("place" + name);
-      if (!setDivXYPercent(div, "board", name)) {
+      let parentCnv = document.getElementById("boardcanvas");
+      if (!setDivXYPercent(div, parentCnv, "board", name)) {
         div.style.top = 100 * places[name].y + "%";
         div.style.left = 100 * places[name].x + "%";
       }
@@ -2611,27 +2612,6 @@ function createCharacterSheet(idx, character, rightUI, isPlayer) {
   let slidersCnv = document.createElement("CANVAS");
   slidersCnv.classList.add("worldcnv");  // TODO
   sliders.appendChild(slidersCnv);
-  for (let i = 0; i < 3; i++) {  // TODO: fourth slider
-    for (let j = 0; j < 4; j++) {
-      let sliderDiv = document.createElement("DIV");
-      sliderDiv.classList.add("slider", "slider" + i + "" + j, "cnvcontainer");
-      let sliderCnv = document.createElement("CANVAS");
-      sliderCnv.classList.add("worldcnv");
-      sliderDiv.appendChild(sliderCnv);
-      sliders.appendChild(sliderDiv);
-      if (isPlayer) {
-        let sliderName = Object.entries(character.sliders)[i][0];
-        sliderDiv.onclick = function(e) { setSlider(sliderName, j); };
-      }
-      if (!setDivXYPercent(sliderDiv, "Nun sliders", "Slider " + i + " " + j, true)) {
-        let xoff = (i % 2 == 0) ? 1 : 2;
-        let xpct = (2 * (j+1) + xoff) * 9.09 + "%";
-        sliderDiv.style.left = xpct;
-        sliderDiv.style.bottom = (3 + 5 * (2-i)) * 100 / 16 + "%";
-      }
-    }
-  }
-
   let bag = document.createElement("DIV");
   bag.classList.add("bag");
   let bagTabs = document.createElement("DIV");
@@ -2659,6 +2639,29 @@ function createCharacterSheet(idx, character, rightUI, isPlayer) {
   renderAssetToDiv(charPic, character.name + " picture");
   renderAssetToDiv(charName, character.name + " title");
   renderAssetToDiv(statsBg, "statsbg");
+  renderAssetToDiv(sliders, character.name + " sliders");
+
+  for (let i = 0; i < 3; i++) {  // TODO: fourth slider
+    for (let j = 0; j < 4; j++) {
+      let sliderDiv = document.createElement("DIV");
+      sliderDiv.classList.add("slider", "slider" + i + "" + j, "cnvcontainer");
+      let sliderCnv = document.createElement("CANVAS");
+      sliderCnv.classList.add("worldcnv");
+      sliderDiv.appendChild(sliderCnv);
+      sliders.appendChild(sliderDiv);
+      if (isPlayer) {
+        let sliderName = Object.entries(character.sliders)[i][0];
+        sliderDiv.onclick = function(e) { setSlider(sliderName, j); };
+      }
+      if (!setDivXYPercent(sliderDiv, slidersCnv, "Nun sliders", "Slider " + i + " " + j, true)) {
+        let xoff = (i % 2 == 0) ? 1 : 2;
+        let xpct = (2 * (j+1) + xoff) * 9.09 + "%";
+        sliderDiv.style.left = xpct;
+        sliderDiv.style.bottom = (3 + 5 * (2-i)) * 100 / 16 + "%";
+      }
+    }
+  }
+
   for (let sliderDiv of sliders.getElementsByClassName("slider")) {
     renderAssetToDiv(sliderDiv, "Slider");
   }
