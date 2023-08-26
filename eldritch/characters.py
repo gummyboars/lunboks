@@ -12,7 +12,6 @@ class BaseCharacter(metaclass=abc.ABCMeta):
   def __init__(self, name, focus, home):
     self.name = name
     self._focus = focus
-    self.possessions = []
     self.dollars = 0
     self.clues = 0
     self.possessions = []  # includes special abilities, skills, and allies
@@ -26,6 +25,9 @@ class BaseCharacter(metaclass=abc.ABCMeta):
     self.place = None
     self.explored = False
     self.avoid_monsters = []
+    self.movement_points = 0
+    self.sanity = 0
+    self.stamina = 0
 
   def get_json(self, state):
     attrs = [
@@ -60,28 +62,46 @@ class BaseCharacter(metaclass=abc.ABCMeta):
     return data
 
   @abc.abstractmethod
+  def base_speed(self):
+    raise NotImplementedError
+
   def speed(self, state):
-    pass
+    return self.base_speed() + self.bonus("speed", state)
 
   @abc.abstractmethod
+  def base_sneak(self):
+    raise NotImplementedError
+
   def sneak(self, state):
-    pass
+    return self.base_sneak() + self.bonus("sneak", state)
 
   @abc.abstractmethod
+  def base_fight(self):
+    raise NotImplementedError
+
   def fight(self, state):
-    pass
+    return self.base_fight() + self.bonus("fight", state)
 
   @abc.abstractmethod
+  def base_will(self):
+    raise NotImplementedError
+
   def will(self, state):
-    pass
+    return self.base_will() + self.bonus("will", state)
 
   @abc.abstractmethod
+  def base_lore(self):
+    raise NotImplementedError
+
   def lore(self, state):
-    pass
+    return self.base_lore() + self.bonus("lore", state)
 
   @abc.abstractmethod
+  def base_luck(self):
+    raise NotImplementedError
+
   def luck(self, state):
-    pass
+    return self.base_luck() + self.bonus("luck", state)
 
   @property
   @abc.abstractmethod
@@ -92,12 +112,15 @@ class BaseCharacter(metaclass=abc.ABCMeta):
   def max_stamina(self, state):
     pass
 
+  @abc.abstractmethod
   def max_sanity(self, state):
     pass
 
-  @abc.abstractmethod
   def movement_speed(self):
-    pass
+    speed = self.base_speed()
+    for pos in self.possessions:
+      speed += getattr(pos, "passive_bonuses", {}).get("speed", 0)
+    return speed
 
   def evade(self, state):
     return self.sneak(state) + self.bonus("evade", state)
@@ -285,6 +308,7 @@ class BaseCharacter(metaclass=abc.ABCMeta):
 
 
 class Character(BaseCharacter):
+  """A character with the standard sliders"""
   _slider_names = ["speed_sneak", "fight_will", "lore_luck"]
 
   def __init__(
@@ -310,29 +334,23 @@ class Character(BaseCharacter):
   def max_sanity(self, state):
     return self._max_sanity + self.bonus("max_sanity", state)
 
-  def speed(self, state):
-    return self._speed_sneak[self.speed_sneak_slider][0] + self.bonus("speed", state)
+  def base_speed(self):
+    return self._speed_sneak[self.speed_sneak_slider][0]
 
-  def sneak(self, state):
-    return self._speed_sneak[self.speed_sneak_slider][1] + self.bonus("sneak", state)
+  def base_sneak(self):
+    return self._speed_sneak[self.speed_sneak_slider][1]
 
-  def fight(self, state):
-    return self._fight_will[self.fight_will_slider][0] + self.bonus("fight", state)
+  def base_fight(self):
+    return self._fight_will[self.fight_will_slider][0]
 
-  def will(self, state):
-    return self._fight_will[self.fight_will_slider][1] + self.bonus("will", state)
+  def base_will(self):
+    return self._fight_will[self.fight_will_slider][1]
 
-  def lore(self, state):
-    return self._lore_luck[self.lore_luck_slider][0] + self.bonus("lore", state)
+  def base_lore(self):
+    return self._lore_luck[self.lore_luck_slider][0]
 
-  def luck(self, state):
-    return self._lore_luck[self.lore_luck_slider][1] + self.bonus("luck", state)
-
-  def movement_speed(self):
-    speed = self._speed_sneak[self.speed_sneak_slider][0]
-    for pos in self.possessions:
-      speed += getattr(pos, "passive_bonuses", {}).get("speed", 0)
-    return speed
+  def base_luck(self):
+    return self._lore_luck[self.lore_luck_slider][1]
 
 
 class Student(Character):
@@ -624,6 +642,7 @@ class Gangster(Character):
 
 
 def CreateCharacters():
+  # pylint: disable=import-outside-toplevel
   from eldritch.expansions.seaside import characters as seaside_characters
   return {
       c.name: c for c in [

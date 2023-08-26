@@ -396,7 +396,7 @@ class FlexibleRangeSpendPrerequisite(SpendValue):
   def __init__(self, spend_types: list, spend_min: float, spend_max: float):
     assert all(spend_type in self.SPEND_TYPES for spend_type in spend_types)
     super().__init__()
-    self.spend_types_ = spend_types
+    self._spend_types = spend_types
     self.spend_min = spend_min
     self.spend_max = spend_max
 
@@ -406,10 +406,10 @@ class FlexibleRangeSpendPrerequisite(SpendValue):
     spend_min = self.spend_min.value(state) if isinstance(self.spend_min, Value) else self.spend_min
     spend_max = self.spend_max.value(state) if isinstance(self.spend_max, Value) else self.spend_max
     spent = sum(
-        value for spend_type in self.spend_types_ for value in self.spend_map[spend_type].values()
+        value for spend_type in self._spend_types for value in self.spend_map[spend_type].values()
     )
 
-    for spend_type in self.spend_types_:
+    for spend_type in self._spend_types:
       if spent < spend_min:
         remaining[spend_type] = spend_min - spent
       elif spent > spend_max:
@@ -420,20 +420,20 @@ class FlexibleRangeSpendPrerequisite(SpendValue):
     remaining = super().remaining_spend(state)
     spend_max = self.spend_max.value(state) if isinstance(self.spend_max, Value) else self.spend_max
     spent = sum(
-        value for spend_type in self.spend_types_ for value in self.spend_map[spend_type].values()
+        value for spend_type in self._spend_types for value in self.spend_map[spend_type].values()
     )
     if spent != spend_max:
-      for spend_type in self.spend_types_:
+      for spend_type in self._spend_types:
         remaining[spend_type] = spend_max - spent
     return remaining
 
   def spend_types(self):
-    return set(self.spend_types_)
+    return set(self._spend_types)
 
   def annotation(self, state):
     spend_min = self.spend_min.value(state) if isinstance(self.spend_min, Value) else self.spend_min
     spend_max = self.spend_max.value(state) if isinstance(self.spend_max, Value) else self.spend_max
-    spend_types = ", ".join(self.SPEND_TYPES[spend_type] for spend_type in self.spend_types_)
+    spend_types = ", ".join(self.SPEND_TYPES[spend_type] for spend_type in self._spend_types)
     return f"{spend_min}-{spend_max} ({spend_types})"
 
 

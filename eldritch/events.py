@@ -294,7 +294,7 @@ class SliderInput(Event):
     remaining_focus = (
         self.character.slider_focus_available - self.character.focus_cost(self.pending)
     )
-    return f"[{self.character.name}] to set sliders ({remaining_focus} focus remaining)"
+    return f"[{self.character.name}] to set sliders ({remaining_focus} shifts remaining)"
 
   def is_resolved(self):
     return self.done
@@ -2307,7 +2307,7 @@ class DiscardSpecific(Event):
   def __init__(
           self,
           character,
-          items_to_discard: "Union[ItemChoice, values.Value, List[items.Item]]",
+          items_to_discard: "Union[ItemChoice, values.Value, List[assets.Card]]",
           to_box=False):
     super().__init__()
     self.character = character

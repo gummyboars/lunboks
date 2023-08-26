@@ -1,4 +1,4 @@
-from eldritch.expansions.seaside import abilities as seaside_abilities
+from eldritch.expansions.seaside.abilities import *
 from eldritch import assets
 from eldritch import events
 from eldritch import values
@@ -271,6 +271,6 @@ def CreateSpecials():
       FluxStabilizer(), Studious(), ShrewdDealer(), HometownAdvantage(), MagicalGift(),
       PsychicSensitivity(), Archaeology(), StrongMind(), StrongBody(), TrustFund(), Hunches(),
       Physician(), Psychology(), Research(), GuardianAngel(),
-      seaside_abilities.BreakingTheLimits(), seaside_abilities.AbnormalFocus(),
+      BreakingTheLimits(), AbnormalFocus(),
   ]
   return {ability.name: ability for ability in abilities}

@@ -36,29 +36,23 @@ class Spy(characters.BaseCharacter):
     self.abnormal_focus = 5
     self.movement_points = 1
 
-  def fight(self, state):
-    return self._fight_sneak[self.fight_sneak_slider][0] + self.bonus("fight", state)
+  def base_fight(self):
+    return self._fight_sneak[self.fight_sneak_slider][0]
 
-  def sneak(self, state):
-    return self._fight_sneak[self.fight_sneak_slider][1] + self.bonus("fight", state)
+  def base_sneak(self):
+    return self._fight_sneak[self.fight_sneak_slider][1]
 
-  def speed(self, state):
-    return self._speed_luck[self.speed_luck_slider][0] + self.bonus("speed", state)
+  def base_speed(self):
+    return self._speed_luck[self.speed_luck_slider][0]
 
-  def luck(self, state):
-    return self._speed_luck[self.speed_luck_slider][1] + self.bonus("luck", state)
+  def base_luck(self):
+    return self._speed_luck[self.speed_luck_slider][1]
 
-  def lore(self, state):
-    return self._lore_will[self.lore_will_slider][0] + self.bonus("lore", state)
+  def base_lore(self):
+    return self._lore_will[self.lore_will_slider][0]
 
-  def will(self, state):
-    return self._lore_will[self.lore_will_slider][1] + self.bonus("lore", state)
-
-  def movement_speed(self):
-    speed = self._speed_luck[self.speed_luck_slider][0]
-    for pos in self.possessions:
-      speed += getattr(pos, "passive_bonuses", {}).get("speed", 0)
-    return speed
+  def base_will(self):
+    return self._lore_will[self.lore_will_slider][1]
 
   def max_stamina(self, state):
     return self._max_stamina + self.bonus("max_stamina", state)
@@ -75,7 +69,7 @@ class Spy(characters.BaseCharacter):
   def fixed_possessions(self):
     return {
         "common": [
-            # "Cigarette Case"
+            "Cigarette Case"
         ]
     }
 
@@ -89,5 +83,5 @@ class Spy(characters.BaseCharacter):
   def slider_focus_available(self):
     abnormal_focus = 5
     for pos in self.possessions:
-      abnormal_focus += pos.get_bonus("abnormal_focus", [], self, None)
+      abnormal_focus += pos.get_bonus("abnormal_focus", set(), self, None)
     return abnormal_focus

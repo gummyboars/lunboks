@@ -37,14 +37,19 @@ class BreakingTheLimits(assets.Asset):
     if (
         not isinstance(event, events.SliderInput)
         or event.character != owner
-        or self.get_bonus("abnormal_focus", None, owner, state) >= 3
+        or sum(self.tokens.values()) >= 3
         or (owner.stamina == 1 and owner.sanity == 1)
     ):
       return None
     spend = events.SpendChoice(
         owner, prompt="Break the limits?",
         choices=["No", "Yes"],
-        spends=[None, values.FlexibleRangeSpendPrerequisite(["sanity", "stamina"], 1, 3)]
+        spends=[
+            None,
+            values.FlexibleRangeSpendPrerequisite(
+                ["sanity", "stamina"], 1, 3-sum(self.tokens.values())
+            )
+        ]
     )
 
     return events.Sequence([
@@ -65,6 +70,7 @@ class Synergy(assets.Asset):
   def get_bonus(
       self, check_type, attributes, owner: characters.BaseCharacter, state: "GameState"
   ):
+    # TODO: Call Stack enforcement to guard against infinite loops.
     n_allies = len([ally for ally in owner.possessions if ally.deck == "allies"])
     n_in_same_place = len(
         [char for char in state.characters if char != owner and char.place == owner.place]
@@ -84,7 +90,7 @@ class TeamPlayer(assets.Asset):
     in_same_place = [
         char for char in state.characters if char != owner and char.place == owner.place
     ]
-    if not isinstance(event, events.Upkeep) or not event.character == owner:
+    if not isinstance(event, events.SliderInput) or not event.character == owner or self.exhausted:
       return None
     choice = events.MultipleChoice(
         owner,
@@ -93,22 +99,24 @@ class TeamPlayer(assets.Asset):
     )
     cond = events.Conditional(
         owner, choice, "choice_index",
-        {0: events.Nothing, **{
+        {0: events.Nothing(), **{
             i: events.DrawSpecific(char, "specials", "Team Player Bonus")
             for i, char in enumerate(in_same_place, start=1)
         }}
     )
-    return events.Sequence(owner, [choice, cond])
+    return events.Sequence([choice, cond, events.ExhaustAsset(owner, self)], owner)
 
 
 class TeamPlayerBonus(assets.Card):
   def __init__(self, idx):
-    super().__init__(
-        "Team Player Bonus", idx, "specials", {},
-        passive_bonuses={check: 1 for check in assets.CHECK_TYPES | assets.SUB_CHECKS.keys()}
-    )
+    super().__init__("Team Player Bonus", idx, "specials", {}, {})
+
+  def get_bonus(self, check_type, attributes, owner, state):
+    if len(state.event_stack) > 0 and isinstance(state.event_stack[-1], events.Check):
+      return 1
+    return 0
 
   def get_interrupt(self, event, owner, state):
     if isinstance(event, events.Upkeep) and event.character == owner:
-      return events.DiscardSpecific(owner, self)
+      return events.DiscardSpecific(owner, [self])
     return None

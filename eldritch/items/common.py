@@ -16,7 +16,7 @@ def CreateCommon():
   for item in [
       AncientTome, Automatic45, DarkCloak, Derringer18, Revolver38, Dynamite, Rifle, Shotgun,
       TommyGun, Food, ResearchMaterials, Bullwhip, Cross, CavalrySaber, Knife, Whiskey, Axe,
-      Lantern, OldJournal
+      Lantern, OldJournal, Map, Motorcycle, CigaretteCase
   ]:
     common.extend([item(0), item(1)])
   return common

@@ -366,6 +366,30 @@ class SpendTest(unittest.TestCase):
     spend.spend_event.spend_map["stamina"]["stamina"] = 1
     self.assertEqual(spend.remaining_spend(state), {"stamina": -1})
 
+  def testFlexMultiPrerequisite(self):
+    state = DummyState()
+    spend = FlexibleRangeSpendPrerequisite(["dollars", "stamina", "sanity"], 1, 3)
+    spend.spend_event = Dummy(spend_map=collections.defaultdict(dict))
+    self.assertEqual(spend.remaining_spend(state), {"dollars": 1, "stamina": 1, "sanity": 1})
+    self.assertEqual(spend.remaining_max(state), {"dollars": 3, "stamina": 3, "sanity": 3})
+
+    spend.spend_event.spend_map["dollars"]["dollars"] = 1
+    self.assertDictEqual(spend.remaining_spend(state), {})
+    self.assertDictEqual(spend.remaining_max(state), {"dollars": 2, "stamina": 2, "sanity": 2})
+
+    spend.spend_event.spend_map["stamina"]["stamina"] = 1
+    self.assertDictEqual(spend.remaining_spend(state), {})
+    self.assertDictEqual(spend.remaining_max(state), {"dollars": 1, "stamina": 1, "sanity": 1})
+
+    spend.spend_event.spend_map["stamina"]["stamina"] = 2
+    self.assertDictEqual(spend.remaining_spend(state), {})
+    self.assertDictEqual(spend.remaining_max(state), {})
+
+    spend.spend_event.spend_map["stamina"]["stamina"] = 1
+    spend.spend_event.spend_map["sanity"]["sanity"] = 1
+    self.assertDictEqual(spend.remaining_spend(state), {})
+    self.assertDictEqual(spend.remaining_max(state), {})
+
 
 class SpendToughnessTest(unittest.TestCase):
 
