@@ -105,13 +105,27 @@ button:disabled {
   justify-content: center;
   align-items: space-between;
 }
+#bottomspacer {
+  flex: 0 0 auto;
+  width: 100%;
+  height: 0;
+  transition: height 0.5s;
+  pointer-events: none;
+}
+#bottomspacer.expanded {
+  height: 100%;
+}
 #bottomcenter {
   flex: 1 1 auto;
+  width: 100%;
+  height: 100%;
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
   align-items: center;
   font-size: calc(min(2vw, 3.2vh));
+  background: #D2A253;
+  z-index: 2;
 }
 #uiprompt {
   width: 100%;
@@ -516,24 +530,62 @@ button:disabled {
   align-items: center;
   justify-content: space-evenly;
 }
-#board {
+#uicont {
+  flex: 1 1 auto;
+  display: inline-block;
   width: 100%;
-  max-width: 100%;
-  height: 75%;
-  min-height: 75%;
-  max-height: 75%;
+  height: 100%;
+  direction: rtl;
+}
+#uileft {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 10%;
+  max-width: 10%;
+  height: calc(min(60.25vw, 96.4vh));
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-end;
+  z-index: 2;
+}
+#board {
+  direction: ltr;
+  display: inline flex;
+  width: 87.5%;
+  max-width: 87.5%;
+  height: 100%;
+  min-height: 100%;
+  max-height: 100%;
   background: #D2A253;
   position: relative;
   z-index: 1;
 }
+#boardright {
+  position: absolute;
+  right: 20%;
+  top: 0;
+  width: 0;
+  height: 100%;
+  min-height: 100%;
+  max-height: 100%;
+  z-index: 2;
+  display: inline flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: flex-end;
+}
 #uibottom{
-  flex: 1 1 auto;
-  min-height: 21.4%;
-  height: 21.4%;
-  max-height: 21.4%;
+  position: absolute;
+  bottom: 0;
+  left: 15%;
+  width: calc(min(60vw, 96vh));
+  min-height: calc(min(12vw, 19.2vh));
+  height: calc(min(12vw, 19.2vh));
+  max-height: calc(min(12vw, 19.2vh));
   display: flex;
-  flex-direction: row;
-  z-index: 1;
+  flex-direction: column;
 }
 #worlds {
   min-height: calc(min(62.5vw, 100vh) * 9 / 250);
@@ -659,11 +711,10 @@ button:disabled {
   transform-origin: bottom center;
 }
 #globals {
-  width: 12.5%;
-  min-width: 12.5%;
-  max-width: 12.5%;
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: 0;
   height: 100%;
-  max-height: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -703,74 +754,80 @@ button:disabled {
 .unchoosable .bigmythoscard {
   filter: grayscale(70%) brightness(70%);
 }
-#ancientandplaces {
-  width: 25%;
-  min-width: 25%;
-  max-width: 25%;
-  height: 100%;
-  max-height: 100%;
-  display: flex;
-  flex-direction: row;
-  align-items: flex-start;
-  justify-content: flex-end;
-  background-color: midnightblue;
-}
 #ancientone {
-  flex: 1 1 auto;
-  min-width: 0;
-  width: 100%;
-  height: 100%;
+  flex: 0 0 auto;
+  min-width: calc(min(15vw, 24vh));
+  width: calc(min(15vw, 24vh));
+  min-height: calc(min(12vw, 19.2vh));
+  height: calc(min(12vw, 19.2vh));
   display: flex;
   flex-direction: row;
   align-items: flex-start;
 }
 #slumber {
-  width: 52%;
-  max-width: 52%;
-  height: 100%;
-  max-height: 100%;
+  min-width: calc(min(8vw, 12.8vh));
+  width: calc(min(8vw, 12.8vh));
+  max-width: calc(min(8vw, 12.8vh));
+  min-height: calc(min(12vw, 19.2vh));
+  height: calc(min(12vw, 19.2vh));
+  max-height: calc(min(12vw, 19.2vh));
 }
 #ancienttracks {
-  width: 48%;
-  max-width: 48%;
-  height: 100%;
+  min-width: calc(min(7vw, 11.2vh));
+  width: calc(min(7vw, 11.2vh));
+  max-width: calc(min(7vw, 11.2vh));
+  min-height: calc(min(12vw, 19.2vh));
+  height: calc(min(12vw, 19.2vh));
+  max-height: calc(min(12vw, 19.2vh));
   display: flex;
   flex-direction: column;
   align-items: flex-end;
   justify-content: space-between;
 }
 #worshippers {
-  width: 100%;
-  height: 72.5%;
-  max-height: 72.5%;
+  min-width: calc(min(7vw, 11.2vh));
+  width: calc(min(7vw, 11.2vh));
+  max-width: calc(min(7vw, 11.2vh));
+  min-height: calc(min(9vw, 14.4vh));
+  height: calc(min(9vw, 14.4vh));
+  max-height: calc(min(9vw, 14.4vh));
 }
 #tracks {
-  width: 100%;
-  height: 27.5%;
-  max-height: 27.5%;
+  min-width: calc(min(7vw, 11.2vh));
+  width: calc(min(7vw, 11.2vh));
+  max-width: calc(min(7vw, 11.2vh));
+  min-height: calc(min(3vw, 4.8vh));
+  height: calc(min(3vw, 4.8vh));
+  max-height: calc(min(3vw, 4.8vh));
   display: flex;
   flex-direction: row;
   align-items: flex-end;
-  justify-content: space-between;
+  justify-content: flex-end;
 }
 .track {
-  width: 50%;
-  height: 100%;
+  min-height: calc(min(3vw, 4.8vh));
+  height: calc(min(3vw, 4.8vh));
+  max-height: calc(min(3vw, 4.8vh));
+  min-width: calc(min(3vw, 4.8vh));
+  width: calc(min(3vw, 4.8vh));
+  max-width: calc(min(3vw, 4.8vh));
 }
 #extra {
-  width: calc(min(13.375vw, 21.4vh) / 3);
-  height: 100%;
-  max-height: 100%;
+  width: calc(min(5vw, 8vh));
+  height: calc(min(15vw, 24vh));
+  max-height: calc(min(15vw, 24vh));
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  justify-content: flex-start;
+  justify-content: flex-end;
 }
 .misc {
-  width: calc(min(13.375vw, 21.4vh) / 3);
-  min-height: calc(min(13.375vw, 21.4vh) / 3);
-  height: calc(min(13.375vw, 21.4vh) / 3);
-  max-height: calc(min(13.375vw, 21.4vh) / 3);
+  min-width: calc(min(5vw, 8vh));
+  width: calc(min(5vw, 8vh));
+  max-width: calc(min(5vw, 8vh));
+  min-height: calc(min(5vw, 8vh));
+  height: calc(min(5vw, 8vh));
+  max-height: calc(min(5vw, 8vh));
   position: relative;
 }
 .placemiscbox {

@@ -73,70 +73,49 @@
         </div>
       </div>
       <div id="enteringscroll" class="cardscroll"></div>
+      <div id="uileft">
+        <div id="globals" onclick="toggleGlobals(event)">
+          <div id="currentcard" class="cnvcontainer"><canvas class="currentcnv"></canvas></div>
+          <div id="environment" class="mythoscontainer"><div class="mythoscard cnvcontainer"><canvas class="mythoscnv"></canvas></div></div>
+          <div id="rumor" class="mythoscontainer"><div class="mythoscard cnvcontainer"><canvas class="mythoscnv"></canvas></div></div>
+        </div>
+        <div id="ancientone">
+          <div id="slumber" class="cnvcontainer"><canvas></canvas></div>
+          <div id="ancienttracks">
+            <div id="tracks">
+              <div id="terror" class="track cnvcontainer"><canvas></canvas></div>
+              <div id="doom" class="track"><canvas></canvas></div>
+            </div>
+            <div id="worshippers" class="cnvcontainer"><canvas></canvas></div>
+          </div>
+        </div>
+      </div>
       <div id="uimain">
         <div id="worlds"></div>
-        <div id="board" class="cnvcontainer">
-          <canvas id="boardcanvas"></canvas>
+        <div id="uicont">
+          <div id="board" class="cnvcontainer">
+            <canvas id="boardcanvas"></canvas>
+          </div>
         </div>
-        <div id="uibottom">
-          <div id="globals" onclick="toggleGlobals(event)">
-            <div id="environment" class="mythoscontainer"><div class="mythoscard cnvcontainer"><canvas class="mythoscnv"></canvas></div></div>
-            <div id="rumor" class="mythoscontainer"><div class="mythoscard cnvcontainer"><canvas class="mythoscnv"></canvas></div></div>
+      </div>
+      <div id="boardright">
+        <div id="extra">
+          <div id="placeOutskirts" class="misc cnvcontainer">
+            <canvas class="misccnv"></canvas>
+            <div id="placeOutskirtsbox" class="placemiscbox">
+              <div id="placeOutskirtsmonsters" class="placemonsters"></div>
+            </div>
           </div>
-          <div id="currentcard" class="cnvcontainer"><canvas class="currentcnv"></canvas></div>
-          <div id="bottomcenter">
-            <div id="uiprompt"></div>
-            <button id="start" onclick="start(event)">Start</button>
-            <button id="doneitems" onclick="chooseItems(event)">Done Choosing Items</button>
-            <button id="donesliders" onclick="doneSliders(event)">Accept Sliders</button>
-            <button id="togglecards" onclick="toggleCards(event)">Show Choices</button>
-            <div id="uidice">
-              <div id="dice"></div>
-              <div class="buttonholder"><button id="dicebutton" onclick="roll(event)">Roll</button></div>
+          <div id="placeSky" class="misc cnvcontainer">
+            <canvas class="misccnv"></canvas>
+            <div id="placeSkybox" class="placemiscbox">
+              <div id="placeSkymonsters" class="placemonsters"></div>
             </div>
-            <div id="uichoice"></div>
-            <div id="uimonsterchoice">
-              <div id="monsterchoices"></div>
-              <div id="monsterchoicebuttons">
-                <button onclick="confirmMonsterChoice(event)">Confirm</button>
-                <button onclick="toOutskirts(event)">Outskirts</button>
-                <button onclick="resetMonsterChoice(event)">Reset</button>
-              </div>
-            </div>
-            <div id="uiuse"><span id="usetext">Use Items or Abilities</span><div class="spacer"></div><button onclick="doneUsing(event)" id="doneusing">Done Using</button></div>
-            <div id="uispend"></div>
-            <button id="stepbutton" onclick="step(event)" style="display: none">Step</button>
           </div>
-          <div id="ancientandplaces">
-            <div id="ancientone">
-              <div id="ancienttracks">
-                <div id="worshippers" class="cnvcontainer"><canvas></canvas></div>
-                <div id="tracks">
-                  <div id="terror" class="track cnvcontainer"><canvas></canvas></div>
-                  <div id="doom" class="track"><canvas></canvas></div>
-                </div>
-              </div>
-              <div id="slumber" class="cnvcontainer"><canvas></canvas></div>
-            </div>
-            <div id="extra">
-              <div id="placeOutskirts" class="misc cnvcontainer">
-                <canvas class="misccnv"></canvas>
-                <div id="placeOutskirtsbox" class="placemiscbox">
-                  <div id="placeOutskirtsmonsters" class="placemonsters"></div>
-                </div>
-              </div>
-              <div id="placeSky" class="misc cnvcontainer">
-                <canvas class="misccnv"></canvas>
-                <div id="placeSkybox" class="placemiscbox">
-                  <div id="placeSkymonsters" class="placemonsters"></div>
-                </div>
-              </div>
-              <div id="placeLost" class="misc cnvcontainer">
-                <canvas class="misccnv"></canvas>
-                <div id="placeLostbox" class="placemiscbox">
-                  <div id="placeLostchars" class="placechars"></div>
-                </div>
-              </div>
+          <div id="placeLost" class="misc cnvcontainer">
+            <canvas class="misccnv"></canvas>
+            <div id="placeLostbox" class="placemiscbox">
+              <div id="placeLostchars" class="placechars"></div>
             </div>
           </div>
         </div>
@@ -215,6 +194,32 @@
           <div id="tabplayers" class="righttab shown" onclick="switchTab('players')"><div class="tabcenter">👥</div></div>
           <div id="tablog" class="righttab" onclick="switchTab('log')"><div class="tabcenter">📜</div></div>
           <div id="tabadmin" class="righttab" onclick="switchTab('admin')"><div class="tabcenter">✏️</div></div>
+        </div>
+      </div>
+      <div id="uibottom">
+        <div id="bottomspacer"></div>
+        <div id="bottomcenter">
+          <div id="uiprompt"></div>
+          <button id="start" onclick="start(event)">Start</button>
+          <button id="doneitems" onclick="chooseItems(event)">Done Choosing Items</button>
+          <button id="donesliders" onclick="doneSliders(event)">Accept Sliders</button>
+          <button id="togglecards" onclick="toggleCards(event)">Show Choices</button>
+          <div id="uidice">
+            <div id="dice"></div>
+            <div class="buttonholder"><button id="dicebutton" onclick="roll(event)">Roll</button></div>
+          </div>
+          <div id="uichoice"></div>
+          <div id="uimonsterchoice">
+            <div id="monsterchoices"></div>
+            <div id="monsterchoicebuttons">
+              <button onclick="confirmMonsterChoice(event)">Confirm</button>
+              <button onclick="toOutskirts(event)">Outskirts</button>
+              <button onclick="resetMonsterChoice(event)">Reset</button>
+            </div>
+          </div>
+          <div id="uiuse"><span id="usetext">Use Items or Abilities</span><div class="spacer"></div><button onclick="doneUsing(event)" id="doneusing">Done Using</button></div>
+          <div id="uispend"></div>
+          <button id="stepbutton" onclick="step(event)" style="display: none">Step</button>
         </div>
       </div>
     </div>
