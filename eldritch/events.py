@@ -1425,6 +1425,9 @@ class KeepDrawn(Event):
       assert self.draw.is_resolved()
       self.drawn = self.draw.drawn
 
+    # Remove cards the character cannot keep:
+    self.drawn = [card for card in self.drawn if self.character.get_override(card, "can_keep")]
+
     if self.choice is not None:
       assert self.choice.is_done()
       if self.choice.is_cancelled():
@@ -2556,7 +2559,8 @@ class ReturnGateToStack(Event):
 
 class Check(Event):
 
-  def __init__(self, character, check_type, modifier, *, difficulty=1, name=None, attributes=None):
+  def __init__(self, character, check_type, modifier, *, difficulty=1, name=None,
+               attributes=None, source=None):
     # TODO: assert on check type
     assert difficulty > 0
     super().__init__()
@@ -2566,6 +2570,7 @@ class Check(Event):
     self.difficulty = difficulty
     self.attributes = attributes
     self.name = name
+    self.source = source
     self.dice: Optional[Event] = None
     self.pass_check: Optional[Event] = None
     self.roll = None
@@ -2604,6 +2609,9 @@ class Check(Event):
 
     if self.spend is None:
       if state.test_mode and self.character.clues == 0:
+        self.done = True
+        return
+      if not self.character.get_override(self.source, "can_spend_clues"):
         self.done = True
         return
       spend = values.ExactSpendPrerequisite({"clues": 1})
@@ -4446,6 +4454,7 @@ class GateCloseAttempt(Event):
       self.check = Check(
           self.character, attribute, difficulty,
           name=state.places[self.location_name].gate.json_repr()["name"],
+          source=self,
       )
       state.event_stack.append(self.check)
       return

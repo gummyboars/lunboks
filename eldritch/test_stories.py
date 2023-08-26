@@ -193,3 +193,60 @@ class NunStoryTest(StoryTest):
     self.assertEqual(self.char.bless_curse, 1)
     self.assertNotIn(self.story, self.char.possessions)
     self.assertIn(self.story.results[False], [p.name for p in self.char.possessions])
+
+
+class PhotographerStoryTest(StoryTest):
+  def setUp(self):
+    super().setUp()
+    self.story = next(
+        story for story in self.state.specials if isinstance(story, stories.PhotographerStory)
+    )
+    self.state.specials.remove(self.story)
+    self.char.possessions.append(self.story)
+
+  def testPass(self):
+    self.state.event_stack.append(events.Sequence([
+      events.TakeGateTrophy(self.char, self.state.gates[0]),
+      events.TakeGateTrophy(self.char, self.state.gates[1]),
+    ], self.char))
+    self.resolve_until_done()
+    self.assertIn("There's Your Proof", [p.name for p in self.char.possessions])
+
+  def testFail(self):
+    pass
+
+
+class PsychologistStoryTest(StoryTest):
+  def setUp(self):
+    super().setUp()
+    self.story = next(
+        story for story in self.state.specials if isinstance(story, stories.PsychologistStory)
+    )
+    self.state.specials.remove(self.story)
+    self.char.possessions.append(self.story)
+
+  def testPass(self):
+    pass
+
+  def testFail(self):
+    pass
+
+
+class SalesmanStoryTest(StoryTest):
+  def setUp(self):
+    super().setUp()
+    self.story = next(
+        story for story in self.state.specials if isinstance(story, stories.SalesmanStory)
+    )
+    self.state.specials.remove(self.story)
+    self.char.possessions.append(self.story)
+
+
+class ScientistStoryTest(StoryTest):
+  def setUp(self):
+    super().setUp()
+    self.story = next(
+        story for story in self.state.specials if isinstance(story, stories.ScientistStory)
+    )
+    self.state.specials.remove(self.story)
+    self.char.possessions.append(self.story)
