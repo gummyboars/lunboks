@@ -15,7 +15,10 @@ class AbnormalFocus(assets.Asset):
 
   def get_interrupt(self, event, owner: characters.BaseCharacter, state):
     if isinstance(event, events.Upkeep) and event.character == owner:
-      return events.MoveSliders(owner, {slider + "_slider": 0 for slider in owner.sliders()})
+      # Allow Spy to keep the lore slider from the last turn for spellcasting
+      return events.MoveSliders(
+          owner, {slider + "_slider": 0 for slider in owner.sliders() if "lore" not in slider}
+      )
     return None
 
 
@@ -36,10 +39,11 @@ class BreakingTheLimits(assets.Asset):
   def get_usable_interrupt(self, event, owner, state):
     if (
         not isinstance(event, events.SliderInput)
+        or event.is_done()
         or event.character != owner
-        or sum(self.tokens.values()) >= 3
-        or (owner.stamina == 1 and owner.sanity == 1)
     ):
+      return None
+    if sum(self.tokens.values()) >= 3 or (owner.stamina == 1 and owner.sanity == 1):
       return None
     spend = events.SpendChoice(
         owner, prompt="Break the limits?",
