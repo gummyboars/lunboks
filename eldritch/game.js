@@ -23,6 +23,75 @@ cardsStyle = "flex";
 stepping = false;
 statNames = {"stamina": "Stamina", "sanity": "Sanity", "clues": "Clue", "dollars": "Dollar"};
 
+isDragging = false;
+startX = null;
+startY = null;
+offsetX = 0;
+offsetY = 0;
+dX = 0;
+dY = 0;
+boardScale = 1;
+
+function onmove(event) {
+  if (isDragging) {
+    dX = event.clientX - startX;
+    dY = event.clientY - startY;
+    document.getElementById("board").style.transform = "translate(" + (offsetX+dX) + "px, " + (offsetY+dY) + "px) scale(" + boardScale + ")";
+  }
+}
+function ondown(event) {
+  // Ignore right/middle-click.
+  if (event.button != 0) {
+    return;
+  }
+  startX = event.clientX;
+  startY = event.clientY;
+  isDragging = true;
+}
+function onup(event) {
+  // Ignore right/middle-click.
+  if (event.button != 0) {
+    return;
+  }
+  if (isDragging) {
+    isDragging = false;
+    offsetX += dX;
+    offsetY += dY;
+    dX = 0;
+    dY = 0;
+  }
+}
+function onout(event) {
+  if (isDragging) {
+    isDragging = false;
+    offsetX += dX;
+    offsetY += dY;
+    dX = 0;
+    dY = 0;
+  }
+}
+function onwheel(event) {
+  event.preventDefault();
+  let oldScale = boardScale;
+  if (event.deltaY < 0) {
+    boardScale += 0.05;
+  } else if (event.deltaY > 0) {
+    boardScale -= 0.05;
+  }
+  boardScale = Math.min(Math.max(0.125, boardScale), 4);
+  let board = document.getElementById("board");
+  let rect = board.getBoundingClientRect();
+  let centerX = (rect.left + rect.right) / 2;
+  let centerY = (rect.top + rect.bottom) / 2;
+  let mouseX = event.clientX - centerX;
+  let mouseY = event.clientY - centerY;
+  let mouseXScaled = mouseX * boardScale / oldScale;
+  let mouseYScaled = mouseY * boardScale / oldScale;
+  offsetX -= (mouseXScaled - mouseX);
+  offsetY -= (mouseYScaled - mouseY);
+  document.getElementById("board").style.transform = "translate(" + (offsetX+dX) + "px, " + (offsetY+dY) + "px) scale(" + boardScale + ")";
+}
+
 function toggleStepping(e) {
   if (stepping) {
     stepping = false;
@@ -89,6 +158,7 @@ function init() {
 function continueInit(gameId) {
   ws = new WebSocket("ws://" + window.location.hostname + ":8081/" + gameId);
   ws.onmessage = onmsg;
+  document.getElementById("board").cnvScale = 4;
   renderAssetToDiv(document.getElementById("board"), "board");
   let width = document.getElementById("boardcanvas").width;
   let cont = document.getElementById("board");
@@ -206,6 +276,12 @@ function continueInit(gameId) {
   cupBox.ondrop = drop;
   cupBox.ondragenter = dragEnter;
   cupBox.ondragover = dragOver;
+
+  document.getElementById("uicont").onmousemove = onmove;
+  document.getElementById("uicont").onmousedown = ondown;
+  document.getElementById("uicont").onmouseup = onup;
+  document.getElementById("uicont").onmouseout = onout;
+  document.getElementById("uicont").onwheel = onwheel;
 
   // Debug menu stuff
   changeOtherChoice(null);

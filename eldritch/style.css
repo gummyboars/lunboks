@@ -536,6 +536,9 @@ button:disabled {
   width: 100%;
   height: 100%;
   direction: rtl;
+  z-index: 1;
+  background: #D2A253;
+  overflow: hidden;
 }
 #uileft {
   position: absolute;
@@ -558,9 +561,7 @@ button:disabled {
   height: 132.78%;
   min-height: 132.78%;
   max-height: 132.78%;
-  background: #D2A253;
   position: relative;
-  z-index: 1;
 }
 #boardright {
   position: absolute;
