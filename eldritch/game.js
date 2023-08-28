@@ -36,7 +36,7 @@ function onmove(event) {
   if (isDragging) {
     dX = event.clientX - startX;
     dY = event.clientY - startY;
-    document.getElementById("board").style.transform = "translate(" + (offsetX+dX) + "px, " + (offsetY+dY) + "px) scale(" + boardScale + ")";
+    moveBoard();
   }
 }
 function ondown(event) {
@@ -89,6 +89,9 @@ function onwheel(event) {
   let mouseYScaled = mouseY * boardScale / oldScale;
   offsetX -= (mouseXScaled - mouseX);
   offsetY -= (mouseYScaled - mouseY);
+  moveBoard();
+}
+function moveBoard() {
   document.getElementById("board").style.transform = "translate(" + (offsetX+dX) + "px, " + (offsetY+dY) + "px) scale(" + boardScale + ")";
 }
 
@@ -282,6 +285,12 @@ function continueInit(gameId) {
   document.getElementById("uicont").onmouseup = onup;
   document.getElementById("uicont").onmouseout = onout;
   document.getElementById("uicont").onwheel = onwheel;
+
+  // Position the board.
+  let contRect = document.getElementById("uicont").getBoundingClientRect();
+  let boardRect = document.getElementById("board").getBoundingClientRect();
+  offsetX = (contRect.right + contRect.left - boardRect.right - boardRect.left) / 2;
+  moveBoard();
 
   // Debug menu stuff
   changeOtherChoice(null);
@@ -2182,7 +2191,7 @@ function updateGlobals(env, rumor, otherGlobals) {
   }
   let toRemove = {};
   for (let node of document.getElementById("globals").getElementsByClassName("mythoscontainer")) {
-    if (node.id == "environment" || node.id == "rumor") {
+    if (node.id == "environment" || node.id == "rumor" || node.id == "currentcard") {
       continue;
     }
     toRemove[node.name] = node;
@@ -2219,16 +2228,20 @@ function updateGlobals(env, rumor, otherGlobals) {
 function updateCurrentCard(current) {
   oldCurrent = current;
   let currDiv = document.getElementById("currentcard");
+  let currCnt = currDiv.firstChild;
   if (current == null) {
     // TODO: because rendering happens in a promise, clearing the asset from the div can
     // actually happen before the promise is fulfilled. ugh.
-    clearAssetFromDiv(currDiv);
+    clearAssetFromDiv(currCnt);
     currDiv.classList.add("missing");
+    currDiv.name = null;
+    currDiv.annotation = null;
     return;
   }
   currDiv.classList.remove("missing");
-  currDiv.cnvScale = 2;
-  renderAssetToDiv(currDiv, current);
+  currDiv.name = current;
+  currDiv.annotation = current.startsWith("Mythos") ? "Mythos" : "Encounter";
+  renderAssetToDiv(currCnt, current);
 }
 
 function toggleGlobals(e, frontCard) {

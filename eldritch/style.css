@@ -510,11 +510,11 @@ button:disabled {
 }
 #centerizer {
   z-index: 20;
-  width: min(80vw, 128vh);
-  height: min(62.5vw, 100vh);
+  width: min(70vw, 112vh);
+  height: min(48vw, 76.8vh);
   position: absolute;
-  top: 0;
-  left: 0;
+  top: min(2.5vw, 4vh);
+  right: min(20vw, 32vh);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -535,7 +535,6 @@ button:disabled {
   display: inline-block;
   width: 100%;
   height: 100%;
-  direction: rtl;
   z-index: 1;
   background: #D2A253;
   overflow: hidden;
@@ -554,7 +553,6 @@ button:disabled {
   z-index: 2;
 }
 #board {
-  direction: ltr;
   display: inline flex;
   width: 58.6%;
   max-width: 58.6%;
@@ -688,29 +686,6 @@ button:disabled {
   top: 0;
   left: 0;
 }
-#currentcard {
-  position: relative;
-  width: 12.5%;
-  min-width: 12.5%;
-  max-width: 12.5%;
-  height: 100%;
-  transition: all 0.3s;
-  transform-origin: bottom center;
-}
-#currentcard:hover {
-  transition-delay: 0.2s;
-  transform: scale(2);
-}
-#currentcard.missing {
-  visibility: hidden;
-}
-.currentcnv {
-  position: absolute;
-  bottom: 0;
-  left: 50%;
-  transform: translate(-50%, 0) scale(0.5);
-  transform-origin: bottom center;
-}
 #globals {
   flex: 1 1 auto;
   width: 100%;
@@ -719,7 +694,7 @@ button:disabled {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: space-evenly;
+  justify-content: flex-start;
   cursor: zoom-in;
 }
 #globals.zoomed {
@@ -727,10 +702,10 @@ button:disabled {
 }
 .mythoscontainer {
   position: relative;
-  flex: 1 1 auto;
+  flex: 0 1 auto;
   width: 87.5%;
   min-height: 0;
-  height: 100%;
+  height: calc(min(8.75vw, 14vh) * 2);
 }
 .mythoscontainer.missing {
   height: 0;
@@ -764,6 +739,7 @@ button:disabled {
   display: flex;
   flex-direction: row;
   align-items: flex-start;
+  z-index: 3;
 }
 #slumber {
   min-width: calc(min(8vw, 12.8vh));
