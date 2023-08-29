@@ -75,13 +75,13 @@ class Synergy(assets.Asset):
       self, check_type, attributes, owner: characters.BaseCharacter, state: "GameState"
   ):
     # TODO: Call Stack enforcement to guard against infinite loops.
-    n_allies = len([ally for ally in owner.possessions if ally.deck == "allies"])
+    n_allies = len([ally for ally in owner.possessions if getattr(ally, "deck", None) == "allies"])
     n_in_same_place = len(
         [char for char in state.characters if char != owner and char.place == owner.place]
     )
     if n_allies == 0 and n_in_same_place == 0:
       return 0
-    if check_type in (assets.CHECK_TYPES | assets.SUB_CHECKS.keys()):
+    if check_type in assets.CHECK_TYPES:
       return 1
     return 0
 
@@ -121,6 +121,6 @@ class TeamPlayerBonus(assets.Card):
     return 0
 
   def get_interrupt(self, event, owner, state):
-    if isinstance(event, events.Upkeep) and event.character == owner:
+    if isinstance(event, events.Mythos) and event.is_done():
       return events.DiscardSpecific(owner, [self])
     return None
