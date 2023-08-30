@@ -457,7 +457,7 @@ function handleData(data) {
   updateAvailableCharacters(data.characters, data.pending_chars);
   updateCharacterSelect(data.characters, data.player_idx);
   updateAncientSelect(data.game_stage, data.host);
-  updateAncientOne(data.ancient_one, data.terror);
+  updateAncientOne(data.game_stage, data.ancient_one, data.terror);
   updateCharacterSheets(data.characters, data.pending_chars, data.player_idx, data.first_player, myChoice, data.chooser == data.player_idx ? data.sliders : null);
   updateBottomText(data.game_stage, data.turn_phase, data.characters, data.turn_idx, data.player_idx, data.host);
   updateGlobals(data.environment, data.rumor, data.other_globals);
@@ -2346,6 +2346,19 @@ function toggleGlobals(e, frontCard) {
   }
 }
 
+function toggleAncient(e) {
+  let bigAncient = document.getElementById("ancientdetails");
+  let ancientOne = document.getElementById("ancientone");
+  if (ancientOne.classList.contains("zoomed")) {
+    ancientOne.classList.remove("zoomed");
+    bigAncient.style.display = "none";
+  } else {
+    ancientOne.classList.add("zoomed");
+    bigAncient.style.display = "flex";
+    renderAssetToDiv(document.getElementById("bigancient"), chosenAncient);
+  }
+}
+
 function updateDice(dice, playerIdx, monsterList) {
   let uidice = document.getElementById("uidice");
   if (dice == null) {
@@ -2515,7 +2528,7 @@ function updateAncientSelect(gameStage, host) {
   }
 }
 
-function updateAncientOne(ancientOne, terror) {
+function updateAncientOne(gameStage, ancientOne, terror) {
   renderAssetToDiv(document.getElementById("terror"), "Terror" + (terror || 0));
   let doom = document.getElementById("doom");
   if (ancientOne == null) {
@@ -2530,6 +2543,14 @@ function updateAncientOne(ancientOne, terror) {
   renderAssetToDiv(worshippers, ancientOne.name + " worshippers");
   let slumber = document.getElementById("slumber");
   renderAssetToDiv(slumber, ancientOne.name + " slumber");
+  let ancientOneDiv = document.getElementById("ancientone");
+  if (gameStage == "slumber") {
+    ancientOneDiv.onclick = toggleAncient;
+    ancientOneDiv.classList.remove("setup");
+  } else {
+    ancientOneDiv.onclick = null;
+    ancientOneDiv.classList.add("setup");
+  }
 }
 
 function updateCharacterSelect(characters, playerIdx) {
