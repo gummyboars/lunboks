@@ -791,12 +791,17 @@ button:disabled {
 }
 #extra {
   width: calc(min(5vw, 8vh));
-  height: calc(min(15vw, 24vh));
-  max-height: calc(min(15vw, 24vh));
+  height: calc(min(20vw, 32vh));
+  max-height: calc(min(20vw, 32vh));
   display: flex;
   flex-direction: column;
   align-items: flex-end;
   justify-content: flex-end;
+}
+#flip {
+  font-size: calc(min(3vw, 4.8vh));
+  transform: rotate(-90deg);
+  cursor: pointer;
 }
 .misc {
   min-width: calc(min(5vw, 8vh));

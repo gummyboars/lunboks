@@ -210,6 +210,8 @@ function setDivXYPercent(div, parentCnv, baseAsset, relativeAsset, fromBottom) {
     div.style.top = 100 * ypct + "%";
   }
   div.style.left = 100 * xpct + "%";
+  div.xpct = xpct;
+  div.ypct = ypct;
   return true;
 }
 

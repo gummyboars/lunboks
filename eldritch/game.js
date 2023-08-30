@@ -30,12 +30,20 @@ offsetX = 0;
 offsetY = 0;
 dX = 0;
 dY = 0;
+boardRotate = 0;
 boardScale = 1;
 
 function onmove(event) {
   if (isDragging) {
-    dX = event.clientX - startX;
-    dY = event.clientY - startY;
+    let changeX = event.clientX - startX;
+    let changeY = event.clientY - startY;
+    if (boardRotate == 0) {
+      dX = changeX;
+      dY = changeY;
+    } else {
+      dY = changeX;
+      dX = -changeY;
+    }
     moveBoard();
   }
 }
@@ -87,12 +95,32 @@ function onwheel(event) {
   let mouseY = event.clientY - centerY;
   let mouseXScaled = mouseX * boardScale / oldScale;
   let mouseYScaled = mouseY * boardScale / oldScale;
-  offsetX -= (mouseXScaled - mouseX);
-  offsetY -= (mouseYScaled - mouseY);
+  if (boardRotate == 0) {
+    offsetX -= (mouseXScaled - mouseX);
+    offsetY -= (mouseYScaled - mouseY);
+  } else {
+    offsetY -= (mouseXScaled - mouseX);
+    offsetX += (mouseYScaled - mouseY);
+  }
+  moveBoard();
+}
+function flipBoard() {
+  if (boardRotate == 0) {
+    boardRotate = -90;
+    for (let p of document.getElementsByClassName("place")) {
+      p.style.transform = "translateX(-50%) translateY(-50%) rotate(90deg)";
+    }
+  } else {
+    boardRotate = 0;
+    for (let p of document.getElementsByClassName("place")) {
+      p.style.transform = "translateX(-50%) translateY(-50%) rotate(0deg)";
+    }
+  }
+  adjustLocationClasses();
   moveBoard();
 }
 function moveBoard() {
-  document.getElementById("board").style.transform = "translate(" + (offsetX+dX) + "px, " + (offsetY+dY) + "px) scale(" + boardScale + ")";
+  document.getElementById("board").style.transform = "rotate(" + boardRotate + "deg) translate(" + (offsetX+dX) + "px, " + (offsetY+dY) + "px) scale(" + boardScale + ")";
 }
 
 function toggleStepping(e) {
@@ -186,14 +214,12 @@ function continueInit(gameId) {
       let details = document.createElement("DIV");
       details.id = "place" + name + "details";
       details.classList.add("placedetails");
+      box.appendChild(details);
+      box.appendChild(monstersDiv);
       if (places[name].y < 0.5) {
         box.classList.add("placeupper");
-        box.appendChild(details);
-        box.appendChild(monstersDiv);
       } else {
         box.classList.add("placelower");
-        box.appendChild(monstersDiv);
-        box.appendChild(details);
       }
       if (places[name].x < 0.5) {
         box.classList.add("placeleft");
@@ -230,6 +256,7 @@ function continueInit(gameId) {
     }
   }
   placeLocations();
+  adjustLocationClasses();
   for (let name of monsterNames) {
     addOptionToSelect("monsterchoice", name);
   }
@@ -324,6 +351,28 @@ function placeLocations() {
       if (!setDivXYPercent(div, parentCnv, "board", name)) {
         div.style.top = 100 * places[name].y + "%";
         div.style.left = 100 * places[name].x + "%";
+        div.xpct = places[name].x;
+        div.ypct = places[name].y;
+      }
+    }
+  }
+}
+
+function adjustLocationClasses() {
+  for (let [placeType, places] of [["location", locations], ["street", streets]]) {
+    for (let name in places) {
+      let div = document.getElementById("place" + name);
+      let box = document.getElementById("place" + name + "box");
+      if (boardRotate == 0) {
+        box.classList.toggle("placeupper", div.ypct < 0.5);
+        box.classList.toggle("placelower", div.ypct >= 0.5);
+        box.classList.toggle("placeleft", div.xpct < 0.5);
+        box.classList.toggle("placeright", div.xpct >= 0.5);
+      } else {
+        box.classList.toggle("placeupper", div.xpct >= 0.5);
+        box.classList.toggle("placelower", div.xpct < 0.5);
+        box.classList.toggle("placeleft", div.ypct < 0.5);
+        box.classList.toggle("placeright", div.ypct >= 0.5);
       }
     }
   }
