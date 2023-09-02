@@ -179,9 +179,14 @@ class NunStoryTest(StoryTest):
       self.assertEqual(mock_rand.call_count, 1)
       self.assertIsInstance(self.state.event_stack[-1], events.DiceRoll)
       self.assertEqual(self.state.event_stack[-1].roll, [1])
-      self.state.done_using[0] = True
+    with mock_randint(6) as mock_rand:
+      self.state.event_stack.append(self.state.usables[0]["Fear No Evil"])
+      choice = self.resolve_to_choice(events.MultipleChoice)
+      choice.resolve(self.state, 1)
       self.advance_turn(2, "movement")
-      self.assertFalse(self.gangster.possessions)
+    fne = next(p for p in self.char.possessions if p.name == "Fear No Evil")
+    self.assertListEqual([p.name for p in self.gangster.possessions], ["Blessing"])
+    self.assertTrue(fne.exhausted)
 
   def testFail(self):
     self.state.event_stack.append(events.Curse(self.char))

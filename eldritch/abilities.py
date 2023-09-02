@@ -226,6 +226,16 @@ class Research(assets.Asset):
         events.RerollSpecific(state.event_stack[-2].character, state.event_stack[-2], bad_dice),
     ], owner)
 
+  def get_trigger(self, event, owner, state):
+    # Once per turn, not technically "exhaust to ..."
+    if (
+        self.exhausted
+        and isinstance(event, events.Mythos)
+        and event.is_done()
+    ):
+      return events.RefreshAsset(owner, self)
+
+
 
 class UpkeepRestoreStat(assets.Asset):
 

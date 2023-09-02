@@ -54,12 +54,12 @@ class DrifterStoryFail(StoryResult):
     return events.DiscardSpecific(owner, allies)
 
   def get_interrupt(self, event, owner, state):
-    if not getattr(event, "character", None) == owner:
-      return super().get_interrupt(event, owner, state)
     if (
-        (isinstance(event, events.KeepDrawn)
-         and (getattr(event.drawn, "deck", None) == "allies"))
-        or (isinstance(event, (events.DrawNamed, events.DrawItems)) and event.deck == "allies")
+        getattr(event, "character", None) == owner
+        and isinstance(event, events.KeepDrawn)
+        and event.draw
+        and event.draw.drawn
+        and getattr(event.draw.drawn[0], "deck", None) == "allies"
     ):
       return events.CancelEvent(event)
     return super().get_interrupt(event, owner, state)
@@ -91,11 +91,10 @@ class GangsterStoryPass(StoryResult):
     super().__init__("This One's for Louis", {"max_sanity": 1})
 
   def get_in_play_event(self, owner: characters.Character):
-    print("Gangster Story Pass now in play")
     return events.Gain(owner, {"sanity": 1}, self)
 
   def get_trigger(self, event, owner, state):
-    if isinstance(event, events.TakeTrophy) and event.character == owner:
+    if isinstance(event, events.ForceTakeTrophy) and event.character == owner:
       return events.Gain(owner, {"sanity": 1}, self)
     return super().get_trigger(event, owner, state)
 
@@ -146,14 +145,23 @@ class NunStoryPass(StoryResult):
   def get_usable_trigger(self, event, owner, state):
     if isinstance(event, events.DiceRoll) and state.turn_phase == "upkeep":
       # Note: I see nothing that says it has to be one of her dice
-      # TODO: Allow user to select a die to reroll
-      to_reroll = [0]
-      # to_reroll = events.ChooseDie(event)
+      choice = events.MultipleChoice(owner, "Choose a die to reroll", event.roll[:])
+      chosen = values.Calculation(choice, "choice_index")
       return events.Sequence([
           events.ExhaustAsset(owner, self),
-          events.RerollSpecific(state.event_stack[-2].character, state.event_stack[-2], to_reroll),
+          choice,
+          events.RerollSpecificDice(event.character, event, chosen),
       ], owner)
     return None
+
+  def get_trigger(self, event, owner, state):
+    # Once per turn, not technically "exhaust to ..."
+    if (
+      self.exhausted
+      and isinstance(event, events.Mythos)
+      and event.is_done()
+    ):
+      return events.RefreshAsset(owner, self)
 
   def get_in_play_event(self, owner: characters.Character):
     return events.Bless(owner)

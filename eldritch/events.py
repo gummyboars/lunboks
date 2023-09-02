@@ -2780,6 +2780,55 @@ class RerollSpecific(Event):
     return f"[{self.character.name}] rerolled {len(self.reroll_indexes)} dice on their {ctype}"
 
 
+class RerollSpecificDice(Event):
+  """More general than, but logging not as nice as, RerollSpecific"""
+  def __init__(
+      self, character, dice_roll: DiceRoll, reroll_indexes: Union[List[int], int, values.Value]
+  ):
+    super().__init__()
+    self.character = character
+    self.dice_roll = dice_roll
+    self.reroll_indexes = reroll_indexes
+    self.dice = None
+    self.done = False
+
+
+  def resolve(self, state):
+    if isinstance(self.reroll_indexes, values.Value):
+      self.reroll_indexes = self.reroll_indexes.value(state)
+    if isinstance(self.reroll_indexes, int):
+      self.reroll_indexes = [self.reroll_indexes]
+
+    if not self.reroll_indexes:
+      self.cancelled = True
+      return
+
+    if self.dice is None:
+      self.dice = DiceRoll(self.character, len(self.reroll_indexes), name=self.dice_roll.name)
+      state.event_stack.append(self.dice)
+      return
+
+    if self.dice.is_cancelled():
+      self.cancelled = True
+      return
+
+    for idx, orig_idx in enumerate(self.reroll_indexes):
+      self.dice_roll.roll[orig_idx] = self.dice.roll[idx]
+    self.done = True
+
+  def is_resolved(self):
+    return self.done
+
+  def log(self, state):
+    ctype = f"{self.dice_roll.name} roll"
+    if self.cancelled and not self.done:
+      return f"[{self.character.name}] did not reroll dice for their {ctype}"
+    if not self.done:
+      return f"[{self.character.name}] rerolls some of the dice on their {ctype}"
+    return f"[{self.character.name}] rerolled {len(self.reroll_indexes)} dice on their {ctype}"
+
+
+
 class Conditional(Event):
 
   def __init__(self, character, condition, attribute, result_map):
@@ -4280,7 +4329,8 @@ class TakeGateTrophy(Event):
         self.gate = state.gates.popleft()
       else:
         # According to my reading, No Gate Markers only awakens the ancient one when a gate opens
-        self.gate = None
+        self.cancelled = True
+        return
 
     for place in state.places:
       if getattr(state.places[place], "gate", None) is self.gate:
@@ -4516,7 +4566,6 @@ class CloseGate(Event):
       state.places[self.location_name].gate = None
 
       if self.can_take:
-        # self.character.trophies.append(self.gate)
         if self.take_gate is None:
           self.take_gate = TakeGateTrophy(self.character, self.gate)
           state.event_stack.append(self.take_gate)
