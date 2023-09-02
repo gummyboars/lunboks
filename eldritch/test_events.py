@@ -141,7 +141,7 @@ class EventTest(unittest.TestCase):
     self.state.event_stack.append(self.state.usables[char_idx][handle])
     self.resolve_to_choice(SpendMixin)
 
-  def advance_turn(self, target_turn, target_phase):
+  def advance_turn(self, target_turn, target_phase, halt_on_usable=False):
     self.state.mythos.extend([NoMythos()] * (target_turn - self.state.turn_number + 1))
     # TODO: should actually add a number of NoMythos - current turn - existing cards in mythos deck
     while True:
@@ -150,17 +150,16 @@ class EventTest(unittest.TestCase):
           break
       if self.state.turn_number >= target_turn and self.state.turn_phase == target_phase:
         break
+      if self.state.usables and halt_on_usable:
+        return
       if not self.state.event_stack:
         self.state.next_turn()
         if self.state.turn_number >= target_turn and self.state.turn_phase == target_phase:
           break
         continue
       if self.state.turn_phase == "upkeep":
-        # self.assertIsInstance(self.state.event_stack[-1], events.SliderInput)
-        if isinstance(self.state.event_stack[-1], events.SliderInput):
-          self.state.event_stack[-1].resolve(self.state, "done", None)
-        else:
-          return
+        self.assertIsInstance(self.state.event_stack[-1], events.SliderInput)
+        self.state.event_stack[-1].resolve(self.state, "done", None)
       elif self.state.turn_phase == "movement":
         self.assertIsInstance(self.state.event_stack[-1], events.CityMovement)
         self.state.event_stack[-1].resolve(self.state, "done")

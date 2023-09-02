@@ -143,7 +143,7 @@ class NunStoryPass(StoryResult):
     return super().get_interrupt(event, owner, state)
 
   def get_usable_trigger(self, event, owner, state):
-    if isinstance(event, events.DiceRoll) and state.turn_phase == "upkeep":
+    if isinstance(event, events.DiceRoll) and state.turn_phase == "upkeep" and not self.exhausted:
       # Note: I see nothing that says it has to be one of her dice
       choice = events.MultipleChoice(owner, "Choose a die to reroll", event.roll[:])
       chosen = values.Calculation(choice, "choice_index")
@@ -157,11 +157,12 @@ class NunStoryPass(StoryResult):
   def get_trigger(self, event, owner, state):
     # Once per turn, not technically "exhaust to ..."
     if (
-      self.exhausted
-      and isinstance(event, events.Mythos)
-      and event.is_done()
+        self.exhausted
+        and isinstance(event, events.Mythos)
+        and event.is_done()
     ):
       return events.RefreshAsset(owner, self)
+    return None
 
   def get_in_play_event(self, owner: characters.Character):
     return events.Bless(owner)

@@ -2782,6 +2782,7 @@ class RerollSpecific(Event):
 
 class RerollSpecificDice(Event):
   """More general than, but logging not as nice as, RerollSpecific"""
+
   def __init__(
       self, character, dice_roll: DiceRoll, reroll_indexes: Union[List[int], int, values.Value]
   ):
@@ -2791,7 +2792,6 @@ class RerollSpecificDice(Event):
     self.reroll_indexes = reroll_indexes
     self.dice = None
     self.done = False
-
 
   def resolve(self, state):
     if isinstance(self.reroll_indexes, values.Value):
@@ -2814,6 +2814,8 @@ class RerollSpecificDice(Event):
 
     for idx, orig_idx in enumerate(self.reroll_indexes):
       self.dice_roll.roll[orig_idx] = self.dice.roll[idx]
+    self.dice_roll.sum = sum(self.dice_roll.roll)
+    self.dice_roll.successes = self.dice_roll.character.count_successes(self.dice_roll.roll, None)
     self.done = True
 
   def is_resolved(self):
@@ -2826,7 +2828,6 @@ class RerollSpecificDice(Event):
     if not self.done:
       return f"[{self.character.name}] rerolls some of the dice on their {ctype}"
     return f"[{self.character.name}] rerolled {len(self.reroll_indexes)} dice on their {ctype}"
-
 
 
 class Conditional(Event):
