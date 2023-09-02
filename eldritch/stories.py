@@ -389,8 +389,9 @@ def CreateStories():
       DrifterStoryPass(), DrifterStoryFail(), DrifterStory(),
       GangsterStoryPass(), GangsterStoryFail(), GangsterStory(),
       NunStoryPass(), NunStoryFail(), NunStory(),
-      PhotographerStoryPass(), PhotographerStoryFail(), PhotographerStory(),
-      PsychologistStoryPass(), PsychologistStoryFail(), PsychologistStory(),
-      SalesmanStoryPass(), SalesmanStoryFail(), SalesmanStory(),
-      ScientistStoryPass(), ScientistStoryFail(), ScientistStory(),
+      # Don't add stories that don't have tests
+      # PhotographerStoryPass(), PhotographerStoryFail(), PhotographerStory(),
+      # PsychologistStoryPass(), PsychologistStoryFail(), PsychologistStory(),
+      # SalesmanStoryPass(), SalesmanStoryFail(), SalesmanStory(),
+      # ScientistStoryPass(), ScientistStoryFail(), ScientistStory(),
   ]
