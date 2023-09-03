@@ -265,7 +265,7 @@ class SliderInput(Event):
     if name == "done":
       if not self.free:
         if self.character.focus_cost(self.pending) > self.character.slider_focus_available():
-          raise InvalidMove("You do not have enough focus.")
+          raise InvalidMove("You do not have enough slider shifts.")
         self.character.spend_slider_focus(self.character.focus_cost(self.pending))
       for slider_name, slider_value in self.pending.items():
         setattr(self.character, slider_name + "_slider", slider_value)
@@ -285,7 +285,7 @@ class SliderInput(Event):
     pending[name] = value
     if not self.free:
       if self.character.focus_cost(pending) > self.character.slider_focus_available():
-        raise InvalidMove("You do not have enough focus.")
+        raise InvalidMove("You do not have enough slider shifts.")
     self.pending = pending
 
   def prompt(self):
