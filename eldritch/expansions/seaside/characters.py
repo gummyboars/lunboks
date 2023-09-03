@@ -79,7 +79,6 @@ class Spy(characters.BaseCharacter):
   def focus_cost(self, pending_sliders):
     return sum(pending_sliders[name] for name in self.sliders())
 
-  @property
   def slider_focus_available(self):
     abnormal_focus = 5
     for pos in self.possessions:

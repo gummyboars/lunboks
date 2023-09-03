@@ -16,6 +16,7 @@ class AbnormalFocus(assets.Asset):
   def get_interrupt(self, event, owner: characters.BaseCharacter, state):
     if isinstance(event, events.Upkeep) and event.character == owner:
       # Allow Spy to keep the lore slider from the last turn for spellcasting
+      # TODO: change the order such that the slider input happens earlier.
       return events.MoveSliders(
           owner, {slider + "_slider": 0 for slider in owner.sliders() if "lore" not in slider}
       )
@@ -51,7 +52,7 @@ class BreakingTheLimits(assets.Asset):
         spends=[
             None,
             values.FlexibleRangeSpendPrerequisite(
-                ["sanity", "stamina"], 1, 3-sum(self.tokens.values())
+                ["sanity", "stamina"], 1, 3-sum(self.tokens.values()), character=owner
             )
         ]
     )

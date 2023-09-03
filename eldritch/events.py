@@ -264,7 +264,7 @@ class SliderInput(Event):
       raise InvalidInput(f"Unknown slider {name}")
     if name == "done":
       if not self.free:
-        if self.character.focus_cost(self.pending) > self.character.slider_focus_available:
+        if self.character.focus_cost(self.pending) > self.character.slider_focus_available():
           raise InvalidMove("You do not have enough focus.")
         self.character.spend_slider_focus(self.character.focus_cost(self.pending))
       for slider_name, slider_value in self.pending.items():
@@ -284,7 +284,7 @@ class SliderInput(Event):
     pending = self.pending.copy()
     pending[name] = value
     if not self.free:
-      if self.character.focus_cost(pending) > self.character.slider_focus_available:
+      if self.character.focus_cost(pending) > self.character.slider_focus_available():
         raise InvalidMove("You do not have enough focus.")
     self.pending = pending
 
@@ -292,7 +292,7 @@ class SliderInput(Event):
     if self.free:
       return f"[{self.character.name}] to set sliders anywhere"
     remaining_focus = (
-        self.character.slider_focus_available - self.character.focus_cost(self.pending)
+        self.character.slider_focus_available() - self.character.focus_cost(self.pending)
     )
     return f"[{self.character.name}] to set sliders ({remaining_focus} shifts remaining)"
 

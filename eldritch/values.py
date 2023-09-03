@@ -2,7 +2,9 @@ import abc
 import collections
 import math
 import operator
+from typing import Optional
 
+from eldritch import characters
 from eldritch import places
 
 OPER_MAP = {"at least": operator.ge, "at most": operator.le, "exactly": operator.eq}
@@ -393,12 +395,16 @@ class RangeSpendPrerequisite(SpendValue):
 
 
 class FlexibleRangeSpendPrerequisite(SpendValue):
-  def __init__(self, spend_types: list, spend_min: float, spend_max: float):
+  def __init__(
+      self, spend_types: list, spend_min: float, spend_max: float,
+      character: Optional[characters.BaseCharacter] = None
+  ):
     assert all(spend_type in self.SPEND_TYPES for spend_type in spend_types)
     super().__init__()
     self._spend_types = spend_types
     self.spend_min = spend_min
     self.spend_max = spend_max
+    self.character = character
 
   def remaining_spend(self, state):
     remaining = super().remaining_spend(state)
@@ -424,7 +430,19 @@ class FlexibleRangeSpendPrerequisite(SpendValue):
     )
     if spent != spend_max:
       for spend_type in self._spend_types:
-        remaining[spend_type] = spend_max - spent
+        min_remaining = 1 if spend_type in ("sanity", "stamina") else 0
+        available = getattr(self.character, spend_type, 0)
+        already_spent = self.spend_map[spend_type].get(spend_type, 0)
+        spendable = max(
+            available - min_remaining - already_spent, 0
+        )
+        if spendable > spend_max - spent:
+          remaining[spend_type] = spend_max - spent
+          spent = spend_max
+        else:
+          spent += spendable
+          remaining[spend_type] = spendable
+
     return remaining
 
   def spend_types(self):

@@ -1,7 +1,8 @@
 from unittest import mock
 
-from eldritch.test_events import EventTest
+from eldritch.test_events import EventTest, InvalidMove
 from eldritch.expansions.seaside import abilities
+from eldritch.expansions.seaside import characters as seaside_characters
 from eldritch import assets
 from eldritch import characters
 from eldritch import events
@@ -59,3 +60,40 @@ class TestSecretaryAbilities(EventTest):
       self.state.event_stack.append(events.Check(nun, "combat", 0))
       self.resolve_until_done()
       self.assertEqual(rand.call_count, nun.base_fight() + 1)
+
+
+class TestSpyAbilities(EventTest):
+  def testFocusAndBreakingLimits(self):
+    self.char = seaside_characters.Spy()
+    self.char.place = self.state.places["Newspaper"]
+    self.state.characters = [self.char]
+    self.char.possessions.extend([abilities.AbnormalFocus(), abilities.BreakingTheLimits()])
+    self.advance_turn(1, "upkeep")
+    sliders = self.resolve_to_choice(events.SliderInput)
+    self.assertLessEqual(sum(self.char.sliders().values()), self.char.slider_focus_available())
+    self.assertEqual(self.char.slider_focus_available(), 5)
+    usable = self.resolve_to_usable(0, "Breaking the Limits")
+    self.state.event_stack.append(self.state.usables[0]["Breaking the Limits"])
+    choice = self.resolve_to_choice(events.MultipleChoice)
+    self.spend("sanity", 1, choice)
+    self.spend("stamina", 1, choice)
+    choice.resolve(self.state, "Yes")
+    usable = self.resolve_to_usable(0, "Breaking the Limits")
+    self.assertEqual(self.char.slider_focus_available(), 7)
+    self.assertTrue(self.state.usables)
+    self.state.event_stack.append(usable)
+    choice = self.resolve_to_choice(events.MultipleChoice)
+    self.spend("sanity", 1, choice)
+    choice.resolve(self.state, "Yes")
+    sliders = self.resolve_to_choice(events.SliderInput)
+    self.assertEqual(self.char.slider_focus_available(), 8)
+    self.assertFalse(self.state.usables)
+
+    with self.assertRaisesRegex(InvalidMove, "enough focus"):
+      sliders.resolve(self.state, "fight_sneak", 3)
+      sliders.resolve(self.state, "lore_will", 3)
+      sliders.resolve(self.state, "speed_luck", 3)
+    sliders.resolve(self.state, "done", None)
+    self.assertEqual(self.char.fight_sneak_slider, 3)
+    self.assertEqual(self.char.lore_will_slider, 3)
+    self.assertEqual(self.char.speed_luck_slider, 0)

@@ -299,7 +299,6 @@ class BaseCharacter(metaclass=abc.ABCMeta):
   def focus_cost(self, pending_sliders):
     return sum(abs(orig - pending_sliders[name]) for name, orig in self.sliders().items())
 
-  @property
   def slider_focus_available(self):
     return self.focus_points
 
