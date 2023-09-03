@@ -226,7 +226,11 @@ class PhotographerStoryFail(StoryResult):
     super().__init__("The Film Is Ruined")
 
   def get_in_play_event(self, owner: characters.Character):
-    return events.DiscardNamed(owner, "Retainer")
+    return events.Sequence([
+        events.DiscardNamed(owner, "Retainer"),
+        events.DrawSpecific(owner, "specials", "Bad Credit")
+    ], owner
+    )
 
   def get_override(self, other, attribute):
     if isinstance(other, (assets.BankLoan, assets.Retainer)) and attribute == "can_keep":
@@ -236,7 +240,7 @@ class PhotographerStoryFail(StoryResult):
 
 class PhotographerStory(Story):
   def __init__(self):
-    super().__init__("A Thousand Words", "There's Your Proof", "The Film is Ruined")
+    super().__init__("A Thousand Words", "There's Your Proof", "The Film Is Ruined")
 
   def get_trigger(self, event, owner, state):
     if len([t for t in owner.trophies if isinstance(t, gates.Gate)]) >= 2:
@@ -390,8 +394,8 @@ def CreateStories():
       DrifterStoryPass(), DrifterStoryFail(), DrifterStory(),
       GangsterStoryPass(), GangsterStoryFail(), GangsterStory(),
       NunStoryPass(), NunStoryFail(), NunStory(),
+      PhotographerStoryPass(), PhotographerStoryFail(), PhotographerStory(),
       # Don't add stories that don't have tests
-      # PhotographerStoryPass(), PhotographerStoryFail(), PhotographerStory(),
       # PsychologistStoryPass(), PsychologistStoryFail(), PsychologistStory(),
       # SalesmanStoryPass(), SalesmanStoryFail(), SalesmanStory(),
       # ScientistStoryPass(), ScientistStoryFail(), ScientistStory(),

@@ -200,7 +200,6 @@ class NunStoryTest(StoryTest):
     self.assertIn(self.story.results[False], [p.name for p in self.char.possessions])
 
 
-"""
 class PhotographerStoryTest(StoryTest):
   def setUp(self):
     super().setUp()
@@ -209,6 +208,8 @@ class PhotographerStoryTest(StoryTest):
     )
     self.state.specials.remove(self.story)
     self.char.possessions.append(self.story)
+    self.state.event_stack.append(events.DrawSpecific(self.char, "specials", "Retainer"))
+    self.resolve_until_done()
 
   def testPass(self):
     self.state.event_stack.append(events.Sequence([
@@ -217,11 +218,31 @@ class PhotographerStoryTest(StoryTest):
     ], self.char))
     self.resolve_until_done()
     self.assertIn("There's Your Proof", [p.name for p in self.char.possessions])
+    with mock_randint(1):
+      self.advance_turn(10, "upkeep")
+    self.assertIn("Retainer", [p.name for p in self.char.possessions])
 
   def testFail(self):
-    pass
+    self.char.place = self.state.places["Bank"]
+    self.state.event_stack.append(events.Gain(self.char, {"clues": 5}))
+    self.resolve_until_done()
+    self.assertIn("The Film Is Ruined", [p.name for p in self.char.possessions])
+    self.assertIn("Bad Credit", [p.name for p in self.char.possessions])
+    self.assertNotIn("Retainer", [p.name for p in self.char.possessions])
+    self.advance_turn(0, "encounter")
+    self.resolve_until_done()
+    self.state.event_stack.append(events.Sequence(
+        [
+            events.DrawSpecific(self.char, "specials", "Retainer"),
+            events.TakeBankLoan(self.char),
+        ], self.char
+    ))
+    self.resolve_until_done()
+    self.assertNotIn("Retainer", [p.name for p in self.char.possessions])
+    self.assertNotIn("Bank Loan", [p.name for p in self.char.possessions])
 
 
+"""
 class PsychologistStoryTest(StoryTest):
   def setUp(self):
     super().setUp()
