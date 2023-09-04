@@ -105,6 +105,21 @@ button:disabled {
   justify-content: center;
   align-items: space-between;
 }
+#doomtrack {
+  background: linear-gradient(to right, midnightblue 50%, cornflowerblue 50%);
+  background-size: 200% 100%;
+  color: white;
+}
+#gatetrack {
+  background: linear-gradient(to right, goldenrod 50%, palegoldenrod 50%);
+  background-size: 200% 100%;
+}
+.bigtrack {
+  width: 100%;
+  text-align: center;
+  vertical-align: center;
+  background-position: left;
+}
 #bottomcenter {
   flex: 0 0 auto;
   width: 100%;

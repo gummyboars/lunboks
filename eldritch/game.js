@@ -457,12 +457,12 @@ function handleData(data) {
   updateAvailableCharacters(data.characters, data.pending_chars);
   updateCharacterSelect(data.characters, data.player_idx);
   updateAncientSelect(data.game_stage, data.host);
-  updateAncientOne(data.game_stage, data.ancient_one, data.terror);
   updateCharacterSheets(data.characters, data.pending_chars, data.player_idx, data.first_player, myChoice, data.chooser == data.player_idx ? data.sliders : null);
   updateBottomText(data.game_stage, data.turn_phase, data.characters, data.turn_idx, data.player_idx, data.host);
   updateGlobals(data.environment, data.rumor, data.other_globals);
-  updatePlaces(data.places, data.activity, data.current);
+  let gateCount = updatePlaces(data.places, data.activity, data.current);
   animateClues(data.current);
+  updateAncientOne(data.game_stage, data.ancient_one, data.terror, gateCount, data.gate_limit, data.characters.length);
   updateCharacters(data.characters);
   updateSliderButton(data.sliders, data.chooser == data.player_idx);
   markVisualsForDeletion();
@@ -1869,6 +1869,7 @@ function getNodeTranslation(div, destParent) {
 
 function updatePlaces(places, activity, current) {
   let oldGates = [];
+  let gateCount = 0;
   for (let gateCont of document.getElementsByClassName("gatecontainer")) {
     if (gateCont.handle != null) {
       oldGates.push(gateCont.handle);
@@ -1891,7 +1892,9 @@ function updatePlaces(places, activity, current) {
       updateClosed(place);
     }
     updateActivity(placeName, activity[placeName]);
+    gateCount += place.gate == null ? 0 : 1;
   }
+  return gateCount;
 }
 
 function updatePlaceBoxes(places, activity) {
@@ -2528,7 +2531,7 @@ function updateAncientSelect(gameStage, host) {
   }
 }
 
-function updateAncientOne(gameStage, ancientOne, terror) {
+function updateAncientOne(gameStage, ancientOne, terror, gateCount, gateLimit, numCharacters) {
   renderAssetToDiv(document.getElementById("terror"), "Terror" + (terror || 0));
   let doom = document.getElementById("doom");
   if (ancientOne == null) {
@@ -2544,12 +2547,28 @@ function updateAncientOne(gameStage, ancientOne, terror) {
   let slumber = document.getElementById("slumber");
   renderAssetToDiv(slumber, ancientOne.name + " slumber");
   let ancientOneDiv = document.getElementById("ancientone");
+  let doomTrack = document.getElementById("doomtrack");
+  let gateTrack = document.getElementById("gatetrack");
+  doomTrack.innerText = "Doom " + ancientOne.doom + "/" + doom.maxValue;
+  doomTrack.style.backgroundPosition = "left " + 100*(1-ancientOne.doom/doom.maxValue) + "% top";
+  gateTrack.innerText = "Gates " + gateCount + "/" + gateLimit;
+  gateTrack.style.backgroundPosition = "left " + 100*(1-gateCount/gateLimit) + "% top";
+  // TODO: too many monsters
   if (gameStage == "slumber") {
     ancientOneDiv.onclick = toggleAncient;
     ancientOneDiv.classList.remove("setup");
   } else {
     ancientOneDiv.onclick = null;
     ancientOneDiv.classList.add("setup");
+  }
+  if (["awakened", "defeat"].includes(gameStage)) {
+    document.getElementById("ancientdetails").style.display = "flex";
+    renderAssetToDiv(document.getElementById("bigancient"), chosenAncient);
+    doomTrack.innerText = "Doom " + ancientOne.health + "/" + numCharacters*doom.maxValue;
+    let ratio = Math.min(ancientOne.health / (numCharacters*doom.maxValue), 1);
+    doomTrack.style.backgroundPosition = "left " + 100*(1-ratio) + "% top";
+    gateTrack.style.display = "none";
+    document.getElementById("uicont").style.display = "none";
   }
 }
 
