@@ -470,7 +470,7 @@ function handleData(data) {
   updateMonsters(data.monsters);
   updateMonsterChoices(myChoice, data.monsters);
   updatePlaceBoxes(data.places, data.activity);
-  updateUsables(data.usables, mySpendables, myChoice);
+  updateUsables(data.usables, data.log, mySpendables, myChoice, data.sliders, data.dice);
   updateDice(data.dice, data.player_idx, data.monsters);
   updateCurrentCard(data.current);
   deleteUnusedVisuals();
@@ -725,7 +725,7 @@ function chooseItems(e) {
   ws.send(JSON.stringify({"type": "choice", "choice": "done"}));
 }
 
-function doneUsing(e) {
+function doneUse(e) {
   ws.send(JSON.stringify({"type": "done_using"}));
 }
 
@@ -1004,6 +1004,10 @@ function doneSliders(e) {
   ws.send(JSON.stringify({"type": "set_slider", "name": "done"}));
 }
 
+function resetSliders(e) {
+  ws.send(JSON.stringify({"type": "set_slider", "name": "reset"}));
+}
+
 function removeDummyObjects() {
   let enterDiv = document.getElementById("enteringscroll");
   while (enterDiv.getElementsByClassName("dummy").length > 0) {
@@ -1114,10 +1118,9 @@ function updateSliderButton(sliders, isMySliders) {
   if (sliders) {
     document.getElementById("uiprompt").innerText = formatServerString(sliders.prompt);
   }
-  if (sliders && isMySliders) {
-    document.getElementById("donesliders").style.display = "inline-block";
-  } else {
-    document.getElementById("donesliders").style.display = "none";
+  let sliderButtons = document.getElementById("sliderbuttons");
+  if (sliderButtons != null) {
+    sliderButtons.classList.toggle("hidden", !(sliders && isMySliders));
   }
 }
 
@@ -1132,11 +1135,7 @@ function toggleCards(e) {
 }
 
 function setCardButtonText() {
-  if (cardsStyle == "flex") {
-    document.getElementById("togglecards").innerText = "Hide Info";
-  } else {
-    document.getElementById("togglecards").innerText = "Show Info";
-  }
+  document.getElementById("togglecards").classList.toggle("hide", cardsStyle == "flex");
 }
 
 function scrollCards(e, dir) {
@@ -1181,7 +1180,7 @@ function deleteUnusedVisuals() {
 }
 
 function updateChoices(choice, current, isMyChoice, chooser, autoChoose) {
-  let btn = document.getElementById("doneitems");
+  let doneItems = document.getElementById("doneitems");
   let uichoice = document.getElementById("uichoice");
   let uicardchoice = document.getElementById("uicardchoice");
   let cardtoggle = document.getElementById("togglecards");
@@ -1203,8 +1202,10 @@ function updateChoices(choice, current, isMyChoice, chooser, autoChoose) {
   }
   uichoice.style.display = "none";
   document.getElementById("cardchoicescroll").style.display = "none";
-  btn.style.display = "none";
-  cardtoggle.style.display = "none";
+  if (doneItems != null) {
+    doneItems.style.display = "none";
+  }
+  cardtoggle.classList.add("hidden");
   if (choice != null && choice.board_monster != null && isMyChoice) {
     monsterBox.classList.add("choosable");
   } else {
@@ -1220,7 +1221,7 @@ function updateChoices(choice, current, isMyChoice, chooser, autoChoose) {
   }
   if (choice.cards != null || choice.monster != null || choice.monsters != null) {
     document.getElementById("cardchoicescroll").style.display = cardsStyle;
-    cardtoggle.style.display = "inline-block";
+    cardtoggle.classList.remove("hidden");
     setCardButtonText();
   }
   // Clean out any old choices it may have.
@@ -1250,7 +1251,7 @@ function updateChoices(choice, current, isMyChoice, chooser, autoChoose) {
       for (let pos of pDiv.getElementsByClassName("possession")) {
         pos.classList.toggle("choosable", choice.items.includes(pos.handle));
       }
-      btn.style.display = "inline-block";
+      doneItems.style.display = "inline-block";
     }
     if (choice.monster != null) {
       showMonster(uicardchoice, choice.monster);  // TODO: update show/hide button text
@@ -1638,8 +1639,8 @@ function spentPercent(spent, remaining) {
   return 100 * totalSpent / totalSpendable;
 }
 
-function updateUsables(usables, spendables, choice) {
-  let uiuse = document.getElementById("uiuse");
+function updateUsables(usables, log, spendables, choice, sliders, dice) {
+  let doneUsing = document.getElementById("doneusing");
   let pDiv, tDiv, pTab, tTab;
   if (!document.getElementsByClassName("you").length) {
     pDiv = document.createElement("DIV");  // Dummy div.
@@ -1668,17 +1669,16 @@ function updateUsables(usables, spendables, choice) {
   }
   pTab.classList.toggle("usable", anyPosUsable);
   tTab.classList.toggle("usable", anyTrophyUsable);
-  uiuse.style.display = "none";
+  if (doneUsing != null) {
+    doneUsing.style.display = "none";
+  }
   if (usables == null && spendables == null) {
     if (choice == null) {
       document.getElementById("charoverlay").classList.remove("shown");
     }
     return;
   }
-  document.getElementById("charoverlay").classList.add("shown");
-  if (choice == null) {
-    uiuse.style.display = "flex";
-  }
+
   let tradeOnly = true;
   for (let val of usableList) {
     if (val != "trade") {
@@ -1686,11 +1686,23 @@ function updateUsables(usables, spendables, choice) {
       break;
     }
   }
-  document.getElementById("usetext").innerText = "Use Items or Abilities";
-  document.getElementById("doneusing").innerText = "Done Using";
-  if (tradeOnly) {
-    document.getElementById("usetext").innerText = "Trade?";
-    document.getElementById("doneusing").innerText = "Done Trading";
+  if (!tradeOnly) {
+    document.getElementById("charoverlay").classList.add("shown");
+  }
+  if (choice == null && sliders == null && (dice == null || !dice.prompt)) {
+    if (log != null && log != "") {
+      document.getElementById("uiprompt").innerText = formatServerString(log);
+    }
+    if (doneUsing != null) {
+      doneUsing.style.display = "inline-block";
+    }
+  }
+  if (doneUsing != null) {
+    doneUsing.innerText = "Done Using";
+    if (tradeOnly) {
+      document.getElementById("uiprompt").innerText = "Trade?";
+      doneUsing.innerText = "Done Trading";
+    }
   }
 }
 
@@ -2342,7 +2354,7 @@ function updateDice(dice, playerIdx, monsterList) {
   }
   if (dice.name != null) {  // Show the monster/card that is causing this dice roll.
     document.getElementById("cardchoicescroll").style.display = cardsStyle;
-    document.getElementById("togglecards").style.display = "inline-block";
+    document.getElementById("togglecards").classList.remove("hidden");
     setCardButtonText();
     if (monsterNames.includes(dice.name) && dice.check_type != "evade") {
       for (let m of monsterList) {
@@ -2746,10 +2758,24 @@ function createCharacterSheet(idx, character, rightUI, isPlayer) {
   let sliders = document.createElement("DIV");
   sliders.classList.add("sliders", "cnvcontainer");
   sliderCont.appendChild(sliders);
+  if (isPlayer) {
+    let sliderButtons = document.createElement("DIV");
+    sliderButtons.id = "sliderbuttons";
+    let doneBtn = document.createElement("BUTTON");
+    doneBtn.innerText = "Set Sliders";
+    doneBtn.onclick = doneSliders;
+    let resetBtn = document.createElement("BUTTON");
+    resetBtn.innerText = "Reset";
+    resetBtn.onclick = resetSliders;
+    sliderButtons.appendChild(doneBtn);
+    sliderButtons.appendChild(resetBtn);
+    sliderCont.appendChild(sliderButtons);
+  }
   div.appendChild(sliderCont);
   let slidersCnv = document.createElement("CANVAS");
   slidersCnv.classList.add("worldcnv");  // TODO
   sliders.appendChild(slidersCnv);
+
   let bag = document.createElement("DIV");
   bag.classList.add("bag");
   let bagTabs = document.createElement("DIV");
@@ -2771,6 +2797,21 @@ function createCharacterSheet(idx, character, rightUI, isPlayer) {
   let trophies = document.createElement("DIV");
   trophies.classList.add("possessions", "hidden");
   bag.appendChild(trophies);
+  if (isPlayer) {
+    let useButtons = document.createElement("DIV");
+    useButtons.id = "usebuttons";
+    let doneItems = document.createElement("BUTTON");
+    doneItems.id = "doneitems";
+    doneItems.onclick = chooseItems;
+    doneItems.innerText = "Done Choosing";
+    let doneUsing = document.createElement("BUTTON");
+    doneUsing.id = "doneusing";
+    doneUsing.onclick = doneUse;
+    doneUsing.innerText = "Done Using";
+    useButtons.appendChild(doneItems);
+    useButtons.appendChild(doneUsing);
+    bag.appendChild(useButtons);
+  }
   div.appendChild(bag);
 
   rightUI.appendChild(div);

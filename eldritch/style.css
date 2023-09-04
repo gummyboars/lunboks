@@ -105,20 +105,9 @@ button:disabled {
   justify-content: center;
   align-items: space-between;
 }
-#bottomspacer {
+#bottomcenter {
   flex: 0 0 auto;
   width: 100%;
-  height: 0;
-  transition: height 0.5s;
-  pointer-events: none;
-}
-#bottomspacer.expanded {
-  height: 100%;
-}
-#bottomcenter {
-  flex: 1 1 auto;
-  width: 100%;
-  height: 100%;
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
@@ -585,6 +574,7 @@ button:disabled {
   max-height: calc(min(12vw, 19.2vh));
   display: flex;
   flex-direction: column;
+  justify-content: flex-end;
 }
 #worlds {
   min-height: calc(min(62.5vw, 100vh) * 9 / 250);
@@ -798,8 +788,23 @@ button:disabled {
   align-items: flex-end;
   justify-content: flex-end;
 }
-#flip {
+#extrabuttons {
   font-size: calc(min(3vw, 4.8vh));
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-end;
+}
+#togglecards {
+  cursor: pointer;
+}
+#togglecards.hide {
+  filter: sepia(25%) hue-rotate(15deg);
+}
+#togglecards.hidden {
+  display: none;
+}
+#flip {
   transform: rotate(-90deg);
   cursor: pointer;
 }
@@ -1352,11 +1357,21 @@ button:disabled {
 }
 .slidercont {
   width: calc(min(20vw, 32vh));
-  height: calc(min(20vw, 32vh) * 7 / 16);
 }
 .collapsed .slidercont {
   max-height: 0;
   overflow-y: hidden;
+}
+#sliderbuttons {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-evenly;
+  position: relative;
+  z-index: 4;
+}
+#sliderbuttons.hidden {
+  display: none;
 }
 .sliders {
   width: calc(min(20vw, 32vh));
@@ -1550,6 +1565,17 @@ button:disabled {
 .trophy.usable {
   cursor: pointer;
   z-index: 4;
+}
+#usebuttons {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-evenly;
+  position: relative;
+  z-index: 4;
+}
+.collapsed #usebuttons {
+  display: none;
 }
 .bonus.shown {
   color: rgba(0, 0, 0, 1);
