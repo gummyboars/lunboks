@@ -2549,7 +2549,7 @@ function drawChosenChar(character) {
   let sheet = document.getElementById("charchoicesheet");
   if (sheet == null) {
     let charChoiceDiv = document.getElementById("charchoice");
-    sheet = createCharacterSheet(null, character.name, charChoiceDiv, false);
+    sheet = createCharacterSheet(null, character, charChoiceDiv, false);
     sheet.id = "charchoicesheet";
     sheet.classList.remove("collapsed");
     sheet.getElementsByClassName("bagtabs")[0].classList.add("hidden");
@@ -2646,7 +2646,7 @@ function updateCharacterSheets(characters, pendingCharacters, playerIdx, firstPl
     if (order < 0) {
       order += characters.length;
     }
-    updateCharacterSheet(sheet, character, order, playerIdx == idx, choice, spent, sliders);
+    updateCharacterSheet(sheet, character, order, playerIdx == idx, choice, spent, (playerIdx == idx) ? sliders : null);
   }
 
   // Remove any sheets that are no longer needed.
