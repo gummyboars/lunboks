@@ -63,7 +63,7 @@ button:disabled {
   justify-content: space-between;
   align-items: center;
 }
-#charselect, #ancientselect, #ancientdetails {
+#charselect, #ancientselect {
   z-index: 20;
   display: flex;
   flex-direction: column;
@@ -71,6 +71,18 @@ button:disabled {
   align-items: center;
   color: black;
   pointer-events: auto;
+}
+#ancientdetails {
+  z-index: 19;
+  width: min(70vw, 112vh);
+  height: min(48vw, 76.8vh);
+  position: absolute;
+  top: min(2.5vw, 4vh);
+  right: min(20vw, 32vh);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
 }
 .bigchoices {
   display: flex;
@@ -115,7 +127,7 @@ button:disabled {
   background-size: 200% 100%;
 }
 .bigtrack {
-  width: 100%;
+  width: min(20vw, 32vh);
   text-align: center;
   vertical-align: center;
   background-position: left;

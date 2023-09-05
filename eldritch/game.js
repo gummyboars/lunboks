@@ -455,7 +455,7 @@ function handleData(data) {
   let mySpendables = data.chooser == data.player_idx ? data.spendables : null;
   removeDummyObjects();
   updateAvailableCharacters(data.characters, data.pending_chars);
-  updateCharacterSelect(data.characters, data.player_idx);
+  updateCharacterSelect(data.game_stage, data.characters, data.player_idx);
   updateAncientSelect(data.game_stage, data.host);
   updateCharacterSheets(data.characters, data.pending_chars, data.player_idx, data.first_player, myChoice, data.chooser == data.player_idx ? data.sliders : null);
   updateBottomText(data.game_stage, data.turn_phase, data.characters, data.turn_idx, data.player_idx, data.host);
@@ -2368,7 +2368,7 @@ function updateDice(dice, playerIdx, monsterList) {
     uidice.style.display = "none";
     return;
   }
-  if (dice.name != null) {  // Show the monster/card that is causing this dice roll.
+  if (dice.name != null && dice.name != chosenAncient) {  // Show the monster/card that is causing this dice roll.
     document.getElementById("cardchoicescroll").style.display = cardsStyle;
     document.getElementById("togglecards").classList.remove("hidden");
     setCardButtonText();
@@ -2572,9 +2572,13 @@ function updateAncientOne(gameStage, ancientOne, terror, gateCount, gateLimit, n
   }
 }
 
-function updateCharacterSelect(characters, playerIdx) {
+function updateCharacterSelect(gameStage, characters, playerIdx) {
   let selectors = document.getElementById("selectors");
   if (playerIdx != null && !characters[playerIdx].gone) {
+    selectors.style.display = "none";
+    return;
+  }
+  if (!["slumber", "setup"].includes(gameStage)) {
     selectors.style.display = "none";
     return;
   }
