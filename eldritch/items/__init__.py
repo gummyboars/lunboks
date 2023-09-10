@@ -1,7 +1,6 @@
 from typing import List
-
-from eldritch.assets import Asset, Deputy, Blessing, Curse, Retainer, BankLoan, BadCredit, \
-    LodgeMembership
+from eldritch.assets import (Asset, Card, Deputy, Blessing, Curse, Retainer, BankLoan, BadCredit,
+                             LodgeMembership, BonusToAllChecks)
 from .base import Item, Weapon, OneshotWeapon, Tome
 from .common import *
 from .unique import *
@@ -22,5 +21,5 @@ def CreateSpecials():
           for card in [Blessing, Curse, Retainer, BankLoan, BadCredit, LodgeMembership]
       ]
   )
-
+  ret.extend([BonusToAllChecks("Voice Bonus", i) for i in range(12)])
   return ret

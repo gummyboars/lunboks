@@ -97,6 +97,7 @@ class Card(Asset):
 
   DECKS = {"common", "unique", "spells", "skills", "allies", "tradables", "specials"}
   VALID_BONUS_TYPES = CHECK_TYPES | SUB_CHECKS.keys() | COMBAT_SUBTYPES | MAX_TYPES
+  VALID_BONUS_TYPES |= {f"{ct}_check" for ct in CHECK_TYPES | SUB_CHECKS.keys()}
 
   def __init__(self, name, idx, deck, active_bonuses, passive_bonuses):
     assert deck in self.DECKS
@@ -430,6 +431,19 @@ class LodgeMembership(Card):
         and event.character.lodge_membership
     ):
       return events.CancelEvent(event)
+    return None
+
+
+class BonusToAllChecks(Card):
+  def __init__(self, name, idx):
+    super().__init__(
+        name, idx, "specials", {},
+        {f"{ability}_check": 1 for ability in CHECK_TYPES}
+    )
+
+  def get_interrupt(self, event, owner, state):
+    if isinstance(event, events.Mythos) and event.is_done():
+      return events.DiscardSpecific(owner, [self])
     return None
 
 

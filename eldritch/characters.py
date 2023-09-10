@@ -65,43 +65,43 @@ class BaseCharacter(metaclass=abc.ABCMeta):
   def base_speed(self):
     raise NotImplementedError
 
-  def speed(self, state):
-    return self.base_speed() + self.bonus("speed", state)
+  def speed(self, state, check=True):
+    return self.base_speed() + self.bonus("speed", state, check=check)
 
   @abc.abstractmethod
   def base_sneak(self):
     raise NotImplementedError
 
-  def sneak(self, state):
-    return self.base_sneak() + self.bonus("sneak", state)
+  def sneak(self, state, check=True):
+    return self.base_sneak() + self.bonus("sneak", state, check=check)
 
   @abc.abstractmethod
   def base_fight(self):
     raise NotImplementedError
 
-  def fight(self, state):
-    return self.base_fight() + self.bonus("fight", state)
+  def fight(self, state, check=True):
+    return self.base_fight() + self.bonus("fight", state, check=check)
 
   @abc.abstractmethod
   def base_will(self):
     raise NotImplementedError
 
-  def will(self, state):
-    return self.base_will() + self.bonus("will", state)
+  def will(self, state, check=True):
+    return self.base_will() + self.bonus("will", state, check=check)
 
   @abc.abstractmethod
   def base_lore(self):
     raise NotImplementedError
 
-  def lore(self, state):
-    return self.base_lore() + self.bonus("lore", state)
+  def lore(self, state, check=True):
+    return self.base_lore() + self.bonus("lore", state, check=check)
 
   @abc.abstractmethod
   def base_luck(self):
     raise NotImplementedError
 
-  def luck(self, state):
-    return self.base_luck() + self.bonus("luck", state)
+  def luck(self, state, check=True):
+    return self.base_luck() + self.bonus("luck", state, check=check)
 
   @property
   @abc.abstractmethod
@@ -123,26 +123,28 @@ class BaseCharacter(metaclass=abc.ABCMeta):
     return speed
 
   def evade(self, state):
-    return self.sneak(state) + self.bonus("evade", state)
+    return self.sneak(state) + self.bonus("evade", state, check=True)
 
   def combat(self, state, attributes):
     combat = self.fight(state)
     for bonus_type in {"physical", "magical", "combat"}:
-      combat += self.bonus(bonus_type, state, attributes)
+      combat += self.bonus(bonus_type, state, attributes, check=True)
     return combat
 
   def horror(self, state):
-    return self.will(state) + self.bonus("horror", state)
+    return self.will(state) + self.bonus("horror", state, check=True)
 
   def spell(self, state):
-    return self.lore(state) + self.bonus("spell", state)
+    return self.lore(state) + self.bonus("spell", state, check=True)
 
-  def bonus(self, check_name, state, attributes=None):
+  def bonus(self, check_name, state, attributes=None, check=True):
     modifier = 0
     if state:
       modifier += state.get_modifier(self, check_name)
     for pos in self.possessions:
-      bonus = pos.get_bonus(check_name, attributes, self, state)
+      bonus = pos.get_bonus(check_name, attributes)
+      if check:
+        bonus += pos.get_bonus(check_name + "_check", attributes)
       if attributes and check_name in {"magical", "physical"}:
         if check_name + " immunity" in attributes:
           bonus = 0

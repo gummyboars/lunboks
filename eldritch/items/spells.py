@@ -170,6 +170,20 @@ class EnchantWeapon(CombatSpell):
     )
     return events.CastSpell(owner, self, choice=choice)
 
+  def get_trigger(self, event, owner, state):
+    if (
+        isinstance(event, (events.DiscardSpecific, events.DiscardNamed))
+        and event.character == owner
+        and event.discarded
+        and self in event.discarded
+    ):
+      # TODO: Should we figure out a way to have the effect last until the end of combat?
+      # The only way I can think of to lose an item during combat is the Elder Thing, which is not
+      # resistant. Plus, the rules are non-specific as to whether discarding a spell makes its
+      # effect go away.
+      self.deactivate()
+    return super().get_trigger(event, owner, state)
+
   def activate(self):
     assert self.choice.is_resolved()
     assert len(self.choice.chosen) == 1
@@ -308,10 +322,7 @@ class RedSign(CombatSpell):
 class Voice(Spell):
 
   def __init__(self, idx):
-    super().__init__(
-        "Voice", idx, {"speed": 1, "sneak": 1, "fight": 1, "will": 1, "lore": 1, "luck": 1},
-        0, -1, 1,
-    )
+    super().__init__("Voice", idx, {}, 0, -1, 1,)
 
   def get_usable_interrupt(self, event, owner, state):
     if not isinstance(event, events.SliderInput) or event.character != owner or event.is_done():
@@ -326,7 +337,7 @@ class Voice(Spell):
     return None
 
   def get_cast_event(self, owner, state):
-    return events.ActivateItem(owner, self)
+    return events.DrawSpecific(owner, "specials", "Voice Bonus")
 
 
 class FindGate(Spell):

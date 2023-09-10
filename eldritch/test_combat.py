@@ -2740,8 +2740,8 @@ class CombatWithEnchantedWeapon(EventTest):
 
     # Now that we've chosen, successfully cast the spell.
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
-      foo = self.resolve_to_choice(FightOrEvadeChoice)
-      foo.resolve(self.state, "Fight")
+      fight_or_evade = self.resolve_to_choice(FightOrEvadeChoice)
+      fight_or_evade.resolve(self.state, "Fight")
       choose_weapons = self.resolve_to_choice(CombatChoice)
     self.assertTrue(self.char.possessions[2].active)
     self.assertEqual(self.char.hands_available(), 2)  # Enchant weapon is handless.
@@ -2754,8 +2754,8 @@ class CombatWithEnchantedWeapon(EventTest):
       self.assertEqual(rand.call_count, 4)  # Fight (1) + revolver (3)
       item_loss.resolve(self.state, "Enchant Weapon0")
       item_loss.resolve(self.state, "done")
-      foo = self.resolve_to_choice(FightOrEvadeChoice)
-      foo.resolve(self.state, "Fight")
+      fight_or_evade = self.resolve_to_choice(FightOrEvadeChoice)
+      fight_or_evade.resolve(self.state, "Fight")
       choose_weapons = self.resolve_to_choice(CombatChoice)
 
     self.choose_items(choose_weapons, [".38 Revolver0"])
