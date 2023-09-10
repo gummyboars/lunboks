@@ -181,7 +181,7 @@ function renderMaskedImage(cnv, imgData) {
   ctx.restore();
 }
 
-function setDivXYPercent(div, baseAsset, relativeAsset, fromBottom) {
+function setDivXYPercent(div, parentCnv, baseAsset, relativeAsset, fromBottom) {
   if (imageInfo[baseAsset] == null || imageInfo[relativeAsset] == null) {
     return false;
   }
@@ -197,16 +197,21 @@ function setDivXYPercent(div, baseAsset, relativeAsset, fromBottom) {
   } else {
     baseImg = document.getElementById("img" + imageInfo[baseAsset].srcnum);
   }
+  let [renderWidth, renderHeight, scaleMultiplier] = renderRatio(baseImg, parentCnv);
   let width = baseImg.naturalWidth || baseImg.width;
   let height = baseImg.naturalHeight || baseImg.height;
   let xpct = (width / 2 + xdiff) / width;
   let ypct = (height / 2 + ydiff) / height;
+  xpct = 0.5 - (0.5 - xpct) * renderWidth/parentCnv.width;
+  ypct = 0.5 - (0.5 - ypct) * renderHeight/parentCnv.height;
   if (fromBottom) {
     div.style.bottom = 100 * (1-ypct) + "%";
   } else {
     div.style.top = 100 * ypct + "%";
   }
   div.style.left = 100 * xpct + "%";
+  div.xpct = xpct;
+  div.ypct = ypct;
   return true;
 }
 

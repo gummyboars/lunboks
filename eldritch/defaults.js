@@ -11,44 +11,44 @@ connections = {
 };
 
 locations = {
-  Shop: {name: "Curiositie Shoppe", color: "orange", x: 0.2158, y: 0.9143},
-  Newspaper: {name: "Newspaper", color: "orange", x: 0.1266, y: 0.9139},
-  Train: {name: "Train Station", color: "orange", x: 0.0444, y: 0.8017},
-  Bank: {name: "Bank", color: "white", x: 0.0439, y: 0.6232},
-  Asylum: {name: "Asylum", color: "white", x: 0.0434, y: 0.4479},
-  Square: {name: "Independence Square", color: "white", x: 0.0430, y: 0.2733},
-  Roadhouse: {name: "Hibb's Roadhouse", color: "dimgray", x: 0.1585, y: 0.2694},
-  Diner: {name: "Velma's Diner", color: "dimgray", x: 0.1577, y: 0.0912},
-  Police: {name: "Police Station", color: "dimgray", x: 0.2518, y: 0.0900},
-  Graveyard: {name: "Graveyard", color: "purple", x: 0.3928, y: 0.0900},
-  Cave: {name: "Black Cave", color: "purple", x: 0.4834, y: 0.0885},
-  Store: {name: "General Store", color: "purple", x: 0.4769, y: 0.2915},
-  WitchHouse: {name: "The Witch House", color: "steelblue", x: 0.6174, y: 0.0869},
-  Lodge: {name: "Silver Twilight Lodge", color: "steelblue", x: 0.6682, y: 0.2480},
-  House: {name: "Ma's Boarding House", color: "saddlebrown", x: 0.7745, y: 0.0853},
-  Church: {name: "South Church", color: "saddlebrown", x: 0.9094, y: 0.1517},
-  Society: {name: "Historical Society", color: "saddlebrown", x: 0.9344, y: 0.3507},
-  Woods: {name: "Woods", color: "firebrick", x: 0.9348, y: 0.5521},
-  Shoppe: {name: "Þe Old Magick Shoppe", color: "firebrick", x: 0.9201, y: 0.7820},
-  Hospital: {name: "St. Mary's Hospital", color: "firebrick", x: 0.8045, y: 0.9147},
-  Library: {name: "Library", color: "yellow", x: 0.6525, y: 0.6485},
-  Administration: {name: "Administration", color: "yellow", x: 0.6844, y: 0.8152},
-  Science: {name: "Science Building", color: "yellow", x: 0.5628, y: 0.9143},
-  Unnamable: {name: "The Unnamable", color: "green", x: 0.4824, y: 0.7338},
-  Docks: {name: "River Docks", color: "green", x: 0.4404, y: 0.9139},
-  Isle: {name: "Unvisited Isle", color: "green", x: 0.3530, y: 0.9131},
+  Shop: {name: "Curiositie Shoppe", color: "orange", y: 0.2158, x: 0.0857},
+  Newspaper: {name: "Newspaper", color: "orange", y: 0.1266, x: 0.0861},
+  Train: {name: "Train Station", color: "orange", y: 0.0444, x: 0.1983},
+  Bank: {name: "Bank", color: "white", y: 0.0439, x: 0.3768},
+  Asylum: {name: "Asylum", color: "white", y: 0.0434, x: 0.5521},
+  Square: {name: "Independence Square", color: "white", y: 0.0430, x: 0.7267},
+  Roadhouse: {name: "Hibb's Roadhouse", color: "dimgray", y: 0.1585, x: 0.7306},
+  Diner: {name: "Velma's Diner", color: "dimgray", y: 0.1577, x: 0.9088},
+  Police: {name: "Police Station", color: "dimgray", y: 0.2518, x: 0.9100},
+  Graveyard: {name: "Graveyard", color: "purple", y: 0.3928, x: 0.9100},
+  Cave: {name: "Black Cave", color: "purple", y: 0.4834, x: 0.9115},
+  Store: {name: "General Store", color: "purple", y: 0.4769, x: 0.7085},
+  WitchHouse: {name: "The Witch House", color: "steelblue", y: 0.6174, x: 0.9131},
+  Lodge: {name: "Silver Twilight Lodge", color: "steelblue", y: 0.6682, x: 0.7520},
+  House: {name: "Ma's Boarding House", color: "saddlebrown", y: 0.7745, x: 0.9147},
+  Church: {name: "South Church", color: "saddlebrown", y: 0.9094, x: 0.8483},
+  Society: {name: "Historical Society", color: "saddlebrown", y: 0.9344, x: 0.6493},
+  Woods: {name: "Woods", color: "firebrick", y: 0.9348, x: 0.4479},
+  Shoppe: {name: "Þe Old Magick Shoppe", color: "firebrick", y: 0.9201, x: 0.2180},
+  Hospital: {name: "St. Mary's Hospital", color: "firebrick", y: 0.8045, x: 0.0853},
+  Library: {name: "Library", color: "yellow", y: 0.6525, x: 0.3515},
+  Administration: {name: "Administration", color: "yellow", y: 0.6844, x: 0.1848},
+  Science: {name: "Science Building", color: "yellow", y: 0.5628, x: 0.0857},
+  Unnamable: {name: "The Unnamable", color: "green", y: 0.4824, x: 0.2662},
+  Docks: {name: "River Docks", color: "green", y: 0.4404, x: 0.0861},
+  Isle: {name: "Unvisited Isle", color: "green", y: 0.3530, x: 0.0869},
 };
 
 streets = {
-  Northside: {name: "Northside", color: "orange", x: 0.1978, y: 0.7030},
-  Downtown: {name: "Downtown", color: "white", x: 0.1964, y: 0.4621},
-  Easttown: {name: "Easttown", color: "dimgray", x: 0.3041, y: 0.3420},
-  Rivertown: {name: "Rivertown", color: "purple", x: 0.3946, y: 0.3618},
-  FrenchHill: {name: "French Hill", color: "steelblue", x: 0.5924, y: 0.3523},
-  Southside: {name: "Southside", color: "saddlebrown", x: 0.8087, y: 0.3294},
-  Uptown: {name: "Uptown", color: "firebrick", x: 0.8073, y: 0.5663},
-  University: {name: "Miskatonic University", color: "yellow", x: 0.5735, y: 0.6082},
-  Merchant: {name: "Merchant District", color: "green", x: 0.3956, y: 0.6106},
+  Northside: {name: "Northside", color: "orange", y: 0.1978, x: 0.2970},
+  Downtown: {name: "Downtown", color: "white", y: 0.1964, x: 0.5379},
+  Easttown: {name: "Easttown", color: "dimgray", y: 0.3041, x: 0.6580},
+  Rivertown: {name: "Rivertown", color: "purple", y: 0.3946, x: 0.6382},
+  FrenchHill: {name: "French Hill", color: "steelblue", y: 0.5924, x: 0.6477},
+  Southside: {name: "Southside", color: "saddlebrown", y: 0.8087, x: 0.6706},
+  Uptown: {name: "Uptown", color: "firebrick", y: 0.8073, x: 0.4337},
+  University: {name: "Miskatonic University", color: "yellow", y: 0.5735, x: 0.3918},
+  Merchant: {name: "Merchant District", color: "green", y: 0.3956, x: 0.3894},
 };
 
 function renderDefaultToCanvas(cnv, width, height, assetName, variant) {
@@ -323,7 +323,7 @@ function drawConnection(ctx, src, dest, boardWidth, boardHeight) {
 }
 
 function drawLocation(ctx, data, boardWidth, boardHeight) {
-  let width = boardWidth * 2 * radiusRatio;
+  let width = boardHeight * 2 * radiusRatio;
   let height = width;
   ctx.save();
   ctx.translate(boardWidth * data.x, boardHeight * data.y);
@@ -344,8 +344,8 @@ function drawLocation(ctx, data, boardWidth, boardHeight) {
 }
 
 function drawStreet(ctx, data, boardWidth, boardHeight) {
-  let width = boardWidth * widthRatio;
-  let height = boardHeight * heightRatio;
+  let height = boardHeight * widthRatio;
+  let width = boardWidth * heightRatio;
   ctx.save();
   ctx.translate(boardWidth * data.x, boardHeight * data.y);
   ctx.fillStyle = data.color;

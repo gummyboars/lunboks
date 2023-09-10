@@ -23,6 +23,106 @@ cardsStyle = "flex";
 stepping = false;
 statNames = {"stamina": "Stamina", "sanity": "Sanity", "clues": "Clue", "dollars": "Dollar"};
 
+isDragging = false;
+startX = null;
+startY = null;
+offsetX = 0;
+offsetY = 0;
+dX = 0;
+dY = 0;
+boardRotate = 0;
+boardScale = 1;
+
+function onmove(event) {
+  if (isDragging) {
+    let changeX = event.clientX - startX;
+    let changeY = event.clientY - startY;
+    if (boardRotate == 0) {
+      dX = changeX;
+      dY = changeY;
+    } else {
+      dY = changeX;
+      dX = -changeY;
+    }
+    moveBoard();
+  }
+}
+function ondown(event) {
+  // Ignore right/middle-click.
+  if (event.button != 0) {
+    return;
+  }
+  startX = event.clientX;
+  startY = event.clientY;
+  isDragging = true;
+}
+function onup(event) {
+  // Ignore right/middle-click.
+  if (event.button != 0) {
+    return;
+  }
+  if (isDragging) {
+    isDragging = false;
+    offsetX += dX;
+    offsetY += dY;
+    dX = 0;
+    dY = 0;
+  }
+}
+function onout(event) {
+  if (isDragging) {
+    isDragging = false;
+    offsetX += dX;
+    offsetY += dY;
+    dX = 0;
+    dY = 0;
+  }
+}
+function onwheel(event) {
+  event.preventDefault();
+  let oldScale = boardScale;
+  if (event.deltaY < 0) {
+    boardScale += 0.05;
+  } else if (event.deltaY > 0) {
+    boardScale -= 0.05;
+  }
+  boardScale = Math.min(Math.max(0.125, boardScale), 4);
+  let board = document.getElementById("board");
+  let rect = board.getBoundingClientRect();
+  let centerX = (rect.left + rect.right) / 2;
+  let centerY = (rect.top + rect.bottom) / 2;
+  let mouseX = event.clientX - centerX;
+  let mouseY = event.clientY - centerY;
+  let mouseXScaled = mouseX * boardScale / oldScale;
+  let mouseYScaled = mouseY * boardScale / oldScale;
+  if (boardRotate == 0) {
+    offsetX -= (mouseXScaled - mouseX);
+    offsetY -= (mouseYScaled - mouseY);
+  } else {
+    offsetY -= (mouseXScaled - mouseX);
+    offsetX += (mouseYScaled - mouseY);
+  }
+  moveBoard();
+}
+function flipBoard() {
+  if (boardRotate == 0) {
+    boardRotate = -90;
+    for (let p of document.getElementsByClassName("place")) {
+      p.style.transform = "translateX(-50%) translateY(-50%) rotate(90deg)";
+    }
+  } else {
+    boardRotate = 0;
+    for (let p of document.getElementsByClassName("place")) {
+      p.style.transform = "translateX(-50%) translateY(-50%) rotate(0deg)";
+    }
+  }
+  adjustLocationClasses();
+  moveBoard();
+}
+function moveBoard() {
+  document.getElementById("board").style.transform = "rotate(" + boardRotate + "deg) translate(" + (offsetX+dX) + "px, " + (offsetY+dY) + "px) scale(" + boardScale + ")";
+}
+
 function toggleStepping(e) {
   if (stepping) {
     stepping = false;
@@ -89,6 +189,7 @@ function init() {
 function continueInit(gameId) {
   ws = new WebSocket("ws://" + window.location.hostname + ":8081/" + gameId);
   ws.onmessage = onmsg;
+  document.getElementById("board").cnvScale = 4;
   renderAssetToDiv(document.getElementById("board"), "board");
   let width = document.getElementById("boardcanvas").width;
   let cont = document.getElementById("board");
@@ -113,14 +214,12 @@ function continueInit(gameId) {
       let details = document.createElement("DIV");
       details.id = "place" + name + "details";
       details.classList.add("placedetails");
+      box.appendChild(details);
+      box.appendChild(monstersDiv);
       if (places[name].y < 0.5) {
         box.classList.add("placeupper");
-        box.appendChild(details);
-        box.appendChild(monstersDiv);
       } else {
         box.classList.add("placelower");
-        box.appendChild(monstersDiv);
-        box.appendChild(details);
       }
       if (places[name].x < 0.5) {
         box.classList.add("placeleft");
@@ -157,6 +256,7 @@ function continueInit(gameId) {
     }
   }
   placeLocations();
+  adjustLocationClasses();
   for (let name of monsterNames) {
     addOptionToSelect("monsterchoice", name);
   }
@@ -207,6 +307,18 @@ function continueInit(gameId) {
   cupBox.ondragenter = dragEnter;
   cupBox.ondragover = dragOver;
 
+  document.getElementById("uicont").onmousemove = onmove;
+  document.getElementById("uicont").onmousedown = ondown;
+  document.getElementById("uicont").onmouseup = onup;
+  document.getElementById("uicont").onmouseout = onout;
+  document.getElementById("uicont").onwheel = onwheel;
+
+  // Position the board.
+  let contRect = document.getElementById("uicont").getBoundingClientRect();
+  let boardRect = document.getElementById("board").getBoundingClientRect();
+  offsetX = (contRect.right + contRect.left - boardRect.right - boardRect.left) / 2;
+  moveBoard();
+
   // Debug menu stuff
   changeOtherChoice(null);
   changePlaceChoice(null);
@@ -235,9 +347,32 @@ function placeLocations() {
   for (let [placeType, places] of [["location", locations], ["street", streets]]) {
     for (let name in places) {
       let div = document.getElementById("place" + name);
-      if (!setDivXYPercent(div, "board", name)) {
+      let parentCnv = document.getElementById("boardcanvas");
+      if (!setDivXYPercent(div, parentCnv, "board", name)) {
         div.style.top = 100 * places[name].y + "%";
         div.style.left = 100 * places[name].x + "%";
+        div.xpct = places[name].x;
+        div.ypct = places[name].y;
+      }
+    }
+  }
+}
+
+function adjustLocationClasses() {
+  for (let [placeType, places] of [["location", locations], ["street", streets]]) {
+    for (let name in places) {
+      let div = document.getElementById("place" + name);
+      let box = document.getElementById("place" + name + "box");
+      if (boardRotate == 0) {
+        box.classList.toggle("placeupper", div.ypct < 0.5);
+        box.classList.toggle("placelower", div.ypct >= 0.5);
+        box.classList.toggle("placeleft", div.xpct < 0.5);
+        box.classList.toggle("placeright", div.xpct >= 0.5);
+      } else {
+        box.classList.toggle("placeupper", div.xpct >= 0.5);
+        box.classList.toggle("placelower", div.xpct < 0.5);
+        box.classList.toggle("placeleft", div.ypct < 0.5);
+        box.classList.toggle("placeright", div.ypct >= 0.5);
       }
     }
   }
@@ -335,7 +470,7 @@ function handleData(data) {
   updateMonsters(data.monsters);
   updateMonsterChoices(myChoice, data.monsters);
   updatePlaceBoxes(data.places, data.activity);
-  updateUsables(data.usables, mySpendables, myChoice);
+  updateUsables(data.usables, data.log, mySpendables, myChoice, data.sliders, data.dice);
   updateDice(data.dice, data.player_idx, data.monsters);
   updateCurrentCard(data.current);
   deleteUnusedVisuals();
@@ -590,7 +725,7 @@ function chooseItems(e) {
   ws.send(JSON.stringify({"type": "choice", "choice": "done"}));
 }
 
-function doneUsing(e) {
+function doneUse(e) {
   ws.send(JSON.stringify({"type": "done_using"}));
 }
 
@@ -869,6 +1004,10 @@ function doneSliders(e) {
   ws.send(JSON.stringify({"type": "set_slider", "name": "done"}));
 }
 
+function resetSliders(e) {
+  ws.send(JSON.stringify({"type": "set_slider", "name": "reset"}));
+}
+
 function removeDummyObjects() {
   let enterDiv = document.getElementById("enteringscroll");
   while (enterDiv.getElementsByClassName("dummy").length > 0) {
@@ -979,10 +1118,9 @@ function updateSliderButton(sliders, isMySliders) {
   if (sliders) {
     document.getElementById("uiprompt").innerText = formatServerString(sliders.prompt);
   }
-  if (sliders && isMySliders) {
-    document.getElementById("donesliders").style.display = "inline-block";
-  } else {
-    document.getElementById("donesliders").style.display = "none";
+  let sliderButtons = document.getElementById("sliderbuttons");
+  if (sliderButtons != null) {
+    sliderButtons.classList.toggle("hidden", !(sliders && isMySliders));
   }
 }
 
@@ -997,11 +1135,7 @@ function toggleCards(e) {
 }
 
 function setCardButtonText() {
-  if (cardsStyle == "flex") {
-    document.getElementById("togglecards").innerText = "Hide Info";
-  } else {
-    document.getElementById("togglecards").innerText = "Show Info";
-  }
+  document.getElementById("togglecards").classList.toggle("hide", cardsStyle == "flex");
 }
 
 function scrollCards(e, dir) {
@@ -1046,7 +1180,7 @@ function deleteUnusedVisuals() {
 }
 
 function updateChoices(choice, current, isMyChoice, chooser, autoChoose) {
-  let btn = document.getElementById("doneitems");
+  let doneItems = document.getElementById("doneitems");
   let uichoice = document.getElementById("uichoice");
   let uicardchoice = document.getElementById("uicardchoice");
   let cardtoggle = document.getElementById("togglecards");
@@ -1068,8 +1202,10 @@ function updateChoices(choice, current, isMyChoice, chooser, autoChoose) {
   }
   uichoice.style.display = "none";
   document.getElementById("cardchoicescroll").style.display = "none";
-  btn.style.display = "none";
-  cardtoggle.style.display = "none";
+  if (doneItems != null) {
+    doneItems.style.display = "none";
+  }
+  cardtoggle.classList.add("hidden");
   if (choice != null && choice.board_monster != null && isMyChoice) {
     monsterBox.classList.add("choosable");
   } else {
@@ -1085,7 +1221,7 @@ function updateChoices(choice, current, isMyChoice, chooser, autoChoose) {
   }
   if (choice.cards != null || choice.monster != null || choice.monsters != null) {
     document.getElementById("cardchoicescroll").style.display = cardsStyle;
-    cardtoggle.style.display = "inline-block";
+    cardtoggle.classList.remove("hidden");
     setCardButtonText();
   }
   // Clean out any old choices it may have.
@@ -1115,7 +1251,7 @@ function updateChoices(choice, current, isMyChoice, chooser, autoChoose) {
       for (let pos of pDiv.getElementsByClassName("possession")) {
         pos.classList.toggle("choosable", choice.items.includes(pos.handle));
       }
-      btn.style.display = "inline-block";
+      doneItems.style.display = "inline-block";
     }
     if (choice.monster != null) {
       showMonster(uicardchoice, choice.monster);  // TODO: update show/hide button text
@@ -1503,8 +1639,8 @@ function spentPercent(spent, remaining) {
   return 100 * totalSpent / totalSpendable;
 }
 
-function updateUsables(usables, spendables, choice) {
-  let uiuse = document.getElementById("uiuse");
+function updateUsables(usables, log, spendables, choice, sliders, dice) {
+  let doneUsing = document.getElementById("doneusing");
   let pDiv, tDiv, pTab, tTab;
   if (!document.getElementsByClassName("you").length) {
     pDiv = document.createElement("DIV");  // Dummy div.
@@ -1533,17 +1669,16 @@ function updateUsables(usables, spendables, choice) {
   }
   pTab.classList.toggle("usable", anyPosUsable);
   tTab.classList.toggle("usable", anyTrophyUsable);
-  uiuse.style.display = "none";
+  if (doneUsing != null) {
+    doneUsing.style.display = "none";
+  }
   if (usables == null && spendables == null) {
     if (choice == null) {
       document.getElementById("charoverlay").classList.remove("shown");
     }
     return;
   }
-  document.getElementById("charoverlay").classList.add("shown");
-  if (choice == null) {
-    uiuse.style.display = "flex";
-  }
+
   let tradeOnly = true;
   for (let val of usableList) {
     if (val != "trade") {
@@ -1551,11 +1686,23 @@ function updateUsables(usables, spendables, choice) {
       break;
     }
   }
-  document.getElementById("usetext").innerText = "Use Items or Abilities";
-  document.getElementById("doneusing").innerText = "Done Using";
-  if (tradeOnly) {
-    document.getElementById("usetext").innerText = "Trade?";
-    document.getElementById("doneusing").innerText = "Done Trading";
+  if (!tradeOnly) {
+    document.getElementById("charoverlay").classList.add("shown");
+  }
+  if (choice == null && sliders == null && (dice == null || !dice.prompt)) {
+    if (log != null && log != "") {
+      document.getElementById("uiprompt").innerText = formatServerString(log);
+    }
+    if (doneUsing != null) {
+      doneUsing.style.display = "inline-block";
+    }
+  }
+  if (doneUsing != null) {
+    doneUsing.innerText = "Done Using";
+    if (tradeOnly) {
+      document.getElementById("uiprompt").innerText = "Trade?";
+      doneUsing.innerText = "Done Trading";
+    }
   }
 }
 
@@ -2105,7 +2252,7 @@ function updateGlobals(env, rumor, otherGlobals) {
   }
   let toRemove = {};
   for (let node of document.getElementById("globals").getElementsByClassName("mythoscontainer")) {
-    if (node.id == "environment" || node.id == "rumor") {
+    if (node.id == "environment" || node.id == "rumor" || node.id == "currentcard") {
       continue;
     }
     toRemove[node.name] = node;
@@ -2142,16 +2289,20 @@ function updateGlobals(env, rumor, otherGlobals) {
 function updateCurrentCard(current) {
   oldCurrent = current;
   let currDiv = document.getElementById("currentcard");
+  let currCnt = currDiv.firstChild;
   if (current == null) {
     // TODO: because rendering happens in a promise, clearing the asset from the div can
     // actually happen before the promise is fulfilled. ugh.
-    clearAssetFromDiv(currDiv);
+    clearAssetFromDiv(currCnt);
     currDiv.classList.add("missing");
+    currDiv.name = null;
+    currDiv.annotation = null;
     return;
   }
   currDiv.classList.remove("missing");
-  currDiv.cnvScale = 2;
-  renderAssetToDiv(currDiv, current);
+  currDiv.name = current;
+  currDiv.annotation = current.startsWith("Mythos") ? "Mythos" : "Encounter";
+  renderAssetToDiv(currCnt, current);
 }
 
 function toggleGlobals(e, frontCard) {
@@ -2203,7 +2354,7 @@ function updateDice(dice, playerIdx, monsterList) {
   }
   if (dice.name != null) {  // Show the monster/card that is causing this dice roll.
     document.getElementById("cardchoicescroll").style.display = cardsStyle;
-    document.getElementById("togglecards").style.display = "inline-block";
+    document.getElementById("togglecards").classList.remove("hidden");
     setCardButtonText();
     if (monsterNames.includes(dice.name) && dice.check_type != "evade") {
       for (let m of monsterList) {
@@ -2607,30 +2758,23 @@ function createCharacterSheet(idx, character, rightUI, isPlayer) {
   let sliders = document.createElement("DIV");
   sliders.classList.add("sliders", "cnvcontainer");
   sliderCont.appendChild(sliders);
+  if (isPlayer) {
+    let sliderButtons = document.createElement("DIV");
+    sliderButtons.id = "sliderbuttons";
+    let doneBtn = document.createElement("BUTTON");
+    doneBtn.innerText = "Set Sliders";
+    doneBtn.onclick = doneSliders;
+    let resetBtn = document.createElement("BUTTON");
+    resetBtn.innerText = "Reset";
+    resetBtn.onclick = resetSliders;
+    sliderButtons.appendChild(doneBtn);
+    sliderButtons.appendChild(resetBtn);
+    sliderCont.appendChild(sliderButtons);
+  }
   div.appendChild(sliderCont);
   let slidersCnv = document.createElement("CANVAS");
   slidersCnv.classList.add("worldcnv");  // TODO
   sliders.appendChild(slidersCnv);
-  for (let i = 0; i < 3; i++) {  // TODO: fourth slider
-    for (let j = 0; j < 4; j++) {
-      let sliderDiv = document.createElement("DIV");
-      sliderDiv.classList.add("slider", "slider" + i + "" + j, "cnvcontainer");
-      let sliderCnv = document.createElement("CANVAS");
-      sliderCnv.classList.add("worldcnv");
-      sliderDiv.appendChild(sliderCnv);
-      sliders.appendChild(sliderDiv);
-      if (isPlayer) {
-        let sliderName = Object.entries(character.sliders)[i][0];
-        sliderDiv.onclick = function(e) { setSlider(sliderName, j); };
-      }
-      if (!setDivXYPercent(sliderDiv, "Nun sliders", "Slider " + i + " " + j, true)) {
-        let xoff = (i % 2 == 0) ? 1 : 2;
-        let xpct = (2 * (j+1) + xoff) * 9.09 + "%";
-        sliderDiv.style.left = xpct;
-        sliderDiv.style.bottom = (3 + 5 * (2-i)) * 100 / 16 + "%";
-      }
-    }
-  }
 
   let bag = document.createElement("DIV");
   bag.classList.add("bag");
@@ -2653,12 +2797,50 @@ function createCharacterSheet(idx, character, rightUI, isPlayer) {
   let trophies = document.createElement("DIV");
   trophies.classList.add("possessions", "hidden");
   bag.appendChild(trophies);
+  if (isPlayer) {
+    let useButtons = document.createElement("DIV");
+    useButtons.id = "usebuttons";
+    let doneItems = document.createElement("BUTTON");
+    doneItems.id = "doneitems";
+    doneItems.onclick = chooseItems;
+    doneItems.innerText = "Done Choosing";
+    let doneUsing = document.createElement("BUTTON");
+    doneUsing.id = "doneusing";
+    doneUsing.onclick = doneUse;
+    doneUsing.innerText = "Done Using";
+    useButtons.appendChild(doneItems);
+    useButtons.appendChild(doneUsing);
+    bag.appendChild(useButtons);
+  }
   div.appendChild(bag);
 
   rightUI.appendChild(div);
   renderAssetToDiv(charPic, character.name + " picture");
   renderAssetToDiv(charName, character.name + " title");
   renderAssetToDiv(statsBg, "statsbg");
+  renderAssetToDiv(sliders, character.name + " sliders");
+
+  for (let i = 0; i < 3; i++) {  // TODO: fourth slider
+    for (let j = 0; j < 4; j++) {
+      let sliderDiv = document.createElement("DIV");
+      sliderDiv.classList.add("slider", "slider" + i + "" + j, "cnvcontainer");
+      let sliderCnv = document.createElement("CANVAS");
+      sliderCnv.classList.add("worldcnv");
+      sliderDiv.appendChild(sliderCnv);
+      sliders.appendChild(sliderDiv);
+      if (isPlayer) {
+        let sliderName = Object.entries(character.sliders)[i][0];
+        sliderDiv.onclick = function(e) { setSlider(sliderName, j); };
+      }
+      if (!setDivXYPercent(sliderDiv, slidersCnv, "Nun sliders", "Slider " + i + " " + j, true)) {
+        let xoff = (i % 2 == 0) ? 1 : 2;
+        let xpct = (2 * (j+1) + xoff) * 9.09 + "%";
+        sliderDiv.style.left = xpct;
+        sliderDiv.style.bottom = (3 + 5 * (2-i)) * 100 / 16 + "%";
+      }
+    }
+  }
+
   for (let sliderDiv of sliders.getElementsByClassName("slider")) {
     renderAssetToDiv(sliderDiv, "Slider");
   }

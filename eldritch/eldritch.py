@@ -263,6 +263,7 @@ class GameState:
     # We only return the counts of these items, not the actual items.
     output["monster_cup"] = len([mon for mon in self.monsters if mon.place == self.monster_cup])
     output["gates"] = len(self.gates)
+    output["log"] = "" if not self.log_stack else self.log_stack[-1].text
 
     # Also give a map from location to activity markers. Environment is always 2, rumor is always 3.
     # Everything else is activity marker 1.
