@@ -10,9 +10,8 @@ from eldritch.items import spells
 
 
 class TestSecretaryAbilities(EventTest):
-  def testSynergy(self):
+  def doSynergyTest(self):
     self.char.possessions.append(abilities.Synergy())
-    self.char.possessions.append(assets.Dog())
     spell = spells.Spell("Dummy", 0, {}, 0, 0, 0)
     self.char.possessions.append(spell)
 
@@ -31,6 +30,20 @@ class TestSecretaryAbilities(EventTest):
       self.state.event_stack.append(events.Check(self.char, "combat", 0))
       self.resolve_until_done()
       self.assertEqual(rand.call_count, self.char.base_fight() + 1)
+
+  def testSynergyAlly(self):
+    self.char.possessions.append(assets.Dog())
+    self.doSynergyTest()
+
+  def testSynergyInvestigator(self):
+    nun = characters.Nun()
+    nun.place = self.char.place
+    self.state.characters.append(nun)
+    self.doSynergyTest()
+
+  def testNoSynergy(self):
+    with self.assertRaises(AssertionError):
+      self.doSynergyTest()
 
   def testTeamPlayer(self):
     self.char.place = self.state.places["Uptown"]

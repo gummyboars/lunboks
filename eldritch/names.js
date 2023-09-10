@@ -31,6 +31,7 @@ characterData = {
   "Doctor": {"sliders": [0, 5, 0, 4, 2, 4], "focus": 2, "home": "Hospital"},
   "Archaeologist": {"sliders": [1, 3, 2, 3, 1, 5], "focus": 2, "home": "Shop"},
   "Gangster": {"sliders": [2, 4, 3, 4, 0, 3], "focus": 1, "home": "House"},
+  "Secretary": {"sliders": [2, 4, 1, 4, 1, 3], "focus": 2, "home": "Hospital"},
   "Spy": {"sliders": [1,3,2,1,1,0], "focus": 1, "home": "Newspaper"},
 };
 characterNames = Object.keys(characterData);
@@ -164,6 +165,8 @@ abilityNames = [
   "Physician",
   "Archaeology",
   "Strong Body",
+  "Synergy",
+  "Team Player",
   "Abnormal Focus",
   "Breaking the Limits",
 ];
