@@ -72,13 +72,25 @@ button:disabled {
   color: black;
   pointer-events: auto;
 }
+#ancientdetails {
+  z-index: 19;
+  width: min(70vw, 112vh);
+  height: min(48vw, 76.8vh);
+  position: absolute;
+  top: min(2.5vw, 4vh);
+  right: min(20vw, 32vh);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
 .bigchoices {
   display: flex;
   flex-direction: row;
   justify-content: center;
   align-items: space-between;
 }
-#ancientchoice {
+#ancientchoice, #bigancient {
   width: min(20vw, 32vh);
   height: min(28.25vw, 45.2vh);
 }
@@ -104,6 +116,21 @@ button:disabled {
   flex-direction: row;
   justify-content: center;
   align-items: space-between;
+}
+#doomtrack {
+  background: linear-gradient(to right, midnightblue 50%, cornflowerblue 50%);
+  background-size: 200% 100%;
+  color: white;
+}
+#gatetrack {
+  background: linear-gradient(to right, goldenrod 50%, palegoldenrod 50%);
+  background-size: 200% 100%;
+}
+.bigtrack {
+  width: min(20vw, 32vh);
+  text-align: center;
+  vertical-align: center;
+  background-position: left;
 }
 #bottomcenter {
   flex: 0 0 auto;
@@ -730,6 +757,13 @@ button:disabled {
   flex-direction: row;
   align-items: flex-start;
   z-index: 3;
+  cursor: zoom-in;
+}
+#ancientone.zoomed {
+  cursor: zoom-out;
+}
+#ancientone.setup {
+  cursor: default;
 }
 #slumber {
   min-width: calc(min(8vw, 12.8vh));
