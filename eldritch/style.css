@@ -868,7 +868,6 @@ button:disabled {
   min-width: 0;
   width: calc(min(80vw, 128vh) * 3 / 58);
   height: calc(min(80vw, 128vh) * 3 / 58);
-  overflow: hidden;
 }
 .monster:last-child {
   flex: 0 0 calc(min(80vw, 128vh) * 3 / 58);

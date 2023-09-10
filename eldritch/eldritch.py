@@ -412,7 +412,20 @@ class GameState:
         if isinstance(choice, events.CombatChoice) and getattr(choice.monster, "visual_name", None):
           output["choice"]["monster"] = choice.monster.json_repr(self, choice.character)
       elif isinstance(choice, events.MonsterSpawnChoice):
-        output["choice"]["to_spawn"] = choice.to_spawn
+        output["choice"] = {
+            "to_spawn": choice.to_spawn,
+            "min_count": choice.min_count,
+            "max_count": choice.max_count,
+            "location": choice.location_name,
+            "open_gates": choice.open_gates,
+            "board": choice.spawn_count,
+            "outskirts": choice.outskirts_count,
+            "steps": choice.steps_remaining,
+        }
+        # Update the output to put the monsters in their pending places.
+        for place, indexes in choice.pending.items():
+          for idx in indexes:
+            output["monsters"][idx]["place"] = place
       elif isinstance(choice, events.MonsterOnBoardChoice):
         output["choice"]["board_monster"] = True
       else:
@@ -534,6 +547,8 @@ class GameState:
       if isinstance(event, events.ChoiceEvent) and not event.is_done():
         event.compute_choices(self)
         if not event.is_done():
+          if event != self.event_stack[-1]:  # Some choices may put a new event on the stack.
+            continue
           if isinstance(event, events.SpendMixin):
             self.spendables = self.get_spendables(event)
           yield None
@@ -750,10 +765,6 @@ class GameState:
     if isinstance(event, self.MONSTER_EVENTS) and isinstance(event.monster, monsters.Monster):
       monster_trigger = event.monster.get_trigger(event, self)
       triggers.extend([monster_trigger] if monster_trigger else [])
-
-    # Clearing the outskirts increases the terror level.
-    if isinstance(event, events.MonsterSpawnChoice) and event.num_clears > 0:
-      triggers.append(events.IncreaseTerror(event.num_clears))
 
     return triggers
 
