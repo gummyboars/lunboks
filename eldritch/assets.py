@@ -397,9 +397,9 @@ class BankLoan(SelfDiscardingCard):
     return None
 
 
-class BadCredit(Asset):
+class BadCredit(Card):
   def __init__(self, idx):
-    super().__init__("Bad Credit", idx)
+    super().__init__("Bad Credit", idx, "specials", {}, {})
 
   def get_interrupt(self, event, owner, state):
     if (
