@@ -57,6 +57,7 @@ class TestSecretaryAbilities(EventTest):
 
     sliders = events.SliderInput(self.char)
     self.state.event_stack.append(sliders)
+    sliders.resolve(self.state, "done", None)
     team = self.resolve_to_choice(events.MultipleChoice)
     self.assertListEqual(team.choices, ["None", "Nun"])
     team.resolve(self.state, "Nun")
@@ -100,9 +101,9 @@ class TestSpyAbilities(EventTest):
     self.assertEqual(self.char.slider_focus_available(), 8)
     self.assertFalse(self.state.usables)
 
+    sliders.resolve(self.state, "fight_sneak", 3)
+    sliders.resolve(self.state, "lore_will", 3)
     with self.assertRaisesRegex(InvalidMove, "enough focus"):
-      sliders.resolve(self.state, "fight_sneak", 3)
-      sliders.resolve(self.state, "lore_will", 3)
       sliders.resolve(self.state, "speed_luck", 3)
     sliders.resolve(self.state, "done", None)
     self.assertEqual(self.char.fight_sneak_slider, 3)

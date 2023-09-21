@@ -83,7 +83,7 @@ class Synergy(assets.Asset):
   ):
     # TODO: Call Stack enforcement to guard against infinite loops.
     if state is None:
-      return
+      return 0
     n_allies = len([ally for ally in owner.possessions if getattr(ally, "deck", None) == "allies"])
     n_in_same_place = len(
         [char for char in state.characters if char != owner and char.place == owner.place]
@@ -103,7 +103,12 @@ class TeamPlayer(assets.Asset):
     in_same_place = [
         char for char in state.characters if char != owner and char.place == owner.place
     ]
-    if not isinstance(event, events.SliderInput) or not event.character == owner or self.exhausted:
+    if (
+        not isinstance(event, events.SliderInput)
+        or not event.character == owner
+        or not event.is_done()
+        or self.exhausted
+    ):
       return None
     choice = events.MultipleChoice(
         owner,
