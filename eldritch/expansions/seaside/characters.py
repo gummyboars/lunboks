@@ -33,7 +33,6 @@ class Spy(characters.BaseCharacter):
     self.fight_sneak_slider = 0
     self.lore_will_slider = 0
     self.speed_luck_slider = 0
-    self.abnormal_focus = 5
     self.movement_points = 1
 
   def base_fight(self):
@@ -78,9 +77,3 @@ class Spy(characters.BaseCharacter):
 
   def focus_cost(self, pending_sliders):
     return sum(pending_sliders[name] for name in self.sliders())
-
-  def slider_focus_available(self):
-    abnormal_focus = 5
-    for pos in self.possessions:
-      abnormal_focus += pos.get_bonus("abnormal_focus", set(), self, None)
-    return abnormal_focus

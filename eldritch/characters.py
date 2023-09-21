@@ -138,7 +138,9 @@ class BaseCharacter(metaclass=abc.ABCMeta):
     return self.lore(state) + self.bonus("spell", state)
 
   def bonus(self, check_name, state, attributes=None):
-    modifier = state.get_modifier(self, check_name)
+    modifier = 0
+    if state:
+      modifier += state.get_modifier(self, check_name)
     for pos in self.possessions:
       bonus = pos.get_bonus(check_name, attributes, self, state)
       if attributes and check_name in {"magical", "physical"}:
@@ -300,6 +302,9 @@ class BaseCharacter(metaclass=abc.ABCMeta):
     return sum(abs(orig - pending_sliders[name]) for name, orig in self.sliders().items())
 
   def slider_focus_available(self):
+    abnormal_focus = self.bonus("abnormal_focus", None)
+    if abnormal_focus:
+      return abnormal_focus
     return self.focus_points
 
   def spend_slider_focus(self, focus_spent_to_slide):

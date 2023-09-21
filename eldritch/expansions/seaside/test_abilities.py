@@ -57,9 +57,6 @@ class TestSecretaryAbilities(EventTest):
 
     sliders = events.SliderInput(self.char)
     self.state.event_stack.append(sliders)
-    may_use = self.resolve_to_usable(0, "Team Player")
-    self.state.event_stack.append(may_use)
-
     team = self.resolve_to_choice(events.MultipleChoice)
     self.assertListEqual(team.choices, ["None", "Nun"])
     team.resolve(self.state, "Nun")
@@ -70,7 +67,8 @@ class TestSecretaryAbilities(EventTest):
     self.advance_turn(0, "encounter")
     self.resolve_until_done()
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)) as rand:
-      self.state.event_stack.append(events.Check(nun, "combat", 0))
+      combat = events.Check(nun, "combat", 0)
+      self.state.event_stack.append(combat)
       self.resolve_until_done()
       self.assertEqual(rand.call_count, nun.base_fight() + 1)
 

@@ -22,6 +22,11 @@ class AbnormalFocus(assets.Asset):
       )
     return None
 
+  def get_bonus(self, check_type, attributes, owner, state: typing.Optional["GameState"]):
+    if check_type == "abnormal_focus":
+      return 5
+    return 0
+
 
 class BreakingTheLimits(assets.Asset):
   def __init__(self):
@@ -73,9 +78,12 @@ class Synergy(assets.Asset):
     super().__init__("Synergy")
 
   def get_bonus(
-      self, check_type, attributes, owner: characters.BaseCharacter, state: "GameState"
+      self, check_type, attributes, owner: characters.BaseCharacter,
+      state: typing.Optional["GameState"]
   ):
     # TODO: Call Stack enforcement to guard against infinite loops.
+    if state is None:
+      return
     n_allies = len([ally for ally in owner.possessions if getattr(ally, "deck", None) == "allies"])
     n_in_same_place = len(
         [char for char in state.characters if char != owner and char.place == owner.place]
@@ -91,7 +99,7 @@ class TeamPlayer(assets.Asset):
   def __init__(self):
     super().__init__("Team Player")
 
-  def get_usable_interrupt(self, event, owner, state):
+  def get_interrupt(self, event, owner, state):
     in_same_place = [
         char for char in state.characters if char != owner and char.place == owner.place
     ]
@@ -116,12 +124,17 @@ class TeamPlayerBonus(assets.Card):
   def __init__(self, idx):
     super().__init__("Team Player Bonus", idx, "specials", {}, {})
 
-  def get_bonus(self, check_type, attributes, owner, state):
-    if len(state.event_stack) > 0 and isinstance(state.event_stack[-1], events.Check):
+  def get_bonus(self, check_type, attributes, owner, state: typing.Optional["GameState"]):
+    if (
+        state is not None
+        and len(state.event_stack) > 0
+        and isinstance(state.event_stack[-1], events.Check)
+        and check_type in assets.CHECK_TYPES
+    ):
       return 1
     return 0
 
-  def get_interrupt(self, event, owner, state):
+  def get_trigger(self, event, owner, state):
     if isinstance(event, events.Mythos) and event.is_done():
       return events.DiscardSpecific(owner, [self])
     return None
