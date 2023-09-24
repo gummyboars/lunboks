@@ -57,10 +57,10 @@ class TestSecretaryAbilities(EventTest):
 
     sliders = events.SliderInput(self.char)
     self.state.event_stack.append(sliders)
-    sliders.resolve(self.state, "done", None)
     team = self.resolve_to_choice(events.MultipleChoice)
     self.assertListEqual(team.choices, ["None", "Nun"])
     team.resolve(self.state, "Nun")
+    sliders.resolve(self.state, "done", None)
 
     self.advance_turn(0, "movement")
     nun.place = self.state.places["Downtown"]

@@ -652,6 +652,6 @@ def CreateCharacters():
       c.name: c for c in [
           Student(), Drifter(), Salesman(), Psychologist(), Photographer(), Magician(), Author(),
           Professor(), Dilettante(), PrivateEye(), Scientist(), Researcher(), Nun(), Doctor(),
-          Archaeologist(), Gangster(), seaside_characters.Spy()
+          Archaeologist(), Gangster(), seaside_characters.Secretary(), seaside_characters.Spy()
       ]
   }

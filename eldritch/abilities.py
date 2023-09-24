@@ -271,6 +271,6 @@ def CreateSpecials():
       FluxStabilizer(), Studious(), ShrewdDealer(), HometownAdvantage(), MagicalGift(),
       PsychicSensitivity(), Archaeology(), StrongMind(), StrongBody(), TrustFund(), Hunches(),
       Physician(), Psychology(), Research(), GuardianAngel(),
-      BreakingTheLimits(), AbnormalFocus(),
+      Synergy(), TeamPlayer(), BreakingTheLimits(), AbnormalFocus(),
   ]
   return {ability.name: ability for ability in abilities}
