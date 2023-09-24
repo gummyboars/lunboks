@@ -264,9 +264,9 @@ class SliderInput(Event):
       raise InvalidInput(f"Unknown slider {name}")
     if name == "done":
       if not self.free:
-        if self.character.focus_cost(self.pending) > self.character.focus_points:
-          raise InvalidMove("You do not have enough focus.")
-        self.character.focus_points -= self.character.focus_cost(self.pending)
+        if self.character.focus_cost(self.pending) > self.character.slider_focus_available():
+          raise InvalidMove("You do not have enough focus/slider shifts.")
+        self.character.spend_slider_focus(self.character.focus_cost(self.pending))
       for slider_name, slider_value in self.pending.items():
         setattr(self.character, slider_name + "_slider", slider_value)
       self.done = True
@@ -284,15 +284,17 @@ class SliderInput(Event):
     pending = self.pending.copy()
     pending[name] = value
     if not self.free:
-      if self.character.focus_cost(pending) > self.character.focus_points:
-        raise InvalidMove("You do not have enough focus.")
+      if self.character.focus_cost(pending) > self.character.slider_focus_available():
+        raise InvalidMove("You do not have enough focus/slider shifts.")
     self.pending = pending
 
   def prompt(self):
     if self.free:
       return f"[{self.character.name}] to set sliders anywhere"
-    remaining_focus = self.character.focus_points - self.character.focus_cost(self.pending)
-    return f"[{self.character.name}] to set sliders ({remaining_focus} focus remaining)"
+    remaining_focus = (
+        self.character.slider_focus_available() - self.character.focus_cost(self.pending)
+    )
+    return f"[{self.character.name}] to set sliders ({remaining_focus} shifts remaining)"
 
   def is_resolved(self):
     return self.done
@@ -303,6 +305,32 @@ class SliderInput(Event):
     if self.done:
       return f"[{self.character.name}] set sliders"
     return f"[{self.character.name}] must set sliders"
+
+
+class MoveSliders(Event):
+  def __init__(self, character, slider_dests: dict):
+    super().__init__()
+    self.character = character
+    self.slider_dests = slider_dests
+    self.done = False
+
+  def resolve(self, state):
+    for slider, val in self.slider_dests.items():
+      setattr(self.character, slider, val)
+    self.done = True
+
+  def is_resolved(self) -> bool:
+    return self.done
+
+  def log(self, state):
+    if self.cancelled:
+      return f"Force movement of {self.character.name}'s sliders was cancelled"
+    if self.done:
+      return f"[{self.character.name}] sliders set to: {self.slider_dests}"
+    return f"[{self.character.name}] sliders will be moved"
+
+  def animated(self) -> bool:
+    return True
 
 
 class Movement(Turn):
@@ -2279,7 +2307,7 @@ class DiscardSpecific(Event):
   def __init__(
           self,
           character,
-          items_to_discard: "Union[ItemChoice, values.Value, List[items.Item]]",
+          items_to_discard: "Union[ItemChoice, values.Value, List[assets.Card]]",
           to_box=False):
     super().__init__()
     self.character = character
@@ -4601,6 +4629,24 @@ class AddToken(Event):
 
   def animated(self):
     return True
+
+
+class AddTokenMap(Sequence):
+  def __init__(self, asset, token_map, character=None):
+    super().__init__(None, character)
+    self.asset = asset
+    self.token_map = token_map
+
+  def resolve(self, state):
+    if isinstance(self.token_map, values.Value):
+      self.token_map = {k: v for m in self.token_map.value(state).values() for k, v in m.items()}
+
+    if len(self.events) == 1 and isinstance(self.events[0], Nothing):
+      self.events = [
+          AddToken(self.asset, token_type, self.character, n_tokens)
+          for token_type, n_tokens in self.token_map.items()
+      ]
+    super().resolve(state)
 
 
 def RemoveToken(asset, token_type, character=None, n_tokens=1):

@@ -16,7 +16,7 @@ def CreateCommon():
   for item in [
       AncientTome, Automatic45, DarkCloak, Derringer18, Revolver38, Dynamite, Rifle, Shotgun,
       TommyGun, Food, ResearchMaterials, Bullwhip, Cross, CavalrySaber, Knife, Whiskey, Axe,
-      Lantern, OldJournal
+      Lantern, OldJournal, Map, Motorcycle, CigaretteCase
   ]:
     common.extend([item(0), item(1)])
   return common
@@ -35,8 +35,8 @@ class Axe(Weapon):
     super().__init__("Axe", idx, "common", {"physical": 2}, {}, 1, 3)
     self._two_handed = False
 
-  def get_bonus(self, check_type, attributes):
-    bonus = super().get_bonus(check_type, attributes)
+  def get_bonus(self, check_type, attributes, owner, state):
+    bonus = super().get_bonus(check_type, attributes, owner, state)
     if check_type == "physical" and self._two_handed:
       bonus += 1
     return bonus
@@ -83,8 +83,8 @@ class Cross(Weapon):
   def __init__(self, idx):
     super().__init__("Cross", idx, "common", {}, {"horror": 1}, 1, 3)
 
-  def get_bonus(self, check_type, attributes):
-    bonus = super().get_bonus(check_type, attributes)
+  def get_bonus(self, check_type, attributes, owner, state):
+    bonus = super().get_bonus(check_type, attributes, owner, state)
     if self.active and check_type == "magical" and attributes and "undead" in attributes:
       bonus += 3
     return bonus

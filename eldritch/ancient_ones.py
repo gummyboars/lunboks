@@ -1,9 +1,9 @@
 import abc
 from typing import Optional, TYPE_CHECKING, Union
 
-from eldritch import events, places, characters, monsters, values, mythos
+from eldritch import events, places, monsters, values, mythos
 from eldritch.events import AncientOneAttack
-from eldritch.characters import Character
+from eldritch.characters import BaseCharacter
 
 if TYPE_CHECKING:
   from eldritch.eldritch import GameState
@@ -43,7 +43,7 @@ class AncientOne(mythos.GlobalEffect, metaclass=abc.ABCMeta):
     return attrs
 
   # TODO: dedup with monster
-  def has_attribute(self, attribute, state, char: Optional[Character]):
+  def has_attribute(self, attribute, state, char: Optional[BaseCharacter]):
     state_override = state.get_override(self, attribute)
     char_override = char.get_override(self, attribute) if char else None
     # Prefer specific overrides (at the item level) over general ones (environment, ancient one).
@@ -84,7 +84,7 @@ class SquidFace(AncientOne):
   def get_modifier(self, thing, attribute, state):
     if isinstance(thing, monsters.Cultist):
       return {"horrordifficulty": -2, "horrordamage": 2}.get(attribute, 0)
-    if isinstance(thing, characters.Character):
+    if isinstance(thing, BaseCharacter):
       return {"max_sanity": -1, "max_stamina": -1}.get(attribute, 0)
     return super().get_modifier(thing, attribute, state)
 
@@ -315,7 +315,7 @@ class SerpentGod(AncientOne):
     if isinstance(event, events.Awaken):
       per_character = []
       for char in state.characters:
-        assert isinstance(char, characters.Character)
+        assert isinstance(char, BaseCharacter)
         if char.gone:
           continue
         if char.bless_curse == -1:
@@ -353,7 +353,7 @@ class SpaceBubbles(AncientOne):
     if isinstance(event, events.Awaken):
       to_devour = []
       for char in state.characters:
-        assert isinstance(char, characters.Character)
+        assert isinstance(char, BaseCharacter)
         if char.n_gate_trophies == 0:
           to_devour.append(events.Devoured(char))
       return events.Sequence(to_devour)

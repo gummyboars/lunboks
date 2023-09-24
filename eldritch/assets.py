@@ -1,8 +1,12 @@
 import abc
 import collections
+from typing import TYPE_CHECKING, Optional
 
 from eldritch import events
 from eldritch import values
+
+if TYPE_CHECKING:
+  from eldritch.eldritch import GameState
 
 
 CHECK_TYPES = {"speed", "sneak", "fight", "will", "lore", "luck"}
@@ -38,13 +42,17 @@ class Asset(metaclass=abc.ABCMeta):
   def exhausted(self):
     return self._exhausted
 
-  def get_bonus(self, check_type, attributes):
+  def get_bonus(self, check_type, attributes, owner, state: Optional["GameState"]):
     return 0
 
   @property
   def bonuses(self):
-    bonuses = {check: self.get_bonus(check, None) for check in CHECK_TYPES | SUB_CHECKS.keys()}
-    bonuses["combat"] = sum(self.get_bonus(check, None) for check in {"combat"} | COMBAT_SUBTYPES)
+    bonuses = {check: self.get_bonus(check, None, None, None) for check in CHECK_TYPES |
+               SUB_CHECKS.keys()}
+    bonuses["combat"] = sum(
+        self.get_bonus(check, None, None, None)
+        for check in {"combat"} | COMBAT_SUBTYPES
+    )
     return bonuses
 
   def get_modifier(self, other, attribute):
@@ -106,7 +114,7 @@ class Card(Asset):
   def active(self):
     return self._active
 
-  def get_bonus(self, check_type, attributes):
+  def get_bonus(self, check_type, attributes, owner, state: Optional["GameState"]):
     bonus = self.passive_bonuses[check_type]
     if self.active:
       bonus += self.active_bonuses[check_type]

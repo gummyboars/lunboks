@@ -1,30 +1,17 @@
+import abc
 from collections import OrderedDict
 import math
+from typing import Iterable
 
 from eldritch import events
 from eldritch import gates
 from eldritch import monsters
 
 
-class Character:
-
-  def __init__(
-      self, name, max_stamina, max_sanity, max_speed, max_sneak,
-      max_fight, max_will, max_lore, max_luck, focus, home,
-  ):
+class BaseCharacter(metaclass=abc.ABCMeta):
+  def __init__(self, name, focus, home):
     self.name = name
-    self._max_stamina = max_stamina
-    self._max_sanity = max_sanity
-    self._slider_names = ["speed_sneak", "fight_will", "lore_luck"]
-    self._speed_sneak = [(max_speed - 3 + i, max_sneak - i) for i in range(4)]
-    self._fight_will = [(max_fight - 3 + i, max_will - i) for i in range(4)]
-    self._lore_luck = [(max_lore - 3 + i, max_luck - i) for i in range(4)]
-    self.speed_sneak_slider = 3
-    self.fight_will_slider = 3
-    self.lore_luck_slider = 3
     self._focus = focus
-    self.stamina = self._max_stamina
-    self.sanity = self._max_sanity
     self.dollars = 0
     self.clues = 0
     self.possessions = []  # includes special abilities, skills, and allies
@@ -33,12 +20,14 @@ class Character:
     self.lose_turn_until = None
     self.arrested_until = None
     self.gone = False
-    self.movement_points = self._speed_sneak[self.speed_sneak_slider][0]
     self.focus_points = self.focus
     self.home = home
     self.place = None
     self.explored = False
     self.avoid_monsters = []
+    self.movement_points = 0
+    self.sanity = 0
+    self.stamina = 0
 
   def get_json(self, state):
     attrs = [
@@ -72,29 +61,66 @@ class Character:
     data["abilities"] = self.abilities()
     return data
 
-  def max_stamina(self, state):
-    return self._max_stamina + self.bonus("max_stamina", state)
-
-  def max_sanity(self, state):
-    return self._max_sanity + self.bonus("max_sanity", state)
+  @abc.abstractmethod
+  def base_speed(self):
+    raise NotImplementedError
 
   def speed(self, state):
-    return self._speed_sneak[self.speed_sneak_slider][0] + self.bonus("speed", state)
+    return self.base_speed() + self.bonus("speed", state)
+
+  @abc.abstractmethod
+  def base_sneak(self):
+    raise NotImplementedError
 
   def sneak(self, state):
-    return self._speed_sneak[self.speed_sneak_slider][1] + self.bonus("sneak", state)
+    return self.base_sneak() + self.bonus("sneak", state)
+
+  @abc.abstractmethod
+  def base_fight(self):
+    raise NotImplementedError
 
   def fight(self, state):
-    return self._fight_will[self.fight_will_slider][0] + self.bonus("fight", state)
+    return self.base_fight() + self.bonus("fight", state)
+
+  @abc.abstractmethod
+  def base_will(self):
+    raise NotImplementedError
 
   def will(self, state):
-    return self._fight_will[self.fight_will_slider][1] + self.bonus("will", state)
+    return self.base_will() + self.bonus("will", state)
+
+  @abc.abstractmethod
+  def base_lore(self):
+    raise NotImplementedError
 
   def lore(self, state):
-    return self._lore_luck[self.lore_luck_slider][0] + self.bonus("lore", state)
+    return self.base_lore() + self.bonus("lore", state)
+
+  @abc.abstractmethod
+  def base_luck(self):
+    raise NotImplementedError
 
   def luck(self, state):
-    return self._lore_luck[self.lore_luck_slider][1] + self.bonus("luck", state)
+    return self.base_luck() + self.bonus("luck", state)
+
+  @property
+  @abc.abstractmethod
+  def _slider_names(self) -> Iterable:
+    pass
+
+  @abc.abstractmethod
+  def max_stamina(self, state):
+    pass
+
+  @abc.abstractmethod
+  def max_sanity(self, state):
+    pass
+
+  def movement_speed(self):
+    speed = self.base_speed()
+    for pos in self.possessions:
+      speed += getattr(pos, "passive_bonuses", {}).get("speed", 0)
+    return speed
 
   def evade(self, state):
     return self.sneak(state) + self.bonus("evade", state)
@@ -111,11 +137,52 @@ class Character:
   def spell(self, state):
     return self.lore(state) + self.bonus("spell", state)
 
-  def movement_speed(self):
-    speed = self._speed_sneak[self.speed_sneak_slider][0]
+  def bonus(self, check_name, state, attributes=None):
+    modifier = 0
+    if state:
+      modifier += state.get_modifier(self, check_name)
     for pos in self.possessions:
-      speed += getattr(pos, "passive_bonuses", {}).get("speed", 0)
-    return speed
+      bonus = pos.get_bonus(check_name, attributes, self, state)
+      if attributes and check_name in {"magical", "physical"}:
+        if check_name + " immunity" in attributes:
+          bonus = 0
+        elif check_name + " resistance" in attributes:
+          bonus = (bonus + 1) // 2
+      modifier += bonus
+    return modifier
+
+  def get_modifier(self, other, attribute):
+    return sum(p.get_modifier(other, attribute) or 0 for p in self.possessions)
+
+  def get_override(self, other, attribute):
+    override = None
+    for pos in self.possessions:
+      val = pos.get_override(other, attribute)  # pylint: disable=assignment-from-none
+      if val is None:
+        continue
+      if override is None:
+        override = val
+      override = override and val
+    return override
+
+  def count_successes(self, roll, check_type):
+    successes = len([result for result in roll if self.is_success(result, check_type)])
+    if check_type == "combat":  # HACK: hard-code the Shotgun's functionality here.
+      shotgun_active = any(
+          item.name == "Shotgun" for item in self.possessions if getattr(item, "active", False)
+      )
+      if shotgun_active:
+        successes += roll.count(6)
+    return successes
+
+  def is_success(self, die, check_type):  # pylint: disable=unused-argument
+    return die >= 5 - self.bless_curse
+
+  def hands_available(self):
+    return 2 - sum(pos.hands_used() for pos in self.possessions if hasattr(pos, "hands_used"))
+
+  def sliders(self):
+    return {slider: getattr(self, slider + "_slider") for slider in self._slider_names}
 
   @property
   def focus(self):
@@ -140,6 +207,18 @@ class Character:
   @property
   def n_gate_trophies(self):
     return len([t for t in self.trophies if isinstance(t, gates.Gate)])
+
+  def abilities(self):
+    return []
+
+  def initial_attributes(self):
+    return {}
+
+  def fixed_possessions(self):
+    return {}
+
+  def random_possessions(self):
+    return {}
 
   def get_interrupts(self, event, state):
     return [
@@ -219,65 +298,63 @@ class Character:
       return events.ReturnMonsterToCup(self, handle)
     return events.ReturnGateToStack(self, handle)
 
-  def bonus(self, check_name, state, attributes=None):
-    modifier = state.get_modifier(self, check_name)
-    for pos in self.possessions:
-      bonus = pos.get_bonus(check_name, attributes)
-      if attributes and check_name in {"magical", "physical"}:
-        if check_name + " immunity" in attributes:
-          bonus = 0
-        elif check_name + " resistance" in attributes:
-          bonus = (bonus + 1) // 2
-      modifier += bonus
-    return modifier
-
-  def get_modifier(self, other, attribute):
-    return sum(p.get_modifier(other, attribute) or 0 for p in self.possessions)
-
-  def get_override(self, other, attribute):
-    override = None
-    for pos in self.possessions:
-      val = pos.get_override(other, attribute)  # pylint: disable=assignment-from-none
-      if val is None:
-        continue
-      if override is None:
-        override = val
-      override = override and val
-    return override
-
-  def count_successes(self, roll, check_type):
-    successes = len([result for result in roll if self.is_success(result, check_type)])
-    if check_type == "combat":  # HACK: hard-code the Shotgun's functionality here.
-      shotgun_active = any(
-          item.name == "Shotgun" for item in self.possessions if getattr(item, "active", False)
-      )
-      if shotgun_active:
-        successes += roll.count(6)
-    return successes
-
-  def is_success(self, die, check_type):  # pylint: disable=unused-argument
-    return die >= 5 - self.bless_curse
-
-  def hands_available(self):
-    return 2 - sum(pos.hands_used() for pos in self.possessions if hasattr(pos, "hands_used"))
-
-  def sliders(self):
-    return {slider: getattr(self, slider + "_slider") for slider in self._slider_names}
-
   def focus_cost(self, pending_sliders):
     return sum(abs(orig - pending_sliders[name]) for name, orig in self.sliders().items())
 
-  def abilities(self):
-    return []
+  def slider_focus_available(self):
+    abnormal_focus = self.bonus("abnormal_focus", None)
+    if abnormal_focus:
+      return abnormal_focus
+    return self.focus_points
 
-  def initial_attributes(self):
-    return {}
+  def spend_slider_focus(self, focus_spent_to_slide):
+    self.focus_points -= focus_spent_to_slide
 
-  def fixed_possessions(self):
-    return {}
 
-  def random_possessions(self):
-    return {}
+class Character(BaseCharacter):
+  """A character with the standard sliders"""
+  _slider_names = ["speed_sneak", "fight_will", "lore_luck"]
+
+  def __init__(
+      self, name, max_stamina, max_sanity, max_speed, max_sneak,
+      max_fight, max_will, max_lore, max_luck, focus, home,
+  ):
+    super().__init__(name, focus, home)
+    self._max_stamina = max_stamina
+    self._max_sanity = max_sanity
+    self._speed_sneak = [(max_speed - 3 + i, max_sneak - i) for i in range(4)]
+    self._fight_will = [(max_fight - 3 + i, max_will - i) for i in range(4)]
+    self._lore_luck = [(max_lore - 3 + i, max_luck - i) for i in range(4)]
+    self.speed_sneak_slider = 3
+    self.fight_will_slider = 3
+    self.lore_luck_slider = 3
+    self.stamina = self._max_stamina
+    self.sanity = self._max_sanity
+    self.movement_points = self._speed_sneak[self.speed_sneak_slider][0]
+
+  def max_stamina(self, state):
+    return self._max_stamina + self.bonus("max_stamina", state)
+
+  def max_sanity(self, state):
+    return self._max_sanity + self.bonus("max_sanity", state)
+
+  def base_speed(self):
+    return self._speed_sneak[self.speed_sneak_slider][0]
+
+  def base_sneak(self):
+    return self._speed_sneak[self.speed_sneak_slider][1]
+
+  def base_fight(self):
+    return self._fight_will[self.fight_will_slider][0]
+
+  def base_will(self):
+    return self._fight_will[self.fight_will_slider][1]
+
+  def base_lore(self):
+    return self._lore_luck[self.lore_luck_slider][0]
+
+  def base_luck(self):
+    return self._lore_luck[self.lore_luck_slider][1]
 
 
 class Student(Character):
@@ -569,10 +646,12 @@ class Gangster(Character):
 
 
 def CreateCharacters():
+  # pylint: disable=import-outside-toplevel
+  from eldritch.expansions.seaside import characters as seaside_characters
   return {
       c.name: c for c in [
           Student(), Drifter(), Salesman(), Psychologist(), Photographer(), Magician(), Author(),
           Professor(), Dilettante(), PrivateEye(), Scientist(), Researcher(), Nun(), Doctor(),
-          Archaeologist(), Gangster(),
+          Archaeologist(), Gangster(), seaside_characters.Secretary(), seaside_characters.Spy()
       ]
   }
