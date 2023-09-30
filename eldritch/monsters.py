@@ -333,6 +333,19 @@ def Ghoul():
   )
 
 
+def TongueGod():
+  return Monster(
+    "Tongue God",
+    "normal",
+    "triangle",
+    {"evade": 1, "horror": -3, "combat": -4},
+    {"horror": 3, "combat": 4},
+    4,
+    {"mask", "endless"},
+    {"combat": 1, "horror": 1},
+  )
+
+
 def FurryBeast():
   return Monster(
     "Furry Beast",
@@ -473,6 +486,91 @@ def Octopoid():
   )
 
 
+class ManInBlack(Monster):
+  def __init__(self):
+    super().__init__(
+      "Man in Black",
+      "normal",
+      "moon",
+      {"evade": -3, "horror": None, "combat": None},
+      {"horror": None, "combat": None},
+      1,
+      {"mask", "endless"},
+    )
+
+  def get_interrupt(self, event, state):
+    if not isinstance(event, events.Combat):
+      return super().get_interrupt(event, state)
+    success = events.Sequence(
+      [
+        events.CancelEvent(event),
+        events.ReturnToCup(character=event.character, handles=[self.handle]),
+        events.Gain(event.character, {"clues": 2}),
+      ],
+      event.character,
+    )
+    failure = events.Sequence(
+      [
+        events.CancelEvent(event),
+        events.ReturnToCup(character=event.character, handles=[self.handle]),
+        events.Devoured(event.character),
+      ],
+      event.character,
+    )
+    check = events.Check(event.character, "luck", -1, name=self.visual_name)
+    return events.PassFail(event.character, check, success, failure)
+
+
+class BloatedWoman(Monster):
+  def __init__(self):
+    super().__init__(
+      "Bloated Woman",
+      "normal",
+      "hex",
+      {"evade": -1, "horror": -1, "combat": -2},
+      {"horror": 2, "combat": 2},
+      2,
+      {"mask", "endless"},
+    )
+
+  def get_interrupt(self, event, state):
+    if not isinstance(event, events.MonsterCheck) or event.check_type != "horror":
+      return super().get_interrupt(event, state)
+    if len(state.event_stack) < 2 or not isinstance(state.event_stack[-2], events.Combat):
+      return super().get_interrupt(event, state)
+    failure = events.Sequence(
+      [
+        events.CancelEvent(event),  # Cancelling the check makes them auto-fail
+        events.FailCombatRound(event.character, state.event_stack[-2]),
+      ],
+      event.character,
+    )
+    check = events.Check(event.character, "will", -2, name=self.visual_name)
+    return events.PassFail(event.character, check, events.Nothing(), failure)
+
+
+class DarkPharaoh(Monster):
+  def __init__(self):
+    super().__init__(
+      "Dark Pharaoh",
+      "normal",
+      "slash",
+      {"evade": -1, "horror": -1, "combat": -3},
+      {"horror": 1, "combat": 3},
+      2,
+      {"mask", "endless"},
+    )
+
+  def get_interrupt(self, event, state):
+    if not isinstance(event, events.MonsterCheck) or event.check_type != "combat":
+      return super().get_interrupt(event, state)
+    if len(state.event_stack) < 2 or not isinstance(state.event_stack[-2], events.CombatRound):
+      return super().get_interrupt(event, state)
+    if event != state.event_stack[-2].check:
+      return super().get_interrupt(event, state)
+    return events.ChangeCheckBaseType(event, "lore")
+
+
 def Vampire():
   return Monster(
     "Vampire",
@@ -584,6 +682,7 @@ MONSTERS = {
     FormlessSpawn,
     Ghost,
     Ghoul,
+    TongueGod,
     FurryBeast,
     Haunter,
     HighPriest,
@@ -593,6 +692,9 @@ MONSTERS = {
     DreamFlier,
     GiantAmoeba,
     Octopoid,
+    ManInBlack,
+    BloatedWoman,
+    DarkPharaoh,
     Vampire,
     Warlock,
     Witch,
@@ -615,6 +717,7 @@ def CreateMonsters():
     "Formless Spawn": 2,
     "Ghost": 3,
     "Ghoul": 3,
+    "Tongue God": 1,
     "Furry Beast": 2,
     "Haunter": 1,
     "High Priest": 1,
@@ -624,6 +727,9 @@ def CreateMonsters():
     "Dream Flier": 2,
     "Giant Amoeba": 2,
     "Octopoid": 2,
+    "Man in Black": 1,
+    "Bloated Woman": 1,
+    "Dark Pharaoh": 1,
     "Vampire": 1,
     "Warlock": 2,
     "Witch": 2,

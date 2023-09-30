@@ -220,7 +220,6 @@ class BlackPharaoh(AncientOne):
   def __init__(self):
     super().__init__("The Thousand Masks", 11, {"magical resistance"}, -4)
     self.lore_modifier = 1
-    # TODO: Add masks to monster cup
 
   def get_override(self, thing, attribute):
     if isinstance(thing, monsters.Cultist) and attribute == "endless":

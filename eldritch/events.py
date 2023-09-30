@@ -2574,6 +2574,8 @@ class Check(Event):
     super().__init__()
     self.character = character
     self.check_type = check_type
+    sub_checks = {"evade": "sneak", "combat": "fight", "horror": "will", "spell": "lore"}  # TODO
+    self.base_type = sub_checks.get(check_type)
     self.modifier = modifier
     self.difficulty = difficulty
     self.attributes = attributes
@@ -2596,6 +2598,8 @@ class Check(Event):
         num_dice = self.character.combat(state, self.attributes) + self.modifier
       else:
         num_dice = getattr(self.character, self.check_type)(state) + self.modifier
+      if self.base_type is not None:
+        num_dice += getattr(self.character, self.base_type)(state)
       self.dice = DiceRoll(self.character, num_dice, name=self.name)
       state.event_stack.append(self.dice)
       return
@@ -2679,6 +2683,12 @@ class Check(Event):
 
   def animated(self):
     return True
+
+
+class MonsterCheck(Check):
+  def __init__(self, *args, **kwargs):
+    super().__init__(*args, **kwargs)
+    self.monster = None
 
 
 class AddExtraDie(Event):
@@ -2782,6 +2792,24 @@ class RerollSpecific(Event):
     if not self.done:
       return f"[{self.character.name}] rerolls some of the dice on their {ctype}"
     return f"[{self.character.name}] rerolled {len(self.reroll_indexes)} dice on their {ctype}"
+
+
+class ChangeCheckBaseType(Event):
+  def __init__(self, check, new_type):
+    super().__init__()
+    self.check = check
+    self.new_type = new_type
+    self.done = False
+
+  def resolve(self, state):
+    self.check.base_type = self.new_type
+    self.done = True
+
+  def is_resolved(self):
+    return self.done
+
+  def log(self, state):
+    return ""
 
 
 class Conditional(Event):
@@ -3892,26 +3920,31 @@ class Combat(Event):
     self.monster = monster
     self.horror: Optional[Event] = None
     self.sanity_loss: Optional[Event] = None
-    self.choice: Optional[Sequence] = None
     self.evade: Optional[EvadeRound] = None
     self.combat: Optional[CombatRound] = None
+    self.first_combat = False
     self.done = False
 
   def resolve(self, state):
     # Horror check
-    if self.monster.difficulty("horror", state, self.character) is not None and self.horror is None:
-      self._setup_horror(state)
-    if self.horror is not None:
-      return_early = self._do_horror(state)
-      if return_early:
-        return
+    if not self.first_combat:
+      rating = self.monster.difficulty("horror", state, self.character)
+      if rating is not None and self.horror is None:
+        self._setup_horror(state)
+      if self.horror is not None:
+        return_early = self._do_horror(state)
+        if return_early:
+          return
+    else:
+      self.first_combat = False
 
     # Combat or flee choice.
     self._do_combat_or_evade(state)
 
   def _setup_horror(self, state):
     difficulty = self.monster.difficulty("horror", state, self.character)
-    self.horror = Check(self.character, "horror", difficulty, name=self.monster.visual_name)
+    self.horror = MonsterCheck(self.character, "horror", difficulty, name=self.monster.visual_name)
+    self.horror.monster = self.monster
     self.sanity_loss = Loss(
       self.character, {"sanity": self.monster.damage("horror", state, self.character)}
     )
@@ -3942,8 +3975,8 @@ class Combat(Event):
     prompt = f"Fight the [{self.monster.name}] or flee from it?"
     choice = FightOrEvadeChoice(self.character, prompt, "Flee", self.monster, [None, no_ambush])
     cond = Conditional(self.character, choice, "choice_index", {0: self.combat, 1: self.evade})
-    self.choice = Sequence([choice, cond], self.character)
-    state.event_stack.append(self.choice)
+    seq = Sequence([choice, cond], self.character)
+    state.event_stack.append(seq)
 
   def is_resolved(self):
     if self.evade is None or self.combat is None:
@@ -3989,9 +4022,11 @@ class EvadeRound(Event):
       if isinstance(event, CityMovement):
         event.done = True  # TODO: should this be cancelled instead?
         break
-    self.damage = Loss(
-      self.character, {"stamina": self.monster.damage("combat", state, self.character)}
-    )
+    damage = self.monster.damage("combat", state, self.character)
+    if damage is not None:
+      self.damage = Loss(self.character, {"stamina": damage})
+    else:
+      self.damage = Nothing()
     state.event_stack.append(self.damage)
 
   def is_resolved(self):
@@ -4079,7 +4114,7 @@ class CombatRound(Event):
 
     if self.check is None:
       attrs = self.monster.attributes(state, self.character)
-      self.check = Check(
+      self.check = MonsterCheck(
         self.character,
         "combat",
         self.monster.difficulty("combat", state, self.character),
@@ -4087,6 +4122,7 @@ class CombatRound(Event):
         name=self.monster.visual_name,
         difficulty=self.monster.toughness(state, self.character),
       )
+      self.check.monster = self.monster
     if not self.check.is_done():
       state.event_stack.append(self.check)
       return
@@ -4102,9 +4138,11 @@ class CombatRound(Event):
       self.defeated = bool(self.check.success)
 
     if not self.defeated:
-      self.damage = Loss(
-        self.character, {"stamina": self.monster.damage("combat", state, self.character)}
-      )
+      damage = self.monster.damage("combat", state, self.character)
+      if damage is not None:
+        self.damage = Loss(self.character, {"stamina": damage})
+      else:
+        self.damage = Nothing()
       state.event_stack.append(self.damage)
       return
 
@@ -4206,6 +4244,35 @@ class PassCombatRound(Event):
 
   def log(self, state):
     return self.log_message
+
+
+class FailCombatRound(Event):
+  def __init__(self, character, combat):
+    super().__init__()
+    self.character = character
+    self.combat = combat
+    self.monster = combat.monster
+    self.combat_round: Optional[CombatRound] = None
+
+  def resolve(self, state):
+    self.combat_round = CombatRound(self.character, self.monster)
+    self.combat_round.choice = CombatChoice(
+      self.character, "", self.monster, combat_round=self.combat_round
+    )
+    self.combat_round.choice.done = True
+    self.combat_round.check = MonsterCheck(self.character, "combat", 0)
+    self.combat_round.check.monster = self.monster
+    self.combat_round.check.cancelled = True
+    state.event_stack.append(self.combat_round)
+
+  def is_resolved(self):
+    return self.combat_round and self.combat_round.is_done()
+
+  def flatten(self):
+    return True
+
+  def log(self, state):
+    return ""
 
 
 class ForceTakeTrophy(Event):
