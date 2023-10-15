@@ -891,6 +891,10 @@ button:disabled {
   width: calc(min(80vw, 128vh) * 3 / 58);
   height: calc(min(80vw, 128vh) * 3 / 58);
 }
+.placeright .monstercontainer {
+  left: unset;
+  right: 0;
+}
 .bigmonstercontainer {
   position: absolute;
   top: 0;
@@ -904,11 +908,13 @@ button:disabled {
   left: 0;
 }
 .marker {
+  flex: 0 1 calc(min(80vw, 128vh) / 29);
+  align-self: center;
   z-index: 12; /* TODO */
   position: relative;
   width: calc(min(80vw, 128vh) / 29);
   height: calc(min(80vw, 128vh) * 3 / 58);
-  order: 2;
+  order: 4;
 }
 .markercontainer {
   position: absolute;
@@ -916,6 +922,10 @@ button:disabled {
   left: 0;
   width: calc(min(80vw, 128vh) / 29);
   height: calc(min(80vw, 128vh) * 3 / 58);
+}
+.placeright .markercontainer {
+  left: unset;
+  right: 0;
 }
 .markercontainer.delayed {
   transform: rotate(90deg);
@@ -941,15 +951,6 @@ button:disabled {
   width: calc(min(80vw, 128vh) * 2 / 29);
   height: calc(min(80vw, 128vh) * 2 / 29);
 }
-.placehover {
-  position: absolute;
-  top: 0;
-  left: 0;
-  z-index: -1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
 .placebox {
   position: absolute;
   max-width: 100%;
@@ -957,26 +958,14 @@ button:disabled {
   min-width: 100%;
   min-height: 100%;
   transition: all 0.5s;
-  display: block;
-}
-.placebox:hover {
-  max-width: none;
-  max-height: 175%;
-  min-height: 100%;
-  min-width: 100%;
   display: flex;
   flex-direction: column;
 }
-.withgate.placebox:hover {
-  min-width: 200%;
+.placebox:hover {
+  max-width: 400%;
 }
-.withdetails.placebox:hover {
-  min-width: 200%;
-}
-.withdetails.withgate.placebox:hover {
-  min-width: 300%;
-}
-.withmonsters.placebox:hover {
+.withmonsters.withdetails.placebox:hover {
+  max-height: 175%;
   min-height: 175%;
 }
 .placeupper {
@@ -992,110 +981,120 @@ button:disabled {
   right: 0;
 }
 .placemonsters {
-  flex: 1 1 auto;
-  height: calc(min(80vw, 128vh) * 2 / 29);
-  max-width: 100%;
-  max-height: 100%;
+  flex: 1 8 auto;
+  height: 0;
+  max-height: 0;
+  width: 100%;
+  max-width: calc(min(80vw, 128vh) * 2 / 29);
   min-height: 0;
-  position: absolute;
+  position: relative;
   display: flex;
   flex-direction: row;
-  justify-content: center;
+  justify-content: flex-start;
   cursor: zoom-in;
   transition: all 0.5s;
+  pointer-events: none;
+}
+.withmonsters .placemonsters {
+  max-height: calc(min(80vw, 128vh) * 2 / 29);
+  height: calc(min(80vw, 128vh) * 2 / 29);
+  pointer-events: auto;
 }
 .placelower .placemonsters {
-  top: 0;
-  order: 1;
-  align-items: flex-start;
-}
-.placeupper .placemonsters {
   bottom: 0;
   order: 5;
   align-items: flex-end;
+}
+.placeupper .placemonsters {
+  top: 0;
+  order: 1;
+  align-items: flex-start;
 }
 .placeleft .placemonsters {
   align-self: flex-start;
   left: 0;
 }
 .placeright .placemonsters {
+  flex-direction: row-reverse;
   align-self: flex-end;
   right: 0;
 }
 .withmonsters.placebox:hover .placemonsters {
-  position: relative;
-  max-width: 200%;
-}
-.placedetails {
-  flex: 1 0 auto;
-  order: 3;
-  position: absolute;
   max-width: 100%;
-  height: calc(min(80vw, 128vh) * 2 / 29);
-  display: flex;
-  transition: all 0.5s;
-  justify-content: flex-end;
-}
-.placelower .placedetails {
-  bottom: 0;
-}
-.placeupper .placedetails {
-  top: 0;
-}
-.placeleft .placedetails {
-  left: 0;
-  flex-direction: row-reverse;
-  align-self: flex-start;
-}
-.placeright .placedetails {
-  right: 0;
-  flex-direction: row;
-  align-self: flex-end;
-}
-.placebox:hover .placedetails {
-  position: relative;
-  max-width: none;
 }
 .placechars {
   flex: 1 1 auto;
-  order: 1;
+  order: 3;
   display: flex;
-  height: calc(min(80vw, 128vh) * 2 / 29);
+  height: 0;
+  min-width: 0;
+  min-height: 0;
+  width: 100%;
+  max-width: calc(min(80vw, 128vh) * 2 / 29);
+  position: relative;
+  justify-content: flex-start;
+  transition: all 0.5s;
+}
+.withdetails .placechars {
+  height: calc(min(80vw, 128vh) * 3 / 58);
+  max-height: calc(min(80vw, 128vh) * 3 / 58);
 }
 .placeleft .placechars {
   flex-direction: row;
+  align-self: flex-start;
+  left: 0;
 }
 .placeright .placechars {
   flex-direction: row-reverse;
+  align-self: flex-end;
+  right: 0;
 }
 .placeupper .placechars {
-  align-items: flex-start;
+  align-items: flex-end;
+  bottom: 0;
 }
 .placelower .placechars {
-  align-items: flex-end;
+  align-items: flex-start;
+  top: 0;
+}
+.withdetails.placebox:hover .placechars {
+  max-width: 100%;
 }
 .placegate {
   flex: 1 1 auto;
   max-width: 0;
   position: relative;
-  top: 0;
-  order: 3;
   transition: all 0.5s;
-  height: calc(min(80vw, 128vh) * 2 / 29);
+  height: 0;
+  min-height: 0;
   width: calc(min(80vw, 128vh) * 2 / 29);
+}
+.withgate .placegate {
+  height: calc(min(80vw, 128vh) * 2 / 29);
 }
 .gatecontainer {
   position: absolute;
-  top: 0;
   height: calc(min(80vw, 128vh) * 2 / 29);
   width: calc(min(80vw, 128vh) * 2 / 29);
   transition: transform 0.8s;
+}
+.placeupper .placegate {
+  top: 0;
+}
+.placelower .placegate {
+  bottom: 0;
 }
 .placeleft .placegate {
   left: 0;
 }
 .placeright .placegate {
   right: 0;
+}
+.placeupper .gatecontainer {
+  top: 0;
+}
+.placelower .gatecontainer {
+  bottom: 0;
 }
 .placeleft .gatecontainer {
   left: 0;
@@ -1107,15 +1106,6 @@ button:disabled {
   position: relative;
   max-width: 100%;
 }
-.placeselect {
-  flex: 1 1 auto;
-  order: 5;
-  max-width: 0;
-  position: relative;
-  transition: all 0.5s;
-  height: calc(min(80vw, 128vh) * 2 / 29);
-  width: calc(min(80vw, 128vh) * 2 / 29);
-}
 .placeinnerselect {
   height: calc(min(80vw, 128vh) * 2 / 29);
   width: calc(min(80vw, 128vh) * 2 / 29);
@@ -1125,6 +1115,36 @@ button:disabled {
   align-items: center;
   font-size: calc(min(1vw, 1.6vh));
   transition: all 0.2s;
+  z-index: 13;
+}
+.location.placeinnerselect {
+  border-radius: 50%;
+}
+.withmonsters .placeinnerselect {
+  border-radius: 0;
+  height: calc(min(80vw, 128vh) * 2 / 29 / 3);
+}
+.withdetails .placeinnerselect {
+  border-radius: 0;
+  height: calc(min(80vw, 128vh) * 2 / 29 / 3);
+}
+.placeupper .placeinnerselect {
+  top: 0;
+}
+.withmonsters.placeupper .placeinnerselect {
+  transform: translateY(-100%);
+}
+.withdetails.placeupper .placeinnerselect {
+  transform: translateY(-100%);
+}
+.placelower .placeinnerselect {
+  bottom: 0;
+}
+.withmonsters.placelower .placeinnerselect {
+  transform: translateY(100%);
+}
+.withdetails.placelower .placeinnerselect {
+  transform: translateY(100%);
 }
 .placeleft .placeinnerselect {
   left: 0;
@@ -1132,26 +1152,14 @@ button:disabled {
 .placeright .placeinnerselect {
   right: 0;
 }
-.placeupper .placeinnerselect {
-  top: 0;
-}
-.placelower .placeinnerselect {
-  bottom: 0;
-}
-.placebox:hover .placeselect {
-  max-width: 100%;
-}
-.location {
-  border-radius: 50%;
-}
-.unselectable:hover {
+.placebox:hover .unselectable {
   color: rgba(0, 0, 0, 1);
 }
-.hoverable:hover {
+.placebox:hover .hoverable {
   background-color: rgba(255, 255, 255, 0.7);
   color: rgba(0, 0, 0, 1);
 }
-.selectable:hover {
+.placebox:hover .selectable {
   background-color: rgba(0, 255, 0, 0.7);
   color: rgba(0, 0, 0, 1);
   cursor: pointer;
@@ -1167,13 +1175,15 @@ button:disabled {
   left: 0;
 }
 .closed {
+  flex: 0 1 calc(min(80vw, 128vh) / 32);
   align-self: center;
   position: relative;
   height: calc(min(80vw, 128vh) / 20);
   width: calc(min(80vw, 128vh) / 32);
-  order: 2;
+  order: 3;
 }
 .clue, .seal {
+  flex: 0 1 calc(min(80vw, 128vh) * 3 / 118);
   align-self: center;
   position: relative;
   width: calc(min(80vw, 128vh) * 3 / 118);
@@ -1190,6 +1200,7 @@ button:disabled {
   visibility: hidden;
 }
 .activity {
+  flex 0 1 calc(min(80vw, 128vh) * 3 / 118);
   align-self: center;
   position: relative;
   width: calc(min(80vw, 128vh) * 3 / 118);
@@ -1197,10 +1208,16 @@ button:disabled {
   cursor: zoom-in;
 }
 .clue {
+  order: 1;
+}
+.seal {
+  order: 2;
+}
+.activity {
   order: 3;
 }
-.seal, .activity {
-  order: 1;
+.lastchild {
+  flex-shrink: 0;
 }
 .closedcontainer {
   position: absolute;
@@ -1217,6 +1234,10 @@ button:disabled {
   width: calc(min(80vw, 128vh) * 3 / 118);
   height: calc(min(80vw, 128vh) * 3 / 118);
   z-index: 11;
+}
+.placeright .cluecontainer {
+  left: unset;
+  right: 0;
 }
 .cluecnv {
   position: absolute;

@@ -210,10 +210,10 @@ function continueInit(gameId) {
       monstersDiv.id = "place" + name + "monsters";
       monstersDiv.classList.add("placemonsters");
       monstersDiv.onclick = function(e) { toggleMonsters(monstersDiv, name); };
-      let details = document.createElement("DIV");
-      details.id = "place" + name + "details";
-      details.classList.add("placedetails");
-      box.appendChild(details);
+      let chars = document.createElement("DIV");
+      chars.id = "place" + name + "chars";
+      chars.classList.add("placechars");
+      box.appendChild(chars);
       box.appendChild(monstersDiv);
       if (places[name].y < 0.5) {
         box.classList.add("placeupper");
@@ -226,29 +226,21 @@ function continueInit(gameId) {
         box.classList.add("placeright");
       }
 
-      let chars = document.createElement("DIV");
-      chars.id = "place" + name + "chars";
-      chars.classList.add("placechars");
-      details.appendChild(chars);
       let gateDiv = document.createElement("DIV");
       gateDiv.id = "place" + name + "gate";
       gateDiv.classList.add("placegate");
-      details.appendChild(gateDiv);
+      monstersDiv.appendChild(gateDiv);
       let gateCont = document.createElement("DIV");
       gateCont.classList.add("gatecontainer", "cnvcontainer");
       gateDiv.appendChild(gateCont);
       let gate = document.createElement("CANVAS");
       gate.classList.add("gate");
       gateCont.appendChild(gate);
-      let select = document.createElement("DIV");
-      select.id = "place" + name + "select";
-      select.classList.add("placeselect", placeType);
       let innerSelect = document.createElement("DIV");
       innerSelect.id = "place" + name + "innerselect";
       innerSelect.classList.add("placeinnerselect", placeType);
       innerSelect.onclick = function(e) { clickPlace(name); };
-      select.appendChild(innerSelect);
-      details.appendChild(select);
+      box.appendChild(innerSelect);
       cont.appendChild(div);
 
       addOptionToSelect("placechoice", name);
@@ -1921,9 +1913,21 @@ function updatePlaceBoxes(places, activity) {
     }
     let placeChars = document.getElementById("place" + placeName + "chars");
     let placeMonsters = document.getElementById("place" + placeName + "monsters");
-    placeBox.classList.toggle("withmonsters", placeMonsters && placeMonsters.children.length > 0);
+    placeBox.classList.toggle("withmonsters", (placeMonsters && placeMonsters.getElementsByClassName("monster").length >= 1) || place.gate != null);
     placeBox.classList.toggle("withdetails", placeChars && placeChars.children.length > 0);
     placeBox.classList.toggle("withgate", place.gate != null);
+    if (placeChars != null) {
+      for (let child of placeChars.children) {
+        child.classList.remove("lastchild");
+      }
+      for (let className of ["marker", "closed", "activity", "seal", "clue"]) {
+        let children = placeChars.getElementsByClassName(className);
+        if (children.length) {
+          children[children.length-1].classList.add("lastchild");
+          break;
+        }
+      }
+    }
   }
 }
 
