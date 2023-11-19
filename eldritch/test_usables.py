@@ -253,6 +253,54 @@ class ResearchTest(EventTest):
     self.resolve_until_done()
 
 
+class SpeedBoostTest(EventTest):
+  def setUp(self):
+    super().setUp()
+    self.buddy = characters.Character("Buddy", 5, 5, 4, 4, 4, 4, 4, 4, 4, "Diner")
+    self.buddy.place = self.state.places["Diner"]
+    self.state.characters.append(self.buddy)
+    self.advance_turn(0, "movement")
+
+  def testDefaultBehavior(self):
+    self.resolve_to_choice(events.CityMovement)
+    self.assertEqual(self.char.movement_points, 4)
+    self.assertEqual(self.buddy.movement_points, 4)
+
+  def testGainMovement(self):
+    self.char.possessions = [items.Motorcycle(0)]
+    motorcycle = self.resolve_to_usable(0, "Motorcycle0", Sequence)
+    self.state.event_stack.append(motorcycle)
+    move = self.resolve_to_choice(events.CityMovement)
+    self.assertEqual(self.state.usables, {})
+    self.assertEqual(self.char.movement_points, 6)
+    move.resolve(self.state, "done")
+    self.resolve_until_done()
+
+  def testDeclineToUse(self):
+    self.char.possessions = [items.Motorcycle(0)]
+    self.resolve_to_usable(0, "Motorcycle0", Sequence)
+    move = self.resolve_to_choice(events.CityMovement)
+    move.resolve(self.state, "done")
+    self.resolve_until_done()
+
+  def testUseAndGiveAway(self):
+    self.char.possessions = [items.Motorcycle(0)]
+    motorcycle = self.resolve_to_usable(0, "Motorcycle0", Sequence)
+    self.state.event_stack.append(motorcycle)
+    move = self.resolve_to_choice(events.CityMovement)
+    self.assertEqual(self.state.usables, {})
+    self.assertEqual(self.char.movement_points, 6)
+    self.state.handle_give(0, 1, "Motorcycle0", None)
+    self.assertEqual(self.char.possessions, [])
+    self.assertEqual(len(self.buddy.possessions), 1)
+    move.resolve(self.state, "done")
+    self.resolve_until_done()
+    self.state.next_turn()
+    self.resolve_to_choice(events.CityMovement)
+    self.assertEqual(self.state.usables, {})
+    self.assertEqual(self.buddy.movement_points, 4)
+
+
 class CigaretteTest(EventTest):
 
   def setUp(self):
