@@ -9,7 +9,6 @@ chosenAncient = null;
 allCharacters = {};
 availableChars = [];
 pendingName = null;
-monsterChoice = {};
 charChoice = null;
 ancientChoice = null;
 oldCurrent = null;
@@ -467,8 +466,8 @@ function handleData(data) {
   updateSliderButton(data.sliders, data.chooser == data.player_idx);
   markVisualsForDeletion();
   updateChoices(data.choice, data.current, data.chooser == data.player_idx, data.characters[data.chooser], data.autochoose);
-  updateMonsters(data.monsters);
-  updateMonsterChoices(myChoice, data.monsters);
+  updateMonsters(data.choice, data.monsters);
+  updateMonsterChoices(data.choice, data.monsters, data.chooser == data.player_idx, data.characters[data.chooser]);
   updatePlaceBoxes(data.places, data.activity);
   updateUsables(data.usables, data.log, mySpendables, myChoice, data.sliders, data.dice);
   updateDice(data.dice, data.player_idx, data.monsters);
@@ -738,39 +737,23 @@ function clickAsset(assetDiv, assetHandle) {
 }
 
 function confirmMonsterChoice(e) {
-  let choices = {};
-  for (let idx in monsterChoice) {
-    if (choices[monsterChoice[idx]] == null) {
-      choices[monsterChoice[idx]] = [];
-    }
-    choices[monsterChoice[idx]].push(parseInt(idx));
-  }
-  ws.send(JSON.stringify({"type": "choice", "choice": choices}));
+  ws.send(JSON.stringify({"type": "choice", "choice": "confirm"}));
 }
 
 function resetMonsterChoice(e) {
-  let monsterDivList = [];
-  for (let monsterDiv of document.getElementsByClassName("monster")) {
-    monsterDivList.push(monsterDiv);
-  }
-  for (let monsterDiv of monsterDivList) {
-    if (monsterDiv.monsterIdx != null && monsterDiv.draggable) {
-      document.getElementById("monsterchoices").appendChild(monsterDiv);
-    }
-  }
-  monsterChoice = {};
+  ws.send(JSON.stringify({"type": "choice", "choice": "reset"}));
 }
 
-function toOutskirts(e) {
+function toOutskirts(e) {  // TODO: just send the rest to outskirts if possible?
   let monsterDivList = [];
   let choicesDiv = document.getElementById("monsterchoices");
   for (let monsterDiv of choicesDiv.getElementsByClassName("monster")) {
     monsterDivList.push(monsterDiv);
   }
+  monsterDivList.reverse();
   for (let monsterDiv of monsterDivList) {
-    if (monsterDiv.monsterIdx != null && monsterDiv.draggable && monsterChoice[monsterDiv.monsterIdx] == null) {
-      document.getElementById("placeOutskirtsmonsters").appendChild(monsterDiv);
-      monsterChoice[monsterDiv.monsterIdx] = "Outskirts";
+    if (monsterDiv.monsterIdx != null && monsterDiv.draggable) {
+      ws.send(JSON.stringify({"type": "choice", "choice": {"Outskirts": monsterDiv.monsterIdx}}));
     }
   }
 }
@@ -850,7 +833,7 @@ function dropMonster(e) {
   if (e.currentTarget.id == "monsterchoices") {
     e.preventDefault();
     e.currentTarget.appendChild(dragged);
-    delete monsterChoice[dragged.monsterIdx];
+    ws.send(JSON.stringify({"type": "choice", "choice": {"cup": dragged.monsterIdx}}));
     return;
   }
   if (!e.currentTarget.id.startsWith("place") || !e.currentTarget.id.endsWith("box")) {
@@ -868,7 +851,9 @@ function dropMonster(e) {
   }
   e.preventDefault();
   e.currentTarget.getElementsByClassName("placemonsters")[0].appendChild(dragged);
-  monsterChoice[dragged.monsterIdx] = placeName;
+  let choice = {};
+  choice[placeName] = dragged.monsterIdx;
+  ws.send(JSON.stringify({"type": "choice", "choice": choice}));
 }
 
 function dropPossession(e) {
@@ -1082,11 +1067,15 @@ function hideMonsters(e) {
   document.getElementById("monsterdetails").style.display = "none";
 }
 
-function updateMonsters(monster_list) {
+function updateMonsters(choice, monster_list) {
   for (let i = 0; i < monster_list.length; i++) {
     let monster = monster_list[i];
-    let monsterPlace = monsterChoice[i] || null;
-    // If we're moving monsters, remember where the user has placed the monster.
+    let monsterPlace = null;
+    if (choice != null && choice.to_spawn != null && choice.to_spawn.includes(i)) {
+      if (monster != null && monster.place == "cup") {
+        monsterPlace = "cup";
+      }
+    }
     if (monsterPlace == null && monster != null && monster.place && monster.place != "cup") {
       monsterPlace = monster.place;
     }
@@ -1098,6 +1087,9 @@ function updateMonsters(monster_list) {
       continue;
     }
     let place = document.getElementById("place" + monsterPlace + "monsters");
+    if (monsterPlace == "cup") {
+      place = document.getElementById("monsterchoices");
+    }
     if (place == null) {
       console.log("Unknown place " + monster.place);
       continue;
@@ -1276,7 +1268,7 @@ function updateChoices(choice, current, isMyChoice, chooser, autoChoose) {
   }
 }
 
-function updateMonsterChoices(choice, monsterList) {
+function updateMonsterChoices(choice, monsterList, isMyChoice, chooser) {
   // TODO: indicate how many monsters each location should receive.
   let uiprompt = document.getElementById("uiprompt");
   let uimonsterchoice = document.getElementById("uimonsterchoice");
@@ -1291,21 +1283,44 @@ function updateMonsterChoices(choice, monsterList) {
       monsters[monsterIdx].ondragstart = null;
       monsters[monsterIdx].ondragend = null;
     }
-    monsterChoice = {};
     return;
   }
-  uiprompt.innerText = "Drag Monsters to Gates";
+  let text;
+  if (isMyChoice) {
+    text = "Drag ";
+  } else {
+    let chooserName = serverNames[chooser.name] ?? chooser.name;
+    text = chooserName + " must drag ";
+  }
+  if (choice.board) {
+    text += choice.board + " monsters to board";
+  }
+  if (choice.outskirts) {
+    if (choice.board) {
+      text += ", ";
+    }
+    text += choice.outskirts + " to outskirts";
+  }
+  if (choice.steps) {
+    text += " (" + choice.steps + " rounds remaining)";
+  }
+  uiprompt.innerText = text;
   uimonsterchoice.style.display = "flex";
   for (let monsterIdx of choice.to_spawn) {
     if (monsters[monsterIdx] == null) {
       monsters[monsterIdx] = createMonsterDiv(monsterList[monsterIdx]);
       monsters[monsterIdx].monsterIdx = monsterIdx;
+      choicesBox.appendChild(monsters[monsterIdx]);
+    }
+    renderAssetToDiv(monsters[monsterIdx].getElementsByClassName("cnvcontainer")[0], monsterList[monsterIdx].name);
+    if (isMyChoice) {
       monsters[monsterIdx].draggable = true;
       monsters[monsterIdx].ondragstart = dragStart;
       monsters[monsterIdx].ondragend = dragEnd;
-      choicesBox.appendChild(monsters[monsterIdx]);
-      renderAssetToDiv(monsters[monsterIdx].getElementsByClassName("cnvcontainer")[0], monsterList[monsterIdx].name);
     }
+  }
+  for (let btn of uimonsterchoice.getElementsByTagName("BUTTON")) {
+    btn.disabled = !isMyChoice;
   }
 }
 
