@@ -1,11 +1,9 @@
 // Expected format of localStorage to use this file:
-// sources: a list of image sources as strings. example:
-//   sources = ["a.png", "b.png", "c.png"]
 // variants: a mapping from asset name to an object with the variants, cycle, and default props.
 //   variants = {rsrc1tile: {variants: [0, 1, "other"], cycle: false, default: 0}}
 // imageinfo: a mapping from (assetName + variant) to
-//   imageinfo = {rsrc2tile: {srcnum: 0, filternum: 1, xoff, yoff, scale, rotation, lazy},
-//                rsrc1tile0: {srcnum: 2, xoff, yoff, scale, rotation, lazy}, ...}
+//   imageinfo = {rsrc2tile: {src: "/local/img.png", filter: "http://remote.com/img.png", xoff, yoff, scale, rotation, lazy},
+//                rsrc1tile0: {srcnum: "relative.png", xoff, yoff, scale, rotation, lazy}, ...}
 // This file also expects global variable assetNames to be set to a list of asset names.
 
 renderLoops = {};
@@ -18,6 +16,47 @@ loadedImages = 0;
 errorImages = 0;
 imagePromises = [];
 resizeTimeout = null;
+
+function equalityFunc(imgSrc) {
+  return function(elem) {
+    if (elem == imgSrc) {
+      return true;
+    }
+    if (typeof(elem) != "object" || typeof(imgSrc) != "object") {
+      return false;
+    }
+    return elem.shape == imgSrc.shape && elem.width == imgSrc.width && elem.height == imgSrc.height && elem.radius == imgSrc.radius;
+  };
+}
+
+function setSources() {
+  sources = [];
+  for (let imgName in imageInfo) {
+    let info = imageInfo[imgName];
+    if (info.src == null) {
+      if (info.src !== undefined) {
+        info.srcnum = null;
+      }
+    } else {
+      info.srcnum = sources.findIndex(equalityFunc(info.src));
+      if (info.srcnum < 0) {
+        info.srcnum = sources.length;
+        sources.push(info.src);
+      }
+    }
+    if (info.filter == null) {
+      if (info.filter !== undefined) {
+        info.filternum = null;
+      }
+    } else {
+      info.filternum = sources.findIndex(equalityFunc(info.filter));
+      if (info.filternum < 0) {
+        info.filternum = sources.length;
+        sources.push(info.filter);
+      }
+    }
+  }
+}
 
 function getAsset(assetName, variant) {
   let img = document.getElementById("canvas" + assetName + variant);
@@ -218,9 +257,10 @@ function setDivXYPercent(div, parentCnv, baseAsset, relativeAsset, fromBottom) {
 function loadImages() {
   let prefix = assetPrefix || "";
   // Parse data and set globals.
-  sources = JSON.parse(localStorage.getItem(prefix + "sources") || "[]");
   variants = JSON.parse(localStorage.getItem(prefix + "variants") || "{}");
   imageInfo = JSON.parse(localStorage.getItem(prefix + "imageinfo") || "{}");
+  setSources();
+
   imagePromises = [];
   totalImages = sources.length;
   loadedImages = 0;
@@ -444,7 +484,9 @@ function renderImages() {
     document.getElementById("uiload").style.display = "block";
   }
   try {
-    let sources = JSON.parse(localStorage.getItem(prefix + "sources") || "[]");
+    imageInfo = JSON.parse(localStorage.getItem(prefix + "imageinfo") || "{}");
+    setSources();
+
     totalImages = sources.length;
     eagerImages = totalImages;
     loadedImages = 0;
@@ -470,7 +512,7 @@ function renderImages() {
       assets.appendChild(img);
     }
     variants = JSON.parse(localStorage.getItem(prefix + "variants") || "{}");
-    imageInfo = JSON.parse(localStorage.getItem(prefix + "imageinfo") || "{}");
+
     for (let assetName of assetNames) {
       let variantConfig = variants[assetName];
       let assetVariants;

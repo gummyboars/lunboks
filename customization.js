@@ -165,7 +165,6 @@ function choosenew(e) {
   let variants = JSON.parse(localStorage.getItem(assetPrefix + "customvariants") || "{}")[chosen];
   updatevariants(variants);
   let imageData = JSON.parse(localStorage.getItem(assetPrefix + "customimageinfo") || "{}")[chosen];
-  let sources = JSON.parse(localStorage.getItem(assetPrefix + "customsources") || "[]");
   if (!imageData) {
     imageData = {};
     document.getElementById("imgSrc").value = "";
@@ -174,14 +173,14 @@ function choosenew(e) {
     update(null);
     return;
   }
-  let src = sources[imageData.srcnum];
+  let src = imageData.src;
   let filterType = "none";
   let filterSrc = null;
   let filterWidth = null;
   let filterHeight = null;
   let filterRadius = null;
-  if (imageData.filternum != null) {
-    let filter = sources[imageData.filternum];
+  if (imageData.filter != null) {
+    let filter = imageData.filter;
     if (typeof(filter) == "object") {
       if (filter.shape == "rect") {
         filterType = "rectangle";
@@ -257,38 +256,6 @@ function saveimg() {
       };
     }
   }
-  let currentSources = JSON.parse(localStorage.getItem(assetPrefix + "customsources") || "[]");
-  let imgSrcEquality = function(elem) {
-    if (elem == imgSrc) {
-      return true;
-    }
-    if (typeof(elem) != "object" || typeof(imgSrc) != "object") {
-      return false;
-    }
-    return elem.shape == imgSrc.shape && elem.width == imgSrc.width && elem.height == imgSrc.height && elem.radius == imgSrc.radius;
-  };
-  let imgIdx = currentSources.findIndex(imgSrcEquality);
-  if (imgIdx < 0) {
-    imgIdx = currentSources.length;
-    currentSources.push(imgSrc);
-  }
-  let filterIdx = null;
-  if (filterSrc != null) {
-    let filterSrcEquality = function(elem) {
-      if (elem == filterSrc) {
-        return true;
-      }
-      if (typeof(elem) != "object" || typeof(filterSrc) != "object") {
-        return false;
-      }
-      return elem.shape == filterSrc.shape && elem.width == filterSrc.width && elem.height == filterSrc.height && elem.radius == filterSrc.radius;
-    };
-    filterIdx = currentSources.findIndex(filterSrcEquality);
-    if (filterIdx < 0) {
-      filterIdx = currentSources.length;
-      currentSources.push(filterSrc);
-    }
-  }
   let variantInfo = JSON.parse(localStorage.getItem(assetPrefix + "customvariants") || "{}");
   if (imgVariant != "") {
     // TODO: cleanup unused image variants. And allow images without a default variant.
@@ -306,41 +273,28 @@ function saveimg() {
     rotation: parseFloat(document.getElementById("rotation").value),
     scale: parseFloat(document.getElementById("scale").value),
     lazy: document.getElementById("lazy").checked,
-    srcnum: imgIdx,
+    src: imgSrc,
   }
-  if (filterIdx != null) {
-    data.filternum = filterIdx;
+  if (filterSrc != null) {
+    data.filter = filterSrc;
   }
   imageInfo[imgName + imgVariant] = data;
-  compactSources(currentSources, imageInfo);
-  localStorage.setItem(assetPrefix + "customsources", JSON.stringify(currentSources));
   localStorage.setItem(assetPrefix + "customvariants", JSON.stringify(variantInfo));
   localStorage.setItem(assetPrefix + "customimageinfo", JSON.stringify(imageInfo));
-  localStorage.setItem(assetPrefix + "sources", JSON.stringify(currentSources));
   localStorage.setItem(assetPrefix + "variants", JSON.stringify(variantInfo));
   localStorage.setItem(assetPrefix + "imageinfo", JSON.stringify(imageInfo));
-  document.getElementById("sources").value = localStorage.getItem(assetPrefix + "sources");
   document.getElementById("variants").value = localStorage.getItem(assetPrefix + "variants");
   document.getElementById("imageinfo").value = localStorage.getItem(assetPrefix + "imageinfo");
   writePluginFile();
 }
 function writePluginFile() {
-  let sources = JSON.parse(localStorage.getItem(assetPrefix + "sources"));
   let variantInfo = JSON.parse(localStorage.getItem(assetPrefix + "variants"));
   let imageInfo = JSON.parse(localStorage.getItem(assetPrefix + "imageinfo"));
   let names = JSON.parse(localStorage.getItem(assetPrefix + "names"));
   let pluginText = `function initSkin() {
-  if (localStorage.getItem("${assetPrefix}sources") != null) {
+  if (localStorage.getItem("${assetPrefix}imageinfo") != null) {
     return;
   }
-  localStorage.setItem("${assetPrefix}sources", JSON.stringify([
-`;
-  for (let src of sources) {
-    let srcText = JSON.stringify(src);
-    pluginText += `    ${srcText},
-`;
-  }
-  pluginText += `  ]));
   localStorage.setItem("${assetPrefix}variants", JSON.stringify({
 `;
   for (let variant in variantInfo) {
@@ -371,53 +325,6 @@ function writePluginFile() {
 initSkin();
 `;
   document.getElementById("pluginlink").href = "data:text/plain;charset=utf-8," + encodeURIComponent(pluginText);
-}
-function compactSources(sources, imageInfo) {
-  let usedIdxs = {};
-  for (let [key, info] of Object.entries(imageInfo)) {
-    if (!usedIdxs[info.srcnum]) {
-      usedIdxs[info.srcnum] = [];
-    }
-    usedIdxs[info.srcnum].push(key);
-    if (info.filternum != null) {
-      if (!usedIdxs[info.filternum]) {
-        usedIdxs[info.filternum] = [];
-      }
-      usedIdxs[info.filternum].push(key);
-    }
-  }
-  let unusedIdxs = [];
-  for (let i = 0; i < sources.length; i++) {
-    if (!usedIdxs[i]) {
-      unusedIdxs.push(i);
-    }
-  }
-  let swaps = {};
-  let count = 0;
-  let i = sources.length;
-  while (count < unusedIdxs.length && i > 0) {
-    i--;
-    if (unusedIdxs.includes(i)) {
-      continue;
-    }
-    swaps[i] = unusedIdxs[count];
-    count++;
-  }
-  for (let [from, to] of Object.entries(swaps)) {
-    sources[to] = sources[from];
-    sources[from] = null;
-    for (let key of usedIdxs[from]) {
-      if (imageInfo[key].srcnum == from) {
-        imageInfo[key].srcnum = to;
-      }
-      if (imageInfo[key].filternum == from) {
-        imageInfo[key].filternum = to;
-      }
-    }
-  }
-  while (sources.length > 0 && sources[sources.length - 1] == null) {
-    sources.pop();
-  }
 }
 function initializeAssetNames() {
   while (document.getElementById("imgname").children.length) {

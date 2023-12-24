@@ -1801,7 +1801,7 @@ function chooseSkin(e) {
   if (chosen == "null") {
     return;
   }
-  if (chosen == "custom" && !localStorage.getItem("customsources") && !localStorage.getItem("customnames")) {
+  if (chosen == "custom" && !localStorage.getItem("customimageinfo") && !localStorage.getItem("customnames")) {
     window.open("/customization.html", "_blank");
     return;
   }
@@ -1841,8 +1841,8 @@ function createSkinOptions() {
   }
 }
 function initDefaultSkin() {
-  let sources = localStorage.getItem("sources");
-  if (sources == null) {
+  let imgInfo = localStorage.getItem("imageinfo");
+  if (imgInfo == null) {
     initializeNone();
   }
 }
