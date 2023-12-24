@@ -73,41 +73,6 @@ function initializeNames() {
 }
 
 function initializeSpace() {
-  localStorage.setItem("sources", JSON.stringify([
-    "/islanders/images/sulfur.png",
-    "/islanders/images/olivine.png",
-    "/islanders/images/permafrost.png",
-    "/islanders/images/clay.png",
-    "/islanders/images/metal.png",
-    "/islanders/images/sulfurcard.png",
-    "/islanders/images/olivinecard.png",
-    "/islanders/images/watercard.png",
-    "/islanders/images/claycard.png",
-    "/islanders/images/metalcard.png",
-    "/islanders/images/sulfurport.png",
-    "/islanders/images/olivineport.png",
-    "/islanders/images/waterport.png",
-    "/islanders/images/clayport.png",
-    "/islanders/images/metalport.png",
-    "/islanders/images/desert.png",
-    "/islanders/images/space.png",
-    "/islanders/images/3port.png",
-    "/islanders/images/knight.png",
-    "/islanders/images/roadbuilding.png",
-    "/islanders/images/yearofplenty.png",
-    "/islanders/images/monopoly.png",
-    "/islanders/images/palace.png",
-    "/islanders/images/chapel.png",
-    "/islanders/images/university.png",
-    "/islanders/images/library.png",
-    "/islanders/images/market.png",
-    "/islanders/images/cardback.png",
-    "/islanders/images/devcard.png",
-    "/islanders/images/longestroad.png",
-    "/islanders/images/largestarmy.png",
-    "/islanders/images/robber2.png",
-    "/islanders/images/pirate.png",
-  ]));
   localStorage.setItem("variants", "{}");
   localStorage.setItem("names", JSON.stringify({
     rsrc1: "sulfur",
@@ -120,41 +85,41 @@ function initializeSpace() {
     space: "space",
   }));
   localStorage.setItem("imageinfo", JSON.stringify({
-    "rsrc1tile": {srcnum: 0},
-    "rsrc2tile": {srcnum: 1},
-    "rsrc3tile": {srcnum: 2},
-    "rsrc4tile": {srcnum: 3},
-    "rsrc5tile": {srcnum: 4},
-    "rsrc1card": {srcnum: 5},
-    "rsrc2card": {srcnum: 6},
-    "rsrc3card": {srcnum: 7},
-    "rsrc4card": {srcnum: 8},
-    "rsrc5card": {srcnum: 9},
-    "norsrctile": {srcnum: 15},
-    "spacetile": {srcnum: 16},
+    "rsrc1tile": {"src":"/islanders/images/sulfur.png"},
+    "rsrc2tile": {"src":"/islanders/images/olivine.png"},
+    "rsrc3tile": {"src":"/islanders/images/permafrost.png"},
+    "rsrc4tile": {"src":"/islanders/images/clay.png"},
+    "rsrc5tile": {"src":"/islanders/images/metal.png"},
+    "rsrc1card": {"src":"/islanders/images/sulfurcard.png"},
+    "rsrc2card": {"src":"/islanders/images/olivinecard.png"},
+    "rsrc3card": {"src":"/islanders/images/watercard.png"},
+    "rsrc4card": {"src":"/islanders/images/claycard.png"},
+    "rsrc5card": {"src":"/islanders/images/metalcard.png"},
+    "norsrctile": {"src":"/islanders/images/desert.png"},
+    "spacetile": {"src":"/islanders/images/space.png"},
     "coast": {},
     "port": {},
-    "rsrc1port": {srcnum: 10},
-    "rsrc2port": {srcnum: 11},
-    "rsrc3port": {srcnum: 12},
-    "rsrc4port": {srcnum: 13},
-    "rsrc5port": {srcnum: 14},
-    "3port": {srcnum: 17},
-    "knight": {srcnum: 18},
-    "roadbuilding": {srcnum: 19},
-    "yearofplenty": {srcnum: 20},
-    "monopoly": {srcnum: 21},
-    "palace": {srcnum: 22},
-    "chapel": {srcnum: 23},
-    "university": {srcnum: 24},
-    "library": {srcnum: 25},
-    "market": {srcnum: 26},
-    "cardback": {srcnum: 27},
-    "devcard": {srcnum: 28},
-    "longestroute": {srcnum: 29},
-    "largestarmy": {srcnum: 30},
-    "robber": {srcnum: 31},
-    "pirate": {srcnum: 32},
+    "rsrc1port": {"src":"/islanders/images/sulfurport.png"},
+    "rsrc2port": {"src":"/islanders/images/olivineport.png"},
+    "rsrc3port": {"src":"/islanders/images/waterport.png"},
+    "rsrc4port": {"src":"/islanders/images/clayport.png"},
+    "rsrc5port": {"src":"/islanders/images/metalport.png"},
+    "3port": {"src":"/islanders/images/3port.png"},
+    "knight": {"src":"/islanders/images/knight.png"},
+    "roadbuilding": {"src":"/islanders/images/roadbuilding.png"},
+    "yearofplenty": {"src":"/islanders/images/yearofplenty.png"},
+    "monopoly": {"src":"/islanders/images/monopoly.png"},
+    "palace": {"src":"/islanders/images/palace.png"},
+    "chapel": {"src":"/islanders/images/chapel.png"},
+    "university": {"src":"/islanders/images/university.png"},
+    "library": {"src":"/islanders/images/library.png"},
+    "market": {"src":"/islanders/images/market.png"},
+    "cardback": {"src":"/islanders/images/cardback.png"},
+    "devcard": {"src":"/islanders/images/devcard.png"},
+    "longestroute": {"src":"/islanders/images/longestroad.png"},
+    "largestarmy": {"src":"/islanders/images/largestarmy.png"},
+    "robber": {"src":"/islanders/images/robber2.png"},
+    "pirate": {"src":"/islanders/images/pirate.png"},
   }));
 }
 function initializeNone() {
@@ -168,17 +133,14 @@ function initializeNone() {
     anyrsrc: "bonus",
     space: "water",
   }));
-  localStorage.setItem("sources", "[]");
   localStorage.setItem("variants", "{}");
   localStorage.setItem("imageinfo", "{}");
 }
 function initializeCustom() {
   let names = localStorage.getItem("customnames") || "{}";
-  let sources = localStorage.getItem("customsources") || "[]";
   let variants = localStorage.getItem("customvariants") || "{}";
   let imageinfo = localStorage.getItem("customimageinfo") || "{}";
   localStorage.setItem("names", names);
-  localStorage.setItem("sources", sources);
   localStorage.setItem("variants", variants);
   localStorage.setItem("imageinfo", imageinfo);
 }

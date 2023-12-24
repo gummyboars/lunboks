@@ -1,7 +1,7 @@
 ws = null;
 map = {};
 function changeval(e) {
-  let val = document.getElementyId("gamechoice").value;
+  let val = document.getElementById("gamechoice").value;
   document.getElementById("gametype").value = val;
 }
 function createGame(gameData) {
