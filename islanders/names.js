@@ -9,7 +9,7 @@ serverNames = {
   space: "water",
 };
 
-assetPrefix = "";
+assetPrefix = "islanders";
 assetNames = [
   // Tiles
   "rsrc1tile",
@@ -57,7 +57,7 @@ assetNames = [
 ];
 
 function initializeNames() {
-  let overrides = JSON.parse(localStorage.getItem("names") || "{}");
+  let overrides = JSON.parse(localStorage.getItem("islandersnames") || "{}");
   if (!overrides) {
     return;
   }
@@ -73,8 +73,8 @@ function initializeNames() {
 }
 
 function initializeSpace() {
-  localStorage.setItem("variants", "{}");
-  localStorage.setItem("names", JSON.stringify({
+  localStorage.setItem("islandersvariants", "{}");
+  localStorage.setItem("islandersnames", JSON.stringify({
     rsrc1: "sulfur",
     rsrc2: "olivine",
     rsrc3: "water",
@@ -84,7 +84,7 @@ function initializeSpace() {
     anyrsrc: "gold",
     space: "space",
   }));
-  localStorage.setItem("imageinfo", JSON.stringify({
+  localStorage.setItem("islandersimageinfo", JSON.stringify({
     "rsrc1tile": {"src":"/islanders/images/sulfur.png"},
     "rsrc2tile": {"src":"/islanders/images/olivine.png"},
     "rsrc3tile": {"src":"/islanders/images/permafrost.png"},
@@ -123,7 +123,7 @@ function initializeSpace() {
   }));
 }
 function initializeNone() {
-  localStorage.setItem("names", JSON.stringify({
+  localStorage.setItem("islandersnames", JSON.stringify({
     rsrc1: "lime",
     rsrc2: "green",
     rsrc3: "yellow",
@@ -133,14 +133,14 @@ function initializeNone() {
     anyrsrc: "bonus",
     space: "water",
   }));
-  localStorage.setItem("variants", "{}");
-  localStorage.setItem("imageinfo", "{}");
+  localStorage.setItem("islandersvariants", "{}");
+  localStorage.setItem("islandersimageinfo", "{}");
 }
 function initializeCustom() {
-  let names = localStorage.getItem("customnames") || "{}";
-  let variants = localStorage.getItem("customvariants") || "{}";
-  let imageinfo = localStorage.getItem("customimageinfo") || "{}";
-  localStorage.setItem("names", names);
-  localStorage.setItem("variants", variants);
-  localStorage.setItem("imageinfo", imageinfo);
+  let names = localStorage.getItem("islanderscustomnames") || "{}";
+  let variants = localStorage.getItem("islanderscustomvariants") || "{}";
+  let imageinfo = localStorage.getItem("islanderscustomimageinfo") || "{}";
+  localStorage.setItem("islandersnames", names);
+  localStorage.setItem("islandersvariants", variants);
+  localStorage.setItem("islandersimageinfo", imageinfo);
 }

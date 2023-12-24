@@ -1801,7 +1801,7 @@ function chooseSkin(e) {
   if (chosen == "null") {
     return;
   }
-  if (chosen == "custom" && !localStorage.getItem("customimageinfo") && !localStorage.getItem("customnames")) {
+  if (chosen == "custom" && !localStorage.getItem("islanderscustomimageinfo") && !localStorage.getItem("islanderscustomnames")) {
     window.open("/customization.html", "_blank");
     return;
   }
@@ -1809,7 +1809,7 @@ function chooseSkin(e) {
     console.log("Unknown skin " + chosen);
     return;
   }
-  localStorage.removeItem("names");
+  localStorage.removeItem("islandersnames");
   skinInitializers[chosen]();
   initializeNames();
   let promise = renderImages();
@@ -1841,7 +1841,7 @@ function createSkinOptions() {
   }
 }
 function initDefaultSkin() {
-  let imgInfo = localStorage.getItem("imageinfo");
+  let imgInfo = localStorage.getItem("islandersimageinfo");
   if (imgInfo == null) {
     initializeNone();
   }
