@@ -392,62 +392,12 @@ function updateLoad() {
   }
 }
 
-function finishImgLoad(assetName) {
-  renderLoops[assetName] = 2;
-}
-
 function failRender(assetName, cnv) {
-  console.log("Could not render asset " + assetName);
-  renderLoops[assetName] = 2;
+  console.warn("Could not render asset " + assetName);
   // TODO: this can still be a problem if you are switching to a skin whose sources 404.
   if (cnv != null) {  // Can sometimes fail before we even create the canvas.
     cnv.parentNode.removeChild(cnv);
   }
-}
-
-// TODO: dedup
-function renderSource(assetName, cnv, img, filter) {
-  if (!renderLoops[assetName]) {
-    renderLoops[assetName] = 1;
-    return;
-  }
-  cnv.width = filter.naturalWidth || filter.width;
-  cnv.height = filter.naturalHeight || filter.height;
-  let context = cnv.getContext('2d');
-  let xoff = imageInfo[assetName].xoff || 0;
-  let yoff = imageInfo[assetName].yoff || 0;
-  let rotation = imageInfo[assetName].rotation || 0;
-  let scale = imageInfo[assetName].scale || 1;
-  let colorDiff = imageInfo[assetName].difference;
-  context.clearRect(0, 0, filter.width, filter.height);
-  // Draw a color correction rectangle if necessary.
-  context.save();
-  if (colorDiff != null) {
-    context.fillStyle = colorDiff;
-    context.fillRect(0, 0, filter.width, filter.height);
-    context.globalCompositeOperation = "difference";
-  }
-  // Translate, rotate, scale, draw the base image.
-  context.translate(filter.width/2, filter.height/2);
-  context.rotate(Math.PI * rotation / 180);
-  context.scale(scale, scale);
-  let cssFilter = "";
-  for (let filterName of ["contrast", "saturate", "brightness"]) {
-    if (imageInfo[assetName][filterName] != null) {
-      cssFilter += " " + filterName + "(" + imageInfo[assetName][filterName] + "%)";
-    }
-  }
-  if (cssFilter != "") {
-    context.filter = cssFilter;
-  }
-  context.drawImage(img, -xoff, -yoff);
-  context.restore();
-  // Now, clip the image using the mask. TODO: rename filter to mask.
-  context.save();
-  context.globalCompositeOperation = "destination-in";
-  context.drawImage(filter, 0, 0);
-  context.restore();
-  renderLoops[assetName] = 2;
 }
 
 function createShape(specs) {
@@ -473,141 +423,44 @@ function createShape(specs) {
 }
 
 function renderImages() {
-  // Reset to make sure we wait for all assets to load again.
-  renderLoops = {};
-  let prefix = assetPrefix || "";
-  let assets = document.getElementById("assets");
-  while (assets.firstChild) {
-    assets.removeChild(assets.firstChild);
-  }
-  if (document.getElementById("uiload") != null) {
-    document.getElementById("uiload").style.display = "block";
-  }
-  try {
-    imageInfo = JSON.parse(localStorage.getItem(prefix + "imageinfo") || "{}");
-    setSources();
-
-    totalImages = sources.length;
-    eagerImages = totalImages;
-    loadedImages = 0;
-    errorImages = 0;
-    updateLoad();
-    for (let [idx, source] of sources.entries()) {
-      let img;
-      if (typeof(source) == "object") {
-        try {
-          img = createShape(source);
-          incrementLoad();
-        } catch(err) {
-          incrementError();
-        }
+  loadImages();
+  let renderPromises = [];
+  for (let assetName of assetNames) {
+    let variantConfig = variants[assetName];
+    let assetVariants = [""];
+    if (variantConfig) {
+      assetVariants = variantConfig.variants;
+    }
+    for (let variant of assetVariants) {
+      let imgData = imageInfo[assetName + variant];
+      if (imgData == null || imgData.srcnum == null) {
+        continue;
+      }
+      let cnv = document.createElement("CANVAS");
+      cnv.id = "canvas" + assetName + variant;
+      assets.appendChild(cnv);
+      let imgPromise = createImage(imgData.srcnum);
+      if (imgData.filternum != null) {
+        let finishRender = function() {
+          let img = document.getElementById("img" + imgData.filternum);
+          cnv.width = img.naturalWidth || img.width;
+          cnv.height = img.naturalHeight || img.height;
+          renderMaskedImage(cnv, imgData);
+        };
+        imgPromise = Promise.all([createImage(imgData.srcnum), createImage(imgData.filternum)]);
+        renderPromises.push(imgPromise.then(finishRender, () => failRender(assetName + variant, cnv)));
       } else {
-        img = document.createElement("IMG");
-        img.src = source;
-        img.addEventListener("load", incrementLoad);
-        img.addEventListener("error", incrementError);
-        img.addEventListener("abort", incrementError);
-      }
-      img.id = "img" + idx;
-      assets.appendChild(img);
-    }
-    variants = JSON.parse(localStorage.getItem(prefix + "variants") || "{}");
-
-    for (let assetName of assetNames) {
-      let variantConfig = variants[assetName];
-      let assetVariants;
-      if (!variantConfig) {
-        assetVariants = [""];
-      } else {
-        assetVariants = variantConfig.variants;
-      }
-      for (let variant of assetVariants) {
-        let imgData = imageInfo[assetName + variant];
-        if (imgData == null) {
-          console.log("Missing data for asset " + assetName + variant);
-          continue;
+        let finishRender = function() {
+          let img = document.getElementById("img" + imgData.srcnum);
+          cnv.width = img.naturalWidth || img.width;
+          cnv.height = img.naturalHeight || img.height;
+          renderImage(cnv, imgData.srcnum);
         }
-        // Not every skin will define every asset.
-        if (imgData.srcnum == null) {
-          continue;
-        }
-        let source = document.getElementById("img" + imgData.srcnum);
-        if (source == null) {
-          failRender(assetName + variant, null);
-          continue;
-        }
-        if (imgData.filternum == null) {
-          renderLoops[assetName + variant] = 1;
-          let img = document.createElement("IMG");
-          img.src = source.src;
-          img.id = "canvas" + assetName + variant;
-          assets.appendChild(img);
-          img.addEventListener("load", function(e) { finishImgLoad(assetName + variant) });
-          img.addEventListener("error", function(e) { failRender(assetName + variant, img) });
-          img.addEventListener("abort", function(e) { failRender(assetName + variant, img) });
-        } else {
-          let cnv = document.createElement("CANVAS");
-          cnv.id = "canvas" + assetName + variant;
-          assets.appendChild(cnv);
-          let filter = document.getElementById("img" + imgData.filternum);
-          if (filter == null) {
-            failRender(assetName + variant, cnv);
-            continue;
-          }
-          source.addEventListener("load", function(e) {
-            renderSource(assetName + variant, cnv, source, filter);
-          });
-          source.addEventListener("error", function(e) { failRender(assetName + variant, cnv) });
-          source.addEventListener("abort", function(e) { failRender(assetName + variant, cnv) });
-          if (filter.tagName != "CANVAS") {
-            filter.addEventListener("load", function(e) {
-              renderSource(assetName + variant, cnv, source, filter);
-            });
-            filter.addEventListener("error", function(e) { failRender(assetName + variant, cnv) });
-            filter.addEventListener("abort", function(e) { failRender(assetName + variant, cnv) });
-          } else {
-            renderSource(assetName + variant, cnv, source, filter);
-          }
-        }
+        renderPromises.push(imgPromise.then(finishRender, () => failRender(assetName + variant, cnv)));
       }
     }
-  } catch(err) {
-    somePromise = new Promise((resolve, reject) => {
-      console.log(err);
-      failInit(resolve, reject, err.message);
-    });
-    return somePromise;
   }
-  // There's probably a better way to do this (create many promises and resolve them from inside
-  // renderSource? How do we get the resolve function in renderSource? Anyway, I'm not going to
-  // try to figure it out right now.
-  somePromise = new Promise((resolve, reject) => {
-    setTimeout(function() { checkInitDone(resolve, reject, 300) }, 100);
-  });
-  return somePromise;
-}
-
-function failInit(resolver, rejecter, errText) {
-  rejecter(errText);
-}
-
-function checkInitDone(resolver, rejecter, maxTries) {
-  if (!maxTries) {
-    rejecter("deadline exceeded");
-    return;
-  }
-  let allDone = true;
-  for (let iname in renderLoops) {
-    if (renderLoops[iname] != 2) {
-      allDone = false;
-      break;
-    }
-  }
-  if (!allDone) {
-    setTimeout(function() { checkInitDone(resolver, rejecter, maxTries - 1) }, 100);
-    return;
-  }
-  resolver("loaded");
+  return Promise.allSettled(renderPromises);
 }
 
 window.addEventListener("resize", function() {
