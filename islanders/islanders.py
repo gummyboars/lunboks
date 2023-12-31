@@ -2498,6 +2498,7 @@ class IslandersGame(BaseGame):
       ("The Fog Islands", SeafarerFog),
       ("Map Maker", MapMaker),
   ])
+  COLORS = {"red", "blue", "limegreen", "darkviolet", "saddlebrown", "darkorange"}
 
   def __init__(self):
     self.game = None
@@ -2563,6 +2564,7 @@ class IslandersGame(BaseGame):
           "host": self.host == session,
           "you": player_idx,
           "started": False,
+          "colors": sorted(self.COLORS - {p.color for p in self.player_sessions.values()}),
       })
 
       data["options"] = collections.OrderedDict([(key, self.choices[key]) for key in self.choices])
@@ -2623,21 +2625,36 @@ class IslandersGame(BaseGame):
   def handle_join(self, session, data):
     if self.game is not None:
       raise InvalidPlayer("The game has already started.")
+
+    unused_colors = self.COLORS - {player.color for player in self.player_sessions.values()}
+    used_names = [player.name for player in self.player_sessions.values()]
+
     if session in self.player_sessions:
-      raise InvalidPlayer("You have already joined the game.")
-    _validate_name(None, [player.name for player in self.player_sessions.values()], data)
+      current_player = self.player_sessions[session]
+      _validate_name(current_player.name, used_names, data)
+      if data.get("color") not in [current_player.color, None]:
+        if data["color"] not in unused_colors:
+          raise InvalidPlayer(f"Invalid color {data['color']}")
+        current_player.color = data["color"]
+      current_player.name = data["name"].strip()
+      return
 
     if len(self.player_sessions) >= 6:
       raise TooManyPlayers("There are no open slots.")
 
-    colors = set(["red", "blue", "forestgreen", "darkviolet", "saddlebrown", "deepskyblue"])
-    unused_colors = colors - {player.color for player in self.player_sessions.values()}
     if not unused_colors:
       raise TooManyPlayers("There are too many players.")
 
+    _validate_name(None, used_names, data)
+    color = data.get("color")
+    if color is not None and color not in unused_colors:
+      raise InvalidPlayer(f"Invalid color {color}")
+    if color is None:
+      color = random.choice(list(unused_colors))
+
     # TODO: just use some arguments and stop creating fake players. This requires that we clean
     # up the javascript to know what to do with undefined values.
-    self.player_sessions[session] = Player(list(unused_colors)[0], data["name"].strip())
+    self.player_sessions[session] = Player(color, data["name"].strip())
     self.update_player_count()
 
   def handle_takeover(self, session, data):

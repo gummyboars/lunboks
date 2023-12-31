@@ -135,6 +135,7 @@ function joinGame() {
     "name": document.getElementById("joinnameinput").value,
     "color": document.getElementById("joincolor").color,
   }));
+  localStorage.setItem("playername", document.getElementById("joinnameinput").value);
 }
 
 function selectOptions() {
@@ -252,6 +253,9 @@ function chooseColor(color) {
   }
   if (color == null) {
     document.getElementById("colortext").innerText = "?";
+    if (document.getElementById("join").disabled) {
+      joinGame();
+    }
     return;
   }
   document.getElementById("colortext").innerText = "";
@@ -259,6 +263,9 @@ function chooseColor(color) {
   inner.classList.add("innercolor");
   inner.style.backgroundColor = color;
   document.getElementById("joincolor").appendChild(inner);
+  if (document.getElementById("join").disabled) {
+    joinGame();
+  }
 }
 
 function toggleBurn(e) {
@@ -606,7 +613,11 @@ function onmsg(e) {
 }
 
 function updateJoinWindow(started, host, playerIdx, players, options, colors) {
-  document.getElementById("uijoin").classList.toggle("shown", !started);
+  let uiJoin = document.getElementById("uijoin");
+  if (!uiJoin.classList.contains("shown") && !started) {
+    document.getElementById("joinnameinput").value = localStorage.getItem("playername") || "";
+  }
+  uiJoin.classList.toggle("shown", !started);
   if (players.length > 1 && playerIdx != null && host) {
     document.getElementById("start").classList.remove("disabled");
     document.getElementById("start").disabled = false;
@@ -615,6 +626,8 @@ function updateJoinWindow(started, host, playerIdx, players, options, colors) {
     document.getElementById("start").disabled = true;
   }
   if (!started) {
+    document.getElementById("join").disabled = (playerIdx != null);
+    document.getElementById("join").classList.toggle("disabled", playerIdx != null);
     let joinColor = document.getElementById("joincolor");
     let ul = document.getElementById("colorlist");
     let toDelete = [];
