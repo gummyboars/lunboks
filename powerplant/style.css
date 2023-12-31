@@ -169,6 +169,7 @@ div {
   font-size: min(2.5vw, 4vh);
   font-family: sans-serif;
   background-color: olivedrab;
+  margin-right: min(0.2vw, 0.32vh);
 }
 #joinbuttons {
   display: flex;
@@ -177,6 +178,7 @@ div {
   align-items: center;
 }
 #joincolor {
+  flex: 0 0 auto;
   width: min(3vw, 4.8vh);
   height: min(3vw, 4.8vh);
   position: relative;

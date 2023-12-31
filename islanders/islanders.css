@@ -154,6 +154,53 @@ div {
   font-size: 24px;
   font-family: sans-serif;
   background-color: palegoldenrod;
+  margin-right: 2px;
+}
+#joincolor {
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  position: relative;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid black;
+  border-radius: 10%;
+  box-shadow: 2px #333;
+  transform: translate(-5%, -5%);
+}
+#joincolor.selected {
+  transform: none;
+  box-shadow: 1px #333;
+}
+#colorlist {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  margin: 0;
+  padding: 0;
+  display: none;
+  flex-direction: column;
+  z-index: 1;
+}
+#joincolor.selected #colorlist {
+  display: flex;
+}
+.coloritem {
+  width: 28px;
+  height: 28px;
+  background-color: khaki;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.coloritem:hover {
+  background-color: darkkhaki;
+}
+.innercolor {
+  width: 80%;
+  height: 80%;
 }
 #resourcepopup {
   display: none;

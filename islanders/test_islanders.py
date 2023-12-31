@@ -2478,6 +2478,27 @@ class TestUnstartedGame(unittest.TestCase):
     self.c.handle_join("four", {"name": "player4"})
     self.assertCountEqual(self.c.player_sessions.keys(), ["one", "four", "three"])
 
+  def testRejoin(self):
+    self.c.connect_user("one")
+    self.c.connect_user("two")
+    self.c.connect_user("three")
+    self.c.handle_join("one", {"name": "player1", "color": "red"})
+    self.c.handle_join("two", {"name": "player2", "color": "blue"})
+    self.c.handle_join("three", {"name": "player3", "color": "limegreen"})
+    self.assertSetEqual(
+        {p.color for p in self.c.player_sessions.values()},
+        {"red", "blue", "limegreen"},
+    )
+    self.c.handle_join("three", {"name": "3player", "color": "saddlebrown"})
+    self.assertSetEqual(
+        {p.color for p in self.c.player_sessions.values()},
+        {"red", "blue", "saddlebrown"},
+    )
+    self.assertSetEqual(
+        {p.name for p in self.c.player_sessions.values()},
+        {"player1", "player2", "3player"},
+    )
+
   def testChooseBadScenario(self):
     self.assertIsNone(self.c.game)
     self.c.connect_user("one")

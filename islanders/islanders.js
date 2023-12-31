@@ -65,6 +65,7 @@ gameOptions = {};
 gameScenarios = {};
 myIdx = null;
 amHost = false;
+colors = [];
 playerData = [];
 tiles = [];
 ports = [];
@@ -1067,6 +1068,7 @@ function onmsg(event) {
   gameStarted = data.started;
   gameOptions = data.options;
   gameScenarios = data.scenario;
+  colors = data.colors ?? [];
   amHost = data.host;
   playerData = data.player_data;
   gamePhase = data.game_phase;
@@ -1190,6 +1192,7 @@ function updateJoinWindow() {
     document.getElementById("joinnameinput").value = localStorage.getItem("playername") || "";
   }
   uiJoin.style.display = "flex";
+  updateJoinColors();
   let scenarioSelect = document.getElementById("scenario");
   if (!scenarioSelect.children.length) {
     for (let scenarioName of gameScenarios.choices) {
@@ -1232,6 +1235,42 @@ function updateJoinWindow() {
   }
   if (amHost) {
     enableButton(document.getElementById("start"));
+  }
+}
+function updateJoinColors() {
+  let joinColor = document.getElementById("joincolor");
+  let ul = document.getElementById("colorlist");
+  let toDelete = [];
+  let found = [];
+  for (let opt of ul.children) {
+    if (opt.color == null) {  // random
+      opt.style.order = colors.length;
+      opt.onclick = function(e) { chooseColor(null); };
+      continue;
+    }
+    let idx = colors.indexOf(opt.color);
+    if (idx < 0) {
+      toDelete.push(opt);
+    } else {
+      opt.style.order = idx;
+      found.push(opt.color);
+    }
+  }
+  for (let c of colors) {
+    if (!found.includes(c)) {
+      let opt = document.createElement("LI");
+      opt.classList.add("coloritem");
+      opt.color = c;
+      let inner = document.createElement("DIV");
+      inner.classList.add("innercolor");
+      inner.style.backgroundColor = c;
+      opt.appendChild(inner);
+      ul.appendChild(opt);
+      opt.onclick = function(e) { chooseColor(c); };
+    }
+  }
+  for (let d of toDelete) {
+    ul.removeChild(d);
   }
 }
 function updateOptionValue(option, elem) {
@@ -1326,6 +1365,33 @@ function changeScenario(e) {
   };
   ws.send(JSON.stringify(msg));
 }
+function toggleColor(e) {
+  document.getElementById("joincolor").classList.toggle("selected");
+}
+function chooseColor(color) {
+  let joinDiv = document.getElementById("joincolor");
+  joinDiv.color = color;
+  for (child of joinDiv.children) {
+    if (child.classList.contains("innercolor")) {
+      joinDiv.removeChild(child);
+    }
+  }
+  if (color == null) {
+    document.getElementById("colortext").innerText = "?";
+    if (myIdx != null) {
+      joinGame(null);
+    }
+    return;
+  }
+  document.getElementById("colortext").innerText = "";
+  let inner = document.createElement("DIV");
+  inner.classList.add("innercolor");
+  inner.style.backgroundColor = color;
+  document.getElementById("joincolor").appendChild(inner);
+  if (myIdx != null) {
+    joinGame(null);
+  }
+}
 function startGame(e) {
   let msg = {
     type: "start",
@@ -1337,6 +1403,7 @@ function joinGame(e) {
   let msg = {
     type: "join",
     name: document.getElementById("joinnameinput").value,
+    color: document.getElementById("joincolor").color,
   };
   ws.send(JSON.stringify(msg));
   localStorage.setItem("playername", document.getElementById("joinnameinput").value);
@@ -1475,6 +1542,8 @@ function updatePlayerData() {
       } else {
         joinButton.style.display = "none";
       }
+    } else {
+      document.getElementById("nameInput").style.background = playerData[i].color;
     }
 
     let turnMarker = playerDiv.getElementsByClassName("turnmarker")[0];
