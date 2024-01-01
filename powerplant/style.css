@@ -18,8 +18,8 @@ div {
   transform: translateX(-50%);
   text-align: center;
   font-size: 36px;
-  color: maroon;
-  background: sienna;
+  color: firebrick;
+  background: lightgray;
   z-index: 40; /* error should be shown over everything else */
 }
 #uiload {
@@ -30,7 +30,7 @@ div {
   transform: translate(-50%, -50%);
   z-index: 30;
   color: black;
-  background: sienna;
+  background: #406f18;
   font-size: 36px;
   text-align: center;
 }
@@ -44,7 +44,7 @@ div {
   left: 0;
   width: 0%;
   height: 100%;
-  background: chocolate;
+  background: olivedrab;
   z-index: -1;
 }
 #errorbar {
@@ -146,7 +146,7 @@ div {
   min-width: 50%;
   pointer-events: auto;
   flex-direction: column;
-  background-color: darkolivegreen;
+  background-color: #406f18;
   row-gap: min(1vw, 1.6vh);
   padding-top: min(1vw, 1.6vh);
   padding-bottom: min(1vw, 1.6vh);
@@ -210,7 +210,7 @@ div {
 .coloritem {
   width: min(3vw, 4.8vh);
   height: min(3vw, 4.8vh);
-  background-color: darkolivegreen;
+  background-color: #406f18;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -233,7 +233,7 @@ div {
   border-radius: min(1vw, 1.6vh);
   box-shadow: 0 min(0.5vw, 0.8vh) #999;
   font-size: min(2.5vw, 4vh);
-  background: darkcyan;
+  background: steelblue;
   display: inline-block;
   width: min(7vw, 11.2vh);
 }
@@ -254,7 +254,7 @@ div {
   align-items: center;
   justify-content: center;
   font-size: min(2vw, 3.2vh);
-  background-color: olive;
+  background-color: olivedrab;
 }
 #payments.shown {
   pointer-events: auto;
@@ -271,7 +271,7 @@ div {
   align-items: center;
   justify-content: center;
   font-size: min(2vw, 3.2vh);
-  background-color: olive;
+  background-color: olivedrab;
 }
 #resupply.shown {
   pointer-events: auto;
@@ -645,7 +645,7 @@ div {
   text-align: center;
 }
 .plantnum {
-  width: 20%;
+  width: 30%;
 }
 .plantoutput {
   width: 20%;
@@ -660,7 +660,7 @@ div {
   top: 50%;
   left: 0;
   transform: translate(-100%, -50%);
-  background: olive;
+  background: olivedrab;
   display: flex;
   flex-direction: row;
   align-items: center;
@@ -678,7 +678,7 @@ div {
   display: none;
   align-items: center;
   justify-content: center;
-  background-color: gold;
+  background-color: darkkhaki;
   font-size: min(1.25vw, 2vh);
   cursor: pointer;
 }
@@ -727,7 +727,7 @@ div {
 }
 .burnknob {
   position: absolute;
-  transition: left 0.8s ease-in;
+  transition: left 0.5s ease-in;
   left: min(0.25vw, 0.4vh);
   top: min(0.25vw, 0.4vh);
   width: min(2.5vw, 4vh);

@@ -805,6 +805,8 @@ function createPlayer(idx, player) {
   }
   let plantExpand = document.createElement("DIV");
   plantExpand.classList.add("plantexpand");
+  plantExpand.onmouseenter = function(e) { showPlants(plantExpand); };
+  plantExpand.onmouseleave = function(e) { hidePlants(plantExpand); };
   div.appendChild(plantExpand);
   let forceHide = document.createElement("DIV");
   forceHide.classList.add("forcehide");
