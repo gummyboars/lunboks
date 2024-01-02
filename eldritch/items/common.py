@@ -189,7 +189,7 @@ class Food(Item):
 
 
 def Lantern(idx):
-  return Item("Lantern", idx, "common", {}, {"luck": 1}, None, 3)
+  return Item("Lantern", idx, "common", {}, {"luck_check": 1}, None, 3)
 
 
 class SpeedBoost(Item):

@@ -2726,7 +2726,8 @@ class CombatWithEnchantedWeapon(EventTest):
     elder_thing = monsters.ElderThing()
     self.state.event_stack.clear()
     self.combat = events.Combat(self.char, elder_thing)
-    self.state.event_stack = [self.combat]
+    self.state.event_stack.clear()
+    self.state.event_stack.append(self.combat)
     self.char.fight_will_slider = 0
 
     self.assertCountEqual(self.state.usables[0].keys(), {"Enchant Weapon0"})
@@ -2761,6 +2762,7 @@ class CombatWithEnchantedWeapon(EventTest):
     self.choose_items(choose_weapons, [".38 Revolver0"])
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)) as rand:
       self.resolve_until_done()
+      self.assertEqual(rand.call_count, 4)  # Fight(1) + revolver (3)
 
     self.assertTrue(self.combat.combat.is_resolved())
     self.assertFalse(self.char.possessions[1].active)

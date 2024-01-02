@@ -140,11 +140,11 @@ class BaseCharacter(metaclass=abc.ABCMeta):
   def bonus(self, check_name, state, attributes=None, check=True):
     modifier = 0
     if state:
-      modifier += state.get_modifier(self, check_name)
+      modifier += state.get_modifier(self, check_name + ("_check" if check else ""))
     for pos in self.possessions:
-      bonus = pos.get_bonus(check_name, attributes)
+      bonus = pos.get_bonus(check_name, attributes, self, state)
       if check:
-        bonus += pos.get_bonus(check_name + "_check", attributes)
+        bonus += pos.get_bonus(check_name + "_check", attributes, self, state)
       if attributes and check_name in {"magical", "physical"}:
         if check_name + " immunity" in attributes:
           bonus = 0
@@ -335,10 +335,10 @@ class Character(BaseCharacter):
     self.movement_points = self._speed_sneak[self.speed_sneak_slider][0]
 
   def max_stamina(self, state):
-    return self._max_stamina + self.bonus("max_stamina", state)
+    return self._max_stamina + self.bonus("max_stamina", state, check=False)
 
   def max_sanity(self, state):
-    return self._max_sanity + self.bonus("max_sanity", state)
+    return self._max_sanity + self.bonus("max_sanity", state, check=False)
 
   def base_speed(self):
     return self._speed_sneak[self.speed_sneak_slider][0]

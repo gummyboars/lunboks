@@ -170,7 +170,7 @@ class EnchantWeapon(CombatSpell):
     )
     return events.CastSpell(owner, self, choice=choice)
 
-  def get_trigger(self, event, owner, state):
+  def get_interrupt(self, event, owner, state):
     if (
         isinstance(event, (events.DiscardSpecific, events.DiscardNamed))
         and event.character == owner
@@ -181,7 +181,7 @@ class EnchantWeapon(CombatSpell):
       # The only way I can think of to lose an item during combat is the Elder Thing, which is not
       # resistant. Plus, the rules are non-specific as to whether discarding a spell makes its
       # effect go away.
-      self.deactivate()
+      return events.DeactivateSpell(owner, self)
     return super().get_trigger(event, owner, state)
 
   def activate(self):
