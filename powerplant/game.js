@@ -623,9 +623,9 @@ function onmsg(e) {
   updateCities(data.cities, data.pending_build, data.players, data.turn_idx);
   updateResources(data.resources, data.pending_buy);
   updatePending(data.pending_spend, data.phase);
-  updatePlayers(data.players, data.turn_order, data.player_idx, data.pending_spend, data.turn_idx, data.winner);
+  updatePlayers(data.players, data.turn_order, data.player_idx, data.pending_spend, data.turn_idx, data.phase, data.winner);
   updateMarket(data.market, data.phase);
-  updateAuction(data.auction_bid, data.auction_plant_idx, data.phase == "auction" && data.auction_idx == data.player_idx);
+  updateAuction(data.auction_bid, data.auction_plant_idx, data.turn_order, data.players, data.auction_idx, data.auction_passed, data.auction_bought, data.phase, data.player_idx)
   maybeShowExpandedPlants(data.phase, data.player_idx, data.auction_discard_idx);
   updateBurn(data.phase, data.player_idx, data.turn_order, data.turn_idx);
   updatePhase(data.phase);
@@ -767,7 +767,7 @@ function updatePending(pendingSpend, phase) {
   }
 }
 
-function updatePlayers(players, turnOrder, playerIdx, pendingSpend, turnIdx, winner) {
+function updatePlayers(players, turnOrder, playerIdx, pendingSpend, turnIdx, phase, winner) {
   if (players == null) {
     return;
   }
@@ -780,7 +780,11 @@ function updatePlayers(players, turnOrder, playerIdx, pendingSpend, turnIdx, win
     if (turnOrder != null) {
       order = turnOrder.indexOf(idx);
     }
-    updatePlayer(pdiv, player, order, idx, playerIdx == idx, turnIdx == idx, winner);
+    let isTurn = (turnIdx == idx);
+    if (phase == "auction" && regionsDone) {
+      isTurn = false;
+    }
+    updatePlayer(pdiv, player, order, idx, playerIdx == idx, isTurn, winner);
   }
   while (document.getElementsByClassName("player").length > players.length) {
     let allPlayerDivs = document.getElementsByClassName("player");
@@ -1125,7 +1129,9 @@ function updateMarket(market, phase) {
   }
 }
 
-function updateAuction(currentBid, bidPlantIdx, yourBidTurn) {
+function updateAuction(currentBid, bidPlantIdx, turnOrder, players, auctionIdx, passed, bought, phase, playerIdx) {
+  let yourBidTurn = (phase == "auction" && auctionIdx == playerIdx);
+  document.getElementById("auction").classList.toggle("hidden", phase != "auction");
   bidPlant = bidPlantIdx;
   let bidInput = document.getElementById("bid");
   if (!yourBidTurn) {
@@ -1133,12 +1139,77 @@ function updateAuction(currentBid, bidPlantIdx, yourBidTurn) {
     bidInput.value = currentBid;
   } else {
     let myBid = parseInt(bidInput.value);
-    if (myBid != myBid || myBid < currentBid) {
-      bidInput.value = currentBid;
+    if (currentBid != null) {
+      if (myBid != myBid || myBid <= currentBid) {
+        bidInput.value = currentBid+1;
+      }
     }
   }
   document.getElementById("bid").disabled = !yourBidTurn;
   updateAuctionPlants(yourBidTurn);
+  if (phase == "auction") {
+    updateBidders(currentBid, turnOrder, players, auctionIdx, passed, bought);
+  }
+}
+
+function updateBidders(currentBid, turnOrder, players, auctionIdx, passed, bought) {
+  let bidders = document.getElementById("bidders");
+  let eligible = Array(...turnOrder);
+  let alreadyBought = [];
+  for (let idx of eligible) {
+    if (bought[idx] !== undefined) {
+      alreadyBought.push(idx);
+    }
+  }
+  for (let idx of alreadyBought) {
+    eligible.splice(eligible.indexOf(idx), 1);
+  }
+  while (6 > bidders.children.length) {
+    let d = document.createElement("DIV");
+    d.classList.add("bidder");
+    let pname = document.createElement("DIV");
+    pname.classList.add("biddername");
+    let pbid = document.createElement("DIV");
+    pbid.classList.add("bidderbid");
+    d.appendChild(pname);
+    d.appendChild(pbid);
+    d.style.color = "white";
+    bidders.appendChild(d);
+  }
+  for (let i = eligible.length; i < bidders.children.length; i++) {
+    bidders.children[i].firstChild.innerText = "";
+    bidders.children[i].lastChild.innerText = "";
+    bidders.children[i].style.backgroundColor = "transparent";
+  }
+  let lastBidIdx = null;
+  let prevBidIdx = null;
+  for (let [idx, pidx] of eligible.entries()) {
+    bidders.children[idx].style.backgroundColor = players[pidx].color;
+    let pname = bidders.children[idx].firstChild;
+    let pbid = bidders.children[idx].lastChild;
+    pname.innerText = players[pidx].name;
+    if (currentBid == null) {
+      pbid.innerText = "";
+    }
+    if (passed.includes(pidx)) {
+      pname.style.textDecoration = "line-through white";
+      pbid.innerText = "";
+    } else {
+      pname.style.textDecoration = "none";
+      if (pidx == auctionIdx) {
+        prevBidIdx = lastBidIdx;
+        pbid.innerText = "?";
+      }
+      lastBidIdx = pidx;
+    }
+  }
+  if (currentBid != null && prevBidIdx == null) {
+    prevBidIdx = lastBidIdx;
+  }
+  if (currentBid != null && prevBidIdx != null) {
+    let idx = eligible.indexOf(prevBidIdx);
+    bidders.children[idx].lastChild.innerText = currentBid;
+  }
 }
 
 function updateAuctionPlants(yourBidTurn) {
