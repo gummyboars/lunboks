@@ -50,12 +50,17 @@
             </div>
           </div>
           <div id="market">
-            <div id="markettop" class="marketrow"></div>
-            <div id="marketbottom" class="marketrow"></div>
             <div id="auction">
-              <input id="bid" type="number"></input>
-              <button id="bidbtn" value="Bid" onclick="makeBid()">Bid</button>
-              <button id="passbtn" value="Pass" onclick="passBid()">Pass</button>
+              <div id="bidders"></div>
+              <div id="bidrow">
+                <input id="bid" type="number"></input>
+                <button id="bidbtn" class="smallbutton btn2 smaller" value="Bid" onclick="makeBid()">BID</button>
+              </div>
+              <button id="passbtn" class="smallbutton btn2" value="Pass" onclick="passBid()">PASS</button>
+            </div>
+            <div id="marketplants">
+              <div id="markettop" class="marketrow"></div>
+              <div id="marketbottom" class="marketrow"></div>
             </div>
           </div>
           <div id="paysupply">

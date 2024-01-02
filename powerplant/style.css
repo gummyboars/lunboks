@@ -141,8 +141,9 @@ div {
   position: absolute;
   top: 0;
   right: 0;
-  border-top: min(0.25vw, 0.4vh) solid darkgreen;
-  border-right: min(0.25vw, 0.4vh) solid darkgreen;
+  color: darkgreen;
+  border-top: min(0.25vw, 0.4vh) solid currentcolor;
+  border-right: min(0.25vw, 0.4vh) solid currentcolor;
   border-bottom: min(0.25vw, 0.4vh) solid transparent;
   border-left: min(0.25vw, 0.4vh) solid transparent;
   transform: translateX(min(0.5vw, 0.8vh)) translateY(max(-0.25vw, -0.4vh));
@@ -152,8 +153,9 @@ div {
   position: absolute;
   bottom: 0;
   left: 0;
-  border-bottom: min(0.25vw, 0.4vh) solid darkgreen;
-  border-left: min(0.25vw, 0.4vh) solid darkgreen;
+  color: darkgreen;
+  border-bottom: min(0.25vw, 0.4vh) solid currentcolor;
+  border-left: min(0.25vw, 0.4vh) solid currentcolor;
   border-top: min(0.25vw, 0.4vh) solid transparent;
   border-right: min(0.25vw, 0.4vh) solid transparent;
   transform: translateX(max(-0.25vw, -0.4vh)) translateY(min(0.5vw, 0.8vh));
@@ -161,6 +163,12 @@ div {
 .smallbutton:active {
   transform: translateX(min(0.25vw, 0.4vh)) translateY(min(0.25vw, 0.4vh));
   box-shadow: none;
+}
+.btn2:before {
+  color: #406f18;
+}
+.btn2:after {
+  color: #406f18;
 }
 .smallbutton:active:after {
   border: 0px solid transparent;
@@ -173,6 +181,9 @@ div {
 }
 .smallbutton.burn:disabled {
   color: revert;
+}
+.smaller {
+  width: min(4vw, 6.4vh);
 }
 #pending {
   width: min(8vw, 12.8vh);
@@ -443,14 +454,20 @@ select {
   visibility: hidden;
   display: flex;
   pointer-events: none;
-  background: darkgreen;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
   justify-content: center;
 }
 #market.shown {
   pointer-events: auto;
   visibility: visible;
+}
+#marketplants {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: darkgreen;
 }
 .marketrow {
   display: flex;
@@ -508,9 +525,54 @@ select {
 }
 #auction {
   display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  background-color: #406f18;
+}
+#auction.hidden {
+  display: none;
+}
+#bidrow {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-evenly;
+  width: 100%;
+  font-size: min(1.75vw, 2.8vh);
+  font-family: Arial, sans-serif;
+}
+#bid {
+  font-size: min(1.25vw, 2vh);
+  width: 6ch;
+  height: 1.5em;
+  background: olivedrab;
+}
+#bidders {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: min(1vw, 1.6vh);
+  width: 22ch;
+}
+.bidder {
+  display: flex;
   flex-direction: row;
   align-items: center;
   justify-content: space-between;
+  width: 20ch;
+  height: 1.5em;
+  padding-left: 1ch;
+  padding-right: 1ch;
+  padding-top: 0.5ch;
+  padding-bottom: 0.5ch;
+}
+.biddername {
+  width: 17ch;
+  max-width: 17ch;
+  text-overflow: clip;
+  overflow: hidden;
 }
 #board {
   flex: 1 1 100%;
