@@ -17,6 +17,7 @@ supplyRates = [
 // Keep track of phase transitions.
 oldPhase = null;
 oldDiscard = null;
+hasBurned = false;
 regionsDone = false;
 // Keep track of the auction.
 bidPlant = null;
@@ -269,6 +270,9 @@ function chooseColor(color) {
 }
 
 function toggleBurn(e) {
+  if (oldPhase != "bureaucracy" || hasBurned) {
+    return;
+  }
   let rsrcDiv = e.currentTarget;
   if (rsrcDiv.assetName == null) {
     return;
@@ -284,7 +288,10 @@ function toggleBurn(e) {
   updateBurnCounts(plantCnt);
 }
 
-function changeBurn(plantCnt) {
+function changeBurn(plantCnt, phase) {
+  if (oldPhase == "bureaucracy" || phase == "bureaucracy") {
+    updatePendingPower();
+  }
   let check = plantCnt.getElementsByTagName("INPUT")[0];
   if (check.checked) {
     // Auto-burn
@@ -325,6 +332,18 @@ function changeBurn(plantCnt) {
   for (let rsrcDiv of plantCnt.getElementsByClassName("stored")) {
     rsrcDiv.classList.remove("toburn");
   }
+}
+
+function updatePendingPower() {
+  let output = 0;
+  for (let plantDiv of document.getElementsByClassName("owned")) {
+    let chk = plantDiv.parentNode.getElementsByTagName("INPUT")[0];
+    if (chk.checked) {
+      output += plantDiv.output;
+    }
+  }
+  document.getElementById("pending").innerText = `POWER: ${output}`;
+  document.getElementById("pending").classList.remove("empty");
 }
 
 function discardPlant(plantCnt) {
@@ -379,8 +398,10 @@ function updateBurnCounts(plantCnt) {
   let toBurn = getBurnCount(plantCnt.getElementsByClassName("marketplant")[0]);
   if (Object.keys(toBurn).length) {
     checkbox.checked = true;
+    updatePendingPower();
   } else {
     checkbox.checked = false;
+    updatePendingPower();
   }
 }
 
@@ -601,13 +622,14 @@ function onmsg(e) {
   updateSupplyRates(data.players, data.turn_order != null);
   updateCities(data.cities, data.pending_build, data.players, data.turn_idx);
   updateResources(data.resources, data.pending_buy);
-  updatePending(data.pending_spend);
+  updatePending(data.pending_spend, data.phase);
   updatePlayers(data.players, data.turn_order, data.player_idx, data.pending_spend, data.turn_idx, data.winner);
   updateMarket(data.market, data.phase);
   updateAuction(data.auction_bid, data.auction_plant_idx, data.phase == "auction" && data.auction_idx == data.player_idx);
   maybeShowExpandedPlants(data.phase, data.player_idx, data.auction_discard_idx);
-  updateBurn(data.phase, data.player_idx);
+  updateBurn(data.phase, data.player_idx, data.turn_order, data.turn_idx);
   updatePhase(data.phase);
+  updateButtons(data.phase, data.player_idx == data.turn_idx);
   oldDiscard = data.auction_discard_idx;
   oldPhase = regionsDone ? data.phase : null;
 }
@@ -733,12 +755,16 @@ function updateResources(resources, pendingBuy) {
   }
 }
 
-function updatePending(pendingSpend) {
-  if (pendingSpend == null) {
-    document.getElementById("pending").firstChild.value = 0;
-    return;
+function updatePending(pendingSpend, phase) {
+  if (phase == "bureaucracy") {
+    updatePendingPower();
+  } else if (pendingSpend != null && ["materials", "building"].includes(phase)) {
+    document.getElementById("pending").innerText = `COST: ${pendingSpend}`;
+    document.getElementById("pending").classList.remove("empty");
+  } else {
+    document.getElementById("pending").innerText = "COST";
+    document.getElementById("pending").classList.add("empty");
   }
-  document.getElementById("pending").firstChild.value = pendingSpend;
 }
 
 function updatePlayers(players, turnOrder, playerIdx, pendingSpend, turnIdx, winner) {
@@ -929,7 +955,7 @@ function createPlayerMarketPlant(parentDiv, owned) {
     burnKnob.classList.add("burnknob");
     burnSlider.appendChild(burnKnob);
     let discard = document.createElement("BUTTON");
-    discard.classList.add("plantdiscard");
+    discard.classList.add("plantdiscard", "joinbutton");
     discard.innerText = "DISCARD";
     cnt.appendChild(discard);
     discard.onclick = function(e) { discardPlant(cnt) };
@@ -976,6 +1002,7 @@ function createMarketPlant(parentDiv, owned) {
 
 function updateMarketPlant(plantDiv, plant, idx) {
   plantDiv.intake = plant.intake;
+  plantDiv.output = plant.output;
   plantDiv.idx = idx;
   renderAssetToDiv(plantDiv, plantName(plant));
   let storeCounts = {};
@@ -1003,12 +1030,14 @@ function updateMarketPlant(plantDiv, plant, idx) {
       toAdd.push(rsrc);
     }
   }
+  let changed = (toRemove.length || toAdd.length);
   let storeDivs = plantDiv.getElementsByClassName("stored");
   for (let rsrc of toRemove) {
     for (let i = storeDivs.length-1; i >=0; i--) {
       if (storeDivs[i].assetName == rsrc) {
         clearAssetFromDiv(storeDivs[i]);
         storeDivs[i].classList.remove("toburn");
+        storeDivs[i].classList.remove("exists");
         break;
       }
     }
@@ -1017,8 +1046,21 @@ function updateMarketPlant(plantDiv, plant, idx) {
     for (let i = 0; i < storeDivs.length; i++) {
       if (storeDivs[i].assetName == null) {
         renderAssetToDiv(storeDivs[i], rsrc);
+        storeDivs[i].classList.add("exists");
         break;
       }
+    }
+  }
+  if (plantDiv.classList.contains("owned") && changed && oldPhase == "bureaucracy") {
+    let count = plantDiv.getElementsByClassName("exists").length;
+    let plantCnt = plantDiv.parentNode;
+    let checkBox = plantCnt.getElementsByTagName("INPUT")[0];
+    if (count >= plant.intake) {
+      checkBox.checked = true;
+      changeBurn(plantCnt);
+    } else if (count == 0) {
+      checkBox.checked = false;
+      changeBurn(plantCnt);
     }
   }
 }
@@ -1103,13 +1145,14 @@ function maybeShowExpandedPlants(phase, playerIdx, discardIdx) {
   plantExpand.classList.toggle("discard", discardIdx == playerIdx);
 }
 
-function updateBurn(phase, playerIdx) {
+function updateBurn(phase, playerIdx, turnOrder, turnIdx) {
   let playerDiv = document.getElementById("player" + playerIdx);
   if (playerDiv == null) {
     return;
   }
   let plantExpand = playerDiv.getElementsByClassName("plantexpand")[0];
   if (phase == "bureaucracy" && phase != oldPhase) {
+    hasBurned = false;
     // If we have just entered the bureaucracy phase, auto-fire the player's plants.
     for (let plantDiv of document.getElementsByClassName("owned")) {
       let plantCnt = plantDiv.parentNode;
@@ -1122,12 +1165,25 @@ function updateBurn(phase, playerIdx) {
       }
       if (storeTotal >= plantDiv.intake) {
         checkBox.checked = true;
-        changeBurn(plantCnt);
+        changeBurn(plantCnt, phase);
+      } else if (storeTotal == 0) {
+        checkBox.checked = false;
+        changeBurn(plantCnt, phase);
+      }
+    }
+  }
+  if (phase == "bureaucracy" && turnOrder.indexOf(turnIdx) > turnOrder.indexOf(playerIdx)) {
+    hasBurned = true;
+  }
+  if ((phase == "bureaucracy" && hasBurned) || phase != "bureaucracy") {
+    for (let plantDiv of document.getElementsByClassName("owned")) {
+      for (let stored of plantDiv.getElementsByClassName("stored")) {
+        stored.classList.remove("toburn");
       }
     }
   }
   for (let checkbox of document.getElementsByClassName("burncheck")) {
-    checkbox.disabled = phase != "bureaucracy";
+    checkbox.disabled = (phase != "bureaucracy" || hasBurned);
   }
 }
 
@@ -1137,5 +1193,29 @@ function updatePhase(phase) {
   }
   for (let p of document.getElementsByClassName("orderitem")) {
     p.classList.toggle("current", p.id == "order" + phase);
+  }
+}
+
+function updateButtons(phase, myTurn) {
+  if (!regionsDone) {
+    return;
+  }
+  if (phase == "bureaucracy") {
+    document.getElementById("confirmbtn").innerText = "Burn";
+    document.getElementById("confirmbtn").classList.add("burn");
+    document.getElementById("confirmbtn").onclick = burn;
+  } else {
+    document.getElementById("confirmbtn").innerText = "Done";
+    document.getElementById("confirmbtn").classList.remove("burn");
+    document.getElementById("confirmbtn").onclick = doConfirm;
+  }
+  document.getElementById("confirmbtn").disabled = true;
+  document.getElementById("resetbtn").disabled = true;
+  if (phase == "bureaucracy") {
+    document.getElementById("confirmbtn").disabled = hasBurned;
+  }
+  if (myTurn && ["materials", "building"].includes(phase)) {
+    document.getElementById("confirmbtn").disabled = false;
+    document.getElementById("resetbtn").disabled = false;
   }
 }
