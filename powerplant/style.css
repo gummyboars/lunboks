@@ -91,17 +91,77 @@ div {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  order: 20;
+  justify-content: space-evenly;
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: min(8vw, 12.8vh);
+  height: min(8vw, 12.8vh);
+  background: darkgreen;
 }
-#buttonrow {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  justify-content: space-around;
+.smallbutton {
+  position: relative;
+  cursor: pointer;
+  text-align: center;
+  text-transform: uppercase;
+  border: min(0.25vw, 0.4vh) solid black;
+  box-shadow: min(0.25vw, 0.4vh) min(0.25vw, 0.4vh) black, min(0.25vw, 0.4vh) 0 black, 0 min(0.25vw, 0.4vh) black;
+  font-size: min(1.5vw, 2.4vh);
+  background: silver;
+  display: inline-block;
+  width: min(6vw, 9.6vh);
+  margin-bottom: min(0.5vw, 0.8vh);
 }
-#pending input {
-  width: min(2.5vw, 4vh);
+.smallbutton.burn {
+  color: #c00;
+}
+.smallbutton:before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  border-top: min(0.25vw, 0.4vh) solid darkgreen;
+  border-right: min(0.25vw, 0.4vh) solid darkgreen;
+  border-bottom: min(0.25vw, 0.4vh) solid transparent;
+  border-left: min(0.25vw, 0.4vh) solid transparent;
+  transform: translateX(min(0.5vw, 0.8vh)) translateY(max(-0.25vw, -0.4vh));
+}
+.smallbutton:after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  border-bottom: min(0.25vw, 0.4vh) solid darkgreen;
+  border-left: min(0.25vw, 0.4vh) solid darkgreen;
+  border-top: min(0.25vw, 0.4vh) solid transparent;
+  border-right: min(0.25vw, 0.4vh) solid transparent;
+  transform: translateX(max(-0.25vw, -0.4vh)) translateY(min(0.5vw, 0.8vh));
+}
+.smallbutton:active {
+  transform: translateX(min(0.25vw, 0.4vh)) translateY(min(0.25vw, 0.4vh));
+  box-shadow: none;
+}
+.smallbutton:active:after {
+  border: 0px solid transparent;
+}
+.smallbutton:active:before {
+  border: 0px solid transparent;
+}
+.smallbutton:disabled {
+  pointer-events: none;
+}
+.smallbutton.burn:disabled {
+  color: revert;
+}
+#pending {
+  width: min(8vw, 12.8vh);
+  font-size: min(1.25vw, 2vh);
+  font-family: Times, serif;
+  text-align: center;
+  color: black;
+}
+#pending.empty {
+  color: darkgreen;
 }
 #phaseorder {
   display: flex;
@@ -110,9 +170,11 @@ div {
   font-size: min(1.25vw, 2vh);
   order: 25;
   width: 70%;
+  font-family: Times, serif;
 }
 .orderitem {
   width: 80%;
+  text-align: center;
 }
 .orderitem.current {
   color: white;
@@ -154,6 +216,16 @@ div {
 #uijoin.shown {
   display: flex;
 }
+.selectcontain{
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-evenly;
+  width: 50%;
+}
+select {
+  font-size: min(1.25vw, 2vh);
+}
 #joinname {
   display: flex;
   flex-direction: row;
@@ -161,15 +233,16 @@ div {
   color: black;
   font-weight: bold;
   font-size: min(3vw, 4.8vh);
-  font-family: sans-serif;
+  font-family: Arial, sans-serif;
 }
 #joinnameinput {
   color: black;
   font-weight: bold;
   font-size: min(2.5vw, 4vh);
-  font-family: sans-serif;
+  font-family: Arial, sans-serif;
   background-color: olivedrab;
   margin-right: min(0.2vw, 0.32vh);
+  width: 20ch;
 }
 #joinbuttons {
   display: flex;
@@ -203,6 +276,7 @@ div {
   padding: 0;
   display: none;
   flex-direction: column;
+  z-index: 1;
 }
 #joincolor.selected #colorlist {
   display: flex;
@@ -222,27 +296,60 @@ div {
   width: 80%;
   height: 80%;
 }
-.buttonspacer {
-  width: 10%;
-}
 .joinbutton {
+  position: relative;
   cursor: pointer;
   text-align: center;
-  outline: none;
-  border: none;
-  border-radius: min(1vw, 1.6vh);
-  box-shadow: 0 min(0.5vw, 0.8vh) #999;
+  text-transform: uppercase;
+  border: min(0.25vw, 0.4vh) solid black;
+  box-shadow: min(0.25vw, 0.4vh) min(0.25vw, 0.4vh) black, min(0.25vw, 0.4vh) 0 black, 0 min(0.25vw, 0.4vh) black;
   font-size: min(2.5vw, 4vh);
-  background: steelblue;
+  background: silver;
   display: inline-block;
-  width: min(7vw, 11.2vh);
+  width: min(9vw, 14.4vh);
+}
+.joinbutton:before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  color: #406f18;
+  border-top: min(0.25vw, 0.4vh) solid currentcolor;
+  border-right: min(0.25vw, 0.4vh) solid currentcolor;
+  border-bottom: min(0.25vw, 0.4vh) solid transparent;
+  border-left: min(0.25vw, 0.4vh) solid transparent;
+  transform: translateX(min(0.5vw, 0.8vh)) translateY(max(-0.25vw, -0.4vh));
+}
+.joinbutton:after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  color: #406f18;
+  border-bottom: min(0.25vw, 0.4vh) solid currentcolor;
+  border-left: min(0.25vw, 0.4vh) solid currentcolor;
+  border-top: min(0.25vw, 0.4vh) solid transparent;
+  border-right: min(0.25vw, 0.4vh) solid transparent;
+  transform: translateX(max(-0.25vw, -0.4vh)) translateY(min(0.5vw, 0.8vh));
 }
 .joinbutton:active {
-  transform: translateY(min(0.25vw, 0.4vh));
-  box-shadow: 0 min(0.25vw, 0.4vh) #333;
+  transform: translateX(min(0.25vw, 0.4vh)) translateY(min(0.25vw, 0.4vh));
+  box-shadow: none;
+}
+.joinbutton:active:after {
+  border: 0px solid transparent;
+}
+.joinbutton:active:before {
+  border: 0px solid transparent;
 }
 .joinbutton:disabled {
   pointer-events: none;
+}
+#paysupply {
+  display: flex;
+  flex-direction: row-reverse;
+  align-items: center;
+  justify-content: center;
 }
 #payments {
   width: min(12.5vw, 20vh);
@@ -263,6 +370,7 @@ div {
 }
 #resupply {
   width: min(12.5vw, 20vh);
+  height: min(12.5vw, 20vh);
   pointer-events: none;
   position: absolute;
   visibility: hidden;
@@ -362,7 +470,7 @@ div {
   align-items: center;
   justify-content: center;
 }
-.owned .stored:hover {
+.owned .stored.exists:hover {
   cursor: pointer;
 }
 .storedcheck {
@@ -792,19 +900,16 @@ div {
 */
 .plantdiscard {
   cursor: pointer;
-  text-align: center;
-  outline: none;
-  border: none;
-  border-radius: min(1vw, 1.6vh);
-  box-shadow: 0 min(0.5vw, 0.8vh) #999;
-  font-size: min(2.5vw, 4vh);
-  background: indianred;
+  background: #C36565;
+  width: min(12vw, 19.6vh);
   display: none;
+}
+.plantdiscard:before {
+  color: olivedrab;
+}
+.plantdiscard:after {
+  color: olivedrab;
 }
 .discard .plantdiscard {
   display: inline-block;
-}
-.plantdiscard:active {
-  box-shadow: 0 min(0.25vw, 0.4vh) #666;
-  transform: translateY(min(0.25vw, 0.4vh));
 }
