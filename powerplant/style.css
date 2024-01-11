@@ -164,6 +164,10 @@ div {
   transform: translateX(min(0.25vw, 0.4vh)) translateY(min(0.25vw, 0.4vh));
   box-shadow: none;
 }
+.smallbutton.pressed {
+  transform: translateX(min(0.25vw, 0.4vh)) translateY(min(0.25vw, 0.4vh));
+  box-shadow: none;
+}
 .btn2:before {
   color: #406f18;
 }
