@@ -160,11 +160,7 @@ div {
   border-right: min(0.25vw, 0.4vh) solid transparent;
   transform: translateX(max(-0.25vw, -0.4vh)) translateY(min(0.5vw, 0.8vh));
 }
-.smallbutton:active {
-  transform: translateX(min(0.25vw, 0.4vh)) translateY(min(0.25vw, 0.4vh));
-  box-shadow: none;
-}
-.smallbutton.pressed {
+.smallbutton:active, .smallbutton.pressed {
   transform: translateX(min(0.25vw, 0.4vh)) translateY(min(0.25vw, 0.4vh));
   box-shadow: none;
 }
@@ -174,10 +170,10 @@ div {
 .btn2:after {
   color: #406f18;
 }
-.smallbutton:active:after {
+.smallbutton:active:after, .smallbutton.pressed:after {
   border: 0px solid transparent;
 }
-.smallbutton:active:before {
+.smallbutton:active:before, .smallbutton.pressed:before {
   border: 0px solid transparent;
 }
 .smallbutton:disabled {
@@ -372,14 +368,14 @@ select {
   border-right: min(0.25vw, 0.4vh) solid transparent;
   transform: translateX(max(-0.25vw, -0.4vh)) translateY(min(0.5vw, 0.8vh));
 }
-.joinbutton:active {
+.joinbutton:active, .joinbutton.pressed {
   transform: translateX(min(0.25vw, 0.4vh)) translateY(min(0.25vw, 0.4vh));
   box-shadow: none;
 }
-.joinbutton:active:after {
+.joinbutton:active:after, .joinbutton.pressed:after {
   border: 0px solid transparent;
 }
-.joinbutton:active:before {
+.joinbutton:active:before, .joinbutton.pressed:before {
   border: 0px solid transparent;
 }
 .joinbutton:disabled {
@@ -924,6 +920,7 @@ select {
   display: flex;
 }
 .plantcnt {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1042,4 +1039,34 @@ select {
 }
 .discard .plantdiscard {
   display: inline-block;
+}
+#confirmdiscard {
+  display: none;
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  transform: translate(0%, 100%) translateY(min(1.5vw, 2.4vh));
+  width: min(15vw, 24vh);
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-evenly;
+  background: olivedrab;
+}
+#confirmdiscard.shown {
+  display: flex;
+}
+#confirmdiscard span {
+  text-align: center;
+  width: 80%;
+  font-size: min(1.25vw, 2vh);
+  font-family: Times, serif;
+}
+#discardbtn:after {
+  color: olivedrab;
+}
+#discardbtn:before {
+  color: olivedrab;
+}
+#discardbtn {
+  color: #c00;
 }
