@@ -34,6 +34,15 @@ draggedFrom = null;
 // Setting a small delay on expanded windows disappearing when the mouse leaves.
 expandId = null;
 
+isDragging = false;
+startX = null;
+startY = null;
+offsetX = 0;
+offsetY = 0;
+dX = 0;
+dY = 0;
+boardScale = 1;
+
 function init() {
   let params = new URLSearchParams(window.location.search);
   if (!params.has("game_id")) {
@@ -49,6 +58,8 @@ function continueInit(gameId) {
   ws = new WebSocket("ws://" + window.location.hostname + ":8081/" + gameId);
   ws.onmessage = onmsg;
 
+  document.getElementById("board").cnvScale = 4;
+  moveBoard();
   renderAssetToDiv(document.getElementById("payments"), "payments");
   renderAssetToDiv(document.getElementById("board"), "Germany");
   renderAssetToDiv(document.getElementById("supply"), "supply");
@@ -77,6 +88,77 @@ function continueInit(gameId) {
   spacer = document.createElement("DIV");
   spacer.classList.add("spacer");
   supp.appendChild(spacer);
+
+  document.getElementById("boardcnt").onmousemove = onmove;
+  document.getElementById("boardcnt").onmousedown = ondown;
+  document.getElementById("boardcnt").onmouseup = onup;
+  document.getElementById("boardcnt").onmouseout = onout;
+  document.getElementById("boardcnt").onwheel = onwheel;
+}
+
+function onmove(event) {
+  if (isDragging) {
+    let changeX = event.clientX - startX;
+    let changeY = event.clientY - startY;
+    dX = changeX;
+    dY = changeY;
+    moveBoard();
+  }
+}
+function ondown(event) {
+  // Ignore right/middle-click.
+  if (event.button != 0) {
+    return;
+  }
+  startX = event.clientX;
+  startY = event.clientY;
+  isDragging = true;
+}
+function onup(event) {
+  // Ignore right/middle-click.
+  if (event.button != 0) {
+    return;
+  }
+  if (isDragging) {
+    isDragging = false;
+    offsetX += dX;
+    offsetY += dY;
+    dX = 0;
+    dY = 0;
+  }
+}
+function onout(event) {
+  if (isDragging) {
+    isDragging = false;
+    offsetX += dX;
+    offsetY += dY;
+    dX = 0;
+    dY = 0;
+  }
+}
+function onwheel(event) {
+  event.preventDefault();
+  let oldScale = boardScale;
+  if (event.deltaY < 0) {
+    boardScale += 0.05;
+  } else if (event.deltaY > 0) {
+    boardScale -= 0.05;
+  }
+  boardScale = Math.min(Math.max(0.125, boardScale), 4);
+  let board = document.getElementById("board");
+  let rect = board.getBoundingClientRect();
+  let centerX = (rect.left + rect.right) / 2;
+  let centerY = (rect.top + rect.bottom) / 2;
+  let mouseX = event.clientX - centerX;
+  let mouseY = event.clientY - centerY;
+  let mouseXScaled = mouseX * boardScale / oldScale;
+  let mouseYScaled = mouseY * boardScale / oldScale;
+  offsetX -= (mouseXScaled - mouseX);
+  offsetY -= (mouseYScaled - mouseY);
+  moveBoard();
+}
+function moveBoard() {
+  document.getElementById("board").style.transform = "translate(" + (offsetX+dX) + "px, " + (offsetY+dY) + "px) scale(" + boardScale + ")";
 }
 
 function createResourceBox(supply, num) {

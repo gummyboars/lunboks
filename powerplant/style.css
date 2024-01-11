@@ -221,7 +221,7 @@ div {
   max-width: 88%;
   height: 100%;
   max-height: min(62.5vw, 100vh);
-  background: #D2A253;
+  background: darkgreen;
   display: flex;
   flex-direction: column;
   position: relative;
@@ -574,15 +574,29 @@ select {
   text-overflow: clip;
   overflow: hidden;
 }
-#board {
+#boardcnt {
   flex: 1 1 100%;
   width: 100%;
-  background: darkgreen;
   height: min(72vw, 115.2vh);
   max-height: min(72vw, 115.2vh);
   display: flex;
   flex-direction: row;
   position: relative;
+  overflow: hidden;
+}
+#board {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+#boardcnv {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(25%);
+  transform-origin: center;
 }
 .cnv {
   position: absolute;
