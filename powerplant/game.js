@@ -787,18 +787,41 @@ function updatePlayers(players, turnOrder, playerIdx, pendingSpend, turnIdx, win
     let lastPlayer = allPlayerDivs[allPlayerDivs.length-1];
     lastPlayer.parentNode.removeChild(lastPlayer);
   }
+  // Only after updating everythig should we adjust the upper/lower classes of plantexpand.
+  for (let [idx, player] of players.entries()) {
+    let pdiv = document.getElementById("player" + idx);
+    if (pdiv == null) {
+      continue;
+    }
+    let totalHeight = pdiv.offsetParent.offsetHeight;
+    let offsetCenter = pdiv.offsetTop + (pdiv.offsetHeight / 2);
+    let plantExpand = pdiv.getElementsByClassName("plantexpand")[0];
+    if (offsetCenter / totalHeight < 0.2) {
+      plantExpand.classList.remove("lower");
+      plantExpand.classList.add("upper");
+    } else if (offsetCenter / totalHeight > 0.7) {
+      plantExpand.classList.add("lower");
+      plantExpand.classList.remove("upper");
+    } else {
+      plantExpand.classList.remove("lower");
+      plantExpand.classList.remove("upper");
+    }
+  }
 }
 
 function createPlayer(idx, player) {
   let div = document.createElement("DIV");
   div.id = "player" + idx;
   div.classList.add("player");
+  let nameBg = document.createElement("DIV");
+  nameBg.classList.add("namebg");
   let nameCont = document.createElement("DIV");
   nameCont.classList.add("namecont");
   let name = document.createElement("DIV");
   name.classList.add("playername");
   nameCont.appendChild(name);
-  div.appendChild(nameCont);
+  nameBg.appendChild(nameCont);
+  div.appendChild(nameBg);
   let arrowLeft = document.createElement("DIV");
   arrowLeft.classList.add("arrow", "arrowleft", "hidden");
   let leftText = document.createElement("DIV");
@@ -841,20 +864,21 @@ function createPlayer(idx, player) {
   hideText.innerText = "▶️";
   forceHide.appendChild(hideText);
   forceHide.onclick = function(e) { hideDefaultPlant(plantExpand); };
-  document.getElementById("uiright").appendChild(div);
+  document.getElementById("players").appendChild(div);
   return div;
 }
 
 function updatePlayer(div, player, ordering, idx, owned, isTurn, winner) {
-  div.style.background = player.color;
   div.style.order = ordering;
+  div.getElementsByClassName("playerinfo")[0].style.background = player.color;
+  div.getElementsByClassName("namebg")[0].style.background = player.color;
   let name = player.name;
   for (let arrow of div.getElementsByClassName("arrow")) {
     arrow.classList.toggle("hidden", !isTurn || winner != null);
     arrow.classList.toggle("winner", winner != null && winner.includes(idx));
     arrow.firstChild.innerText = (winner != null && winner.includes(idx)) ? "🏆" : "🔺";
   }
-  div.getElementsByClassName("playername")[0].innerText = player.name;
+  div.getElementsByClassName("playername")[0].innerText = name;
   div.getElementsByClassName("infocities")[0].getElementsByTagName("SPAN")[1].innerText = (playerCityCounts[idx] ?? 0);
   let powerCount = 0;
   for (let plant of player.plants ?? []) {
