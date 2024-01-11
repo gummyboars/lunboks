@@ -435,8 +435,24 @@ function updatePendingPower() {
   document.getElementById("pending").classList.remove("empty");
 }
 
-function discardPlant(plantCnt) {
+function discardPlant(plantCnt, really) {
   let plantDiv = plantCnt.getElementsByClassName("marketplant")[0];
+  let stored = plantDiv.getElementsByClassName("exists").length;
+  let btn = plantCnt.getElementsByClassName("plantdiscard")[0];
+  if (!really) {
+    if (btn.classList.contains("pressed")) {
+      document.getElementById("confirmdiscard").classList.remove("shown");
+      btn.classList.remove("pressed");
+      return;
+    }
+    if (stored > 0) {
+      btn.classList.add("pressed");
+      document.getElementById("discardbtn").onclick = function(e) { discardPlant(plantCnt, true) };
+      plantCnt.appendChild(document.getElementById("confirmdiscard"));
+      document.getElementById("confirmdiscard").classList.add("shown");
+      return;
+    }
+  }
   let idx = plantDiv.idx;
   ws.send(JSON.stringify({
     "type": "discard",
@@ -1180,6 +1196,10 @@ function updateMarketPlant(plantDiv, plant, idx) {
     if (waitBurn()) {
       dontWait();
     }
+    document.getElementById("confirmdiscard").classList.remove("shown");
+    for (let btn of plantDiv.parentNode.getElementsByClassName("plantdiscard")) {
+      btn.classList.remove("pressed");
+    }
     if (oldPhase == "bureaucracy") {
       let count = plantDiv.getElementsByClassName("exists").length;
       let plantCnt = plantDiv.parentNode;
@@ -1340,6 +1360,12 @@ function maybeShowExpandedPlants(phase, playerIdx, discardIdx) {
   }
   plantExpand.classList.toggle("defaultshow", shouldShow);
   plantExpand.classList.toggle("discard", discardIdx == playerIdx);
+  if (discardIdx != playerIdx) {
+    document.getElementById("confirmdiscard").classList.remove("shown");
+    for (let btn of plantExpand.getElementsByClassName("plantdiscard")) {
+      btn.classList.remove("pressed");
+    }
+  }
 }
 
 function updateBurn(phase, playerIdx, turnOrder, turnIdx) {
