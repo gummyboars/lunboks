@@ -107,6 +107,15 @@ div {
 .toggle {
   font-size: min(1.25vw, 2vh);
   cursor: pointer;
+  width: min(2.5vw, 4vh);
+  height: min(2.5vw, 4vh);
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.toggle.shown {
+  background-color: olivedrab;
 }
 #buttons {
   display: flex;
@@ -381,46 +390,45 @@ select {
 .joinbutton:disabled {
   pointer-events: none;
 }
+.animating {
+  transition: transform 0.4s;
+}
 #paysupply {
+  position: absolute;
+  top: min(2.5vw, 4vh);
+  left: min(31.5vw, 50.4vh);
   display: flex;
   flex-direction: row-reverse;
   align-items: center;
   justify-content: center;
+  pointer-events: none;
+  visibility: hidden;
+}
+#paysupply.shown {
+  pointer-events: auto;
+  visibility: visible;
 }
 #payments {
   width: min(12.5vw, 20vh);
   height: min(12.5vw, 20vh);
-  position: absolute;
-  visibility: hidden;
+  position: relative;
   display: flex;
   flex-direction: row;
   align-items: center;
   justify-content: center;
   font-size: min(2vw, 3.2vh);
   background-color: olivedrab;
-}
-#payments.shown {
-  pointer-events: auto;
-  position: relative;
-  visibility: visible;
 }
 #resupply {
   width: min(12.5vw, 20vh);
   height: min(12.5vw, 20vh);
-  pointer-events: none;
-  position: absolute;
-  visibility: hidden;
+  position: relative;
   display: flex;
   flex-direction: row;
   align-items: center;
   justify-content: center;
   font-size: min(2vw, 3.2vh);
   background-color: olivedrab;
-}
-#resupply.shown {
-  pointer-events: auto;
-  position: relative;
-  visibility: visible;
 }
 .resupplycol {
   display: flex;
@@ -650,39 +658,30 @@ select {
   left: 24.5%;
 }
 .first {
-  position: absolute;
   top: 0;
-  left: 0;
-  width: 100%;
-  height: 40%;
+  left: 30%;
 }
 .second {
-  position: absolute;
-  bottom: 0;
+  bottom: 10%;
   left: 0;
-  width: 40%;
-  height: 60%;
 }
 .third {
-  position: absolute;
-  bottom: 0;
+  bottom: 10%;
   right: 0;
-  width: 40%;
-  height: 60%;
 }
 .house {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  position: absolute;
+  width: 40%;
+  height: 40%;
 }
 .housecnt {
   width: 100%;
-  height: 66%;
-  border-radius: 50%;
-}
-.first .housecnt {
-  width: 40%;
-  height: 100%;
+  height: 150%;
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  clip-path: polygon(0% 33%, 0% 100%, 100% 100%, 100% 33%, 50% 0%);
+  background-color: inherit;
 }
 #supply {
   width: min(80vw, 128vh);
