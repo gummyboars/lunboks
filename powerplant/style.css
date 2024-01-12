@@ -512,6 +512,9 @@ select {
   align-items: center;
   justify-content: center;
 }
+.stored.pending {
+  opacity: 70%;
+}
 .owned .stored.exists:hover {
   cursor: pointer;
 }
@@ -781,7 +784,7 @@ select {
 }
 .resource.pending {
   visibility: visible;
-  opacity: 70%;
+  opacity: 50%;
 }
 .player {
   height: min(9vw, 14.4vh);

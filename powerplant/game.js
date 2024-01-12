@@ -732,7 +732,7 @@ function onmsg(e) {
   updateCities(data.cities, data.pending_build, data.players, data.turn_idx);
   updateResources(data.resources, data.pending_buy);
   updatePending(data.pending_spend, data.phase);
-  updatePlayers(data.players, data.turn_order, data.player_idx, data.pending_spend, data.turn_idx, data.phase, data.winner);
+  updatePlayers(data.players, data.turn_order, data.player_idx, data.pending_spend, data.pending_buy, data.turn_idx, data.phase, data.winner);
   updateMarket(data.market, data.phase);
   updateAuction(data.auction_bid, data.auction_plant_idx, data.turn_order, data.players, data.auction_idx, data.auction_passed, data.auction_bought, data.phase, data.player_idx)
   maybeShowExpandedPlants(data.phase, data.player_idx, data.auction_discard_idx);
@@ -880,7 +880,7 @@ function updatePending(pendingSpend, phase) {
   }
 }
 
-function updatePlayers(players, turnOrder, playerIdx, pendingSpend, turnIdx, phase, winner) {
+function updatePlayers(players, turnOrder, playerIdx, pendingSpend, pendingBuy, turnIdx, phase, winner) {
   if (players == null) {
     return;
   }
@@ -897,7 +897,7 @@ function updatePlayers(players, turnOrder, playerIdx, pendingSpend, turnIdx, pha
     if (phase == "auction" && regionsDone) {
       isTurn = false;
     }
-    updatePlayer(pdiv, player, order, idx, playerIdx == idx, isTurn, winner);
+    updatePlayer(pdiv, player, order, idx, pendingSpend, pendingBuy, playerIdx == idx, isTurn, winner);
   }
   while (document.getElementsByClassName("player").length > players.length) {
     let allPlayerDivs = document.getElementsByClassName("player");
@@ -985,7 +985,7 @@ function createPlayer(idx, player) {
   return div;
 }
 
-function updatePlayer(div, player, ordering, idx, owned, isTurn, winner) {
+function updatePlayer(div, player, ordering, idx, pendingSpend, pendingBuy, owned, isTurn, winner) {
   div.style.order = ordering;
   div.getElementsByClassName("playerinfo")[0].style.background = player.color;
   div.getElementsByClassName("namebg")[0].style.background = player.color;
@@ -1002,11 +1002,15 @@ function updatePlayer(div, player, ordering, idx, owned, isTurn, winner) {
     powerCount += plant.output;
   }
   div.getElementsByClassName("infopower")[0].getElementsByTagName("SPAN")[1].innerText = powerCount;
-  div.getElementsByClassName("infomoney")[0].getElementsByTagName("SPAN")[1].innerText = player.money ?? "??";
-  updatePlants(div, player.plants ?? [], owned);
+  let money = player.money ?? "??";
+  if (player.money != null && isTurn && pendingSpend > 0) {
+    money = player.money - pendingSpend;
+  }
+  div.getElementsByClassName("infomoney")[0].getElementsByTagName("SPAN")[1].innerText = money;
+  updatePlants(div, player.plants ?? [], isTurn ? pendingBuy : null, owned);
 }
 
-function updatePlants(playerDiv, plants, owned) {
+function updatePlants(playerDiv, plants, pendingBuy, owned) {
   let plantExpand = playerDiv.getElementsByClassName("plantexpand")[0];
   let playerPlants = playerDiv.getElementsByClassName("playerplant");
   while (playerDiv.getElementsByClassName("playerplant").length > plants.length) {
@@ -1015,8 +1019,9 @@ function updatePlants(playerDiv, plants, owned) {
   while (playerDiv.getElementsByClassName("playerplant").length < plants.length) {
     createPlant(playerDiv, plantExpand);
   }
+  let allocations = getPendingAllocations(plants, pendingBuy);
   for (let [idx, plant] of plants.entries()) {
-    updatePlant(playerPlants[idx], plant);
+    updatePlant(playerPlants[idx], plant, allocations[idx]);
   }
 
   while (plantExpand.getElementsByClassName("plantcnt").length > plants.length) {
@@ -1027,7 +1032,7 @@ function updatePlants(playerDiv, plants, owned) {
   }
   let playerMarketPlants = playerDiv.getElementsByClassName("marketplant");
   for (let [idx, plant] of plants.entries()) {
-    updateMarketPlant(playerMarketPlants[idx], plant, idx);
+    updateMarketPlant(playerMarketPlants[idx], plant, allocations[idx], idx);
   }
 }
 
@@ -1048,7 +1053,7 @@ function createPlant(playerDiv, plantExpand) {
   div.onmouseleave = function(e) { hidePlants(plantExpand); };
 }
 
-function updatePlant(plantDiv, plant) {
+function updatePlant(plantDiv, plant, allocations) {
   let colors = {"coal": "saddlebrown", "oil": "black", "green": "green", "uranium": "red", "gas": "goldenrod"};
   if (colors[plant.resource] != null) {
     plantDiv.style.background = colors[plant.resource];
@@ -1061,7 +1066,53 @@ function updatePlant(plantDiv, plant) {
   for (let rsrc in plant.storage) {
     stored += plant.storage[rsrc];
   }
+  for (let rsrc in allocations) {
+    stored += allocations[rsrc];
+  }
   plantDiv.getElementsByClassName("plantstorage")[0].innerText = stored + "/" + (2 * plant.intake);
+}
+
+function getPendingAllocations(plants, pendingBuy) {
+  // Exact copy of logic in finish_buy
+  let allocations = [];
+  for (let _ of plants) {
+    allocations.push({"coal": 0, "oil": 0, "gas": 0, "uranium": 0});
+  }
+  if (pendingBuy == null) {
+    return allocations;
+  }
+  let remaining = Object.assign({}, pendingBuy);
+  for (let [idx, plant] of plants.entries()) {
+    if (!remaining[plant.resource]) {
+      continue;
+    }
+    let remainingCapacity = 2 * plant.intake;
+    for (let rsrc in plant.storage) {
+      remainingCapacity -= plant.storage[rsrc];
+    }
+    let allocated = Math.min(remainingCapacity, remaining[plant.resource]);
+    allocations[idx][plant.resource] += allocated;
+    remaining[plant.resource] -= allocated;
+  }
+  for (let [idx, plant] of plants.entries()) {
+    if (plant.resource != "hybrid") {
+      continue;
+    }
+    let remainingCapacity = 2 * plant.intake;
+    for (let rsrc in plant.storage) {
+      remainingCapacity -= plant.storage[rsrc];
+    }
+    let allocated;
+    for (let rsrc of ["coal", "oil"]) {
+      if (remaining[rsrc]) {
+        allocated = Math.min(remainingCapacity, remaining[rsrc]);
+        allocations[idx][rsrc] += allocated;
+        remaining[rsrc] -= allocated;
+        remainingCapacity -= allocated;
+      }
+    }
+  }
+  return allocations;
 }
 
 function plantName(plant) {
@@ -1141,7 +1192,7 @@ function createMarketPlant(parentDiv, owned) {
   }
 }
 
-function updateMarketPlant(plantDiv, plant, idx) {
+function updateMarketPlant(plantDiv, plant, allocations, idx) {
   plantDiv.intake = plant.intake;
   plantDiv.output = plant.output;
   plantDiv.idx = idx;
@@ -1157,17 +1208,21 @@ function updateMarketPlant(plantDiv, plant, idx) {
       storeCounts[store.assetName] += 1;
     }
   }
+  let storage = Object.assign({}, plant.storage);
+  for (let rsrc in allocations) {
+    storage[rsrc] = (storage[rsrc] ?? 0) + allocations[rsrc];
+  }
   let toRemove = [];
   let toAdd = [];
   for (let rsrc in storeCounts) {
-    let desired = plant.storage[rsrc] ?? 0;
+    let desired = storage[rsrc] ?? 0;
     for (let i = desired; i < storeCounts[rsrc]; i++) {
       toRemove.push(rsrc);
     }
   }
-  for (let rsrc in plant.storage) {
+  for (let rsrc in storage) {
     let current = storeCounts[rsrc] ?? 0;
-    for (let i = current; i < plant.storage[rsrc]; i++) {
+    for (let i = current; i < storage[rsrc]; i++) {
       toAdd.push(rsrc);
     }
   }
@@ -1190,6 +1245,18 @@ function updateMarketPlant(plantDiv, plant, idx) {
         storeDivs[i].classList.add("exists");
         break;
       }
+    }
+  }
+  let pendingCounts = Object.assign({}, allocations);
+  for (let i = storeDivs.length-1; i >= 0; i--) {
+    if (storeDivs[i].assetName == null) {
+      continue;
+    }
+    if (pendingCounts[storeDivs[i].assetName]) {
+      storeDivs[i].classList.add("pending");
+      pendingCounts[storeDivs[i].assetName]--;
+    } else {
+      storeDivs[i].classList.remove("pending");
     }
   }
   if (plantDiv.classList.contains("owned") && changed) {
