@@ -1,4 +1,6 @@
 ws = null;
+runningAnim = [];
+messageQueue = [];
 // Keep track of resources.
 resourceCounts = {"coal": 0, "oil": 0, "gas": 0, "uranium": 0};
 totalCounts = {"coal": 24, "oil": 24, "gas": 24, "uranium": 12};
@@ -200,17 +202,61 @@ function createResourceDiv(rsrc, num, box) {
 
 function toggleMarket() {
   let marketDiv = document.getElementById("market");
-  marketDiv.classList.toggle("shown");
+  if (marketDiv.ontransitionend != null) {
+    return;
+  }
+  let btn = document.getElementById("markettoggle");
+  let btnRect = btn.getBoundingClientRect();
+  let divRect = marketDiv.getBoundingClientRect();
+  let scaleX = 100 * btnRect.width / divRect.width;
+  let scaleY = 100 * btnRect.height / divRect.height;
+  let scale = Math.min(scaleX, scaleY);
+  let diffX = btnRect.left - divRect.left;
+  let diffY = btnRect.top - divRect.top;
+  if (btn.classList.contains("shown")) {
+    btn.classList.remove("shown");
+    marketDiv.ontransitionend = function(e) { doneAnimating(marketDiv); marketDiv.classList.remove("animating", "shown"); marketDiv.style.transform = "none"; finishAnim(); };
+    marketDiv.ontransitioncancel = function(e) { doneAnimating(marketDiv); marketDiv.classList.remove("animating", "shown"); marketDiv.style.transform = "none"; finishAnim(); };
+    marketDiv.classList.add("animating");
+    marketDiv.style.transform = `translate(${diffX}px, ${diffY}px) scale(${scale}%)`;
+  } else {
+    btn.classList.add("shown");
+    marketDiv.style.transform = `translate(${diffX}px, ${diffY}px) scale(${scale}%)`;
+    marketDiv.classList.add("shown");
+    runningAnim.push(true);
+    marketDiv.ontransitionend = function(e) { doneAnimating(marketDiv); marketDiv.classList.remove("animating"); finishAnim(); };
+    marketDiv.ontransitioncancel = function(e) { doneAnimating(marketDiv); marketDiv.classList.remove("animating"); finishAnim(); };
+    setTimeout(function() { marketDiv.classList.add("animating"); marketDiv.style.transform = "none"; }, 5);
+  }
 }
 
-function toggleResupply() {
-  let resupply = document.getElementById("resupply");
-  resupply.classList.toggle("shown");
-}
-
-function togglePayments() {
-  let payments = document.getElementById("payments");
-  payments.classList.toggle("shown");
+function togglePaySupply() {
+  let paySupply = document.getElementById("paysupply");
+  if (paySupply.ontransitionend != null) {
+    return;
+  }
+  let btn = document.getElementById("paysupplytoggle");
+  let btnRect = btn.getBoundingClientRect();
+  let divRect = paySupply.getBoundingClientRect();
+  let scaleX = 100 * btnRect.width / divRect.width;
+  let scaleY = 100 * btnRect.height / divRect.height;
+  let scale = Math.min(scaleX, scaleY);
+  let diffX = btnRect.left - divRect.left;
+  let diffY = btnRect.top - divRect.top;
+  if (btn.classList.contains("shown")) {
+    btn.classList.remove("shown");
+    paySupply.ontransitionend = function(e) { doneAnimating(paySupply); paySupply.classList.remove("animating", "shown"); paySupply.style.transform = "none"; };
+    paySupply.ontransitioncancel = function(e) { doneAnimating(paySupply); paySupply.classList.remove("animating", "shown"); paySupply.style.transform = "none"; };
+    paySupply.classList.add("animating");
+    paySupply.style.transform = `translate(${diffX}px, ${diffY}px) scale(${scale}%)`;
+  } else {
+    btn.classList.add("shown");
+    paySupply.style.transform = `translate(${diffX}px, ${diffY}px) scale(${scale}%)`;
+    paySupply.classList.add("shown");
+    paySupply.ontransitionend = function(e) { doneAnimating(paySupply); paySupply.classList.remove("animating"); };
+    paySupply.ontransitioncancel = function(e) { doneAnimating(paySupply); paySupply.classList.remove("animating"); };
+    setTimeout(function() { paySupply.classList.add("animating"); paySupply.style.transform = "none"; }, 5);
+   }
 }
 
 function joinGame() {
@@ -723,6 +769,27 @@ function onmsg(e) {
     setTimeout(clearError, 100);
     return;
   }
+  if (runningAnim.length || messageQueue.length) {
+    messageQueue.push(data);
+  } else {
+    handleData(data);
+  }
+}
+
+function doneAnimating(div) {
+  div.ontransitionend = null;
+  div.ontransitioncancel = null;
+}
+
+function finishAnim() {
+  runningAnim.shift();
+  if (messageQueue.length && !runningAnim.length) {
+    let msg = messageQueue.shift();
+    handleData(msg);
+  }
+}
+
+function handleData(data) {
   placeCities(data.all_cities, data.colors);
   if (data.to_choose != null && data.colors != null && data.to_choose == data.colors.length) {
     regionsDone = true;
@@ -744,6 +811,10 @@ function onmsg(e) {
   if (canBurn && waitBurn()) {
     burn();
     dontWait();
+  }
+  if (messageQueue.length && !runningAnim.length) {
+    let msg = messageQueue.shift();
+    handleData(msg);
   }
 }
 
@@ -1293,7 +1364,11 @@ function updateMarket(market, phase) {
   let marketDiv = document.getElementById("market");
   if (oldPhase != phase) {
     // Player can adjust this on their own; only update on phase change.
-    marketDiv.classList.toggle("shown", phase == "auction");
+    let shouldShow = phase == "auction";
+    let showBtn = document.getElementById("markettoggle");
+    if (showBtn.classList.contains("shown") != shouldShow) {
+      toggleMarket();
+    }
   }
   while (marketDiv.getElementsByClassName("marketplant").length) {
     let plantDiv = marketDiv.getElementsByClassName("marketplant")[0];
