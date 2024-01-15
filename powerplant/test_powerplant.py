@@ -139,6 +139,24 @@ class BaseTest(BaseBaseTest):
     for color in ["red", "blue", "cyan", "purple", "yellow"]:
       self.game.handle_region(color)
 
+  # Convenience functions to iterate through the returned generator.
+  def handle_bid(self, bid, plant_idx):
+    list(self.game.handle_bid(bid, plant_idx))
+
+  def remove_plant(self, plant):
+    list(self.game.remove_plant(plant))
+
+  def handle_confirm(self):
+    list(self.game.handle_confirm())
+
+  def handle_burn(self, resource_counts):
+    list(self.game.handle_burn(resource_counts))
+
+  def handle(self, player_idx, data):
+    ret = self.game.handle(player_idx, data)
+    if ret:
+      list(ret)
+
 
 class RemovePlantTest(BaseTest):
 
@@ -147,7 +165,7 @@ class RemovePlantTest(BaseTest):
     old_plants = self.game.plants[:]
     lowest = self.game.market[0]
 
-    self.game.remove_plant(lowest)
+    self.remove_plant(lowest)
     self.assertEqual(len(self.game.market), 8)
     plant_numbers = [plant.cost for plant in self.game.market]
     self.assertListEqual(plant_numbers, sorted(plant_numbers))
@@ -169,35 +187,35 @@ class AuctionTest(BaseTest):
     self.assertIsNone(self.game.auction_bid)
 
     with self.assertRaisesRegex(InvalidMove, "Invalid plant"):
-      self.game.handle_bid(10, -1)
+      self.handle_bid(10, -1)
     with self.assertRaisesRegex(InvalidMove, "Invalid plant"):
-      self.game.handle_bid(10, 8)
+      self.handle_bid(10, 8)
     with self.assertRaisesRegex(InvalidMove, "Invalid plant"):
-      self.game.handle_bid(10, "pi")
+      self.handle_bid(10, "pi")
 
     with self.assertRaisesRegex(InvalidMove, "positive integral"):
-      self.game.handle_bid(3.5, 0)
+      self.handle_bid(3.5, 0)
     with self.assertRaisesRegex(InvalidMove, "positive integral"):
-      self.game.handle_bid("pi", 0)
+      self.handle_bid("pi", 0)
 
     with self.assertRaisesRegex(InvalidMove, "at least"):
-      self.game.handle_bid(2, 0)
+      self.handle_bid(2, 0)
     with self.assertRaisesRegex(InvalidMove, "future market"):
-      self.game.handle_bid(7, 4)
+      self.handle_bid(7, 4)
 
     self.game.players[3].money = 2
     with self.assertRaisesRegex(InvalidMove, "have enough money"):
-      self.game.handle_bid(3, 0)
+      self.handle_bid(3, 0)
 
   def testBidOnePlantAtATime(self):
-    self.game.handle_bid(3, 0)
+    self.handle_bid(3, 0)
     with self.assertRaisesRegex(InvalidMove, "wait until"):
-      self.game.handle_bid(4, 1)
+      self.handle_bid(4, 1)
 
   def testPlayerGetsPlant(self):
-    self.game.handle_bid(3, 0)
+    self.handle_bid(3, 0)
     for _ in range(4):
-      self.game.handle_bid(None, 0)
+      self.handle_bid(None, 0)
 
     self.assertEqual(len(self.game.players[3].plants), 1)
     self.assertEqual(self.game.players[3].plants[0].cost, 3)
@@ -207,26 +225,26 @@ class AuctionTest(BaseTest):
       self.assertEqual(self.game.players[other].money, 50)
 
   def testCanBidAgainAfterLosingPlant(self):
-    self.game.handle_bid(3, 0)
+    self.handle_bid(3, 0)
     for _ in range(2):  # Players 0 and 4 pass
-      self.game.handle_bid(None, 0)
+      self.handle_bid(None, 0)
 
     self.assertSetEqual(self.game.auction_passed, {0, 4})
     self.assertDictEqual(self.game.auction_bought, {})
-    self.game.handle_bid(4, 0)
+    self.handle_bid(4, 0)
     self.assertEqual(self.game.auction_bid, 4)
 
     with self.assertRaisesRegex(InvalidMove, "more than"):
-      self.game.handle_bid(4, 0)
-    self.game.handle_bid(5, 0)
+      self.handle_bid(4, 0)
+    self.handle_bid(5, 0)
 
-    self.game.handle_bid(None, 0)  # Player 3 passes
-    self.game.handle_bid(7, 0)  # Player 1 bids a lot
+    self.handle_bid(None, 0)  # Player 3 passes
+    self.handle_bid(7, 0)  # Player 1 bids a lot
     self.assertEqual(self.game.auction_bid, 7)
     self.assertSetEqual(self.game.auction_passed, {0, 3, 4})
     self.assertDictEqual(self.game.auction_bought, {})
 
-    self.game.handle_bid(None, 0)  # Player 2 passes
+    self.handle_bid(None, 0)  # Player 2 passes
     self.assertEqual(len(self.game.players[1].plants), 1)
     self.assertEqual(self.game.players[1].plants[0].cost, 3)
     self.assertEqual(self.game.players[1].money, 43)
@@ -243,9 +261,9 @@ class AuctionTest(BaseTest):
     # The player first in turn order should get to bid again.
     self.assertEqual(self.game.auction_idx, 3)
     self.assertListEqual([plant.cost for plant in self.game.market][:7], [4, 5, 6, 7, 8, 9, 10])
-    self.game.handle_bid(4, 0)
+    self.handle_bid(4, 0)
     for _ in range(3):  # Only 3 players have to pass now
-      self.game.handle_bid(None, 0)
+      self.handle_bid(None, 0)
     self.assertEqual(len(self.game.players[3].plants), 1)
     self.assertEqual(self.game.players[3].plants[0].cost, 4)
     self.assertEqual(self.game.players[3].money, 46)
@@ -259,52 +277,52 @@ class AuctionTest(BaseTest):
   def testFirstRoundMustBuy(self):
     self.assertTrue(self.game.first_round)
     with self.assertRaisesRegex(InvalidMove, "first round"):
-      self.game.handle_bid(None, 0)
+      self.handle_bid(None, 0)
     self.assertEqual(self.game.auction_idx, 3)
     self.assertDictEqual(self.game.auction_bought, {})
     self.assertSetEqual(self.game.auction_passed, set())
 
     self.game.first_round = False
-    self.game.handle_bid(None, 0)
+    self.handle_bid(None, 0)
     self.assertEqual(self.game.auction_idx, 0)
     self.assertDictEqual(self.game.auction_bought, {3: False})
     self.assertSetEqual(self.game.auction_passed, set())
 
-    self.game.handle_bid(None, 0)
+    self.handle_bid(None, 0)
     self.assertEqual(self.game.auction_idx, 4)
     self.assertDictEqual(self.game.auction_bought, {3: False, 0: False})
     self.assertSetEqual(self.game.auction_passed, set())
 
   def testAllPlayersBuy(self):
     self.assertTrue(self.game.first_round)
-    self.game.handle_bid(4, 1)
+    self.handle_bid(4, 1)
     for _ in range(3):
-      self.game.handle_bid(None, None)  # It's valid to not pass the plant number when passing
-    self.game.handle_bid(5, 1)
-    self.game.handle_bid(7, 1)
-    self.game.handle_bid(None, 1)
+      self.handle_bid(None, None)  # It's valid to not pass the plant number when passing
+    self.handle_bid(5, 1)
+    self.handle_bid(7, 1)
+    self.handle_bid(None, 1)
     self.assertDictEqual(self.game.auction_bought, {3: True})
     self.assertListEqual([plant.cost for plant in self.game.market][:7], [3, 5, 6, 7, 8, 9, 10])
 
-    self.game.handle_bid(5, 1)
-    self.game.handle_bid(6, 1)
+    self.handle_bid(5, 1)
+    self.handle_bid(6, 1)
     for _ in range(3):
-      self.game.handle_bid(None, 1)
+      self.handle_bid(None, 1)
     self.assertDictEqual(self.game.auction_bought, {3: True, 4: True})
     self.assertListEqual([plant.cost for plant in self.game.market][:6], [3, 6, 7, 8, 9, 10])
 
-    self.game.handle_bid(8, 3)
+    self.handle_bid(8, 3)
     for _ in range(2):
-      self.game.handle_bid(None, 3)
+      self.handle_bid(None, 3)
     self.assertDictEqual(self.game.auction_bought, {3: True, 4: True, 0: True})
     self.assertListEqual([plant.cost for plant in self.game.market][:5], [3, 6, 7, 9, 10])
 
-    self.game.handle_bid(9, 3)
-    self.game.handle_bid(None, 3)
+    self.handle_bid(9, 3)
+    self.handle_bid(None, 3)
     self.assertDictEqual(self.game.auction_bought, {3: True, 0: True, 4: True, 1: True})
     self.assertListEqual([plant.cost for plant in self.game.market][:4], [3, 6, 7, 10])
 
-    self.game.handle_bid(10, 3)
+    self.handle_bid(10, 3)
     # The auction has now finished
     self.assertEqual(self.game.phase_idx, self.game.PHASES.index(powerplant.TurnPhase.MATERIALS))
     self.assertFalse(self.game.first_round)
@@ -319,7 +337,7 @@ class AuctionTest(BaseTest):
   def testAllPlayersPass(self):
     self.game.first_round = False
     for _ in range(5):
-      self.game.handle_bid(None, None)
+      self.handle_bid(None, None)
     self.assertEqual(self.game.phase_idx, self.game.PHASES.index(powerplant.TurnPhase.MATERIALS))
 
     # Throw out the lowest cost plant if nobody bought one.
@@ -328,8 +346,8 @@ class AuctionTest(BaseTest):
   def testMostPlayersPass(self):
     self.game.first_round = False
     for _ in range(4):
-      self.game.handle_bid(None, None)
-    self.game.handle_bid(6, 3)
+      self.handle_bid(None, None)
+    self.handle_bid(6, 3)
     self.assertEqual(self.game.phase_idx, self.game.PHASES.index(powerplant.TurnPhase.MATERIALS))
 
     # Don't throw out any plants.
@@ -349,9 +367,9 @@ class Stage3AuctionTest(BaseTest):
     self.game.plants = [second_back, back] + self.game.plants
 
   def testCanBidAnyPlant(self):
-    self.game.handle_bid(8, 5)
+    self.handle_bid(8, 5)
     for _ in range(4):
-      self.game.handle_bid(None, None)
+      self.handle_bid(None, None)
 
     self.assertEqual(len(self.game.players[3].plants), 1)
     self.assertEqual(self.game.players[3].plants[0].cost, 8)
@@ -360,7 +378,7 @@ class Stage3AuctionTest(BaseTest):
 
   def testAllPlayersPass(self):
     for _ in range(5):
-      self.game.handle_bid(None, None)
+      self.handle_bid(None, None)
     self.assertEqual(self.game.phase_idx, self.game.PHASES.index(powerplant.TurnPhase.MATERIALS))
 
     # Throw out the lowest cost plant if nobody bought one.
@@ -375,27 +393,27 @@ class DiscardPlantTest(BaseTest):
     self.game.auction_idx = 3
     for _ in range(3):  # Grant the player plants 3, 4, and 5
       self.game.players[3].plants.append(self.game.market[0])
-      self.game.remove_plant(self.game.market[0])
+      self.remove_plant(self.game.market[0])
     self.game.players[3].plants[0].storage.update({Resource.OIL: 2})
     self.game.players[3].plants[1].storage.update({Resource.COAL: 2})
     self.game.players[3].plants[2].storage.update({Resource.COAL: 1, Resource.OIL: 1})
 
   def testDiscardAPlant(self):
-    self.game.handle_bid(8, 2)
+    self.handle_bid(8, 2)
     for _ in range(4):
-      self.game.handle_bid(None, None)
+      self.handle_bid(None, None)
     self.assertEqual(len(self.game.players[3].plants), 4)
     self.assertEqual(self.game.auction_discard_idx, 3)
     self.assertEqual(self.game.auction_idx, 0)
 
     with self.assertRaisesRegex(InvalidMove, "Waiting.*discard"):
-      self.game.handle(0, {"type": "bid", "bid": 9, "plant": 2})
+      self.handle(0, {"type": "bid", "bid": 9, "plant": 2})
     with self.assertRaisesRegex(InvalidMove, "must.*discard"):
-      self.game.handle(3, {"type": "bid", "bid": 9, "plant": 2})
+      self.handle(3, {"type": "bid", "bid": 9, "plant": 2})
     with self.assertRaisesRegex(InvalidMove, "Waiting.*discard"):
-      self.game.handle(0, {"type": "discard", "plant": 0})
+      self.handle(0, {"type": "discard", "plant": 0})
 
-    self.game.handle(3, {"type": "discard", "plant": 0})
+    self.handle(3, {"type": "discard", "plant": 0})
     self.assertIsNone(self.game.auction_discard_idx)
     self.assertEqual(self.game.auction_idx, 0)
     self.assertIsNone(self.game.auction_bid)
@@ -409,16 +427,16 @@ class DiscardPlantTest(BaseTest):
     self.assertDictEqual(self.game.players[3].plants[2].storage, {})
 
   def testShuffleBeforeDiscarding(self):
-    self.game.handle_bid(8, 2)
+    self.handle_bid(8, 2)
     for _ in range(4):
-      self.game.handle_bid(None, None)
+      self.handle_bid(None, None)
     self.assertEqual(len(self.game.players[3].plants), 4)
     self.assertEqual(self.game.auction_discard_idx, 3)
 
-    self.game.handle(3, {"type": "shuffle", "resource": "coal", "source": 1, "dest": 3})
-    self.game.handle(3, {"type": "shuffle", "resource": "coal", "source": 3, "dest": 2})
-    self.game.handle(3, {"type": "shuffle", "resource": "coal", "source": 1, "dest": 3})
-    self.game.handle(3, {"type": "discard", "plant": 1})
+    self.handle(3, {"type": "shuffle", "resource": "coal", "source": 1, "dest": 3})
+    self.handle(3, {"type": "shuffle", "resource": "coal", "source": 3, "dest": 2})
+    self.handle(3, {"type": "shuffle", "resource": "coal", "source": 1, "dest": 3})
+    self.handle(3, {"type": "discard", "plant": 1})
 
     self.assertEqual([plant.cost for plant in self.game.players[3].plants], [3, 5, 8])
     self.assertDictEqual(self.game.players[3].plants[0].storage, {Resource.OIL: 2})
@@ -428,28 +446,28 @@ class DiscardPlantTest(BaseTest):
     self.assertDictEqual(self.game.players[3].plants[2].storage, {Resource.COAL: 1})
 
   def testCannotDiscardPurchasedPlant(self):
-    self.game.handle_bid(8, 2)
+    self.handle_bid(8, 2)
     for _ in range(4):
-      self.game.handle_bid(None, None)
+      self.handle_bid(None, None)
     self.assertEqual(len(self.game.players[3].plants), 4)
     self.assertEqual(self.game.auction_discard_idx, 3)
 
     with self.assertRaisesRegex(InvalidMove, "just bought"):
-      self.game.handle(3, {"type": "discard", "plant": 3})
+      self.handle(3, {"type": "discard", "plant": 3})
 
   def testInvalidDiscarding(self):
-    self.game.handle_bid(8, 2)
+    self.handle_bid(8, 2)
     for _ in range(4):
-      self.game.handle_bid(None, None)
+      self.handle_bid(None, None)
     self.assertEqual(len(self.game.players[3].plants), 4)
     self.assertEqual(self.game.auction_discard_idx, 3)
 
     with self.assertRaisesRegex(InvalidMove, "Invalid plant"):
-      self.game.handle(3, {"type": "discard"})
+      self.handle(3, {"type": "discard"})
     with self.assertRaisesRegex(InvalidMove, "Invalid plant"):
-      self.game.handle(3, {"type": "discard", "plant": -1})
+      self.handle(3, {"type": "discard", "plant": -1})
     with self.assertRaisesRegex(InvalidMove, "Invalid plant"):
-      self.game.handle(3, {"type": "discard", "plant": "x"})
+      self.handle(3, {"type": "discard", "plant": "x"})
 
 
 class BuyResourcesTest(BaseTest):
@@ -459,7 +477,7 @@ class BuyResourcesTest(BaseTest):
     self.game.players[0].money = 15
     for _ in range(2):  # Grant the player plants 3 and 4 (coal and oil).
       self.game.players[0].plants.append(self.game.market[0])
-      self.game.remove_plant(self.game.market[0])
+      self.remove_plant(self.game.market[0])
     self.game.phase_idx = self.game.PHASES.index(powerplant.TurnPhase.MATERIALS)
 
   def testCanBuyResources(self):
@@ -477,7 +495,7 @@ class BuyResourcesTest(BaseTest):
     stored = sum([Counter(plant.storage) for plant in self.game.players[0].plants], Counter())
     self.assertFalse(stored)
 
-    self.game.handle_confirm()
+    self.handle_confirm()
     self.assertDictEqual(self.game.pending_buy, {})
     self.assertEqual(self.game.pending_spend, 0)
     stored = sum([Counter(plant.storage) for plant in self.game.players[0].plants], Counter())
@@ -527,7 +545,7 @@ class BuyResourcesTest(BaseTest):
 
   def testCanAllocateCoalToHybrids(self):
     hybrid = self.game.market[0]
-    self.game.remove_plant(hybrid)
+    self.remove_plant(hybrid)
     self.game.players[0].plants.append(hybrid)
     self.game.players[0].money = 50
 
@@ -537,7 +555,7 @@ class BuyResourcesTest(BaseTest):
     with self.assertRaisesRegex(InvalidMove, "storage"):
       self.game.handle_buy("coal", 1)
 
-    self.game.handle_confirm()
+    self.handle_confirm()
     self.assertDictEqual(self.game.pending_buy, {})
     self.assertEqual(self.game.pending_spend, 0)
     self.assertDictEqual(self.game.players[0].plants[0].storage, {})
@@ -546,7 +564,7 @@ class BuyResourcesTest(BaseTest):
 
   def testCanAllocateOilToHybrids(self):
     hybrid = self.game.market[0]
-    self.game.remove_plant(hybrid)
+    self.remove_plant(hybrid)
     self.game.players[0].plants.append(hybrid)
     self.game.players[0].money = 50
 
@@ -556,7 +574,7 @@ class BuyResourcesTest(BaseTest):
     with self.assertRaisesRegex(InvalidMove, "storage"):
       self.game.handle_buy("oil", 1)
 
-    self.game.handle_confirm()
+    self.handle_confirm()
     self.assertDictEqual(self.game.pending_buy, {})
     self.assertEqual(self.game.pending_spend, 0)
     self.assertDictEqual(self.game.players[0].plants[0].storage, {Resource.OIL: 4})
@@ -565,7 +583,7 @@ class BuyResourcesTest(BaseTest):
 
   def testHybridsCanHoldBothResourceTypes(self):
     hybrid = self.game.market[0]
-    self.game.remove_plant(hybrid)
+    self.remove_plant(hybrid)
     self.game.players[0].plants.append(hybrid)
     self.game.players[0].money = 50
 
@@ -579,7 +597,7 @@ class BuyResourcesTest(BaseTest):
     with self.assertRaisesRegex(InvalidMove, "storage"):
       self.game.handle_buy("coal", 1)
 
-    self.game.handle_confirm()
+    self.handle_confirm()
     self.assertDictEqual(self.game.pending_buy, {})
     self.assertEqual(self.game.pending_spend, 0)
     self.assertDictEqual(self.game.players[0].plants[0].storage, {Resource.OIL: 4})
@@ -613,18 +631,18 @@ class BuyHybridResourcesTest(BaseTest):
     super().setUp()
     # Grant the player plants 5 and 9 (hybrid and oil).
     self.game.players[0].plants.append(self.game.market[2])
-    self.game.remove_plant(self.game.market[2])
-    self.game.remove_plant(self.game.market[0])
-    self.game.remove_plant(self.game.market[0])
+    self.remove_plant(self.game.market[2])
+    self.remove_plant(self.game.market[0])
+    self.remove_plant(self.game.market[0])
     self.game.players[0].plants.append(self.game.market[3])
-    self.game.remove_plant(self.game.market[3])
+    self.remove_plant(self.game.market[3])
     self.game.phase_idx = self.game.PHASES.index(powerplant.TurnPhase.MATERIALS)
 
   def testBuyOil(self):
     self.assertEqual([plant.cost for plant in self.game.players[0].plants], [5, 9])
     self.game.players[0].plants[0].storage.update({Resource.COAL: 2})
     self.game.handle_buy("oil", 3)
-    self.game.handle_confirm()
+    self.handle_confirm()
 
     self.assertDictEqual(
         self.game.players[0].plants[0].storage, {Resource.COAL: 2, Resource.OIL: 1},
@@ -634,7 +652,7 @@ class BuyHybridResourcesTest(BaseTest):
   def testBuyCoalThenOil(self):
     self.game.handle_buy("coal", 2)
     self.game.handle_buy("oil", 3)
-    self.game.handle_confirm()
+    self.handle_confirm()
 
     self.assertDictEqual(
         self.game.players[0].plants[0].storage, {Resource.COAL: 2, Resource.OIL: 1},
@@ -644,7 +662,7 @@ class BuyHybridResourcesTest(BaseTest):
   def testBuyOilThenCoal(self):
     self.game.handle_buy("oil", 3)
     self.game.handle_buy("coal", 2)
-    self.game.handle_confirm()
+    self.handle_confirm()
 
     self.assertDictEqual(
         self.game.players[0].plants[0].storage, {Resource.COAL: 2, Resource.OIL: 1},
@@ -659,10 +677,10 @@ class BuyHybridResourcesTest(BaseTest):
     # We had room for 3 coal when we decided to buy it, but now that we've moved 2 oil over to
     # our hybrid plant, we no longer have enough room to complete our purchase.
     with self.assertRaisesRegex(InvalidMove, "storage"):
-      self.game.handle_confirm()
+      self.handle_confirm()
     self.game.handle_shuffle(0, "oil", 0, 1)
     self.game.handle_shuffle(0, "oil", 0, 1)
-    self.game.handle_confirm()
+    self.handle_confirm()
 
   def testOverBuyCoalAndOil(self):
     # Tests to make sure we correctly track remaining capacity on hybrid plants.
@@ -672,7 +690,7 @@ class BuyHybridResourcesTest(BaseTest):
     ]
     self.game.handle_buy("coal", 4)
     self.game.handle_buy("oil", 4)
-    self.game.handle_confirm()
+    self.handle_confirm()
 
     self.assertDictEqual(self.game.players[0].plants[0].storage, {Resource.COAL: 4})
     self.assertDictEqual(self.game.players[0].plants[1].storage, {Resource.OIL: 4})
@@ -706,7 +724,7 @@ class BuildTest(BaseTest):
     self.assertListEqual(self.game.pending_build, ["RED", "BLUE"])
     self.assertEqual(self.game.pending_spend, 24)
 
-    self.game.handle_confirm()
+    self.handle_confirm()
     self.assertListEqual(self.game.pending_build, [])
     self.assertEqual(self.game.pending_spend, 0)
     self.assertListEqual(self.game.cities["RED"].occupants, [2])
@@ -732,7 +750,7 @@ class BuildTest(BaseTest):
 
   def testStage1NoMultipleOccupants(self):
     self.game.handle_build("RED")
-    self.game.handle_confirm()
+    self.handle_confirm()
 
     self.assertEqual(self.game.turn_idx, 1)
     with self.assertRaisesRegex(InvalidMove, "only be occupied by 1"):
@@ -746,7 +764,7 @@ class BuildTest(BaseTest):
 
   def testConnectionCostNotFromOtherPlayers(self):
     self.game.handle_build("RED")
-    self.game.handle_confirm()
+    self.handle_confirm()
 
     self.assertEqual(self.game.turn_idx, 1)
     self.game.handle_build("CYAN")
@@ -773,7 +791,7 @@ class BuildTest(BaseTest):
     self.game.handle_build("YELLOW")
     self.assertEqual(self.game.pending_spend, 20)
 
-    self.game.handle_confirm()
+    self.handle_confirm()
     self.assertListEqual(self.game.pending_build, [])
     self.assertEqual(self.game.pending_spend, 0)
     self.assertListEqual(self.game.cities["RED"].occupants, [])
@@ -788,7 +806,7 @@ class BuildTest(BaseTest):
     self.game.handle_build("BLUE")
     self.game.handle_build("YELLOW")
     self.game.handle_build("CYAN")
-    self.game.handle_confirm()
+    self.handle_confirm()
 
     self.assertEqual(len(self.game.market), 8)
     self.assertNotIn(3, [plant.cost for plant in self.game.market])
@@ -802,7 +820,7 @@ class BuildTest(BaseTest):
     self.game.handle_build("RED")
     self.game.handle_build("BLUE")
     self.game.handle_build("YELLOW")
-    self.game.handle_confirm()
+    self.handle_confirm()
 
     self.assertTrue(self.game.begin_stage_2)
     self.assertEqual(self.game.stage_idx, 0)
@@ -811,7 +829,7 @@ class BuildTest(BaseTest):
     with self.assertRaisesRegex(InvalidMove, "only be occupied by 1"):
       self.game.handle_build("RED")
     self.game.handle_build("CYAN")
-    self.game.handle_confirm()
+    self.handle_confirm()
 
     self.assertTrue(self.game.begin_stage_2)
     self.assertEqual(self.game.stage_idx, 1)
@@ -848,13 +866,13 @@ class MultiBuildTest(BaseTest):
 
   def testCanBuildSecond(self):
     self.game.handle_build("RED")
-    self.game.handle_confirm()
+    self.handle_confirm()
 
     self.assertEqual(self.game.turn_idx, 1)
     self.game.handle_build("RED")
     self.assertListEqual(self.game.pending_build, ["RED"])
     self.assertEqual(self.game.pending_spend, 15)
-    self.game.handle_confirm()
+    self.handle_confirm()
 
     self.assertEqual(self.game.turn_idx, 0)
     with self.assertRaisesRegex(InvalidMove, "only be occupied by 2"):
@@ -866,16 +884,16 @@ class MultiBuildTest(BaseTest):
     self.game.stage_idx = 2
     self.game.turn_idx = 3
     self.game.handle_build("RED")
-    self.game.handle_confirm()
+    self.handle_confirm()
 
     self.assertEqual(self.game.turn_idx, 2)
     self.game.handle_build("RED")
-    self.game.handle_confirm()
+    self.handle_confirm()
 
     self.assertEqual(self.game.turn_idx, 1)
     self.game.handle_build("RED")
     self.assertEqual(self.game.pending_spend, 20)
-    self.game.handle_confirm()
+    self.handle_confirm()
 
     self.assertEqual(self.game.turn_idx, 0)
     with self.assertRaisesRegex(InvalidMove, "only be occupied by 3"):
@@ -996,6 +1014,11 @@ class AdvanceStageTest(unittest.TestCase):
     game.turn_order = list(range(num))
     return game
 
+  def handle(self, game, player_idx, data):
+    ret = game.handle(player_idx, data)
+    if ret:
+      list(ret)
+
   def testAdvanceToSecondStage(self):
     player_to_count = {2: 10, 3: 7, 6: 6}
     for num, count in player_to_count.items():
@@ -1008,8 +1031,8 @@ class AdvanceStageTest(unittest.TestCase):
         ]
         # Build count-1 cities first.
         for i in range(count-1):
-          game.handle(0, {"type": "build", "city": to_build[i]})
-        game.handle(0, {"type": "confirm"})
+          self.handle(game, 0, {"type": "build", "city": to_build[i]})
+        self.handle(game, 0, {"type": "confirm"})
 
         self.assertIs(game.PHASES[game.phase_idx], powerplant.TurnPhase.BUREAUCRACY)
         self.assertEqual(game.stage_idx, 0)
@@ -1019,22 +1042,22 @@ class AdvanceStageTest(unittest.TestCase):
 
         # Go through one turn.
         for idx in range(num):
-          game.handle(idx, {"type": "burn", "counts": [None]})
+          self.handle(game, idx, {"type": "burn", "counts": [None]})
 
         self.assertIs(game.PHASES[game.phase_idx], powerplant.TurnPhase.AUCTION)
         for idx in range(num):
-          game.handle(game.turn_order[idx], {"type": "bid", "bid": None, "plant": None})
+          self.handle(game, game.turn_order[idx], {"type": "bid", "bid": None, "plant": None})
         self.assertEqual(game.market[0].cost, 16)
         self.assertIs(game.PHASES[game.phase_idx], powerplant.TurnPhase.MATERIALS)
         for idx in range(num):
-          game.handle(game.turn_order[num-idx-1], {"type": "confirm"})
+          self.handle(game, game.turn_order[num-idx-1], {"type": "confirm"})
         self.assertIs(game.PHASES[game.phase_idx], powerplant.TurnPhase.BUILDING)
         for idx in range(num-1):
-          game.handle(game.turn_order[num-idx-1], {"type": "confirm"})
+          self.handle(game, game.turn_order[num-idx-1], {"type": "confirm"})
 
         # Build the last city to trigger the next stage.
-        game.handle(0, {"type": "build", "city": to_build[count-1]})
-        game.handle(0, {"type": "confirm"})
+        self.handle(game, 0, {"type": "build", "city": to_build[count-1]})
+        self.handle(game, 0, {"type": "confirm"})
         self.assertIs(game.PHASES[game.phase_idx], powerplant.TurnPhase.BUREAUCRACY)
         self.assertEqual(game.stage_idx, 1)
         self.assertTrue(game.begin_stage_2)
@@ -1052,17 +1075,17 @@ class AdvanceStageTest(unittest.TestCase):
     game.plants = game.plants[-1:] + game.plants[:-1]  # Put stage 3 on top.
 
     game.phase_idx = game.PHASES.index(powerplant.TurnPhase.AUCTION)
-    game.handle(0, {"type": "bid", "bid": 15, "plant": 0})
+    self.handle(game, 0, {"type": "bid", "bid": 15, "plant": 0})
     # All other players pass on this plant.
     for idx in range(1, num):
-      game.handle(game.turn_order[idx], {"type": "bid", "bid": None, "plant": 0})
+      self.handle(game, game.turn_order[idx], {"type": "bid", "bid": None, "plant": 0})
     self.assertEqual(game.market[-1].cost, powerplant.STAGE_3_COST)
     self.assertTrue(game.begin_stage_3)
     self.assertEqual(game.stage_idx, 1)  # Still more bidding to be done.
 
     # Finish the auction phase.
     for idx in range(1, num):
-      game.handle(game.turn_order[idx], {"type": "bid", "bid": None, "plant": None})
+      self.handle(game, game.turn_order[idx], {"type": "bid", "bid": None, "plant": None})
     self.assertIs(game.PHASES[game.phase_idx], powerplant.TurnPhase.MATERIALS)
     self.assertTrue(game.begin_stage_3)
     self.assertEqual(game.stage_idx, 2)  # Now that we're in the next phase, stage 3 has begun.
@@ -1082,8 +1105,8 @@ class AdvanceStageTest(unittest.TestCase):
     self.assertEqual(game.market[1].cost, 16)
 
     game.phase_idx = game.PHASES.index(powerplant.TurnPhase.BUILDING)
-    game.handle(0, {"type": "build", "city": "ESSEN"})
-    game.handle(0, {"type": "confirm"})
+    self.handle(game, 0, {"type": "build", "city": "ESSEN"})
+    self.handle(game, 0, {"type": "confirm"})
     self.assertIs(game.PHASES[game.phase_idx], powerplant.TurnPhase.BUREAUCRACY)
     self.assertTrue(game.begin_stage_3)
     self.assertEqual(game.stage_idx, 2)
@@ -1094,7 +1117,7 @@ class AdvanceStageTest(unittest.TestCase):
 
     # Go through bureaucracy and make sure the resupply is correct.
     for idx in range(num):
-      game.handle(idx, {"type": "burn", "counts": [None]})
+      self.handle(game, idx, {"type": "burn", "counts": [None]})
 
     self.assertIs(game.PHASES[game.phase_idx], powerplant.TurnPhase.AUCTION)
     self.assertEqual(game.resources["gas"], 10)  # Resupplies at 4 in stage 3.
@@ -1110,7 +1133,7 @@ class AdvanceStageTest(unittest.TestCase):
 
     game.phase_idx = game.PHASES.index(powerplant.TurnPhase.BUREAUCRACY)
     for idx in range(num):
-      game.handle(idx, {"type": "burn", "counts": [None]})
+      self.handle(game, idx, {"type": "burn", "counts": [None]})
     self.assertIs(game.PHASES[game.phase_idx], powerplant.TurnPhase.AUCTION)
 
     # When the largest plant is put on the bottom, stage 3 should come out.
@@ -1138,8 +1161,8 @@ class AdvanceStageTest(unittest.TestCase):
     # One player builds 6, forcing plant 6 to be discarded. Stage 3 card comes out.
     to_build = ["ESSEN", "DUISBURG", "DUSSELDORF", "DORTMUND", "MUNSTER", "KOLN"]
     for idx in range(6):
-      game.handle(1, {"type": "build", "city": to_build[idx]})
-    game.handle(1, {"type": "confirm"})
+      self.handle(game, 1, {"type": "build", "city": to_build[idx]})
+    self.handle(game, 1, {"type": "confirm"})
     self.assertFalse(game.begin_stage_2)
     self.assertTrue(game.begin_stage_3)
     self.assertEqual(len(game.market), 6)  # Should remove smallest plant and stage 3 card.
@@ -1148,8 +1171,8 @@ class AdvanceStageTest(unittest.TestCase):
     # Next player builds 7, triggering stage 2.
     to_build = ["FLENSBURG", "KIEL", "HAMBURG", "CUXHAVEN", "BREMEN", "HANNOVER", "OSNABRUCK"]
     for idx in range(7):
-      game.handle(0, {"type": "build", "city": to_build[idx]})
-    game.handle(0, {"type": "confirm"})
+      self.handle(game, 0, {"type": "build", "city": to_build[idx]})
+    self.handle(game, 0, {"type": "confirm"})
     self.assertTrue(game.begin_stage_2)
     self.assertTrue(game.begin_stage_3)
     self.assertIs(game.PHASES[game.phase_idx], powerplant.TurnPhase.BUREAUCRACY)
@@ -1158,7 +1181,7 @@ class AdvanceStageTest(unittest.TestCase):
 
     # Go through bureaucracy and make sure the resupply is correct.
     for idx in range(num):
-      game.handle(idx, {"type": "burn", "counts": [None]})
+      self.handle(game, idx, {"type": "burn", "counts": [None]})
 
     self.assertIs(game.PHASES[game.phase_idx], powerplant.TurnPhase.AUCTION)
     self.assertEqual(game.resources["gas"], 10)  # Resupplies at 4 in stage 3.
@@ -1180,8 +1203,8 @@ class AdvanceStageTest(unittest.TestCase):
     # One player builds 7, triggering stage 2.
     to_build = ["FLENSBURG", "KIEL", "HAMBURG", "CUXHAVEN", "BREMEN", "HANNOVER", "OSNABRUCK"]
     for idx in range(7):
-      game.handle(1, {"type": "build", "city": to_build[idx]})
-    game.handle(1, {"type": "confirm"})
+      self.handle(game, 1, {"type": "build", "city": to_build[idx]})
+    self.handle(game, 1, {"type": "confirm"})
     self.assertTrue(game.begin_stage_2)
     self.assertFalse(game.begin_stage_3)
     self.assertEqual(len(game.market), 8)
@@ -1192,8 +1215,8 @@ class AdvanceStageTest(unittest.TestCase):
         "ESSEN", "DUISBURG", "DUSSELDORF", "DORTMUND", "MUNSTER", "KOLN", "AACHEN", "TRIER",
     ]
     for idx in range(8):
-      game.handle(0, {"type": "build", "city": to_build[idx]})
-    game.handle(0, {"type": "confirm"})
+      self.handle(game, 0, {"type": "build", "city": to_build[idx]})
+    self.handle(game, 0, {"type": "confirm"})
     self.assertEqual(len(game.market), 6)
     self.assertTrue(game.begin_stage_2)
     self.assertTrue(game.begin_stage_3)
@@ -1201,7 +1224,7 @@ class AdvanceStageTest(unittest.TestCase):
 
     # Go through bureaucracy and make sure the resupply is correct.
     for idx in range(num):
-      game.handle(idx, {"type": "burn", "counts": [None]})
+      self.handle(game, idx, {"type": "burn", "counts": [None]})
 
     self.assertIs(game.PHASES[game.phase_idx], powerplant.TurnPhase.AUCTION)
     self.assertEqual(game.resources["gas"], 10)  # Resupplies at 4 in stage 3.
@@ -1223,8 +1246,8 @@ class AdvanceStageTest(unittest.TestCase):
     # One player builds 7, triggering stage 2.
     to_build = ["FLENSBURG", "KIEL", "HAMBURG", "CUXHAVEN", "BREMEN", "HANNOVER", "OSNABRUCK"]
     for idx in range(7):
-      game.handle(1, {"type": "build", "city": to_build[idx]})
-    game.handle(1, {"type": "confirm"})
+      self.handle(game, 1, {"type": "build", "city": to_build[idx]})
+    self.handle(game, 1, {"type": "confirm"})
     self.assertTrue(game.begin_stage_2)
     self.assertFalse(game.begin_stage_3)
     self.assertEqual(len(game.market), 8)
@@ -1233,13 +1256,13 @@ class AdvanceStageTest(unittest.TestCase):
     self.assertNotEqual(game.market[-1].cost, powerplant.STAGE_3_COST)
     self.assertEqual(game.stage_idx, 0)  # Not done with this phase yet.
 
-    game.handle(0, {"type": "confirm"})
+    self.handle(game, 0, {"type": "confirm"})
     self.assertTrue(game.begin_stage_2)
     self.assertTrue(game.begin_stage_3)
     self.assertEqual(game.stage_idx, 1)  # Stage 3 starts at the end of bureaucracy.
 
     for idx in range(num):
-      game.handle(idx, {"type": "burn", "counts": [None]})
+      self.handle(game, idx, {"type": "burn", "counts": [None]})
 
     self.assertIs(game.PHASES[game.phase_idx], powerplant.TurnPhase.AUCTION)
     self.assertEqual(game.resources["gas"], 9)  # Resupplies at 3 in stage 2.
@@ -1255,7 +1278,7 @@ class AdvanceStageTest(unittest.TestCase):
 
     game.phase_idx = game.PHASES.index(powerplant.TurnPhase.BUREAUCRACY)
     for idx in range(num):
-      game.handle(idx, {"type": "burn", "counts": [None]})
+      self.handle(game, idx, {"type": "burn", "counts": [None]})
 
     self.assertIs(game.PHASES[game.phase_idx], powerplant.TurnPhase.AUCTION)
     self.assertFalse(game.begin_stage_2)
@@ -1264,19 +1287,19 @@ class AdvanceStageTest(unittest.TestCase):
     self.assertEqual(game.stage_idx, 2)
 
     for idx in range(num):
-      game.handle(game.turn_order[idx], {"type": "bid", "bid": None, "plant": None})
+      self.handle(game, game.turn_order[idx], {"type": "bid", "bid": None, "plant": None})
     self.assertEqual(game.market[0].cost, 17)
     self.assertIs(game.PHASES[game.phase_idx], powerplant.TurnPhase.MATERIALS)
     for idx in range(num):
-      game.handle(game.turn_order[num-idx-1], {"type": "confirm"})
+      self.handle(game, game.turn_order[num-idx-1], {"type": "confirm"})
     self.assertIs(game.PHASES[game.phase_idx], powerplant.TurnPhase.BUILDING)
 
     for idx in range(num-1):
-      game.handle(game.turn_order[num-idx-1], {"type": "confirm"})
+      self.handle(game, game.turn_order[num-idx-1], {"type": "confirm"})
     to_build = ["FLENSBURG", "KIEL", "HAMBURG", "CUXHAVEN", "BREMEN", "HANNOVER", "OSNABRUCK"]
     for idx in range(7):
-      game.handle(game.turn_order[0], {"type": "build", "city": to_build[idx]})
-    game.handle(game.turn_order[0], {"type": "confirm"})
+      self.handle(game, game.turn_order[0], {"type": "build", "city": to_build[idx]})
+    self.handle(game, game.turn_order[0], {"type": "confirm"})
 
     self.assertFalse(game.begin_stage_2)
     self.assertTrue(game.begin_stage_3)
@@ -1333,10 +1356,10 @@ class BureaucracyTest(BaseTest):
 class BurnTest(BureaucracyTest):
 
   def testNormalBurn(self):
-    self.game.handle_burn([{"coal": 2}, {"coal": 1, "oil": 1}])
-    self.game.handle_burn([{"gas": 1}, {"uranium": 1}, {}])
-    self.game.handle_burn([{"coal": 2}, {"coal": 2}, {}])
-    self.game.handle_burn([None, {"oil": 2}])
+    self.handle_burn([{"coal": 2}, {"coal": 1, "oil": 1}])
+    self.handle_burn([{"gas": 1}, {"uranium": 1}, {}])
+    self.handle_burn([{"coal": 2}, {"coal": 2}, {}])
+    self.handle_burn([None, {"oil": 2}])
 
     self.assertDictEqual(self.game.players[1].plants[0].storage, {Resource.OIL: 2})
     self.assertDictEqual(self.game.players[1].plants[1].storage, {})
@@ -1355,10 +1378,10 @@ class BurnTest(BureaucracyTest):
         self.assertEqual(powerplant.PAYMENTS.index(self.game.players[player_idx].money), expected)
 
   def testUnderBurn(self):
-    self.game.handle_burn([{"coal": 1, "oil": 1}, None])
-    self.game.handle_burn([{"gas": 1}, None, None])
-    self.game.handle_burn([None, {"coal": 2}, {}])
-    self.game.handle_burn([None, {"oil": 2}])
+    self.handle_burn([{"coal": 1, "oil": 1}, None])
+    self.handle_burn([{"gas": 1}, None, None])
+    self.handle_burn([None, {"coal": 2}, {}])
+    self.handle_burn([None, {"oil": 2}])
 
     players = self.game.players
     self.assertDictEqual(players[1].plants[0].storage, {Resource.OIL: 1, Resource.COAL: 1})
@@ -1379,10 +1402,10 @@ class BurnTest(BureaucracyTest):
 
   def testCycleLargestPlant(self):
     self.assertListEqual([plant.cost for plant in self.game.market], [3, 4, 5, 6, 7, 8, 9, 10])
-    self.game.handle_burn([None, None])
-    self.game.handle_burn([None, None, None])
-    self.game.handle_burn([None, None, None])
-    self.game.handle_burn([None, None])
+    self.handle_burn([None, None])
+    self.handle_burn([None, None, None])
+    self.handle_burn([None, None, None])
+    self.handle_burn([None, None])
     self.assertListEqual([plant.cost for plant in self.game.market], [3, 4, 5, 6, 7, 8, 9, 13])
     self.assertEqual(self.game.plants[-1].cost, 10)
 
@@ -1392,10 +1415,10 @@ class BurnTest(BureaucracyTest):
     self.game.market.pop()
     self.assertListEqual([plant.cost for plant in self.game.market], [3, 4, 5, 6, 7, 8])
     orig_len = len(self.game.plants)
-    self.game.handle_burn([None, None])
-    self.game.handle_burn([None, None, None])
-    self.game.handle_burn([None, None, None])
-    self.game.handle_burn([None, None])
+    self.handle_burn([None, None])
+    self.handle_burn([None, None, None])
+    self.handle_burn([None, None, None])
+    self.handle_burn([None, None])
     self.assertListEqual([plant.cost for plant in self.game.market], [4, 5, 6, 7, 8, 13])
     self.assertEqual(len(self.game.plants), orig_len-1)
 
@@ -1403,47 +1426,47 @@ class BurnTest(BureaucracyTest):
     self.game.stage_idx = 2
     self.game.market.clear()
     self.game.plants.clear()
-    self.game.handle_burn([None, None])
-    self.game.handle_burn([None, None, None])
-    self.game.handle_burn([None, None, None])
-    self.game.handle_burn([None, None])
+    self.handle_burn([None, None])
+    self.handle_burn([None, None, None])
+    self.handle_burn([None, None, None])
+    self.handle_burn([None, None])
 
   def testCorrectBurnAmounts(self):
     with self.assertRaisesRegex(InvalidMove, "exact number"):
-      self.game.handle_burn([{"coal": 1}, {"coal": 1, "oil": 1}])
+      self.handle_burn([{"coal": 1}, {"coal": 1, "oil": 1}])
     with self.assertRaisesRegex(InvalidMove, "exact number"):
-      self.game.handle_burn([{"coal": 2, "oil": 2}, {"coal": 1, "oil": 1}])
+      self.handle_burn([{"coal": 2, "oil": 2}, {"coal": 1, "oil": 1}])
 
   def testCannotBurnMoreThanYouHave(self):
     with self.assertRaisesRegex(InvalidMove, "are on your plants"):
-      self.game.handle_burn([{"coal": 2}, {"coal": 2}])
+      self.handle_burn([{"coal": 2}, {"coal": 2}])
 
   def testInvalidBurn(self):
     with self.assertRaisesRegex(InvalidMove, "Invalid resource counts"):
-      self.game.handle_burn(None)
+      self.handle_burn(None)
     with self.assertRaisesRegex(InvalidMove, "Invalid resource counts"):
-      self.game.handle_burn(["coal", "oil"])
+      self.handle_burn(["coal", "oil"])
     with self.assertRaisesRegex(InvalidMove, "each plant"):
-      self.game.handle_burn([None, None, None])
+      self.handle_burn([None, None, None])
 
   def testInvalidCounts(self):
     with self.assertRaisesRegex(InvalidMove, "Invalid resource in"):
-      self.game.handle_burn([{"oil": 2}, {"trash": 2}])
+      self.handle_burn([{"oil": 2}, {"trash": 2}])
     with self.assertRaisesRegex(InvalidMove, "Invalid resource in"):
-      self.game.handle_burn([{"coal": 2}, {"trash": 2}])
+      self.handle_burn([{"coal": 2}, {"trash": 2}])
     with self.assertRaisesRegex(InvalidMove, "on your plants"):
-      self.game.handle_burn([{"oil": 2}, {"hybrid": 2}])
+      self.handle_burn([{"oil": 2}, {"hybrid": 2}])
     with self.assertRaisesRegex(InvalidMove, "on your plants"):
-      self.game.handle_burn([{"oil": 2}, {"oil": 2}])
+      self.handle_burn([{"oil": 2}, {"oil": 2}])
 
     with self.assertRaisesRegex(InvalidMove, "positive integral"):
-      self.game.handle_burn([{"oil": 2}, {"oil": 0}])
+      self.handle_burn([{"oil": 2}, {"oil": 0}])
     with self.assertRaisesRegex(InvalidMove, "positive integral"):
-      self.game.handle_burn([{"oil": 1.5}, {"oil": 1.5}])
+      self.handle_burn([{"oil": 1.5}, {"oil": 1.5}])
     with self.assertRaisesRegex(InvalidMove, "exact number"):
-      self.game.handle_burn([{"oil": 2}, {"oil": 1}])
+      self.handle_burn([{"oil": 2}, {"oil": 1}])
     with self.assertRaisesRegex(InvalidMove, "exact number"):
-      self.game.handle_burn([{"oil": 2, "coal": 2}, {"coal": 1, "oil": 1}])
+      self.handle_burn([{"oil": 2, "coal": 2}, {"coal": 1, "oil": 1}])
 
 
 class ResupplyTest(BureaucracyTest):
@@ -1451,10 +1474,10 @@ class ResupplyTest(BureaucracyTest):
   def testStage1(self):
     self.game.stage_idx = 0
     orig = Counter(self.game.resources)
-    self.game.handle_burn([{"coal": 2}, {"coal": 1, "oil": 1}])
-    self.game.handle_burn([{"gas": 1}, {"uranium": 1}, {}])
-    self.game.handle_burn([{"coal": 2}, {"coal": 2}, {}])
-    self.game.handle_burn([None, {"oil": 2}])
+    self.handle_burn([{"coal": 2}, {"coal": 1, "oil": 1}])
+    self.handle_burn([{"gas": 1}, {"uranium": 1}, {}])
+    self.handle_burn([{"coal": 2}, {"coal": 2}, {}])
+    self.handle_burn([None, {"oil": 2}])
     self.assertEqual(self.game.phase_idx, self.game.PHASES.index(powerplant.TurnPhase.AUCTION))
 
     updated = Counter(self.game.resources)
@@ -1465,10 +1488,10 @@ class ResupplyTest(BureaucracyTest):
   def testStage2(self):
     self.game.stage_idx = 1
     orig = Counter(self.game.resources)
-    self.game.handle_burn([{"coal": 2}, {"coal": 1, "oil": 1}])
-    self.game.handle_burn([{"gas": 1}, {"uranium": 1}, {}])
-    self.game.handle_burn([{"coal": 2}, {"coal": 2}, {}])
-    self.game.handle_burn([None, {"oil": 2}])
+    self.handle_burn([{"coal": 2}, {"coal": 1, "oil": 1}])
+    self.handle_burn([{"gas": 1}, {"uranium": 1}, {}])
+    self.handle_burn([{"coal": 2}, {"coal": 2}, {}])
+    self.handle_burn([None, {"oil": 2}])
     self.assertEqual(self.game.phase_idx, self.game.PHASES.index(powerplant.TurnPhase.AUCTION))
 
     updated = Counter(self.game.resources)
@@ -1479,10 +1502,10 @@ class ResupplyTest(BureaucracyTest):
   def testStage3(self):
     self.game.stage_idx = 2
     orig = Counter(self.game.resources)
-    self.game.handle_burn([{"coal": 2}, {"coal": 1, "oil": 1}])
-    self.game.handle_burn([{"gas": 1}, {"uranium": 1}, {}])
-    self.game.handle_burn([{"coal": 2}, {"coal": 2}, {}])
-    self.game.handle_burn([None, {"oil": 2}])
+    self.handle_burn([{"coal": 2}, {"coal": 1, "oil": 1}])
+    self.handle_burn([{"gas": 1}, {"uranium": 1}, {}])
+    self.handle_burn([{"coal": 2}, {"coal": 2}, {}])
+    self.handle_burn([None, {"oil": 2}])
     self.assertEqual(self.game.phase_idx, self.game.PHASES.index(powerplant.TurnPhase.AUCTION))
 
     updated = Counter(self.game.resources)
@@ -1495,10 +1518,10 @@ class ResupplyTest(BureaucracyTest):
     # Have everyone burn nothing. Resources remaining on plants: 11 coal, 5 oil, 2 gas, 2 uranium
     orig = Counter({Resource.COAL: 11, Resource.OIL: 16, Resource.GAS: 21, Resource.URANIUM: 9})
     self.game.resources.update(orig)
-    self.game.handle_burn([None, None])
-    self.game.handle_burn([None, None, None])
-    self.game.handle_burn([None, None, None])
-    self.game.handle_burn([None, None])
+    self.handle_burn([None, None])
+    self.handle_burn([None, None, None])
+    self.handle_burn([None, None, None])
+    self.handle_burn([None, None])
     self.assertEqual(self.game.phase_idx, self.game.PHASES.index(powerplant.TurnPhase.AUCTION))
 
     updated = Counter(self.game.resources)

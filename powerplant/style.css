@@ -62,6 +62,7 @@ div {
   display: flex;
   flex-direction: row;
   overflow: hidden;
+  position: relative;
 }
 #uiright {
   position: relative;
@@ -396,7 +397,7 @@ select {
 #paysupply {
   position: absolute;
   top: min(2.5vw, 4vh);
-  left: min(31.5vw, 50.4vh);
+  left: min(37.5vw, 60vh);
   display: flex;
   flex-direction: row-reverse;
   align-items: center;
@@ -465,6 +466,7 @@ select {
   flex-direction: row;
   align-items: center;
   justify-content: center;
+  position: relative;
 }
 #market.shown {
   pointer-events: auto;
@@ -495,6 +497,21 @@ select {
 }
 .marketplant.disabled {
   filter: grayscale(70%) brightness(70%);
+}
+.marketplant.moving {
+  filter: none;
+  transition: transform 2s;
+}
+.marketplant.entering {
+  transition-delay: 2s;
+}
+.marketplant.leaving {
+  filter: none;
+  transition: transform 3s;
+  z-index: 3;
+}
+.marketplant.bought {
+  transition: transform 2s;
 }
 .marketplant.auction {
   cursor: pointer;
@@ -540,6 +557,10 @@ select {
   align-items: center;
   justify-content: space-between;
   background-color: #406f18;
+  position: absolute;
+  top: 50%;
+  left: 0;
+  transform: translate(-100%, -50%);
 }
 #auction.hidden {
   display: none;
