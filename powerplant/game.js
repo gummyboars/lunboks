@@ -26,6 +26,9 @@ regionsDone = false;
 bidPlant = null;
 pendingPlant = null;
 plantDivs = [];
+// For animation.
+oldPlantDivs = [];
+forcedOpen = false;
 // For updating cities in-place.
 cityDivs = {};
 connDivs = {};
@@ -200,12 +203,14 @@ function createResourceDiv(rsrc, num, box) {
   renderAssetToDiv(rsrcDiv, rsrc);
 }
 
-function toggleMarket() {
+function toggleMarket(extraDelay, callback) {
+  extraDelay = extraDelay || 0;
+  callback = callback ?? function() {};
+  let btn = document.getElementById("markettoggle");
   let marketDiv = document.getElementById("market");
   if (marketDiv.ontransitionend != null) {
     return;
   }
-  let btn = document.getElementById("markettoggle");
   let btnRect = btn.getBoundingClientRect();
   let divRect = marketDiv.getBoundingClientRect();
   let scaleX = 100 * btnRect.width / divRect.width;
@@ -215,18 +220,21 @@ function toggleMarket() {
   let diffY = btnRect.top - divRect.top;
   if (btn.classList.contains("shown")) {
     btn.classList.remove("shown");
-    marketDiv.ontransitionend = function(e) { doneAnimating(marketDiv); marketDiv.classList.remove("animating", "shown"); marketDiv.style.transform = "none"; finishAnim(); };
-    marketDiv.ontransitioncancel = function(e) { doneAnimating(marketDiv); marketDiv.classList.remove("animating", "shown"); marketDiv.style.transform = "none"; finishAnim(); };
-    marketDiv.classList.add("animating");
-    marketDiv.style.transform = `translate(${diffX}px, ${diffY}px) scale(${scale}%)`;
+    runningAnim.push(true);
+    marketDiv.ontransitionend = function(e) { doneAnimating(marketDiv); marketDiv.classList.remove("animating", "shown"); marketDiv.style.transform = "none"; callback(); finishAnim(); };
+    marketDiv.ontransitioncancel = function(e) { doneAnimating(marketDiv); marketDiv.classList.remove("animating", "shown"); marketDiv.style.transform = "none"; callback(); finishAnim(); };
+    setTimeout(function() {
+      marketDiv.classList.add("animating");
+      marketDiv.style.transform = `translate(${diffX}px, ${diffY}px) scale(${scale}%)`;
+    }, 5+extraDelay);
   } else {
     btn.classList.add("shown");
     marketDiv.style.transform = `translate(${diffX}px, ${diffY}px) scale(${scale}%)`;
     marketDiv.classList.add("shown");
     runningAnim.push(true);
-    marketDiv.ontransitionend = function(e) { doneAnimating(marketDiv); marketDiv.classList.remove("animating"); finishAnim(); };
-    marketDiv.ontransitioncancel = function(e) { doneAnimating(marketDiv); marketDiv.classList.remove("animating"); finishAnim(); };
-    setTimeout(function() { marketDiv.classList.add("animating"); marketDiv.style.transform = "none"; }, 5);
+    marketDiv.ontransitionend = function(e) { doneAnimating(marketDiv); marketDiv.classList.remove("animating"); callback(); finishAnim(); };
+    marketDiv.ontransitioncancel = function(e) { doneAnimating(marketDiv); marketDiv.classList.remove("animating"); callback(); finishAnim(); };
+    setTimeout(function() { marketDiv.classList.add("animating"); marketDiv.style.transform = "none"; }, 5+extraDelay);
   }
 }
 
@@ -784,9 +792,19 @@ function doneAnimating(div) {
 function finishAnim() {
   runningAnim.shift();
   if (messageQueue.length && !runningAnim.length) {
-    let msg = messageQueue.shift();
-    handleData(msg);
+    setTimeout(function() {
+      let msg = messageQueue.shift();
+      handleData(msg);
+    }, 5);
   }
+}
+
+function finishMarketAnim() {
+  if (forcedOpen && messageQueue.length == 0 && runningAnim.length == 1) {
+    toggleMarket(1000);
+    forcedOpen = false;
+  }
+  finishAnim();
 }
 
 function handleData(data) {
@@ -802,8 +820,8 @@ function handleData(data) {
   updatePlayers(data.players, data.turn_order, data.player_idx, data.pending_spend, data.pending_buy, data.turn_idx, data.phase, data.winner);
   updateMarket(data.market, data.phase);
   updateAuction(data.auction_bid, data.auction_plant_idx, data.turn_order, data.players, data.auction_idx, data.auction_passed, data.auction_bought, data.phase, data.player_idx)
-  maybeShowExpandedPlants(data.phase, data.player_idx, data.auction_discard_idx);
   updateBurn(data.phase, data.player_idx, data.turn_order, data.turn_idx);
+  maybeShowExpandedPlants(data.phase, data.player_idx, data.auction_discard_idx);
   updatePhase(data.phase);
   updateButtons(data.phase, data.player_idx == data.turn_idx);
   oldDiscard = data.auction_discard_idx;
@@ -811,6 +829,10 @@ function handleData(data) {
   if (canBurn && waitBurn()) {
     burn();
     dontWait();
+  }
+  if (!messageQueue.length && !runningAnim.length && forcedOpen) {
+    toggleMarket(1000);
+    forcedOpen = false;
   }
   if (messageQueue.length && !runningAnim.length) {
     let msg = messageQueue.shift();
@@ -1361,36 +1383,204 @@ function updateMarket(market, phase) {
   if (!regionsDone) {
     return;
   }
+  let shouldAnimate = false;
   let marketDiv = document.getElementById("market");
-  if (oldPhase != phase) {
-    // Player can adjust this on their own; only update on phase change.
-    let shouldShow = phase == "auction";
-    let showBtn = document.getElementById("markettoggle");
-    if (showBtn.classList.contains("shown") != shouldShow) {
-      toggleMarket();
+  let showBtn = document.getElementById("markettoggle");
+  oldPlantDivs = Array(...plantDivs);
+  let oldDivs = {};
+  let newNames = [];
+  for (let plant of market) {
+    newNames.push(plantName(plant))
+  }
+  for (let plantDiv of marketDiv.getElementsByClassName("marketplant")) {
+    if (plantDiv.assetName == null) {
+      continue;
     }
+    oldDivs[plantDiv.assetName] = plantDiv;
+    shouldAnimate = shouldAnimate || !newNames.includes(plantDiv.assetName);
   }
-  while (marketDiv.getElementsByClassName("marketplant").length) {
-    let plantDiv = marketDiv.getElementsByClassName("marketplant")[0];
-    plantDiv.parentNode.removeChild(plantDiv);
-  }
+
+  // Create new plant divs as needed; start them offscreen.
+  let mainBox = document.getElementById("uimain").getBoundingClientRect();
+  let btnRect = document.getElementById("markettoggle").getBoundingClientRect();
+  let diffX = btnRect.left - mainBox.left;
+  let diffY = btnRect.top - mainBox.top;
   plantDivs = [];  // global
   for (let [idx, plant] of market.entries()) {
-    let plantDiv = document.createElement("DIV");
-    plantDiv.classList.add("marketplant", "cnvcontainer");
-    let plantCnv = document.createElement("CANVAS");
-    plantCnv.classList.add("cnv");
-    plantDiv.appendChild(plantCnv);
-    if (idx < market.length / 2) {
+    let plantDiv = oldDivs[plantName(plant)];
+    if (plantDiv == null) {
+      // Create a new plantDiv and add it.
+      plantDiv = document.createElement("DIV");
+      plantDiv.classList.add("marketplant", "cnvcontainer");
+      let plantCnv = document.createElement("CANVAS");
+      plantCnv.classList.add("cnv");
+      plantDiv.appendChild(plantCnv);
+      document.getElementById("uimain").appendChild(plantDiv);
+      plantDiv.style.position = "absolute";
+      plantDiv.style.top = `${diffY}px`;
+      plantDiv.style.left = `${diffX}px`;
+      renderAssetToDiv(plantDiv, plantName(plant));
+      shouldAnimate = true;
+    }
+    plantDiv.cost = plant.cost;
+    plantDiv.onclick = function(e) { prepareBid(idx); };
+    plantDivs.push(plantDiv);
+  }
+
+  // If the plants are changing during the bureaucracy phase, it means burning is done.
+  // We hide the plants by default when we're animating the market.
+  if (phase == "bureaucracy" && shouldAnimate && oldPlantDivs.length > 0) {
+    hasBurned = true;
+    let shown = document.getElementsByClassName("plantexpand shown");
+    for (let plantExpand of shown) {
+      plantExpand.classList.remove("shown");
+    }
+  }
+
+  let shouldShow = null;
+  // In the case where we are changing phases, we want to change visibility (either immediately
+  // or when done animating the market).
+  if (oldPhase != phase) {
+    shouldShow = (phase == "auction");
+    if (shouldShow && forcedOpen) {
+      forcedOpen = false;
+    }
+  }
+  if (shouldShow || shouldAnimate) {
+    if (oldPlantDivs.length == 0) {
+      // If we just started the game, fill the market first, then do the opening animation.
+      animateMarketChange();
+      if (shouldShow && !showBtn.classList.contains("shown")) {
+        toggleMarket();
+      }
+    } else if (showBtn.classList.contains("shown")) {
+      // If the market is already on the screen, immediately animate the plants moving.
+      if (shouldAnimate) {
+        animateMarketChange();
+      }
+    } else {
+      // If the market is hidden, animate opening it, with a callback to animate the plants moving.
+      let callback = null;
+      if (shouldAnimate) {
+        callback = function() { animateMarketChange(); };
+      }
+      forcedOpen = true;
+      toggleMarket(0, callback);
+    }
+  } else if (shouldShow != null && showBtn.classList.contains("shown") != shouldShow) {
+    // If no animations, hide the market to match shouldShow, but only on phase transition.
+    toggleMarket(1000);
+  }
+}
+
+function animateMarketChange() {
+  // Start with all divs in toRemove, and remove them from toRemove when found later.
+  let toRemove = [...oldPlantDivs];
+  let oldBoxes = [];
+  for (let plantDiv of oldPlantDivs) {
+    oldBoxes.push(plantDiv.getBoundingClientRect());
+  }
+  let prevBoxes = [];
+  for (let plantDiv of plantDivs) {
+    prevBoxes.push(plantDiv.getBoundingClientRect());
+  }
+
+  for (let [idx, plantDiv] of plantDivs.entries()) {
+    if (idx < plantDivs.length / 2) {
       document.getElementById("markettop").appendChild(plantDiv);
     } else {
       document.getElementById("marketbottom").appendChild(plantDiv);
     }
-    renderAssetToDiv(plantDiv, plantName(plant));
-    plantDivs.push(plantDiv);
-    plantDiv.cost = plant.cost;
-    plantDiv.onclick = function(e) { prepareBid(idx); };
+    plantDiv.style.order = idx;
+    plantDiv.style.removeProperty("position");
+    plantDiv.style.removeProperty("top");
+    plantDiv.style.removeProperty("left");
+    renderAssetToDiv(plantDiv, plantDiv.assetName);
   }
+
+  // We now have the correct plants in the market, but we need to remove some of them.
+  let mainBox = document.getElementById("uimain").getBoundingClientRect();
+  let btnRect = document.getElementById("markettoggle").getBoundingClientRect();
+  let remPairs = [];
+  for (let [idx, plantDiv] of toRemove.entries()) {
+    let i = plantDivs.indexOf(plantDiv);
+    if (i >= 0) {
+      continue;
+    }
+    let box = oldBoxes[idx];
+    let offsetX = box.left - mainBox.left;
+    let offsetY = box.top - mainBox.top;
+    document.getElementById("uimain").appendChild(plantDiv);
+    plantDiv.style.position = "absolute";
+    plantDiv.style.left = `${offsetX}px`;
+    plantDiv.style.top = `${offsetY}px`;
+    plantDiv.classList.add("leaving");
+    let end = function(e) { e.stopPropagation(); doneAnimating(plantDiv); plantDiv.parentNode.removeChild(plantDiv); finishMarketAnim(plantDiv.cost); };
+    plantDiv.ontransitionend = end;
+    plantDiv.ontransitioncancel = end;
+    runningAnim.push(true);
+    let moveY = box.bottom - mainBox.top;
+    let newTransform = `translateY(-${moveY}px)`;
+    if (oldPlantDivs.length > 0 && plantDiv == oldPlantDivs[oldPlantDivs.length-1] && plantDiv.cost < stage3Cost) {
+      // If we removed the largest plant, it goes to the bottom, unless it's the stage 3 card.
+      let diffX = btnRect.left - box.left;
+      let diffY = btnRect.top - box.top;
+      newTransform = `translate(${diffX}px, ${diffY}px)`;
+    }
+    for (let playerPlant of document.getElementsByClassName("marketplant")) {
+      // If the plant was bought by a player, animate it moving to the player's plants.
+      if (playerPlant.assetName == plantDiv.assetName && playerPlant != plantDiv) {
+        let pbox = playerPlant.parentNode.parentNode.parentNode.getBoundingClientRect();
+        let diffX = pbox.left - box.left;
+        let diffY = pbox.top - box.top;
+        newTransform = `translate(${diffX}px, ${diffY}px)`;
+        plantDiv.classList.add("bought");
+        break;
+      }
+    }
+    remPairs.push([plantDiv, newTransform]);
+  }
+  setTimeout(function() {
+    for (let [div, trans] of remPairs) {
+      div.style.transform = trans;
+    }
+  }, 5);
+
+  // Now that the extraneous plants have been removed, the rest are in the correct document position.
+  let toAdd = [];
+  let toStay = [];
+  for (let [idx, plantDiv] of plantDivs.entries()) {
+    let divRect = plantDiv.getBoundingClientRect();
+    let oldRect = prevBoxes[idx];
+    let diffX = oldRect.left - divRect.left;
+    let diffY = oldRect.top - divRect.top;
+    // Only animate if it is moving more than 1 px
+    if (oldPlantDivs.length > 0 && (Math.abs(diffX) + Math.abs(diffY)) > 1) {
+      plantDiv.style.transform = `translate(${diffX}px, ${diffY}px)`;
+      let end = function(e) { e.stopPropagation(); doneAnimating(plantDiv); plantDiv.classList.remove("moving", "entering"); finishMarketAnim(plantDiv.cost); };
+      plantDiv.ontransitionend = end;
+      plantDiv.ontransitioncancel = end;
+      runningAnim.push(true);
+      toAdd.push(plantDiv);
+    } else if (oldPlantDivs.length > 0) {
+      // Remove the grayscale filter during the animation.
+      plantDiv.classList.add("moving");
+      toStay.push(plantDiv);
+    }
+  }
+  setTimeout(function() {
+    for (let div of toAdd) {
+      if (remPairs.length) {
+        div.classList.add("entering");
+      }
+      div.classList.add("moving"); div.style.transform = "none";
+    }
+  }, 5);
+  setTimeout(function() {
+    for (let div of toStay) {
+      div.classList.remove("moving");
+    }
+  }, (remPairs.length ? 5004 : 2004));
 }
 
 function updateAuction(currentBid, bidPlantIdx, turnOrder, players, auctionIdx, passed, bought, phase, playerIdx) {

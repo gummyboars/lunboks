@@ -266,7 +266,7 @@ class GameState:
 
   def handle_bid(self, bid, plant_idx):
     if bid is None:  # player has decided to pass
-      self.handle_pass()
+      yield from self.handle_pass()
       return
 
     if not isinstance(bid, int) or bid <= 0:
@@ -283,7 +283,7 @@ class GameState:
         raise InvalidMove("You must bid at least the price shown on the plant")
       self.auction_plant_idx = plant_idx
       self.auction_bid = bid
-      self.next_bidder()
+      yield from self.next_bidder()
       return
 
     if self.auction_plant_idx != plant_idx:
@@ -291,20 +291,20 @@ class GameState:
     if bid < self.auction_bid + 1:
       raise InvalidMove("You must bid more than the previous bidder")
     self.auction_bid = bid
-    self.next_bidder()
+    yield from self.next_bidder()
 
   def handle_pass(self):
     if self.auction_plant_idx is not None:
       # The player is choosing to pass on bidding for this plant.
       self.auction_passed.add(self.auction_idx)
-      self.next_bidder()
+      yield from self.next_bidder()
       return
 
     # The player choosing the plant is passing.
     if self.first_round:
       raise InvalidMove("You must buy a plant in the first round")
     self.auction_bought[self.auction_idx] = False
-    self.next_auction()
+    yield from self.next_auction()
 
   def next_bidder(self):
     # calculate remaining eligible auction participants, preserving order
@@ -313,8 +313,8 @@ class GameState:
     # remaining represents players still eligible to participate in this specific auction
     remaining = [idx for idx in eligible if idx not in self.auction_passed]
     if len(remaining) == 1:  # The last player standing gets the plant.
-      self.award_plant(remaining[0], self.auction_plant_idx, self.auction_bid)
-      self.next_auction()
+      yield from self.award_plant(remaining[0], self.auction_plant_idx, self.auction_bid)
+      yield from self.next_auction()
       return
     # find the next eligible bidder
     # NOTE: we find auction_idx inside eligible instead of finding them inside remaining - this
@@ -327,6 +327,7 @@ class GameState:
       next_idx_idx += 1
       next_idx_idx %= len(eligible)
     self.auction_idx = eligible[next_idx_idx]
+    yield None
 
   def next_auction(self):
     self.auction_plant_idx = None
@@ -334,15 +335,16 @@ class GameState:
     self.auction_passed = set()
     eligible = [idx for idx in self.turn_order if idx not in self.auction_bought]
     if not eligible:
-      self.next_turn()
+      yield from self.next_turn()
       return
     self.auction_idx = eligible[0]
+    yield None
 
   def award_plant(self, player_idx, plant_idx, winning_bid):
     plant = self.market[plant_idx]
-    self.remove_plant(plant)
     self.players[player_idx].plants.append(plant)
     self.players[player_idx].money -= winning_bid
+    yield from self.remove_plant(plant)
     self.auction_bought[player_idx] = True
     if len(self.players[player_idx].plants) > self.max_plants:
       self.auction_discard_idx = player_idx
@@ -356,19 +358,27 @@ class GameState:
 
     self.market.remove(plant)
     expected_len = 8 if self.stage_idx < 2 else 6
+    changed = False
     while self.plants and len(self.market) < expected_len:
       next_plant = self.plants.pop(0)
       if next_plant.cost >= STAGE_3_COST:
         self.begin_stage_3 = True
         random.shuffle(self.plants)
-        if self.PHASES[self.phase_idx] is TurnPhase.AUCTION:
-          self.market.append(next_plant)
-        else:
+        self.market.append(next_plant)
+        changed = True
+        yield None
+        if self.PHASES[self.phase_idx] is not TurnPhase.AUCTION:
           self.market.pop(0)
+          self.market.remove(next_plant)
+          yield None
           expected_len = 6
       elif next_plant.cost > max_built:
         self.market.append(next_plant)
         self.market.sort()
+        changed = True
+        yield None
+    if not changed:
+      yield None
 
   def handle_discard(self, plant_idx):
     if self.auction_discard_idx is None:
@@ -532,11 +542,11 @@ class GameState:
       self.begin_stage_2 = True
     # Remove any plants with cost lower than the number built.
     while self.market and self.market[0].cost <= total_built:
-      self.remove_plant(self.market[0])
+      yield from self.remove_plant(self.market[0])
 
   def handle_confirm(self):
     if self.PHASES[self.phase_idx] is TurnPhase.BUILDING:
-      self.finish_build()
+      yield from self.finish_build()
     elif self.PHASES[self.phase_idx] is TurnPhase.MATERIALS:
       self.finish_buy()
     else:
@@ -544,7 +554,7 @@ class GameState:
 
     self.players[self.turn_idx].money -= self.pending_spend
     self.handle_reset()
-    self.next_turn()
+    yield from self.next_turn()
 
   def handle_shuffle(self, player_idx, resource_name, source, dest):
     player = self.players[player_idx]
@@ -631,7 +641,7 @@ class GameState:
     payable = min(self.powered[self.turn_idx], len(PAYMENTS)-1)
     self.players[self.turn_idx].money += PAYMENTS[payable]
 
-    self.next_turn()
+    yield from self.next_turn()
 
   def resupply(self):
     owned = collections.defaultdict(int)
@@ -652,18 +662,20 @@ class GameState:
       next_idx = self.turn_order.index(self.turn_idx)+1
       if next_idx < len(self.turn_order):
         self.turn_idx = self.turn_order[next_idx]
+        yield None
         return
     elif phase in [TurnPhase.MATERIALS, TurnPhase.BUILDING]:
       next_idx = self.turn_order.index(self.turn_idx)-1
       if next_idx >= 0:
         self.turn_idx = self.turn_order[next_idx]
+        yield None
         return
     elif phase is TurnPhase.AUCTION:
       if self.first_round:
         self.reorder_players()
         self.first_round = False
       if self.market and not any(self.auction_bought.values()):
-        self.remove_plant(self.market[0])
+        yield from self.remove_plant(self.market[0])
 
     # The phase is over; move to the next phase.
     if phase is TurnPhase.BUREAUCRACY:
@@ -675,34 +687,36 @@ class GameState:
       max_built = max(built.values()) if built else 0
       if max_built >= self.end_game_count:
         self.find_winner()
+        yield None
         return
 
       # Remove a power plant (depending on game stage)
       if self.plants:
         if self.stage_idx < 2:
           cycle = self.market[-1]
-          self.remove_plant(cycle)
+          yield from self.remove_plant(cycle)
           self.plants.append(cycle)
         else:
-          self.remove_plant(self.market[0])
+          yield from self.remove_plant(self.market[0])
       self.resupply()
 
     if self.stage_idx < 2 and self.begin_stage_3:
       self.stage_idx = 2
       if self.market and self.market[-1].cost >= STAGE_3_COST:
-        self.remove_plant(self.market[0])
+        yield from self.remove_plant(self.market[0])
         if self.market:
-          self.remove_plant(self.market[-1])
+          yield from self.remove_plant(self.market[-1])
     if self.stage_idx == 0 and self.begin_stage_2:
       self.stage_idx = 1
       if self.market:
-        self.remove_plant(self.market[0])
+        yield from self.remove_plant(self.market[0])
     if phase is not TurnPhase.BUREAUCRACY:
       self.phase_idx += 1
       if self.PHASES[self.phase_idx] is TurnPhase.BUREAUCRACY:
         self.turn_idx = self.turn_order[0]
       else:
         self.turn_idx = self.turn_order[-1]
+      yield None
       return
 
     # Bureaucracy has ended; move to the next turn.
@@ -714,6 +728,7 @@ class GameState:
     self.auction_bid = None
     self.auction_passed = set()
     self.auction_bought = {}
+    yield None
     return
 
   def find_winner(self):
