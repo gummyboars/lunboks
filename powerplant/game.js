@@ -67,7 +67,6 @@ function continueInit(gameId) {
   document.getElementById("board").cnvScale = 4;
   moveBoard();
   renderAssetToDiv(document.getElementById("payments"), "payments");
-  renderAssetToDiv(document.getElementById("board"), "Germany");
   renderAssetToDiv(document.getElementById("supply"), "supply");
   let supp = document.getElementById("supplycnt");
   let spacer = document.createElement("DIV");
@@ -656,11 +655,12 @@ function hideDefaultPlant(plantExpand) {
   plantExpand.classList.add("temphide");
 }
 
-function placeCities(cities, colors) {
-  if (cities == null) {
+function placeCities(region, cities, colors) {
+  if (region == null || cities == null) {
     return;
   }
   chosenColors = colors;
+  renderAssetToDiv(document.getElementById("board"), region);
   let boardCnv = document.getElementById("boardcnv");
   for (let city in cities) {
     if (cityDivs[city] != null) {
@@ -672,8 +672,13 @@ function placeCities(cities, colors) {
     addHouseDiv(div, "first");
     addHouseDiv(div, "second");
     addHouseDiv(div, "third");
-    if (!setDivXYPercent(div, boardCnv, "Germany", city)) {
-      setDefaultXYPercent(div, boardCnv, "Germany", city);
+    if (!setDivXYPercent(div, boardCnv, region, city)) {
+      setDefaultXYPercent(div, boardCnv, region, city);
+    }
+    let size = getDivSize(div, boardCnv, region, city);
+    if (size != null) {
+      div.style.width = size.width + "%";
+      div.style.height = size.height + "%";
     }
     div.onclick = function(e) { clickCity(city, color); };
     document.getElementById("board").appendChild(div);
@@ -712,6 +717,11 @@ function placeCities(cities, colors) {
       pcta = Number(pcta.substring(0, pcta.length-1));
       pctb = Number(pctb.substring(0, pctb.length-1));
       div.style.left = ((pcta + pctb)/2) + "%";
+      let size = getDivSize(cityDivs[city], boardCnv, region, city);
+      if (size != null) {
+        div.style.width = 0.66 * size.width + "%";
+        div.style.height = 0.66 * size.height + "%";
+      }
       document.getElementById("board").appendChild(div);
       connDivs[city+","+connCity] = div;
     }
@@ -808,7 +818,7 @@ function finishMarketAnim() {
 }
 
 function handleData(data) {
-  placeCities(data.all_cities, data.colors);
+  placeCities(data.region, data.all_cities, data.colors);
   if (data.to_choose != null && data.colors != null && data.to_choose == data.colors.length) {
     regionsDone = true;
   }

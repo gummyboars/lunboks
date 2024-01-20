@@ -254,6 +254,32 @@ function setDivXYPercent(div, parentCnv, baseAsset, relativeAsset, fromBottom) {
   return true;
 }
 
+function getDivSize(div, parentCnv, baseAsset, relativeAsset) {
+  if (imageInfo[baseAsset] == null || imageInfo[relativeAsset] == null) {
+    return null;
+  }
+  let baseImg, relativeImg;
+  if (imageInfo[baseAsset].filternum != null) {
+    baseImg = document.getElementById("img" + imageInfo[baseAsset].filternum);
+  } else {
+    baseImg = document.getElementById("img" + imageInfo[baseAsset].srcnum);
+  }
+  if (imageInfo[relativeAsset].filternum != null) {
+    relativeImg = document.getElementById("img" + imageInfo[relativeAsset].filternum);
+  } else {
+    relativeImg = document.getElementById("img" + imageInfo[relativeAsset].srcnum);
+  }
+  let [renderWidth, renderHeight, scaleMultiplier] = renderRatio(baseImg, parentCnv);
+  let baseWidth = baseImg.naturalWidth || baseImg.width;
+  let baseHeight = baseImg.naturalHeight || baseImg.height;
+  let width = relativeImg.naturalWidth || relativeImg.width;
+  let height = relativeImg.naturalHeight || relativeImg.height;
+  let widthScale = (parentCnv.width / renderWidth);
+  let heightScale = (parentCnv.height / renderHeight);
+  // TODO: scale
+  return {width: (100 / widthScale * width / baseWidth), height: (100 / heightScale * height / baseHeight)};
+}
+
 function loadImages() {
   let prefix = assetPrefix || "";
   // Parse data and set globals.

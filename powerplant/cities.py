@@ -166,13 +166,151 @@ def Germany():
   return cities
 
 
+def USA():
+  city_list = [
+      City("SAN FRANCISCO", Color.CYAN),
+      City("LOS ANGELES", Color.CYAN),
+      City("SAN DIEGO", Color.CYAN),
+      City("LAS VEGAS", Color.CYAN),
+      City("SALT LAKE CITY", Color.CYAN),
+      City("PHOENIX", Color.CYAN),
+      City("SANTA FE", Color.CYAN),
+      City("KANSAS CITY", Color.RED),
+      City("OKLAHOMA CITY", Color.RED),
+      City("DALLAS", Color.RED),
+      City("HOUSTON", Color.RED),
+      City("NEW ORLEANS", Color.RED),
+      City("MEMPHIS", Color.RED),
+      City("BIRMINGHAM", Color.RED),
+      City("ATLANTA", Color.BLUE),
+      City("SAVANNAH", Color.BLUE),
+      City("JACKSONVILLE", Color.BLUE),
+      City("TAMPA", Color.BLUE),
+      City("MIAMI", Color.BLUE),
+      City("RALEIGH", Color.BLUE),
+      City("NORFOLK", Color.BLUE),
+      City("SEATTLE", Color.PURPLE),
+      City("PORTLAND", Color.PURPLE),
+      City("BOISE", Color.PURPLE),
+      City("BILLINGS", Color.PURPLE),
+      City("CHEYENNE", Color.PURPLE),
+      City("DENVER", Color.PURPLE),
+      City("OMAHA", Color.PURPLE),
+      City("FARGO", Color.YELLOW),
+      City("MINNEAPOLIS", Color.YELLOW),
+      City("DULUTH", Color.YELLOW),
+      City("CHICAGO", Color.YELLOW),
+      City("ST LOUIS", Color.YELLOW),
+      City("CINCINNATI", Color.YELLOW),
+      City("KNOXVILLE", Color.YELLOW),
+      City("DETROIT", Color.BROWN),
+      City("BUFFALO", Color.BROWN),
+      City("PITTSBURGH", Color.BROWN),
+      City("WASHINGTON", Color.BROWN),
+      City("PHILADELPHIA", Color.BROWN),
+      City("NEW YORK", Color.BROWN),
+      City("BOSTON", Color.BROWN),
+  ]
+  cities = {city.name: city for city in city_list}
+  connect(cities, "SAN FRANCISCO", "PORTLAND", 24)
+  connect(cities, "SAN FRANCISCO", "BOISE", 23)
+  connect(cities, "SAN FRANCISCO", "SALT LAKE CITY", 27)
+  connect(cities, "SAN FRANCISCO", "LAS VEGAS", 14)
+  connect(cities, "SAN FRANCISCO", "LOS ANGELES", 9)
+  connect(cities, "LAS VEGAS", "SALT LAKE CITY", 18)
+  connect(cities, "LAS VEGAS", "SANTA FE", 27)
+  connect(cities, "LAS VEGAS", "PHOENIX", 15)
+  connect(cities, "LAS VEGAS", "SAN DIEGO", 9)
+  connect(cities, "LAS VEGAS", "LOS ANGELES", 9)
+  connect(cities, "LOS ANGELES", "SAN DIEGO", 3)
+  connect(cities, "PHOENIX", "SAN DIEGO", 14)
+  connect(cities, "PHOENIX", "SANTA FE", 18)
+  connect(cities, "SANTA FE", "HOUSTON", 21)
+  connect(cities, "SANTA FE", "DALLAS", 16)
+  connect(cities, "SANTA FE", "OKLAHOMA CITY", 15)
+  connect(cities, "SANTA FE", "KANSAS CITY", 16)
+  connect(cities, "SANTA FE", "DENVER", 13)
+  connect(cities, "SANTA FE", "SALT LAKE CITY", 28)
+  connect(cities, "SALT LAKE CITY", "DENVER", 21)
+  connect(cities, "SALT LAKE CITY", "BOISE", 8)
+  connect(cities, "BOISE", "CHEYENNE", 24)
+  connect(cities, "BOISE", "BILLINGS", 12)
+  connect(cities, "BOISE", "SEATTLE", 12)
+  connect(cities, "BOISE", "PORTLAND", 13)
+  connect(cities, "SEATTLE", "PORTLAND", 3)
+  connect(cities, "SEATTLE", "BILLINGS", 9)
+  connect(cities, "CHEYENNE", "DENVER", 0)
+  connect(cities, "BILLINGS", "CHEYENNE", 9)
+  connect(cities, "BILLINGS", "FARGO", 17)
+  connect(cities, "BILLINGS", "MINNEAPOLIS", 18)
+  connect(cities, "CHEYENNE", "MINNEAPOLIS", 18)
+  connect(cities, "CHEYENNE", "OMAHA", 14)
+  connect(cities, "DENVER", "KANSAS CITY", 16)
+  connect(cities, "FARGO", "MINNEAPOLIS", 6)
+  connect(cities, "FARGO", "DULUTH", 6)
+  connect(cities, "DULUTH", "MINNEAPOLIS", 5)
+  connect(cities, "MINNEAPOLIS", "OMAHA", 8)
+  connect(cities, "OMAHA", "KANSAS CITY", 5)
+  connect(cities, "KANSAS CITY", "OKLAHOMA CITY", 8)
+  connect(cities, "OKLAHOMA CITY", "DALLAS", 3)
+  connect(cities, "DALLAS", "HOUSTON", 5)
+  connect(cities, "DULUTH", "DETROIT", 15)
+  connect(cities, "DULUTH", "CHICAGO", 12)
+  connect(cities, "MINNEAPOLIS", "CHICAGO", 8)
+  connect(cities, "OMAHA", "CHICAGO", 13)
+  connect(cities, "KANSAS CITY", "CHICAGO", 8)
+  connect(cities, "KANSAS CITY", "ST LOUIS", 6)
+  connect(cities, "KANSAS CITY", "MEMPHIS", 12)
+  connect(cities, "OKLAHOMA CITY", "MEMPHIS", 14)
+  connect(cities, "DALLAS", "MEMPHIS", 12)
+  connect(cities, "DALLAS", "NEW ORLEANS", 12)
+  connect(cities, "HOUSTON", "NEW ORLEANS", 8)
+  connect(cities, "CHICAGO", "ST LOUIS", 10)
+  connect(cities, "ST LOUIS", "MEMPHIS", 7)
+  connect(cities, "MEMPHIS", "NEW ORLEANS", 7)
+  connect(cities, "CHICAGO", "DETROIT", 7)
+  connect(cities, "CHICAGO", "CINCINNATI", 7)
+  connect(cities, "ST LOUIS", "CINCINNATI", 12)
+  connect(cities, "ST LOUIS", "ATLANTA", 12)
+  connect(cities, "MEMPHIS", "BIRMINGHAM", 6)
+  connect(cities, "BIRMINGHAM", "ATLANTA", 3)
+  connect(cities, "NEW ORLEANS", "BIRMINGHAM", 11)
+  connect(cities, "NEW ORLEANS", "JACKSONVILLE", 16)
+  connect(cities, "DETROIT", "CINCINNATI", 4)
+  connect(cities, "CINCINNATI", "KNOXVILLE", 6)
+  connect(cities, "KNOXVILLE", "ATLANTA", 5)
+  connect(cities, "DETROIT", "BUFFALO", 7)
+  connect(cities, "DETROIT", "PITTSBURGH", 6)
+  connect(cities, "CINCINNATI", "PITTSBURGH", 7)
+  connect(cities, "CINCINNATI", "RALEIGH", 15)
+  connect(cities, "ATLANTA", "RALEIGH", 7)
+  connect(cities, "ATLANTA", "SAVANNAH", 7)
+  connect(cities, "BIRMINGHAM", "JACKSONVILLE", 9)
+  connect(cities, "BUFFALO", "PITTSBURGH", 7)
+  connect(cities, "PITTSBURGH", "RALEIGH", 7)
+  connect(cities, "RALEIGH", "SAVANNAH", 7)
+  connect(cities, "SAVANNAH", "JACKSONVILLE", 0)
+  connect(cities, "JACKSONVILLE", "TAMPA", 4)
+  connect(cities, "TAMPA", "MIAMI", 4)
+  connect(cities, "BUFFALO", "NEW YORK", 8)
+  connect(cities, "PITTSBURGH", "WASHINGTON", 6)
+  connect(cities, "BOSTON", "NEW YORK", 3)
+  connect(cities, "NEW YORK", "PHILADELPHIA", 0)
+  connect(cities, "PHILADELPHIA", "WASHINGTON", 3)
+  connect(cities, "WASHINGTON", "NORFOLK", 5)
+  connect(cities, "NORFOLK", "RALEIGH", 3)
+  return cities
+
+
 def CreateCities(region):
   if region == "Germany":
     return Germany()
+  if region == "USA":
+    return USA()
   raise RuntimeError(f"Unknown region {region}")
 
 
 def StartingResources(region):
-  if region == "Germany":
+  if region in ["Germany", "USA"]:
     return {Resource.COAL: 24, Resource.OIL: 18, Resource.GAS: 6, Resource.URANIUM: 2}
   raise RuntimeError(f"Unknown region {region}")
