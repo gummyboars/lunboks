@@ -43,6 +43,51 @@ cityGermanyDefaults = {
   "LUBECK": {"x": 0.5306666666666666, "y": 0.1381720430107527},
 };
 
+cityUSADefaults = {
+  "SAN FRANCISCO": {"x": 0.03065326633165827, "y": 0.4926994523177686},
+  "LOS ANGELES": {"x": 0.09547738693467334, "y": 0.6216757947038564},
+  "SAN DIEGO": {"x": 0.13517587939698494, "y": 0.6971147874202474},
+  "LAS VEGAS": {"x": 0.1733668341708543, "y": 0.5446144580580806},
+  "SALT LAKE CITY": {"x": 0.2371859296482412, "y": 0.38968061280183686},
+  "PHOENIX": {"x": 0.2361809045226131, "y": 0.6614232209737827},
+  "SANTA FE": {"x": 0.3391959798994975, "y": 0.5803060245045452},
+  "KANSAS CITY": {"x": 0.5412060301507537, "y": 0.4578190578359964},
+  "OKLAHOMA CITY": {"x": 0.5055276381909548, "y": 0.5827395403986223},
+  "DALLAS": {"x": 0.5170854271356784, "y": 0.6833248640204769},
+  "HOUSTON": {"x": 0.5256281407035176, "y": 0.7847213596070239},
+  "NEW ORLEANS": {"x": 0.6266331658291457, "y": 0.7790431558541773},
+  "MEMPHIS": {"x": 0.6271356783919598, "y": 0.5924736039749309},
+  "BIRMINGHAM": {"x": 0.6849246231155779, "y": 0.6581785331150133},
+  "ATLANTA": {"x": 0.7442211055276382, "y": 0.6541226732915514},
+  "SAVANNAH": {"x": 0.8065326633165829, "y": 0.685758379914554},
+  "JACKSONVILLE": {"x": 0.8030150753768844, "y": 0.7636308885250221},
+  "TAMPA": {"x": 0.7628140703517587, "y": 0.85853800839403},
+  "MIAMI": {"x": 0.8231155778894472, "y": 0.933977001110421},
+  "RALEIGH": {"x": 0.8512562814070351, "y": 0.5778725086104681},
+  "NORFOLK": {"x": 0.9, "y": 0.5275798467995407},
+  "SEATTLE": {"x": 0.05929648241206037, "y": 0.07332354657181028},
+  "PORTLAND": {"x": 0.031155778894472352, "y": 0.17796473001712687},
+  "BOISE": {"x": 0.1592964824120603, "y": 0.2598930984510568},
+  "BILLINGS": {"x": 0.31155778894472363, "y": 0.1885099655581277},
+  "CHEYENNE": {"x": 0.3708542713567839, "y": 0.34101029492029433},
+  "DENVER": {"x": 0.3613065326633166, "y": 0.42050514746014717},
+  "OMAHA": {"x": 0.5190954773869346, "y": 0.36128959403760375},
+  "FARGO": {"x": 0.5050251256281407, "y": 0.14957371125289365},
+  "MINNEAPOLIS": {"x": 0.5703517587939698, "y": 0.20878926467543707},
+  "DULUTH": {"x": 0.5849246231155779, "y": 0.12280503641804524},
+  "CHICAGO": {"x": 0.6613065326633166, "y": 0.3418214668849867},
+  "ST LOUIS": {"x": 0.6266331658291457, "y": 0.46430843355353546},
+  "CINCINNATI": {"x": 0.735678391959799, "y": 0.44159561854214896},
+  "KNOXVILLE": {"x": 0.7396984924623116, "y": 0.5551596935990816},
+  "DETROIT": {"x": 0.7422110552763819, "y": 0.3101857602619841},
+  "BUFFALO": {"x": 0.8437185929648241, "y": 0.2874729452505975},
+  "PITTSBURGH": {"x": 0.8195979899497488, "y": 0.3953588165546835},
+  "WASHINGTON": {"x": 0.8673366834170855, "y": 0.45944140176538123},
+  "PHILADELPHIA": {"x": 0.9150753768844221, "y": 0.4140157717426081},
+  "NEW YORK": {"x": 0.9376884422110554, "y": 0.3523667024259876},
+  "BOSTON": {"x": 0.9768844221105528, "y": 0.2923399770387518},
+};
+
 cityGermanyConnections = [
   ["FLENSBURG", "KIEL", 4],
   ["HAMBURG", "KIEL", 8],
@@ -131,15 +176,118 @@ cityGermanyConnections = [
   ["SCHWERIN", "LUBECK", 6],
 ];
 
+cityUSAConnections = [
+  ["SAN FRANCISCO", "PORTLAND", 24],
+  ["SAN FRANCISCO", "BOISE", 23],
+  ["SAN FRANCISCO", "SALT LAKE CITY", 27],
+  ["SAN FRANCISCO", "LAS VEGAS", 14],
+  ["SAN FRANCISCO", "LOS ANGELES", 9],
+  ["LAS VEGAS", "SALT LAKE CITY", 18],
+  ["LAS VEGAS", "SANTA FE", 27],
+  ["LAS VEGAS", "PHOENIX", 15],
+  ["LAS VEGAS", "SAN DIEGO", 9],
+  ["LAS VEGAS", "LOS ANGELES", 9],
+  ["LOS ANGELES", "SAN DIEGO", 3],
+  ["PHOENIX", "SAN DIEGO", 14],
+  ["PHOENIX", "SANTA FE", 18],
+  ["SANTA FE", "HOUSTON", 21],
+  ["SANTA FE", "DALLAS", 16],
+  ["SANTA FE", "OKLAHOMA CITY", 15],
+  ["SANTA FE", "KANSAS CITY", 16],
+  ["SANTA FE", "DENVER", 13],
+  ["SANTA FE", "SALT LAKE CITY", 28],
+  ["SALT LAKE CITY", "DENVER", 21],
+  ["SALT LAKE CITY", "BOISE", 8],
+  ["BOISE", "CHEYENNE", 24],
+  ["BOISE", "BILLINGS", 12],
+  ["BOISE", "SEATTLE", 12],
+  ["BOISE", "PORTLAND", 13],
+  ["SEATTLE", "PORTLAND", 3],
+  ["SEATTLE", "BILLINGS", 9],
+  ["CHEYENNE", "DENVER", 0],
+  ["BILLINGS", "CHEYENNE", 9],
+  ["BILLINGS", "FARGO", 17],
+  ["BILLINGS", "MINNEAPOLIS", 18],
+  ["CHEYENNE", "MINNEAPOLIS", 18],
+  ["CHEYENNE", "OMAHA", 14],
+  ["DENVER", "KANSAS CITY", 16],
+  ["FARGO", "MINNEAPOLIS", 6],
+  ["FARGO", "DULUTH", 6],
+  ["DULUTH", "MINNEAPOLIS", 5],
+  ["MINNEAPOLIS", "OMAHA", 8],
+  ["OMAHA", "KANSAS CITY", 5],
+  ["KANSAS CITY", "OKLAHOMA CITY", 8],
+  ["OKLAHOMA CITY", "DALLAS", 3],
+  ["DALLAS", "HOUSTON", 5],
+  ["DULUTH", "DETROIT", 15],
+  ["DULUTH", "CHICAGO", 12],
+  ["MINNEAPOLIS", "CHICAGO", 8],
+  ["OMAHA", "CHICAGO", 13],
+  ["KANSAS CITY", "CHICAGO", 8],
+  ["KANSAS CITY", "ST LOUIS", 6],
+  ["KANSAS CITY", "MEMPHIS", 12],
+  ["OKLAHOMA CITY", "MEMPHIS", 14],
+  ["DALLAS", "MEMPHIS", 12],
+  ["DALLAS", "NEW ORLEANS", 12],
+  ["HOUSTON", "NEW ORLEANS", 8],
+  ["CHICAGO", "ST LOUIS", 10],
+  ["ST LOUIS", "MEMPHIS", 7],
+  ["MEMPHIS", "NEW ORLEANS", 7],
+  ["CHICAGO", "DETROIT", 7],
+  ["CHICAGO", "CINCINNATI", 7],
+  ["ST LOUIS", "CINCINNATI", 12],
+  ["ST LOUIS", "ATLANTA", 12],
+  ["MEMPHIS", "BIRMINGHAM", 6],
+  ["BIRMINGHAM", "ATLANTA", 3],
+  ["NEW ORLEANS", "BIRMINGHAM", 11],
+  ["NEW ORLEANS", "JACKSONVILLE", 16],
+  ["DETROIT", "CINCINNATI", 4],
+  ["CINCINNATI", "KNOXVILLE", 6],
+  ["KNOXVILLE", "ATLANTA", 5],
+  ["DETROIT", "BUFFALO", 7],
+  ["DETROIT", "PITTSBURGH", 6],
+  ["CINCINNATI", "PITTSBURGH", 7],
+  ["CINCINNATI", "RALEIGH", 15],
+  ["ATLANTA", "RALEIGH", 7],
+  ["ATLANTA", "SAVANNAH", 7],
+  ["BIRMINGHAM", "JACKSONVILLE", 9],
+  ["BUFFALO", "PITTSBURGH", 7],
+  ["PITTSBURGH", "RALEIGH", 7],
+  ["RALEIGH", "SAVANNAH", 7],
+  ["SAVANNAH", "JACKSONVILLE", 0],
+  ["JACKSONVILLE", "TAMPA", 4],
+  ["TAMPA", "MIAMI", 4],
+  ["BUFFALO", "NEW YORK", 8],
+  ["PITTSBURGH", "WASHINGTON", 6],
+  ["BOSTON", "NEW YORK", 3],
+  ["NEW YORK", "PHILADELPHIA", 0],
+  ["PHILADELPHIA", "WASHINGTON", 3],
+  ["WASHINGTON", "NORFOLK", 5],
+  ["NORFOLK", "RALEIGH", 3],
+];
+
 function setDefaultXYPercent(div, boardCnv, board, city) {
   let bheight;
   let bwidth;
   let renderWidth;
   let renderHeight;
+  let mapping;
+  let xpct;
+  let ypct;
   switch (board) {
     case "Germany":
       bheight = 1860;
       bwidth = 1500;
+      xpct = "3.13%";
+      ypct = "5.05%";
+      mapping = cityGermanyDefaults;
+      break;
+    case "USA":
+      bheight = 1180;
+      bwidth = 1990;
+      xpct = "5.025%";
+      ypct = "8.11%";
+      mapping = cityUSADefaults;
       break;
     default:
       throw new Error("unknown board " + board);
@@ -151,18 +299,23 @@ function setDefaultXYPercent(div, boardCnv, board, city) {
     renderHeight = boardCnv.height;
     renderWidth = bwidth * boardCnv.height / bheight;
   }
-  let loc = cityGermanyDefaults[city];
+  let loc = mapping[city];
   let xloc = (boardCnv.width / 2 - renderWidth / 2) + renderWidth * loc.x;
   let yloc = (boardCnv.height / 2 - renderHeight / 2) + renderHeight * loc.y;
   div.xpct = xloc / boardCnv.width;
   div.ypct = yloc / boardCnv.height;
   div.style.left = 100 * div.xpct + "%";
   div.style.top = 100 * div.ypct + "%";
+  div.style.width = xpct;
+  div.style.height = ypct;
 }
 
 function renderDefaultToCanvas(cnv, width, height, assetName, variant) {
   if (assetName == "Germany") {
     return renderGermany(cnv, width, height);
+  }
+  if (assetName == "USA") {
+    return renderUSA(cnv, width, height);
   }
   if (assetName == "supply") {
     return renderSupply(cnv, width, height);
@@ -244,9 +397,14 @@ function renderGermany(cnv, width, height) {
   ctx.fill();
   ctx.restore();
 
-  for (let [city1, city2, cost] of cityGermanyConnections) {
-    let loc1 = cityGermanyDefaults[city1];
-    let loc2 = cityGermanyDefaults[city2];
+  drawDefaultCities(cityGermanyDefaults, cityGermanyConnections, radius, renderWidth, renderHeight);
+  ctx.restore();
+}
+
+function drawDefaultCities(cityDefaults, cityConnections, radius, renderWidth, renderHeight) {
+  for (let [city1, city2, cost] of cityConnections) {
+    let loc1 = cityDefaults[city1];
+    let loc2 = cityDefaults[city2];
     ctx.save();
     ctx.lineWidth = radius / 2;
     ctx.strokeStyle = "darkgray";
@@ -267,9 +425,9 @@ function renderGermany(cnv, width, height) {
     ctx.restore();
   }
 
-  for (let city in cityGermanyDefaults) {
+  for (let city in cityDefaults) {
     ctx.save();
-    ctx.translate(cityGermanyDefaults[city].x * renderWidth, cityGermanyDefaults[city].y * renderHeight);
+    ctx.translate(cityDefaults[city].x * renderWidth, cityDefaults[city].y * renderHeight);
     ctx.beginPath();
     ctx.arc(0, 0, radius, 0, 2 * Math.PI, true);
     ctx.closePath();
@@ -287,12 +445,12 @@ function renderGermany(cnv, width, height) {
     ctx.restore();
   }
 
-  for (let [city1, city2, cost] of cityGermanyConnections) {
+  for (let [city1, city2, cost] of cityConnections) {
     if (cost == 0) {
       continue;
     }
-    let loc1 = cityGermanyDefaults[city1];
-    let loc2 = cityGermanyDefaults[city2];
+    let loc1 = cityDefaults[city1];
+    let loc2 = cityDefaults[city2];
     ctx.save();
     let newFontSize = getTextSize(ctx, cost, 2 * radius / 3, 2 * radius / 3);
     ctx.font = newFontSize + "px sans-serif";
@@ -302,7 +460,74 @@ function renderGermany(cnv, width, height) {
     ctx.fillText(cost, (loc1.x + loc2.x) * renderWidth / 2, (loc1.y + loc2.y) * renderHeight / 2);
     ctx.restore();
   }
+}
 
+function renderUSA(cnv, width, height) {
+  let bheight = 1180;
+  let bwidth = 1990;
+  let renderWidth;
+  let renderHeight;
+  if (height / width > bheight / bwidth) {
+    renderWidth = width;
+    renderHeight = bheight * width / bwidth;
+  } else {
+    renderHeight = height;
+    renderWidth = bwidth * height / bheight;
+  }
+
+  ctx = cnv.getContext("2d");
+  ctx.clearRect(0, 0, width, height);
+  ctx.save();
+  ctx.translate((width - renderWidth)/2, (height - renderHeight)/2);
+  ctx.fillStyle = "darkgreen";
+  ctx.fillRect(0, 0, renderWidth, renderHeight);
+  let radius = renderWidth * 9 / 400;
+
+  ctx.save();
+  ctx.fillStyle = "purple";
+  ctx.fillRect(0, 0, 0.63*renderWidth, renderHeight);
+  ctx.fillStyle = "blue";
+  ctx.fillRect(0.7*renderWidth, 0.34*renderHeight, 0.3*renderWidth, 0.66*renderHeight);
+  ctx.fillStyle = "red";
+  ctx.beginPath();
+  ctx.moveTo(0.42*renderWidth, renderHeight);
+  ctx.lineTo(0.715*renderWidth, renderHeight);
+  ctx.lineTo(0.715*renderWidth, 0.42*renderHeight);
+  ctx.lineTo(0.5*renderWidth, 0.42*renderHeight);
+  ctx.lineTo(0.42*renderWidth, 0.56*renderHeight);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = "cyan";
+  ctx.beginPath();
+  ctx.moveTo(0.42*renderWidth, renderHeight);
+  ctx.lineTo(0.42*renderWidth, 0.56*renderHeight);
+  ctx.lineTo(0.27*renderWidth, 0.34*renderHeight);
+  ctx.lineTo(0, 0.34*renderHeight);
+  ctx.lineTo(0, renderHeight);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = "yellow";
+  ctx.beginPath();
+  ctx.moveTo(0.867*renderWidth, 0.515*renderHeight);
+  ctx.lineTo(0.715*renderWidth, 0.625*renderHeight);
+  ctx.lineTo(0.583*renderWidth, 0.46*renderHeight);
+  ctx.lineTo(0.583*renderWidth, 0.326*renderHeight);
+  ctx.lineTo(0.38*renderWidth, 0);
+  ctx.lineTo(0.844*renderWidth, 0);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = "saddlebrown";
+  ctx.beginPath();
+  ctx.moveTo(0.7*renderWidth, 0);
+  ctx.lineTo(0.7*renderWidth, 0.34*renderHeight);
+  ctx.lineTo(0.867*renderWidth, 0.515*renderHeight);
+  ctx.lineTo(renderWidth, 0.37*renderHeight);
+  ctx.lineTo(renderWidth, 0);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+
+  drawDefaultCities(cityUSADefaults, cityUSAConnections, radius, renderWidth, renderHeight);
   ctx.restore();
 }
 

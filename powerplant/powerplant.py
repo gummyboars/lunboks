@@ -85,6 +85,7 @@ class GameState:
   PHASES = [TurnPhase.AUCTION, TurnPhase.MATERIALS, TurnPhase.BUILDING, TurnPhase.BUREAUCRACY]
 
   def __init__(self, players, region, plantlist):
+    self.region = region
     self.players = players
     self.cities = cities.CreateCities(region)
     self.all_cities = cities.CreateCities(region)
@@ -151,7 +152,7 @@ class GameState:
   @classmethod
   def parse_json(cls, gamedata):
     players = [Player.parse_json(playerdata) for playerdata in gamedata["players"]]
-    state = cls(players, "Germany", "old")
+    state = cls(players, gamedata["region"], "old")
     state.all_cities = {
         name: cities.City.parse_json(data) for name, data in gamedata["all_cities"].items()
     }
