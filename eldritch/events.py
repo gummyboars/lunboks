@@ -2064,15 +2064,17 @@ class ActivateChosenItems(Event):
 
 class DeactivateItem(Event):
 
-  def __init__(self, character, item):
-    assert item in character.possessions
+  def __init__(self, character, item, discarded=False):
+    if not discarded:
+      assert item in character.possessions
     super().__init__()
     self.character = character
     self.item = item
     self.deactivated = None
+    self.discarded = discarded
 
   def resolve(self, state):
-    if self.item not in self.character.possessions:
+    if self.item not in self.character.possessions and not self.discarded:
       self.deactivated = False
       return
     self.item._active = False  # pylint: disable=protected-access
@@ -2314,6 +2316,7 @@ class DiscardSpecific(Event):
     self.items = items_to_discard
     self.to_box = to_box
     self.discarded = None
+    self.done = False
     self._verb = "discard"
     self._verb_past = "discarded"
 
@@ -2328,22 +2331,29 @@ class DiscardSpecific(Event):
     if isinstance(self.items, values.Value):
       self.items = self.items.value(state)
 
-    self.discarded = []
-    for item in self.items:
-      for attr in item.tokens:
-        item.tokens[attr] = 0
-      if item not in self.character.possessions:
-        continue
-      self.character.possessions.remove(item)
-      item._exhausted = False  # pylint: disable=protected-access
-      if hasattr(item, "_active"):
-        item._active = False  # pylint: disable=protected-access
-      if not self.to_box:
-        getattr(state, item.deck).append(item)
-      self.discarded.append(item)
+    if self.discarded is None:
+      self.discarded = []
+      for item in self.items:
+        for attr in item.tokens:
+          item.tokens[attr] = 0
+        if item not in self.character.possessions:
+          continue
+        self.character.possessions.remove(item)
+        item._exhausted = False  # pylint: disable=protected-access
+        if not self.to_box:
+          getattr(state, item.deck).append(item)
+        self.discarded.append(item)
+      state.event_stack.append(
+          Sequence(
+              [DeactivateItem(self.character, item, discarded=True) for item in self.discarded],
+              self.character
+          )
+      )
+      return
+    self.done = True
 
   def is_resolved(self):
-    return self.discarded is not None
+    return self.done
 
   def log(self, state):
     if self.cancelled and self.discarded is None:
@@ -2417,24 +2427,26 @@ class DiscardNamed(Event):
     self.character = character
     self.item_name = item_name
     self.discarded = None
+    self.done = False
 
   def resolve(self, state):
-    for item in self.character.possessions:
-      if item.name == self.item_name:
-        self.character.possessions.remove(item)
-        item._exhausted = False  # pylint: disable=protected-access
-        if hasattr(item, "_active"):
-          item._active = False  # pylint: disable=protected-access
-        for attr in item.tokens:
-          item.tokens[attr] = 0
-        deck = getattr(state, item.deck)
-        deck.append(item)
-        self.discarded = item
-        return
-    self.discarded = False
+    if self.discarded is None:
+      for item in self.character.possessions:
+        if item.name == self.item_name:
+          self.character.possessions.remove(item)
+          item._exhausted = False  # pylint: disable=protected-access
+          for attr in item.tokens:
+            item.tokens[attr] = 0
+          deck = getattr(state, item.deck)
+          deck.append(item)
+          self.discarded = item
+          state.event_stack.append(DeactivateItem(self.character, item, discarded=True))
+          return
+      self.discarded = False
+    self.done = True
 
   def is_resolved(self):
-    return self.discarded is not None
+    return self.done
 
   def log(self, state):
     if self.cancelled and self.discarded is None:

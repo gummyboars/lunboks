@@ -763,6 +763,24 @@ class SilverKeyTest(EventTest):
     self.assertEqual(self.char.movement_points, 2)
     self.assertEqual(self.key.tokens["stamina"], 1)
 
+  def testDeclineToUsePass(self):
+    self.resolve_to_usable(0, "Silver Key0")
+    self.state.done_using[0] = True
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+    self.assertEqual(self.key.tokens["stamina"], 0)
+    self.assertIn(self.key, self.char.possessions)
+
+  def testDeclineToUseFail(self):
+    self.resolve_to_usable(0, "Silver Key0")
+    self.state.done_using[0] = True
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=1)):
+      key = self.resolve_to_usable(0, "Silver Key0")
+    self.state.event_stack.append(key)
+    self.resolve_until_done()
+    self.assertEqual(self.key.tokens["stamina"], 1)
+    self.assertIn(self.key, self.char.possessions)
+
 
 class WardingStatueTest(EventTest):
   def testCombatDamage(self):

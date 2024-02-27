@@ -2722,6 +2722,62 @@ class CombatWithEnchantedWeapon(EventTest):
       self.resolve_until_done()
       self.assertEqual(rand.call_count, 2)  # Fight (4) + spawn (-2) + physical immunity (0)
 
+  def testElderThingGlitch(self):
+    elder_thing = monsters.ElderThing()
+    self.combat = events.Combat(self.char, elder_thing)
+    self.state.event_stack.clear()
+    self.state.event_stack.append(self.combat)
+    self.char.fight_will_slider = 0
+
+    self.assertCountEqual(self.state.usables[0].keys(), {"Enchant Weapon0"})
+    self.state.event_stack.append(self.state.usables[0]["Enchant Weapon0"])  # Cast enchant weapon.
+
+    # Before casting the spell, we should get a choice of items.
+    choose_enchant = self.resolve_to_choice(SinglePhysicalWeaponChoice)
+    self.spend("sanity", 1, choose_enchant)
+
+    self.choose_items(choose_enchant, [".38 Revolver0"])  # Enchant the revolver.
+
+    # Now that we've chosen, successfully cast the spell.
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      fight_or_evade = self.resolve_to_choice(FightOrEvadeChoice)
+      fight_or_evade.resolve(self.state, "Fight")
+      choose_weapons = self.resolve_to_choice(CombatChoice)
+    self.assertTrue(self.char.possessions[2].active)
+    self.assertEqual(self.char.hands_available(), 2)  # Enchant weapon is handless.
+
+    # We already cast on the revolver, now choose to use it
+    self.choose_items(choose_weapons, [".38 Revolver0"])
+
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=1)) as rand:
+      # Lose combat with Elder Thing
+      item_loss = self.resolve_to_choice(ItemLossChoice)
+      self.assertEqual(rand.call_count, 4)  # Fight (1) + revolver (3)
+      item_loss.resolve(self.state, "Enchant Weapon0")
+      item_loss.resolve(self.state, "done")
+      fight_or_evade = self.resolve_to_choice(FightOrEvadeChoice)
+      fight_or_evade.resolve(self.state, "Fight")
+      choose_weapons = self.resolve_to_choice(CombatChoice)
+
+    self.choose_items(choose_weapons, [".38 Revolver0"])
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)) as rand:
+      self.resolve_until_done()
+      self.assertEqual(rand.call_count, 4)  # Fight(1) + revolver (3)
+
+    self.assertTrue(self.combat.combat.is_resolved())
+    self.assertFalse(self.char.possessions[1].active)
+
+    spawn = monsters.FormlessSpawn()
+    self.state.event_stack.append(Combat(self.char, spawn))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)) as rand:
+      fight_flee = self.resolve_to_choice(MultipleChoice)
+      fight_flee.resolve(self.state, "Fight")
+      choose_weapons = self.resolve_to_choice(events.CombatChoice)
+    self.choose_items(choose_weapons, [".38 Revolver0"])
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)) as rand:
+      self.resolve_to_choice(events.FightOrEvadeChoice)
+      self.assertEqual(rand.call_count, 0)
+
 
 class CombatWithMagicPowderTest(EventTest):
   def setUp(self):

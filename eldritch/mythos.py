@@ -140,9 +140,9 @@ class CityBonus(Environment):
 
   def get_modifier(self, thing, attribute, state):
     if isinstance(getattr(thing, "place", None), places.CityPlace):
-      if attribute == self.penalty_skill:
+      if attribute == self.penalty_skill + "_check":
         return -1
-      if attribute == self.bonus_skill:
+      if attribute == self.bonus_skill + "_check":
         return 1
     return 0
 

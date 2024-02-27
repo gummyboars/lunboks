@@ -332,7 +332,11 @@ class SilverKey(Item):
 
   def get_usable_interrupt(self, event, owner, state):
     # TODO: maybe it would make more sense to attach this usable to the FightOrEvadeChoice
-    if isinstance(event, events.EvadeRound) and event.character == owner and not event.is_done():
+    if (
+        isinstance(event, events.EvadeRound)
+        and event.character == owner
+        and not (event.evaded or (event.check and event.check.successes))
+    ):
       return events.Sequence([
           events.PassEvadeRound(event),
           events.AddToken(self, "stamina", owner)

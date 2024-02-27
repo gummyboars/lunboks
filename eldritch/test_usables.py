@@ -1083,7 +1083,8 @@ class VoiceTest(EventTest):
   def setUp(self):
     super().setUp()
     self.state.turn_phase = "upkeep"
-    self.char.possessions.append(items.Voice(0))
+    self.voice = items.Voice(0)
+    self.char.possessions.append(self.voice)
 
   def testCastSuccess(self):
     self.state.event_stack.append(events.SliderInput(self.char))
@@ -1096,7 +1097,6 @@ class VoiceTest(EventTest):
       sliders = self.resolve_to_choice(SliderInput)
 
     self.assertTrue(self.char.possessions[0].exhausted)
-    self.assertTrue(self.char.possessions[0].active)
     self.assertEqual(self.char.sanity, 4)
     sliders.resolve(self.state, "done", None)
     self.resolve_until_done()
@@ -1124,7 +1124,6 @@ class VoiceTest(EventTest):
       sliders = self.resolve_to_choice(SliderInput)
 
     self.assertTrue(self.char.possessions[0].exhausted)
-    self.assertFalse(self.char.possessions[0].active)
     self.assertEqual(self.char.sanity, 4)
     sliders.resolve(self.state, "done", None)
     self.resolve_until_done()
@@ -1149,15 +1148,12 @@ class VoiceTest(EventTest):
 
     self.advance_turn(0, "mythos")
     self.assertTrue(self.char.possessions[0].exhausted)
-    self.assertTrue(self.char.possessions[0].active)
     self.advance_turn(1, "upkeep")
-    self.assertFalse(self.char.possessions[0].active)
     self.assertTrue(self.char.possessions[0].exhausted)  # Still exhausted - has not refreshed
 
     # Should now be usable again, since we refreshed it during upkeep.
     voice = self.resolve_to_usable(0, "Voice0", CastSpell)
     self.assertFalse(self.char.possessions[0].exhausted)
-    self.assertFalse(self.char.possessions[0].active)
 
   def testStaysActiveAfterCombat(self):
     self.state.event_stack.append(events.SliderInput(self.char))
@@ -1169,7 +1165,6 @@ class VoiceTest(EventTest):
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       sliders = self.resolve_to_choice(SliderInput)
     self.assertTrue(self.char.possessions[0].exhausted)
-    self.assertTrue(self.char.possessions[0].active)
     sliders.resolve(self.state, "done", None)
     self.resolve_until_done()
 
@@ -1182,7 +1177,6 @@ class VoiceTest(EventTest):
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       self.resolve_until_done()
     self.assertTrue(self.char.possessions[0].exhausted)
-    self.assertTrue(self.char.possessions[0].active)
 
   def testDeclineToUse(self):
     sliders = events.SliderInput(self.char)
@@ -1190,6 +1184,27 @@ class VoiceTest(EventTest):
     self.resolve_to_usable(0, "Voice0", CastSpell)
     sliders.resolve(self.state, "done", None)
     self.resolve_until_done()
+
+  def testStaysActiveAfterNoMoreSpell(self):
+    self.state.event_stack.append(events.SliderInput(self.char))
+    voice = self.resolve_to_usable(0, "Voice0", CastSpell)
+    self.state.event_stack.append(voice)
+    cast = self.resolve_to_choice(CardSpendChoice)
+    self.spend("sanity", 1, cast)
+    cast.resolve(self.state, "Voice")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      sliders = self.resolve_to_choice(SliderInput)
+    self.assertTrue(self.char.possessions[0].exhausted)
+    sliders.resolve(self.state, "done", None)
+    self.resolve_until_done()
+
+    self.state.event_stack.append(events.DiscardSpecific(self.char, [self.voice]))
+    self.resolve_until_done()
+
+    self.state.event_stack.append(Check(self.char, "fight", 0))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)) as rand:
+      self.resolve_until_done()
+      self.assertEqual(rand.call_count, 5)
 
 
 class PhysicianTest(EventTest):
