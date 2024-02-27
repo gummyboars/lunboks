@@ -2724,7 +2724,6 @@ class CombatWithEnchantedWeapon(EventTest):
 
   def testElderThingGlitch(self):
     elder_thing = monsters.ElderThing()
-    self.state.event_stack.clear()
     self.combat = events.Combat(self.char, elder_thing)
     self.state.event_stack.clear()
     self.state.event_stack.append(self.combat)
@@ -2751,6 +2750,7 @@ class CombatWithEnchantedWeapon(EventTest):
     self.choose_items(choose_weapons, [".38 Revolver0"])
 
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=1)) as rand:
+      # Lose combat with Elder Thing
       item_loss = self.resolve_to_choice(ItemLossChoice)
       self.assertEqual(rand.call_count, 4)  # Fight (1) + revolver (3)
       item_loss.resolve(self.state, "Enchant Weapon0")

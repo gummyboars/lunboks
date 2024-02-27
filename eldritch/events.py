@@ -2340,8 +2340,6 @@ class DiscardSpecific(Event):
           continue
         self.character.possessions.remove(item)
         item._exhausted = False  # pylint: disable=protected-access
-        if hasattr(item, "_active"):
-          item._active = False  # pylint: disable=protected-access
         if not self.to_box:
           getattr(state, item.deck).append(item)
         self.discarded.append(item)
@@ -2437,8 +2435,6 @@ class DiscardNamed(Event):
         if item.name == self.item_name:
           self.character.possessions.remove(item)
           item._exhausted = False  # pylint: disable=protected-access
-          if hasattr(item, "_active"):
-            item._active = False  # pylint: disable=protected-access
           for attr in item.tokens:
             item.tokens[attr] = 0
           deck = getattr(state, item.deck)

@@ -175,14 +175,18 @@ class EnchantWeapon(CombatSpell):
         isinstance(event, (events.DiscardSpecific, events.DiscardNamed))
         and event.character == owner
         and event.discarded
-        and self in event.discarded
+        and (
+            self in event.discarded
+            if hasattr(event.discarded, "__contains__")
+            else self == event.discarded
+        )
     ):
       # TODO: Should we figure out a way to have the effect last until the end of combat?
       # The only way I can think of to lose an item during combat is the Elder Thing, which is not
       # resistant. Plus, the rules are non-specific as to whether discarding a spell makes its
       # effect go away.
       return events.DeactivateSpell(owner, self)
-    return super().get_trigger(event, owner, state)
+    return super().get_interrupt(event, owner, state)
 
   def activate(self):
     assert self.choice.is_resolved()
