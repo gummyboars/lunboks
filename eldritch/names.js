@@ -33,6 +33,7 @@ characterData = {
   "Gangster": {"sliders": [2, 4, 3, 4, 0, 3], "focus": 1, "home": "House"},
   "Secretary": {"sliders": [2, 4, 1, 4, 1, 3], "focus": 2, "home": "Hospital"},
   "Spy": {"sliders": [1,3,2,1,1,0], "focus": 1, "home": "Newspaper"},
+  "Shaman": {"sliders": [2,4,1,4,2,3], "focus": 1, "home": "Shoppe"},
 };
 characterNames = Object.keys(characterData);
 carefullyAdd(characterNames, true);
