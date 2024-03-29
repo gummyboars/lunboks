@@ -1242,6 +1242,36 @@ class MoveMonsterTest(EventTest):
     self.assertEqual(self.state.monsters[1].place.name, "Downtown")
     self.assertEqual(self.state.monsters[2].place.name, "Rivertown")
 
+  def testFirstPlayerBreaksSneakTies(self):
+    self.state.monsters.clear()
+    self.state.monsters.extend([monsters.DreamFlier(), monsters.Pinata(), monsters.GiantInsect()])
+
+    buddy = characters.Character("Buddy", 5, 5, 4, 4, 4, 4, 4, 4, 4, "Square")
+    self.state.all_characters["Buddy"] = buddy
+    self.state.characters.append(buddy)
+
+    buddy.place = self.state.places["Rivertown"]
+    self.char.place = self.state.places["Downtown"]
+    self.state.monsters[0].place = self.state.places["Merchant"]
+    self.state.monsters[1].place = self.state.places["Northside"]
+    self.state.monsters[2].place = self.state.places["Sky"]
+
+    self.assertEqual(buddy.sneak(self.state), 1)
+    self.assertEqual(self.char.sneak(self.state), 1)
+
+    self.state.event_stack.append(MoveMonsters({"slash"}, {"circle", "star"}))
+    move_choice = self.resolve_to_choice(MapChoice)
+    self.assertCountEqual(move_choice.choices, ["Rivertown", "Downtown"])
+    move_choice.resolve(self.state, "Rivertown")
+    move_choice = self.resolve_to_choice(MapChoice)
+    self.assertCountEqual(move_choice.choices, ["Rivertown", "Downtown"])
+    move_choice.resolve(self.state, "Downtown")
+    self.resolve_until_done()
+
+    self.assertEqual(self.state.monsters[0].place.name, "Rivertown")
+    self.assertEqual(self.state.monsters[1].place.name, "Downtown")
+    self.assertEqual(self.state.monsters[2].place.name, "Downtown")
+
   def testFlyingMovementNobodyInStreets(self):
     self.state.monsters.clear()
     self.state.monsters.extend([monsters.DreamFlier(), monsters.Pinata()])
@@ -2194,6 +2224,22 @@ class ReturnMonstersTest(EventTest):
 
     self.advance_turn(1, "movement")
     self.assertEqual(monster.place, self.state.monster_cup)
+
+
+class Mythos6Test(EventTest):
+  def setUp(self):
+    super().setUp()
+    self.char.place = self.state.places["Uptown"]
+    matrix = monsters.FlameMatrix()
+    matrix.place = self.state.places["Sky"]
+    self.state.monsters.append(matrix)
+    self.state.environment = Mythos6()
+
+  def testFliersDoNotMove(self):
+    move = MoveMonsters({"star"}, {"slash"})
+    self.state.event_stack.append(move)
+    self.resolve_until_done()
+    self.assertEqual(self.state.monsters[-1].place.name, "Sky")
 
 
 class Mythos7Test(EventTest):

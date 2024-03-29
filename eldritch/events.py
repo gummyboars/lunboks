@@ -3610,6 +3610,80 @@ class NearestGateChoice(MapChoice):
     return f"[{self.character.name}] chose the gate at [{self.choice}]"
 
 
+class NearestLowestSneakChoice(MapChoice, metaclass=abc.ABCMeta):
+
+  def __init__(self, character, monster):
+    super().__init__(character, f"Choose where the [{monster.name}] should move")
+    self.monster = monster
+
+  def compute_choices(self, state):
+    if any(char.place == self.monster.place for char in state.characters):
+      self.cancelled = True
+      return
+
+    candidates = collections.defaultdict(list)
+    distances = {self.monster.place.name: 0}
+    queue = [self.monster.place]
+    while queue:
+      place = queue.pop(0)
+      if self.is_valid(place):
+        if any(char.place == place for char in state.characters):
+          candidates[distances[place.name]].append(place)
+      if place.name == "Sky":
+        connections = [p for p in state.places.values() if isinstance(p, places.Street)]
+      else:
+        connections = place.connections
+      for conn in connections:
+        if conn.name in distances:
+          continue
+        distances[conn.name] = distances[place.name] + 1
+        queue.append(conn)
+    if not candidates:
+      self.cancelled = True
+      return
+    min_distance = min(candidates.keys())
+    if min_distance > self.max_distance():
+      self.cancelled = True
+      return
+    char_list = [char for char in state.characters if char.place in candidates[min_distance]]
+    char_list.sort(key=lambda char: char.sneak(state))
+
+    choices = {char.place for char in char_list if char.sneak(state) == char_list[0].sneak(state)}
+    self._choices = [choice.name for choice in choices]
+    if len(self._choices) == 1 and not state.usables:
+      self.choice = self._choices[0]
+      return
+
+  @abc.abstractmethod
+  def is_valid(self, place):
+    raise NotImplementedError
+
+  def max_distance(self):
+    return float("inf")
+
+  def log(self, state):
+    if self.cancelled and self.choice is None:
+      return f"There was nowhere for the [{self.monster.name}] to move"
+    if self.choice is None:
+      return f"[{self.character.name}] must choose where the [{self.monster.name}] moves"
+    return f"[{self.character.name}] chose [{self.choice}]"
+
+
+class FlyingLowestSneakChoice(NearestLowestSneakChoice):
+
+  def is_valid(self, place):
+    return isinstance(place, places.Street)
+
+  def max_distance(self):
+    return 1
+
+
+class HoundLowestSneakChoice(NearestLowestSneakChoice):
+
+  def is_valid(self, place):
+    return isinstance(place, places.Location) and place.name not in ["Hospital", "Asylum"]
+
+
 class MonsterOnBoardChoice(ChoiceEvent):
 
   def __init__(self, character, prompt):
@@ -5211,17 +5285,16 @@ class MoveMonster(Event):
       return
 
     if movement == "unique":
-      if hasattr(self.monster, "get_destination"):
-        self.destination = self.monster.get_destination(state)
-        if self.destination:
-          self.monster.place = self.destination
-        return
       if self.move_event is None:
         self.move_event = self.monster.move_event(state)
         state.event_stack.append(self.move_event)
         return
       assert self.move_event.is_done()
-      self.destination = False
+      if isinstance(self.move_event, MapChoice) and not self.move_event.is_cancelled():
+        self.destination = state.places[self.move_event.choice]
+        self.monster.place = self.destination
+      else:
+        self.destination = False
       return
 
     local_chars = [char for char in state.characters if char.place == self.monster.place]
@@ -5230,27 +5303,22 @@ class MoveMonster(Event):
       return
 
     if movement == "flying":
-      if self.monster.place.name == "Sky":
-        nearby_streets = [
-            street for street in state.places.values() if isinstance(street, places.Street)
-        ]
+      if self.move_event is None:
+        self.move_event = FlyingLowestSneakChoice(
+            state.characters[state.first_player], self.monster,
+        )
+        state.event_stack.append(self.move_event)
+        return
+      assert self.move_event.is_done()
+      if not self.move_event.is_cancelled():
+        self.destination = state.places[self.move_event.choice]
+        self.monster.place = self.destination
       else:
-        nearby_streets = [
-            street for street in self.monster.place.connections if isinstance(street, places.Street)
-        ]
-      eligible_chars = [char for char in state.characters if char.place in nearby_streets]
-      if not eligible_chars:
         if self.monster.place.name == "Sky":
           self.destination = False
-          return
-        self.destination = state.places["Sky"]
-        self.monster.place = self.destination
-        return
-
-      # TODO: allow the first player to break ties
-      eligible_chars.sort(key=lambda char: char.sneak(state))
-      self.destination = eligible_chars[0].place
-      self.monster.place = self.destination
+        else:
+          self.destination = state.places["Sky"]
+          self.monster.place = self.destination
       return
 
     # TODO: other movement types (stalker, aquatic)
