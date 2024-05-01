@@ -245,7 +245,7 @@ def HealthWager(source, character, attribute, prompt, prize):
   return events.BinaryChoice(
       character,
       prompt,
-      "Yes", "No", yes_sequence, events.Nothing()
+      "Yes", "No", yes_sequence, events.Nothing(), visual=source.name,
   )
 
 
@@ -442,7 +442,7 @@ class Mythos13(Rumor):
     ] + [events.Draw(char, "spells", 1) for char in state.characters if not char.gone])
     return events.BinarySpend(
         event.character, "gates", 2, "Spend 2 gate trophies to end the rumor?",
-        "Yes", "No", seq
+        "Yes", "No", seq, visual=self.name,
     )
 
   def get_trigger(self, event, state):
@@ -516,6 +516,7 @@ class Mythos16(Environment):
         "Shop at estate sale?", "Yes", "No",
         events.Purchase(event.character, "unique", draw_count=2, keep_count=2),
         events.Nothing(),
+        visual=self.name,
     )
 
 
@@ -636,7 +637,7 @@ class Mythos27(Rumor):
     spend = values.RangeSpendPrerequisite("clues", 1, self.progress)
     choice = events.SpendChoice(
         event.character, "Spend clues to slow down or stop the rumor?", ["Spend", "Don't"],
-        spends=[spend, None],
+        spends=[spend, None], visual=self.name,
     )
     spend_count = values.SpendCount(choice, "clues")
     neg_amount = values.Calculation(spend_count, None, operator.neg)
@@ -1020,7 +1021,7 @@ class Mythos59(Rumor):
     prereq = values.ItemDeckPrerequisite(event.character, "spells", num_spells, "at least")
     return events.BinaryChoice(
         event.character, f"Discard {num_spells} spells to end the rumor?", "Yes", "No",
-        events.Sequence(success), events.Nothing(), prereq,
+        events.Sequence(success), events.Nothing(), prereq, visual=self.name,
     )
 
   def get_trigger(self, event, state):
