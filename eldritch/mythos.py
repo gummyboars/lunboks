@@ -330,7 +330,7 @@ class Mythos6(CityBonus):
 
   def get_interrupt(self, event, state):
     if isinstance(event, events.MoveMonster) and event.monster.has_attribute("flying", state, None):
-      return None  # TODO: prevent movement
+      return events.CancelEvent(event)
     return None
 
 

@@ -1,4 +1,3 @@
-from collections import defaultdict
 from eldritch import events
 from eldritch import places
 from eldritch import values
@@ -302,31 +301,8 @@ class Hound(Monster):
         {"horror": 4, "combat": 3}, 2, {"physical immunity"},
     )
 
-  def get_destination(self, state):
-    if any(char.place == self.place for char in state.characters):
-      return self.place
-
-    candidates = defaultdict(list)
-    distances = {self.place.name: 0}
-    queue = [self.place]
-    while queue:
-      place = queue.pop(0)
-      if isinstance(place, places.Location) and place.name not in ["Hospital", "Asylum"]:
-        if any(char.place == place for char in state.characters):
-          candidates[distances[place.name]].append(place)
-      for conn in place.connections:
-        if conn.name in distances:
-          continue
-        distances[conn.name] = distances[place.name] + 1
-        queue.append(conn)
-    if not candidates:
-      return False
-    min_list = candidates[min(candidates.keys())]
-    char_list = [char for char in state.characters if char.place in min_list]
-    char_list.sort(key=lambda char: char.sneak(state))
-
-    # TODO: allow the first player to break ties
-    return char_list[0].place
+  def move_event(self, state):
+    return events.HoundLowestSneakChoice(state.characters[state.first_player], self)
 
 
 class Maniac(Monster):
