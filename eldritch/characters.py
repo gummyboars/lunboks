@@ -653,7 +653,7 @@ class Shaman(Character):
     super().__init__("Shaman", 3, 7, 5, 4, 4, 4, 5, 3, 1, "Shoppe")
 
   def abilities(self):
-      return [] # TODO: Guardian of the Veil
+    return [] # TODO: Guardian of the Veil
 
   def initial_attributes(self):
     return {"dollars": 3, "clues": 1}
@@ -662,7 +662,8 @@ class Shaman(Character):
     return {}
 
   def random_possessions(self):
-    return {"unique": 1, "spells": 2, "n_gate_trophies": 1, "skills": 1}
+    # TODO: Add a gate trophy in the init code
+    return {"unique": 1, "spells": 2, "skills": 1}
 
 
 def CreateCharacters():
@@ -672,6 +673,7 @@ def CreateCharacters():
       c.name: c for c in [
           Student(), Drifter(), Salesman(), Psychologist(), Photographer(), Magician(), Author(),
           Professor(), Dilettante(), PrivateEye(), Scientist(), Researcher(), Nun(), Doctor(),
-          Archaeologist(), Gangster(), Shaman(), seaside_characters.Secretary(), seaside_characters.Spy()
+          Archaeologist(), Gangster(), Shaman(), seaside_characters.Secretary(),
+          seaside_characters.Spy()
       ]
   }
