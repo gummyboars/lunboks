@@ -1,7 +1,6 @@
 import collections
 from dataclasses import asdict, dataclass, field
 from enum import Enum
-import heapq
 import json
 from random import SystemRandom
 from typing import Dict, List
@@ -11,6 +10,7 @@ from game import (  # pylint: disable=unused-import
     InvalidPlayer, TooManyPlayers, NotYourTurn,
 )
 from powerplant import cities
+from powerplant import cost
 from powerplant import materials
 from powerplant import plants as plantinfo
 
@@ -452,42 +452,16 @@ class GameState:
     if self.turn_idx in city.occupants or city_name in self.pending_build:
       raise InvalidMove(f"You are already in {city_name}")
 
-    distance_cost = self.distance_cost(city)
-    build_cost = 10 + 5 * len(city.occupants)
-    cost = distance_cost + build_cost
-    if self.players[self.turn_idx].money - self.pending_spend < cost:
-      raise InvalidMove(f"You would need at least {cost} to build in {city_name}")
+    pending_build = self.pending_build + [city_name]
+    distance_cost = cost.total_cost(self.cities, self.turn_idx, pending_build)
+    build_cost = sum((10 + 5 * len(self.cities[name].occupants)) for name in pending_build)
+    total_cost = distance_cost + build_cost
+    if self.players[self.turn_idx].money < total_cost:
+      extra_cost = total_cost - self.pending_spend
+      raise InvalidMove(f"You would need at least {extra_cost} to build in {city_name}")
 
-    self.pending_spend += cost
-    self.pending_build.append(city_name)
-
-  def distance_cost(self, city):
-    # The first city that you build in has no connection cost.
-    if not (any(self.turn_idx in c.occupants for c in self.cities.values()) or self.pending_build):
-      return 0
-
-    heap = []
-    seen = set()
-    for conn, cost in city.connections.items():
-      heapq.heappush(heap, (cost, conn))
-
-    while heap:
-      closest = heapq.heappop(heap)
-      cost = closest[0]
-      dest = closest[-1]
-      if dest in seen:
-        continue
-      seen.add(dest)
-
-      if self.turn_idx in self.cities[dest].occupants or dest in self.pending_build:
-        return cost
-
-      for conn, added_cost in self.cities[dest].connections.items():
-        if conn in seen:
-          continue
-        heapq.heappush(heap, (cost + added_cost, *list(closest[1:]) + [conn]))
-
-    raise RuntimeError(f"No route to {city.name} for {self.turn_idx} from any of {seen}")
+    self.pending_spend = total_cost
+    self.pending_build = pending_build
 
   def handle_reset(self):
     if self.PHASES[self.phase_idx] not in (TurnPhase.BUILDING, TurnPhase.MATERIALS):
@@ -533,17 +507,23 @@ class GameState:
         plant.storage[resource] = plant.storage.get(resource, 0) + count
     for resource, count in self.pending_buy.items():
       self.resources[resource] -= count
+    self.spend_and_reset()
 
   def finish_build(self):
-    # TODO: ensure there isn't a more efficient way to build using dynamic programming?
     for city_name in self.pending_build:
       self.cities[city_name].occupants.append(self.turn_idx)
+    self.spend_and_reset()
+
     total_built = len([c for c in self.cities.values() if self.turn_idx in c.occupants])
     if total_built >= self.stage_2_count and self.stage_idx == 0:
       self.begin_stage_2 = True
     # Remove any plants with cost lower than the number built.
     while self.market and self.market[0].cost <= total_built:
       yield from self.remove_plant(self.market[0])
+
+  def spend_and_reset(self):
+    self.players[self.turn_idx].money -= self.pending_spend
+    self.handle_reset()
 
   def handle_confirm(self):
     if self.PHASES[self.phase_idx] is TurnPhase.BUILDING:
@@ -553,8 +533,6 @@ class GameState:
     else:
       raise InvalidMove("You cannot do that right now")
 
-    self.players[self.turn_idx].money -= self.pending_spend
-    self.handle_reset()
     yield from self.next_turn()
 
   def handle_shuffle(self, player_idx, resource_name, source, dest):
