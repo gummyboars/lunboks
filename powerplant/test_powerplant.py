@@ -796,6 +796,25 @@ class BuildTest(BaseTest):
     self.assertEqual(self.game.pending_spend, 0)
     self.assertListEqual(self.game.cities["RED"].occupants, [])
 
+  def testCanRemoveFromPending(self):
+    self.game.handle_build("RED")
+    self.game.handle_build("BLUE")
+    self.game.handle_build("PURPLE")
+    self.assertEqual(self.game.pending_spend, 45)
+
+    self.game.handle_build("BLUE")
+    self.assertEqual(self.game.pending_spend, 31)
+
+    self.game.handle_build("YELLOW")
+    self.game.handle_build("PURPLE")
+    self.assertEqual(self.game.pending_spend, 24)
+    self.assertCountEqual(self.game.pending_build, ["RED", "YELLOW"])
+
+    self.game.handle_build("RED")
+    self.game.handle_build("YELLOW")
+    self.assertEqual(self.game.pending_spend, 0)
+    self.assertCountEqual(self.game.pending_build, [])
+
   def testBuildRemovesLowCostPlants(self):
     self.game.players[2].money = 200
     self.assertEqual(self.game.market[0].cost, 3)

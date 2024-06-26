@@ -449,10 +449,14 @@ class GameState:
       raise InvalidMove(
           f"Cities may only be occupied by {self.stage_idx+1} players in this stage of the game"
       )
-    if self.turn_idx in city.occupants or city_name in self.pending_build:
+    if self.turn_idx in city.occupants:
       raise InvalidMove(f"You are already in {city_name}")
 
-    pending_build = self.pending_build + [city_name]
+    pending_build = self.pending_build[:]
+    if city_name in self.pending_build:  # Player wants to remove from the pending list.
+      pending_build.remove(city_name)
+    else:
+      pending_build.append(city_name)
     distance_cost = cost.total_cost(self.cities, self.turn_idx, pending_build)
     build_cost = sum((10 + 5 * len(self.cities[name].occupants)) for name in pending_build)
     total_cost = distance_cost + build_cost
