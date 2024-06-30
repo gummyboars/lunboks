@@ -63,6 +63,45 @@ class DrifterStoryTest(StoryTest):
     self.resolve_until_done()
     self.assertListEqual([p.name for p in self.char.possessions], ["Dog", "Living Nightmare"])
 
+  def testFailStoryNoAlliesExceptDog(self):
+    for ally in self.state.allies:
+      if ally.name == "Dog":
+        self.char.possessions.append(ally)
+        self.state.allies.remove(ally)
+        break
+
+    self.assertListEqual(
+        [p.name for p in self.char.possessions],
+        ["Powerful Nightmares", "Dog"])
+    self.state.event_stack.append(events.AddDoom(count=5))
+    self.resolve_until_done()
+    self.assertListEqual([p.name for p in self.char.possessions], ["Dog", "Living Nightmare"])
+
+    self.state.event_stack.append(events.DrawSpecific(self.char, "allies", "Police Inspector"))
+    self.resolve_until_done()
+    self.assertListEqual([p.name for p in self.char.possessions], ["Dog", "Living Nightmare"])
+
+    self.state.event_stack.append(events.Draw(self.char, "allies", 1))
+    self.resolve_until_done()
+    self.assertListEqual([p.name for p in self.char.possessions], ["Dog", "Living Nightmare"])
+
+  def testFailStoryNoAllies(self):
+    self.assertListEqual(
+        [p.name for p in self.char.possessions],
+        ["Powerful Nightmares"])
+    self.state.event_stack.append(events.AddDoom(count=5))
+    self.resolve_until_done()
+    self.assertListEqual([p.name for p in self.char.possessions], ["Living Nightmare"])
+
+    # Not sure how the Dog would be back in the allies deck, but just in case...
+    self.state.event_stack.append(events.DrawSpecific(self.char, "allies", "Dog"))
+    self.resolve_until_done()
+    self.assertListEqual([p.name for p in self.char.possessions], ["Living Nightmare"])
+
+    self.state.event_stack.append(events.Draw(self.char, "allies", 1))
+    self.resolve_until_done()
+    self.assertListEqual([p.name for p in self.char.possessions], ["Living Nightmare"])
+
   def testDontFail(self):
     for target_ally in ["Dog", "Arm Wrestler", "Old Professor"]:
       for ally in self.state.allies:

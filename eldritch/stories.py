@@ -150,7 +150,7 @@ class NunStoryPass(StoryResult):
       return events.Sequence([
           events.ExhaustAsset(owner, self),
           choice,
-          events.RerollSpecificDice(event.character, event, chosen),
+          events.RerollSpecific(event.character, event, chosen),
       ], owner)
     return None
 
@@ -232,9 +232,18 @@ class PhotographerStoryFail(StoryResult):
     ], owner
     )
 
-  def get_override(self, other, attribute):
-    if isinstance(other, (assets.BankLoan, assets.Retainer)) and attribute == "can_keep":
-      return False
+  def get_interrupt(self, event, owner, state):
+    if not hasattr(event, "character") or event.character != owner:
+      return None
+    if isinstance(event, events.TakeBankLoan):
+      return events.CancelEvent(event)
+    if (
+        isinstance(event, events.KeepDrawn)
+        and event.draw
+        and event.draw.drawn
+        and "Retainer" in [c.name for c in event.draw.drawn]
+    ):
+      return events.CancelEvent(event)
     return None
 
 
@@ -243,7 +252,7 @@ class PhotographerStory(Story):
     super().__init__("A Thousand Words", "There's Your Proof", "The Film Is Ruined")
 
   def get_trigger(self, event, owner, state):
-    if len([t for t in owner.trophies if isinstance(t, gates.Gate)]) >= 2:
+    if isinstance(event, events.TakeGateTrophy) and len([t for t in owner.trophies if isinstance(t, gates.Gate)]) >= 2:
       return self.advance_story(owner, True)
     if owner.clues >= 5:
       return self.advance_story(owner, False)
@@ -281,14 +290,16 @@ class PsychologistStory(Story):
         and event.character == owner
         and owner.place.name == "Asylum"
     ):
-      choice = events.SpendChoice(
+      choice = events.CardSpendChoice(
           owner,
-          "Spend $15 to finish story?",
-          ["No", "Yes"],
+          prompt="Spend $15 to finish story?",
+          choices=[self.name],
           spends=[None, values.ExactSpendPrerequisite({"dollars": 15})]
       )
 
-      result = events.Conditional(owner, choice, "choice_idx", {1: self.advance_story(owner, True)})
+      result = events.Conditional(
+          owner, choice, "choice_idx", {0: events.Nothing(), 1: self.advance_story(owner, True)}
+      )
       return events.Sequence([choice, result], owner)
     return None
 
@@ -311,7 +322,14 @@ class SalesmanStoryPass(StoryResult):
           ["No", "Yes"],
           spends=[None, values.ExactSpendPrerequisite({"dollars": 3})]
       )
-      cond = events.Conditional(owner, choice, "choice_idx", {1: events.Gain(owner, {"clues": 1})})
+      exhaust = events.ExhaustAsset(owner, self)
+      gain = events.Gain(owner, {"clues": 1})
+      cond = events.Conditional(
+          owner,
+          choice,
+          "choice_idx",
+          {0: events.Nothing(), 1: events.Sequence([exhaust, gain], character=owner)}
+      )
       return events.Sequence([choice, cond], owner)
     return None
 

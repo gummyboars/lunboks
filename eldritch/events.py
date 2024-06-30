@@ -698,16 +698,23 @@ class DiceRoll(Event):
     self.name = name
     self.bad = bad
     self.roll = None
-    self.sum = None
     self.successes = None
+
+  def count_successes(self):
+    self.successes = self.character.count_successes(self.roll, check_type=None)
 
   def resolve(self, state):
     if isinstance(self.count, values.Value):
       self.count = self.count.value(state)
     self.roll = [random.randint(1, 6) for _ in range(self.count)]
-    self.sum = sum(self.roll)
     # Some encounters have: "Roll a die for each X. On a success..."
     self.successes = self.character.count_successes(self.roll, None)
+
+  @property
+  def sum(self):
+    if self.roll is None:
+      return None
+    return sum(self.roll)
 
   def is_resolved(self):
     return self.roll is not None
@@ -1424,9 +1431,6 @@ class KeepDrawn(Event):
     if self.drawn is None:
       assert self.draw.is_resolved()
       self.drawn = self.draw.drawn
-
-    # Remove cards the character cannot keep:
-    self.drawn = [card for card in self.drawn if self.character.get_override(card, "can_keep")]
 
     if self.choice is not None:
       assert self.choice.is_done()
@@ -2401,7 +2405,6 @@ class RollToMaintain(Event):
       return
 
     if self.roll.sum in self.item.upkeep_bad_rolls and self.penalty is None:
-      # TODO: allow the item to determine its own bad stuff
       self.penalty = self.item.upkeep_penalty(self.character)
       state.event_stack.append(self.penalty)
       return
@@ -2739,7 +2742,7 @@ class RerollSpecific(Event):
   def __init__(self, character, check, reroll_indexes):
     super().__init__()
     self.character = character
-    self.check: Check = check
+    self.check: Union[Check, DiceRoll] = check
     self.reroll_indexes = reroll_indexes
     self.dice: Optional[DiceRoll] = None
     self.done = False
@@ -2772,57 +2775,10 @@ class RerollSpecific(Event):
     return self.done
 
   def log(self, state):
-    ctype = f"{self.check.check_type} check"
-    if self.cancelled and not self.done:
-      return f"[{self.character.name}] did not reroll dice for their {ctype}"
-    if not self.done:
-      return f"[{self.character.name}] rerolls some of the dice on their {ctype}"
-    return f"[{self.character.name}] rerolled {len(self.reroll_indexes)} dice on their {ctype}"
-
-
-class RerollSpecificDice(Event):
-  """More general than, but logging not as nice as, RerollSpecific"""
-
-  def __init__(
-      self, character, dice_roll: DiceRoll, reroll_indexes: Union[List[int], int, values.Value]
-  ):
-    super().__init__()
-    self.character = character
-    self.dice_roll = dice_roll
-    self.reroll_indexes = reroll_indexes
-    self.dice = None
-    self.done = False
-
-  def resolve(self, state):
-    if isinstance(self.reroll_indexes, values.Value):
-      self.reroll_indexes = self.reroll_indexes.value(state)
-    if isinstance(self.reroll_indexes, int):
-      self.reroll_indexes = [self.reroll_indexes]
-
-    if not self.reroll_indexes:
-      self.cancelled = True
-      return
-
-    if self.dice is None:
-      self.dice = DiceRoll(self.character, len(self.reroll_indexes), name=self.dice_roll.name)
-      state.event_stack.append(self.dice)
-      return
-
-    if self.dice.is_cancelled():
-      self.cancelled = True
-      return
-
-    for idx, orig_idx in enumerate(self.reroll_indexes):
-      self.dice_roll.roll[orig_idx] = self.dice.roll[idx]
-    self.dice_roll.sum = sum(self.dice_roll.roll)
-    self.dice_roll.successes = self.dice_roll.character.count_successes(self.dice_roll.roll, None)
-    self.done = True
-
-  def is_resolved(self):
-    return self.done
-
-  def log(self, state):
-    ctype = f"{self.dice_roll.name} roll"
+    if isinstance(self.check, Check):
+      ctype = f"{self.check.check_type} check"
+    elif isinstance(self.check, DiceRoll):
+      ctype = f"{self.check.name} dice roll"
     if self.cancelled and not self.done:
       return f"[{self.character.name}] did not reroll dice for their {ctype}"
     if not self.done:
