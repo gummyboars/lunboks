@@ -252,7 +252,10 @@ class PhotographerStory(Story):
     super().__init__("A Thousand Words", "There's Your Proof", "The Film Is Ruined")
 
   def get_trigger(self, event, owner, state):
-    if isinstance(event, events.TakeGateTrophy) and len([t for t in owner.trophies if isinstance(t, gates.Gate)]) >= 2:
+    if (
+        isinstance(event, events.TakeGateTrophy)
+        and len([t for t in owner.trophies if isinstance(t, gates.Gate)]) >= 2
+    ):
       return self.advance_story(owner, True)
     if owner.clues >= 5:
       return self.advance_story(owner, False)
