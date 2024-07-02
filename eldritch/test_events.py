@@ -92,6 +92,13 @@ class EventTest(unittest.TestCase):
       not_finished["stack"] = self.state.event_stack
     self.assertFalse(not_finished)
 
+  def resolve_to_slider_input(self) -> SliderInput:
+    # SliderInput has a different resolve() signature than a Choice
+    self.resolve_loop()
+    self.assertTrue(self.state.event_stack)
+    self.assertIsInstance(self.state.event_stack[-1], SliderInput)
+    return self.state.event_stack[-1]
+
   def resolve_to_choice(self, event_class: Type[ChoiceT]) -> ChoiceT:
     self.resolve_loop()
     self.assertTrue(self.state.event_stack)
@@ -134,7 +141,7 @@ class EventTest(unittest.TestCase):
     self.state.event_stack.append(self.state.usables[char_idx][handle])
     self.resolve_to_choice(SpendMixin)
 
-  def advance_turn(self, target_turn, target_phase):
+  def advance_turn(self, target_turn, target_phase, halt_on_usable=False):
     self.state.mythos.extend([NoMythos()] * (target_turn - self.state.turn_number + 1))
     # TODO: should actually add a number of NoMythos - current turn - existing cards in mythos deck
     while True:
@@ -143,6 +150,8 @@ class EventTest(unittest.TestCase):
           break
       if self.state.turn_number >= target_turn and self.state.turn_phase == target_phase:
         break
+      if self.state.usables and halt_on_usable:
+        return
       if not self.state.event_stack:
         self.state.next_turn()
         if self.state.turn_number >= target_turn and self.state.turn_phase == target_phase:
@@ -228,7 +237,7 @@ class UpkeepTest(EventTest):
   def testReceiveFocus(self):
     self.char.focus_points = 0
     self.state.event_stack.append(Upkeep(self.char))
-    self.resolve_to_choice(SliderInput)
+    self.resolve_to_slider_input()
     self.assertEqual(self.char.focus_points, 2)
 
   def testUpkeepRolls(self):
@@ -240,7 +249,7 @@ class SliderTest(EventTest):
   def setUp(self):
     super().setUp()
     self.state.event_stack.append(Upkeep(self.char))
-    self.sliders = self.resolve_to_choice(SliderInput)
+    self.sliders = self.resolve_to_slider_input()
     self.assertFalse(self.sliders.is_resolved())
 
   def testMoveSliders(self):
@@ -406,7 +415,7 @@ class LostInTimeAndSpaceTest(EventTest):
 
     choice = self.resolve_to_choice(PlaceChoice)
     choice.resolve(self.state, "Uptown")
-    self.resolve_to_choice(SliderInput)
+    self.resolve_to_slider_input()
     self.assertEqual(self.char.place.name, "Uptown")
     self.assertFalse(self.char.explored)
 
@@ -1744,6 +1753,15 @@ class TakeTrophyTest(EventTest):
     self.assertEqual(self.char.trophies[0], self.state.monsters[1])
     self.assertIsNone(self.state.monsters[1].place)
     self.assertEqual(self.state.monsters[0].place, self.state.monster_cup)
+
+
+class TestTakeGateTrophy(EventTest):
+  # Note that CloseGate handles most of the normal behavior.
+  def testDrawGateTrophy(self):
+    top_gate = self.state.gates[0]
+    self.state.event_stack.append(TakeGateTrophy(self.char, "draw"))
+    self.resolve_until_done()
+    self.assertIn(top_gate, self.char.trophies)
 
 
 class ReturnMonstersAndGatesTest(EventTest):

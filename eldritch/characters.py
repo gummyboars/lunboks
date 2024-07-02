@@ -157,7 +157,7 @@ class BaseCharacter(metaclass=abc.ABCMeta):
     return sum(p.get_modifier(other, attribute) or 0 for p in self.possessions)
 
   def get_override(self, other, attribute):
-    override = None
+    override = True if attribute.startswith(("can_", "cannot_")) else None
     for pos in self.possessions:
       val = pos.get_override(other, attribute)  # pylint: disable=assignment-from-none
       if val is None:

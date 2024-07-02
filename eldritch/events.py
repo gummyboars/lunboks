@@ -70,7 +70,7 @@ class Event(metaclass=abc.ABCMeta):
     self.cancelled = False
 
   @abc.abstractmethod
-  def resolve(self, state) -> NoReturn:
+  def resolve(self, state: "GameState") -> NoReturn:
     # resolve should return True if the event was resolved, False otherwise.
     # For example, an event that requires a check to be made should add that check to the end
     # of the event stack, and then return False. It will be called again when the check is
@@ -698,16 +698,23 @@ class DiceRoll(Event):
     self.name = name
     self.bad = bad
     self.roll = None
-    self.sum = None
     self.successes = None
+
+  def count_successes(self):
+    self.successes = self.character.count_successes(self.roll, check_type=None)
 
   def resolve(self, state):
     if isinstance(self.count, values.Value):
       self.count = self.count.value(state)
     self.roll = [random.randint(1, 6) for _ in range(self.count)]
-    self.sum = sum(self.roll)
     # Some encounters have: "Roll a die for each X. On a success..."
     self.successes = self.character.count_successes(self.roll, None)
+
+  @property
+  def sum(self):
+    if self.roll is None:
+      return None
+    return sum(self.roll)
 
   def is_resolved(self):
     return self.roll is not None
@@ -874,6 +881,23 @@ def Gain(character, gains, source=None):
 
 def Loss(character, losses, source=None):
   return GainOrLoss(character, {}, losses, source=source)
+
+
+class GainMoneyViaTrade(GainOrLoss):
+  def __init__(self, character, donor, amount, source=None):
+    assert donor.dollars >= amount
+    super().__init__(character, gains={"dollars": amount}, losses={}, source=source)
+    self.donor = donor
+
+  def resolve(self, state):
+    super().resolve(state)
+    amount = self.final_adjustments.get("dollars", 0)
+    assert self.donor.dollars >= amount
+    self.donor.dollars -= amount
+
+  def log(self, state):
+    message = super().log(state)
+    return message + f" in trade from {self.donor.name}"
 
 
 class SplitGain(Event):
@@ -2398,7 +2422,6 @@ class RollToMaintain(Event):
       return
 
     if self.roll.sum in self.item.upkeep_bad_rolls and self.penalty is None:
-      # TODO: allow the item to determine its own bad stuff
       self.penalty = self.item.upkeep_penalty(self.character)
       state.event_stack.append(self.penalty)
       return
@@ -2556,7 +2579,8 @@ class ReturnGateToStack(Event):
 
 class Check(Event):
 
-  def __init__(self, character, check_type, modifier, *, difficulty=1, name=None, attributes=None):
+  def __init__(self, character, check_type, modifier, *, difficulty=1, name=None,
+               attributes=None, source=None):
     # TODO: assert on check type
     assert difficulty > 0
     super().__init__()
@@ -2566,6 +2590,7 @@ class Check(Event):
     self.difficulty = difficulty
     self.attributes = attributes
     self.name = name
+    self.source = source
     self.dice: Optional[Event] = None
     self.pass_check: Optional[Event] = None
     self.roll = None
@@ -2604,6 +2629,9 @@ class Check(Event):
 
     if self.spend is None:
       if state.test_mode and self.character.clues == 0:
+        self.done = True
+        return
+      if not self.character.get_override(self.source, "can_spend_clues"):
         self.done = True
         return
       spend = values.ExactSpendPrerequisite({"clues": 1})
@@ -2731,7 +2759,7 @@ class RerollSpecific(Event):
   def __init__(self, character, check, reroll_indexes):
     super().__init__()
     self.character = character
-    self.check: Check = check
+    self.check: Union[Check, DiceRoll] = check
     self.reroll_indexes = reroll_indexes
     self.dice: Optional[DiceRoll] = None
     self.done = False
@@ -2764,7 +2792,10 @@ class RerollSpecific(Event):
     return self.done
 
   def log(self, state):
-    ctype = f"{self.check.check_type} check"
+    if isinstance(self.check, Check):
+      ctype = f"{self.check.check_type} check"
+    elif isinstance(self.check, DiceRoll):
+      ctype = f"{self.check.name} dice roll"
     if self.cancelled and not self.done:
       return f"[{self.character.name}] did not reroll dice for their {ctype}"
     if not self.done:
@@ -4254,6 +4285,51 @@ class RespawnTrophies(Event):
     return f"No [{self.monster_name}]s to respawn at [{self.location_name}]"
 
 
+class TakeGateTrophy(Event):
+  def __init__(self, character, gate):
+    super().__init__()
+    self.character = character
+    self.gate = gate
+    self.done = False
+
+  def resolve(self, state):
+    if isinstance(self.gate, GateChoice):
+      if self.gate.is_cancelled():
+        self.cancelled = True
+        return
+      self.gate = state.places[self.gate.choice].gate
+    if self.gate == "draw":
+      if state.gates:
+        self.gate = state.gates.popleft()
+      else:
+        # According to my reading, No Gate Markers only awakens the ancient one when a gate opens
+        self.cancelled = True
+        return
+
+    for place in state.places:
+      if getattr(state.places[place], "gate", None) is self.gate:
+        state.places[place].gate = None
+
+    if self.gate:
+      self.character.trophies.append(self.gate)
+    self.done = True
+
+  def is_resolved(self):
+    return self.done
+
+  def log(self, state):
+    if self.cancelled and not self.done:
+      return f"{self.character.name} did not take a gate trophy"
+    if self.done and self.gate is None:
+      return f"{self.character.name} tried to draw a gate, but there were none"
+    if not self.done:
+      return f"{self.character.name} takes a gate trophy"
+    return f"{self.character.name} took a {self.gate.name} gate trophy"
+
+  def animated(self):
+    return True
+
+
 class MonsterAppears(Conditional):
 
   def __init__(self, character):
@@ -4402,6 +4478,7 @@ class GateCloseAttempt(Event):
       self.check = Check(
           self.character, attribute, difficulty,
           name=state.places[self.location_name].gate.json_repr()["name"],
+          source=self,
       )
       state.event_stack.append(self.check)
       return
@@ -4441,6 +4518,8 @@ class CloseGate(Event):
     self.location_name: Union[MapChoice, str] = location_name
     self.gate = None
     self.can_take = can_take
+    self.take_gate = None
+    self.closed_until = None
     self.can_seal = can_seal
     self.return_monsters = None
     self.seal_choice: Optional[ChoiceEvent] = None
@@ -4458,19 +4537,25 @@ class CloseGate(Event):
       if self.gate is None:
         self.cancelled = True
         return
+      state.places[self.location_name].gate = None
 
       if self.can_take:
-        # TODO: event for taking a gate trophy
-        self.character.trophies.append(self.gate)
+        if self.take_gate is None:
+          self.take_gate = TakeGateTrophy(self.character, self.gate)
+          state.event_stack.append(self.take_gate)
+          return
       else:
         state.gates.append(self.gate)
-      state.places[self.location_name].gate = None
+
+    if self.closed_until is None:
       closed_until = state.places[self.location_name].closed_until or -1
       if closed_until > state.turn_number:
+        self.closed_until = CloseLocation(self.location_name, closed_until - state.turn_number - 1)
         state.event_stack.append(
-            CloseLocation(self.location_name, closed_until - state.turn_number - 1)
+            self.closed_until
         )
         return
+      self.closed_until = False
 
     if not self.return_monsters:
       monsters_to_return = []
