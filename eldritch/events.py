@@ -883,6 +883,23 @@ def Loss(character, losses, source=None):
   return GainOrLoss(character, {}, losses, source=source)
 
 
+class GainMoneyViaTrade(GainOrLoss):
+  def __init__(self, character, donor, amount, source=None):
+    assert donor.dollars >= amount
+    super().__init__(character, gains={"dollars": amount}, losses={}, source=source)
+    self.donor = donor
+
+  def resolve(self, state):
+    super().resolve(state)
+    amount = self.final_adjustments.get("dollars", 0)
+    assert self.donor.dollars >= amount
+    self.donor.dollars -= amount
+
+  def log(self, state):
+    message = super().log(state)
+    return message + f" in trade from {self.donor.name}"
+
+
 class SplitGain(Event):
 
   def __init__(self, character, attr1, attr2, amount):

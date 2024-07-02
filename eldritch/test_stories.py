@@ -134,6 +134,11 @@ class GangsterStoryTest(StoryTest):
     self.state.specials.remove(self.story)
     self.state.monsters = monsters.CreateMonsters()
     self.char.possessions.append(self.story)
+    self.nun = characters.Nun()
+    self.state.characters.append(self.nun)
+    # Take that, vow of poverty!
+    self.nun.dollars = 20
+    self.nun.place = self.char.place
 
   def passStory(self):
     orig_max_sanity = self.char.max_sanity(self.state)
@@ -175,6 +180,12 @@ class GangsterStoryTest(StoryTest):
     self.state.event_stack.append(events.Gain(self.char, {"dollars": 1}))
     self.resolve_until_done()
     self.assertEqual(self.char.dollars, 0)
+
+    self.state.turn_phase = "movement"
+    self.state.event_stack.append(events.GainMoneyViaTrade(self.char, self.nun, 10))
+    self.resolve_until_done()
+    self.assertEqual(self.char.dollars, 0)
+    self.assertEqual(self.nun.dollars, 20)
 
 
 class NunStoryTest(StoryTest):

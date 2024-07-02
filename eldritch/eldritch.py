@@ -1148,9 +1148,9 @@ class GameState:
         raise InvalidMove("Invalid quantity")
       if amount < 0 or amount > donor.dollars:
         raise InvalidMove("Invalid quantity")
-      # TODO: turn this into an event
-      recipient.dollars += amount
-      donor.dollars -= amount
+      self.event_stack.append(events.GainMoneyViaTrade(recipient, donor, amount))
+      for _ in self.resolve_loop():
+        pass
       return
 
     if not isinstance(handle, str):
