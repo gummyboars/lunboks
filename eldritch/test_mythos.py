@@ -1040,6 +1040,9 @@ class CloseGateTest(EventTest):
     self.assertTrue(close.seal_choice.is_cancelled())
     self.assertFalse(close.sealed)
 
+  def testElderSign(self):
+    self.char.possessions.append(items.unique.ElderSign)
+
 
 class SpawnClueTest(EventTest):
 
