@@ -413,7 +413,7 @@ class BadCredit(Asset):
   def get_override(self, other, attribute):
     if attribute == "can_get_bank_loan":
       return False
-    return True
+    return None
 
 
 class LodgeMembership(Card):

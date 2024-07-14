@@ -173,8 +173,9 @@ class ThickSkulled(assets.Asset):
     if (
         isinstance(event, events.Combat)
         and not isinstance(event, ThickSkulledCombat)
-        and event.character != owner
+        and event.character == owner
     ):
+      print("matched")
       return events.Sequence([
           events.CancelEvent(event),
           ThickSkulledCombat(event.character, event.monster),

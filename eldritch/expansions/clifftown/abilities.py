@@ -30,7 +30,7 @@ class BlessedIsTheChild(assets.Asset):
     if (
         isinstance(event, (events.Arrested, events.Curse))
         and event.character == owner
-        and "Elder Sign" in [p.name for p in owner.poseessions]
+        and "Elder Sign" in [p.name for p in owner.possessions]
     ):
       return events.CancelEvent(event)
     return None
@@ -42,6 +42,11 @@ class Minor(assets.Asset):
     super().__init__("Minor")
 
   def get_interrupt(self, event, owner, state):
-    if event.character == owner and isinstance(event, events.TakeBankLoan):
+    if isinstance(event, events.TakeBankLoan) and event.character == owner:
       return events.CancelEvent(event)
+    return None
+
+  def get_override(self, other, attribute):
+    if attribute == "can_get_bank_loan":
+      return False
     return None

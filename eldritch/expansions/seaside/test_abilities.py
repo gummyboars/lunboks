@@ -6,7 +6,66 @@ from eldritch.expansions.seaside import characters as seaside_characters
 from eldritch import assets
 from eldritch import characters
 from eldritch import events
+from eldritch import monsters
 from eldritch.items import spells
+
+
+class TestFarmhandAbility(EventTest):
+  def setUp(self):
+    super().setUp()
+    self.char.possessions.append(abilities.ThickSkulled())
+
+  def testCombatWithHorror(self):
+    self.char.fight_will_slider = 3
+    self.assertEqual(self.char.fight(self.state), 4)
+    self.assertEqual(self.char.will(self.state), 1)
+    self.assertEqual(self.char.stamina, 5)
+    self.assertEqual(self.char.sanity, 5)
+    zombie = monsters.Zombie()
+    combat = events.Combat(self.char, zombie)
+    self.state.event_stack.append(combat)
+
+    # The horror check normally happens here
+    fight_or_flee = self.resolve_to_choice(events.FightOrEvadeChoice)
+    combat = next(
+        event for event in reversed(self.state.event_stack) if isinstance(event, events.Combat)
+    )
+    self.assertIsNone(combat.horror)
+    self.assertEqual(self.char.sanity, 5)
+
+    combat_round = combat.combat
+    fight_or_flee.resolve(self.state, "Fight")
+    choose_weapons = self.resolve_to_choice(events.CombatChoice)
+    self.choose_items(choose_weapons, [])
+
+    # Fail the combat check. After this, we check that there is a horror check.
+    # They are guaranteed to fail becuse they have only 1 will.
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
+      next_fight_or_flee = self.resolve_to_choice(events.FightOrEvadeChoice)
+
+    self.assertIsNotNone(combat.horror)
+    self.assertTrue(combat_round.is_resolved())
+    self.assertFalse(combat_round.defeated)
+    self.assertIsNotNone(combat_round.damage)
+    self.assertTrue(combat_round.damage.is_resolved())
+    self.assertEqual(len(self.char.trophies), 0)
+    self.assertFalse(combat.is_resolved())
+    self.assertEqual(self.char.stamina, 3)
+    self.assertEqual(self.char.sanity, 4)  # Assert there wasn't a second horror check/loss.
+
+    self.assertTrue(combat.horror.is_resolved())
+
+    combat_round = combat.combat
+    next_fight_or_flee.resolve(self.state, "Fight")
+    choose_weapons = self.resolve_to_choice(events.CombatChoice)
+    self.choose_items(choose_weapons, [])
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+
+    self.assertTrue(combat_round.is_resolved())
+    self.assertTrue(combat_round.defeated)
+    self.assertIsNone(combat_round.damage)
+    self.assertTrue(combat.is_resolved())
 
 
 class TestSecretaryAbilities(EventTest):

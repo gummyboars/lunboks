@@ -178,14 +178,17 @@ class ElderSign(Item):
 
   def get_usable_interrupt(self, event, owner, state: "eldritch.eldritch.GameState"):
     if (
-        isinstance(event, events.GateCloseAttempt)
+        isinstance(event, events.MultipleChoice)
+        and event.prompt() == "Close the gate?"
         and event.character == owner
-        and state.get_override("can_seal")
+        and state.get_override(self, "can_seal")
     ):
+      close = state.event_stack[-2]
       return events.Sequence([
           events.DiscardSpecific(owner, [self], to_box=True),
           events.CancelEvent(event),
-          events.CloseGate(owner, event.location_name, True, True, force_seal=True),
+          events.CancelEvent(close),
+          events.CloseGate(owner, close.location_name, True, True, force_seal=True),
           events.RemoveDoom(owner),
           events.Loss(owner, {"sanity": 1, "stamina": 1}, source=self),
       ], character=owner)
