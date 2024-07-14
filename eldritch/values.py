@@ -159,8 +159,8 @@ class NoItemName(Value):
 
 class OverridePrerequisite(Value):
   def __init__(self, character: characters.Character, attribute: str, other=None):
-    self.character : characters.Character = character
-    self.attribute : str = attribute
+    self.character: characters.Character = character
+    self.attribute: str = attribute
     self.other = other
 
   def value(self, state: "eldritch.eldritch.GameState"):
@@ -168,6 +168,7 @@ class OverridePrerequisite(Value):
         state.get_override(self.other, self.attribute)
         and self.character.get_override(self.other, self.attribute)
     )
+
 
 class ItemPrerequisite(Calculation):
 
