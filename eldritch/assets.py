@@ -410,13 +410,10 @@ class BadCredit(Asset):
   def __init__(self, idx):
     super().__init__("Bad Credit", idx)
 
-  def get_interrupt(self, event, owner, state):
-    if (
-        isinstance(event, events.TakeBankLoan)
-        and event.character == owner
-    ):
-      return events.CancelEvent(event)
-    return None
+  def get_override(self, other, attribute):
+    if attribute == "can_get_bank_loan":
+      return False
+    return True
 
 
 class LodgeMembership(Card):

@@ -4,6 +4,7 @@ import math
 import operator
 from typing import Optional
 
+import eldritch
 from eldritch import characters
 from eldritch import places
 
@@ -155,6 +156,18 @@ class NoItemName(Value):
   def value(self, state):
     return sum(item.name == self.item_name for item in self.character.possessions) == 0
 
+
+class OverridePrerequisite(Value):
+  def __init__(self, character: characters.Character, attribute: str, other=None):
+    self.character : characters.Character = character
+    self.attribute : str = attribute
+    self.other = other
+
+  def value(self, state: "eldritch.eldritch.GameState"):
+    return (
+        state.get_override(self.other, self.attribute)
+        and self.character.get_override(self.other, self.attribute)
+    )
 
 class ItemPrerequisite(Calculation):
 
