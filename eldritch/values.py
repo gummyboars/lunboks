@@ -159,6 +159,7 @@ class NoItemName(Value):
 
 class OverridePrerequisite(Value):
   def __init__(self, character: characters.Character, attribute: str, other=None):
+    super().__init__(error_fmt=f"State does not allow '{attribute}'")
     self.character: characters.Character = character
     self.attribute: str = attribute
     self.other = other
