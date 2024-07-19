@@ -182,6 +182,7 @@ class ElderSign(Item):
         and event.prompt() == "Close the gate?"
         and event.character == owner
         and state.get_override(self, "can_seal")
+        and len(state.event_stack) > 1
     ):
       close = state.event_stack[-2]
       return events.Sequence([

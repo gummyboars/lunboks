@@ -153,7 +153,8 @@ class ThickSkulledCombat(events.Combat):
         self.monster.difficulty("horror", state, self.character) is not None
         and self.horror is None
         and (self.evade is not None or self.combat is not None)
-        and any([self.evade.evaded is False, self.combat.defeated is False])
+        and any([getattr(self.evade, "evaded", None) is False,
+                 getattr(self.combat, "defeated", None) is False])
     ):
       self._setup_horror(state)
     if self.horror is not None:
@@ -175,7 +176,6 @@ class ThickSkulled(assets.Asset):
         and not isinstance(event, ThickSkulledCombat)
         and event.character == owner
     ):
-      print("matched")
       return events.Sequence([
           events.CancelEvent(event),
           ThickSkulledCombat(event.character, event.monster),

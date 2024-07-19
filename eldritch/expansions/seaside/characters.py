@@ -9,7 +9,7 @@ class Farmhand(characters.Character):
     return ["Thick Skulled"]
 
   def initial_attributes(self):
-    return {"dollars": 1, "clues": 1}
+    return {"dollars": 3, "clues": 1}
 
   def fixed_possessions(self):
     return {"common": ["Food"]}

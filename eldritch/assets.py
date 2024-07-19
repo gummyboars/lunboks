@@ -405,6 +405,20 @@ class BankLoan(SelfDiscardingCard):
       )
     return None
 
+  def get_interrupt(self, event, owner, state):
+    if (
+        isinstance(event, events.KeepDrawn)
+        and event.character == owner
+        and event.drawn is not None
+        and self in event.drawn
+        and not (
+            state.get_override(self, "can_get_bank_loan")
+            or owner.get_override(self, "can_get_bank_loan")
+        )
+    ):
+      return events.CancelEvent(event)
+    return None
+
 
 class BadCredit(Asset):
   def __init__(self, idx):

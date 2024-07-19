@@ -2,7 +2,6 @@ from unittest import mock
 
 from eldritch.test_events import EventTest
 from eldritch.expansions.clifftown import abilities
-from eldritch import characters
 from eldritch import events
 from eldritch import monsters
 from eldritch.items import unique

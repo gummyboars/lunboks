@@ -24,7 +24,9 @@ def CreateFixedEncounters():
 
   take_loan = FixedEncounter(
       name="Bank Loan",
-      prereq=lambda char: values.OverridePrerequisite(char, "can_take_bank_loan"),
+      prereq=lambda char: values.OverridePrerequisite(
+          char, "can_get_bank_loan", error_fmt="You cannot take a bank loan"
+      ),
       spend=lambda char: None,
       encounter=lambda char, state: events.TakeBankLoan(char)
   )
