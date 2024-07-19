@@ -51,6 +51,16 @@ class TestInitBoard(unittest.TestCase):
         "chapel": 1, "university": 1, "palace": 1, "library": 1, "market": 1,
     }
     self.assertDictEqual(counts, expected)
+    self.assertIsNone(state.dice_cards)
+
+  def testLowLuck(self):
+    state = islanders.IslandersState()
+    state.add_player("red", "player1")
+    state.add_player("blue", "player2")
+    islanders.StandardMap.mutate_options(state.options)
+    state.options["randomness"].force(5)
+    islanders.StandardMap.init(state)
+    self.assertEqual(len(state.dice_cards), 36)
 
   def testInitNumbers(self):
     state = islanders.IslandersState()
@@ -811,6 +821,32 @@ class TestDevCards(BaseInputHandlerTest):
       self.c.handle_play_dev("monopoly", {"rsrc2": 2}, 0)
     with self.assertRaisesRegex(InvalidMove, "exactly one resource"):
       self.c.handle_play_dev("monopoly", {"rsrc1": 1, "rsrc2": 2}, 0)
+
+
+class TestRollDice(BaseInputHandlerTest):
+
+  def setUp(self):
+    super().setUp()
+    self.c.options["randomness"].force(5)
+    self.c.init_dice_cards()
+
+  def testDiceRollFromCards(self):
+    self.assertEqual(len(self.c.dice_cards), 36)
+    self.c.action_stack = ["dice"]
+    self.c.handle_roll_dice()
+    self.assertEqual(len(self.c.dice_cards), 35)
+    first_roll = self.c.dice_roll
+
+    self.c.action_stack = ["dice"]
+    self.c.handle_roll_dice()
+    self.assertEqual(len(self.c.dice_cards), 34)
+    self.assertNotEqual(self.c.dice_roll, first_roll)
+
+  def testReshuffleDiceCards(self):
+    self.c.dice_cards = self.c.dice_cards[:5]
+    self.c.action_stack = ["dice"]
+    self.c.handle_roll_dice()
+    self.assertEqual(len(self.c.dice_cards), 35)
 
 
 class TestCollectResources(BaseInputHandlerTest):
