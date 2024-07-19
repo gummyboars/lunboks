@@ -733,6 +733,7 @@ function onclick(event) {
     if (turnPhase == "placeport" && placementPort != null) {
       let msg = {
         type: "placeport",
+        port: placementPort,
         location: tiles[clickTileEdge.tileNum].location,
         rotation: clickTileEdge.rotation,
       };

@@ -53,6 +53,17 @@
           <div id="centerizer" class="noclick">
             <div id="playerpopup" class="clickable uiselect" onmousedown="windown(event)">
             </div>
+            <div id="portpopup" class="clickable selectinner" onmousedown="windown(event)">
+              <div id="portselecttitle"></div>
+              <div id="portselect"></div>
+            </div>
+            <div id="burypopup" class="clickable selectinner" onmousedown="windown(event)">
+              <div id="treasure"></div>
+              <div id="burybuttons">
+                <div class="leftbutton"><button id="burytreasure" class="selectbutton button clickable" onclick="buryTreasure(event)">Bury</button></div>
+                <div class="rightbutton"><button id="usetreasure" class="selectbutton button clickable" onclick="useTreasure(event)">Use</button></div>
+              </div>
+            </div>
             <div id="handpopup" class="clickable selectinner" onmousedown="windown(event)">
               <div id="handselecttop">
                 <div id="handselecttitle"></div>
