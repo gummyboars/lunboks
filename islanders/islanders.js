@@ -1604,13 +1604,13 @@ function chooseColor(color) {
     }
   }
   if (color == null) {
-    document.getElementById("colortext").innerText = "?";
+    document.getElementById("colortext").style.display = "flex";
     if (myIdx != null) {
       joinGame(null);
     }
     return;
   }
-  document.getElementById("colortext").innerText = "";
+  document.getElementById("colortext").style.display = "none";
   let inner = document.createElement("DIV");
   inner.classList.add("innercolor");
   inner.style.backgroundColor = color;
