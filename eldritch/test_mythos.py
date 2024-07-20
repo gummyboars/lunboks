@@ -1043,6 +1043,9 @@ class CloseGateTest(EventTest):
   def testElderSign(self):
     starting_sanity = self.char.sanity
     starting_stamina = self.char.stamina
+    self.state.event_stack.append(events.AddDoom())
+    self.resolve_until_done()
+    self.assertEqual(self.state.ancient_one.doom, 1)
     self.char.possessions.append(items.unique.ElderSign(0))
     close = GateCloseAttempt(self.char, "Square")
     self.state.event_stack.append(close)
@@ -1055,6 +1058,7 @@ class CloseGateTest(EventTest):
     self.assertTrue(self.square.sealed)
     self.assertEqual(self.char.sanity, starting_sanity - 1)
     self.assertEqual(self.char.stamina, starting_stamina - 1)
+    self.assertEqual(self.state.ancient_one.doom, 0)
 
   def testElderSignNotUsableIfCantSeal(self):
     self.char.possessions.append(items.unique.ElderSign(0))
@@ -1077,6 +1081,7 @@ class CloseGateTest(EventTest):
     self.assertIsNone(self.square.gate)
     self.assertTrue(self.square.sealed)
     self.assertEqual(self.char.sanity, 1)
+    self.assertEqual(len(self.char.trophies), 1)
 
 
 class SpawnClueTest(EventTest):
