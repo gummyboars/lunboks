@@ -1,8 +1,10 @@
 from unittest import mock
 
+import game
 from eldritch.test_events import EventTest
 from eldritch.expansions.clifftown import abilities
 from eldritch import events
+from eldritch import location_specials
 from eldritch import monsters
 from eldritch.items import unique
 
@@ -10,6 +12,9 @@ from eldritch.items import unique
 class TestUrchinAbilities(EventTest):
   def setUp(self):
     super().setUp()
+    specials = location_specials.CreateFixedEncounters()
+    for location_name, fixed_encounters in specials.items():
+      self.state.places[location_name].fixed_encounters.extend(fixed_encounters)
     self.elder_sign = unique.ElderSign(0)
     self.minor = abilities.Minor()
     self.char.possessions.extend(
@@ -80,8 +85,17 @@ class TestUrchinAbilities(EventTest):
   def testMinorCredit(self):
     self.char.place = self.state.places["Bank"]
     self.advance_turn(0, "encounter")
+    self.assertFalse(self.char.get_override(None, "can_get_bank_loan"))
+    choice = self.resolve_to_choice(events.MultipleChoice)
+    with self.assertRaisesRegex(game.InvalidMove, "take a bank loan"):
+      choice.resolve(self.state, "Bank Loan")
+    choice.resolve(self.state, "Downtown Card")
     self.resolve_until_done()
 
     self.char.possessions.remove(self.minor)
     self.advance_turn(1, "encounter")
+
+    choice = self.resolve_to_choice(events.MultipleChoice)
+    choice.resolve(self.state, "Bank Loan")
     self.resolve_until_done()
+    self.assertIn("Bank Loan", [p.name for p in self.char.possessions])

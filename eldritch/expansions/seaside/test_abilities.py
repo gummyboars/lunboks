@@ -96,7 +96,6 @@ class TestFarmhandAbility(EventTest):
 
     # Fail the combat check, go through the gate
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
-      # next_fight_or_flee = self.resolve_to_choice(events.FightOrEvadeChoice)
       self.resolve_until_done()
 
     # Too dumb to realize what happened, no horror check
