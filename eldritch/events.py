@@ -3874,30 +3874,42 @@ class Combat(Event):
   def resolve(self, state):
     # Horror check
     if self.monster.difficulty("horror", state, self.character) is not None and self.horror is None:
-      self.horror = Check(
-          self.character, "horror", self.monster.difficulty("horror", state, self.character),
-          name=self.monster.visual_name,
-      )
-      self.sanity_loss = Loss(
-          self.character, {"sanity": self.monster.damage("horror", state, self.character)})
+      self._setup_horror(state)
     if self.horror is not None:
-      if not self.horror.is_done():
-        state.event_stack.append(self.horror)
+      return_early = self._do_horror(state)
+      if return_early:
         return
-      if not self.sanity_loss.is_done():
-        # Failed horror check
-        if not self.horror.success:
-          state.event_stack.append(self.sanity_loss)
-          return
-        # Nightmarish for successful horror check
-        nightmarish = self.monster.has_attribute("nightmarish", state, self.character)
-        if self.horror.success and nightmarish:
-          self.sanity_loss = Loss(
-              self.character, {"sanity": self.monster.bypass_damage("horror", state)})
-          state.event_stack.append(self.sanity_loss)
-          return
 
     # Combat or flee choice.
+    self._do_combat_or_evade(state)
+
+  def _setup_horror(self, state):
+    self.horror = Check(
+        self.character, "horror", self.monster.difficulty("horror", state, self.character),
+        name=self.monster.visual_name,
+    )
+    self.sanity_loss = Loss(
+        self.character, {"sanity": self.monster.damage("horror", state, self.character)})
+
+  def _do_horror(self, state):
+    if not self.horror.is_done():
+      state.event_stack.append(self.horror)
+      return True
+    if not self.sanity_loss.is_done():
+      # Failed horror check
+      if not self.horror.success:
+        state.event_stack.append(self.sanity_loss)
+        return True
+      # Nightmarish for successful horror check
+      nightmarish = self.monster.has_attribute("nightmarish", state, self.character)
+      if self.horror.success and nightmarish:
+        self.sanity_loss = Loss(
+            self.character, {"sanity": self.monster.bypass_damage("horror", state)})
+        state.event_stack.append(self.sanity_loss)
+        return True
+    return False
+
+  def _do_combat_or_evade(self, state):
     self.combat = CombatRound(self.character, self.monster)
     self.evade = EvadeRound(self.character, self.monster)
     no_ambush = values.NoAmbushPrerequisite(self.monster, self.character)
@@ -4435,13 +4447,14 @@ class GateCloseAttempt(Event):
 
 class CloseGate(Event):
 
-  def __init__(self, character, location_name, can_take, can_seal):
+  def __init__(self, character, location_name, can_take, can_seal, force_seal=False):
     super().__init__()
     self.character = character
     self.location_name: Union[MapChoice, str] = location_name
     self.gate = None
     self.can_take = can_take
     self.can_seal = can_seal
+    self.force_seal = force_seal
     self.return_monsters = None
     self.seal_choice: Optional[ChoiceEvent] = None
     self.sealed = None
@@ -4487,6 +4500,11 @@ class CloseGate(Event):
 
     if not (self.can_seal and state.get_override(self, "can_seal")):
       self.sealed = False
+      return
+
+    if self.force_seal:
+      state.places[self.location_name].sealed = True
+      self.sealed = True
       return
 
     if self.seal_choice is None:

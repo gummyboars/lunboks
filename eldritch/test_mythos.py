@@ -1040,6 +1040,49 @@ class CloseGateTest(EventTest):
     self.assertTrue(close.seal_choice.is_cancelled())
     self.assertFalse(close.sealed)
 
+  def testElderSign(self):
+    starting_sanity = self.char.sanity
+    starting_stamina = self.char.stamina
+    self.state.event_stack.append(events.AddDoom())
+    self.resolve_until_done()
+    self.assertEqual(self.state.ancient_one.doom, 1)
+    self.char.possessions.append(items.unique.ElderSign(0))
+    close = GateCloseAttempt(self.char, "Square")
+    self.state.event_stack.append(close)
+
+    elder_sign = self.resolve_to_usable(0, "Elder Sign0")
+    self.state.event_stack.append(elder_sign)
+    self.resolve_until_done()
+
+    self.assertIsNone(self.square.gate)
+    self.assertTrue(self.square.sealed)
+    self.assertEqual(self.char.sanity, starting_sanity - 1)
+    self.assertEqual(self.char.stamina, starting_stamina - 1)
+    self.assertEqual(self.state.ancient_one.doom, 0)
+
+  def testElderSignNotUsableIfCantSeal(self):
+    self.char.possessions.append(items.unique.ElderSign(0))
+    self.state.other_globals.append(Mythos39())
+    close = GateCloseAttempt(self.char, "Square")
+    self.state.event_stack.append(close)
+    self.resolve_to_choice(events.MultipleChoice)
+    self.assertFalse(self.state.usables)
+
+  def testElderSignInsane(self):
+    self.char.sanity = 1
+    self.char.possessions.append(items.unique.ElderSign(0))
+    close = GateCloseAttempt(self.char, "Square")
+    self.state.event_stack.append(close)
+
+    elder_sign = self.resolve_to_usable(0, "Elder Sign0")
+    self.state.event_stack.append(elder_sign)
+    self.resolve_to_choice(events.ItemLossChoice)
+
+    self.assertIsNone(self.square.gate)
+    self.assertTrue(self.square.sealed)
+    self.assertEqual(self.char.sanity, 1)
+    self.assertEqual(len(self.char.trophies), 1)
+
 
 class SpawnClueTest(EventTest):
 

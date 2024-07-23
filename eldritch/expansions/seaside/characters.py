@@ -1,6 +1,23 @@
 from eldritch import characters
 
 
+class Farmhand(characters.Character):
+  def __init__(self):
+    super().__init__("Farmhand", 5, 6, 5, 4, 5, 3, 3, 4, 2, "General Store")
+
+  def abilities(self):
+    return ["Thick Skulled"]
+
+  def initial_attributes(self):
+    return {"dollars": 3, "clues": 1}
+
+  def fixed_possessions(self):
+    return {"common": ["Food"]}
+
+  def random_possessions(self):
+    return {"common": 2, "unique": 1, "skills": 1}
+
+
 class Secretary(characters.Character):
   def __init__(self):
     super().__init__("Secretary", 4, 6, 5, 4, 4, 4, 4, 3, 2, "Hospital")

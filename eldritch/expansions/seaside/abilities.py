@@ -144,3 +144,40 @@ class TeamPlayerBonus(assets.Card):
     if isinstance(event, events.Mythos) and event.is_done():
       return events.DiscardSpecific(owner, [self])
     return None
+
+
+class ThickSkulledCombat(events.Combat):
+  def resolve(self, state):
+      # Horror check
+    if (
+        self.monster.difficulty("horror", state, self.character) is not None
+        and self.horror is None
+        and (self.evade is not None or self.combat is not None)
+        and any([getattr(self.evade, "evaded", None) is False,
+                 getattr(self.combat, "defeated", None) is False])
+    ):
+      self._setup_horror(state)
+    if self.horror is not None:
+      return_early = self._do_horror(state)
+      if return_early:
+        return
+
+    # Combat or flee choice.
+    self._do_combat_or_evade(state)
+
+
+class ThickSkulled(assets.Asset):
+  def __init__(self):
+    super().__init__("Thick Skulled")
+
+  def get_interrupt(self, event, owner, state):
+    if (
+        isinstance(event, events.Combat)
+        and not isinstance(event, ThickSkulledCombat)
+        and event.character == owner
+    ):
+      return events.Sequence([
+          events.CancelEvent(event),
+          ThickSkulledCombat(event.character, event.monster),
+      ])
+    return None

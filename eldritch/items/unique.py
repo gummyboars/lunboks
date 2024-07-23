@@ -1,4 +1,5 @@
 import operator
+
 from eldritch import events, values
 from .base import Item, Weapon, OneshotWeapon, Tome
 
@@ -7,7 +8,8 @@ __all__ = [
     "SwordOfGlory",
     "AncientTablet", "EnchantedJewelry", "GateBox", "HealingStone", "BlueWatcher", "SunkenCityRuby",
     "ObsidianStatue", "OuterGodlyFlute", "SilverKey", "PallidMask",
-    # TODO: AlienStatue, DragonsEye, ElderSign
+    # TODO: AlienStatue, DragonsEye,
+    "ElderSign",
     "WardingStatue",
     "TibetanTome", "MysticismTome", "BlackMagicTome", "BlackBook", "BookOfTheDead", "YellowPlay",
 ]
@@ -18,6 +20,8 @@ def CreateUnique():
       AncientTablet: 1,
       BlueWatcher: 1,
       EnchantedJewelry: 1,
+      # TODO: Have inclusion of elder signs be a configurable option?
+      # ElderSign: 4,
       OuterGodlyFlute: 1,
       GateBox: 1,
       HealingStone: 1,
@@ -167,6 +171,30 @@ class BlueWatcher(Item):
           events.CancelEvent(event),
           events.Loss(owner, {"stamina": 2})
       ], owner)
+    return None
+
+
+class ElderSign(Item):
+  def __init__(self, idx):
+    super().__init__("Elder Sign", idx, "unique", {}, {}, None, 5)
+
+  def get_usable_interrupt(self, event, owner, state: "eldritch.eldritch.GameState"):
+    if (
+        isinstance(event, events.MultipleChoice)
+        and event.prompt() == "Close the gate?"
+        and event.character == owner
+        and state.get_override(self, "can_seal")
+        and len(state.event_stack) > 1
+    ):
+      close = state.event_stack[-2]
+      return events.Sequence([
+          events.DiscardSpecific(owner, [self], to_box=True),
+          events.CancelEvent(event),
+          events.CancelEvent(close),
+          events.CloseGate(owner, close.location_name, True, True, force_seal=True),
+          events.RemoveDoom(owner),
+          events.Loss(owner, {"sanity": 1, "stamina": 1}, source=self),
+      ], character=owner)
     return None
 
 
