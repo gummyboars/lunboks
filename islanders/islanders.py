@@ -2440,7 +2440,6 @@ class IslandersState:
     self.dice_cards = [(red, white) for red in range(1, 7) for white in range(1, 7)]
     random.shuffle(self.dice_cards)
 
-
   def init_robber(self):
     empty = [tile for tile in self.tiles.values() if tile.tile_type == "norsrc"]
     if empty:
