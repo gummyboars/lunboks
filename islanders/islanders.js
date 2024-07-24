@@ -1415,6 +1415,7 @@ function updateJoinWindow() {
       scenarioSelect.appendChild(opt);
     }
   }
+  document.getElementById("randomslider").optionName = "randomness";
   scenarioSelect.value = gameScenarios.value;
   scenarioSelect.disabled = !amHost;
   let flagOptionDiv = document.getElementById("flagoptions");
@@ -1422,6 +1423,12 @@ function updateJoinWindow() {
   for (let optionName in gameOptions) {
     let option = gameOptions[optionName];
     if (option.hidden) {
+      continue;
+    }
+    if (optionName == "randomness") {
+      document.getElementById("randomslider").disabled = !amHost || option.forced;
+      document.getElementById("randomslider").value = option.value;
+      setRandomness(option.value);
       continue;
     }
     // TODO: yes, this is hacky.
@@ -1545,13 +1552,20 @@ function createOption(optionName, option) {
   elem.classList.add("gameoption");
   return optDiv;
 }
+function setRandomness(value) {
+  if (value == 36) {
+    document.getElementById("randomvalue").value = "∞";
+  } else {
+    document.getElementById("randomvalue").value = value;
+  }
+}
 function observe(e) {
   document.getElementById("uijoin").style.display = "none";
 }
 function collectOptions() {
   let options = {};
   for (let elem of document.getElementsByClassName("gameoption")) {
-    if (elem.tagName == "SELECT") {
+    if (elem.tagName == "SELECT" || elem.optionName == "randomness") {
       let numericVal = parseInt(elem.value);
       if (Number.isNaN(numericVal)) {
         options[elem.optionName] = elem.value;

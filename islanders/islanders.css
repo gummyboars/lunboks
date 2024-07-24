@@ -139,6 +139,22 @@ div {
   flex-direction: column;
   align-items: flex-start;
 }
+#randomnessdiv {
+  order: 100;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+#randomslider {
+  min-width: 0;
+  width: 17ch;
+}
+#randomvalue {
+  width: 2ch;
+  text-align: end;
+}
 #joinname {
   display: flex;
   color: black;

@@ -109,6 +109,7 @@ class Options(collections.OrderedDict):
         "Max Cities", default=4, forced=True, hidden=True, choices=[4, 8],
     )
     self["friendly_robber"] = GameOption("Friendly Robber", default=False)
+    self["randomness"] = GameOption("Randomness", default=36, choices=list(range(37)))
     self["victory_points"] = GameOption("Victory Points", default=10, choices=list(range(8, 22)))
     self["foreign_island_points"] = GameOption(
         "", default=0, choices=[0, 1, 2], forced=True, hidden=True,
@@ -572,6 +573,7 @@ class IslandersState:
     self.largest_army_player: Optional[int] = None
     self.longest_route_player: Optional[int] = None
     self.dice_roll: Optional[Tuple[int, int]] = None
+    self.dice_cards: Optional[List[Tuple[int, int]]] = None
     self.corners_to_islands: Dict[CornerLocation, CornerLocation] = {}  # corner -> canonical corner
     self.placement_islands: Optional[List[CornerLocation]] = None
     self.discoverable_tiles: List[str] = []
@@ -1023,15 +1025,24 @@ class IslandersState:
   def handle_roll_dice(self):
     if self.turn_phase != "dice":
       raise InvalidMove("You cannot roll the dice right now.")
-    if self.next_die_roll is not None:
-      red = self.next_die_roll // 2
-      white = (self.next_die_roll + 1) // 2
-      self.next_die_roll = None
+    if self.dice_cards is not None:
+      verb = "drew"
+      if len(self.dice_cards) <= self.options.randomness:  # Reshuffle
+        self.init_dice_cards()
+        verb = "reshuffled and drew"
+      red, white = self.dice_cards.pop()
+      text = "{player%s} %s a %s" % (self.turn_idx, verb, red + white)
     else:
-      red = random.randint(1, 6)
-      white = random.randint(1, 6)
+      if self.next_die_roll is not None:
+        red = self.next_die_roll // 2
+        white = (self.next_die_roll + 1) // 2
+        self.next_die_roll = None
+      else:
+        red = random.randint(1, 6)
+        white = random.randint(1, 6)
+      text = "{player%s} rolled a %s" % (self.turn_idx, red + white)
     self.dice_roll = (red, white)
-    self.event_log.append(Event("dice", "{player%s} rolled a %s" % (self.turn_idx, red + white)))
+    self.event_log.append(Event("dice", text))
     self.action_stack.pop()
     if (red + white) == 7:
       self.action_stack.append("rob")
@@ -2421,6 +2432,13 @@ class IslandersState:
     dev_cards = sum([[card] * count for card, count in self.dev_card_counts().items()], [])
     random.shuffle(dev_cards)
     self.dev_cards = dev_cards
+    self.init_dice_cards()
+
+  def init_dice_cards(self):
+    if self.options.randomness >= 36:
+      return
+    self.dice_cards = [(red, white) for red in range(1, 7) for white in range(1, 7)]
+    random.shuffle(self.dice_cards)
 
   def init_robber(self):
     empty = [tile for tile in self.tiles.values() if tile.tile_type == "norsrc"]

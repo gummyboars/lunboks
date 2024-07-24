@@ -29,6 +29,12 @@
             <div id="flagoptions" class="suboptions"></div>
             <div id="choiceoptions" class="suboptions">
               <div><span>Scenario </span><select id="scenario" onchange="changeScenario(event)"></select></div>
+              <div id="randomnessdiv">
+                <div>Randomness</div>
+                <datalist id="randomoptions"></datalist>
+                <input type="range" min="0" max="36" value="0" id="randomslider" class="gameoption" oninput="setRandomness(value)" onchange="sendOptions()"></input>
+                <output for="randomslider" id="randomvalue">0</output>
+              </div>
             </div>
           </div>
           <div id="joinname" class="clickable">
