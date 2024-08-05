@@ -199,6 +199,7 @@ function continueInit(gameId) {
       div.classList.add("place");
       div.onmouseenter = bringTop;
       div.onmouseleave = returnBottom;
+      div.oncontextmenu = function(e) { rightClickPlace(e, name); };
       let box = document.createElement("DIV");
       box.id = "place" + name + "box";
       box.classList.add("placebox");
@@ -477,6 +478,18 @@ function handleData(data) {
 
 function clickPlace(place) {
   ws.send(JSON.stringify({"type": "choice", "choice": place}));
+}
+
+function rightClickPlace(event, place) {
+  let rect = event.currentTarget.getBoundingClientRect();
+  if (event.clientX < rect.left || event.clientX > rect.right) {
+    return;
+  }
+  if (event.clientY < rect.top || event.clientY > rect.bottom) {
+    return;
+  }
+  event.preventDefault();
+  clickPlace(place);
 }
 
 function setSlider(sliderName, sliderValue) {
