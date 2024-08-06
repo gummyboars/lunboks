@@ -421,11 +421,8 @@ class GameState:
             "board": choice.spawn_count,
             "outskirts": choice.outskirts_count,
             "steps": choice.steps_remaining,
+            "pending": choice.pending,
         }
-        # Update the output to put the monsters in their pending places.
-        for place, indexes in choice.pending.items():
-          for idx in indexes:
-            output["monsters"][idx]["place"] = place
       elif isinstance(choice, events.MonsterOnBoardChoice):
         output["choice"]["board_monster"] = True
       else:
