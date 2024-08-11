@@ -870,6 +870,13 @@ button:disabled {
 .monster:last-child {
   flex: 0 0 calc(min(80vw, 128vh) * 3 / 58);
 }
+.biggate {
+  position: relative;
+  min-width: 0;
+  width: calc(min(12vw, 19.2vh));
+  height: calc(min(12vw, 19.2vh));
+  overflow: hidden;
+}
 .bigmonster {
   z-index: 10; /* TODO */
   position: relative;

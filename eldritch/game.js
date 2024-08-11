@@ -1080,6 +1080,16 @@ function showMonsters(placeDiv, name) {
   let sname = serverNames[name] ?? name;
   document.getElementById("monsterdetailsname").innerText = sname;
   document.getElementById("monsterdetails").style.display = "flex";
+  let gateCont = placeDiv.getElementsByClassName("gatecontainer")[0];
+  if (gateCont.handle != null) {
+    let div = document.createElement("DIV");
+    div.classList.add("biggate", "cnvcontainer");
+    let cnv = document.createElement("CANVAS");
+    cnv.classList.add("monstercnv");
+    div.appendChild(cnv);
+    box.appendChild(div);
+    renderAssetToDiv(div, gateCont.assetName);
+  }
   for (let monsterDiv of placeDiv.getElementsByClassName("monster")) {
     let container = document.createElement("DIV");
     let handle = monsterDiv.monsterInfo.handle;
