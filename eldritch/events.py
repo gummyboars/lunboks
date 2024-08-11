@@ -2879,7 +2879,7 @@ class Arrested(Event):
 
 class MultipleChoice(ChoiceEvent):
 
-  def __init__(self, character, prompt, choices, prereqs=None, annotations=None):
+  def __init__(self, character, prompt, choices, prereqs=None, annotations=None, visual=None):
     if prereqs is None:
       prereqs = [None] * len(choices)
     assert len(choices) == len(prereqs)
@@ -2890,6 +2890,7 @@ class MultipleChoice(ChoiceEvent):
     self._choices = choices
     self.prereqs: List[Optional[values.Value]] = prereqs
     self._annotations = annotations
+    self.visual = visual
     self.invalid_choices = {}
     self.choice = None
 
@@ -3184,8 +3185,12 @@ class ReadTome(Sequence):
 
 
 def BinaryChoice(
-        character, prompt, first_choice, second_choice, first_event, second_event, prereq=None):
-  choice = MultipleChoice(character, prompt, [first_choice, second_choice], [prereq, None])
+    character, prompt, first_choice, second_choice, first_event, second_event, prereq=None,
+    visual=None,
+):
+  choice = MultipleChoice(
+      character, prompt, [first_choice, second_choice], [prereq, None], visual=visual,
+  )
   sequence = [
       choice, Conditional(character, choice, "choice_index", {0: first_event, 1: second_event})]
   return Sequence(sequence, character)
@@ -3193,20 +3198,23 @@ def BinaryChoice(
 
 def BinarySpend(
     character, spend_type, quantity, prompt, rich_choice, poor_choice, rich_event, poor_event=None,
+    visual=None,
 ):
   poor_event = poor_event or Nothing()
   if spend_type == "toughness":
     spend = values.ToughnessSpend(quantity)
   else:
     spend = values.ExactSpendPrerequisite({spend_type: quantity})
-  choice = SpendChoice(character, prompt, [rich_choice, poor_choice], spends=[spend, None])
+  choice = SpendChoice(
+      character, prompt, [rich_choice, poor_choice], spends=[spend, None], visual=visual,
+  )
   cond = Conditional(character, choice, "choice_index", {0: rich_event, 1: poor_event})
   return Sequence([choice, cond], character)
 
 
 class ItemChoice(ChoiceEvent):
 
-  def __init__(self, character, prompt, decks=None, item_type=None):
+  def __init__(self, character, prompt, decks=None, item_type=None, visual=None):
     super().__init__()
     self.character = character
     self._prompt = prompt
@@ -3218,6 +3226,7 @@ class ItemChoice(ChoiceEvent):
     self.decks = decks
     assert item_type in {None, "weapon", "tome"}
     self.item_type = item_type
+    self.visual = visual
     self.done = False
 
   def resolve(self, state, choice=None):
@@ -3343,8 +3352,8 @@ class ItemCountChoice(ItemChoice):
 
 class ItemLossChoice(ItemChoice):
 
-  def __init__(self, character, prompt, count, decks=None, item_type=None):
-    super().__init__(character, prompt, decks=decks, item_type=item_type)
+  def __init__(self, character, prompt, count, decks=None, item_type=None, visual=None):
+    super().__init__(character, prompt, decks=decks, item_type=item_type, visual=visual)
     self.count = count
 
   def validate_choice(self, state, chosen, final=False):
@@ -3377,8 +3386,8 @@ class ItemLossChoice(ItemChoice):
 
 class WeaponOrSpellLossChoice(ItemLossChoice):
 
-  def __init__(self, character, prompt, count):
-    super().__init__(character, prompt, count)
+  def __init__(self, character, prompt, count, visual=None):
+    super().__init__(character, prompt, count, visual=visual)
 
   def compute_choices(self, state):
     self._choices = [
@@ -3416,7 +3425,7 @@ class CardSpendChoice(SpendMultiChoiceMixin, CardChoice):
 
 class MapChoice(ChoiceEvent, metaclass=abc.ABCMeta):
 
-  def __init__(self, character, prompt, none_choice=None, annotation=None):
+  def __init__(self, character, prompt, none_choice=None, annotation=None, visual=None):
     super().__init__()
     self.character = character
     self._prompt = prompt
@@ -3424,6 +3433,7 @@ class MapChoice(ChoiceEvent, metaclass=abc.ABCMeta):
     self.none_choice = none_choice
     self.annotation = annotation
     self.choice = None
+    self.visual = visual
 
   @abc.abstractmethod
   def compute_choices(self, state):
@@ -3570,8 +3580,10 @@ class OverrideGateChoice(Event):
 
 class NearestGateChoice(MapChoice):
 
-  def __init__(self, character, prompt, annotation, none_choice=None):
-    super().__init__(character, prompt, none_choice=none_choice, annotation=annotation)
+  def __init__(self, character, prompt, annotation, none_choice=None, visual=None):
+    super().__init__(
+        character, prompt, none_choice=none_choice, annotation=annotation, visual=visual,
+    )
 
   def compute_choices(self, state):
     if not isinstance(self.character.place, places.CityPlace):
@@ -3613,7 +3625,9 @@ class NearestGateChoice(MapChoice):
 class NearestLowestSneakChoice(MapChoice, metaclass=abc.ABCMeta):
 
   def __init__(self, character, monster):
-    super().__init__(character, f"Choose where the [{monster.name}] should move")
+    super().__init__(
+        character, f"Choose where the [{monster.name}] should move", visual=monster.name,
+    )
     self.monster = monster
 
   def compute_choices(self, state):
@@ -4399,7 +4413,9 @@ class GateCloseAttempt(Event):
   def resolve(self, state):
     if self.choice is None:
       self.choice = MultipleChoice(
-          self.character, "Close the gate?", ["Close with fight", "Close with lore", "Don't close"])
+          self.character, "Close the gate?", ["Close with fight", "Close with lore", "Don't close"],
+          visual=state.places[self.location_name].gate.json_repr()["name"],
+      )
       state.event_stack.append(self.choice)
       return
 

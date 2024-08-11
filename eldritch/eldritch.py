@@ -379,7 +379,7 @@ class GameState:
     if choice:
       output["chooser"] = self.characters.index(choice.character)
       output["choice"] = {"prompt": choice.prompt()}
-      output["choice"]["spell"] = spell.name if spell else None
+      output["choice"]["visual"] = getattr(choice, "visual", spell.name if spell else None)
       output["choice"]["annotations"] = choice.annotations(self)
       output["choice"]["invalid_choices"] = list(getattr(choice, "invalid_choices", {}).keys())
       if isinstance(choice, events.SpendMixin):

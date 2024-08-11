@@ -1093,7 +1093,7 @@ function showMonsters(placeDiv, name) {
   for (let monsterDiv of placeDiv.getElementsByClassName("monster")) {
     let container = document.createElement("DIV");
     let handle = monsterDiv.monsterInfo.handle;
-    container.onclick = function(e) { makeChoice(handle) };
+    container.onclick = function(e) { makeChoice(handle); hideMonsters(null); };
     let frontDiv = createMonsterDiv(monsterDiv.monsterInfo, false, "big");
     container.appendChild(frontDiv);
     let backDiv = createMonsterDiv(monsterDiv.monsterInfo, true, "big");
@@ -1239,12 +1239,12 @@ function updateChoices(choice, current, isMyChoice, chooser, autoChoose) {
   } else {
     monsterBox.classList.remove("choosable");
   }
-  if (choice == null || choice.to_spawn != null || choice.board_monster != null) {
+  if (choice == null || choice.to_spawn != null) {
     document.getElementById("charoverlay").classList.remove("shown");
     return;
   }
   // Set display style for uichoice div.
-  if (choice.items == null && isMyChoice) {
+  if (choice.items == null && choice.board_monster == null && isMyChoice) {
     uichoice.style.display = "flex";
   }
   if (choice.cards != null || choice.monster != null || choice.monsters != null) {
@@ -1269,10 +1269,22 @@ function updateChoices(choice, current, isMyChoice, chooser, autoChoose) {
     }
   }
   document.getElementById("uiprompt").innerText = promptText;
+  if (choice.board_monster != null) {
+    document.getElementById("charoverlay").classList.remove("shown");
+    while (uichoice.getElementsByClassName("todelete").length) {
+      uichoice.removeChild(uichoice.getElementsByClassName("todelete")[0]);
+    }
+    return;
+  }
   let showOverlay = isMyChoice && (choice.items != null || choice.spendable != null);
   document.getElementById("charoverlay").classList.toggle("shown", showOverlay);
-  if (choice.spell != null && choice.cards == null) {
-    showActionSource(document.getElementById("uicardchoice"), choice.spell);
+  if (choice.cards == null && choice.monster == null && choice.monsters == null) {
+    if (choice.visual != null || current != null) {
+      document.getElementById("cardchoicescroll").style.display = cardsStyle;
+      cardtoggle.classList.remove("hidden");
+      setCardButtonText();
+      showActionSource(document.getElementById("uicardchoice"), choice.visual ?? current);
+    }
   }
   if (choice.items != null) {
     if (isMyChoice) {
