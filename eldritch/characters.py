@@ -649,11 +649,13 @@ class Gangster(Character):
 
 def CreateCharacters():
   # pylint: disable=import-outside-toplevel
+  from eldritch.expansions.clifftown import characters as clifftown_characters
   from eldritch.expansions.seaside import characters as seaside_characters
   return {
       c.name: c for c in [
           Student(), Drifter(), Salesman(), Psychologist(), Photographer(), Magician(), Author(),
           Professor(), Dilettante(), PrivateEye(), Scientist(), Researcher(), Nun(), Doctor(),
-          Archaeologist(), Gangster(), seaside_characters.Secretary(), seaside_characters.Spy()
+          Archaeologist(), Gangster(), seaside_characters.Secretary(), seaside_characters.Spy(),
+          seaside_characters.Farmhand(), clifftown_characters.Urchin(),
       ]
   }

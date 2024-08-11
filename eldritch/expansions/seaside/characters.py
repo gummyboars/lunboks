@@ -3,7 +3,7 @@ from eldritch import characters
 
 class Farmhand(characters.Character):
   def __init__(self):
-    super().__init__("Farmhand", 5, 6, 5, 4, 5, 3, 3, 4, 2, "General Store")
+    super().__init__("Farmhand", 5, 6, 5, 4, 5, 3, 3, 4, 2, "Store")
 
   def abilities(self):
     return ["Thick Skulled"]

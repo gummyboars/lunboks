@@ -21,7 +21,7 @@ def CreateUnique():
       BlueWatcher: 1,
       EnchantedJewelry: 1,
       # TODO: Have inclusion of elder signs be a configurable option?
-      # ElderSign: 4,
+      ElderSign: 1,  # 4
       OuterGodlyFlute: 1,
       GateBox: 1,
       HealingStone: 1,

@@ -1,3 +1,4 @@
+from eldritch.expansions.clifftown.abilities import *
 from eldritch.expansions.seaside.abilities import *
 from eldritch import assets
 from eldritch import events
@@ -271,6 +272,7 @@ def CreateSpecials():
       FluxStabilizer(), Studious(), ShrewdDealer(), HometownAdvantage(), MagicalGift(),
       PsychicSensitivity(), Archaeology(), StrongMind(), StrongBody(), TrustFund(), Hunches(),
       Physician(), Psychology(), Research(), GuardianAngel(),
-      Synergy(), TeamPlayer(), BreakingTheLimits(), AbnormalFocus(),
+      Synergy(), TeamPlayer(), BreakingTheLimits(), AbnormalFocus(), ThickSkulled(),
+      Streetwise(), BlessedIsTheChild(), Minor(),
   ]
   return {ability.name: ability for ability in abilities}

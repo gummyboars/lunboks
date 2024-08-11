@@ -3242,7 +3242,7 @@ function updatePossessions(sheet, possessions, isPlayer, spent, chosen, selectTy
     pDiv.removeChild(div);
   }
   for (let handle in handleToInfo) {
-    if (handle.startsWith("Bad Credit")) {
+    if (handle.startsWith("Bad Credit") || ["Streetwise", "Blessed is the Child"].includes(handle)) {
       continue;
     }
     let div = createPossession(handleToInfo[handle], isPlayer, pDiv);
