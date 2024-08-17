@@ -203,16 +203,21 @@ button:disabled {
   justify-content: space-evenly;
   align-items: flex-start;
   column-gap: calc(min(1.5vw, 2.4vh));
-  overflow-x: scroll;
+  padding-bottom: calc(min(3vw, 4.8vh));  /* for desc text */
   scroll-behavior: smooth;
   -ms-overflow-style: none;
   scrollbar-width: none;
+}
+.cardscroller:empty {
+  padding-bottom: 0;
 }
 .cardscroller::-webkit-scrollbar {
   display: none;
 }
 .overflowing .cardscroller {
   justify-content: flex-start;
+  overflow-x: scroll;
+  /* overflow: scroll visible is reinterpreted as scroll auto according to CSS standards */
 }
 .cardholder {
   display: flex;
@@ -220,7 +225,8 @@ button:disabled {
   align-items: center;
   justify-content: flex-start;
   backface-visibility: hidden;
-  transition: transform 0.8s;
+  transform-style: preserve-3d;
+  transition: transform 0.8s, opacity 0.8s;
   position: relative;
   pointer-events: auto;
 }
@@ -229,6 +235,18 @@ button:disabled {
 }
 .cardholder.entering {
   transform: translateY(100%) rotateY(-180deg);
+  transition: none;
+}
+.cardholder.rising {
+  transform: translateY(100%);
+  transition: none;
+}
+.cardholder.leaving {
+  transition-delay: 0.5s;
+  transform: translateY(-150%);
+  opacity: 0;
+}
+.cardholder.noanimate {
   transition: none;
 }
 .cardchoice {
@@ -245,6 +263,14 @@ button:disabled {
   width: calc(min(15vw, 24vh));
   height: calc(min(15vw, 24vh));
 }
+.bigmythoscard {
+  position: relative;
+  width: calc(min(15vw, 24vh));
+  height: calc(min(15vw, 24vh) * 3 / 2);
+}
+.unchoosable .bigmythoscard {
+  filter: grayscale(70%) brightness(70%);
+}
 .visualback {
   position: absolute;
   top: 0;
@@ -253,11 +279,7 @@ button:disabled {
   backface-visibility: hidden;
   transition: transform 0.8s;
 }
-.rotated .visualback {
-  transform: none;
-}
 .entering .visualback {
-  transform: none;
   transition: none;
 }
 .visualchoice {
@@ -279,6 +301,11 @@ button:disabled {
   background-size: 200% 100%;
   background-position: left;
   transition: background-position 0.5s linear;
+  backface-visibility: hidden;
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  transform: translateY(100%);
 }
 .mustspend .desc {
   background-position: right;
@@ -745,14 +772,6 @@ button:disabled {
   top: 0;
   left: 0;
 }
-.bigmythoscard {
-  position: relative;
-  width: calc(min(15vw, 24vh));
-  height: calc(min(15vw, 24vh) * 3 / 2);
-}
-.unchoosable .bigmythoscard {
-  filter: grayscale(70%) brightness(70%);
-}
 #ancientone {
   flex: 0 0 auto;
   min-width: calc(min(15vw, 24vh));
@@ -952,6 +971,10 @@ button:disabled {
 }
 .moving {
   transition: transform 0.5s;
+  z-index: 5;
+}
+.movingslow {
+  transition: transform 0.8s;
   z-index: 5;
 }
 .place {
