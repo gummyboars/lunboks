@@ -22,8 +22,8 @@ class PatrolWagon(Card):
       return None
     if event.is_done() or event.moved:
       return None
-    choice = events.PlaceChoice(owner, "Move using Patrol Wagon?", none_choice="Cancel")
-    # TODO: add an annotation to the PlaceChoice (e.g. "Move").
+    prompt = "Where to move using Patrol Wagon?"
+    choice = events.PlaceChoice(owner, prompt, none_choice="Cancel", annotation="Move")
     was_cancelled = values.Calculation(choice, None, operator.methodcaller("is_cancelled"))
     patrol = events.ForceMovement(owner, choice)
     cancel = events.CancelEvent(event)

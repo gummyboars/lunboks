@@ -1081,7 +1081,7 @@ function showMonsters(placeDiv, name) {
   document.getElementById("monsterdetailsname").innerText = sname;
   document.getElementById("monsterdetails").style.display = "flex";
   let gateCont = placeDiv.getElementsByClassName("gatecontainer")[0];
-  if (gateCont.handle != null) {
+  if (gateCont != null && gateCont.handle != null) {
     let div = document.createElement("DIV");
     div.classList.add("biggate", "cnvcontainer");
     let cnv = document.createElement("CANVAS");
@@ -1748,7 +1748,7 @@ function updateUsables(usables, log, spendables, choice, sliders, dice) {
   }
   if (doneUsing != null) {
     doneUsing.innerText = "Done Using";
-    if (tradeOnly) {
+    if (choice == null && tradeOnly) {
       document.getElementById("uiprompt").innerText = "Trade?";
       doneUsing.innerText = "Done Trading";
     }
@@ -2490,9 +2490,9 @@ function updateDice(dice, playerIdx, monsterList) {
   } else {
     btn.style.display = "none";
   }
-  if (dice.bad != null) {
+  if (dice.check_type == null) {
     runningAnim.push(true);  // let the user see the dice for a moment
-    setTimeout(finishAnim, 1000);
+    setTimeout(finishAnim, 1500);
   }
 }
 
@@ -3242,7 +3242,7 @@ function updatePossessions(sheet, possessions, isPlayer, spent, chosen, selectTy
     pDiv.removeChild(div);
   }
   for (let handle in handleToInfo) {
-    if (handle.startsWith("Bad Credit") || ["Streetwise", "Blessed is the Child"].includes(handle)) {
+    if (handle.startsWith("Bad Credit") || handle.startsWith("Voice Bonus") || ["Streetwise", "Blessed is the Child"].includes(handle)) {
       continue;
     }
     let div = createPossession(handleToInfo[handle], isPlayer, pDiv);
