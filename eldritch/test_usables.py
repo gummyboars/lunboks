@@ -207,7 +207,7 @@ class ResearchTest(EventTest):
     buddy.possessions.append(items.Shotgun(0))
     self.char.possessions.append(abilities.Research())
 
-    cultist = monsters.Cultist()
+    cultist = self.add_monsters(monsters.Cultist())
     combat = CombatRound(buddy, cultist)
     self.state.event_stack.append(combat)
     combat_choice = self.resolve_to_choice(CombatChoice)
@@ -336,7 +336,7 @@ class CigaretteTest(EventTest):
     buddy.clues = 2
     buddy.possessions.append(items.Shotgun(0))
 
-    cultist = monsters.Cultist()
+    cultist = self.add_monsters(monsters.Cultist())
     combat = CombatRound(buddy, cultist)
     self.state.event_stack.append(combat)
     combat_choice = self.resolve_to_choice(CombatChoice)
@@ -812,7 +812,7 @@ class FleshWardTest(EventTest):
     self.char.possessions.append(items.TommyGun(0))
 
   def testCombat(self):
-    monster = monsters.Cultist()
+    monster = self.add_monsters(monsters.Cultist())
     combat = Combat(self.char, monster)
     self.state.event_stack.append(combat)
     fight_or_flee = self.resolve_to_choice(MultipleChoice)
@@ -842,7 +842,7 @@ class FleshWardTest(EventTest):
       self.assertFalse(self.state.usables)
 
   def testFailToCast(self):
-    monster = monsters.Cultist()
+    monster = self.add_monsters(monsters.Cultist())
     combat = Combat(self.char, monster)
     self.state.event_stack.append(combat)
     fight_or_flee = self.resolve_to_choice(MultipleChoice)
@@ -874,7 +874,7 @@ class FleshWardTest(EventTest):
 
   def testOverwhelming(self):
     self.char.fight_will_slider = 2
-    monster = monsters.GiantWorm()
+    monster = self.add_monsters(monsters.GiantWorm())
     combat = Combat(self.char, monster)
     self.state.event_stack.append(combat)
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
@@ -1168,7 +1168,7 @@ class VoiceTest(EventTest):
     sliders.resolve(self.state, "done", None)
     self.resolve_until_done()
 
-    cultist = monsters.Cultist()
+    cultist = self.add_monsters(monsters.Cultist())
     self.state.event_stack.append(Combat(self.char, cultist))
     fight_or_flee = self.resolve_to_choice(MultipleChoice)
     fight_or_flee.resolve(self.state, "Fight")
@@ -1380,7 +1380,7 @@ class PreventionTest(EventTest):
   def testPreventStaminaLoss(self):
     self.char.possessions.append(abilities.StrongBody())
     self.char.possessions.append(items.TommyGun(0))
-    beast = monsters.FurryBeast()
+    beast = self.add_monsters(monsters.FurryBeast())
     combat = EvadeOrCombat(self.char, beast)
     self.state.event_stack.append(combat)
 
@@ -1410,7 +1410,7 @@ class PreventionTest(EventTest):
   def testPreventSanityLoss(self):
     self.char.possessions.append(abilities.StrongMind())
     self.char.possessions.append(items.TommyGun(0))
-    beast = monsters.FurryBeast()
+    beast = self.add_monsters(monsters.FurryBeast())
     combat = EvadeOrCombat(self.char, beast)
     self.state.event_stack.append(combat)
 
@@ -1432,7 +1432,7 @@ class PreventionTest(EventTest):
     self.char.fight_will_slider = 2
     self.char.possessions.append(abilities.StrongMind())
     self.char.possessions.extend([items.TommyGun(0), items.EnchantWeapon(0)])
-    beast = monsters.FurryBeast()
+    beast = self.add_monsters(monsters.FurryBeast())
     combat = EvadeOrCombat(self.char, beast)
     self.state.event_stack.append(combat)
 
@@ -1530,7 +1530,7 @@ class MistsTest(EventTest):
     self.char.possessions.append(self.mists)
 
   def testCombatEvade(self):
-    monster = monsters.Cultist()
+    monster = self.add_monsters(monsters.Cultist())
     self.state.event_stack.append(EvadeOrCombat(self.char, monster))
     evade_choice = self.resolve_to_choice(MultipleChoice)
     evade_choice.resolve(self.state, "Evade")
@@ -1543,7 +1543,7 @@ class MistsTest(EventTest):
 
   def testDeclineToCast(self):
     self.char.clues = 1
-    monster = monsters.Zombie()
+    monster = self.add_monsters(monsters.Zombie())
     self.state.event_stack.append(EvadeOrCombat(self.char, monster))
     evade_choice = self.resolve_to_choice(MultipleChoice)
     evade_choice.resolve(self.state, "Evade")
@@ -1557,7 +1557,7 @@ class MistsTest(EventTest):
     self.resolve_until_done()
 
   def testFailToCast(self):
-    monster = monsters.Cultist()
+    monster = self.add_monsters(monsters.Cultist())
     self.state.event_stack.append(EvadeOrCombat(self.char, monster))
     evade_choice = self.resolve_to_choice(MultipleChoice)
     evade_choice.resolve(self.state, "Evade")
@@ -1571,7 +1571,7 @@ class MistsTest(EventTest):
       self.assertTrue(self.mists.exhausted)
 
   def testCastAfterFail(self):
-    monster = monsters.Cultist()
+    monster = self.add_monsters(monsters.Cultist())
     self.char.clues = 1
     self.state.event_stack.append(EvadeOrCombat(self.char, monster))
     evade_choice = self.resolve_to_choice(MultipleChoice)

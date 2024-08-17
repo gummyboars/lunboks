@@ -890,7 +890,7 @@ class Mythos52(CityBonus):
 
   def create_event(self, state) -> events.Sequence:
     seq = super().create_event(state)
-    seq.events.append(events.ReturnToCup("Haunter"))
+    seq.events.append(events.ReturnToCup(names=["Haunter"]))
     return seq
 
   def get_override(self, thing, attribute):

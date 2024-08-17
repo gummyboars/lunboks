@@ -134,6 +134,14 @@ class EventTest(unittest.TestCase):
     self.state.event_stack.append(self.state.usables[char_idx][handle])
     self.resolve_to_choice(SpendMixin)
 
+  def add_monsters(self, *monster_list):
+    for monster in monster_list:
+      monster.idx = len(self.state.monsters)
+      self.state.monsters.append(monster)
+    if len(monster_list) == 1:
+      return monster_list[0]
+    return monster_list
+
   def advance_turn(self, target_turn, target_phase):
     self.state.mythos.extend([NoMythos()] * (target_turn - self.state.turn_number + 1))
     # TODO: should actually add a number of NoMythos - current turn - existing cards in mythos deck
@@ -568,8 +576,7 @@ class MovementTest(EventTest):
     self.assertIn(cultist, self.char.trophies)
 
   def testMoveMultipleThroughMonsterFailedEvade(self):
-    zombie = monsters.Zombie()
-    self.state.monsters.append(zombie)
+    zombie = self.add_monsters(monsters.Zombie())
     zombie.place = self.state.places["Rivertown"]
     self.char.place = self.state.places["Downtown"]
 
