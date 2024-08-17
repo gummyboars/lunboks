@@ -25,7 +25,7 @@ class CombatTest(EventTest):
   def testCombatFight(self):
     self.char.fight_will_slider = 0
     self.assertEqual(self.char.fight(self.state), 1)
-    cultist = monsters.Cultist()
+    cultist = self.add_monsters(monsters.Cultist())
     combat = Combat(self.char, cultist)
     self.state.event_stack.append(combat)
 
@@ -51,7 +51,7 @@ class CombatTest(EventTest):
     self.char.speed_sneak_slider = 0
     self.assertEqual(self.char.stamina, 5)
     self.assertEqual(self.char.sneak(self.state), 4)
-    cultist = monsters.Cultist()
+    cultist = self.add_monsters(monsters.Cultist())
     combat = Combat(self.char, cultist)
     self.state.event_stack.append(combat)
 
@@ -93,7 +93,7 @@ class CombatTest(EventTest):
     self.assertEqual(self.char.will(self.state), 1)
     self.assertEqual(self.char.stamina, 5)
     self.assertEqual(self.char.sanity, 5)
-    zombie = monsters.Zombie()
+    zombie = self.add_monsters(monsters.Zombie())
     combat = Combat(self.char, zombie)
     self.state.event_stack.append(combat)
 
@@ -140,7 +140,7 @@ class CombatTest(EventTest):
     self.assertEqual(self.char.will(self.state), 1)
     self.assertEqual(self.char.stamina, 5)
     self.assertEqual(self.char.sanity, 5)
-    haunter = monsters.Haunter()
+    haunter = self.add_monsters(monsters.Haunter())
     combat = Combat(self.char, haunter)
     self.state.event_stack.append(combat)
 
@@ -167,7 +167,7 @@ class CombatTest(EventTest):
   def testCombatRoundWithGlobal(self):
     self.char.fight_will_slider = 0
     self.assertEqual(self.char.fight(self.state), 1)
-    maniac = monsters.Maniac()
+    maniac = self.add_monsters(monsters.Maniac())
     self.assertEqual(maniac.toughness(self.state, self.char), 1)
 
     combat_round = CombatRound(self.char, maniac)
@@ -191,7 +191,7 @@ class CombatTest(EventTest):
 
   def testHorrorCheckCancelled(self):
     self.assertEqual(self.char.sanity, 5)
-    zombie = monsters.Zombie()
+    zombie = self.add_monsters(monsters.Zombie())
     combat = Combat(self.char, zombie)
     self.state.event_stack.append(combat)
     self.char.possessions.append(Canceller(Check))
@@ -206,7 +206,7 @@ class CombatTest(EventTest):
 
   def testSanityLossCancelled(self):
     self.assertEqual(self.char.sanity, 5)
-    zombie = monsters.Zombie()
+    zombie = self.add_monsters(monsters.Zombie())
     combat = Combat(self.char, zombie)
     self.state.event_stack.append(combat)
     self.char.possessions.append(Canceller(GainOrLoss))
@@ -219,7 +219,7 @@ class CombatTest(EventTest):
     self.assertEqual(self.char.sanity, 5)
 
   def testChoiceCancelled(self):
-    zombie = monsters.Zombie()
+    zombie = self.add_monsters(monsters.Zombie())
     combat = Combat(self.char, zombie)
     self.state.event_stack.append(combat)
     self.char.possessions.append(Canceller(FightOrEvadeChoice))
@@ -232,7 +232,7 @@ class CombatTest(EventTest):
 
   def testCancelledEvade(self):
     self.assertEqual(self.char.stamina, 5)
-    zombie = monsters.Zombie()
+    zombie = self.add_monsters(monsters.Zombie())
     combat = Combat(self.char, zombie)
     self.state.event_stack.append(combat)
     self.char.possessions.append(Canceller(EvadeRound))
@@ -247,7 +247,7 @@ class CombatTest(EventTest):
 
   def testCancelledEvadeCheck(self):
     self.assertEqual(self.char.stamina, 5)
-    zombie = monsters.Zombie()
+    zombie = self.add_monsters(monsters.Zombie())
     combat = Combat(self.char, zombie)
     self.state.event_stack.append(combat)
 
@@ -261,7 +261,7 @@ class CombatTest(EventTest):
 
   def testCancelledEvadeDamage(self):
     self.assertEqual(self.char.stamina, 5)
-    zombie = monsters.Zombie()
+    zombie = self.add_monsters(monsters.Zombie())
     combat = Combat(self.char, zombie)
     self.state.event_stack.append(combat)
 
@@ -278,7 +278,7 @@ class CombatTest(EventTest):
 
   def testCancelledCombat(self):
     self.assertEqual(self.char.stamina, 5)
-    zombie = monsters.Zombie()
+    zombie = self.add_monsters(monsters.Zombie())
     combat = Combat(self.char, zombie)
     self.state.event_stack.append(combat)
     self.char.possessions.append(Canceller(CombatRound))
@@ -296,7 +296,7 @@ class CombatTest(EventTest):
 
   def testCancelledCombatCheck(self):
     self.assertEqual(self.char.stamina, 5)
-    zombie = monsters.Zombie()
+    zombie = self.add_monsters(monsters.Zombie())
     combat = Combat(self.char, zombie)
     self.state.event_stack.append(combat)
 
@@ -316,7 +316,7 @@ class CombatTest(EventTest):
   def testCancelledCombatChoice(self):
     self.assertEqual(self.char.stamina, 5)
     self.char.possessions.append(items.TommyGun(0))
-    zombie = monsters.Zombie()
+    zombie = self.add_monsters(monsters.Zombie())
     combat = Combat(self.char, zombie)
     self.state.event_stack.append(combat)
 
@@ -335,7 +335,7 @@ class CombatTest(EventTest):
   def testCancelledItemActivation(self):
     self.assertEqual(self.char.stamina, 5)
     self.char.possessions.append(items.TommyGun(0))
-    zombie = monsters.Zombie()
+    zombie = self.add_monsters(monsters.Zombie())
     combat = Combat(self.char, zombie)
     self.state.event_stack.append(combat)
 
@@ -354,7 +354,7 @@ class CombatTest(EventTest):
 
   def testCancelledCombatDamage(self):
     self.assertEqual(self.char.stamina, 5)
-    zombie = monsters.Zombie()
+    zombie = self.add_monsters(monsters.Zombie())
     combat = Combat(self.char, zombie)
     self.state.event_stack.append(combat)
 
@@ -381,7 +381,7 @@ class CombatOrEvadeTest(EventTest):
     self.char.fight_will_slider = 3
     self.assertEqual(self.char.will(self.state), 1)
     self.assertEqual(self.char.sanity, 5)
-    zombie = monsters.Zombie()
+    zombie = self.add_monsters(monsters.Zombie())
     choice = EvadeOrCombat(self.char, zombie)
     self.state.event_stack.append(choice)
 
@@ -401,7 +401,7 @@ class CombatOrEvadeTest(EventTest):
     self.assertEqual(self.char.will(self.state), 1)
     self.assertEqual(self.char.sanity, 5)
     self.assertEqual(self.char.stamina, 5)
-    zombie = monsters.Zombie()
+    zombie = self.add_monsters(monsters.Zombie())
     choice = EvadeOrCombat(self.char, zombie)
     self.state.event_stack.append(choice)
 
@@ -416,7 +416,7 @@ class CombatOrEvadeTest(EventTest):
     self.assertEqual(self.char.stamina, 3)
 
   def testAutoEvadeMonster(self):
-    cultist = monsters.Cultist()
+    cultist = self.add_monsters(monsters.Cultist())
     choice = EvadeOrCombat(self.char, cultist, auto_evade=True)
     self.state.event_stack.append(choice)
 
@@ -427,7 +427,7 @@ class CombatOrEvadeTest(EventTest):
       self.resolve_until_done()
 
   def testCancelledEvade(self):
-    zombie = monsters.Zombie()
+    zombie = self.add_monsters(monsters.Zombie())
     evade_or_combat = EvadeOrCombat(self.char, zombie)
     self.state.event_stack.append(evade_or_combat)
     self.char.possessions.append(Canceller(EvadeRound))
@@ -440,7 +440,7 @@ class CombatOrEvadeTest(EventTest):
     self.assertTrue(evade_or_combat.evade.is_cancelled())
 
   def testCancelledChoice(self):
-    zombie = monsters.Zombie()
+    zombie = self.add_monsters(monsters.Zombie())
     evade_or_combat = EvadeOrCombat(self.char, zombie)
     self.state.event_stack.append(evade_or_combat)
     self.char.possessions.append(Canceller(FightOrEvadeChoice))
@@ -451,7 +451,7 @@ class CombatOrEvadeTest(EventTest):
     self.assertFalse(evade_or_combat.evade.is_done())
 
   def testCancelledCombat(self):
-    zombie = monsters.Zombie()
+    zombie = self.add_monsters(monsters.Zombie())
     evade_or_combat = EvadeOrCombat(self.char, zombie)
     self.state.event_stack.append(evade_or_combat)
     self.char.possessions.append(Canceller(Combat))
@@ -518,9 +518,8 @@ class EvadeOrFightAllTest(EventTest):
       self.resolve_until_done()
 
   def testDefeatOneFleeFromOne(self):
-    self.state.monsters.extend([monsters.Witch(), monsters.FlameMatrix()])
-    for idx, monster in enumerate(self.state.monsters):
-      monster.idx = idx
+    self.add_monsters(monsters.Witch(), monsters.FlameMatrix())
+    for monster in self.state.monsters:
       monster.place = self.char.place
     fight_all = EvadeOrFightAll(self.char, self.state.monsters)
     self.state.event_stack.append(fight_all)
@@ -589,9 +588,8 @@ class EvadeOrFightAllTest(EventTest):
       self.resolve_until_done()
 
   def testWithAutoEvade(self):
-    self.state.monsters.extend([monsters.Witch(), monsters.FlameMatrix()])
-    for idx, monster in enumerate(self.state.monsters):
-      monster.idx = idx
+    self.add_monsters(monsters.Witch(), monsters.FlameMatrix())
+    for monster in self.state.monsters:
       monster.place = self.char.place
     fight_all = EvadeOrFightAll(self.char, self.state.monsters, auto_evade=True)
     self.state.event_stack.append(fight_all)
@@ -617,9 +615,8 @@ class EvadeOrFightAllTest(EventTest):
       self.resolve_until_done()
 
   def testStopsWhenLostInTimeAndSpace(self):
-    self.state.monsters.append(monsters.DimensionalShambler())
-    for idx, monster in enumerate(self.state.monsters):
-      monster.idx = idx
+    self.add_monsters(monsters.DimensionalShambler())
+    for monster in self.state.monsters:
       monster.place = self.char.place
 
     fight_all = EvadeOrFightAll(self.char, self.state.monsters)
@@ -647,8 +644,8 @@ class LoseCombatTest(EventTest):
     self.char.fight_will_slider = 3
     self.assertEqual(self.char.will(self.state), 1)
     self.char.sanity = 1
-    zombie = monsters.Zombie()
-    cultist = monsters.Cultist()
+    zombie = self.add_monsters(monsters.Zombie())
+    cultist = self.add_monsters(monsters.Cultist())
     zombie.place = self.char.place
     cultist.place = self.char.place
     fight_all = EvadeOrFightAll(self.char, [zombie, cultist])
@@ -679,7 +676,7 @@ class LoseCombatTest(EventTest):
     self.char.fight_will_slider = 0
     self.assertEqual(self.char.fight(self.state), 1)
     self.char.stamina = starting_stamina
-    zombie = monsters.Zombie()
+    zombie = self.add_monsters(monsters.Zombie())
     combat = Combat(self.char, zombie)
     self.state.event_stack.append(combat)
 
@@ -703,7 +700,7 @@ class LoseCombatTest(EventTest):
   def testMultiRoundUnconscious(self):
     self.char.stamina = 2
     self.assertEqual(self.char.sneak(self.state), 1)
-    cultist = monsters.Cultist()
+    cultist = self.add_monsters(monsters.Cultist())
     combat = Combat(self.char, cultist)
     self.state.event_stack.append(combat)
 
@@ -725,8 +722,7 @@ class LoseCombatTest(EventTest):
   def testLostFromAnotherWorld(self):
     self.char.place = self.state.places["Dreamlands1"]
     self.state.monsters.clear()
-    self.state.monsters.append(monsters.DimensionalShambler())
-    self.state.monsters[0].idx = 0
+    self.add_monsters(monsters.DimensionalShambler())
     self.state.monsters[0].place = self.state.monster_cup
 
     appears = MonsterAppears(self.char)
@@ -745,9 +741,7 @@ class DreamFlierCombatTest(EventTest):
 
   def setUp(self):
     super().setUp()
-    self.flier = monsters.DreamFlier()
-    self.state.monsters.append(self.flier)
-    self.state.monsters[-1].idx = len(self.state.monsters)-1
+    self.flier = self.add_monsters(monsters.DreamFlier())
 
   def testWinCombat(self):
     self.char.place = self.state.places["Northside"]
@@ -1011,10 +1005,8 @@ class PinataCombatTest(PinataCombatBaseTestMixin, EventTest):
 
   def setUp(self):
     super().setUp()
-    self.monster = monsters.Pinata()
-    self.state.monsters.append(self.monster)
-    self.state.monsters[-1].idx = len(self.state.monsters)-1
-    self.state.monsters[-1].place = self.char.place
+    self.monster = self.add_monsters(monsters.Pinata())
+    self.monster.place = self.char.place
 
   def assertGains(self):
     self.assertEqual(self.char.clues, 0)
@@ -1068,10 +1060,8 @@ class WarlockCombatTest(PinataCombatBaseTestMixin, EventTest):
 
   def setUp(self):
     super().setUp()
-    self.monster = monsters.Warlock()
-    self.state.monsters.append(self.monster)
-    self.state.monsters[-1].idx = len(self.state.monsters)-1
-    self.state.monsters[-1].place = self.char.place
+    self.monster = self.add_monsters(monsters.Warlock())
+    self.monster.place = self.char.place
     self.char.possessions.append(items.TommyGun(0))
 
   def assertGains(self):
@@ -1089,7 +1079,7 @@ class CombatOutputTest(EventTest):
 
   def testCombatChoiceWithActivateItems(self):
     self.char.possessions.extend([items.EnchantedKnife(0), items.Wither(0), items.Revolver38(0)])
-    cultist = monsters.Cultist()
+    cultist = self.add_monsters(monsters.Cultist())
     combat = Combat(self.char, cultist)
     self.state.event_stack.append(combat)
 
@@ -1188,7 +1178,7 @@ class ElderThingCombatTest(EventTest):
   def setUp(self):
     super().setUp()
     self.char.possessions.extend([items.Wither(0), items.Revolver38(0), items.DarkCloak(0)])
-    self.thing = monsters.ElderThing()
+    self.thing = self.add_monsters(monsters.ElderThing())
     combat = EvadeOrCombat(self.char, self.thing)
     self.state.event_stack.append(combat)
 
@@ -1311,7 +1301,7 @@ class CombatWithItems(EventTest):
   def setUp(self):
     super().setUp()
     self.char.possessions.extend([items.TommyGun(0), items.Wither(0), items.Revolver38(0)])
-    cultist = monsters.Cultist()
+    cultist = self.add_monsters(monsters.Cultist())
     self.combat = Combat(self.char, cultist)
     self.state.event_stack.append(self.combat)
 
@@ -1674,8 +1664,8 @@ class MonsterAppearsTest(EventTest):
     super().setUp()
     self.char.place = self.state.places["Graveyard"]
     self.char.speed_sneak_slider = 2
-    self.maniac = monsters.Maniac()
-    self.state.monsters = [self.maniac]
+    self.state.monsters.clear()
+    self.maniac = self.add_monsters(monsters.Maniac())
     self.maniac.place = self.state.monster_cup
 
   def testEvadeMonster(self):
@@ -1753,7 +1743,7 @@ class MonsterAppearsTest(EventTest):
 class AmbushTest(EventTest):
 
   def testAmbush(self):
-    ghoul = monsters.Ghoul()
+    ghoul = self.add_monsters(monsters.Ghoul())
     self.assertTrue(ghoul.has_attribute("ambush", self.state, self.char))
     combat = Combat(self.char, ghoul)
     self.state.event_stack.append(combat)
@@ -1778,7 +1768,7 @@ class AmbushTest(EventTest):
     fight_or_flee.resolve(self.state, "Fight")
 
   def testAmbushFromFailedEvade(self):
-    ghoul = monsters.Ghoul()
+    ghoul = self.add_monsters(monsters.Ghoul())
     combat = EvadeOrCombat(self.char, ghoul)
     self.state.event_stack.append(combat)
 
@@ -1801,7 +1791,7 @@ class ResistanceAndImmunityTest(EventTest):
     self.char.possessions.extend([
         items.TommyGun(0), items.EnchantedKnife(0), items.EnchantedKnife(1),
     ])
-    witch = monsters.Witch()
+    witch = self.add_monsters(monsters.Witch())
     combat = Combat(self.char, witch)
     self.state.event_stack.append(combat)
 
@@ -1839,7 +1829,7 @@ class ResistanceAndImmunityTest(EventTest):
 
   def testMagicalImmunity(self):
     self.char.possessions.extend([items.Revolver38(0), items.EnchantedKnife(0)])
-    priest = monsters.HighPriest()
+    priest = self.add_monsters(monsters.HighPriest())
     combat = Combat(self.char, priest)
     self.state.event_stack.append(combat)
 
@@ -1865,7 +1855,7 @@ class ResistanceAndImmunityTest(EventTest):
 
   def testOldProfessorNegatesMagicalResistance(self):
     self.char.possessions.extend([items.MagicLamp(0), assets.OldProfessor()])
-    witch = monsters.Witch()
+    witch = self.add_monsters(monsters.Witch())
     combat = Combat(self.char, witch)
     self.state.event_stack.append(combat)
 
@@ -1883,7 +1873,7 @@ class ResistanceAndImmunityTest(EventTest):
 
   def testOldProfessorHasNoEffectOnMagicalImmunity(self):
     self.char.possessions.extend([items.MagicLamp(0), assets.OldProfessor()])
-    priest = monsters.HighPriest()
+    priest = self.add_monsters(monsters.HighPriest())
     combat = Combat(self.char, priest)
     self.state.event_stack.append(combat)
 
@@ -1901,7 +1891,7 @@ class ResistanceAndImmunityTest(EventTest):
     self.char.possessions.extend([
         items.Revolver38(0), items.Revolver38(1), items.EnchantedKnife(0),
     ])
-    vampire = monsters.Vampire()
+    vampire = self.add_monsters(monsters.Vampire())
     combat = Combat(self.char, vampire)
     self.state.event_stack.append(combat)
 
@@ -1927,7 +1917,7 @@ class ResistanceAndImmunityTest(EventTest):
     self.char.possessions.extend([
         items.Revolver38(0), items.Revolver38(1), items.EnchantedKnife(0),
     ])
-    ghost = monsters.Ghost()
+    ghost = self.add_monsters(monsters.Ghost())
     combat = Combat(self.char, ghost)
     self.state.event_stack.append(combat)
 
@@ -1951,7 +1941,7 @@ class ResistanceAndImmunityTest(EventTest):
 
   def testPainterNegatesPhysicalResistance(self):
     self.char.possessions.extend([items.TommyGun(0), assets.VisitingPainter()])
-    vampire = monsters.Vampire()
+    vampire = self.add_monsters(monsters.Vampire())
     combat = Combat(self.char, vampire)
     self.state.event_stack.append(combat)
 
@@ -1967,7 +1957,7 @@ class ResistanceAndImmunityTest(EventTest):
 
   def testPainterHasNoEffectOnPhysicalImmunity(self):
     self.char.possessions.extend([items.TommyGun(0), assets.VisitingPainter()])
-    ghost = monsters.Ghost()
+    ghost = self.add_monsters(monsters.Ghost())
     combat = Combat(self.char, ghost)
     self.state.event_stack.append(combat)
 
@@ -1987,7 +1977,7 @@ class NightmarishOverwhelmingTest(EventTest):
   def testOverwhelmingAndNightmarish(self):
     self.char.fight_will_slider = 0
     self.char.possessions.extend([items.EnchantedKnife(0), items.EnchantedKnife(1)])
-    flier = monsters.SubterraneanFlier()
+    flier = self.add_monsters(monsters.SubterraneanFlier())
     combat = Combat(self.char, flier)
     self.state.event_stack.append(combat)
     self.assertEqual(self.char.sanity, 5)
@@ -2018,7 +2008,7 @@ class NightmarishOverwhelmingTest(EventTest):
 
   def testOverwhelmingOnSecondRound(self):
     self.char.possessions.extend([items.EnchantedKnife(0), items.EnchantedKnife(1)])
-    beast = monsters.FurryBeast()
+    beast = self.add_monsters(monsters.FurryBeast())
     combat = Combat(self.char, beast)
     self.state.event_stack.append(combat)
     self.assertEqual(self.char.stamina, 5)
@@ -2049,7 +2039,7 @@ class NightmarishOverwhelmingTest(EventTest):
   def testBraveGuyNegatesNightmarish(self):
     self.char.fight_will_slider = 0
     self.char.possessions.extend([items.MagicLamp(0), assets.BraveGuy()])
-    flier = monsters.SubterraneanFlier()
+    flier = self.add_monsters(monsters.SubterraneanFlier())
     combat = Combat(self.char, flier)
     self.state.event_stack.append(combat)
 
@@ -2074,7 +2064,7 @@ class NightmarishOverwhelmingTest(EventTest):
 
   def testToughGuyNegatesOverwhelming(self):
     self.char.possessions.extend([items.MagicLamp(0), assets.ToughGuy()])
-    beast = monsters.FurryBeast()
+    beast = self.add_monsters(monsters.FurryBeast())
     combat = Combat(self.char, beast)
     self.state.event_stack.append(combat)
     self.assertEqual(self.char.stamina, 5)
@@ -2098,7 +2088,7 @@ class UndeadTest(EventTest):
 
   def testUseCrossAgainstUndead(self):
     self.char.possessions.extend([items.Cross(0)])
-    zombie = monsters.Zombie()
+    zombie = self.add_monsters(monsters.Zombie())
     combat = Combat(self.char, zombie)
     self.state.event_stack.append(combat)
 
@@ -2121,7 +2111,7 @@ class UndeadTest(EventTest):
 
   def testUseCrossAgainstLiving(self):
     self.char.possessions.extend([items.Cross(0)])
-    cultist = monsters.Cultist()
+    cultist = self.add_monsters(monsters.Cultist())
     combat = Combat(self.char, cultist)
     self.state.event_stack.append(combat)
 
@@ -2143,7 +2133,7 @@ class CombatWithBullwhipTest(EventTest):
     self.char.possessions.extend([self.bullwhip, items.Axe(0), items.Knife(0)])
 
   def testUseBullwhip(self):
-    priest = monsters.HighPriest()
+    priest = self.add_monsters(monsters.HighPriest())
     combat = Combat(self.char, priest)
     self.state.event_stack.append(combat)
 
@@ -2195,6 +2185,8 @@ class CombatWithShotgunTest(EventTest):
 
   def start(self, monster):
     # pylint: disable=attribute-defined-outside-init
+    if monster not in self.state.monsters:
+      self.add_monsters(monster)
     self.combat = Combat(self.char, monster)
     self.state.event_stack.append(self.combat)
 
@@ -2391,7 +2383,7 @@ class CombatWithEnchantedWeapon(EventTest):
   def setUp(self):
     super().setUp()
     self.char.possessions.extend([items.DarkCloak(0), items.Revolver38(0), items.EnchantWeapon(0)])
-    spawn = monsters.FormlessSpawn()
+    spawn = self.add_monsters(monsters.FormlessSpawn())
     self.combat = Combat(self.char, spawn)
     self.state.event_stack.append(self.combat)
 
@@ -2502,7 +2494,7 @@ class CombatWithEnchantedWeapon(EventTest):
     self.assertTrue(self.char.possessions[2].exhausted)
 
   def testAgainstMagicalImmunity(self):
-    priest = monsters.HighPriest()
+    priest = self.add_monsters(monsters.HighPriest())
     self.combat = Combat(self.char, priest)
     self.state.event_stack.clear()
     self.state.event_stack.append(self.combat)
@@ -2710,7 +2702,7 @@ class CombatWithEnchantedWeapon(EventTest):
       self.resolve_until_done()
       self.assertEqual(rand.call_count, 5)  # Fight (4) + spawn (-2) + revolver (3)
 
-    self.state.event_stack.append(Combat(self.char, monsters.FormlessSpawn()))
+    self.state.event_stack.append(Combat(self.char, self.add_monsters(monsters.FormlessSpawn())))
     fight_or_flee = self.resolve_to_choice(FightOrEvadeChoice)
     fight_or_flee.resolve(self.state, "Fight")
 
@@ -2723,7 +2715,7 @@ class CombatWithEnchantedWeapon(EventTest):
       self.assertEqual(rand.call_count, 2)  # Fight (4) + spawn (-2) + physical immunity (0)
 
   def testElderThingGlitch(self):
-    elder_thing = monsters.ElderThing()
+    elder_thing = self.add_monsters(monsters.ElderThing())
     self.combat = events.Combat(self.char, elder_thing)
     self.state.event_stack.clear()
     self.state.event_stack.append(self.combat)
@@ -2767,7 +2759,7 @@ class CombatWithEnchantedWeapon(EventTest):
     self.assertTrue(self.combat.combat.is_resolved())
     self.assertFalse(self.char.possessions[1].active)
 
-    spawn = monsters.FormlessSpawn()
+    spawn = self.add_monsters(monsters.FormlessSpawn())
     self.state.event_stack.append(Combat(self.char, spawn))
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)) as rand:
       fight_flee = self.resolve_to_choice(MultipleChoice)
@@ -2787,6 +2779,8 @@ class CombatWithMagicPowderTest(EventTest):
 
   def start(self, monster):
     # pylint: disable=attribute-defined-outside-init
+    if monster not in self.state.monsters:
+      self.add_monsters(monster)
     self.combat = Combat(self.char, monster)
     self.state.event_stack.append(self.combat)
 
@@ -2863,6 +2857,8 @@ class CombatWithRedSignTest(EventTest):
 
   def start(self, monster):
     # pylint: disable=attribute-defined-outside-init
+    if monster not in self.state.monsters:
+      self.add_monsters(monster)
     self.combat = Combat(self.char, monster)
     self.state.event_stack.append(self.combat)
 
@@ -3016,7 +3012,7 @@ class CombatWithRedSignTest(EventTest):
     self.assertEqual(self.char.stamina, 5)
 
   def testIgnoresAmbush(self):
-    ghoul = monsters.Ghoul()
+    ghoul = self.add_monsters(monsters.Ghoul())
     self.char.speed_sneak_slider = 0
     combat = Combat(self.char, ghoul)
     self.state.event_stack.append(combat)
@@ -3086,6 +3082,7 @@ class CombatWithRedSignTest(EventTest):
         "Scary", "normal", "moon", {"evade": 0, "horror": 0, "combat": 0},
         {"horror": 2, "combat": 2}, 3, None, {"horror": 1, "combat": 1},
     )
+    self.add_monsters(scary)
     self.state.event_stack.append(EvadeOrCombat(self.char, scary))
 
     fight_or_evade = self.resolve_to_choice(FightOrEvadeChoice)
@@ -3296,6 +3293,8 @@ class BindMonsterTest(EventTest):
 
   def start(self, monster):
     # pylint: disable=attribute-defined-outside-init
+    if monster not in self.state.monsters:
+      self.add_monsters(monster)
     self.combat = Combat(self.char, monster)
     self.state.event_stack.append(self.combat)
 

@@ -931,9 +931,7 @@ class CloseGateTest(EventTest):
 
   def testMonstersDisappearWhenClosed(self):
     self.state.monsters.clear()
-    self.state.monsters.extend([
-        monsters.Ghoul(), monsters.Pinata(), monsters.Ghoul(), monsters.Ghoul(),
-    ])
+    self.add_monsters(monsters.Ghoul(), monsters.Pinata(), monsters.Ghoul(), monsters.Ghoul())
     self.state.monsters[0].place = self.state.places["Uptown"]  # hex
     self.state.monsters[1].place = self.state.places["Sky"]  # circle
     self.state.monsters[2].place = self.state.places["Outskirts"]  # hex
@@ -950,9 +948,7 @@ class CloseGateTest(EventTest):
 
   def testMonstersDisappearFromSkyWhenClosed(self):
     self.state.monsters.clear()
-    self.state.monsters.extend([
-        monsters.Ghoul(), monsters.Pinata(), monsters.Ghoul(), monsters.Pinata(),
-    ])
+    self.add_monsters(monsters.Ghoul(), monsters.Pinata(), monsters.Ghoul(), monsters.Pinata())
     self.state.places["Square"].gate = self.state.gates.pop()  # circle gate
     self.state.monsters[0].place = self.state.places["Uptown"]  # hex
     self.state.monsters[1].place = self.state.places["Sky"]  # circle
@@ -2696,7 +2692,7 @@ class Mythos42Test(EventTest):
       self.resolve_until_done()
       self.assertEqual(self.char.sanity, 5)
 
-      self.state.event_stack.append(Combat(self.char, monsters.FormlessSpawn()))
+      self.state.event_stack.append(Combat(self.char, self.add_monsters(monsters.FormlessSpawn())))
       fight_evade = self.resolve_to_choice(FightOrEvadeChoice)
       fight_evade.resolve(self.state, "Fight")
       curse = self.resolve_to_usable(0, "Dread Curse0")
@@ -2755,7 +2751,7 @@ class Mythos51Test(EventTest):
     self.assertFalse(self.state.usables)
     sliders.resolve(self.state, "done", None)
     self.resolve_until_done()
-    self.state.event_stack.append(Combat(self.char, monsters.Cultist()))
+    self.state.event_stack.append(Combat(self.char, self.add_monsters(monsters.Cultist())))
 
     fight_evade = self.resolve_to_choice(FightOrEvadeChoice)
     fight_evade.resolve(self.state, "Fight")
@@ -2781,7 +2777,7 @@ class Mythos55Test(EventTest):
   def testUndeadIgnoredByRedSign(self):
     self.char.possessions.append(items.RedSign(0))
     self.char.possessions.append(items.EnchantedKnife(0))
-    vampire = monsters.Vampire()
+    vampire = self.add_monsters(monsters.Vampire())
     self.assertEqual(vampire.toughness(self.state, self.char), 3)
     self.state.event_stack.append(Combat(self.char, vampire))
     fight_flee = self.resolve_to_choice(FightOrEvadeChoice)
@@ -2888,6 +2884,17 @@ class MythosPhaseTest(EventTest):
     self.assertTrue(self.mythos.is_resolved())
     self.assertFalse(self.mythos.action.is_resolved())
     self.assertTrue(self.mythos.action.is_cancelled())
+
+
+class MythosCardsTest(EventTest):
+
+  def testAllEventsCanBeCreated(self):
+    cards = CreateMythos()
+    for card in cards:
+      if isinstance(card, ShuffleMythos):
+        continue
+      with self.subTest(mythos=card.name):
+        card.create_event(self.state)
 
 
 if __name__ == "__main__":

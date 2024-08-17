@@ -223,8 +223,7 @@ class BlueWatcherTest(EventTest):
     self.assertEqual(self.char.movement_points, 4)
     self.advance_turn(0, "movement")
     self.assertEqual(self.char.place.name, "Diner")
-    monster = monsters.Hound()
-    self.state.monsters.append(monster)
+    monster = self.add_monsters(monsters.Hound())
     monster.place = self.state.places["Easttown"]
     movement = self.resolve_to_choice(events.CityMovement)
     movement.resolve(self.state, "Easttown")
@@ -257,8 +256,7 @@ class BlueWatcherTest(EventTest):
     self.assertNotIn(self.watcher, self.char.possessions)
 
   def testDeclineToUseDuringCombat(self):
-    monster = monsters.Cultist()
-    self.state.monsters.append(monster)
+    monster = self.add_monsters(monsters.Cultist())
     monster.place = self.char.place
     self.state.event_stack.append(events.Combat(self.char, monster))
     self.char.possessions.append(items.Rifle(0))
@@ -343,7 +341,7 @@ class BlueWatcherTest(EventTest):
 
   def testNotEnoughStamina(self):
     self.char.stamina = 1
-    self.state.event_stack.append(events.Combat(self.char, monsters.Cultist()))
+    self.state.event_stack.append(events.Combat(self.char, self.add_monsters(monsters.Cultist())))
     fight_evade = self.resolve_to_choice(events.FightOrEvadeChoice)
     fight_evade.resolve(self.state, "Fight")
     self.resolve_to_choice(events.CombatChoice)
@@ -408,10 +406,9 @@ class FluteTest(EventTest):
     super().setUp()
     self.flute = items.OuterGodlyFlute(0)
     self.char.possessions = [self.flute]
-    self.maniac = monsters.Maniac()
-    self.cultist = monsters.Cultist()
-    self.flier = monsters.SubterraneanFlier()
-    self.state.monsters.extend([self.maniac, self.cultist, self.flier])
+    self.maniac = self.add_monsters(monsters.Maniac())
+    self.cultist = self.add_monsters(monsters.Cultist())
+    self.flier = self.add_monsters(monsters.SubterraneanFlier())
 
   def enterCombat(self, monster_idx=0):
     self.advance_turn(0, "movement")
@@ -506,9 +503,7 @@ class FluteTest(EventTest):
     self.assertNotIn(self.flute, self.char.possessions)
 
   def testEndlessOrPinataBehavior(self):
-    pinata = monsters.Pinata()
-    endless = monsters.Haunter()
-    self.state.monsters.extend([pinata, endless])
+    pinata, endless = self.add_monsters(monsters.Pinata(), monsters.Haunter())
     holy_water = items.HolyWater(0)
     self.state.unique.append(holy_water)
     for monster in [self.maniac, pinata, endless]:
@@ -718,9 +713,7 @@ class SilverKeyTest(EventTest):
     super().setUp()
     self.key = items.SilverKey(0)
     self.char.possessions.append(self.key)
-    self.combat = events.Combat(
-        self.char, monsters.Zombie()
-    )
+    self.combat = events.Combat(self.char, self.add_monsters(monsters.Zombie()))
     self.state.event_stack.append(self.combat)
     evade_choice = self.resolve_to_choice(events.FightOrEvadeChoice)
     evade_choice.resolve(self.state, "Flee")
@@ -786,7 +779,7 @@ class WardingStatueTest(EventTest):
   def testCombatDamage(self):
     starting_stamina = self.char.stamina
     self.char.possessions.append(items.WardingStatue(0))
-    monster = monsters.Cultist()
+    monster = self.add_monsters(monsters.Cultist())
     self.state.event_stack.append(events.Combat(self.char, monster))
     choice = self.resolve_to_choice(events.FightOrEvadeChoice)
     choice.resolve(self.state, "Fight")
@@ -808,7 +801,7 @@ class WardingStatueTest(EventTest):
     starting_stamina = self.char.stamina
     statue = items.WardingStatue(0)
     self.char.possessions.append(statue)
-    monster = monsters.Cultist()
+    monster = self.add_monsters(monsters.Cultist())
     self.state.event_stack.append(events.Combat(self.char, monster))
     choice = self.resolve_to_choice(events.FightOrEvadeChoice)
     choice.resolve(self.state, "Fight")

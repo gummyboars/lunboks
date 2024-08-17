@@ -141,7 +141,7 @@ class Monster:
       return events.Sequence(
           [
               events.CancelEvent(event),
-              events.ReturnMonsterFromBoard(event.character, self, ),
+              events.ReturnToCup(handles=[self.handle], character=event.character),
           ], event.character
       )
     return None
@@ -325,7 +325,7 @@ class Pinata(Monster):
       return super().get_interrupt(event, state)
     seq = [
         events.CancelEvent(event),
-        events.ReturnMonsterFromBoard(event.character, self, to_box=True),
+        events.ReturnToCup(handles=[self.handle], character=event.character, to_box=True),
     ]
     seq += events.Draw(event.character, "unique", 1).events
     return events.Sequence(seq, event.character)
@@ -401,7 +401,7 @@ class Warlock(Monster):
       return super().get_interrupt(event, state)
     seq = [
         events.CancelEvent(event),
-        events.ReturnMonsterFromBoard(event.character, self, to_box=True),
+        events.ReturnToCup(handles=[self.handle], character=event.character, to_box=True),
         events.Gain(event.character, {"clues": 2}),
     ]
     return events.Sequence(seq, event.character)

@@ -2461,33 +2461,6 @@ class DiscardNamed(Event):
     return True
 
 
-class ReturnMonsterFromBoard(Event):  # TODO: merge the three return monster to cup events
-
-  def __init__(self, character, monster, to_box=False):
-    super().__init__()
-    self.character = character
-    self.monster = monster
-    self.to_box = to_box
-    self.returned = False
-
-  def resolve(self, state):
-    self.monster.place = None if self.to_box else state.monster_cup
-    self.returned = True
-
-  def is_resolved(self):
-    return self.returned
-
-  def log(self, state):
-    if self.cancelled and not self.returned:
-      return f"[{self.monster.name}] was not returned to the {'box' if self.to_box else 'cup'}"
-    if not self.returned:
-      return f"[{self.monster.name}] is returned to the {'box' if self.to_box else 'cup'}"
-    return f"[{self.monster.name}] was returned to the {'box' if self.to_box else 'cup'}"
-
-  def animated(self):
-    return True
-
-
 class ReturnMonsterToCup(Event):
 
   def __init__(self, character, handle):
@@ -4514,10 +4487,8 @@ class CloseGate(Event):
         if not isinstance(monster.place, (places.Outskirts, places.CityPlace)):
           continue
         if monster.dimension == self.gate.dimension:
-          monsters_to_return.append(monster)
-      self.return_monsters = Sequence([
-          ReturnMonsterFromBoard(self.character, monster) for monster in monsters_to_return
-      ], self.character)
+          monsters_to_return.append(monster.handle)
+      self.return_monsters = ReturnToCup(handles=monsters_to_return, character=self.character)
       state.event_stack.append(self.return_monsters)
       return
 
@@ -5063,11 +5034,8 @@ class MonsterSpawnChoice(ChoiceEvent):
     # Clear the outskirts if necessary.
     in_outskirts = len([m for m in state.monsters if isinstance(m.place, places.Outskirts)])
     if in_outskirts > state.outskirts_limit():
-      for monster in state.monsters:
-        if monster.place == state.places["Outskirts"]:
-          monster.place = state.monster_cup
-      # If the outskirts were cleared, increase the terror level.
-      self.terrors.append(IncreaseTerror())
+      # If the outskirts clear, increase the terror level.
+      self.terrors.append(Sequence([ReturnToCup(from_places=["Outskirts"]), IncreaseTerror()]))
       state.event_stack.append(self.terrors[-1])
 
     # Update the list of monsters to be spawned and clear the pending list.
@@ -5394,17 +5362,22 @@ class MoveMonster(Event):
 
 class ReturnToCup(Event):
 
-  def __init__(self, names=None, from_places=None):
-    assert names or from_places
-    assert not (names and from_places)
+  def __init__(self, *, names=None, from_places=None, handles=None, character=None, to_box=False):
+    assert any(arg is not None for arg in [names, from_places, handles])
+    assert sum(int(arg is not None) for arg in [names, from_places, handles]) == 1
     super().__init__()
+    self.character = character
     self.names = set(names if names else [])
+    self.handles = set(handles if handles else [])
     self.places = set(from_places if from_places else [])
+    self.to_box = to_box
     self.returned = None
 
   def resolve(self, state):
     if self.returned is not None:
       return
+
+    destination = state.monster_cup if not self.to_box else None
 
     count = 0
     if self.places:
@@ -5423,12 +5396,17 @@ class ReturnToCup(Event):
 
       for monster in state.monsters:
         if getattr(monster.place, "name", None) in self.places:
-          monster.place = state.monster_cup
+          monster.place = destination
           count += 1
     if self.names:
       for monster in state.monsters:
         if monster.name in self.names and isinstance(monster.place, places.CityPlace):
-          monster.place = state.monster_cup
+          monster.place = destination
+          count += 1
+    if self.handles:
+      for monster in state.monsters:
+        if monster.handle in self.handles:
+          monster.place = destination
           count += 1
     self.returned = count
 
@@ -5436,13 +5414,18 @@ class ReturnToCup(Event):
     return self.returned is not None
 
   def log(self, state):
+    dest = "the cup" if not self.to_box else "the box"
     if self.cancelled and self.returned is None:
-      return "monsters were not returned to the cup"
+      return f"monsters were not returned to {dest}"
     if self.returned is None:
       if self.names:
-        return "All " + ", ".join(self.names) + " will be returned to the cup."
-      return "All monsters in " + ", ".join(self.places) + " will be returned to the cup."
-    return f"{self.returned} monsters returned to the cup"
+        return "All " + ", ".join(self.names) + f" will be returned to {dest}."
+      if self.handles:
+        return ", ".join(self.handles) + f" will be returned to {dest}."
+      return "All monsters in " + ", ".join(self.places) + f" will be returned to {dest}."
+    if self.handles:
+      return ", ".join(self.handles) + f" returned to {dest}."
+    return f"{self.returned} monsters returned to {dest}."
 
   def animated(self):
     return True
