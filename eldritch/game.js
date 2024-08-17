@@ -13,7 +13,10 @@ charChoice = null;
 ancientChoice = null;
 oldCurrent = null;
 oldVisuals = {};
+newVisuals = [];
 gainedClues = [];
+gainedCards = {};
+lostCards = {};
 runningAnim = [];
 messageQueue = [];
 statTimeout = null;
@@ -141,6 +144,7 @@ function step(e) {
   if (messageQueue.length && !runningAnim.length) {
     let msg = messageQueue.shift();
     updateStepButton();
+    console.log("============================================");
     handleData(msg);
   }
 }
@@ -420,6 +424,10 @@ function replacer(match, p1) {
   if (!isNaN(parseInt(p1))) {
     return match;
   }
+  let submatch = p1.match(/(.*[^0-9])([0-9]*)$/);
+  if (submatch != null && serverNames[submatch[1]] != null) {
+    return serverNames[submatch[1]];
+  }
   return p1;
 };
 
@@ -450,6 +458,12 @@ function doneAnimating(div) {
 }
 function finishAnim() {
   runningAnim.shift();
+  if (!runningAnim.length) {
+    let numVisuals = document.getElementById("uicardchoice").getElementsByClassName("cardholder").length;
+    document.getElementById("cardchoicescroll").style.display = numVisuals ? cardsStyle : "none";
+    document.getElementById("togglecards").classList.toggle("hidden", numVisuals == 0);
+    setCardButtonText();
+  }
   if (!stepping && messageQueue.length && !runningAnim.length) {
     let msg = messageQueue.shift();
     handleData(msg);
@@ -477,15 +491,16 @@ function handleData(data) {
   updateAncientOne(data.game_stage, data.ancient_one, data.terror, gateCount, data.gate_limit, data.characters.length);
   updateCharacters(data.characters);
   updateSliderButton(data.sliders, data.chooser == data.player_idx);
-  markVisualsForDeletion();
-  updateChoices(data.choice, data.current, data.chooser == data.player_idx, data.characters[data.chooser], data.autochoose);
+  recordOldVisuals();
   updateMonsters(data.choice, data.monsters);
+  updateChoices(data.choice, data.current, data.chooser == data.player_idx, data.characters[data.chooser], data.autochoose);
   updateMonsterChoices(data.choice, data.monsters, data.chooser == data.player_idx, data.characters[data.chooser]);
   updatePlaceBoxes(data.places, data.activity);
-  updateUsables(data.usables, data.log, mySpendables, myChoice, data.sliders, data.dice);
+  updateUsables(data.usables, data.log, mySpendables, myChoice, data.sliders, data.dice);  // TODO: Better name might be updateOverlay or updateDoneUsingButton
   updateDice(data.dice, data.player_idx, data.monsters);
-  updateCurrentCard(data.current);
-  deleteUnusedVisuals();
+  updateCurrentCard(data.current, data.visual, data.monster, data.choice);
+  animateVisuals();
+  oldCurrent = data.current;
   updateEventLog(data.event_log);
   if (!stepping && messageQueue.length && !runningAnim.length) {
     let msg = messageQueue.shift();
@@ -1093,7 +1108,7 @@ function showMonsters(placeDiv, name) {
   for (let monsterDiv of placeDiv.getElementsByClassName("monster")) {
     let container = document.createElement("DIV");
     let handle = monsterDiv.monsterInfo.handle;
-    container.onclick = function(e) { makeChoice(handle); hideMonsters(null); };
+    container.onclick = function(e) { makeChoice(handle); };
     let frontDiv = createMonsterDiv(monsterDiv.monsterInfo, false, "big");
     container.appendChild(frontDiv);
     let backDiv = createMonsterDiv(monsterDiv.monsterInfo, true, "big");
@@ -1109,6 +1124,7 @@ function hideMonsters(e) {
 }
 
 function updateMonsters(choice, monster_list) {
+  let moveFromBoard = [];
   for (let i = 0; i < monster_list.length; i++) {
     let monster = monster_list[i];
     let monsterPlace = null;
@@ -1117,7 +1133,69 @@ function updateMonsters(choice, monster_list) {
     }
     if (monsterPlace == null) {
       if (monsters[i] != null) {
-        monsters[i].parentNode.removeChild(monsters[i]);  // TODO: animate
+        let dest = null;
+        for (let trophy of document.getElementsByClassName("trophy")) {
+          if (trophy.handle == monsters[i].monsterInfo.handle) {
+            dest = trophy;
+            break;
+          }
+        }
+        let sources = [];
+        let box = document.getElementById("monsterdetailsbox");
+        if (document.getElementById("monsterdetails").style.display == "flex") {
+          for (let monsterDetails of box.getElementsByClassName("bigmonster")) {
+            if (monsterDetails.monsterInfo.handle == monsters[i].monsterInfo.handle) {
+              sources.push(monsterDetails);
+            }
+          }
+        }
+        if (!sources.length) {
+          sources = [monsters[i]];
+        }
+        // Our priority order is cardholder -> monsterdetails -> monster on board
+        // However, the cardholder can have monsters not on the board. So here, we choose to
+        // animate only the monsters in the details box or on the board.
+        for (let src of document.getElementsByClassName("cardholder")) {
+          if (src.handle == monsters[i].monsterInfo.handle) {
+            sources = [];
+            break;
+          }
+        }
+        let orig = monsters[i];
+        if (dest != null && sources.length) {
+          runningAnim.push(true);
+          let callback = function() {
+            if (sources.length > 1) {  // Not the monster on the board
+              orig.parentNode.removeChild(orig);
+              hideMonsters(null);
+            }
+          };
+          for (let source of sources) {
+            source.classList.add("movingslow");
+            setTimeout(function() { translateNodeThenRemove(source, dest, callback); }, 10);
+          }
+        } else if (dest == null && sources.length == 1) {
+          let holder = createVisual(document.getElementById("enteringscroll"), newVisual(monster.handle, "fight"));
+          runningAnim.push(true);
+          let lastAnim = function() {
+            doneAnimating(holder);
+            holder.parentNode.removeChild(holder);
+            finishAnim();
+          };
+          let startLeaving = function() {
+            doneAnimating(holder);
+            setTimeout(function() {
+              holder.ontransitionend = lastAnim;
+              holder.ontransitioncancel = lastAnim;
+              holder.classList.add("leaving");
+            }, 10);
+          };
+          holder.ontransitionend = startLeaving;
+          holder.ontransitioncancel = startLeaving;
+          moveFromBoard.push([holder, sources[0]]);
+        } else {
+          monsters[i].parentNode.removeChild(monsters[i]);
+        }
         monsters[i] = null;
       }
       continue;
@@ -1133,12 +1211,38 @@ function updateMonsters(choice, monster_list) {
     if (monsters[i] == null) {
       monsters[i] = createMonsterDiv(monster);
       monsters[i].monsterIdx = i;
+      let container = monsters[i].getElementsByClassName("cnvcontainer")[0];
       place.appendChild(monsters[i]);
-      renderAssetToDiv(monsters[i].getElementsByClassName("cnvcontainer")[0], monster.name);
+      if (document.getElementById("eventlog").children.length) {  // Hack to not do this on the first message.
+        let holder = createVisual(document.getElementById("enteringscroll"), newVisual(monster.handle, "fight"));
+        holder.classList.add("rising");
+        runningAnim.push(true);
+        let callback = function() { renderAssetToDiv(container, monster.name); };
+        let moveToBoard = function() {
+          doneAnimating(holder);
+          setTimeout(function() { translateNodeThenRemove(holder, container, callback); }, 10);
+        };
+        holder.ontransitionend = moveToBoard;
+        holder.ontransitioncancel = moveToBoard;
+        setTimeout(function() { holder.classList.remove("rising"); }, 10);
+      } else {
+        renderAssetToDiv(container, monster.name);
+      }
     } else {
       monsters[i].monsterInfo = monster;
       animateMovingDiv(monsters[i], place);
     }
+  }
+  for (let [holder, boardDiv] of moveFromBoard) {
+    holder.classList.add("noanimate");
+    translateNode(holder, boardDiv);
+    setTimeout(function() {
+      holder.classList.remove("noanimate");
+      holder.style.removeProperty("transform");
+    }, 10);
+  }
+  for (let [holder, boardDiv] of moveFromBoard) {
+    boardDiv.parentNode.removeChild(boardDiv);
   }
 }
 
@@ -1175,43 +1279,384 @@ function scrollCards(e, dir) {
   cardScroller.scrollLeft = cardScroller.scrollLeft + amount;
 }
 
-function markVisualsForDeletion() {
+function getNameAndBack(handleOrName) {
+  let stripped = handleOrName;
+  let match = handleOrName.match(/(.*[^0-9])([0-9]*)$/);
+  if (match != null) {
+    stripped = match[1];
+  }
+  if (stripped != handleOrName && assetNames.includes(handleOrName)) {  // e.g. Northside1, Mythos12, Gate20
+    if (assetNames.includes(stripped + " Card")) {
+      return [handleOrName, stripped + " Card"];
+    }
+    return [handleOrName, null];
+  }
+  // Handles like Wither0, Zombie1, Dog, Flute
+  let deckLists = {"common": commonNames, "unique": uniqueNames, "spells": spellNames, "skills": skillNames, "allies": allyNames};
+  for (let deckName in deckLists) {
+    if (deckLists[deckName].includes(stripped)) {
+      return [stripped, deckName];
+    }
+  }
+  return [stripped, null];
+}
+
+function recordOldVisuals() {
   oldVisuals = {};
+  newVisuals = [];
   let uicardchoice = document.getElementById("uicardchoice");
   for (let holder of uicardchoice.getElementsByClassName("cardholder")) {
-    holder.classList.add("todelete");
-    let found = false;
-    for (let className of ["fightchoice", "monsterchoice", "cardchoice", "bigmythoscard"]) {
-      for (let child of holder.children) {
-        if (child.classList.contains(className)) {
-          if (oldVisuals[className] == null) {
-            oldVisuals[className] = {};
-          }
-          oldVisuals[className][holder.handle] = holder;
-          found = true;
-          break;
-        }
-      }
-      if (found) {
-        break;
-      }
+    if (oldVisuals[holder.handle] == null) {
+      oldVisuals[holder.handle] = [holder];
+    } else {
+      oldVisuals[holder.handle].push(holder);
     }
   }
 }
 
-function deleteUnusedVisuals() {
-  let uicardchoice = document.getElementById("uicardchoice");
-  while (uicardchoice.getElementsByClassName("todelete").length) {
-    uicardchoice.removeChild(uicardchoice.getElementsByClassName("todelete")[0]);
+function animateVisuals() {
+  let enteringVisuals = [];
+  let movingVisuals = [];
+  let leavingVisuals = [];
+  let actuallyNewVisuals = [];
+
+  // Identify any cards that will be moving to a character sheet.
+  for (let handle in gainedCards) {
+    if (lostCards[handle] != null) {  // Card was traded.
+      continue;
+    }
+    let dest = gainedCards[handle];
+    let [source, isBack] = findVisual(handle);
+    if (source != null) {  // Found an appropriate card in uicardchoice
+      leavingVisuals.push([source, dest, source.getBoundingClientRect()]);
+      continue;
+    }
+    // No existing card found - create a new one and animate it.
+    // Note that this uses enteringscroll, and does not change the placement of any other visuals.
+    if (document.getElementById("eventlog").children.length) {  // Hack to not do this on the first message.
+      let holder = createVisual(document.getElementById("enteringscroll"), newVisual(handle, "card"));
+      holder.classList.add("rising");
+      runningAnim.push(true);
+      let moveToSheet = function() {
+        doneAnimating(holder);
+        setTimeout(function() { translateNodeThenRemove(holder, dest); }, 10);
+      };
+      holder.ontransitionend = moveToSheet;
+      holder.ontransitioncancel = moveToSheet;
+      enteringVisuals.push(holder);
+    }
   }
-  oldVisuals = {};
+
+  // Go through the new visuals and consume any old visuals we can. Find truly new visuals.
+  for (let visual of newVisuals) {
+    let [existing, isBack] = findVisual(visual.handle, visual.monster);
+    if (existing != null) {
+      let boundingRect = existing.getBoundingClientRect();
+    }
+    if (existing != null) {
+      movingVisuals.push([existing, visual, isBack, existing.getBoundingClientRect()]);
+      continue;
+    }
+    actuallyNewVisuals.push([findExternal(visual.handle, visual.monster), visual]);
+  }
+
+  // Now that any used old visuals have been consumed, find destinations for the remaining old visuals.
+  for (let handleOrName in oldVisuals) {
+    let visuals = oldVisuals[handleOrName];
+    for (let visual of visuals) {
+      if (visual.classList.contains("used")) {
+        continue;
+      }
+      let external = null;
+      // Some things should not be collapsed back to the monster on the board. Specifically, we
+      // never collapse monsterchoices back to the board. We also don't collapse anything back to
+      // the board if there are other visuals being shows (e.g. if we just evaded one monster of many).
+      if (!visual.getElementsByClassName("monsterchoice").length) {
+        let hasMonster = visual.getElementsByClassName("monsterback").length;
+        external = findExternal(handleOrName, hasMonster);
+        if (external != null && external.classList.contains("monstercontainer") && newVisuals.length) {
+          external = null;
+        }
+      }
+      if (lostCards[handleOrName] != null && gainedCards[handleOrName] == null) {
+        external = "leaving";
+        lostCards[handleOrName] = null;
+      }
+      leavingVisuals.push([visual, external, visual.getBoundingClientRect()]);
+    }
+  }
+
+  // Identify any cards that will be leaving from a character sheet.
+  for (let handle in lostCards) {
+    if (gainedCards[handle] != null) {  // Card was traded.
+      continue;
+    }
+    if (lostCards[handle] == null) {  // Already animated from card choice.
+      continue;
+    }
+    let holder = createVisual(document.getElementById("enteringscroll"), newVisual(handle, "card"));
+    holder.classList.add("noanimate");
+    translateNode(holder, lostCards[handle]);
+    runningAnim.push(true);
+    let lastAnim = function() { doneAnimating(holder); holder.parentNode.removeChild(holder); finishAnim(); };
+    let startLeaving = function() {
+      doneAnimating(holder);
+      setTimeout(function() {
+        holder.ontransitionend = lastAnim;
+        holder.ontransitioncancel = lastAnim;
+        holder.classList.add("leaving");
+      }, 10);
+    };
+    holder.ontransitionend = startLeaving;
+    holder.ontransitioncancel = startLeaving;
+    setTimeout(function() { holder.classList.remove("noanimate"); holder.style.removeProperty("transform"); }, 10);
+  }
+
+  if (enteringVisuals.length || movingVisuals.length || leavingVisuals.length || actuallyNewVisuals.length) {
+    document.getElementById("cardchoicescroll").style.display = cardsStyle;
+    document.getElementById("togglecards").classList.remove("hidden");
+  } else {
+    document.getElementById("cardchoicescroll").style.display = "none";
+    document.getElementById("togglecards").classList.add("hidden");
+  }
+  setCardButtonText();
+
+  // All necessary information has been computed and recorded. Now we can mutate uicardchoice.
+  let uiCardChoice = document.getElementById("uicardchoice");
+
+  // Animate the divs that are leaving. Start by attaching them to the body at their current
+  // coordinates, then translate and remove them.
+  let uiBox = document.getElementById("ui").getBoundingClientRect();
+  for (let [visual, dest, rect] of leavingVisuals) {
+    let diffX = rect.left - uiBox.left;
+    let diffY = rect.top - uiBox.top;
+    visual.style.position = "absolute";
+    visual.style.left = `${diffX}px`;
+    visual.style.top = `${diffY}px`;
+    visual.style.zIndex = 19;
+    document.getElementById("ui").appendChild(visual);
+    while (visual.getElementsByClassName("desc").length) {
+      visual.removeChild(visual.getElementsByClassName("desc")[0]);
+    }
+    runningAnim.push(true);
+    if (dest == null) {  // Not going anywhere, but may still be referenced by other animations.
+      // TODO: in some situations (i.e. passing a rumor), should this fade out instead?
+      setTimeout(function() { visual.parentNode.removeChild(visual); finishAnim(); }, 10);
+    } else if (typeof(dest) == "string") {
+      visual.ontransitionend = function() { doneAnimating(visual); visual.parentNode.removeChild(visual); finishAnim(); };
+      visual.ontransitioncancel = function() { doneAnimating(visual); visual.parentNode.removeChild(visual); finishAnim(); };
+      setTimeout(function() { visual.classList.add(dest); }, 10);
+    } else {
+      let trueDest = dest.classList.contains("monstercontainer");
+      translateNodeThenRemove(visual, dest, null, trueDest);
+    }
+  }
+
+  // Some moving visuals are moving from a card back to a card front. For those, we replace the
+  // entire card because of the ability to reuse a card back for multiple card fronts.
+  for (let entry of movingVisuals) {
+    let [existing, visual, isBack, rect] = entry;
+    if (!isBack) {
+      entry.push(null);
+      continue;
+    }
+    entry.push(createVisual(uiCardChoice, visual));
+    if (existing.parentNode == uiCardChoice) {
+      uiCardChoice.removeChild(existing);
+    }
+  }
+
+  // Add new visuals. We will animate them after adding anything needed from moving visuals.
+  for (let entry of actuallyNewVisuals) {
+    let [source, visual] = entry;
+    entry.push(createVisual(uiCardChoice, visual));
+  }
+
+  // Update any visuals that are moving before animating. This is because the order of the visuals
+  // may change, moving other visuals to different locations.
+  for (let [existing, visual, isBack, rect, newDiv] of movingVisuals) {
+    if (newDiv == null) {
+      createVisual(uiCardChoice, visual, existing);
+    }
+  }
+
+  // All visuals are now in their new location. Animate the transition.
+  for (let [existing, visual, isBack, rect, newDiv] of movingVisuals) {
+    let div = newDiv ?? existing;
+    let wasMoved = translateNodeOrFalse(div, rect);
+    if (isBack) {
+      if (wasMoved) {
+        div.style.transform += " rotateY(-180deg)";
+      } else {
+        div.style.transform = "rotateY(-180deg)";
+      }
+    }
+    if (wasMoved || isBack) {
+      div.classList.add("noanimate");
+      runningAnim.push(true);
+      div.ontransitionend = function() { doneAnimating(div); visual.callback(div); finishAnim(); };
+      div.ontransitioncancel = function() { doneAnimating(div); visual.callback(div); finishAnim(); };
+      setTimeout(function() { div.classList.remove("noanimate"); div.style.removeProperty("transform"); }, 10);
+    } else {
+      setTimeout(function() { visual.callback(div); }, 10);
+    }
+  }
+
+  // Animate any new visuals, either from a source or from the bottom of the screen.
+  for (let [source, visual, div] of actuallyNewVisuals) {
+    div.classList.add("noanimate");
+    runningAnim.push(true);
+    if (source != null) {
+      div.ontransitionend = function() { doneAnimating(div); visual.callback(div); finishAnim(); };
+      div.ontransitioncancel = function() { doneAnimating(div); visual.callback(div); finishAnim(); };
+      translateNode(div, source);
+      setTimeout(function() { div.classList.remove("noanimate"); div.style.removeProperty("transform"); }, 10);
+      continue;
+    }
+    if (visual.backName == null) {
+      div.classList.add("rising");
+      div.ontransitionend = function() { doneAnimating(div); visual.callback(div); finishAnim(); };
+      div.ontransitioncancel = function() { doneAnimating(div); visual.callback(div); finishAnim(); };
+      setTimeout(function() { div.classList.remove("noanimate"); div.classList.remove("rising"); }, 10);
+    } else {
+      div.classList.add("entering", "rotated");
+      let rotate = function() {
+        div.ontransitionend = function() { doneAnimating(div); visual.callback(div); finishAnim(); };
+        div.ontransitioncancel = function() { doneAnimating(div); visual.callback(div); finishAnim(); };
+        div.classList.remove("rotated");
+      };
+      div.ontransitionend = rotate;
+      div.ontransitioncancel = rotate;
+      setTimeout(function() { div.classList.remove("noanimate"); div.classList.remove("entering"); }, 10);
+    }
+  }
+
+  // Animate anything that is entering, but is not in the cardchoice div.
+  for (let visual of enteringVisuals) {
+    setTimeout(function() { visual.classList.remove("rising"); }, 10);
+  }
+}
+
+function findVisual(handle, monster) {
+  // Start with exact match.
+  for (let handleOrName in oldVisuals) {
+    if (handle != handleOrName) {
+      continue;
+    }
+    for (let [idx, value] of oldVisuals[handleOrName].entries()) {
+      // Because monsterchoice visuals have a top and bottom, we use findExternal instead of
+      // considering them to be moving visuals.
+      if (value.getElementsByClassName("monsterchoice").length) {
+        continue;
+      }
+      // Match monster backs with monster backs and monster fronts with monster fronts.
+      if ((value.getElementsByClassName("monsterback").length == 0) == (monster == null)) {
+        oldVisuals[handleOrName].splice(idx, 1);
+        return [value, false];
+      }
+    }
+  }
+  let [name, backName] = getNameAndBack(handle);
+  // After exact matches are exhausted, try to match to the name corresponding to the handle.
+  for (let handleOrName in oldVisuals) {
+    if (name != handleOrName) {
+      continue;
+    }
+    for (let [idx, value] of oldVisuals[handleOrName].entries()) {
+      if (value.getElementsByClassName("monsterchoice").length) {
+        continue;
+      }
+      // Match monster backs with monster backs and monster fronts with monster fronts.
+      if ((value.getElementsByClassName("monsterback").length == 0) == (monster == null)) {
+        oldVisuals[handleOrName].splice(idx, 1);
+        return [value, false];
+      }
+    }
+  }
+  // Lastly, if this is the front of a card, try to match with an existing card back so we can
+  // animate turning the card around.
+  for (let handleOrName in oldVisuals) {
+    if (backName == handleOrName && oldVisuals[handleOrName].length > 0) {
+      if (oldVisuals[handleOrName].length > 1) {
+        return [oldVisuals[handleOrName].pop(), true];
+      }
+      // We are allowed to reuse card backs, so don't consume the last one.
+      oldVisuals[handleOrName][0].classList.add("used");
+      return [oldVisuals[handleOrName][0], true];
+    }
+  }
+  return [null, null];
+}
+
+function findExternal(handle, hasMonster) {
+  let [name, unused] = getNameAndBack(handle);
+  hasMonster = !!hasMonster;
+  for (let glob of document.getElementsByClassName("mythoscontainer")) {
+    if (glob.name == name) {
+      // When the current card shows up for the first time, animate it from the bottom of the
+      // screen instead of animating it from the globals sidebar.
+      if (glob.id == "currentcard" && glob.name != oldCurrent) {
+        continue;
+      }
+      return glob.getElementsByClassName("mythoscard")[0];
+    }
+  }
+  for (let pos of document.getElementsByClassName("possession")) {
+    if (pos.handle == handle) {
+      return pos;
+    }
+  }
+  for (let trophy of document.getElementsByClassName("trophy")) {
+    if (trophy.handle == handle) {
+      return trophy;
+    }
+  }
+  // The monster front/back matches up with the corresponding half of the monsterchoice visual.
+  let monsterClass = hasMonster ? "monsterback" : "cnvcontainer";
+  for (let div of document.getElementsByClassName("monsterchoice")) {
+    if (div.parentNode.handle == handle) {
+      for (let inner of div.getElementsByClassName("fightchoice")) {
+        if (inner.classList.contains(monsterClass)) {
+          return inner;
+        }
+      }
+    }
+  }
+  // If we don't find any matching visuals (fightchoice or monsterchoice) for this monster, but
+  // we do have the back side (instead of the front), animate from the back side (or vice versa).
+  for (let div of document.getElementsByClassName("fightchoice")) {
+    if (div.parentNode.handle == handle) {
+      // Make sure a leaving fight/monster choice doesn't find itself.
+      if (!div.classList.contains(monsterClass)) {
+        return div;
+      }
+    }
+  }
+  for (let monsterIdx in monsters) {
+    if (monsters[monsterIdx] != null && monsters[monsterIdx].monsterInfo.handle == handle) {
+      return monsters[monsterIdx].getElementsByClassName("monstercontainer")[0];
+    }
+  }
+  for (let gateCont of document.getElementsByClassName("gatecontainer")) {
+    if (gateCont.handle == handle) {
+      return gateCont;
+    }
+  }
+  // When a character gains a card from a card choice, the card choice only has a name, but the
+  // possession will have a handle. In that case, we match to the possession by name.
+  // TODO: card choice should use handles instead of names, but that might take some work
+  for (let pos of document.getElementsByClassName("possession")) {
+    if (pos.handle == name) {
+      return pos;
+    }
+  }
+  return null;
 }
 
 function updateChoices(choice, current, isMyChoice, chooser, autoChoose) {
   let doneItems = document.getElementById("doneitems");
   let uichoice = document.getElementById("uichoice");
   let uicardchoice = document.getElementById("uicardchoice");
-  let cardtoggle = document.getElementById("togglecards");
   let monsterBox = document.getElementById("monsterdetailsbox");
   let pDiv;
   if (!document.getElementsByClassName("you").length) {
@@ -1229,11 +1674,9 @@ function updateChoices(choice, current, isMyChoice, chooser, autoChoose) {
     pos.classList.remove("choosable");
   }
   uichoice.style.display = "none";
-  document.getElementById("cardchoicescroll").style.display = "none";
   if (doneItems != null) {
     doneItems.style.display = "none";
   }
-  cardtoggle.classList.add("hidden");
   if (choice != null && choice.board_monster != null && isMyChoice) {
     monsterBox.classList.add("choosable");
   } else {
@@ -1246,11 +1689,6 @@ function updateChoices(choice, current, isMyChoice, chooser, autoChoose) {
   // Set display style for uichoice div.
   if (choice.items == null && choice.board_monster == null && isMyChoice) {
     uichoice.style.display = "flex";
-  }
-  if (choice.cards != null || choice.monster != null || choice.monsters != null) {
-    document.getElementById("cardchoicescroll").style.display = cardsStyle;
-    cardtoggle.classList.remove("hidden");
-    setCardButtonText();
   }
   // Clean out any old choices it may have.
   for (let child of uichoice.getElementsByClassName("choice")) {
@@ -1279,11 +1717,8 @@ function updateChoices(choice, current, isMyChoice, chooser, autoChoose) {
   let showOverlay = isMyChoice && (choice.items != null || choice.spendable != null);
   document.getElementById("charoverlay").classList.toggle("shown", showOverlay);
   if (choice.cards == null && choice.monster == null && choice.monsters == null) {
-    if (choice.visual != null || current != null) {
-      document.getElementById("cardchoicescroll").style.display = cardsStyle;
-      cardtoggle.classList.remove("hidden");
-      setCardButtonText();
-      showActionSource(document.getElementById("uicardchoice"), choice.visual ?? current);
+    if (choice.visual != null) {
+      newVisuals.push(newVisual(choice.visual, "card"));
     }
   }
   if (choice.items != null) {
@@ -1294,11 +1729,14 @@ function updateChoices(choice, current, isMyChoice, chooser, autoChoose) {
       doneItems.style.display = "inline-block";
     }
     if (choice.monster != null) {
-      showMonster(uicardchoice, choice.monster);  // TODO: update show/hide button text
+      newVisuals.push(newVisual(choice.monster.handle, "fight", {"monster": choice.monster}));
     }
   } else {  // choice.items == null
     if (choice.places != null) {
       updatePlaceChoices(uichoice, choice.places, choice.annotations, isMyChoice);
+      if (choice.monster != null) {
+        newVisuals.push(newVisual(choice.monster.handle, "fight", {"monster": choice.monster}));
+      }
     } else if (choice.cards != null) {
       addCardChoices(uichoice, uicardchoice, choice.cards, choice.invalid_choices, choice.spent, choice.remaining_spend, choice.remaining_max, choice.annotations, choice.sort_uniq, current, isMyChoice, autoChoose);
     } else if (choice.monsters != null) {
@@ -1365,13 +1803,17 @@ function addMonsterChoices(uichoice, cardChoice, monsters, invalidChoices, annot
       otherChoices.push(monster);
       continue;
     }
-    let [holder, div] = addVisual(cardChoice, monster.handle, monster.name, "monster", isMyChoice ? monster.handle : null, null, monster, annotations && annotations[idx]);
+    let visual = newVisual(monster.handle, "monster");
+    visual.choice = isMyChoice ? monster.handle : null;
+    visual.monster = monster;
+    visual.descText = annotations && annotations[idx];
     if (invalidChoices != null && invalidChoices.includes(idx)) {
-      holder.classList.add("unchoosable");
-      holder.style.order = 1;
+      visual.classes.push("unchoosable");
+      visual.order = 1;
     } else {
-      holder.style.order = 0;
+      visual.order = 0;
     }
+    newVisuals.push(visual);
   }
   let scrollParent = cardChoice.parentNode;
   if (monsters.length > 4) {
@@ -1384,84 +1826,72 @@ function addMonsterChoices(uichoice, cardChoice, monsters, invalidChoices, annot
   }
 }
 
-function showMonster(cardChoice, monster) {
-  addVisual(cardChoice, monster.handle, monster.name, "fight", null, null, monster, null);
+function newVisual(handleOrName, type, opts) {
+  let [name, backName] = getNameAndBack(handleOrName);
+  let result = {
+    "handle": handleOrName,
+    "name": name,
+    "type": type,
+    "backName": backName,
+    "monster": null,
+    "choice": null,
+    "defaultSpend": null,
+    "order": null,
+    "classes": [],
+    "descText": null,
+    "backgroundPct": null,
+    "callback": function() {},
+  };
+  if (opts == null) {
+    return result;
+  }
+  return {...result, ...opts};
 }
 
-function showActionSource(cardChoice, name) {
-  addVisual(cardChoice, name, name, "card", null, null, null, null);
-}
-
-function addVisual(cardChoice, handle, name, visualType, choice, backName, monster, descText) {
+function createVisual(scrollParent, visual, existing) {
   let classNames = {
     "fight": "fightchoice",
     "monster": "monsterchoice",
     "card": "cardchoice",
     "mythos": "bigmythoscard",
   };
-  let className = classNames[visualType];
-  let holder = null;
-  let div = null;
-  let cnv = null;
-  if (oldVisuals[className] != null && oldVisuals[className][handle] != null) {
-    holder = oldVisuals[className][handle];
-    div = holder.getElementsByClassName(className)[0];
-    cnv = div.getElementsByClassName("markercnv")[0];
-    div.classList.toggle("visualchoice", choice != null);
-  }
-  if (holder == null) {  // Does not exist - create a new one.
-    holder = document.createElement("DIV");
-    holder.classList.add("cardholder");
-    div = document.createElement("DIV");
-    div.classList.toggle("visualchoice", choice != null);
-    div.classList.add(classNames[visualType]);
-    cnv = document.createElement("CANVAS");
-    cnv.classList.add("markercnv");  // TODO: use a better class name for this
-    div.appendChild(cnv);
-    holder.appendChild(div);
-    cardChoice.appendChild(holder);
-  }
+  let className = classNames[visual.type];
 
-  let backDiv = null;
-  let backCnv = null;
-  let desc = null;
-  if (backName != null && holder.getElementsByClassName("visualback").length == 0) {
-    backDiv = document.createElement("DIV");
-    backDiv.classList.add(classNames[visualType], "visualback", "cnvcontainer");
-    backCnv = document.createElement("CANVAS");
-    backCnv.classList.add("markercnv");
-    backDiv.appendChild(backCnv);
-    holder.appendChild(backDiv);
-  } else if (backName == null && holder.getElementsByClassName("visualback").length > 0) {
-    holder.removeChild(holder.getElementsByClassName("visualback")[0]);
-  }
-  if (descText != null && holder.getElementsByClassName("desc").length == 0) {
-    desc = document.createElement("DIV");
-    desc.classList.add("desc");
-    holder.appendChild(desc);
-  } else if (descText == null && holder.getElementsByClassName("desc").length > 0) {
-    holder.removeChild(holder.getElementsByClassName("desc")[0]);
-  }
-
-  if (descText != null) {
-    holder.getElementsByClassName("desc")[0].innerText = formatServerString(descText);
-  }
-  if (choice != null) {
-    div.onclick = function(e) { clearTimeout(autoClickTimeout); autoClickTimeout = null; makeChoice(choice); };
+  let holder, div, cnv, backDiv, backCnv;
+  if (existing != null) {
+    holder = existing;
+    holder.className = "";
+    holder.style.removeProperty("order");
+    while (holder.getElementsByClassName("visualback").length > 0) {
+      holder.removeChild(holder.getElementsByClassName("visualback")[0]);
+    }
   } else {
-    div.onclick = null;
+    holder = document.createElement("DIV");
   }
-
-  div.classList.remove("monsterback", "cnvcontainer");  // reset
-  if (className == "monsterchoice") {
-    while (div.children.length > 0) {
+  holder.classList.add("cardholder", ...visual.classes);
+  if (existing != null) {
+    div = holder.firstChild;
+    div.className = "";
+    div.onclick = null;
+    delete div.monsterInfo;
+    while (div.children.length) {
       div.removeChild(div.firstChild);
     }
+  } else {
+    div = document.createElement("DIV");
+  }
+  div.classList.toggle("visualchoice", visual.choice != null);
+  div.classList.add(className);
+  if (existing == null) {
+    holder.appendChild(div);
+    scrollParent.appendChild(holder);
+  }
+  if (className == "monsterchoice") {
     let frontDiv = document.createElement("DIV");
     frontDiv.classList.add("fightchoice", "cnvcontainer");
     let backDiv = document.createElement("DIV");
     backDiv.classList.add("fightchoice", "monsterback");
-    backDiv.monsterInfo = monster;
+    backDiv.monsterInfo = visual.monster;
     let frontCnv = document.createElement("CANVAS");
     frontCnv.classList.add("markercnv");  // TODO: use a better class name for this
     frontDiv.appendChild(frontCnv);
@@ -1470,22 +1900,65 @@ function addVisual(cardChoice, handle, name, visualType, choice, backName, monst
     backDiv.appendChild(backCnv);
     div.appendChild(frontDiv);
     div.appendChild(backDiv);
-    renderAssetToDiv(frontDiv, monster.name);
-    renderMonsterBackToDiv(backDiv, monster);
-  } else if (monster != null) {
-    div.classList.add("monsterback");
-    div.monsterInfo = monster;
-    renderMonsterBackToDiv(div, monster);
+    renderAssetToDiv(frontDiv, visual.monster.name);
+    renderMonsterBackToDiv(backDiv, visual.monster);
   } else {
-    div.classList.add("cnvcontainer");
-    renderAssetToDiv(div, name);
+    cnv = document.createElement("CANVAS");
+    cnv.classList.add("markercnv");  // TODO: use a better class name for this
+    div.appendChild(cnv);
+    if (visual.monster != null) {
+      div.classList.add("monsterback");
+      div.monsterInfo = visual.monster;
+      renderMonsterBackToDiv(div, visual.monster);
+    } else {
+      div.classList.add("cnvcontainer");
+      renderAssetToDiv(div, visual.name);
+    }
   }
-  if (backName != null) {
-    renderAssetToDiv(holder.getElementsByClassName("visualback")[0], backName);
+
+  if (visual.backName != null) {
+    backDiv = document.createElement("DIV");
+    backDiv.classList.add(className, "visualback", "cnvcontainer");
+    backCnv = document.createElement("CANVAS");
+    backCnv.classList.add("markercnv");
+    backDiv.appendChild(backCnv);
+    holder.appendChild(backDiv);
+    renderAssetToDiv(backDiv, visual.backName);
   }
-  holder.classList.remove("todelete");
-  holder.handle = handle;
-  return [holder, div];
+
+  let desc = null;
+  if (holder.getElementsByClassName("desc").length > 0) {
+    desc = holder.getElementsByClassName("desc")[0];
+    if (visual.descText == null) {
+      holder.removeChild(desc);
+    }
+  }
+  if (visual.descText != null) {
+    if (desc == null) {
+      desc = document.createElement("DIV");
+      desc.classList.add("desc");
+      holder.appendChild(desc);
+    }
+    desc.innerText = formatServerString(visual.descText);
+    if (visual.backgroundPct != null) {
+      desc.style.backgroundPosition = "left " + visual.backgroundPct + "% top";
+    } else {
+      desc.style.removeProperty("background-position");
+    }
+  }
+
+  if (visual.defaultSpend != null) {
+    div.onclick = function(e) { defaultSpend(visual.defaultSpend, visual.choice); };
+  } else if (visual.choice != null) {
+    div.onclick = function(e) { clearTimeout(autoClickTimeout); autoClickTimeout = null; makeChoice(visual.choice); };
+  }
+
+  if (visual.order != null) {
+    holder.style.order = visual.order;
+  }
+
+  holder.handle = visual.handle;
+  return holder;
 }
 
 function addFightOrEvadeChoices(uichoice, cardChoice, monster, choices, invalidChoices, annotations, current, isMyChoice) {
@@ -1494,11 +1967,15 @@ function addFightOrEvadeChoices(uichoice, cardChoice, monster, choices, invalidC
     if (annotations && annotations[idx] != null) {
       descText += " (" + formatServerString(annotations[idx]) + ")";
     }
-    let holder, div, cnv;
-    [holder, div] = addVisual(cardChoice, monster.handle + choice, monster.name, "fight", isMyChoice ? choice : null, null, choice == "Fight" ? monster : null, descText);
+    let visual = newVisual(monster.handle, "fight");
+    visual.choice = isMyChoice ? choice : null;
+    visual.monster = choice == "Fight" ? monster : null;
+    visual.descText = descText;
+    visual.order = choice == "Fight" ? 1 : 0;
     if (invalidChoices != null && invalidChoices.includes(idx)) {
-      holder.classList.add("unchoosable");
+      visual.classes.push("unchoosable");
     }
+    newVisuals.push(visual);
   }
 }
 
@@ -1527,7 +2004,8 @@ function addCardChoices(uichoice, cardChoice, cards, invalidChoices, spent, rema
     autoClick = true;
   }
   for (let [idx, card] of cards.entries()) {
-    if (!assetNames.includes(card)) {
+    let [assetName, backName] = getNameAndBack(card);
+    if (!assetNames.includes(assetName)) {
       if (invalidChoices != null && invalidChoices.includes(idx)) {
         newInvalid.push(notFound.length);
       }
@@ -1545,65 +2023,34 @@ function addCardChoices(uichoice, cardChoice, cards, invalidChoices, spent, rema
     }
     uniqueCards.add(card);
     count++;
-    let match = card.match(/(.*[^0-9])([0-9]*)$/);
-    let backName = null;
-    let shouldAnimate = false;
-    if (match != null && assetNames.includes(match[1] + " Card")) {
-      shouldAnimate = true;
-      backName = match[1] + " Card";
-    }
-    let [holder, div] = addVisual(cardChoice, card, card, "card", isMyChoice ? card : null, backName, null, annotations && annotations[idx]);
+    let visual = newVisual(card, "card");
+    visual.choice = isMyChoice ? card : null;
+    visual.backName = backName;
+    visual.descText = annotations && annotations[idx];
     if (sortUniq) {
-      holder.style.order = cardToOrder[card];
+      visual.order = cardToOrder[card];
     }
     if (autoClick) {
-      holder.classList.add("willchoose");
-    }
-    if ((oldVisuals["cardchoice"] != null && oldVisuals["cardchoice"][card] != null) || card == oldCurrent) {
-      shouldAnimate = false;
-    }
-    if (shouldAnimate) {
-      holder.classList.add("entering");
-      runningAnim.push(true);
-      let lastAnim = function() {
-        doneAnimating(holder);
-        if (autoClick) {
-          holder.classList.add("autochoose");
-          autoClickTimeout = setTimeout(function() { makeChoice(card); }, 6000);
-        }
-        finishAnim();
-      };
-      let firstAnim = function() {
-        holder.ontransitionend = lastAnim;
-        holder.ontransitioncancel = lastAnim;
-        holder.classList.remove("rotated");
-      };
-      holder.ontransitionend = firstAnim;
-      holder.ontransitioncancel = firstAnim;
-      setTimeout(function() { holder.classList.add("rotated"); holder.classList.remove("entering"); }, 10);
-    } else {  // No animation
-      if (autoClick) {
+      visual.classes.push("willchoose");
+      visual.callback = function(holder) {
         holder.classList.add("autochoose");
         autoClickTimeout = setTimeout(function() { makeChoice(card); }, 6000);
       }
     }
-    if (holder.getElementsByClassName("desc").length > 0) {
-      holder.getElementsByClassName("desc")[0].style.removeProperty("background-position");
-    }
-    holder.classList.remove("unchoosable", "mustspend");
     if (invalidChoices != null && invalidChoices.includes(idx)) {
-      holder.classList.add("unchoosable");
+      visual.classes.push("unchoosable");
     } else if (remainingMax != null && remainingMax.length > idx && remainingMax[idx]) {
       let rem = remainingMax[idx];
       let spentPct = spentPercent(spent, rem);
-      holder.getElementsByClassName("desc")[0].style.backgroundPosition = "left " + (100-spentPct) + "% top";
+      visual.backgroundPct = 100-spentPct;
       if (remainingSpend[idx]) {
-        holder.classList.add("mustspend");
+        visual.classes.push("mustspend");
         if (isMyChoice) {
-          div.onclick = function(e) { defaultSpend(rem, card); };
+          visual.defaultSpend = rem;
         }
       }
     }
+    newVisuals.push(visual);
   }
   let scrollParent = cardChoice.parentNode;
   if (count > 4) {
@@ -1871,7 +2318,7 @@ function animateMovingDiv(div, destParent) {
     runningAnim.push(true);  // Doesn't really matter what we push.
     div.ontransitionend = function() { div.classList.remove("moving"); doneAnimating(div); finishAnim(); };
     div.ontransitioncancel = function() { div.classList.remove("moving"); doneAnimating(div); finishAnim(); };
-    setTimeout(function() { div.classList.add("moving"); div.style.transform = "none"; }, 10);
+    setTimeout(function() { div.classList.add("moving"); div.style.removeProperty("transform"); }, 10);
     return;
   }
 
@@ -1886,7 +2333,7 @@ function animateMovingDiv(div, destParent) {
     moveAndTranslateNode(div, destParent);
     div.ontransitionend = function() { div.classList.remove("moving"); doneAnimating(div); setTimeout(lastAnim, 10); };
     div.ontransitioncancel = function() { div.classList.remove("moving"); doneAnimating(div); setTimeout(lastAnim, 10); };
-    setTimeout(function() { div.classList.add("moving"); div.style.transform = "none"; }, 10);
+    setTimeout(function() { div.classList.add("moving"); div.style.removeProperty("transform"); }, 10);
   }
   runningAnim.push(true);
   divToShow.ontransitionend = continueAnim;
@@ -1916,6 +2363,53 @@ function getNodeTranslation(div, destParent) {
   return "translateX(" + diffX + "px) translateY(" + diffY + "px)";
 }
 
+function translateNodeThenRemove(div, dest, callback, trueDest) {
+  let lastAnim = function() {
+    doneAnimating(div);
+    div.parentNode.removeChild(div);
+    if (callback != null) {
+      callback();
+    }
+    finishAnim();
+  };
+  div.ontransitionend = lastAnim;
+  div.ontransitioncancel = lastAnim;
+  translateNode(div, dest, trueDest);
+}
+
+function translateNode(div, dest, trueDest) {
+  let oldRect = div.getBoundingClientRect();
+  let newRect = dest.getBoundingClientRect();
+  let oldTransform = null;
+  if (trueDest) {
+    if (dest.parentNode.style.transform != null) {
+      oldTransform = dest.parentNode.style.transform;
+      dest.parentNode.style.transform = "none";
+      newRect = dest.getBoundingClientRect();
+    }
+  }
+  let diffX = Math.floor((newRect.left + newRect.right - oldRect.left - oldRect.right) / 2);
+  let diffY = Math.floor((newRect.top + newRect.bottom - oldRect.top - oldRect.bottom) / 2);
+  let scaleFactor = (newRect.right - newRect.left) / (oldRect.right - oldRect.left);
+  div.style.transform = "translateX(" + diffX + "px) translateY(" + diffY + "px) scale(" + scaleFactor+ ")";
+  if (oldTransform != null) {
+    dest.parentNode.style.transform = oldTransform;
+  }
+}
+
+// TODO: deduplicate many translateNode functions
+function translateNodeOrFalse(div, newRect) {
+  let oldRect = div.getBoundingClientRect();
+  let diffX = Math.floor((newRect.left + newRect.right - oldRect.left - oldRect.right) / 2);
+  let diffY = Math.floor((newRect.top + newRect.bottom - oldRect.top - oldRect.bottom) / 2);
+  let scaleFactor = (newRect.right - newRect.left) / (oldRect.right - oldRect.left);
+  if (diffX > 1 || diffX < -1 || scaleFactor > 1.05 || scaleFactor < 0.95) {
+    div.style.transform = "translateX(" + diffX + "px) translateY(" + diffY + "px) scale(" + scaleFactor+ ")";
+    return true;
+  }
+  return false;
+}
+
 function updatePlaces(places, activity, current) {
   let oldGates = [];
   let gateCount = 0;
@@ -1929,7 +2423,8 @@ function updatePlaces(places, activity, current) {
     let handle = place.gate != null ? place.gate.handle : "nothing";
     let gateDiv = document.getElementById("place" + placeName + "gate");
     if (gateDiv != null) {  // Some places cannot have gates.
-      updateGate(place, gateDiv, !oldGates.includes(handle));
+      let shouldAnimate = document.getElementById("eventlog").children.length && !oldGates.includes(handle);
+      updateGate(place, gateDiv, shouldAnimate);
     }
     if (place.sealed != null) {
       updateSeal(place);
@@ -1984,7 +2479,7 @@ function updateClues(place, current) {
       moveAndTranslateNode(clueDiv, dest, "abs");
       clueDiv.ontransitionend = function() { clueDiv.parentNode.removeChild(clueDiv); finishAnim(); };
       clueDiv.ontransitioncancel = function() { clueDiv.parentNode.removeChild(clueDiv); finishAnim(); };
-      setTimeout(function() { clueDiv.classList.add("moving"); clueDiv.style.transform = "none"; }, 10);
+      setTimeout(function() { clueDiv.classList.add("moving"); clueDiv.style.removeProperty("transform"); }, 10);
     } else {
       charsDiv.removeChild(clueDiv);
     }
@@ -2023,7 +2518,7 @@ function updateClues(place, current) {
       moveAndTranslateNode(c, charsDiv, "moving");
       c.ontransitionend = lastAnim;
       c.ontransitioncancel = lastAnim;
-      setTimeout(function() { c.classList.add("moving"); c.style.transform = "none"; }, 10);
+      setTimeout(function() { c.classList.add("moving"); c.style.removeProperty("transform"); }, 10);
       // In order for this animation to work, you must keep the number of clues in this div
       // constant so that future clues you animate don't shift when this clue is removed.
       let dummyClue = document.createElement("DIV");
@@ -2069,7 +2564,7 @@ function animateClues(current) {
       moveAndTranslateNode(clueDiv, dest, "moving");
       clueDiv.ontransitionend = lastAnim;
       clueDiv.ontransitioncancel = lastAnim;
-      setTimeout(function() { clueDiv.classList.add("abs", "moving"); clueDiv.style.transform = "none"; }, 10);
+      setTimeout(function() { clueDiv.classList.add("abs", "moving"); clueDiv.style.removeProperty("transform"); }, 10);
       // In order for this animation to work, you must keep the number of clues in this div
       // constant so that future clues you animate don't shift when this clue is removed.
       let dummyClue = document.createElement("DIV");
@@ -2163,33 +2658,21 @@ function updateActivity(placeName, activity) {
 
 function updateGate(place, gateDiv, shouldAnimate) {
   let gateCont = gateDiv.getElementsByClassName("gatecontainer")[0];
+  let moveFromBoard = [];
   if (place.gate) {
     let gateName = place.gate.name;
     gateDiv.classList.add("placegatepresent");
     gateCont.handle = place.gate.handle;
     if (shouldAnimate) {
-      let [holder, div] = addVisual(document.getElementById("enteringscroll"), place.gate.handle, place.gate.name, "fight", null, "Gate Back", null, null);
+      // TODO: figure out back name automatically?
+      let visual = newVisual(place.gate.handle, "fight", {"backName": "Gate Back"});
+      let holder = createVisual(document.getElementById("enteringscroll"), visual);
       holder.classList.add("entering");
       runningAnim.push(true);
-      let lastAnim = function() { 
-        doneAnimating(holder);
-        renderAssetToDiv(gateCont, gateName);
-        holder.parentNode.removeChild(holder);
-        finishAnim();
-      };
+      let callback = function() { renderAssetToDiv(gateCont, gateName); };
       let moveToBoard = function() {
         doneAnimating(holder);
-        holder.style.transformOrigin = "top left";
-        let oldRect = holder.getBoundingClientRect();
-        let newRect = gateCont.getBoundingClientRect();
-        let diffX = Math.floor(newRect.left - oldRect.left);
-        let diffY = Math.floor(newRect.top - oldRect.top);
-        let scaleFactor = (newRect.right - newRect.left) / (oldRect.right - oldRect.left);
-        setTimeout(function() { 
-          holder.ontransitionend = lastAnim;
-          holder.ontransitioncancel = lastAnim;
-          holder.style.transform = "translateX(" + diffX + "px) translateY(" + diffY + "px) scale(" + scaleFactor+ ")";
-        }, 10);
+        setTimeout(function() { translateNodeThenRemove(holder, gateCont, callback); }, 10);
       };
       let turnAround = function() {
         doneAnimating(holder);
@@ -2212,29 +2695,57 @@ function updateGate(place, gateDiv, shouldAnimate) {
         break;
       }
     }
-    gateCont.handle = null;
+    // Don't animate if the gate in card choice is going to be animated.
+    for (let src of document.getElementsByClassName("cardholder")) {
+      if (src.handle == gateCont.handle) {
+        clearAssetFromDiv(gateCont);
+        gateDiv.classList.remove("placegatepresent");
+        gateCont.handle = null;
+        return;
+      }
+    }
     if (dest != null) {
       runningAnim.push(true);
       let lastAnim = function() {
         doneAnimating(gateCont);
-        gateCont.style.transform = "none";
+        gateCont.style.removeProperty("transform");
         clearAssetFromDiv(gateCont);
         gateDiv.classList.remove("placegatepresent");
         finishAnim();
       };
-      gateCont.style.transformOrigin = "top left";
-      let oldRect = gateCont.getBoundingClientRect();
-      let newRect = dest.getBoundingClientRect();
-      let diffX = Math.floor(newRect.left - oldRect.left);
-      let diffY = Math.floor(newRect.top - oldRect.top);
-      let scaleFactor = (newRect.right - newRect.left) / (oldRect.right - oldRect.left);
       gateCont.ontransitionend = lastAnim;
       gateCont.ontransitioncancel = lastAnim;
-      gateCont.style.transform = "translateX(" + diffX + "px) translateY(" + diffY + "px) scale(" + scaleFactor+ ")";
-    } else {
-      clearAssetFromDiv(gateCont);
-      gateDiv.classList.remove("placegatepresent");
+      translateNode(gateCont, dest);
+    } else if (gateCont.handle != null) {
+      let holder = createVisual(document.getElementById("enteringscroll"), newVisual(gateCont.handle, "fight"));
+      runningAnim.push(true);
+      let lastAnim = function() {
+        doneAnimating(holder);
+        holder.parentNode.removeChild(holder);
+        finishAnim();
+      };
+      let startLeaving = function() {
+        doneAnimating(holder);
+        setTimeout(function() {
+          holder.ontransitionend = lastAnim;
+          holder.ontransitioncancel = lastAnim;
+          holder.classList.add("leaving");
+        }, 10);
+      };
+      holder.ontransitionend = startLeaving;
+      holder.ontransitioncancel = startLeaving;
+      holder.classList.add("noanimate");
+      translateNode(holder, gateCont);
+
+      setTimeout(function() {
+        clearAssetFromDiv(gateCont);
+        gateDiv.classList.remove("placegatepresent");
+        holder.classList.remove("noanimate");
+        holder.style.removeProperty("transform");
+      }, 10);
+
     }
+    gateCont.handle = null;
   }
 }
 
@@ -2350,8 +2861,7 @@ function updateGlobals(env, rumor, otherGlobals) {
   }
 }
 
-function updateCurrentCard(current) {
-  oldCurrent = current;
+function updateCurrentCard(current, visual, monster, choice) {
   let currDiv = document.getElementById("currentcard");
   let currCnt = currDiv.firstChild;
   if (current == null) {
@@ -2361,23 +2871,66 @@ function updateCurrentCard(current) {
     currDiv.classList.add("missing");
     currDiv.name = null;
     currDiv.annotation = null;
-    return;
+  } else {
+    currDiv.classList.remove("missing");
+    currDiv.name = current;
+    currDiv.annotation = current.startsWith("Mythos") ? "Mythos" : "Encounter";
+    renderAssetToDiv(currCnt, current);
   }
-  currDiv.classList.remove("missing");
-  currDiv.name = current;
-  currDiv.annotation = current.startsWith("Mythos") ? "Mythos" : "Encounter";
-  renderAssetToDiv(currCnt, current);
+  // If we're not showing anything, prioritize showing the monster the player is fighting.
+  if (newVisuals.length == 0 && monster != null) {
+    newVisuals.push(newVisual(monster.handle, "fight", {"monster": monster}));
+  }
+  // If we're still not showing anything, show the current card (unless we need to see the board for our choice).
+  // TODO: how do we make this work for things like gaining money?
+  let bareChoice = choice != null && choice.to_spawn == null && choice.board_monster == null && choice.places == null;
+  if (newVisuals.length == 0 && current != null && bareChoice) {
+    newVisuals.push(newVisual(current, "card"));
+  }
+  if (visual != null) {
+    newVisuals.push(newVisual(visual, "card"));
+    // This is the case when we show the mythos card for the second time. Give the players some
+    // time to read it. TODO: other times we draw cards.
+    if (visual == oldCurrent) {
+      runningAnim.push(true);
+      setTimeout(finishAnim, 6000);
+    }
+  }
 }
 
 function toggleGlobals(e, frontCard) {
   let globalBox = document.getElementById("globals");
   let globalScroll = document.getElementById("globalscroll");
   let globalCards = document.getElementById("globalcards");
+  let toAnimate = [];
   if (globalBox.classList.contains("zoomed")) {
+    for (let holder of globalCards.getElementsByClassName("cardholder")) {
+      let found = false;
+      for (let cont of document.getElementById("globals").getElementsByClassName("mythoscontainer")) {
+        if (holder.handle == cont.name) {
+          // Use the mythoscard container, as the mythoscontainer can be compressed/stretched.
+          toAnimate.push([cont.getElementsByClassName("mythoscard")[0], holder]);
+          found = true;
+          break;
+        }
+      }
+      if (!found) {
+        toAnimate.push([null, holder]);
+      }
+    }
+    // Animate
+    for (let [dest, source] of toAnimate) {
+      if (dest == null) {
+        setTimeout(function() { source.parentNode.removeChild(source); }, 1);
+        continue;
+      }
+      setTimeout(function() { translateNode(source, dest); }, 1);
+    }
     globalBox.classList.remove("zoomed");
-    globalScroll.style.display = "none";
+    setTimeout(function() { globalScroll.style.display = "none"; }, 820);
     return;
   }
+
   globalBox.classList.add("zoomed");
   globalScroll.style.display = "flex";
   while (globalCards.getElementsByClassName("cardholder").length) {
@@ -2390,14 +2943,15 @@ function toggleGlobals(e, frontCard) {
       continue;
     }
     count++;
-    let [holder, container] = addVisual(globalCards, cont.name, cont.name, "mythos", null, null, null, cont.annotation);
-    if (frontCard != null) {
-      if (cont.name == frontCard) {
-        toDisplay = holder;
-      } else {
-        holder.classList.add("unchoosable");
-      }
+    let visual = newVisual(cont.name, "mythos", {"descText": cont.annotation});
+    if (frontCard != null && cont.name != frontCard) {
+      visual.classes.push("unchoosable");
     }
+    let holder = createVisual(globalCards, visual);
+    if (frontCard != null && cont.name == frontCard) {
+      toDisplay = holder;
+    }
+    toAnimate.push([cont.getElementsByClassName("mythoscard")[0], holder]);
   }
   if (count > 4) {
     globalScroll.classList.add("overflowing");
@@ -2407,6 +2961,13 @@ function toggleGlobals(e, frontCard) {
     }
   } else {
     globalScroll.classList.remove("overflowing");
+  }
+
+  // Animate
+  for (let [source, dest] of toAnimate) {
+    dest.classList.add("noanimate");
+    translateNode(dest, source);
+    setTimeout(function() { dest.classList.remove("noanimate"); dest.style.removeProperty("transform"); }, 1);
   }
 }
 
@@ -2430,18 +2991,20 @@ function updateDice(dice, playerIdx, monsterList) {
     return;
   }
   if (dice.name != null && dice.name != chosenAncient) {  // Show the monster/card that is causing this dice roll.
-    document.getElementById("cardchoicescroll").style.display = cardsStyle;
-    document.getElementById("togglecards").classList.remove("hidden");
-    setCardButtonText();
-    if (monsterNames.includes(dice.name) && dice.check_type != "evade") {
+    let found = false;
+    if (dice.check_type != "evade") {
+      // If the dice refers to a monster, find the monster by handle. Exception: if it's an evade check, we
+      // want to show the front of the monster instead of the back of the monster.
       for (let m of monsterList) {
-        if (m.name == dice.name) {
-          showMonster(document.getElementById("uicardchoice"), m);
+        if (m.handle == dice.name) {
+          newVisuals.push(newVisual(m.handle, "fight", {"monster": m}));
+          found = true;
           break;
         }
       }
-    } else {
-      showActionSource(document.getElementById("uicardchoice"), dice.name);
+    }
+    if (!found) {
+      newVisuals.push(newVisual(dice.name, "card"));
     }
   }
   if (dice.prompt) {
@@ -2694,6 +3257,8 @@ function drawChosenChar(character) {
 
 function updateCharacterSheets(characters, pendingCharacters, playerIdx, firstPlayer, choice, sliders) {
   gainedClues = [];  // Reset this before updating all characters.
+  gainedCards = {};  // Also reset this.
+  lostCards = {};
   // We're going to fix the visibility of the spendDiv first so that animations of the player
   // (un)spending their stats works correctly.
   let spendable = null;
@@ -3097,7 +3662,7 @@ function updateCharacterStats(sheet, character, isPlayer, spent, spendable) {
         runningAnim.push(true);
         movingStat.ontransitionend = function() { movingStat.classList.remove("moving"); doneAnimating(movingStat); };
         movingStat.ontransitioncancel = function() { movingStat.classList.remove("moving"); doneAnimating(movingStat); };
-        setTimeout(function() { movingStat.classList.add("moving"); movingStat.style.transform = "none"; }, 10);
+        setTimeout(function() { movingStat.classList.add("moving"); movingStat.style.removeProperty("transform"); }, 10);
         setTimeout(finishAnim, 300);  // We are okay starting on the next update before this is done animating.
       }
       let removable = [];
@@ -3111,7 +3676,7 @@ function updateCharacterStats(sheet, character, isPlayer, spent, spendable) {
         runningAnim.push(true);
         toRemove.ontransitionend = function() { toRemove.parentNode.removeChild(toRemove); };
         toRemove.ontransitioncancel = function() { toRemove.parentNode.removeChild(toRemove); };
-        setTimeout(function() { toRemove.classList.add("moving"); toRemove.style.transform = "none"; }, 10);
+        setTimeout(function() { toRemove.classList.add("moving"); toRemove.style.removeProperty("transform"); }, 10);
         setTimeout(finishAnim, 300);
       }
     } else {
@@ -3232,6 +3797,9 @@ function updatePossessions(sheet, possessions, isPlayer, spent, chosen, selectTy
   }
   for (let div of pDiv.getElementsByClassName("possession")) {
     if (handleToInfo[div.handle] == null) {
+      if (sheet.getElementsByClassName("playertop")[0].idx != null && !div.classList.contains("big")) {
+        lostCards[div.handle] = div;
+      }
       toRemove.push(div);
       continue;
     }
@@ -3239,7 +3807,8 @@ function updatePossessions(sheet, possessions, isPlayer, spent, chosen, selectTy
     delete handleToInfo[div.handle];
   }
   for (let div of toRemove) {
-    pDiv.removeChild(div);
+    // Keep for a little bit so that we can animate them.
+    setTimeout(function() { pDiv.removeChild(div); }, 10);
   }
   for (let handle in handleToInfo) {
     if (handle.startsWith("Bad Credit") || handle.startsWith("Voice Bonus") || ["Streetwise", "Blessed is the Child"].includes(handle)) {
@@ -3247,6 +3816,11 @@ function updatePossessions(sheet, possessions, isPlayer, spent, chosen, selectTy
     }
     let div = createPossession(handleToInfo[handle], isPlayer, pDiv);
     updatePossession(div, handleToInfo[div.handle], spent, chosen, selectType);
+    if (sheet.getElementsByClassName("playertop")[0].idx != null) {
+      if (!div.classList.contains("big")) {
+        gainedCards[handle] = div;
+      }
+    }
   }
 }
 
