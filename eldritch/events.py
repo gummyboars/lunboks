@@ -2725,6 +2725,10 @@ class RerollCheck(Event):
       return f"[{self.character.name}] rerolls a {self.check.check_type} check"
     return f"[{self.character.name}] rerolled a {self.check.check_type} check"
 
+  @property
+  def check_type(self):
+    return self.check.check_type
+
 
 class RerollSpecific(Event):
 
@@ -4500,6 +4504,9 @@ class CloseGate(Event):
             CloseLocation(self.location_name, closed_until - state.turn_number - 1)
         )
         return
+      # Animate the gate closing before animating the monsters being returned to the cup.
+      state.event_stack.append(Animate())
+      return
 
     if not self.return_monsters:
       monsters_to_return = []
@@ -5231,7 +5238,7 @@ class SpawnClue(Event):
       self.eligible[0].clues += 1
       self.spawned = True
       return
-    self.choice = MultipleChoice(
+    self.choice = CardChoice(
         state.characters[state.first_player],
         f"Choose an investigator to receive the clue token at [{self.location_name}]",
         [char.name for char in self.eligible],
@@ -5382,7 +5389,7 @@ class MoveMonster(Event):
     return f"[{self.monster.name}] moved from [{self.source.name}] to [{self.destination.name}]"
 
   def animated(self):
-    return True
+    return self.destination is not False
 
 
 class ReturnToCup(Event):
