@@ -428,6 +428,12 @@ class GameState:
       else:
         raise RuntimeError(f"Unknown choice type {choice.__class__.__name__}")
 
+    if top_event and isinstance(top_event, events.DrawMythosCard) and top_event.is_resolved():
+      output["visual"] = top_event.card.name
+
+    if top_event and isinstance(top_event, events.MoveMonsters) and top_event.is_done():
+      output["visual"] = current
+
     if top_event and isinstance(top_event, events.SliderInput) and not top_event.is_done():
       output["sliders"] = {"prompt": top_event.prompt()}
       output["chooser"] = self.characters.index(top_event.character)
