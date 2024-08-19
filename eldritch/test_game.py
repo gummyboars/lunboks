@@ -35,6 +35,15 @@ class NoMythos(mythos.GlobalEffect):
     return events.Nothing()
 
 
+class PauseMythos(mythos.GlobalEffect):
+
+  def __init__(self):
+    self.name = "PauseMythos"
+
+  def create_event(self, state):  # pylint: disable=unused-argument
+    return events.MultipleChoice(state.characters[0], "", ["PauseMythos"])
+
+
 class DevourFirstPlayer(mythos.GlobalEffect):
 
   def __init__(self):
@@ -1314,10 +1323,6 @@ class InsaneTest(unittest.TestCase):
     self.state.event_stack.append(events.Mythos(self.state.characters[0]))
     for _ in self.state.resolve_loop():
       pass
-    self.assertIsInstance(self.state.event_stack[-1], events.CardChoice)
-    self.state.event_stack[-1].resolve(self.state, "Mythos1")
-    for _ in self.state.resolve_loop():
-      pass
     self.assertEqual(self.state.turn_idx, 0)
     self.assertEqual(self.state.turn_phase, "mythos")
     self.assertIsInstance(self.state.event_stack[-1], events.DiceRoll)
@@ -1894,13 +1899,13 @@ class PlayerJoinTest(PlayerTest):
     self.handle("B", {"type": "join", "char": "Nun"})
     self.assertIn("B", self.game.pending_sessions)
 
-  @mock.patch.object(mythos, "CreateMythos", return_value=[NoMythos(), NoMythos()])
+  @mock.patch.object(mythos, "CreateMythos", return_value=[PauseMythos(), PauseMythos()])
   def testJoinMidGame(self, _):
     self.game.connect_user("A")
     self.handle("A", {"type": "join", "char": "Nun"})
     self.handle("A", {"type": "start"})
     self.handle("A", {"type": "set_slider", "name": "done"})
-    self.handle("A", {"type": "choice", "choice": "NoMythos"})
+    self.handle("A", {"type": "choice", "choice": "PauseMythos"})
     self.assertEqual(len(self.game.game.characters), 1)
     self.assertEqual(self.game.game.characters[0].name, "Nun")
     self.assertEqual(self.game.game.characters[0].place.name, "Church")
@@ -1918,7 +1923,7 @@ class PlayerJoinTest(PlayerTest):
     self.handle("A", {"type": "choice", "choice": "Southside"})
     self.handle("A", {"type": "choice", "choice": "done"})
 
-    # Should now be in the mythos choice, with A needing to make a choice. No new characters yet.
+    # Should now be in the mythos phase. No new characters yet.
     self.assertEqual(self.game.game.turn_phase, "mythos")
     self.assertEqual(len(self.game.game.characters), 1)
 
@@ -1926,7 +1931,7 @@ class PlayerJoinTest(PlayerTest):
     self.handle("C", {"type": "join", "char": "Gangster"})
     self.assertEqual(len(self.game.game.characters), 1)
 
-    self.handle("A", {"type": "choice", "choice": "NoMythos"})
+    self.handle("A", {"type": "choice", "choice": "PauseMythos"})
 
     # Validate that new characters get a chance to set their sliders before upkeep.
     self.assertEqual(self.game.game.turn_phase, "mythos")
@@ -1974,16 +1979,15 @@ class DevouredPlayerJoinTest(PlayerTest):
       with mock.patch.object(eldritch.random, "shuffle"):
         self.handle("A", {"type": "start"})
     self.handle("A", {"type": "set_slider", "name": "done"})
-    self.handle("B", {"type": "set_slider", "name": "done"})
     with self.assertRaisesRegex(game.InvalidMove, "must choose new"):
-      self.handle("A", {"type": "choice", "choice": "DevourFirstPlayer"})
+      self.handle("B", {"type": "set_slider", "name": "done"})
 
   def startNormal(self):
-    with mock.patch.object(mythos, "CreateMythos", return_value=[NoMythos(), NoMythos()]):
+    with mock.patch.object(mythos, "CreateMythos", return_value=[PauseMythos(), PauseMythos()]):
       self.handle("A", {"type": "start"})
     self.handle("A", {"type": "set_slider", "name": "done"})
     self.handle("B", {"type": "set_slider", "name": "done"})
-    self.handle("A", {"type": "choice", "choice": "NoMythos"})
+    self.handle("A", {"type": "choice", "choice": "PauseMythos"})
 
   def testDevouredCharacterRejoin(self):
     self.startDevoured()

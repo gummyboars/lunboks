@@ -574,10 +574,6 @@ class Mythos(Turn):
       # if a character is devoured after we create an event that iterates through all the chars,
       # but before we make a choice?
       self.action = self.draw.card.create_event(state)
-      if not state.test_mode:
-        choice = CardChoice(first_player, "Choose a Mythos Card", [self.draw.card.name])
-        cond = Conditional(first_player, choice, "choice_index", {0: self.action})
-        self.action = Sequence([choice, cond])
       state.event_stack.append(self.action)
       return
 
@@ -4589,6 +4585,9 @@ class DrawMythosCard(Event):
     if self.shuffled:
       return f"[{self.character.name}] shuffled the deck and then drew [{self.card.name}]"
     return f"[{self.character.name}] drew [{self.card.name}]"
+
+  def animated(self):
+    return True
 
 
 class OpenGate(Event):
