@@ -69,7 +69,7 @@ class Monster:
 
   @property
   def visual_name(self):
-    return self.name
+    return self.handle
 
   def json_repr(self, state, char):
     return {
@@ -171,7 +171,7 @@ class LandSquid(Monster):
         if isinstance(char.place, places.CityPlace)
     ])
     first_player = state.characters[state.first_player]
-    roll = events.DiceRoll(first_player, 1, name=self.name, bad=[4, 5, 6])
+    roll = events.DiceRoll(first_player, 1, name=self.handle, bad=[4, 5, 6])
     cond = events.Conditional(first_player, roll, "sum", {0: events.Nothing(), 4: seq})
     return events.Sequence([roll, cond])
 
@@ -234,7 +234,7 @@ class ElderThing(Monster):
     if getattr(event, "defeated", False) or getattr(event, "evaded", False):
       return None
     loss = events.WeaponOrSpellLossChoice(
-        event.character, "Choose a weapon or spell to lose", 1, visual=self.name,
+        event.character, "Choose a weapon or spell to lose", 1, visual=self.handle,
     )
     return events.Sequence([loss, events.DiscardSpecific(event.character, loss)], event.character)
 
@@ -356,7 +356,7 @@ class DreamFlier(Monster):
     world_name = values.OtherWorldName(event.character)
     return_city = events.Return(event.character, world_name, get_lost=False)
     prompt = "Choose the gate you are pulled through"
-    nearest_gate = events.NearestGateChoice(event.character, prompt, "Choose", visual=self.name)
+    nearest_gate = events.NearestGateChoice(event.character, prompt, "Choose", visual=self.handle)
     travel = events.Travel(event.character, nearest_gate)
     pulled_through = events.Sequence([nearest_gate, travel], event.character)
     seq.append(events.Conditional(
