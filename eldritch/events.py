@@ -2168,7 +2168,7 @@ class CastSpell(Event):
     self.spell.choice = self.choice
     if not self.check:
       self.check = Check(
-          self.character, "spell", self.spell.get_difficulty(state), name=self.spell.name,
+          self.character, "spell", self.spell.get_difficulty(state), name=self.spell.handle,
           difficulty=self.spell.get_required_successes(state),
       )
       self.spell.check = self.check
@@ -2389,7 +2389,7 @@ class RollToMaintain(Event):
 
   def resolve(self, state) -> None:
     if self.roll is None:
-      self.roll = DiceRoll(self.character, 1, name=self.item.name, bad=self.item.upkeep_bad_rolls)
+      self.roll = DiceRoll(self.character, 1, name=self.item.handle, bad=self.item.upkeep_bad_rolls)
       state.event_stack.append(self.roll)
       return
 
@@ -3599,7 +3599,7 @@ class NearestLowestSneakChoice(MapChoice, metaclass=abc.ABCMeta):
 
   def __init__(self, character, monster):
     super().__init__(
-        character, f"Choose where the [{monster.name}] should move", visual=monster.name,
+        character, f"Choose where the [{monster.name}] should move", visual=monster.handle,
     )
     self.monster = monster
 
@@ -4387,7 +4387,7 @@ class GateCloseAttempt(Event):
     if self.choice is None:
       self.choice = MultipleChoice(
           self.character, "Close the gate?", ["Close with fight", "Close with lore", "Don't close"],
-          visual=state.places[self.location_name].gate.json_repr()["name"],
+          visual=state.places[self.location_name].gate.handle,
       )
       state.event_stack.append(self.choice)
       return
@@ -4401,8 +4401,7 @@ class GateCloseAttempt(Event):
       difficulty = state.places[self.location_name].gate.difficulty(state)
       attribute = "lore" if self.choice.choice == "Close with lore" else "fight"
       self.check = Check(
-          self.character, attribute, difficulty,
-          name=state.places[self.location_name].gate.json_repr()["name"],
+          self.character, attribute, difficulty, name=state.places[self.location_name].gate.handle,
       )
       state.event_stack.append(self.check)
       return
