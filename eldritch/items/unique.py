@@ -418,8 +418,8 @@ class TibetanTome(Tome):
   def read_event(self, owner):
     check = events.Check(owner, "lore", -1, name=self.handle)
     success = events.Sequence([
-        events.Draw(owner, "spells", 1),
         events.AddToken(self, "stamina", owner),
+        events.Draw(owner, "spells", 1),
         events.Loss(owner, {"sanity": 1}, source=self),
     ], owner
     )
@@ -433,8 +433,8 @@ class MysticismTome(Tome):
   def read_event(self, owner):
     check = events.Check(owner, "lore", -2, name=self.handle)
     success = events.Sequence([
+        events.DiscardSpecific(owner, [self]),
         events.Draw(owner, "skills", 1),
-        events.DiscardSpecific(owner, [self])
     ], owner
     )
     return events.PassFail(owner, check, success, events.Nothing())
@@ -447,8 +447,8 @@ class BlackMagicTome(Tome):
   def read_event(self, owner):
     check = events.Check(owner, "lore", -2, name=self.handle)
     success = events.Sequence([
-        events.Draw(owner, "spells", 1),
         events.DiscardSpecific(owner, [self]),
+        events.Draw(owner, "spells", 1),
         events.GainOrLoss(owner, gains={"clues": 1}, losses={"sanity": 2}, source=self),
     ], owner
     )
@@ -462,8 +462,8 @@ class BlackBook(Tome):
   def read_event(self, owner):
     check = events.Check(owner, "lore", -1, name=self.handle)
     success = events.Sequence([
-        events.Draw(owner, "spells", 1),
         events.DiscardSpecific(owner, [self]),
+        events.Draw(owner, "spells", 1),
         events.Loss(owner, losses={"sanity": 1}, source=self),
     ], owner
     )
