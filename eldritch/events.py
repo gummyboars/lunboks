@@ -2152,7 +2152,7 @@ class CastSpell(Event):
       )
       self.choice = CardSpendChoice(
           self.character, f"Cast [{self.spell.name}]",
-          [self.spell.name, "Cancel"], spends=[spend, None],
+          [self.spell.handle, "Cancel"], spends=[spend, None],
       )
 
     if not self.choice.is_done():

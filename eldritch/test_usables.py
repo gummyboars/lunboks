@@ -744,7 +744,7 @@ class FindGateTest(EventTest):
     self.state.event_stack.append(self.state.usables[0]["Find Gate0"])
     spend_choice = self.resolve_to_choice(SpendMixin)
     self.spend("sanity", 1, spend_choice)
-    spend_choice.resolve(self.state, "Find Gate")
+    spend_choice.resolve(self.state, "Find Gate0")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       choice = self.resolve_to_choice(GateChoice)
     choice.resolve(self.state, "Isle")
@@ -765,7 +765,7 @@ class FindGateTest(EventTest):
     self.state.event_stack.append(self.state.usables[0]["Find Gate0"])
     spend_choice = self.resolve_to_choice(SpendMixin)
     self.spend("sanity", 1, spend_choice)
-    spend_choice.resolve(self.state, "Find Gate")
+    spend_choice.resolve(self.state, "Find Gate0")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       self.resolve_until_done()
 
@@ -782,7 +782,7 @@ class FindGateTest(EventTest):
     self.state.event_stack.append(self.state.usables[0]["Find Gate0"])
     spend_choice = self.resolve_to_choice(SpendMixin)
     self.spend("sanity", 1, spend_choice)
-    spend_choice.resolve(self.state, "Find Gate")
+    spend_choice.resolve(self.state, "Find Gate0")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
       self.resolve_until_done()
 
@@ -823,10 +823,10 @@ class FleshWardTest(EventTest):
       self.resolve_to_usable(0, "Flesh Ward0", events.CastSpell)
     self.state.event_stack.append(self.state.usables[0]["Flesh Ward0"])
     choice = self.resolve_to_choice(SpendMixin)
-    self.assertListEqual(choice.choices, ["Flesh Ward", "Cancel"])
+    self.assertListEqual(choice.choices, ["Flesh Ward0", "Cancel"])
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       self.spend("sanity", 1, choice)
-      choice.resolve(self.state, "Flesh Ward")
+      choice.resolve(self.state, "Flesh Ward0")
       fight_or_flee = self.resolve_to_choice(MultipleChoice)
 
     self.assertEqual(self.char.stamina, 5)
@@ -853,10 +853,10 @@ class FleshWardTest(EventTest):
       self.resolve_to_usable(0, "Flesh Ward0", events.CastSpell)
     self.state.event_stack.append(self.state.usables[0]["Flesh Ward0"])
     choice = self.resolve_to_choice(SpendMixin)
-    self.assertListEqual(choice.choices, ["Flesh Ward", "Cancel"])
+    self.assertListEqual(choice.choices, ["Flesh Ward0", "Cancel"])
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=4)):
       self.spend("sanity", 1, choice)
-      choice.resolve(self.state, "Flesh Ward")
+      choice.resolve(self.state, "Flesh Ward0")
       fight_or_flee = self.resolve_to_choice(MultipleChoice)
 
     self.assertTrue(self.flesh_ward.exhausted)
@@ -889,10 +889,10 @@ class FleshWardTest(EventTest):
       self.resolve_to_usable(0, "Flesh Ward0", events.CastSpell)
     self.state.event_stack.append(self.state.usables[0]["Flesh Ward0"])
     choice = self.resolve_to_choice(SpendMixin)
-    self.assertListEqual(choice.choices, ["Flesh Ward", "Cancel"])
+    self.assertListEqual(choice.choices, ["Flesh Ward0", "Cancel"])
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       self.spend("sanity", 1, choice)
-      choice.resolve(self.state, "Flesh Ward")
+      choice.resolve(self.state, "Flesh Ward0")
       self.resolve_until_done()
 
     self.assertEqual(self.char.stamina, 5)
@@ -907,10 +907,10 @@ class FleshWardTest(EventTest):
       self.resolve_to_usable(0, "Flesh Ward0", events.CastSpell)
     self.state.event_stack.append(self.state.usables[0]["Flesh Ward0"])
     choice = self.resolve_to_choice(SpendMixin)
-    self.assertListEqual(choice.choices, ["Flesh Ward", "Cancel"])
+    self.assertListEqual(choice.choices, ["Flesh Ward0", "Cancel"])
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       self.spend("sanity", 1, choice)
-      choice.resolve(self.state, "Flesh Ward")
+      choice.resolve(self.state, "Flesh Ward0")
       self.resolve_until_done()
     self.assertEqual(self.char.stamina, 5)
     self.assertEqual(self.char.sanity, 4)
@@ -922,10 +922,10 @@ class FleshWardTest(EventTest):
     self.resolve_to_usable(0, "Flesh Ward0", events.CastSpell)
     self.state.event_stack.append(self.state.usables[0]["Flesh Ward0"])
     choice = self.resolve_to_choice(SpendMixin)
-    self.assertListEqual(choice.choices, ["Flesh Ward", "Cancel"])
+    self.assertListEqual(choice.choices, ["Flesh Ward0", "Cancel"])
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       self.spend("sanity", 1, choice)
-      choice.resolve(self.state, "Flesh Ward")
+      choice.resolve(self.state, "Flesh Ward0")
       self.resolve_until_done()
     self.assertEqual(self.char.stamina, 5)
     # -1 from the spell, -1 from the Loss()
@@ -964,9 +964,9 @@ class HealTest(EventTest):
 
     self.state.event_stack.append(self.state.usables[0]["Heal0"])
     choice = self.resolve_to_choice(SpendMixin)
-    self.assertEqual(choice.choices, ["Heal", "Cancel"])
+    self.assertEqual(choice.choices, ["Heal0", "Cancel"])
     self.spend("sanity", 1, choice)
-    choice.resolve(self.state, "Heal")
+    choice.resolve(self.state, "Heal0")
     with mock.patch.object(
             events.random,
             "randint",
@@ -989,9 +989,9 @@ class HealTest(EventTest):
 
     self.state.event_stack.append(self.state.usables[0]["Heal0"])
     choice = self.resolve_to_choice(SpendMixin)
-    self.assertEqual(choice.choices, ["Heal", "Cancel"])
+    self.assertEqual(choice.choices, ["Heal0", "Cancel"])
     self.spend("sanity", 1, choice)
-    choice.resolve(self.state, "Heal")
+    choice.resolve(self.state, "Heal0")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       choice = self.resolve_to_choice(MultipleChoice)
     self.assertEqual(choice.choices, ["Dummy"])
@@ -1011,9 +1011,9 @@ class HealTest(EventTest):
 
     self.state.event_stack.append(self.state.usables[0]["Heal0"])
     choice = self.resolve_to_choice(SpendMixin)
-    self.assertEqual(choice.choices, ["Heal", "Cancel"])
+    self.assertEqual(choice.choices, ["Heal0", "Cancel"])
     self.spend("sanity", 1, choice)
-    choice.resolve(self.state, "Heal")
+    choice.resolve(self.state, "Heal0")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=4)):
       self.resolve_to_choice(events.SliderInput)
 
@@ -1042,9 +1042,9 @@ class HealTest(EventTest):
 
     self.state.event_stack.append(self.state.usables[0]["Heal0"])
     choice = self.resolve_to_choice(SpendMixin)
-    self.assertEqual(choice.choices, ["Heal", "Cancel"])
+    self.assertEqual(choice.choices, ["Heal0", "Cancel"])
     self.spend("sanity", 1, choice)
-    choice.resolve(self.state, "Heal")
+    choice.resolve(self.state, "Heal0")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       choice = self.resolve_to_choice(MultipleChoice)
     self.assertEqual(choice.choices, ["Dummy", "Nun"])
@@ -1092,7 +1092,7 @@ class VoiceTest(EventTest):
     self.state.event_stack.append(voice)
     cast = self.resolve_to_choice(CardSpendChoice)
     self.spend("sanity", 1, cast)
-    cast.resolve(self.state, "Voice")
+    cast.resolve(self.state, "Voice0")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       sliders = self.resolve_to_choice(SliderInput)
 
@@ -1119,7 +1119,7 @@ class VoiceTest(EventTest):
     self.state.event_stack.append(voice)
     cast = self.resolve_to_choice(CardSpendChoice)
     self.spend("sanity", 1, cast)
-    cast.resolve(self.state, "Voice")
+    cast.resolve(self.state, "Voice0")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
       sliders = self.resolve_to_choice(SliderInput)
 
@@ -1140,7 +1140,7 @@ class VoiceTest(EventTest):
     self.state.event_stack.append(voice)
     cast = self.resolve_to_choice(CardSpendChoice)
     self.spend("sanity", 1, cast)
-    cast.resolve(self.state, "Voice")
+    cast.resolve(self.state, "Voice0")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       sliders = self.resolve_to_choice(SliderInput)
     sliders.resolve(self.state, "done", None)
@@ -1161,7 +1161,7 @@ class VoiceTest(EventTest):
     self.state.event_stack.append(voice)
     cast = self.resolve_to_choice(CardSpendChoice)
     self.spend("sanity", 1, cast)
-    cast.resolve(self.state, "Voice")
+    cast.resolve(self.state, "Voice0")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       sliders = self.resolve_to_choice(SliderInput)
     self.assertTrue(self.char.possessions[0].exhausted)
@@ -1191,7 +1191,7 @@ class VoiceTest(EventTest):
     self.state.event_stack.append(voice)
     cast = self.resolve_to_choice(CardSpendChoice)
     self.spend("sanity", 1, cast)
-    cast.resolve(self.state, "Voice")
+    cast.resolve(self.state, "Voice0")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       sliders = self.resolve_to_choice(SliderInput)
     self.assertTrue(self.char.possessions[0].exhausted)
@@ -1537,7 +1537,7 @@ class MistsTest(EventTest):
     self.resolve_to_usable(0, "Mists0", events.CastSpell)
     self.state.event_stack.append(self.state.usables[0]["Mists0"])
     choice = self.resolve_to_choice(MultipleChoice)
-    choice.resolve(self.state, "Mists")
+    choice.resolve(self.state, "Mists0")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       self.resolve_until_done()
 
@@ -1564,7 +1564,7 @@ class MistsTest(EventTest):
     self.resolve_to_usable(0, "Mists0", events.CastSpell)
     self.state.event_stack.append(self.state.usables[0]["Mists0"])
     choice = self.resolve_to_choice(MultipleChoice)
-    choice.resolve(self.state, "Mists")
+    choice.resolve(self.state, "Mists0")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=4)):
       self.resolve_to_choice(MultipleChoice)
       self.assertFalse(self.state.usables)
@@ -1582,7 +1582,7 @@ class MistsTest(EventTest):
       self.resolve_to_usable(0, "Mists0", events.CastSpell)
     self.state.event_stack.append(self.state.usables[0]["Mists0"])
     choice = self.resolve_to_choice(MultipleChoice)
-    choice.resolve(self.state, "Mists")
+    choice.resolve(self.state, "Mists0")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       spend_choice = self.resolve_to_choice(SpendChoice)
       self.assertIsInstance(self.state.event_stack[-2], Check)

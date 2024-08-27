@@ -2686,7 +2686,7 @@ class Mythos42Test(EventTest):
     self.state.event_stack.append(voice)
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       cast_choice = self.resolve_to_choice(MultipleChoice)
-      cast_choice.resolve(self.state, "Voice")
+      cast_choice.resolve(self.state, "Voice0")
       sliders = self.resolve_to_choice(SliderInput)
       sliders.resolve(self.state, "done", None)
       self.resolve_until_done()
@@ -2698,7 +2698,7 @@ class Mythos42Test(EventTest):
       curse = self.resolve_to_usable(0, "Dread Curse0")
       self.state.event_stack.append(curse)
       cast_choice = self.resolve_to_choice(MultipleChoice)
-      cast_choice.resolve(self.state, "Dread Curse")
+      cast_choice.resolve(self.state, "Dread Curse0")
       weapons = self.resolve_to_choice(CombatChoice)
       weapons.resolve(self.state, "done")
       self.resolve_until_done()
