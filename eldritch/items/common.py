@@ -131,7 +131,7 @@ class AncientTome(Tome):
   def read_event(self, owner):
     check = events.Check(owner, "lore", -1, name=self.handle)
     success = events.Sequence(
-        [events.Draw(owner, "spells", 1), events.DiscardSpecific(owner, [self])], owner,
+        [events.DiscardSpecific(owner, [self]), events.Draw(owner, "spells", 1)], owner,
     )
     return events.PassFail(owner, check, success, events.Nothing())
 
@@ -143,7 +143,7 @@ class OldJournal(Tome):
   def read_event(self, owner):
     check = events.Check(owner, "lore", -1, name=self.handle)
     success = events.Sequence(
-        [events.Gain(owner, {"clues": 3}), events.DiscardSpecific(owner, [self])], owner
+        [events.DiscardSpecific(owner, [self]), events.Gain(owner, {"clues": 3})], owner
     )
     return events.PassFail(owner, check, success, events.Nothing())
 
