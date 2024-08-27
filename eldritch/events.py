@@ -3359,8 +3359,9 @@ class ItemLossChoice(ItemChoice):
 
 class WeaponOrSpellLossChoice(ItemLossChoice):
 
-  def __init__(self, character, prompt, count, visual=None):
-    super().__init__(character, prompt, count, visual=visual)
+  def __init__(self, character, prompt, count, monster):
+    super().__init__(character, prompt, count)
+    self.monster = monster
 
   def compute_choices(self, state):
     self._choices = [
@@ -3553,10 +3554,9 @@ class OverrideGateChoice(Event):
 
 class NearestGateChoice(MapChoice):
 
-  def __init__(self, character, prompt, annotation, none_choice=None, visual=None):
-    super().__init__(
-        character, prompt, none_choice=none_choice, annotation=annotation, visual=visual,
-    )
+  def __init__(self, character, prompt, annotation, none_choice=None, monster=None):
+    super().__init__(character, prompt, none_choice=none_choice, annotation=annotation)
+    self.monster = monster
 
   def compute_choices(self, state):
     if not isinstance(self.character.place, places.CityPlace):
@@ -3598,9 +3598,7 @@ class NearestGateChoice(MapChoice):
 class NearestLowestSneakChoice(MapChoice, metaclass=abc.ABCMeta):
 
   def __init__(self, character, monster):
-    super().__init__(
-        character, f"Choose where the [{monster.name}] should move", visual=monster.handle,
-    )
+    super().__init__(character, f"Choose where the [{monster.name}] should move")
     self.monster = monster
 
   def compute_choices(self, state):
