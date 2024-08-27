@@ -234,7 +234,7 @@ class ElderThing(Monster):
     if getattr(event, "defeated", False) or getattr(event, "evaded", False):
       return None
     loss = events.WeaponOrSpellLossChoice(
-        event.character, "Choose a weapon or spell to lose", 1, visual=self.handle,
+        event.character, "Choose a weapon or spell to lose", 1, self,
     )
     return events.Sequence([loss, events.DiscardSpecific(event.character, loss)], event.character)
 
@@ -356,7 +356,7 @@ class DreamFlier(Monster):
     world_name = values.OtherWorldName(event.character)
     return_city = events.Return(event.character, world_name, get_lost=False)
     prompt = "Choose the gate you are pulled through"
-    nearest_gate = events.NearestGateChoice(event.character, prompt, "Choose", visual=self.handle)
+    nearest_gate = events.NearestGateChoice(event.character, prompt, "Choose", monster=self)
     travel = events.Travel(event.character, nearest_gate)
     pulled_through = events.Sequence([nearest_gate, travel], event.character)
     seq.append(events.Conditional(

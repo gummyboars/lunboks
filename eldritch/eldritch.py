@@ -305,6 +305,14 @@ class GameState:
           current = event.draw.card.name
     output["current"] = current
 
+    # Figure out any monter currently being fought or evaded. This is used for events like stamina
+    # loss that happen while fighting the monster, but don't necessarily have an associated visual.
+    output["monster"] = None
+    for event in reversed(self.event_stack):
+      if isinstance(event, events.EvadeOrCombat):
+        output["monster"] = event.monster.json_repr(self, event.character)
+        break
+
     # Figure out the current dice roll/check and how many bonus dice it has.
     roller = None
     bonus = 0
@@ -382,6 +390,8 @@ class GameState:
       output["choice"]["visual"] = getattr(choice, "visual", spell.name if spell else None)
       output["choice"]["annotations"] = choice.annotations(self)
       output["choice"]["invalid_choices"] = list(getattr(choice, "invalid_choices", {}).keys())
+      if getattr(getattr(choice, "monster", None), "visual_name", None) is not None:
+        output["choice"]["monster"] = choice.monster.json_repr(self, choice.character)
       if isinstance(choice, events.SpendMixin):
         output["choice"]["spendable"] = list(choice.spendable)
         output["choice"]["spent"] = choice.spend_map
@@ -402,15 +412,12 @@ class GameState:
           output["choice"]["monsters"] += [choice.none_choice]
       elif isinstance(choice, events.FightOrEvadeChoice):
         output["choice"]["choices"] = choice.choices
-        output["choice"]["monster"] = choice.monster.json_repr(self, choice.character)
       elif isinstance(choice, events.MultipleChoice):
         output["choice"]["choices"] = choice.choices
       elif isinstance(choice, events.ItemChoice):
         output["choice"]["chosen"] = [item.handle for item in choice.chosen]
         output["choice"]["items"] = choice.choices or []
         output["choice"]["select_type"] = choice.select_type
-        if isinstance(choice, events.CombatChoice) and getattr(choice.monster, "visual_name", None):
-          output["choice"]["monster"] = choice.monster.json_repr(self, choice.character)
       elif isinstance(choice, events.MonsterSpawnChoice):
         output["choice"] = {
             "to_spawn": choice.to_spawn,
