@@ -3124,7 +3124,7 @@ class CastSpellTest(EventTest):
     self.state.event_stack.append(CastSpell(self.char, shrivelling))
     choice = self.resolve_to_choice(CardSpendChoice)
     self.spend("sanity", 1, choice)
-    choice.resolve(self.state, "Shrivelling")
+    choice.resolve(self.state, "Shrivelling0")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       self.resolve_until_done()
 
@@ -3142,7 +3142,7 @@ class CastSpellTest(EventTest):
     self.state.event_stack.append(CastSpell(self.char, shrivelling))
     choice = self.resolve_to_choice(CardSpendChoice)
     self.spend("sanity", 1, choice)
-    choice.resolve(self.state, "Shrivelling")
+    choice.resolve(self.state, "Shrivelling0")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
       self.resolve_until_done()
 
@@ -3161,7 +3161,7 @@ class CastSpellTest(EventTest):
     self.state.event_stack.append(CastSpell(self.char, shrivelling))
     choice = self.resolve_to_choice(CardSpendChoice)
     self.spend("sanity", 1, choice)
-    choice.resolve(self.state, "Shrivelling")
+    choice.resolve(self.state, "Shrivelling0")
     self.resolve_until_done()
 
     self.assertTrue(shrivelling.in_use)
@@ -3198,7 +3198,7 @@ class CastSpellTest(EventTest):
     self.state.event_stack.append(cast)
     choice = self.resolve_to_choice(CardSpendChoice)
     self.spend("sanity", 1, choice)
-    choice.resolve(self.state, "Shrivelling")
+    choice.resolve(self.state, "Shrivelling0")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       self.resolve_until_done()
 

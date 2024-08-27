@@ -1191,7 +1191,7 @@ class ElderThingCombatTest(EventTest):
 
     self.state.event_stack.append(self.state.usables[0]["Wither0"])
     cast = self.resolve_to_choice(CardSpendChoice)
-    cast.resolve(self.state, "Wither")
+    cast.resolve(self.state, "Wither0")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       self.resolve_to_choice(CombatChoice)
     self.choose_items(combat_choice, [".38 Revolver0"])
@@ -1225,7 +1225,7 @@ class ElderThingCombatTest(EventTest):
 
     self.state.event_stack.append(self.state.usables[0]["Wither0"])
     cast = self.resolve_to_choice(CardSpendChoice)
-    cast.resolve(self.state, "Wither")
+    cast.resolve(self.state, "Wither0")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       self.resolve_to_choice(CombatChoice)
     self.choose_items(combat_choice, [".38 Revolver0"])
@@ -1374,7 +1374,7 @@ class CombatWithItems(EventTest):
     # Cast the spell.
     self.state.event_stack.append(self.state.usables[0]["Wither0"])
     cast = self.resolve_to_choice(CardSpendChoice)
-    cast.resolve(self.state, "Wither")
+    cast.resolve(self.state, "Wither0")
 
     # After casting the spell, we should return to our combat choice.
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
@@ -1401,7 +1401,7 @@ class CombatWithItems(EventTest):
 
     self.state.event_stack.append(self.state.usables[0]["Wither0"])  # Cast the spell.
     cast = self.resolve_to_choice(CardSpendChoice)
-    cast.resolve(self.state, "Wither")
+    cast.resolve(self.state, "Wither0")
 
     # After casting the spell, we should return to our combat choice.
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
@@ -1435,7 +1435,7 @@ class CombatWithItems(EventTest):
     choose_weapons = self.resolve_to_choice(CombatChoice)
     self.state.event_stack.append(self.state.usables[0]["Wither0"])
     cast = self.resolve_to_choice(CardSpendChoice)
-    cast.resolve(self.state, "Wither")
+    cast.resolve(self.state, "Wither0")
 
     # Fail to cast the spell - it should not be active, but it will still take hands.
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
@@ -1464,7 +1464,7 @@ class CombatWithItems(EventTest):
     choose_weapons = self.resolve_to_choice(CombatChoice)
     self.state.event_stack.append(self.state.usables[0]["Wither0"])
     cast = self.resolve_to_choice(CardSpendChoice)
-    cast.resolve(self.state, "Wither")
+    cast.resolve(self.state, "Wither0")
 
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       choose_weapons = self.resolve_to_choice(CombatChoice)
@@ -1500,7 +1500,7 @@ class CombatWithItems(EventTest):
     choose_weapons = self.resolve_to_choice(CombatChoice)
     self.state.event_stack.append(self.state.usables[0]["Wither0"])
     cast = self.resolve_to_choice(CardSpendChoice)
-    cast.resolve(self.state, "Wither")
+    cast.resolve(self.state, "Wither0")
 
     # Fail to cast the spell
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
@@ -1550,7 +1550,7 @@ class CombatWithItems(EventTest):
     choose_weapons = self.resolve_to_choice(CombatChoice)
     self.state.event_stack.append(self.state.usables[0]["Wither0"])
     cast = self.resolve_to_choice(CardSpendChoice)
-    cast.resolve(self.state, "Wither")
+    cast.resolve(self.state, "Wither0")
 
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       choose_weapons = self.resolve_to_choice(CombatChoice)
@@ -1582,7 +1582,7 @@ class CombatWithItems(EventTest):
     self.state.event_stack.append(self.state.usables[0]["Shrivelling0"])
     cast = self.resolve_to_choice(CardSpendChoice)
     self.spend("sanity", 1, cast)
-    cast.resolve(self.state, "Shrivelling")
+    cast.resolve(self.state, "Shrivelling0")
 
     # Attempting to spend your last sanity to cast this spell makes you go insane before combat.
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
@@ -1630,7 +1630,7 @@ class CombatWithItems(EventTest):
     self.state.event_stack.append(self.state.usables[0]["Dread Curse0"])
     cast = self.resolve_to_choice(CardSpendChoice)
     self.spend("sanity", 2, cast)
-    cast.resolve(self.state, "Dread Curse")
+    cast.resolve(self.state, "Dread Curse0")
 
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       choose_weapons = self.resolve_to_choice(CombatChoice)
@@ -2360,7 +2360,7 @@ class CombatWithShotgunTest(EventTest):
     self.state.event_stack.append(cast)
     choice = self.resolve_to_choice(CardSpendChoice)
     self.spend("sanity", 1, choice)
-    choice.resolve(self.state, "Flesh Ward")
+    choice.resolve(self.state, "Flesh Ward0")
 
     # Successfully cast flesh ward by rolling one 6.
     with mock.patch.object(events.random, "randint", new=mock.Mock(side_effect=[6, 3])):
@@ -3317,7 +3317,7 @@ class BindMonsterTest(EventTest):
     cast_choice = self.resolve_to_choice(CardSpendChoice)
     self.spend("sanity", 2, cast_choice)
     choice = self.resolve_to_choice(CardSpendChoice)
-    choice.resolve(self.state, "Bind Monster")
+    choice.resolve(self.state, "Bind Monster0")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       self.resolve_until_done()
 
@@ -3344,7 +3344,7 @@ class BindMonsterTest(EventTest):
     self.state.event_stack.append(self.state.usables[0]["Bind Monster0"])
     cast_choice = self.resolve_to_choice(CardSpendChoice)
     self.spend("sanity", 2, cast_choice)
-    cast_choice.resolve(self.state, "Bind Monster")
+    cast_choice.resolve(self.state, "Bind Monster0")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       self.resolve_until_done()
 
@@ -3365,7 +3365,7 @@ class BindMonsterTest(EventTest):
     cast_choice = self.resolve_to_choice(CardSpendChoice)
     self.spend("sanity", 2, cast_choice)
     choice = self.resolve_to_choice(CardSpendChoice)
-    choice.resolve(self.state, "Bind Monster")
+    choice.resolve(self.state, "Bind Monster0")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       insane_choice = self.resolve_to_choice(ItemLossChoice)
     insane_choice.resolve(self.state, "done")
@@ -3395,7 +3395,7 @@ class BindMonsterTest(EventTest):
     cast_choice = self.resolve_to_choice(CardSpendChoice)
     self.spend("sanity", 2, cast_choice)
     choice = self.resolve_to_choice(CardSpendChoice)
-    choice.resolve(self.state, "Bind Monster")
+    choice.resolve(self.state, "Bind Monster0")
     with mock.patch.object(
         events.random, "randint", new=mock.MagicMock(return_value=4)
     ):
@@ -3495,7 +3495,7 @@ class FightAncientOneTest(EventTest):
     self.assertCountEqual(["Wither0"], self.state.usables[0].keys())
     self.state.event_stack.append(self.state.usables[0]["Wither0"])
     cast_choice = self.resolve_to_choice(MultipleChoice)
-    cast_choice.resolve(self.state, "Wither")
+    cast_choice.resolve(self.state, "Wither0")
 
     # Successfully cast
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
