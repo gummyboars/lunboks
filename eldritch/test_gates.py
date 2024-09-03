@@ -23,15 +23,16 @@ from eldritch.test_events import EventTest
 
 
 class DrawGateEncounter(EventTest):
-
   def setUp(self):
     super().setUp()
-    self.state.gate_cards = deque([
+    self.state.gate_cards = deque(
+      [
         gate_encounters.GateCard("Gate1", {"blue"}, {"Other": lambda char: Nothing()}),
         gate_encounters.GateCard("Gate2", {"green"}, {"Other": lambda char: Nothing()}),
         gate_encounters.GateCard("ShuffleGate", set(), {"Other": lambda char: Nothing()}),
         gate_encounters.GateCard("Gate3", {"yellow"}, {"Other": lambda char: Nothing()}),
-    ])
+      ]
+    )
 
   def testDrawCard(self):
     self.char.place = self.state.places["Abyss1"]  # blue and red
@@ -75,7 +76,6 @@ class DrawGateEncounter(EventTest):
 
 
 class AllGatesMeta(type):
-
   def __new__(mcs, name, bases, dct):
     all_gate_cards = gate_encounters.CreateGateCards()
     other_worlds = places.CreateOtherWorlds()
@@ -87,7 +87,7 @@ class AllGatesMeta(type):
         loc = world if world != "Other" else (names - card.encounters.keys()).pop()
 
         def thetest(self, loc, encounter):
-          self.char.place = self.state.places[loc+"1"]
+          self.char.place = self.state.places[loc + "1"]
           self.state.event_stack.append(encounter(self.char))
           with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=6)):
             self.resolve_loop()
@@ -109,7 +109,6 @@ class AllGatesTest(EventTest, metaclass=AllGatesMeta):
 
 
 class GateEncounterTest(EventTest):
-
   def setUp(self):
     super().setUp()
     self.char.speed_sneak_slider = 1
@@ -132,36 +131,27 @@ class Gate3Test(GateEncounterTest):
       self.resolve_until_done()
 
   def testPluto3FailOddItems(self):
-    self.char.possessions.extend([
-        items.Derringer18(0),
-        items.EnchantedKnife(0),
-        items.PatrolWagon(),
-    ])
+    self.char.possessions.extend(
+      [items.Derringer18(0), items.EnchantedKnife(0), items.PatrolWagon()]
+    )
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=4)):
       choice = self.resolve_to_choice(ItemLossChoice)
     self.assertEqual(choice.count.value(self.state), 1)
-    self.assertListEqual(
-        choice.choices,
-        [".18 Derringer0", "Enchanted Knife0", "Patrol Wagon"]
-    )
+    self.assertListEqual(choice.choices, [".18 Derringer0", "Enchanted Knife0", "Patrol Wagon"])
     choice.resolve(self.state, "Patrol Wagon")
     choice.resolve(self.state, "done")
     self.resolve_until_done()
 
   def testPluto3FailEvenItems(self):
     self.char.place = self.state.places["Pluto2"]
-    self.char.possessions.extend([
-        items.Derringer18(0),
-        items.EnchantedKnife(0),
-        items.PatrolWagon(),
-        items.MagicPowder(0),
-    ])
+    self.char.possessions.extend(
+      [items.Derringer18(0), items.EnchantedKnife(0), items.PatrolWagon(), items.MagicPowder(0)]
+    )
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=4)):
       choice = self.resolve_to_choice(ItemLossChoice)
     self.assertEqual(choice.count.value(self.state), 2)
     self.assertListEqual(
-        choice.choices,
-        [".18 Derringer0", "Enchanted Knife0", "Patrol Wagon", "Magic Powder0"]
+      choice.choices, [".18 Derringer0", "Enchanted Knife0", "Patrol Wagon", "Magic Powder0"]
     )
     choice.resolve(self.state, ".18 Derringer0")
     choice.resolve(self.state, "Patrol Wagon")
@@ -328,7 +318,6 @@ class Dreamlands9Test(GateEncounterTest):
 
 
 class Gate10Test(GateEncounterTest):
-
   def testDreamlands10Pass(self):
     self.char.place = self.state.places["Dreamlands2"]
     self.state.event_stack.append(gate_encounters.Dreamlands10(self.char))
@@ -396,7 +385,7 @@ class GreatHall11Test(GateEncounterTest):
     side_effect = [3, 3] + [5]
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=side_effect)):
       self.resolve_until_done()
-    self.assertEqual(self.char.delayed_until, self.state.turn_number+2)
+    self.assertEqual(self.char.delayed_until, self.state.turn_number + 2)
 
   def testFailLuckFailDie(self):
     side_effect = [3, 3] + [3]
@@ -615,7 +604,6 @@ class GreatHall15Test(GateEncounterTest):
 
 
 class Gate16Test(GateEncounterTest):
-
   def testGreatHall16Pass(self):
     self.state.skills.append(abilities.Stealth(0))
     self.state.event_stack.append(gate_encounters.GreatHall16(self.char))
@@ -647,7 +635,6 @@ class Gate16Test(GateEncounterTest):
 
 
 class Gate29Test(GateEncounterTest):
-
   def testPlateau29Pass(self):
     self.char.stamina = 5
     self.state.event_stack.append(gate_encounters.Plateau29(self.char))
@@ -751,7 +738,7 @@ class Other23(GateEncounterTest):
 
   def testDrawNormal(self):
     with mock.patch.object(
-        events.random, "randint", new=mock.MagicMock(return_value=5)
+      events.random, "randint", new=mock.MagicMock(return_value=5)
     ), mock.patch.object(events.random, "sample", new=mock.MagicMock(return_value=[0])):
       self.resolve_until_done()
     self.assertEqual(self.char.trophies, [self.state.monsters[0]])
@@ -759,7 +746,7 @@ class Other23(GateEncounterTest):
   def testDrawEndless(self):
     self.state.monsters.insert(0, monsters.Haunter())
     with mock.patch.object(
-        events.random, "randint", new=mock.MagicMock(return_value=5)
+      events.random, "randint", new=mock.MagicMock(return_value=5)
     ), mock.patch.object(events.random, "sample", new=mock.MagicMock(return_value=[0])):
       self.resolve_until_done()
     monster = self.state.monsters[0]

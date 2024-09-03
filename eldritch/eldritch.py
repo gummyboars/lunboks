@@ -19,8 +19,15 @@ from eldritch import assets
 from eldritch import abilities
 from eldritch import ancient_ones
 from game import (  # pylint: disable=unused-import
-    BaseGame, CustomEncoder, InvalidInput, UnknownMove, InvalidMove, InvalidPlayer, NotYourTurn,
-    ValidatePlayer, TooManyPlayers,
+  BaseGame,
+  CustomEncoder,
+  InvalidInput,
+  UnknownMove,
+  InvalidMove,
+  InvalidPlayer,
+  NotYourTurn,
+  ValidatePlayer,
+  TooManyPlayers,
 )
 
 
@@ -28,34 +35,56 @@ random = SystemRandom()
 
 
 class GameState:
-
   DEQUE_ATTRIBUTES = {
-      "common", "unique", "spells", "skills", "allies", "specials", "boxed_allies", "gates"
+    "common",
+    "unique",
+    "spells",
+    "skills",
+    "allies",
+    "specials",
+    "boxed_allies",
+    "gates",
   }
   HIDDEN_ATTRIBUTES = {
-      "event_stack", "interrupt_stack", "trigger_stack", "log_stack", "mythos", "gate_cards",
+    "event_stack",
+    "interrupt_stack",
+    "trigger_stack",
+    "log_stack",
+    "mythos",
+    "gate_cards",
   }
   CUSTOM_ATTRIBUTES = {
-      "characters", "all_characters", "environment", "mythos", "other_globals", "ancient_one",
-      "all_ancients", "monsters", "usables", "spendables",
+    "characters",
+    "all_characters",
+    "environment",
+    "mythos",
+    "other_globals",
+    "ancient_one",
+    "all_ancients",
+    "monsters",
+    "usables",
+    "spendables",
   }
   TURN_PHASES = ["upkeep", "movement", "encounter", "otherworld", "mythos"]
   AWAKENED_PHASES = ["upkeep", "attack", "ancient"]
   TURN_TYPES = {
-      "upkeep": events.Upkeep,
-      "movement": events.Movement,
-      "encounter": events.EncounterPhase,
-      "otherworld": events.OtherWorldPhase,
-      "mythos": events.Mythos,
+    "upkeep": events.Upkeep,
+    "movement": events.Movement,
+    "encounter": events.EncounterPhase,
+    "otherworld": events.OtherWorldPhase,
+    "mythos": events.Mythos,
   }
   AWAKENED_TURNS = {
-      "upkeep": events.Upkeep,
-      "attack": events.InvestigatorAttack,
-      "ancient": events.AncientAttack,
+    "upkeep": events.Upkeep,
+    "attack": events.InvestigatorAttack,
+    "ancient": events.AncientAttack,
   }
   MONSTER_EVENTS = (
-      events.Combat, events.CombatRound, events.PassCombatRound, events.TakeTrophy,
-      events.EvadeRound,
+    events.Combat,
+    events.CombatRound,
+    events.PassCombatRound,
+    events.TakeTrophy,
+    events.EvadeRound,
   )
 
   def __init__(self):
@@ -214,7 +243,7 @@ class GameState:
     return [self.rumor, self.environment, self.ancient_one] + self.other_globals
 
   def gate_limit(self):
-    limit = 9 - (len(self.characters)+1) // 2
+    limit = 9 - (len(self.characters) + 1) // 2
     return limit + self.get_modifier(self, "gate_limit")
 
   def monster_limit(self):
@@ -252,7 +281,7 @@ class GameState:
       output[attr] = getattr(self, attr).json_repr(self) if getattr(self, attr) else None
     output["other_globals"] = [glob.json_repr(self) for glob in self.other_globals]
     output["all_ancients"] = {
-        name: ancient.json_repr(self) for name, ancient in self.all_ancients.items()
+      name: ancient.json_repr(self) for name, ancient in self.all_ancients.items()
     }
 
     return output
@@ -333,14 +362,14 @@ class GameState:
     # Display the current dice roll/check.
     if roller is not None:
       output["dice"] = {
-          "roll": roller.roll,
-          "count": None,
-          "prompt": None,
-          "success": None,
-          "bad": None,
-          "check_type": getattr(roller, "check_type", None),
-          "name": roller.name,
-          "roller": self.characters.index(roller.character),
+        "roll": roller.roll,
+        "count": None,
+        "prompt": None,
+        "success": None,
+        "bad": None,
+        "check_type": getattr(roller, "check_type", None),
+        "name": roller.name,
+        "roller": self.characters.index(roller.character),
       }
       if roller.count is not None:
         dice_count = values.Calculation(roller.count, None, operator.add, bonus).value(self)
@@ -350,12 +379,12 @@ class GameState:
       elif roller.roll:
         # TODO: count extra succesess like the shotgun?
         output["dice"]["success"] = [
-            roller.character.is_success(val, getattr(roller, "check_type", None))
-            for val in roller.roll
+          roller.character.is_success(val, getattr(roller, "check_type", None))
+          for val in roller.roll
         ]
       if to_remove and roller.roll:
         output["dice"]["roll"] = [
-            None if i in to_remove else roll for i, roll in enumerate(roller.roll)
+          None if i in to_remove else roll for i, roll in enumerate(roller.roll)
         ]
       if roller.name is None and current is not None:
         output["dice"]["name"] = current
@@ -406,7 +435,7 @@ class GameState:
         output["choice"]["places"] = (choice.choices or []) + extra_choices
       elif isinstance(choice, events.MonsterChoice):
         output["choice"]["monsters"] = [
-            monster.json_repr(self, choice.character) for monster in choice.monsters
+          monster.json_repr(self, choice.character) for monster in choice.monsters
         ]
         if choice.none_choice is not None:
           output["choice"]["monsters"] += [choice.none_choice]
@@ -420,15 +449,15 @@ class GameState:
         output["choice"]["select_type"] = choice.select_type
       elif isinstance(choice, events.MonsterSpawnChoice):
         output["choice"] = {
-            "to_spawn": choice.to_spawn,
-            "min_count": choice.min_count,
-            "max_count": choice.max_count,
-            "location": choice.location_name,
-            "open_gates": choice.open_gates,
-            "board": choice.spawn_count,
-            "outskirts": choice.outskirts_count,
-            "steps": choice.steps_remaining,
-            "pending": choice.pending,
+          "to_spawn": choice.to_spawn,
+          "min_count": choice.min_count,
+          "max_count": choice.max_count,
+          "location": choice.location_name,
+          "open_gates": choice.open_gates,
+          "board": choice.spawn_count,
+          "outskirts": choice.outskirts_count,
+          "steps": choice.steps_remaining,
+          "pending": choice.pending,
         }
       elif isinstance(choice, events.MonsterOnBoardChoice):
         output["choice"]["board_monster"] = True
@@ -601,8 +630,8 @@ class GameState:
     if isinstance(event, (events.ChoiceEvent, events.SliderInput)):
       return
     raise RuntimeError(
-        f"Event {event} returned from resolve() without (a) becoming resolved or "
-        "(b) becoming cancelled or (c) adding a new event to the stack"
+      f"Event {event} returned from resolve() without (a) becoming resolved or "
+      "(b) becoming cancelled or (c) adding a new event to the stack"
     )
 
   def start_event(self, event):
@@ -669,9 +698,9 @@ class GameState:
       nearby_monsters = [mon for mon in self.monsters if mon.place == event.character.place]
       if nearby_monsters:
         interrupts.append(events.EvadeOrFightAll(event.character, nearby_monsters))
-    interrupts.extend(sum(
-        [char.get_interrupts(event, self) for char in self.characters if not char.gone], [],
-    ))
+    interrupts.extend(
+      sum([char.get_interrupts(event, self) for char in self.characters if not char.gone], [])
+    )
     global_interrupts = [glob.get_interrupt(event, self) for glob in self.globals() if glob]
     interrupts.extend([interrupt for interrupt in global_interrupts if interrupt])
     if isinstance(event, self.MONSTER_EVENTS) and isinstance(event.monster, monsters.Monster):
@@ -681,8 +710,9 @@ class GameState:
 
   def get_usable_interrupts(self, event):
     i = {
-        idx: char.get_usable_interrupts(event, self)
-        for idx, char in enumerate(self.characters) if not char.gone
+      idx: char.get_usable_interrupts(event, self)
+      for idx, char in enumerate(self.characters)
+      if not char.gone
     }
     if self.turn_phase == "movement":
       # If the character is in another world with another character, let them trade before moving.
@@ -693,8 +723,9 @@ class GameState:
 
   def get_spendables(self, event):
     return {
-        idx: char.get_spendables(event, self)
-        for idx, char in enumerate(self.characters) if char.get_spendables(event, self)
+      idx: char.get_spendables(event, self)
+      for idx, char in enumerate(self.characters)
+      if char.get_spendables(event, self)
     }
 
   def get_triggers(self, event):
@@ -767,9 +798,9 @@ class GameState:
     if isinstance(event, (events.Combat, events.InvestigatorAttack, events.InsaneOrUnconscious)):
       triggers.append(events.DeactivateCombatSpells(event.character))
 
-    triggers.extend(sum(
-        [char.get_triggers(event, self) for char in self.characters if not char.gone], [],
-    ))
+    triggers.extend(
+      sum([char.get_triggers(event, self) for char in self.characters if not char.gone], [])
+    )
     global_triggers = [glob.get_trigger(event, self) for glob in self.globals() if glob]
     triggers.extend([trigger for trigger in global_triggers if trigger])
     if isinstance(event, self.MONSTER_EVENTS) and isinstance(event.monster, monsters.Monster):
@@ -780,8 +811,9 @@ class GameState:
 
   def get_usable_triggers(self, event):
     trgs = {
-        idx: char.get_usable_triggers(event, self)
-        for idx, char in enumerate(self.characters) if not char.gone
+      idx: char.get_usable_triggers(event, self)
+      for idx, char in enumerate(self.characters)
+      if not char.gone
     }
     # If the character moved from another world to another character, let them trade after moving.
     if isinstance(event, (events.ForceMovement, events.Return)) and self.turn_phase == "movement":
@@ -1309,7 +1341,6 @@ class GameState:
 
 
 class EldritchGame(BaseGame):
-
   def __init__(self):
     self.game = GameState()
     self.connected = set()

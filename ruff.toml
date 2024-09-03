@@ -1,0 +1,6 @@
+indent-width = 2
+line-length = 100
+
+[format]
+indent-style = "space"
+skip-magic-trailing-comma = true

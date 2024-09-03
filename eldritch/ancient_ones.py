@@ -11,9 +11,7 @@ if TYPE_CHECKING:
 
 class AncientOne(mythos.GlobalEffect, metaclass=abc.ABCMeta):
   # pylint: disable=unused-argument
-  def __init__(
-      self, name: str, max_doom: int, attributes: set, combat_rating: Union[int, float]
-  ):
+  def __init__(self, name: str, max_doom: int, attributes: set, combat_rating: Union[int, float]):
     self.name = name
     self.max_doom = max_doom
     self.doom = 0
@@ -60,12 +58,12 @@ class AncientOne(mythos.GlobalEffect, metaclass=abc.ABCMeta):
 
   def json_repr(self, state):
     return {
-        "name": self.name,
-        "doom": self.doom,
-        "max_doom": self.max_doom,
-        "health": self.health,
-        "attributes": sorted(self.attributes(state, None)),
-        "combat_rating": self.combat_rating(state, None),
+      "name": self.name,
+      "doom": self.doom,
+      "max_doom": self.max_doom,
+      "health": self.health,
+      "attributes": sorted(self.attributes(state, None)),
+      "combat_rating": self.combat_rating(state, None),
     }
 
 
@@ -90,10 +88,12 @@ class SquidFace(AncientOne):
 
   def attack(self, state):
     self.doom = min(self.doom + 1, self.max_doom)
-    return AncientOneAttack([
+    return AncientOneAttack(
+      [
         # TODO: Each character lowers max sanity or stamina
         events.AddDoom()
-    ])
+      ]
+    )
 
   def setup(self, state: "GameState"):
     for char in state.characters:
@@ -129,7 +129,7 @@ class YellowKing(AncientOne):
         continue
       check = events.Check(char, "luck", self.luck_modifier, name=self.name)
       checks.append(
-          events.PassFail(char, check, events.Nothing(), events.Loss(char, {"sanity": 2}))
+        events.PassFail(char, check, events.Nothing(), events.Loss(char, {"sanity": 2}))
       )
     return AncientOneAttack(checks)
 
@@ -154,7 +154,7 @@ class ChaosGod(AncientOne):
 
   def json_repr(self, state):
     data = super().json_repr(state)
-    data["combat_rating"] = "-\u221E"
+    data["combat_rating"] = "-\u221e"
     return data
 
 
@@ -193,7 +193,7 @@ class Wendigo(AncientOne):
         continue
       check = events.Check(char, "fight", self.fight_modifier, name=self.name)
       checks.append(
-          events.PassFail(char, check, events.Nothing(), events.Loss(char, {"stamina": 2}))
+        events.PassFail(char, check, events.Nothing(), events.Loss(char, {"stamina": 2}))
       )
     return AncientOneAttack(checks)
 
@@ -231,11 +231,13 @@ class BlackPharaoh(AncientOne):
       check = events.Check(char, "lore", self.lore_modifier, name=self.name)
       has_clues = values.AttributePrerequisite(char, "clues", 1, "at least")
       checks.append(
-          events.Sequence([
-              events.PassFail(char, check, events.Nothing(), events.Loss(char, {"clues": 1})),
-              events.PassFail(char, has_clues, events.Nothing(), events.Devoured(char))
-          ], char)
-
+        events.Sequence(
+          [
+            events.PassFail(char, check, events.Nothing(), events.Loss(char, {"clues": 1})),
+            events.PassFail(char, has_clues, events.Nothing(), events.Devoured(char)),
+          ],
+          char,
+        )
       )
     return AncientOneAttack(checks)
 
@@ -276,14 +278,21 @@ class BlackGoat(AncientOne):
         continue
       check = events.Check(char, "sneak", self.sneak_modifier, name=self.name)
       checks.append(
-          events.PassFail(
-              char, check, events.Nothing(),
-              events.BinarySpend(
-                  char, "monsters", 1, "Lose one monster trophy or be devoured",
-                  "Spend", "Be Devoured",
-                  events.Nothing(), events.Devoured(char)
-              )
-          )
+        events.PassFail(
+          char,
+          check,
+          events.Nothing(),
+          events.BinarySpend(
+            char,
+            "monsters",
+            1,
+            "Lose one monster trophy or be devoured",
+            "Spend",
+            "Be Devoured",
+            events.Nothing(),
+            events.Devoured(char),
+          ),
+        )
       )
     return AncientOneAttack(checks)
 
@@ -307,9 +316,8 @@ class SerpentGod(AncientOne):
   def get_trigger(self, event, state):
     if isinstance(event, events.LostInTimeAndSpace):
       return events.AddDoom()
-    if (
-        isinstance(event, events.PassCombatRound)
-        and isinstance(event.combat_round.monster, monsters.Cultist)
+    if isinstance(event, events.PassCombatRound) and isinstance(
+      event.combat_round.monster, monsters.Cultist
     ):
       return events.AddDoom(character=event.character)
     if isinstance(event, events.Awaken):
@@ -333,10 +341,9 @@ class SerpentGod(AncientOne):
         continue
       check = events.Check(char, "speed", self.speed_modifier, name=self.name)
       checks.append(
-          events.PassFail(
-              char, check,
-              events.Nothing(), events.Loss(char, {"sanity": 1, "stamina": 1})
-          )
+        events.PassFail(
+          char, check, events.Nothing(), events.Loss(char, {"sanity": 1, "stamina": 1})
+        )
       )
     return AncientOneAttack(checks)
 
@@ -368,15 +375,21 @@ class SpaceBubbles(AncientOne):
         continue
       check = events.Check(char, "speed", self.will_modifier, name=self.name)
       checks.append(
-          events.PassFail(
-              char, check,
-              events.Nothing(),
-              events.BinarySpend(
-                  char, "gates", 1, "Lose one gate trophy or be devoured",
-                  "Lose", "Be Devoured",
-                  events.Nothing(), events.Devoured(char)
-              )
-          )
+        events.PassFail(
+          char,
+          check,
+          events.Nothing(),
+          events.BinarySpend(
+            char,
+            "gates",
+            1,
+            "Lose one gate trophy or be devoured",
+            "Lose",
+            "Be Devoured",
+            events.Nothing(),
+            events.Devoured(char),
+          ),
+        )
       )
     return AncientOneAttack(checks)
 
@@ -396,6 +409,13 @@ class SpaceBubbles(AncientOne):
 
 def AncientOnes():
   ancients = [
-      SquidFace, YellowKing, ChaosGod, Wendigo, BlackPharaoh, BlackGoat, SerpentGod, SpaceBubbles
+    SquidFace,
+    YellowKing,
+    ChaosGod,
+    Wendigo,
+    BlackPharaoh,
+    BlackGoat,
+    SerpentGod,
+    SpaceBubbles,
   ]
   return {ancient().name: ancient() for ancient in ancients}

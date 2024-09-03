@@ -83,11 +83,7 @@ class Spy(characters.BaseCharacter):
     return {"dollars": 4, "clues": 2}
 
   def fixed_possessions(self):
-    return {
-        "common": [
-            "Cigarette Case"
-        ]
-    }
+    return {"common": ["Cigarette Case"]}
 
   def random_possessions(self):
     return {"common": 2, "unique": 2, "skills": 1}

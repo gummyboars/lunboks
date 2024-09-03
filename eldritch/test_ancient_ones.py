@@ -42,7 +42,7 @@ class TestAncientOnes(EventTest):
   def testYellowKingMonsters(self):
     self.state.ancient_one = ancient_ones.YellowKing()
     cultist = next(
-        monster for monster in self.state.monsters if isinstance(monster, monsters.Cultist)
+      monster for monster in self.state.monsters if isinstance(monster, monsters.Cultist)
     )
     self.assertTrue(cultist.has_attribute("flying", self.state, self.char))
     self.assertEqual(cultist.difficulty("combat", self.state, self.char), -2)
@@ -50,7 +50,7 @@ class TestAncientOnes(EventTest):
   def testChaosGodMonsters(self):
     self.state.ancient_one = ancient_ones.ChaosGod()
     maniac = next(
-        monster for monster in self.state.monsters if isinstance(monster, monsters.Maniac)
+      monster for monster in self.state.monsters if isinstance(monster, monsters.Maniac)
     )
     self.assertEqual(maniac.toughness(self.state, self.char), 2)
 
@@ -61,7 +61,7 @@ class TestAncientOnes(EventTest):
     movement = self.resolve_to_choice(CityMovement)
     movement.resolve(self.state, movement.none_choice)
     stamina = self.char.stamina
-    self.advance_turn(self.state.turn_number+1, "upkeep")
+    self.advance_turn(self.state.turn_number + 1, "upkeep")
     self.assertEqual(self.char.stamina, stamina - 1)
 
   def testWendigoLocation(self):
@@ -72,7 +72,7 @@ class TestAncientOnes(EventTest):
     movement = self.resolve_to_choice(CityMovement)
     movement.resolve(self.state, movement.none_choice)
     stamina = self.char.stamina
-    self.advance_turn(self.state.turn_number+1, "upkeep")
+    self.advance_turn(self.state.turn_number + 1, "upkeep")
     self.assertEqual(self.char.stamina, stamina)
 
   # TODO: test wendigo weather
@@ -81,9 +81,10 @@ class TestAncientOnes(EventTest):
   def testBlackPharaohMonsters(self):
     self.state.ancient_one = ancient_ones.BlackPharaoh()
     cultist = next(
-        monster for monster in self.state.monsters if isinstance(monster, monsters.Cultist)
+      monster for monster in self.state.monsters if isinstance(monster, monsters.Cultist)
     )
     self.assertTrue(cultist.has_attribute("endless", self.state, self.char))
+
 
 # TODO: test ancient one awaken and attacks
 

@@ -3,13 +3,7 @@ from eldritch import characters
 
 class Urchin(characters.Character):
   def __init__(self):
-    super().__init__(
-        "Urchin",
-        4, 4,
-        5, 6, 3, 3, 4, 5,
-        3,
-        "Bank"
-    )
+    super().__init__("Urchin", 4, 4, 5, 6, 3, 3, 4, 5, 3, "Bank")
 
   def abilities(self):
     return ["Streetwise", "Blessed is the Child", "Minor"]

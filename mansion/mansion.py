@@ -3,8 +3,15 @@ import json
 from random import SystemRandom
 
 from game import (  # pylint: disable=unused-import
-    BaseGame, CustomEncoder, InvalidInput, UnknownMove, InvalidMove, InvalidPlayer, NotYourTurn,
-    ValidatePlayer, TooManyPlayers,
+  BaseGame,
+  CustomEncoder,
+  InvalidInput,
+  UnknownMove,
+  InvalidMove,
+  InvalidPlayer,
+  NotYourTurn,
+  ValidatePlayer,
+  TooManyPlayers,
 )
 from mansion import cards
 from mansion import rooms
@@ -14,7 +21,6 @@ random = SystemRandom()
 
 
 class Player:
-
   def __init__(self, room, color):
     self.room = room
     self.color = color
@@ -25,7 +31,6 @@ class Player:
 
 
 class GameState:
-
   def __init__(self):
     self.started = False
     self.players = []
@@ -129,7 +134,14 @@ class GameState:
     if num_players > 8:
       raise InvalidMove("Cannot have more than eight players.")
     colors = [
-        "blue", "red", "darkgreen", "orange", "blueviolet", "limegreen", "deepskyblue", "violet",
+      "blue",
+      "red",
+      "darkgreen",
+      "orange",
+      "blueviolet",
+      "limegreen",
+      "deepskyblue",
+      "violet",
     ]
     self.players = [Player(self.rooms[0], colors[idx]) for idx in range(num_players)]
     random.shuffle(self.deck)
@@ -140,7 +152,6 @@ class GameState:
 
 
 class MansionGame(BaseGame):
-
   def __init__(self):
     self.game = GameState()
     self.connected = set()

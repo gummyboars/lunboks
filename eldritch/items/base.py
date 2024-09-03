@@ -5,11 +5,10 @@ __all__ = ["Item", "Weapon", "OneshotWeapon", "Tome"]
 
 
 class Item(Card):
-
   ITEM_TYPES = {"weapon", "tome", None}
 
   def __init__(
-      self, name, idx, deck, active_bonuses, passive_bonuses, hands, price, item_type=None,
+    self, name, idx, deck, active_bonuses, passive_bonuses, hands, price, item_type=None
   ):
     assert item_type in self.ITEM_TYPES
     super().__init__(name, idx, deck, active_bonuses, passive_bonuses)
@@ -25,13 +24,11 @@ class Item(Card):
 
 
 class Weapon(Item):
-
   def __init__(self, name, idx, deck, active_bonuses, passive_bonuses, hands, price):
     super().__init__(name, idx, deck, active_bonuses, passive_bonuses, hands, price, "weapon")
 
 
 class OneshotWeapon(Weapon):
-
   def get_trigger(self, event, owner, state):
     if not isinstance(event, events.Check) or event.check_type != "combat":
       return None
@@ -41,7 +38,6 @@ class OneshotWeapon(Weapon):
 
 
 class Tome(Item):
-
   def __init__(self, name, idx, deck, price, movement_cost):
     super().__init__(name, idx, deck, {}, {}, None, price, "tome")
     self.movement_cost = movement_cost
@@ -53,11 +49,14 @@ class Tome(Item):
       return None
     if event.character.movement_points < self.movement_cost:
       return None
-    return events.ReadTome([
+    return events.ReadTome(
+      [
         events.ExhaustAsset(owner, self),
         events.ChangeMovementPoints(owner, -self.movement_cost),
         self.read_event(owner),
-    ], owner)
+      ],
+      owner,
+    )
 
   def get_usable_trigger(self, event, owner, state):
     if not isinstance(event, events.WagonMove) or event.character != owner:
@@ -66,11 +65,14 @@ class Tome(Item):
       return None
     if event.character.movement_points < self.movement_cost:
       return None
-    return events.ReadTome([
+    return events.ReadTome(
+      [
         events.ExhaustAsset(owner, self),
         events.ChangeMovementPoints(owner, -self.movement_cost),
         self.read_event(owner),
-    ], owner)
+      ],
+      owner,
+    )
 
   def read_event(self, owner):  # pylint: disable=unused-argument
     return events.Nothing()

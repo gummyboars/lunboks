@@ -30,7 +30,6 @@ ChoiceT = TypeVar("ChoiceT", bound=Union[events.ChoiceEvent, events.SliderInput]
 
 
 class NoMythos(mythos.GlobalEffect):
-
   def __init__(self):
     self.name = "NoMythos"
 
@@ -39,7 +38,6 @@ class NoMythos(mythos.GlobalEffect):
 
 
 class Canceller(assets.Asset):
-
   def __init__(self, event_type, count=0):
     super().__init__("canceller", None)
     self.event_type = event_type
@@ -57,7 +55,6 @@ class Canceller(assets.Asset):
 
 
 class EventTest(unittest.TestCase):
-
   def setUp(self):
     self.char = characters.Character("Dummy", 5, 5, 4, 4, 4, 4, 4, 4, 2, "Diner")
     self.state = eldritch.GameState()
@@ -169,7 +166,6 @@ class EventTest(unittest.TestCase):
 
 
 class SequenceTest(EventTest):
-
   def testSequence(self):
     seq = Sequence([DiceRoll(self.char, 1), Delayed(self.char), Gain(self.char, {"dollars": 1})])
     self.state.event_stack.append(seq)
@@ -194,7 +190,6 @@ class SequenceTest(EventTest):
 
 
 class DiceRollTest(EventTest):
-
   @mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=[4]))
   def testDieRoll(self):
     die_roll = DiceRoll(self.char, 1)
@@ -232,7 +227,6 @@ class DiceRollTest(EventTest):
 
 
 class UpkeepTest(EventTest):
-
   def testReceiveFocus(self):
     self.char.focus_points = 0
     self.state.event_stack.append(Upkeep(self.char))
@@ -244,7 +238,6 @@ class UpkeepTest(EventTest):
 
 
 class SliderTest(EventTest):
-
   def setUp(self):
     super().setUp()
     self.state.event_stack.append(Upkeep(self.char))
@@ -301,7 +294,6 @@ class SliderTest(EventTest):
 
 
 class MovementPhaseTest(EventTest):
-
   def setUp(self):
     super().setUp()
     self.state.turn_phase = "movement"
@@ -363,7 +355,6 @@ class MovementPhaseTest(EventTest):
 
 
 class MovementPointsTest(EventTest):
-
   def testAddMovementPoints(self):
     self.state.turn_phase = "movement"
     self.char.movement_points = 2
@@ -392,7 +383,6 @@ class MovementPointsTest(EventTest):
 
 
 class LostInTimeAndSpaceTest(EventTest):
-
   def testNoReturnGatesMeansLost(self):
     self.char.clues = 6
     self.state.turn_phase = "movement"
@@ -406,10 +396,10 @@ class LostInTimeAndSpaceTest(EventTest):
     self.state.turn_phase = "movement"
     self.state.event_stack.append(LostInTimeAndSpace(self.char))
     self.resolve_until_done()
-    self.advance_turn(self.state.turn_number+1, "movement")
+    self.advance_turn(self.state.turn_number + 1, "movement")
     self.assertIsInstance(self.state.event_stack[-1], Movement)
     self.resolve_until_done()  # Player's turn is skipped.
-    self.advance_turn(self.state.turn_number+1, "upkeep")
+    self.advance_turn(self.state.turn_number + 1, "upkeep")
     self.assertIsInstance(self.state.event_stack[-1], Upkeep)
 
     choice = self.resolve_to_choice(PlaceChoice)
@@ -420,7 +410,6 @@ class LostInTimeAndSpaceTest(EventTest):
 
 
 class MovementTest(EventTest):
-
   def testMoveOneSpace(self):
     movement = MoveOne(self.char, "Easttown")
     self.assertFalse(movement.is_resolved())
@@ -508,7 +497,8 @@ class MovementTest(EventTest):
 
   def testMoveMultipleSpaces(self):
     movement = Sequence(
-        [MoveOne(self.char, dest) for dest in ["Easttown", "Rivertown", "Graveyard"]], self.char)
+      [MoveOne(self.char, dest) for dest in ["Easttown", "Rivertown", "Graveyard"]], self.char
+    )
     self.assertFalse(movement.is_resolved())
     self.assertEqual(self.char.movement_points, 4)
 
@@ -522,8 +512,7 @@ class MovementTest(EventTest):
   def testIllegalMoveMultipleSpaces(self):
     self.char.movement_points = 1
     movement = Sequence(
-        [MoveOne(self.char, dest) for dest in ["Easttown", "Rivertown", "Graveyard"]],
-        self.char,
+      [MoveOne(self.char, dest) for dest in ["Easttown", "Rivertown", "Graveyard"]], self.char
     )
     self.assertFalse(movement.is_resolved())
     self.assertEqual(self.char.movement_points, 1)
@@ -721,7 +710,6 @@ class MovementTest(EventTest):
 
 
 class CityMovementTest(EventTest):
-
   def setUp(self):
     super().setUp()
     self.movement = CityMovement(self.char)
@@ -770,7 +758,6 @@ class CityMovementTest(EventTest):
 
 
 class EncounterPhaseTest(EventTest):
-
   def setUp(self):
     super().setUp()
     self.state.turn_phase = "encounter"
@@ -780,19 +767,19 @@ class EncounterPhaseTest(EventTest):
   def testEncounterInLocation(self):
     self.char.place = self.state.places["Cave"]
     self.state.places["Rivertown"].encounters = [
-        encounters.EncounterCard("Rivertown7", {"Cave": encounters.Cave7}),
-        encounters.EncounterCard("Rivertown6", {"Cave": encounters.Cave6}),
-        encounters.EncounterCard("Rivertown5", {"Cave": encounters.Cave5}),
-        encounters.EncounterCard("Rivertown4", {"Cave": encounters.Cave4}),
-        encounters.EncounterCard("Rivertown3", {"Cave": encounters.Cave3}),
-        encounters.EncounterCard("Rivertown2", {"Cave": encounters.Cave2}),
-        encounters.EncounterCard("Rivertown1", {"Cave": encounters.Cave1}),
+      encounters.EncounterCard("Rivertown7", {"Cave": encounters.Cave7}),
+      encounters.EncounterCard("Rivertown6", {"Cave": encounters.Cave6}),
+      encounters.EncounterCard("Rivertown5", {"Cave": encounters.Cave5}),
+      encounters.EncounterCard("Rivertown4", {"Cave": encounters.Cave4}),
+      encounters.EncounterCard("Rivertown3", {"Cave": encounters.Cave3}),
+      encounters.EncounterCard("Rivertown2", {"Cave": encounters.Cave2}),
+      encounters.EncounterCard("Rivertown1", {"Cave": encounters.Cave1}),
     ]
     choice = self.resolve_to_choice(MultipleChoice)
     self.assertEqual(choice.choices, ["Yes", "No"])
     orig_order = [f"Rivertown{x}" for x in range(7, 0, -1)]
     self.assertNotEqual(
-        [card.name for card in self.state.places["Rivertown"].encounters], orig_order,
+      [card.name for card in self.state.places["Rivertown"].encounters], orig_order
     )
 
   def testEncounterInLocationIsUnimplemented(self):
@@ -800,8 +787,8 @@ class EncounterPhaseTest(EventTest):
     unimp_enc = mock.Mock(return_value=events.Unimplemented())
     encounter = gate_encounters.Other29
     self.state.places["Rivertown"].encounters = [
-        encounters.EncounterCard("Rivertown7", {"Cave": unimp_enc}),
-        encounters.EncounterCard("Rivertown6", {"Cave": encounter}),
+      encounters.EncounterCard("Rivertown7", {"Cave": unimp_enc}),
+      encounters.EncounterCard("Rivertown6", {"Cave": encounter}),
     ]
     self.resolve_until_done()
     self.assertEqual(self.char.stamina, 4)
@@ -835,7 +822,7 @@ class EncounterPhaseTest(EventTest):
     self.char.place = self.state.places["Cave"]
     self.char.possessions.append(Canceller(Encounter))
     self.state.places["Rivertown"].encounters = [
-        encounters.EncounterCard("Rivertown7", {"Cave": encounters.Cave7}),
+      encounters.EncounterCard("Rivertown7", {"Cave": encounters.Cave7})
     ]
     self.resolve_until_done()
     self.assertTrue(self.encounter.action.is_cancelled())
@@ -844,7 +831,7 @@ class EncounterPhaseTest(EventTest):
     self.char.place = self.state.places["Cave"]
     self.char.possessions.append(Canceller(DrawEncounter))
     self.state.places["Rivertown"].encounters = [
-        encounters.EncounterCard("Rivertown7", {"Cave": encounters.Cave7}),
+      encounters.EncounterCard("Rivertown7", {"Cave": encounters.Cave7})
     ]
     self.resolve_until_done()
     self.assertTrue(self.encounter.action.is_cancelled())
@@ -853,7 +840,7 @@ class EncounterPhaseTest(EventTest):
     self.char.place = self.state.places["Store"]
     self.char.possessions.append(Canceller(GainOrLoss))
     self.state.places["Rivertown"].encounters = [
-        encounters.EncounterCard("Rivertown1", {"Store": encounters.Store1}),
+      encounters.EncounterCard("Rivertown1", {"Store": encounters.Store1})
     ]
     self.resolve_until_done()
     self.assertFalse(self.encounter.action.is_cancelled())
@@ -876,13 +863,12 @@ class EncounterPhaseTest(EventTest):
 
 
 class OtherWoldPhaseTest(EventTest):
-
   def setUp(self):
     super().setUp()
     self.other_world = OtherWorldPhase(self.char)
     self.state.event_stack.append(self.other_world)
     self.state.gate_cards.append(
-        gate_encounters.GateCard("Gate29", {"red"}, {"Other": gate_encounters.Other29}),
+      gate_encounters.GateCard("Gate29", {"red"}, {"Other": gate_encounters.Other29})
     )
 
   def testNotInOtherWorld(self):
@@ -898,10 +884,12 @@ class OtherWoldPhaseTest(EventTest):
   def testEncounterInWorldIsUnimplemented(self):
     unimp_enc = mock.Mock(return_value=events.Unimplemented())
     encounter = gate_encounters.Other29
-    self.state.gate_cards.extendleft([
+    self.state.gate_cards.extendleft(
+      [
         gate_encounters.GateCard("FakeGate", {"red"}, {"Other": encounter}),
         gate_encounters.GateCard("UnimplementedGate", {"red"}, {"Other": unimp_enc}),
-    ])
+      ]
+    )
     self.char.place = self.state.places["Abyss1"]
     n_gate_cards = len(self.state.gate_cards)
     self.resolve_until_done()
@@ -940,7 +928,6 @@ class OtherWoldPhaseTest(EventTest):
 
 
 class GainLossTest(EventTest):
-
   def testGain(self):
     gain = Gain(self.char, {"dollars": 2, "clues": 1})
     self.assertFalse(gain.is_resolved())
@@ -1017,7 +1004,6 @@ class GainLossTest(EventTest):
 
 
 class MaxSanityStaminaTest(EventTest):
-
   def testStaminaCannotExceedMaxStamina(self):
     self.char.possessions.append(assets.ArmWrestler())
     self.assertEqual(self.char.max_stamina(self.state), 6)
@@ -1058,7 +1044,6 @@ class MaxSanityStaminaTest(EventTest):
 
 
 class CollectCluesTest(EventTest):
-
   def testCollectNoClues(self):
     collect = CollectClues(self.char, self.state.places["Diner"])
     self.state.event_stack.append(collect)
@@ -1120,7 +1105,6 @@ class CollectCluesTest(EventTest):
 
 
 class InsaneUnconsciousTest(EventTest):
-
   def testGoInsane(self):
     self.assertEqual(self.char.place.name, "Diner")
     self.char.possessions.extend([assets.Dog(), abilities.Marksman(0), items.Food(0)])
@@ -1183,10 +1167,13 @@ class InsaneUnconsciousTest(EventTest):
     self.char.dollars = 0
     self.char.clues = 0
     self.char.sanity = 1
-    seq = Sequence([
+    seq = Sequence(
+      [
         Sequence([Loss(self.char, {"sanity": 1}), Gain(self.char, {"dollars": 1})], self.char),
-        Gain(self.char, {"clues": 1})
-    ], self.char)
+        Gain(self.char, {"clues": 1}),
+      ],
+      self.char,
+    )
 
     self.state.event_stack.append(seq)
     choice = self.resolve_to_choice(ItemLossChoice)
@@ -1201,10 +1188,18 @@ class InsaneUnconsciousTest(EventTest):
   def testDevouredCharacter(self):
     self.char.sanity = 2
     self.char.stamina = 2
-    self.char.possessions.extend([
-        assets.Dog(), abilities.Marksman(0), items.Cross(0), items.MagicLamp(0), items.Wither(0),
-        assets.Deputy(), items.DeputysRevolver(), items.PatrolWagon(),
-    ])
+    self.char.possessions.extend(
+      [
+        assets.Dog(),
+        abilities.Marksman(0),
+        items.Cross(0),
+        items.MagicLamp(0),
+        items.Wither(0),
+        assets.Deputy(),
+        items.DeputysRevolver(),
+        items.PatrolWagon(),
+      ]
+    )
     self.state.event_stack.append(Loss(self.char, {"sanity": 2, "stamina": 3}))
     self.resolve_until_done()
     self.assertTrue(self.char.gone)
@@ -1213,13 +1208,12 @@ class InsaneUnconsciousTest(EventTest):
     for deck in ["common", "unique", "spells", "skills", "allies"]:
       self.assertEqual(len(getattr(self.state, deck)), 1)
     self.assertCountEqual(
-        [item.name for item in self.state.tradables], ["Deputy's Revolver", "Patrol Wagon"],
+      [item.name for item in self.state.tradables], ["Deputy's Revolver", "Patrol Wagon"]
     )
     self.assertIn("Deputy", [item.name for item in self.state.specials])
 
 
 class SplitGainTest(EventTest):
-
   def testSplitNumber(self):
     self.char.stamina = 1
     self.char.sanity = 1
@@ -1257,7 +1251,8 @@ class SplitGainTest(EventTest):
     self.char.sanity = 1
     first_choice = MultipleChoice(self.char, "prompt", [0, 1, 2, 3, 4, 5])
     split_gain = SplitGain(
-        self.char, "stamina", "sanity", values.Calculation(first_choice, "choice"))
+      self.char, "stamina", "sanity", values.Calculation(first_choice, "choice")
+    )
 
     self.state.event_stack.append(Sequence([first_choice, split_gain], self.char))
     choice = self.resolve_to_choice(MultipleChoice)
@@ -1303,7 +1298,6 @@ class SplitGainTest(EventTest):
 
 
 class StatusChangeTest(EventTest):
-
   def testDelayed(self):
     delay = Delayed(self.char)
     self.assertFalse(delay.is_resolved())
@@ -1360,8 +1354,7 @@ class StatusChangeTest(EventTest):
     self.resolve_until_done()
 
     self.assertEqual(
-        len([p for p in self.char.possessions if isinstance(p, assets.LodgeMembership)]),
-        1,
+      len([p for p in self.char.possessions if isinstance(p, assets.LodgeMembership)]), 1
     )
 
   def testArrested(self):
@@ -1384,7 +1377,6 @@ class StatusChangeTest(EventTest):
 
 
 class DrawTest(EventTest):
-
   def testDrawFood(self):
     draw = DrawSpecific(self.char, "common", "Food")
     self.assertFalse(draw.is_resolved())
@@ -1426,10 +1418,20 @@ class DrawTest(EventTest):
     self.assertEqual(len(self.state.common), 1)
 
   def testDrawNamedShufflesDeck(self):
-    self.state.common.extend([
-        items.Food(0), items.Food(1), items.TommyGun(0), items.TommyGun(1), items.Bullwhip(0),
-        items.Cross(0), items.Cross(1), items.DarkCloak(0), items.DarkCloak(1), items.Dynamite(0),
-    ])
+    self.state.common.extend(
+      [
+        items.Food(0),
+        items.Food(1),
+        items.TommyGun(0),
+        items.TommyGun(1),
+        items.Bullwhip(0),
+        items.Cross(0),
+        items.Cross(1),
+        items.DarkCloak(0),
+        items.DarkCloak(1),
+        items.Dynamite(0),
+      ]
+    )
     names = [item.name for item in self.state.common if item.name != "Bullwhip"]
     self.state.event_stack.append(DrawSpecific(self.char, "common", "Bullwhip"))
     self.resolve_until_done()
@@ -1439,7 +1441,6 @@ class DrawTest(EventTest):
 
 
 class DrawRandomTest(EventTest):
-
   def testDrawOneCard(self):
     draw = Draw(self.char, "common", 1)
     self.assertFalse(draw.is_resolved())
@@ -1460,8 +1461,9 @@ class DrawRandomTest(EventTest):
     self.assertFalse(draw.is_resolved())
     self.assertFalse(self.char.possessions)
     dynamite = items.Dynamite(0)
-    self.state.common.extend([
-        items.Food(0), dynamite, items.Revolver38(0), items.TommyGun(0), items.Bullwhip(0)])
+    self.state.common.extend(
+      [items.Food(0), dynamite, items.Revolver38(0), items.TommyGun(0), items.Bullwhip(0)]
+    )
 
     self.state.event_stack.append(draw)
     choice = self.resolve_to_choice(CardChoice)
@@ -1474,8 +1476,7 @@ class DrawRandomTest(EventTest):
     self.assertEqual(self.char.possessions, [dynamite])
     # Since two items were drawn and one was discarded, the discarded item should go on bottom.
     self.assertEqual(
-        [item.name for item in self.state.common],
-        [".38 Revolver", "Tommy Gun", "Bullwhip", "Food"]
+      [item.name for item in self.state.common], [".38 Revolver", "Tommy Gun", "Bullwhip", "Food"]
     )
 
   def testDrawTwoOnlyOneLeft(self):
@@ -1524,7 +1525,7 @@ class DrawRandomTest(EventTest):
     self.state.event_stack.append(draw)
     self.resolve_until_done()
     self.assertEqual(self.char.possessions, [])
-    self.assertEqual([item.name for item in self.state.common], ["Food", "Tommy Gun", "Dynamite", ])
+    self.assertEqual([item.name for item in self.state.common], ["Food", "Tommy Gun", "Dynamite"])
 
   def testDrawCancelled(self):
     draw = Draw(self.char, "common", 2)
@@ -1586,7 +1587,6 @@ class DrawRandomTest(EventTest):
 
 
 class DiscardSpecificTest(EventTest):
-
   def testDiscardSpecific(self):
     self.char.possessions.extend([items.Food(0), items.TommyGun(0)])
     discard = DiscardSpecific(self.char, [self.char.possessions[0]])
@@ -1713,7 +1713,6 @@ class DiscardNamedTest(EventTest):
 
 
 class TakeTrophyTest(EventTest):
-
   def testTakeTrophy(self):
     take = TakeTrophy(self.char, self.state.monsters[0])
     self.state.event_stack.append(take)
@@ -1754,7 +1753,6 @@ class TakeTrophyTest(EventTest):
 
 
 class ReturnMonstersAndGatesTest(EventTest):
-
   def testReturnMonster(self):
     cultist = monsters.Cultist()
     cultist.idx = 2
@@ -1785,11 +1783,10 @@ class ReturnMonstersAndGatesTest(EventTest):
     self.assertEqual(len(self.char.trophies), 2)
     trophy_handles = [trophy.handle for trophy in self.char.trophies]
     self.assertEqual(trophy_handles, ["Gate Abyss0", "Cultist2"])
-    self.assertEqual(len(self.state.gates), old_length+1)
+    self.assertEqual(len(self.state.gates), old_length + 1)
 
 
 class CheckTest(EventTest):
-
   @mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=[4, 5, 1, 3]))
   def testCheck(self):
     check = Check(self.char, "speed", 0)
@@ -1861,7 +1858,6 @@ class CheckTest(EventTest):
 
 
 class RerollSpecificTest(EventTest):
-
   def testRerollOneDie(self):
     self.char.clues = 1
     check = Check(self.char, "speed", 0)
@@ -1922,7 +1918,6 @@ class RerollSpecificTest(EventTest):
 
 
 class ConditionalTest(EventTest):
-
   def createConditional(self):
     check = Check(self.char, "luck", 0)
     success_result = Gain(self.char, {"clues": 1})
@@ -2076,7 +2071,6 @@ class ConditionalTest(EventTest):
 
 
 class BinaryChoiceTest(EventTest):
-
   def createChoice(self):
     yes_result = Gain(self.char, {"dollars": 1})
     no_result = Loss(self.char, {"dollars": 1})
@@ -2103,7 +2097,6 @@ class BinaryChoiceTest(EventTest):
 
 
 class PrereqChoiceTest(EventTest):
-
   def testMismatchedLengths(self):
     prereq = values.AttributePrerequisite(self.char, "dollars", 2, "at least")
     with self.assertRaises(AssertionError):
@@ -2129,7 +2122,6 @@ class PrereqChoiceTest(EventTest):
 
 
 class MonsterChoiceTest(EventTest):
-
   def testChoice(self):
     all_monsters = self.state.monsters[:2]
     choice = MonsterChoice(self.char, "", all_monsters, [None, None])
@@ -2196,7 +2188,6 @@ class MonsterChoiceTest(EventTest):
 
 
 class SpendChoiceTest(EventTest):
-
   def setUp(self):
     super().setUp()
     self.char.dollars = 5
@@ -2326,10 +2317,10 @@ class SpendChoiceTest(EventTest):
     choice.spend("sanity")
     self.resolve_to_choice(SpendChoice)
     self.assertEqual(
-        choice.remaining_spend, [{"sanity": -1}, {"stamina": -1}, {"sanity": -1, "stamina": -1}],
+      choice.remaining_spend, [{"sanity": -1}, {"stamina": -1}, {"sanity": -1, "stamina": -1}]
     )
     self.assertEqual(
-        choice.remaining_max, [{"sanity": -1}, {"stamina": -1}, {"sanity": -1, "stamina": -1}],
+      choice.remaining_max, [{"sanity": -1}, {"stamina": -1}, {"sanity": -1, "stamina": -1}]
     )
     choice.unspend("stamina")
     self.resolve_to_choice(SpendChoice)
@@ -2368,7 +2359,7 @@ class SpendChoiceTest(EventTest):
     self.resolve_until_done()
 
     self.assertEqual([trophy.handle for trophy in self.char.trophies], ["Gate Abyss1"])
-    self.assertEqual(len(self.state.gates), orig_gates-1)
+    self.assertEqual(len(self.state.gates), orig_gates - 1)
     self.assertEqual(self.state.gates[-1].handle, "Gate Abyss0")
 
   def testSpendToughness(self):
@@ -2502,7 +2493,6 @@ class SpendChoiceTest(EventTest):
 
 
 class ItemChoiceTest(EventTest):
-
   def setUp(self):
     super().setUp()
     self.char.possessions.append(items.Revolver38(0))
@@ -2613,7 +2603,6 @@ class ItemChoiceTest(EventTest):
 
 
 class LossChoiceTest(EventTest):
-
   def setUp(self):
     super().setUp()
     self.char.possessions.append(items.Revolver38(0))
@@ -2689,7 +2678,6 @@ class LossChoiceTest(EventTest):
 
 
 class WeaponOrSpellLossChoiceTest(EventTest):
-
   def setUp(self):
     super().setUp()
     self.char.possessions.append(items.Derringer18(0))
@@ -2757,7 +2745,6 @@ class WeaponOrSpellLossChoiceTest(EventTest):
 
 
 class SinglePhysicalWeaponChoiceTest(EventTest):
-
   def setUp(self):
     super().setUp()
     self.char.possessions.append(items.Revolver38(0))
@@ -2828,7 +2815,6 @@ class SinglePhysicalWeaponChoiceTest(EventTest):
 
 
 class PlaceChoiceTest(EventTest):
-
   def testChooseAnyLocation(self):
     choice = PlaceChoice(self.char, "choose place", choice_filters={"streets", "locations"})
     self.state.event_stack.append(choice)
@@ -2851,7 +2837,6 @@ class PlaceChoiceTest(EventTest):
 
 
 class GateChoiceTest(EventTest):
-
   def testChooseOnlyGateLocations(self):
     choice = GateChoice(self.char, "choose place")
     self.state.event_stack.append(choice)
@@ -2890,7 +2875,8 @@ class GateChoiceTest(EventTest):
     self.assertEqual(self.state.places["Square"].gate.name, self.state.places["Woods"].gate.name)
     self.state.places["WitchHouse"].gate = self.state.gates.popleft()
     self.assertNotEqual(
-        self.state.places["WitchHouse"].gate.name, self.state.places["Woods"].gate.name)
+      self.state.places["WitchHouse"].gate.name, self.state.places["Woods"].gate.name
+    )
 
     self.state.event_stack.append(choice)
     self.resolve_to_choice(GateChoice)
@@ -2954,11 +2940,10 @@ class GateChoiceTest(EventTest):
 
 
 class RefreshItemsTest(EventTest):
-
   def testRefreshItems(self):
-    self.char.possessions.extend([
-        items.Wither(0), items.Wither(1), items.Bullwhip(0), items.Cross(0),
-    ])
+    self.char.possessions.extend(
+      [items.Wither(0), items.Wither(1), items.Bullwhip(0), items.Cross(0)]
+    )
     # pylint: disable=protected-access
     self.char.possessions[0]._exhausted = True
     self.char.possessions[2]._exhausted = True
@@ -2974,9 +2959,9 @@ class RefreshItemsTest(EventTest):
     self.resolve_until_done()
 
   def testOneItemRefreshCancelled(self):
-    self.char.possessions.extend([
-        items.Wither(0), items.Wither(1), items.Bullwhip(0), items.Cross(0),
-    ])
+    self.char.possessions.extend(
+      [items.Wither(0), items.Wither(1), items.Bullwhip(0), items.Cross(0)]
+    )
     # pylint: disable=protected-access
     self.char.possessions[0]._exhausted = True
     self.char.possessions[1]._exhausted = True
@@ -2996,7 +2981,6 @@ class RefreshItemsTest(EventTest):
 
 
 class ActivateItemsTest(EventTest):
-
   def testActivateItem(self):
     gun = items.TommyGun(0)
     self.char.possessions.append(gun)
@@ -3114,7 +3098,6 @@ class ActivateItemsTest(EventTest):
 
 
 class CastSpellTest(EventTest):
-
   def testCastSpell(self):
     shrivelling = items.Shrivelling(0)
     self.char.possessions.append(shrivelling)
@@ -3368,7 +3351,7 @@ class PurchaseTest(EventTest):
     self.assertFalse(self.state.common)
 
   def testPurchaseTwoAtHalfDiscount(self):
-    buy = Purchase(self.char, "common", 2, keep_count=2, discount_type="rate", discount=.5)
+    buy = Purchase(self.char, "common", 2, keep_count=2, discount_type="rate", discount=0.5)
     self.char.dollars = 8
     self.assertFalse(buy.is_resolved())
     self.assertFalse(self.char.possessions)

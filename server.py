@@ -28,10 +28,10 @@ GLOBAL_WS_SERVER = None
 INDEX_WEBSOCKETS = set()
 GAMES = {}
 GAME_TYPES = {
-    "islanders": islanders.IslandersGame,
-    "eldritch": eldritch.EldritchGame,
-    "mansion": mansion.MansionGame,
-    "powerplant": powerplant.PowerPlantGame,
+  "islanders": islanders.IslandersGame,
+  "eldritch": eldritch.EldritchGame,
+  "mansion": mansion.MansionGame,
+  "powerplant": powerplant.PowerPlantGame,
 }
 # Check to make sure abstract base classes are satisfied.
 [game_class() for game_class in GAME_TYPES.values()]  # pylint: disable=expression-not-assigned
@@ -42,7 +42,6 @@ class ThreadingHTTPServer(ThreadingMixIn, HTTPServer):
 
 
 class MyHandler(BaseHTTPRequestHandler):
-
   def do_GET(self):
     parsed_url = urllib.parse.urlparse(self.path)
     path = parsed_url.path
@@ -63,15 +62,15 @@ class MyHandler(BaseHTTPRequestHandler):
       filepath = "/".join([ROOT_DIR, path])
     filepath = os.path.abspath(filepath)
     allowable_dirs = [
-        ROOT_DIR + "/eldritch/images",
-        ROOT_DIR + "/eldritch",
-        ROOT_DIR + "/islanders",
-        ROOT_DIR + "/islanders/images",
-        ROOT_DIR + "/islanders/sounds",
-        ROOT_DIR + "/mansion",
-        ROOT_DIR + "/powerplant",
-        ROOT_DIR + "/powerplant/images",
-        ROOT_DIR,
+      ROOT_DIR + "/eldritch/images",
+      ROOT_DIR + "/eldritch",
+      ROOT_DIR + "/islanders",
+      ROOT_DIR + "/islanders/images",
+      ROOT_DIR + "/islanders/sounds",
+      ROOT_DIR + "/mansion",
+      ROOT_DIR + "/powerplant",
+      ROOT_DIR + "/powerplant/images",
+      ROOT_DIR,
     ]
     if os.path.dirname(filepath) not in allowable_dirs:
       print(f"dirname is {os.path.dirname(filepath)} but roots are {allowable_dirs}")
@@ -145,8 +144,7 @@ def CreateGame(http_handler, data):
   generated_id = GenerateId(2)
   if not generated_id:
     http_handler.send_error(
-        HTTPStatus.INTERNAL_SERVER_ERROR,
-        "no unique game ids left. probably. i didn't try very hard",
+      HTTPStatus.INTERNAL_SERVER_ERROR, "no unique game ids left. probably. i didn't try very hard"
     )
     return
   GAMES[generated_id] = game_handler.GameHandler(generated_id, GAME_TYPES[game_type])
@@ -190,7 +188,7 @@ async def HandleWebsocket(websocket, path):
   if not session:
     session = str(uuid.uuid4())
     await PushError(
-        websocket, "Session cookie not set; you will not be able to resume if you close this tab.",
+      websocket, "Session cookie not set; you will not be able to resume if you close this tab."
     )
   await GameLoop(websocket, session, game)
 
@@ -211,11 +209,7 @@ async def GameLoop(websocket, session, game):
 async def SendGames(websocket):
   game_data = []
   for game_id, game in GAMES.items():
-    game_data.append({
-        "game_id": game_id,
-        "status": game.game_status(),
-        "url": game.game_url(),
-    })
+    game_data.append({"game_id": game_id, "status": game.game_status(), "url": game.game_url()})
   await websocket.send(json.dumps({"games": game_data}))
   INDEX_WEBSOCKETS.add(websocket)
   try:
@@ -231,11 +225,7 @@ async def SendGameUpdates():
   while True:
     game_data = []
     for game_id, game in GAMES.items():
-      game_data.append({
-          "game_id": game_id,
-          "status": game.game_status(),
-          "url": game.game_url(),
-      })
+      game_data.append({"game_id": game_id, "status": game.game_status(), "url": game.game_url()})
     coroutines = [ws.send(json.dumps({"games": game_data})) for ws in INDEX_WEBSOCKETS]
     asyncio.gather(*coroutines)
     await asyncio.sleep(1)
@@ -271,8 +261,7 @@ def main(port):
 
 if __name__ == "__main__":
   parser = argparse.ArgumentParser()
-  parser.add_argument(
-      "--http-port", type=int, help="HTTP port", metavar="PORT", default=8001)
+  parser.add_argument("--http-port", type=int, help="HTTP port", metavar="PORT", default=8001)
   flags = parser.parse_args()
   t2 = threading.Thread(target=ws_main, args=(GLOBAL_LOOP,))
   t2.start()

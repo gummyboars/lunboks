@@ -1,5 +1,4 @@
 class Room:
-
   def __init__(self, short_name, name, number):
     self.short_name = short_name
     self.name = name
@@ -26,19 +25,19 @@ def direct_connect(room_a, room_b):
 
 def create_hallway(*rooms):
   for idx, room in enumerate(rooms):
-    for other_room in rooms[idx+1:]:
+    for other_room in rooms[idx + 1 :]:
       room.add_conn(other_room)
 
 
 def create_sightline(*rooms):
   for idx, room in enumerate(rooms[1:], 1):
-    prev_room = rooms[idx-1]
+    prev_room = rooms[idx - 1]
     if room is None or prev_room is None:
       continue
     prev_room.add_conn(room)
 
   for idx, room in enumerate(rooms):
-    for other_room in rooms[idx+1:]:
+    for other_room in rooms[idx + 1 :]:
       if room is None or other_room is None:
         continue
       room.add_sight(other_room)
@@ -105,9 +104,30 @@ def CreateRooms():
   create_hallway(dingha, billiard, parlor, maze, servants, tennessee, lilac)
 
   return [
-      drawing, parlor, billiard, dingha, sitting, trophy, green, garden, cellar, kitchen, lancaster,
-      master, nursery, armory, gallery, library, tennessee, lilac, servants, white, maze, carriage,
-      piazza, foyer,
+    drawing,
+    parlor,
+    billiard,
+    dingha,
+    sitting,
+    trophy,
+    green,
+    garden,
+    cellar,
+    kitchen,
+    lancaster,
+    master,
+    nursery,
+    armory,
+    gallery,
+    library,
+    tennessee,
+    lilac,
+    servants,
+    white,
+    maze,
+    carriage,
+    piazza,
+    foyer,
   ]
 
 
@@ -213,9 +233,30 @@ def CreateRoomsOld():
   create_hallway(dingha, billiard, parlor, maze, servants, tennessee, lilac)
 
   return [
-      drawing, parlor, billiard, dingha, sitting, trophy, green, garden, cellar, kitchen, lancaster,
-      master, nursery, armory, gallery, library, tennessee, lilac, servants, white, maze, carriage,
-      piazza, foyer,
+    drawing,
+    parlor,
+    billiard,
+    dingha,
+    sitting,
+    trophy,
+    green,
+    garden,
+    cellar,
+    kitchen,
+    lancaster,
+    master,
+    nursery,
+    armory,
+    gallery,
+    library,
+    tennessee,
+    lilac,
+    servants,
+    white,
+    maze,
+    carriage,
+    piazza,
+    foyer,
   ]
 
 

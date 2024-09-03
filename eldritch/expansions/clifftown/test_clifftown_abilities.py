@@ -18,10 +18,7 @@ class TestUrchinAbilities(EventTest):
     self.elder_sign = unique.ElderSign(0)
     self.minor = abilities.Minor()
     self.char.possessions.extend(
-        [
-            abilities.Streetwise(), abilities.BlessedIsTheChild(),
-            self.minor, self.elder_sign,
-        ]
+      [abilities.Streetwise(), abilities.BlessedIsTheChild(), self.minor, self.elder_sign]
     )
 
   def testEvadeInStreets(self):
