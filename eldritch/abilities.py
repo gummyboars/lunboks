@@ -214,13 +214,8 @@ class Research(assets.Asset):
     if len(state.event_stack) < 2 or not isinstance(state.event_stack[-2], events.Check):
       return None
     bad_dice = values.UnsuccessfulDice(state.event_stack[-2])
-    return events.Sequence(
-      [
-        events.ExhaustAsset(owner, self),
-        events.RerollSpecific(state.event_stack[-2].character, state.event_stack[-2], bad_dice),
-      ],
-      owner,
-    )
+    reroll = events.RerollSpecific(state.event_stack[-2].character, state.event_stack[-2], bad_dice)
+    return events.Sequence([events.ExhaustAsset(owner, self), reroll], owner)
 
 
 class UpkeepRestoreStat(assets.Asset):
@@ -248,9 +243,8 @@ class UpkeepRestoreStat(assets.Asset):
       idx: events.Gain(char, {self.stat: 1}, source=self) for idx, char in enumerate(eligible)
     }
     gains[len(eligible)] = events.Nothing()
-    choice = events.MultipleChoice(
-      owner, f"Choose a character to {self.verb}", [char.name for char in eligible] + ["nobody"]
-    )
+    prompt = f"Choose a character to {self.verb}"
+    choice = events.MultipleChoice(owner, prompt, [char.name for char in eligible] + ["nobody"])
     # TODO: Should choosing nobody not exhaust the ability?
     cond = events.Conditional(owner, choice, "choice_index", gains)
     return events.Sequence([events.ExhaustAsset(owner, self), choice, cond], owner)

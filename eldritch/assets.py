@@ -264,13 +264,11 @@ class Deputy(Card):
     if isinstance(event, events.RefreshAssets) and event.character == owner:
       return events.Gain(owner, {"dollars": 1})
     if isinstance(event, events.KeepDrawn) and self.name in event.kept:
-      return events.Sequence(
-        [
-          events.DrawSpecific(owner, "tradables", "Deputy's Revolver"),
-          events.DrawSpecific(owner, "tradables", "Patrol Wagon"),
-        ],
-        owner,
-      )
+      seq = [
+        events.DrawSpecific(owner, "tradables", "Deputy's Revolver"),
+        events.DrawSpecific(owner, "tradables", "Patrol Wagon"),
+      ]
+      return events.Sequence(seq, owner)
     return None
 
 
@@ -289,13 +287,11 @@ class SelfDiscardingCard(Card):
       selves = [p for p in event.character.possessions if p.name == self.name]
       kept, *duplicates = sorted(selves, key=lambda x: x.tokens["must_roll"])
       if duplicates:
-        return events.Sequence(
-          [
-            events.DiscardSpecific(event.character, duplicates),
-            events.RemoveToken(kept, "must_roll", owner),
-          ],
-          owner,
-        )
+        seq = [
+          events.DiscardSpecific(event.character, duplicates),
+          events.RemoveToken(kept, "must_roll", owner),
+        ]
+        return events.Sequence(seq, owner)
 
     if isinstance(event, events.RefreshAssets) and event.character == owner:
       if self.tokens["must_roll"]:
@@ -316,13 +312,11 @@ class BlessingOrCurse(SelfDiscardingCard):
   def get_trigger(self, event, owner, state):
     if isinstance(event, events.KeepDrawn) and self.name in event.kept:
       if self.opposite in [p.name for p in event.character.possessions]:
-        return events.Sequence(
-          [
-            events.DiscardNamed(event.character, self.name),
-            events.DiscardNamed(event.character, self.opposite),
-          ],
-          event.character,
-        )
+        seq = [
+          events.DiscardNamed(event.character, self.name),
+          events.DiscardNamed(event.character, self.opposite),
+        ]
+        return events.Sequence(seq, event.character)
     return super().get_trigger(event, owner, state)
 
   def __repr__(self):

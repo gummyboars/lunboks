@@ -101,14 +101,8 @@ def GreatHall4(char) -> events.Event:
   check = events.Check(char, "fight", -1, difficulty=2)
   spells = events.Draw(char, "spells", 3, keep_count=2)
   loss = events.Loss(char, {"stamina": 3})
-  return events.BinaryChoice(
-    char,
-    "Read the book?",
-    "Yes",
-    "No",
-    events.PassFail(char, check, spells, loss),
-    events.Nothing(),
-  )
+  read = events.PassFail(char, check, spells, loss)
+  return events.BinaryChoice(char, "Read the book?", "Yes", "No", read, events.Nothing())
 
 
 def Other4(char) -> events.Event:
@@ -290,13 +284,9 @@ def Plateau13(char) -> events.Event:
   check = events.Check(char, "lore", -2)
   trade = events.Gain(char, {"dollars": 6})
   lost = events.LostInTimeAndSpace(char)
+  prompt = "Trade with the dangerous hooved folk?"
   choice = events.BinaryChoice(
-    char,
-    "Trade with the dangerous hooved folk?",
-    "Yes",
-    "No",
-    events.PassFail(char, check, trade, lost),
-    events.Nothing(),
+    char, prompt, "Yes", "No", events.PassFail(char, check, trade, lost), events.Nothing()
   )
   return choice
 
@@ -380,13 +370,9 @@ def City18(char) -> events.Event:
   check = events.Check(char, "sneak", -1)
   draw = events.Draw(char, "unique", draw_count=2, keep_count=1)
   lost = events.LostInTimeAndSpace(char)
+  prompt = "Infiltrate the structures?"
   return events.BinaryChoice(
-    char,
-    "Infiltrate the structures?",
-    "Yes",
-    "No",
-    events.PassFail(char, check, draw, lost),
-    events.Nothing(),
+    char, prompt, "Yes", "No", events.PassFail(char, check, draw, lost), events.Nothing()
   )
 
 
@@ -512,14 +498,8 @@ def Other24(char) -> events.Event:
   check = events.Check(char, "sneak", -1)
   steal = events.Draw(char, "spells", 1)
   pain = events.Loss(char, {"sanity": 3})
-  return events.BinaryChoice(
-    char,
-    "Steal the scroll?",
-    "Yes",
-    "No",
-    events.PassFail(char, check, steal, pain),
-    events.Nothing(),
-  )
+  steal = events.PassFail(char, check, steal, pain)
+  return events.BinaryChoice(char, "Steal the scroll?", "Yes", "No", steal, events.Nothing())
 
 
 def Abyss25(char) -> events.Event:
@@ -544,14 +524,8 @@ def Abyss26(char) -> events.Event:
   val = values.Calculation(die, "sum")
   gain = events.Sequence([die, events.Gain(char, {"stamina": val})], char)
   loss = events.Sequence([die, events.Loss(char, {"stamina": val})], char)
-  return events.BinaryChoice(
-    char,
-    "Eat the mushrooms?",
-    "Yes",
-    "No",
-    events.PassFail(char, check, gain, loss),
-    events.Nothing(),
-  )
+  eat = events.PassFail(char, check, gain, loss)
+  return events.BinaryChoice(char, "Eat the mushrooms?", "Yes", "No", eat, events.Nothing())
 
 
 def Plateau26(char) -> events.Event:
@@ -579,14 +553,10 @@ def Plateau27(char) -> events.Event:
 
 def Other27(char) -> events.Event:
   dice = events.DiceRoll(char, values.Calculation(char, "stamina"), bad=[])
-  loss = events.Loss(
-    char,
-    {
-      "stamina": values.Calculation(
-        left=char, left_attr="stamina", operand=operator.sub, right=dice, right_attr="successes"
-      )
-    },
+  amount = values.Calculation(
+    left=char, left_attr="stamina", operand=operator.sub, right=dice, right_attr="successes"
   )
+  loss = events.Loss(char, {"stamina": amount})
   final = events.PassFail(
     char,
     values.Calculation(char, "stamina"),
@@ -943,14 +913,10 @@ def Dreamlands47(char) -> events.Event:
 
 def Other47(char) -> events.Event:
   dice = events.DiceRoll(char, values.Calculation(char, "sanity"), bad=[])
-  loss = events.Loss(
-    char,
-    {
-      "sanity": values.Calculation(
-        left=char, left_attr="sanity", operand=operator.sub, right=dice, right_attr="successes"
-      )
-    },
+  amount = values.Calculation(
+    left=char, left_attr="sanity", operand=operator.sub, right=dice, right_attr="successes"
   )
+  loss = events.Loss(char, {"sanity": amount})
   final = events.PassFail(
     char,
     values.Calculation(char, "sanity"),

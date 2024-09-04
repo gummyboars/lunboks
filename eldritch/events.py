@@ -279,9 +279,8 @@ class SliderInput(Event):
   def prompt(self):
     if self.free:
       return f"[{self.character.name}] to set sliders anywhere"
-    remaining_focus = self.character.slider_focus_available() - self.character.focus_cost(
-      self.pending
-    )
+    remaining_focus = self.character.slider_focus_available()
+    remaining_focus -= self.character.focus_cost(self.pending)
     return f"[{self.character.name}] to set sliders ({remaining_focus} shifts remaining)"
 
   def is_resolved(self):
@@ -588,12 +587,9 @@ class InvestigatorAttack(Turn):
 
     if self.check is None:
       attrs = state.ancient_one.attributes(state, self.character)
+      rating = state.ancient_one.combat_rating(state, self.character)
       self.check = Check(
-        self.character,
-        "combat",
-        state.ancient_one.combat_rating(state, self.character),
-        attributes=attrs,
-        name=state.ancient_one.name,
+        self.character, "combat", rating, attributes=attrs, name=state.ancient_one.name
       )
     if not self.check.is_done():
       state.event_stack.append(self.check)
@@ -1587,12 +1583,9 @@ class PurchaseDrawn(Event):
     prereqs = len(choices) * [None]
     if self.must_buy:
       # TODO: consider other items/abilities that can be used as money
+      error_fmt = "You must purchase at least one if able"
       prereqs[-1] = values.Calculation(
-        self.character,
-        "dollars",
-        operator.lt,
-        min(prices),
-        error_fmt="You must purchase at least one if able",
+        self.character, "dollars", operator.lt, min(prices), error_fmt=error_fmt
       )
 
     self.choice = CardSpendChoice(
@@ -2338,9 +2331,8 @@ class DiscardSpecific(Event):
       if isinstance(self.items, ItemChoice):
         text = f"[{self.character.name}] will {self._verb} the chosen items"
       else:
-        text = f"[{self.character.name}] will {self._verb} " + ", ".join(
-          item.name for item in self.items
-        )
+        names = ", ".join(item.name for item in self.items)
+        text = f"[{self.character.name}] will {self._verb} {names}"
       if not self.to_box:
         return text
       return text + " to the box"
@@ -2459,11 +2451,8 @@ class ReturnMonsterToCup(Event):
       return f"[{self.character.name}] could not return [{name}] to the cup"
     if self.returned is None:
       return f"[{self.character.name}] returns [{name}] to the cup"
-    return (
-      f"[{self.character.name}] returned "
-      + ", ".join(f"[{name}]" for name in self.returned)
-      + " to the cup"
-    )
+    names = ", ".join(f"[{name}]" for name in self.returned)
+    return f"[{self.character.name}] returned {names} to the cup"
 
   def animated(self):
     return True
@@ -2797,14 +2786,9 @@ class Arrested(Event):
 
   def resolve(self, state):
     if self.jail is None:
+      loss = values.Calculation(self.character, "dollars", operator.floordiv, 2)
       self.jail = Sequence(
-        [
-          ForceMovement(self.character, "Police"),
-          Loss(
-            self.character,
-            {"dollars": values.Calculation(self.character, "dollars", operator.floordiv, 2)},
-          ),
-        ],
+        [ForceMovement(self.character, "Police"), Loss(self.character, {"dollars": loss})],
         self.character,
       )
       state.event_stack.append(self.jail)
@@ -3835,12 +3819,8 @@ class Combat(Event):
     self._do_combat_or_evade(state)
 
   def _setup_horror(self, state):
-    self.horror = Check(
-      self.character,
-      "horror",
-      self.monster.difficulty("horror", state, self.character),
-      name=self.monster.visual_name,
-    )
+    difficulty = self.monster.difficulty("horror", state, self.character)
+    self.horror = Check(self.character, "horror", difficulty, name=self.monster.visual_name)
     self.sanity_loss = Loss(
       self.character, {"sanity": self.monster.damage("horror", state, self.character)}
     )
@@ -3901,12 +3881,8 @@ class EvadeRound(Event):
     if self.evaded is not None:
       return
     if self.check is None:
-      self.check = Check(
-        self.character,
-        "evade",
-        self.monster.difficulty("evade", state, self.character),
-        name=self.monster.visual_name,
-      )
+      difficulty = self.monster.difficulty("evade", state, self.character)
+      self.check = Check(self.character, "evade", difficulty, name=self.monster.visual_name)
     if not self.check.is_done():
       state.event_stack.append(self.check)
       return
@@ -4668,9 +4644,8 @@ class AddToken(Event):
       asset.tokens[self.token_type] = max(asset.tokens[self.token_type] + self.n_tokens, 0)
       self.added = True
 
-    if (not self.resolved_max) and (
-      asset.tokens[token_type] >= asset.max_tokens.get(token_type, float("inf"))
-    ):
+    max_tokens = asset.max_tokens.get(token_type, float("inf"))
+    if (not self.resolved_max) and asset.tokens[token_type] >= max_tokens:
       state.event_stack.append(self.asset.get_max_token_event(token_type, self.character))
       self.resolved_max = True
       return
