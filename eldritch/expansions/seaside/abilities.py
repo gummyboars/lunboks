@@ -102,7 +102,7 @@ class TeamPlayer(assets.Asset):
     ]
     if (
       not isinstance(event, events.SliderInput)
-      or not event.character == owner
+      or event.character != owner
       or event.is_done()
       or self.exhausted
       or not in_same_place

@@ -170,7 +170,7 @@ class Wendigo(AncientOne):
     if isinstance(event, events.Mythos):
       for char in state.characters:
         if isinstance(char.place, places.Street):
-          losses.append(events.Loss(char, {"stamina": 1}))
+          losses.append(events.Loss(char, {"stamina": 1}))  # noqa: PERF401
       return events.Sequence(losses)
     if isinstance(event, events.Awaken):
       # TODO: Roll a die for each item, discard on a failure

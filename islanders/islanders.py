@@ -20,6 +20,7 @@ from game import (
 random = SystemRandom()
 
 # pylint: disable=consider-using-f-string
+# ruff: noqa: UP031
 
 RESOURCES = ["rsrc1", "rsrc2", "rsrc3", "rsrc4", "rsrc5"]
 PLAYABLE_DEV_CARDS = ["yearofplenty", "monopoly", "roadbuilding", "knight"]
@@ -367,7 +368,7 @@ def parse_location(location, location_type):
 
 
 class Road:
-  TYPES = ["road", "ship"]
+  TYPES = ("road", "ship")
 
   def __init__(
     self, location, road_type, player, *, closed=False, movable=True, source=None, conquered=False
@@ -414,7 +415,7 @@ class Road:
 
 
 class Piece:
-  TYPES = ["settlement", "city"]
+  TYPES = ("settlement", "city")
 
   def __init__(self, x, y, piece_type, player, *, conquered=False):
     assert piece_type in self.TYPES
@@ -573,46 +574,46 @@ class Player:
 class IslandersState:
   WANT = "want"
   GIVE = "give"
-  TRADE_SIDES = [WANT, GIVE]
-  PLACEMENTS = ["place1", "place2", "place3"]
-  LOCATION_ATTRIBUTES = {"tiles", "ports", "pieces", "roads", "treasures"}
-  HIDDEN_ATTRIBUTES = {
-    "dev_cards",
-    "played_dev",
-    "ships_moved",
-    "built_this_turn",
-    "home_corners",
-    "foreign_landings",
-    "placement_islands",
-  }
-  COMPUTED_ATTRIBUTES = {"port_corners", "corners_to_islands"}
-  INDEXED_ATTRIBUTES = {
-    "discard_players",
-    "collect_counts",
-    "home_corners",
-    "foreign_landings",
-    "counter_offers",
-  }
-  REQUIRED_ATTRIBUTES = {
-    "player_data",
-    "tiles",
-    "ports",
-    "pieces",
-    "roads",
-    "robber",
-    "dev_cards",
-    "dice_roll",
-    "game_phase",
-    "action_stack",
-    "turn_idx",
-    "played_dev",
-    "discard_players",
-    "rob_players",
-    "trade_offer",
-    "counter_offers",
-    "options",
-  }
-  EXTRA_BUILD_ACTIONS = ["settle", "city", "buy_dev", "road", "ship", "end_extra_build"]
+  TRADE_SIDES = (WANT, GIVE)
+  PLACEMENTS = ("place1", "place2", "place3")
+  LOCATION_ATTRIBUTES = frozenset({"tiles", "ports", "pieces", "roads", "treasures"})
+  HIDDEN_ATTRIBUTES = frozenset(
+    {
+      "dev_cards",
+      "played_dev",
+      "ships_moved",
+      "built_this_turn",
+      "home_corners",
+      "foreign_landings",
+      "placement_islands",
+    }
+  )
+  COMPUTED_ATTRIBUTES = frozenset({"port_corners", "corners_to_islands"})
+  INDEXED_ATTRIBUTES = frozenset(
+    {"discard_players", "collect_counts", "home_corners", "foreign_landings", "counter_offers"}
+  )
+  REQUIRED_ATTRIBUTES = frozenset(
+    {
+      "player_data",
+      "tiles",
+      "ports",
+      "pieces",
+      "roads",
+      "robber",
+      "dev_cards",
+      "dice_roll",
+      "game_phase",
+      "action_stack",
+      "turn_idx",
+      "played_dev",
+      "discard_players",
+      "rob_players",
+      "trade_offer",
+      "counter_offers",
+      "options",
+    }
+  )
+  EXTRA_BUILD_ACTIONS = ("settle", "city", "buy_dev", "road", "ship", "end_extra_build")
 
   def __init__(self):
     # Player data is a sequential list of Player objects; players are identified by index.
@@ -1179,7 +1180,7 @@ class IslandersState:
       # If there is only one player receiving this resource, they receive all of the
       # remaining cards for this resources type.
       if len(receive_players) == 1:
-        the_player = list(receive_players.keys())[0]
+        the_player = next(iter(receive_players.keys()))
         self.event_log.append(
           Event(
             "shortage",
@@ -1233,7 +1234,7 @@ class IslandersState:
     collect_players = [idx for idx, count in self.collect_counts.items() if count]
     collect_players.sort(key=lambda idx: (idx - self.turn_idx + num_players) % num_players)
     self.collect_idx = collect_players[0]
-    if sum(available.values()) < self.collect_counts[self.collect_idx]:
+    if sum(available.values()) < self.collect_counts[self.collect_idx]:  # noqa: PLR1730
       # If there's not enough left in the bank, the player collects everything that remains.
       self.collect_counts[self.collect_idx] = sum(available.values())
 
@@ -1516,7 +1517,7 @@ class IslandersState:
         if maybe_piece.player == player:  # pylint: disable=no-else-return
           # They have a settlement/city here - they can build a road.
           return
-        else:
+        else:  # noqa: RET505
           # Owned by another player - continue to the next corner.
           continue
       # If no settlement at this corner, check for other roads to this corner.
@@ -1861,7 +1862,7 @@ class IslandersState:
     try:
       self._check_road_building(to_loc, player_idx, "ship")
       self.add_road(Road(to_loc, "ship", player_idx))
-    except:
+    except Exception:  # pylint: disable=broad-except
       self.roads[old_ship.location] = old_ship
       raise
 
@@ -2341,7 +2342,7 @@ class IslandersState:
     self._validate_selection(resource_selection)
     if len(resource_selection) != 1 or sum(resource_selection.values()) != 1:
       raise InvalidMove("You must choose exactly one resource to monopolize.")
-    card_type = list(resource_selection.keys())[0]
+    card_type = next(iter(resource_selection.keys()))
     self.event_log.append(
       Event("monopoly", "{player%s} played a monopoly on {%s}" % (player, card_type))
     )
@@ -2360,10 +2361,10 @@ class IslandersState:
   def _validate_trade(self, offer, player):
     """Validates a well-formed trade & that the player has enough resources."""
     if not isinstance(offer, dict) or set(offer.keys()) != set(self.TRADE_SIDES):
-      raise RuntimeError("invalid offer format - must be a dict of two sides")
+      raise InvalidInput("invalid offer format - must be a dict of two sides")
     for side in self.TRADE_SIDES:
       if not isinstance(offer[side], dict):
-        raise RuntimeError("invalid offer format - each side must be a dict")
+        raise InvalidInput("invalid offer format - each side must be a dict")
       for rsrc, count in offer[side].items():
         if rsrc not in RESOURCES:
           raise InvalidMove("{%s} is not tradable." % rsrc)
@@ -2635,7 +2636,7 @@ class Scenario(metaclass=abc.ABCMeta):
   def init(cls, state):
     raise NotImplementedError
 
-  @classmethod
+  @classmethod  # noqa: B027
   def mutate_options(cls, options):
     pass
 
@@ -2648,7 +2649,7 @@ class Scenario(metaclass=abc.ABCMeta):
       state.parse_treasures(json_data.get("treasures", []))
     state.recompute()
 
-  @classmethod
+  @classmethod  # noqa: B027
   def post_load(cls, state):
     pass
 
@@ -3105,7 +3106,7 @@ class GreaterIslands(SeafarerScenario):
 
 
 class DesertRiders(SeafarerScenario):
-  FIXED_TILES = [(19, 3), (19, 5), (19, 7), (10, 6), (10, 10), (16, 6), (16, 10)]
+  FIXED_TILES = ((19, 3), (19, 5), (19, 7), (10, 6), (10, 10), (16, 6), (16, 10))
 
   @classmethod
   def preview(cls, state):
@@ -3246,7 +3247,7 @@ class MapMaker(Scenario):
 
 class IslandersGame(BaseGame):
   # The order of this dictionary determines the method resolution order of the created class.
-  SCENARIOS = collections.OrderedDict(
+  SCENARIOS = collections.OrderedDict(  # noqa: RUF012
     [
       ("Standard Map", StandardMap),
       ("Beginner's Map", BeginnerMap),
@@ -3262,11 +3263,11 @@ class IslandersGame(BaseGame):
       ("Map Maker", MapMaker),
     ]
   )
-  COLORS = {"red", "blue", "limegreen", "darkviolet", "saddlebrown", "darkorange"}
+  COLORS = frozenset({"red", "blue", "limegreen", "darkviolet", "saddlebrown", "darkorange"})
 
   def __init__(self):
     self.game = None
-    self.scenario = list(self.SCENARIOS.keys())[0]
+    self.scenario = next(iter(self.SCENARIOS.keys()))
     self.game_class = self.get_game_class(self.scenario)
     self.choices = Options()
     self.connected = set()
@@ -3321,7 +3322,7 @@ class IslandersGame(BaseGame):
       try:
         self.SCENARIOS[self.scenario].mutate_options(tmp_game.options)
         self.SCENARIOS[self.scenario].preview(tmp_game)
-      except Exception:  # pylint: disable=broad-except
+      except Exception:  # pylint: disable=broad-except # noqa: BLE001
         tmp_game.add_tile(Tile(1, 1, "randomized", True, None))
       data = tmp_game.for_player(None)
       data.update(
@@ -3337,7 +3338,7 @@ class IslandersGame(BaseGame):
       data["options"] = collections.OrderedDict([(key, self.choices[key]) for key in self.choices])
       data["scenario"] = GameOption(
         name="Scenario",
-        default=list(self.SCENARIOS.keys())[0],
+        default=next(iter(self.SCENARIOS.keys())),
         choices=list(self.SCENARIOS.keys()),
         value=self.scenario,
       )
@@ -3370,7 +3371,7 @@ class IslandersGame(BaseGame):
       if not self.connected:
         self.host = None
       else:
-        self.host = list(self.connected)[0]
+        self.host = next(iter(self.connected))
 
   def handle(self, session, data):
     if not isinstance(data, dict):
@@ -3433,7 +3434,7 @@ class IslandersGame(BaseGame):
       raise InvalidPlayer("You are already playing.")
     try:
       want_idx = int(data["player"])
-    except:
+    except Exception:  # pylint: disable=broad-except # noqa: BLE001
       raise InvalidPlayer("Invalid player.")
     old_sessions = [session for session, idx in self.player_sessions.items() if idx == want_idx]
     if len(old_sessions) < 1:

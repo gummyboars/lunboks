@@ -35,7 +35,7 @@ class Outskirts(Place):
 
 
 class CityPlace(Place):
-  MOVEMENT_OPPOSITES = {"black": "white", "white": "black"}
+  MOVEMENT_OPPOSITES = {"black": "white", "white": "black"}  # noqa: RUF012
 
   def __init__(self, name, long_name):
     assert name is not None
@@ -268,7 +268,7 @@ class OtherWorld(Place):
     return self.info.colors
 
   def json_repr(self):
-    return {"name": self.name, "colors": sorted(list(self.colors))}
+    return {"name": self.name, "colors": sorted(self.colors)}
 
 
 def CreateOtherWorlds():

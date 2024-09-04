@@ -1,22 +1,22 @@
 from typing import List
 from eldritch.assets import (
-  Asset,
-  Card,
-  Deputy,
-  Blessing,
-  Curse,
-  Retainer,
-  BankLoan,
-  BadCredit,
-  LodgeMembership,
-  BonusToAllChecks,
+  Asset as Asset,
+  Card as Card,
+  Deputy as Deputy,
+  Blessing as Blessing,
+  Curse as Curse,
+  Retainer as Retainer,
+  BankLoan as BankLoan,
+  BadCredit as BadCredit,
+  LodgeMembership as LodgeMembership,
+  BonusToAllChecks as BonusToAllChecks,
 )
-from eldritch.expansions.seaside.abilities import TeamPlayerBonus
-from .base import Item, Weapon, OneshotWeapon, Tome
+from eldritch.expansions.seaside.abilities import TeamPlayerBonus as TeamPlayerBonus
+from .base import Item as Item, Weapon as Weapon, OneshotWeapon as OneshotWeapon, Tome as Tome
 from .common import *
 from .unique import *
 from .spells import *
-from .deputy import PatrolWagon, DeputysRevolver
+from .deputy import PatrolWagon as PatrolWagon, DeputysRevolver as DeputysRevolver
 
 
 def CreateTradables():

@@ -21,7 +21,6 @@ from eldritch.events import *
 from eldritch import gate_encounters
 from eldritch import items
 from eldritch import mythos
-from eldritch import places
 from eldritch import values
 from eldritch import monsters
 
@@ -66,14 +65,14 @@ class EventTest(unittest.TestCase):
   def resolve_loop(self):
     count = 0
     for _ in self.state.resolve_loop():  # It's a generator, so you have to loop through it.
-      count += 1
+      count += 1  # noqa: SIM113
       if count > 100:
         self.fail(f"Exceeded maximum number of events: {self.state.event_stack}")
 
   def resolve_until_event_type(self, event_class):
     count = 0
     for _ in self.state.resolve_loop():
-      count += 1
+      count += 1  # noqa: SIM113
       if count > 100:
         self.fail(f"Exceeded maximum number of events: {self.state.event_stack}")
       if isinstance(self.state.event_stack[-1], event_class):
@@ -160,7 +159,7 @@ class EventTest(unittest.TestCase):
         self.assertIsInstance(self.state.event_stack[-1], events.CityMovement)
         self.state.event_stack[-1].resolve(self.state, "done")
 
-  def _formatMessage(self, msg, standardMsg):
+  def _formatMessage(self, msg, standardMsg):  # noqa: N803
     ret = super()._formatMessage(msg, standardMsg)
     return ret + "\n\n" + "\n".join(str(log) for log in self.state.event_log)
 

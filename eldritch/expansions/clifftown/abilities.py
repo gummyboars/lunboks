@@ -1,11 +1,6 @@
-import typing
-
 from eldritch import assets
 from eldritch import events
 from eldritch import places
-
-if typing.TYPE_CHECKING:
-  from eldritch.eldritch import GameState
 
 
 class Streetwise(assets.Asset):

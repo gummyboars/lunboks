@@ -76,7 +76,7 @@ class DrawGateEncounter(EventTest):
 
 
 class AllGatesMeta(type):
-  def __new__(mcs, name, bases, dct):
+  def __new__(mcs, name, bases, dct):  # noqa: N804
     all_gate_cards = gate_encounters.CreateGateCards()
     other_worlds = places.CreateOtherWorlds()
     names = {world.info.name for world in other_worlds.values()}

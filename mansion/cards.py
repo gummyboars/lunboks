@@ -98,6 +98,5 @@ def CreateCards():
   fail_counts = {1: 10, 2: 6, 3: 4, 4: 4}
   failures = []
   for num, count in fail_counts.items():
-    for idx in range(count):
-      failures.append(Card(failures=num, variant=str(idx)))
+    failures.extend([Card(failures=num, variant=str(idx)) for idx in range(count)])
   return moves + weapons + failures

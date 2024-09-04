@@ -5,13 +5,13 @@ from random import SystemRandom
 from game import (  # pylint: disable=unused-import
   BaseGame,
   CustomEncoder,
-  InvalidInput,
-  UnknownMove,
+  InvalidInput,  # noqa: F401
+  UnknownMove,  # noqa: F401
   InvalidMove,
   InvalidPlayer,
-  NotYourTurn,
-  ValidatePlayer,
-  TooManyPlayers,
+  NotYourTurn,  # noqa: F401
+  ValidatePlayer,  # noqa: F401
+  TooManyPlayers,  # noqa: F401
 )
 from mansion import cards
 from mansion import rooms
@@ -39,7 +39,7 @@ class GameState:
     self.react_idx = 0
     self.rooms = rooms.CreateRooms()
     self.deck = cards.CreateCards()
-    self.doctor = [idx for idx, room in enumerate(self.rooms) if room.name == "Gallery"][0]
+    self.doctor = next(idx for idx, room in enumerate(self.rooms) if room.name == "Gallery")
 
   def json_repr(self):
     return copy.copy(self.__dict__)
@@ -191,7 +191,7 @@ class MansionGame(BaseGame):
       if not self.connected:
         self.host = None
       else:
-        self.host = list(self.connected)[0]
+        self.host = next(iter(self.connected))
 
   def handle(self, session, data):
     if not isinstance(data, dict):

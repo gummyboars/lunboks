@@ -275,7 +275,7 @@ def OpenGateCount():
 
 
 class SpendValue(metaclass=abc.ABCMeta):
-  SPEND_TYPES = {
+  SPEND_TYPES = {  # noqa: RUF012
     "stamina": "stamina",
     "sanity": "sanity",
     "dollars": "dollars",
@@ -350,7 +350,7 @@ class ExactSpendPrerequisite(SpendValue):
   def annotation(self, state):
     parts = []
     for spend_type in sorted(self.spend_amounts):
-      parts.append(str(self.spend_amounts[spend_type]) + " " + self.SPEND_TYPES[spend_type])
+      parts.append(f"{self.spend_amounts[spend_type]} {self.SPEND_TYPES[spend_type]}")  # noqa: PERF401
     return ", ".join(parts)
 
 
@@ -479,7 +479,7 @@ class ToughnessSpendBase(SpendValue, metaclass=abc.ABCMeta):
 
     if min_spent is None:
       remaining["toughness"] = self.toughness
-    elif total_spent < self.toughness:
+    elif total_spent < self.toughness:  # noqa: SIM114
       remaining["toughness"] = self.toughness - total_spent
     elif total_spent - self.toughness >= min_spent:  # Not allowed to overspend too much.
       remaining["toughness"] = self.toughness - total_spent

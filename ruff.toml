@@ -4,3 +4,58 @@ line-length = 100
 [format]
 indent-style = "space"
 skip-magic-trailing-comma = true
+
+[lint]
+select = ["ALL"]
+ignore = [
+  "I001",  # import order - TODO: turn on again
+  "INP001",  # implicit namespace package - TODO: turn on again
+  "PT",  # pytest is a plague upon the entire python ecosystem
+  "ANN",  # annotations
+  "T20",  # print/pprint
+  "TD",  # todos
+  "EM",  # errmsg
+  "FA",  # future annotations
+  "FBT",  # boolean trap
+  "C90",  # mccabe complexity
+  "ARG",  # unused argument - checked by pylint
+  "PTH",  # pathlib - TODO: turn on again
+  "F403",  # undefined names
+  "F405",  # undefined local with import star
+  "PLC0414",  # useless import alias
+  "PLR2004",  # magic value comparison
+  "PLR0911",  # too many return statements
+  "PLR0912",  # too many branches
+  "PLR0913",  # too many arguments
+  "PLR0915",  # too many statements
+  "PLR5501",  # collapsible else if
+  "N802",  # invalid function name - checked by pylint
+  "N806",  # non lowercase variable in function - checked by pylint
+  "D100",  # undocumented public module
+  "D101",  # undocumented public class
+  "D102",  # undocumented public method
+  "D103",  # undocumented public function
+  "D104",  # undocumented public package
+  "D105",  # undocumented magic method
+  "D107",  # undocumented public init
+  "D401",  # non imperative mood
+  "D203",  # one-blank-line-before-class
+  "D213",  # multi-line-summary-second-line
+  "FIX002",  # line-contains-todo
+  "FIX004",  # line-contains-hack
+  "COM812",  # missing-trailing-comma
+  "S101",  # assert
+  "S311",  # suspicious-non-cryptographic-number-usage
+  "FLY002",  # static-join-to-f-string  TODO: turn on again
+  "TRY003",  # raise-vanilla-args
+  "TRY300",  # try-consider-else
+  "ERA001",  # commented-out-code
+  "B904",  # raise-without-from-inside-except
+  "SLF001",  # private-member-access
+  "RUF005",  # collection-literal-concatenation
+  "RUF017",  # quadratic-list-summation
+  "SIM102",  # collapsible-if
+  "SIM117",  # multiple-with-statements
+  "PYI024",  # collections-named-tuple
+  "PYI041",  # redundant-numeric-union
+]

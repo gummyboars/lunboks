@@ -792,8 +792,8 @@ class DreamFlierCombatTest(EventTest):
   def testLoseCombatWithOpenGates(self):
     self.char.place = self.state.places["Northside"]
     # Two gates - one to the Abyss, and one to Pluto. The Abyss gate is closer than the Pluto gate.
-    self.state.places["Isle"].gate = [gate for gate in self.state.gates if gate.name == "Abyss"][0]
-    self.state.places["Woods"].gate = [gate for gate in self.state.gates if gate.name == "Pluto"][0]
+    self.state.places["Isle"].gate = next(gate for gate in self.state.gates if gate.name == "Abyss")
+    self.state.places["Woods"].gate = next(gat for gat in self.state.gates if gat.name == "Pluto")
     self.state.monsters[0].place = self.char.place
     self.flier.place = self.char.place
     fight_all = EvadeOrFightAll(self.char, [self.flier, self.state.monsters[0]])
@@ -837,8 +837,8 @@ class DreamFlierCombatTest(EventTest):
   def testMultipleNearestGates(self):
     self.char.place = self.state.places["Northside"]
     # Two gates - one to the Abyss, and one to Pluto. The Abyss gate is closer than the Pluto gate.
-    self.state.places["Roadhouse"].gate = [g for g in self.state.gates if g.name == "Abyss"][0]
-    self.state.places["Cave"].gate = [gate for gate in self.state.gates if gate.name == "Pluto"][0]
+    self.state.places["Roadhouse"].gate = next(g for g in self.state.gates if g.name == "Abyss")
+    self.state.places["Cave"].gate = next(gate for gate in self.state.gates if gate.name == "Pluto")
     self.flier.place = self.char.place
     fight_all = EvadeOrFightAll(self.char, [self.flier])
     self.state.event_stack.append(fight_all)

@@ -9,12 +9,12 @@ from game import (  # pylint: disable=unused-import
   BaseGame,
   ValidatePlayer,
   CustomEncoder,
-  InvalidInput,
+  InvalidInput,  # noqa: F401
   UnknownMove,
   InvalidMove,
   InvalidPlayer,
   TooManyPlayers,
-  NotYourTurn,
+  NotYourTurn,  # noqa: F401
 )
 from powerplant import cities
 from powerplant import cost
@@ -106,7 +106,7 @@ class TurnPhase(str, Enum):
 
 
 class GameState:
-  PHASES = [TurnPhase.AUCTION, TurnPhase.MATERIALS, TurnPhase.BUILDING, TurnPhase.BUREAUCRACY]
+  PHASES = (TurnPhase.AUCTION, TurnPhase.MATERIALS, TurnPhase.BUILDING, TurnPhase.BUREAUCRACY)
 
   def __init__(self, players, region, plantlist):
     self.region = region
@@ -166,7 +166,7 @@ class GameState:
     data = {}
     for attr, val in self.__dict__.items():
       if isinstance(val, set):
-        data[attr] = sorted(list(val))
+        data[attr] = sorted(val)
       elif attr == "resources":
         data[attr] = {k.value: v for k, v in val.items()}
       else:
@@ -773,8 +773,8 @@ class GameState:
 
 
 class PowerPlantGame(BaseGame):
-  COLORS = {"red", "blue", "forestgreen", "darkviolet", "saddlebrown", "deepskyblue"}
-  OPTIONS = {"region": ["Germany", "USA"], "plantlist": ["old", "new"]}
+  COLORS = frozenset({"red", "blue", "forestgreen", "darkviolet", "saddlebrown", "deepskyblue"})
+  OPTIONS = {"region": ["Germany", "USA"], "plantlist": ["old", "new"]}  # noqa: RUF012
 
   def __init__(self):
     self.game = None
@@ -852,7 +852,7 @@ class PowerPlantGame(BaseGame):
       if not self.connected:
         self.host = None
       else:
-        self.host = list(self.connected)[0]
+        self.host = next(iter(self.connected))
 
   def handle(self, session, data):
     if not isinstance(data, dict):
@@ -909,7 +909,7 @@ class PowerPlantGame(BaseGame):
       raise InvalidPlayer("You are already playing.")
     try:
       want_idx = int(data["player"])
-    except:
+    except Exception:  # pylint: disable=broad-except # noqa: BLE001
       raise InvalidPlayer("Invalid player.")
     old_sessions = [session for session, idx in self.player_sessions.items() if idx == want_idx]
     if len(old_sessions) < 1:
@@ -933,7 +933,7 @@ class PowerPlantGame(BaseGame):
     for player_data in self.pending_players.values():
       if not player_data["color"]:
         available_colors = self.COLORS - {data["color"] for data in self.pending_players.values()}
-        player_data["color"] = list(available_colors)[0]
+        player_data["color"] = next(iter(available_colors))
     sessions = list(self.pending_players.keys())
     random.shuffle(sessions)
 
