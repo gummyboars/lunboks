@@ -1028,18 +1028,8 @@ class AdvanceStageTest(unittest.TestCase):
       with self.subTest(num_players=num):
         game = self.setUpGame(num)
 
-        to_build = [
-          "ESSEN",
-          "DUISBURG",
-          "DUSSELDORF",
-          "DORTMUND",
-          "MUNSTER",
-          "KOLN",
-          "OSNABRUCK",
-          "AACHEN",
-          "BREMEN",
-          "CUXHAVEN",
-        ]
+        to_build = ["ESSEN", "DUISBURG", "DUSSELDORF", "DORTMUND", "MUNSTER"]
+        to_build += ["KOLN", "OSNABRUCK", "AACHEN", "BREMEN", "CUXHAVEN"]
         # Build count-1 cities first.
         for i in range(count - 1):
           self.handle(game, 0, {"type": "build", "city": to_build[i]})

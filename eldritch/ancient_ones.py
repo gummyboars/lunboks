@@ -88,12 +88,8 @@ class SquidFace(AncientOne):
 
   def attack(self, state):
     self.doom = min(self.doom + 1, self.max_doom)
-    return AncientOneAttack(
-      [
-        # TODO: Each character lowers max sanity or stamina
-        events.AddDoom()
-      ]
-    )
+    # TODO: Each character lowers max sanity or stamina
+    return AncientOneAttack([events.AddDoom()])
 
   def setup(self, state: "GameState"):
     for char in state.characters:
@@ -230,15 +226,11 @@ class BlackPharaoh(AncientOne):
         continue
       check = events.Check(char, "lore", self.lore_modifier, name=self.name)
       has_clues = values.AttributePrerequisite(char, "clues", 1, "at least")
-      checks.append(
-        events.Sequence(
-          [
-            events.PassFail(char, check, events.Nothing(), events.Loss(char, {"clues": 1})),
-            events.PassFail(char, has_clues, events.Nothing(), events.Devoured(char)),
-          ],
-          char,
-        )
-      )
+      seq = [
+        events.PassFail(char, check, events.Nothing(), events.Loss(char, {"clues": 1})),
+        events.PassFail(char, has_clues, events.Nothing(), events.Devoured(char)),
+      ]
+      checks.append(events.Sequence(seq, char))
     return AncientOneAttack(checks)
 
   def escalate(self, state):
@@ -277,23 +269,11 @@ class BlackGoat(AncientOne):
       if char.gone:
         continue
       check = events.Check(char, "sneak", self.sneak_modifier, name=self.name)
-      checks.append(
-        events.PassFail(
-          char,
-          check,
-          events.Nothing(),
-          events.BinarySpend(
-            char,
-            "monsters",
-            1,
-            "Lose one monster trophy or be devoured",
-            "Spend",
-            "Be Devoured",
-            events.Nothing(),
-            events.Devoured(char),
-          ),
-        )
+      prompt = "Lose one monster trophy or be devoured"
+      spend = events.BinarySpend(
+        char, "monsters", 1, prompt, "Spend", "Be Devoured", events.Nothing(), events.Devoured(char)
       )
+      checks.append(events.PassFail(char, check, events.Nothing(), spend))
     return AncientOneAttack(checks)
 
   def escalate(self, state):
@@ -340,11 +320,8 @@ class SerpentGod(AncientOne):
       if char.gone:
         continue
       check = events.Check(char, "speed", self.speed_modifier, name=self.name)
-      checks.append(
-        events.PassFail(
-          char, check, events.Nothing(), events.Loss(char, {"sanity": 1, "stamina": 1})
-        )
-      )
+      loss = events.Loss(char, {"sanity": 1, "stamina": 1})
+      checks.append(events.PassFail(char, check, events.Nothing(), loss))
     return AncientOneAttack(checks)
 
   def escalate(self, state):
@@ -374,23 +351,11 @@ class SpaceBubbles(AncientOne):
       if char.gone:
         continue
       check = events.Check(char, "speed", self.will_modifier, name=self.name)
-      checks.append(
-        events.PassFail(
-          char,
-          check,
-          events.Nothing(),
-          events.BinarySpend(
-            char,
-            "gates",
-            1,
-            "Lose one gate trophy or be devoured",
-            "Lose",
-            "Be Devoured",
-            events.Nothing(),
-            events.Devoured(char),
-          ),
-        )
+      prompt = "Lose one gate trophy or be devoured"
+      spend = events.BinarySpend(
+        char, "gates", 1, prompt, "Lose", "Be Devoured", events.Nothing(), events.Devoured(char)
       )
+      checks.append(events.PassFail(char, check, events.Nothing(), spend))
     return AncientOneAttack(checks)
 
   def escalate(self, state):

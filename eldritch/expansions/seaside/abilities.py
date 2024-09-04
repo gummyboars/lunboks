@@ -50,16 +50,11 @@ class BreakingTheLimits(assets.Asset):
       return None
     if sum(self.tokens.values()) >= 3 or (owner.stamina == 1 and owner.sanity == 1):
       return None
+    prereq = values.FlexibleRangeSpendPrerequisite(
+      ["sanity", "stamina"], 1, 3 - sum(self.tokens.values()), character=owner
+    )
     spend = events.SpendChoice(
-      owner,
-      prompt="Break the limits?",
-      choices=["No", "Yes"],
-      spends=[
-        None,
-        values.FlexibleRangeSpendPrerequisite(
-          ["sanity", "stamina"], 1, 3 - sum(self.tokens.values()), character=owner
-        ),
-      ],
+      owner, prompt="Break the limits?", choices=["No", "Yes"], spends=[None, prereq]
     )
 
     return events.Sequence(
@@ -118,18 +113,14 @@ class TeamPlayer(assets.Asset):
       "Grant another player +1 bonus to all skill checks until the end of the turn?",
       ["None"] + [char.name for char in in_same_place],
     )
-    cond = events.Conditional(
-      owner,
-      choice,
-      "choice_index",
-      {
-        0: events.Nothing(),
-        **{
-          i: events.DrawSpecific(char, "specials", "Team Player Bonus")
-          for i, char in enumerate(in_same_place, start=1)
-        },
+    results = {
+      0: events.Nothing(),
+      **{
+        i: events.DrawSpecific(char, "specials", "Team Player Bonus")
+        for i, char in enumerate(in_same_place, start=1)
       },
-    )
+    }
+    cond = events.Conditional(owner, choice, "choice_index", results)
     return events.Sequence([choice, cond, events.ExhaustAsset(owner, self)], owner)
 
 

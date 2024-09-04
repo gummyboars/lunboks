@@ -141,17 +141,11 @@ class Monster:
     return "normal"
 
   def get_interrupt(self, event, state):
-    if isinstance(event, events.TakeTrophy) and self.has_attribute(
-      "endless", state, event.character
-    ):
+    endless = self.has_attribute("endless", state, event.character)
+    if isinstance(event, events.TakeTrophy) and endless:
       # TODO: Should this be coded into TakeTrophy instead?
-      return events.Sequence(
-        [
-          events.CancelEvent(event),
-          events.ReturnToCup(handles=[self.handle], character=event.character),
-        ],
-        event.character,
-      )
+      cup = events.ReturnToCup(handles=[self.handle], character=event.character)
+      return events.Sequence([events.CancelEvent(event), cup], event.character)
     return None
 
   def get_trigger(self, event, state):  # pylint: disable=unused-argument
@@ -446,11 +440,8 @@ class DreamFlier(Monster):
     nearest_gate = events.NearestGateChoice(event.character, prompt, "Choose", monster=self)
     travel = events.Travel(event.character, nearest_gate)
     pulled_through = events.Sequence([nearest_gate, travel], event.character)
-    seq.append(
-      events.Conditional(
-        event.character, values.InCity(event.character), None, {0: return_city, 1: pulled_through}
-      )
-    )
+    results = {0: return_city, 1: pulled_through}
+    seq.append(events.Conditional(event.character, values.InCity(event.character), None, results))
     return events.Sequence(seq, event.character)
 
 

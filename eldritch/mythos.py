@@ -255,19 +255,10 @@ class CloseLocationsHeadline(Headline):
 
 def HealthWager(source, character, attribute, prompt, prize):
   dice = events.DiceRoll(character, values.Calculation(character, attribute), name=source.name)
-  loss = events.Loss(
-    character,
-    {
-      attribute: values.Calculation(
-        left=character,
-        left_attr=attribute,
-        operand=operator.sub,
-        right=dice,
-        right_attr="successes",
-      )
-    },
-    source=source,
+  amount = values.Calculation(
+    left=character, left_attr=attribute, operand=operator.sub, right=dice, right_attr="successes"
   )
+  loss = events.Loss(character, {attribute: amount}, source=source)
   final = events.PassFail(
     character, values.Calculation(character, attribute), prize, events.Nothing()
   )
@@ -319,13 +310,10 @@ class Mythos3(Environment):
     super().__init__("Mythos3", "Square", "Unnamable", {"square", "diamond"}, {"circle"}, "mystic")
 
   def get_interrupt(self, event, state):
-    if (
-      isinstance(event, events.GainOrLoss)
-      and values.Calculation(event.gains.get("stamina", 0), operand=operator.gt, right=0).value(
-        state
-      )
-      and (event.source is None or event.source.name not in ("Physician", "Hospital"))
-    ):
+    if not isinstance(event, events.GainOrLoss):
+      return None
+    gain = values.Calculation(event.gains.get("stamina", 0), operand=operator.gt, right=0)
+    if gain.value(state) and getattr(event.source, "name", "") not in ("Physician", "Hospital"):
       return events.GainPrevention(self, event, "stamina", event.gains["stamina"])
     return None
 
@@ -606,13 +594,10 @@ class Mythos18(Environment):
     super().__init__("Mythos18", "Square", "Unnamable", {"plus"}, {"moon"}, "mystic")
 
   def get_interrupt(self, event, state):
-    if (
-      isinstance(event, events.GainOrLoss)
-      and values.Calculation(event.gains.get("sanity", 0), operand=operator.gt, right=0).value(
-        state
-      )
-      and (event.source is None or event.source.name not in ("Psychology", "Asylum"))
-    ):
+    if not isinstance(event, events.GainOrLoss):
+      return None
+    gain = values.Calculation(event.gains.get("sanity", 0), operand=operator.gt, right=0)
+    if gain.value(state) and getattr(event.source, "name", "") not in ("Psychology", "Asylum"):
       return events.GainPrevention(self, event, "sanity", event.gains["sanity"])
     return None
 
@@ -1105,18 +1090,10 @@ class Mythos58(Environment):
 
   def get_trigger(self, event, state):
     if isinstance(event, events.Movement) and event.character.place.name == self.activity_location:
+      gain = [events.Gain(event.character, {"clues": 1}), events.Draw(event.character, "spells", 1)]
+      prompt = "Deal with the Man in Black?"
       return HealthWager(
-        self,
-        event.character,
-        "sanity",
-        "Deal with the Man in Black?",
-        events.Sequence(
-          [
-            events.Gain(event.character, {"clues": 1}),
-            events.Draw(event.character, "spells", 1, 1),
-          ],
-          event.character,
-        ),
+        self, event.character, "sanity", prompt, events.Sequence(gain, event.character)
       )
     return None
 
@@ -1192,9 +1169,9 @@ class Mythos60(Environment):
     super().__init__("Mythos60", "Woods", "Society", {"plus"}, {"moon"}, "urban")
 
   def get_modifier(self, thing, attribute, state):
-    if attribute == "toughness" and (
-      isinstance(thing, monsters.Cultist) or getattr(thing, "name", None) == "Flying Insect"
-    ):
+    if attribute != "toughness":
+      return 0
+    if isinstance(thing, monsters.Cultist) or getattr(thing, "name", None) == "Flying Insect":
       return 1
     return 0
 

@@ -47,12 +47,8 @@ class CardRevealer(mythos.GlobalEffect):
 
 def Diner1(char):
   spend = values.RangeSpendPrerequisite("dollars", 1, 6)
-  dollar_choice = events.SpendChoice(
-    char,
-    "Spend money to restore stamina and/or sanity?",
-    ["Spend", "No Thanks"],
-    spends=[spend, None],
-  )
+  prompt = "Spend money to restore stamina and/or sanity?"
+  dollar_choice = events.SpendChoice(char, prompt, ["Spend", "No Thanks"], spends=[spend, None])
   gain = events.SplitGain(char, "stamina", "sanity", values.SpendCount(dollar_choice, "dollars"))
   cond = events.Conditional(char, dollar_choice, "choice_index", {0: gain, 1: events.Nothing()})
   return events.Sequence([dollar_choice, cond], char)
@@ -326,17 +322,13 @@ def WitchHouse2(char):
 
 def WitchHouse3(char):
   check = events.Check(char, "luck", 0)
-  cond = events.Conditional(
-    char,
-    check,
-    "successes",
-    {
-      0: events.Loss(char, {"sanity": 3}),
-      1: events.Delayed(char),
-      2: events.Loss(char, {"stamina": 1}),
-      3: events.Gain(char, {"stamina": 3}),
-    },
-  )
+  results = {
+    0: events.Loss(char, {"sanity": 3}),
+    1: events.Delayed(char),
+    2: events.Loss(char, {"stamina": 1}),
+    3: events.Gain(char, {"stamina": 3}),
+  }
+  cond = events.Conditional(char, check, "successes", results)
   return events.Sequence([check, cond], char)
 
 

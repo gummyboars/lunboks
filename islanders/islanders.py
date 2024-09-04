@@ -122,16 +122,9 @@ class Options(collections.OrderedDict):
     )
     self["bury_treasure"] = GameOption("Bury Treasure", default=False, forced=True, hidden=True)
     self["norsrc_is_connected"] = GameOption("", default=True, forced=True, hidden=True)
+    schoices = [("settlement", "settlement"), ("settlement", "city"), ("settlement",) * 3]
     self["placements"] = GameOption(
-      "",
-      default=("settlement", "settlement"),
-      forced=True,
-      hidden=True,
-      choices=[
-        ("settlement", "settlement"),
-        ("settlement", "city"),
-        ("settlement", "settlement", "settlement"),
-      ],
+      "", default=("settlement", "settlement"), forced=True, hidden=True, choices=schoices
     )
     self["extra_build"] = GameOption("5-6 Players", default=False, forced=True)
     self["debug"] = GameOption("Debug", default=False)
