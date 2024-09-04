@@ -6,8 +6,15 @@ from typing import List, Dict, Optional, Tuple
 import os
 
 from game import (
-    BaseGame, ValidatePlayer, CustomEncoder, InvalidInput, UnknownMove, InvalidMove,
-    InvalidPlayer, TooManyPlayers, NotYourTurn,
+  BaseGame,
+  ValidatePlayer,
+  CustomEncoder,
+  InvalidInput,
+  UnknownMove,
+  InvalidMove,
+  InvalidPlayer,
+  TooManyPlayers,
+  NotYourTurn,
 )
 
 random = SystemRandom()
@@ -20,7 +27,8 @@ VICTORY_CARDS = ["palace", "chapel", "university", "market", "library"]
 TREASURES = ["collect1", "collect2", "collectpi", "roadbuilding", "takedev"]
 TILE_NUMBERS = [5, 2, 6, 3, 8, 10, 9, 12, 11, 4, 8, 10, 9, 4, 5, 6, 3, 11]
 EXTRA_NUMBERS = [
-    2, 5, 4, 6, 3, 9, 8, 11, 11, 10, 6, 3, 8, 4, 8, 10, 11, 12, 10, 5, 4, 9, 5, 9, 12, 3, 12, 6]
+  2, 5, 4, 6, 3, 9, 8, 11, 11, 10, 6, 3, 8, 4, 8, 10, 11, 12, 10, 5, 4, 9, 5, 9, 12, 3, 12, 6
+]  # fmt: skip
 
 
 def _validate_name(current_name, used_names, data):
@@ -47,11 +55,11 @@ def _validate_name(current_name, used_names, data):
 
 
 _event = collections.namedtuple(
-    "Event", ["event_type", "public_text", "secret_text", "visible_players"])
+  "Event", ["event_type", "public_text", "secret_text", "visible_players"]
+)
 
 
 class Event(_event):
-
   def __new__(cls, *args):
     defaults = ["", None]
     missing = len(cls._fields) - len(args)
@@ -61,7 +69,6 @@ class Event(_event):
 
 
 class GameOption:
-
   def __init__(self, name, forced=False, default=False, choices=None, value=None, hidden=False):
     self.name = name
     self.forced = forced
@@ -96,7 +103,6 @@ class GameOption:
 
 
 class Options(collections.OrderedDict):
-
   def __init__(self, *args, **kwargs):
     super().__init__(*args, **kwargs)
     self.reset()
@@ -106,22 +112,26 @@ class Options(collections.OrderedDict):
     self["robber"] = GameOption("Robber", default=True, forced=True, hidden=True)
     self["pirate"] = GameOption("Pirate", default=False, forced=True, hidden=True)
     self["max_cities"] = GameOption(
-        "Max Cities", default=4, forced=True, hidden=True, choices=[4, 8],
+      "Max Cities", default=4, forced=True, hidden=True, choices=[4, 8]
     )
     self["friendly_robber"] = GameOption("Friendly Robber", default=False)
     self["randomness"] = GameOption("Randomness", default=36, choices=list(range(37)))
     self["victory_points"] = GameOption("Victory Points", default=10, choices=list(range(8, 22)))
     self["foreign_island_points"] = GameOption(
-        "", default=0, choices=[0, 1, 2], forced=True, hidden=True,
+      "", default=0, choices=[0, 1, 2], forced=True, hidden=True
     )
     self["bury_treasure"] = GameOption("Bury Treasure", default=False, forced=True, hidden=True)
     self["norsrc_is_connected"] = GameOption("", default=True, forced=True, hidden=True)
     self["placements"] = GameOption(
-        "", default=("settlement", "settlement"), forced=True, hidden=True,
-        choices=[
-            ("settlement", "settlement"), ("settlement", "city"),
-            ("settlement", "settlement", "settlement"),
-        ]
+      "",
+      default=("settlement", "settlement"),
+      forced=True,
+      hidden=True,
+      choices=[
+        ("settlement", "settlement"),
+        ("settlement", "city"),
+        ("settlement", "settlement", "settlement"),
+      ],
     )
     self["extra_build"] = GameOption("5-6 Players", default=False, forced=True)
     self["debug"] = GameOption("Debug", default=False)
@@ -141,7 +151,6 @@ class Options(collections.OrderedDict):
 
 
 class TileLocation(collections.namedtuple("TileLocation", ["x", "y"])):
-
   __slots__ = ()
 
   def __new__(cls, x, y):
@@ -171,33 +180,43 @@ class TileLocation(collections.namedtuple("TileLocation", ["x", "y"])):
     return TileLocation(self.x - 3, self.y + 1)
 
   def get_upper_left_corner(self):
-    return CornerLocation(self.x-1, self.y-1)
+    return CornerLocation(self.x - 1, self.y - 1)
 
   def get_upper_right_corner(self):
-    return CornerLocation(self.x+1, self.y-1)
+    return CornerLocation(self.x + 1, self.y - 1)
 
   def get_right_corner(self):
-    return CornerLocation(self.x+2, self.y)
+    return CornerLocation(self.x + 2, self.y)
 
   def get_lower_right_corner(self):
-    return CornerLocation(self.x+1, self.y+1)
+    return CornerLocation(self.x + 1, self.y + 1)
 
   def get_lower_left_corner(self):
-    return CornerLocation(self.x-1, self.y+1)
+    return CornerLocation(self.x - 1, self.y + 1)
 
   def get_left_corner(self):
-    return CornerLocation(self.x-2, self.y)
+    return CornerLocation(self.x - 2, self.y)
 
   def get_adjacent_tiles(self):
     # NOTE: order matters here. Index in this array lines up with rotation semantics.
-    return [self.get_lower_tile(), self.get_lower_left_tile(),
-            self.get_upper_left_tile(), self.get_upper_tile(),
-            self.get_upper_right_tile(), self.get_lower_right_tile()]
+    return [
+      self.get_lower_tile(),
+      self.get_lower_left_tile(),
+      self.get_upper_left_tile(),
+      self.get_upper_tile(),
+      self.get_upper_right_tile(),
+      self.get_lower_right_tile(),
+    ]
 
   def get_corner_locations(self):
-    return [self.get_upper_left_corner(), self.get_upper_right_corner(),
-            self.get_lower_left_corner(), self.get_lower_right_corner(),
-            self.get_left_corner(), self.get_right_corner()]
+    return [
+      self.get_upper_left_corner(),
+      self.get_upper_right_corner(),
+      self.get_lower_left_corner(),
+      self.get_lower_right_corner(),
+      self.get_left_corner(),
+      self.get_right_corner(),
+    ]
 
   def get_corners_for_rotation(self, rotation):
     if rotation == 0:
@@ -217,17 +236,20 @@ class TileLocation(collections.namedtuple("TileLocation", ["x", "y"])):
   def get_edge_locations(self):
     # Order matters here.
     corners = [
-        self.get_left_corner(), self.get_upper_left_corner(), self.get_upper_right_corner(),
-        self.get_right_corner(), self.get_lower_right_corner(), self.get_lower_left_corner(),
+      self.get_left_corner(),
+      self.get_upper_left_corner(),
+      self.get_upper_right_corner(),
+      self.get_right_corner(),
+      self.get_lower_right_corner(),
+      self.get_lower_left_corner(),
     ]
     edges = []
     for idx, corner in enumerate(corners):
-      edges.append(corner.get_edge(corners[(idx+1) % 6]))
+      edges.append(corner.get_edge(corners[(idx + 1) % 6]))
     return edges
 
 
 class CornerLocation(collections.namedtuple("CornerLocation", ["x", "y"])):
-
   __slots__ = ()
 
   def __new__(cls, x, y):
@@ -263,14 +285,14 @@ class CornerLocation(collections.namedtuple("CornerLocation", ["x", "y"])):
     """
     if self.x % 3 == 0:
       return [
-          CornerLocation(self.x + 2, self.y),
-          CornerLocation(self.x - 1, self.y - 1),
-          CornerLocation(self.x - 1, self.y + 1),
+        CornerLocation(self.x + 2, self.y),
+        CornerLocation(self.x - 1, self.y - 1),
+        CornerLocation(self.x - 1, self.y + 1),
       ]
     return [
-        CornerLocation(self.x - 2, self.y),
-        CornerLocation(self.x + 1, self.y - 1),
-        CornerLocation(self.x + 1, self.y + 1),
+      CornerLocation(self.x - 2, self.y),
+      CornerLocation(self.x + 1, self.y - 1),
+      CornerLocation(self.x + 1, self.y + 1),
     ]
 
   def get_edge(self, other_corner):
@@ -285,19 +307,18 @@ class CornerLocation(collections.namedtuple("CornerLocation", ["x", "y"])):
     # return [self.get_edge(other_corner) for other_corner in self.get_adjacent_corners()]
     if self.x % 3 == 0:
       return [
-          EdgeLocation(self.x, self.y, self.x + 2, self.y),
-          EdgeLocation(self.x - 1, self.y - 1, self.x, self.y),
-          EdgeLocation(self.x - 1, self.y + 1, self.x, self.y),
+        EdgeLocation(self.x, self.y, self.x + 2, self.y),
+        EdgeLocation(self.x - 1, self.y - 1, self.x, self.y),
+        EdgeLocation(self.x - 1, self.y + 1, self.x, self.y),
       ]
     return [
-        EdgeLocation(self.x - 2, self.y, self.x, self.y),
-        EdgeLocation(self.x, self.y, self.x + 1, self.y - 1),
-        EdgeLocation(self.x, self.y, self.x + 1, self.y + 1),
+      EdgeLocation(self.x - 2, self.y, self.x, self.y),
+      EdgeLocation(self.x, self.y, self.x + 1, self.y - 1),
+      EdgeLocation(self.x, self.y, self.x + 1, self.y + 1),
     ]
 
 
 class EdgeLocation(collections.namedtuple("EdgeLocation", "left_x left_y right_x right_y")):
-
   __slots__ = ()
 
   def __new__(cls, left_x, left_y, right_x, right_y):
@@ -310,9 +331,17 @@ class EdgeLocation(collections.namedtuple("EdgeLocation", "left_x left_y right_x
     assert right_x % 3 != 1, f"corner location's x must not be 1 mod 3: {right_x}, {right_y}"
     assert right_x % 2 == right_y % 2, f"corners must line up with tiles: {right_x}, {right_y}"
     if left_x % 3 == 0:
-      assert (right_x, right_y) in [(left_x+2, left_y), (left_x-1, left_y-1), (left_x-1, left_y+1)]
+      assert (right_x, right_y) in [
+        (left_x + 2, left_y),
+        (left_x - 1, left_y - 1),
+        (left_x - 1, left_y + 1),
+      ]
     else:
-      assert (right_x, right_y) in [(left_x-2, left_y), (left_x+1, left_y-1), (left_x+1, left_y+1)]
+      assert (right_x, right_y) in [
+        (left_x - 2, left_y),
+        (left_x + 1, left_y - 1),
+        (left_x + 1, left_y + 1),
+      ]
     return super().__new__(cls, left_x, left_y, right_x, right_y)
 
   @property
@@ -345,12 +374,10 @@ def parse_location(location, location_type):
 
 
 class Road:
-
   TYPES = ["road", "ship"]
 
   def __init__(
-      self, location, road_type, player, *, closed=False, movable=True, source=None,
-      conquered=False,
+    self, location, road_type, player, *, closed=False, movable=True, source=None, conquered=False
   ):
     assert road_type in self.TYPES
     self.location = EdgeLocation(*location)
@@ -363,17 +390,13 @@ class Road:
 
   def json_repr(self):
     data = {
-        "location": self.location,
-        "road_type": self.road_type,
-        "player": self.player,
-        "conquered": self.conquered,
+      "location": self.location,
+      "road_type": self.road_type,
+      "player": self.player,
+      "conquered": self.conquered,
     }
     if self.road_type == "ship":
-      data.update({
-          "closed": self.closed,
-          "movable": self.movable,
-          "source": self.source,
-      })
+      data.update({"closed": self.closed, "movable": self.movable, "source": self.source})
     return data
 
   @staticmethod
@@ -384,8 +407,13 @@ class Road:
       assert value.get("source") is not None
       source = CornerLocation(*value["source"])
     return Road(
-        value["location"], value["road_type"], value["player"], closed=value.get("closed", False),
-        movable=value.get("movable", True), source=source, conquered=value.get("conquered", False),
+      value["location"],
+      value["road_type"],
+      value["player"],
+      closed=value.get("closed", False),
+      movable=value.get("movable", True),
+      source=source,
+      conquered=value.get("conquered", False),
     )
 
   def __str__(self):
@@ -393,7 +421,6 @@ class Road:
 
 
 class Piece:
-
   TYPES = ["settlement", "city"]
 
   def __init__(self, x, y, piece_type, player, *, conquered=False):
@@ -405,17 +432,20 @@ class Piece:
 
   def json_repr(self):
     return {
-        "location": self.location,
-        "piece_type": self.piece_type,
-        "player": self.player,
-        "conquered": self.conquered,
+      "location": self.location,
+      "piece_type": self.piece_type,
+      "player": self.player,
+      "conquered": self.conquered,
     }
 
   @staticmethod
   def parse_json(value):
     return Piece(
-        value["location"][0], value["location"][1], value["piece_type"], value["player"],
-        conquered=value.get("conquered", False),
+      value["location"][0],
+      value["location"][1],
+      value["piece_type"],
+      value["player"],
+      conquered=value.get("conquered", False),
     )
 
   def __str__(self):
@@ -423,10 +453,19 @@ class Piece:
 
 
 class Tile:
-
   def __init__(
-      self, x, y, tile_type, is_land, number, *, rotation=0, variant="", barbarians=0,
-      conquered=False, land_rotations=None,
+    self,
+    x,
+    y,
+    tile_type,
+    is_land,
+    number,
+    *,
+    rotation=0,
+    variant="",
+    barbarians=0,
+    conquered=False,
+    land_rotations=None,
   ):
     self.location = TileLocation(x, y)
     self.tile_type = tile_type
@@ -444,10 +483,16 @@ class Tile:
   @staticmethod
   def parse_json(value):
     return Tile(
-        value["location"][0], value["location"][1], value["tile_type"], value["is_land"],
-        value["number"], rotation=value["rotation"], variant=value.get("variant", ""),
-        barbarians=value.get("barbarians", 0), conquered=value.get("conquered", False),
-        land_rotations=value.get("land_rotations") or [],
+      value["location"][0],
+      value["location"][1],
+      value["tile_type"],
+      value["is_land"],
+      value["number"],
+      rotation=value["rotation"],
+      variant=value.get("variant", ""),
+      barbarians=value.get("barbarians", 0),
+      conquered=value.get("conquered", False),
+      land_rotations=value.get("land_rotations") or [],
     )
 
   def __str__(self):
@@ -461,11 +506,7 @@ class Port:
     self.rotation = rotation
 
   def json_repr(self):
-    return {
-        "location": self.location,
-        "port_type": self.port_type,
-        "rotation": self.rotation,
-    }
+    return {"location": self.location, "port_type": self.port_type, "rotation": self.rotation}
 
   @staticmethod
   def parse_json(value):
@@ -476,7 +517,6 @@ class Port:
 
 
 class Player:
-
   def __init__(self, color, name):
     self.color = color
     self.name = name
@@ -506,20 +546,22 @@ class Player:
 
   def json_for_player(self, is_over):
     ret = {
-        "color": self.color,
-        "name": self.name,
-        "armies": self.knights_played,
-        "longest_route": self.longest_route,
-        "buried_treasure": self.buried_treasure,
-        "resource_cards": self.resource_card_count(),
-        "dev_cards": self.dev_card_count(),
-        "trade_ratios": {rsrc: self.trade_ratios[rsrc] for rsrc in RESOURCES},
-        "points": 0,
+      "color": self.color,
+      "name": self.name,
+      "armies": self.knights_played,
+      "longest_route": self.longest_route,
+      "buried_treasure": self.buried_treasure,
+      "resource_cards": self.resource_card_count(),
+      "dev_cards": self.dev_card_count(),
+      "trade_ratios": {rsrc: self.trade_ratios[rsrc] for rsrc in RESOURCES},
+      "points": 0,
     }
     if is_over:
       ret["dev_cards"] = {
-          name: count for name, count in self.cards.items()
-          if name in (PLAYABLE_DEV_CARDS + VICTORY_CARDS)}
+        name: count
+        for name, count in self.cards.items()
+        if name in (PLAYABLE_DEV_CARDS + VICTORY_CARDS)
+      }
     return ret
 
   def too_many_cards(self):
@@ -536,24 +578,46 @@ class Player:
 
 
 class IslandersState:
-
   WANT = "want"
   GIVE = "give"
   TRADE_SIDES = [WANT, GIVE]
   PLACEMENTS = ["place1", "place2", "place3"]
   LOCATION_ATTRIBUTES = {"tiles", "ports", "pieces", "roads", "treasures"}
   HIDDEN_ATTRIBUTES = {
-      "dev_cards", "played_dev", "ships_moved", "built_this_turn",
-      "home_corners", "foreign_landings", "placement_islands",
+    "dev_cards",
+    "played_dev",
+    "ships_moved",
+    "built_this_turn",
+    "home_corners",
+    "foreign_landings",
+    "placement_islands",
   }
   COMPUTED_ATTRIBUTES = {"port_corners", "corners_to_islands"}
   INDEXED_ATTRIBUTES = {
-      "discard_players", "collect_counts", "home_corners", "foreign_landings", "counter_offers",
+    "discard_players",
+    "collect_counts",
+    "home_corners",
+    "foreign_landings",
+    "counter_offers",
   }
   REQUIRED_ATTRIBUTES = {
-      "player_data", "tiles", "ports", "pieces", "roads", "robber", "dev_cards", "dice_roll",
-      "game_phase", "action_stack", "turn_idx", "played_dev", "discard_players",
-      "rob_players", "trade_offer", "counter_offers", "options",
+    "player_data",
+    "tiles",
+    "ports",
+    "pieces",
+    "roads",
+    "robber",
+    "dev_cards",
+    "dice_roll",
+    "game_phase",
+    "action_stack",
+    "turn_idx",
+    "played_dev",
+    "discard_players",
+    "rob_players",
+    "trade_offer",
+    "counter_offers",
+    "options",
   }
   EXTRA_BUILD_ACTIONS = ["settle", "city", "buy_dev", "road", "ship", "end_extra_build"]
 
@@ -668,10 +732,12 @@ class IslandersState:
       for idx, corner_list in mapping.items():
         for corner in corner_list:
           assert cstate.pieces[CornerLocation(*corner)].player == idx
-      mapping.update({
+      mapping.update(
+        {
           idx: [CornerLocation(*corner) for corner in corner_list]
           for idx, corner_list in mapping.items()
-      })
+        }
+      )
 
     cstate.recompute()
     return cstate
@@ -704,8 +770,11 @@ class IslandersState:
   def json_repr(self):
     custom = {"player_data", "event_log"}
     ret = {
-        name: getattr(self, name) for name in
-        self.__dict__.keys() - self.LOCATION_ATTRIBUTES - self.COMPUTED_ATTRIBUTES - custom
+      name: getattr(self, name)
+      for name in self.__dict__.keys()
+      - self.LOCATION_ATTRIBUTES
+      - self.COMPUTED_ATTRIBUTES
+      - custom
     }
     ret["turn_phase"] = self.turn_phase
     ret.update({name: list(getattr(self, name).values()) for name in self.LOCATION_ATTRIBUTES})
@@ -820,10 +889,14 @@ class IslandersState:
     if self.turn_phase == "takedev":
       if self.dev_cards:
         card_type = self.add_dev_card(self.turn_idx)
-        self.event_log.append(Event(
-            "takedev", "{player%s} received a dev card" % self.turn_idx,
-            "{player%s} received a %s" % (self.turn_idx, card_type), [self.turn_idx],
-        ))
+        self.event_log.append(
+          Event(
+            "takedev",
+            "{player%s} received a dev card" % self.turn_idx,
+            "{player%s} received a %s" % (self.turn_idx, card_type),
+            [self.turn_idx],
+          )
+        )
       self.action_stack.pop()
       self.next_action()
       return
@@ -939,7 +1012,7 @@ class IslandersState:
       return self.handle_trade_offer(data.get("offer"), player_idx)
     if move_type == "accept_counter":
       return self.handle_accept_counter(
-          data.get("counter_offer"), data.get("counter_player"), player_idx
+        data.get("counter_offer"), data.get("counter_player"), player_idx
       )
     if move_type == "trade_bank":
       return self.handle_trade_bank(data.get("offer"), player_idx)
@@ -1014,7 +1087,7 @@ class IslandersState:
     if self.PLACEMENTS.index(self.game_phase) < len(self.options.placements) - 1:
       # Next game phase - keep the same player, as turns go in snake order.
       self.turn_idx -= direction
-      self.game_phase = self.PLACEMENTS[self.PLACEMENTS.index(self.game_phase)+1]
+      self.game_phase = self.PLACEMENTS[self.PLACEMENTS.index(self.game_phase) + 1]
       self.action_stack.extend(["road", "settle"])
       return
     # Begin the main phase of the game.
@@ -1050,8 +1123,9 @@ class IslandersState:
         self.action_stack.append("robber")
       else:
         self.rob_players = [
-            idx for idx in range(len(self.player_data))
-            if self.player_data[idx].resource_card_count() and idx != self.turn_idx
+          idx
+          for idx in range(len(self.player_data))
+          if self.player_data[idx].resource_card_count() and idx != self.turn_idx
         ]
       self.discard_players = self._get_players_with_too_many_resources()
       if sum(self.discard_players.values()):
@@ -1113,17 +1187,21 @@ class IslandersState:
       # remaining cards for this resources type.
       if len(receive_players) == 1:
         the_player = list(receive_players.keys())[0]
-        self.event_log.append(Event(
-            "shortage", "{player%s} was due %s {%s} but only received %s due to a shortage" % (
-                the_player, receive_players[the_player], rsrc, remaining),
-        ))
+        self.event_log.append(
+          Event(
+            "shortage",
+            "{player%s} was due %s {%s} but only received %s due to a shortage"
+            % (the_player, receive_players[the_player], rsrc, remaining),
+          )
+        )
         receive_players[the_player] = remaining
         continue
       # If there is more than one player receiving this resource, and there is not enough
       # in the supply, then no players receive any of this resource.
       receive_players.clear()
-      self.event_log.append(Event(
-          "shortage", "There was a shortage of {%s} - no players received any" % rsrc))
+      self.event_log.append(
+        Event("shortage", "There was a shortage of {%s} - no players received any" % rsrc)
+      )
 
     # Do the actual resource distribution.
     received = collections.defaultdict(lambda: collections.defaultdict(int))
@@ -1186,8 +1264,8 @@ class IslandersState:
         raise InvalidMove("You may only select {rsrc1}, {rsrc3}, or {rsrc4}")
     if selection.keys() & set(self.shortage_resources):
       raise InvalidMove(
-          "There is a shortage of {%s}; you cannot collect any." % (
-              "}, {".join(self.shortage_resources))
+        "There is a shortage of {%s}; you cannot collect any."
+        % ("}, {".join(self.shortage_resources))
       )
     # TODO: dedup with code from year of plenty
     overdrawn = [rsrc for rsrc in selection if selection[rsrc] > self.remaining_resources(rsrc)]
@@ -1205,8 +1283,9 @@ class IslandersState:
 
   def _get_players_with_too_many_resources(self):
     return {
-        idx: player.resource_card_count() // 2
-        for idx, player in enumerate(self.player_data) if player.too_many_cards()
+      idx: player.resource_card_count() // 2
+      for idx, player in enumerate(self.player_data)
+      if player.too_many_cards()
     }
 
   def handle_discard(self, selection, player):
@@ -1217,9 +1296,10 @@ class IslandersState:
       raise InvalidMove("You do not need to discard any cards.")
     discard_count = sum(selection.get(rsrc, 0) for rsrc in RESOURCES)
     if discard_count != self.discard_players[player]:
-      raise InvalidMove("You have %s resource cards and must discard %s." %
-                        (self.player_data[player].resource_card_count(),
-                         self.discard_players[player]))
+      raise InvalidMove(
+        "You have %s resource cards and must discard %s."
+        % (self.player_data[player].resource_card_count(), self.discard_players[player])
+      )
     self._remove_resources(selection.items(), player, "discard those cards")
     discarded = ", ".join(["%s {%s}" % (count, rsrc) for rsrc, count in selection.items()])
     self.event_log.append(Event("discard", "{player%s} discarded %s" % (player, discarded)))
@@ -1237,7 +1317,7 @@ class IslandersState:
     chosen_tile = self.tiles.get(new_location)
     if chosen_tile is None or land != chosen_tile.is_land:
       raise InvalidMove(
-          "You must play the %s on a valid %s tile." % (robber_type, "land" if land else "{space}")
+        "You must play the %s on a valid %s tile." % (robber_type, "land" if land else "{space}")
       )
     if chosen_tile.tile_type == "discover":
       raise InvalidMove("You cannot place the %s there before exploring it." % robber_type)
@@ -1257,7 +1337,7 @@ class IslandersState:
       raise InvalidMove("The robber is not used in this scenario.")
     robber_loc = self.validate_robber_location(location, "robber", land=True)
     adjacent_players = {
-        self.pieces[loc].player for loc in robber_loc.get_corner_locations() if loc in self.pieces
+      self.pieces[loc].player for loc in robber_loc.get_corner_locations() if loc in self.pieces
     }
     self.check_friendly_robber(current_player, adjacent_players, "robber")
     self.event_log.append(Event("robber", "{player%s} moved the robber" % current_player))
@@ -1269,8 +1349,9 @@ class IslandersState:
       raise InvalidMove("The pirate is not used in this scenario.")
     pirate_loc = self.validate_robber_location(location, "pirate", land=False)
     adjacent_players = {
-        self.roads[edge].player for edge in pirate_loc.get_edge_locations()
-        if edge in self.roads and self.roads[edge].road_type == "ship"
+      self.roads[edge].player
+      for edge in pirate_loc.get_edge_locations()
+      if edge in self.roads and self.roads[edge].road_type == "ship"
     }
     self.check_friendly_robber(player_idx, adjacent_players, "pirate")
     self.event_log.append(Event("pirate", "{player%s} moved the pirate" % player_idx))
@@ -1279,7 +1360,7 @@ class IslandersState:
 
   def activate_robber(self, current_player, adjacent_players):
     robbable_players = {
-        idx for idx in adjacent_players if self.player_data[idx].resource_card_count()
+      idx for idx in adjacent_players if self.player_data[idx].resource_card_count()
     }
     robbable_players -= {current_player}
     self.rob_players = list(robbable_players)
@@ -1310,12 +1391,14 @@ class IslandersState:
     chosen_rsrc = random.choice(all_rsrc_cards)
     self.player_data[rob_player].cards[chosen_rsrc] -= 1
     self.player_data[current_player].cards[chosen_rsrc] += 1
-    self.event_log.append(Event(
+    self.event_log.append(
+      Event(
         "rob",
         "{player%s} stole a card from {player%s}" % (current_player, rob_player),
         "{player%s} stole a {%s} from {player%s}" % (current_player, chosen_rsrc, rob_player),
         [current_player, rob_player],
-    ))
+      )
+    )
     self.rob_players = []  # Reset after successful rob.
     self.action_stack.pop()
     self.next_action()
@@ -1532,9 +1615,9 @@ class IslandersState:
     # Check that this attaches to their existing network.
     self._check_road_building(loc, player, road_type)
     # Check that the player has enough roads left.
-    road_count = len([
-        r for r in self.roads.values() if r.player == player and r.road_type == road_type
-    ])
+    road_count = len(
+      [r for r in self.roads.values() if r.player == player and r.road_type == road_type]
+    )
     if road_count >= 15:
       raise InvalidMove(f"You have no {road_type}s remaining.")
     # Handle special settlement phase.
@@ -1587,8 +1670,9 @@ class IslandersState:
     # we may assume that the longest road has at least 5 segments.
     if new_max < 5:
       if self.longest_route_player is not None:
-        self.event_log.append(Event(
-            "longest_route", "{player%s} loses longest route" % self.longest_route_player))
+        self.event_log.append(
+          Event("longest_route", "{player%s} loses longest route" % self.longest_route_player)
+        )
       self.longest_route_player = None
       return
 
@@ -1610,8 +1694,9 @@ class IslandersState:
         self.event_log.append(Event("longest_route", event_text))
         self.longest_route_player = eligible[0]
     else:
-      self.event_log.append(Event(
-          "longest_route", "Nobody receives longest route because of a tie."))
+      self.event_log.append(
+        Event("longest_route", "Nobody receives longest route because of a tie.")
+      )
       self.longest_route_player = None
 
   def _calculate_longest_road(self, player):
@@ -1840,10 +1925,10 @@ class IslandersState:
 
   def give_treasure(self, player, treasure):
     text = {
-        "collectpi": "collect 1 (limited)",
-        "collect1": "collect 1",
-        "collect2": "collect 2",
-        "takedev": "development card",
+      "collectpi": "collect 1 (limited)",
+      "collect1": "collect 1",
+      "collect2": "collect 2",
+      "takedev": "development card",
     }
     event_text = "{player%s} discovered a %s treasure" % (player, text.get(treasure, treasure))
     self.event_log.append(Event("treasure", event_text))
@@ -1916,7 +2001,6 @@ class IslandersState:
     self.next_action()
 
   def _depletable_tiles(self):
-
     def depletable(tloc):
       return self.corners_to_islands.get(tloc.get_left_corner()) in self.placement_islands
 
@@ -2018,9 +2102,9 @@ class IslandersState:
     if not any(tile in self.tiles and not self.tiles[tile].conquered for tile in loc.get_tiles()):
       raise InvalidMove("You cannot place your settlement on a conquered corner.")
     # Check player has enough settlements left.
-    settle_count = len([
-        p for p in self.pieces.values() if p.player == player and p.piece_type == "settlement"
-    ])
+    settle_count = len(
+      [p for p in self.pieces.values() if p.player == player and p.piece_type == "settlement"]
+    )
     if settle_count >= 5:
       raise InvalidMove("You have no settlements remaining.")
     # Check resources and deduct from player.
@@ -2112,9 +2196,9 @@ class IslandersState:
     if not any(tile in self.tiles and not self.tiles[tile].conquered for tile in loc.get_tiles()):
       raise InvalidMove("You cannot upgrade a conquered settlement to a city.")
     # Check player has enough cities left.
-    city_count = len([
-        p for p in self.pieces.values() if p.player == player and p.piece_type == "city"
-    ])
+    city_count = len(
+      [p for p in self.pieces.values() if p.player == player and p.piece_type == "city"]
+    )
     if city_count >= self.options.max_cities:
       raise InvalidMove("You have no cities remaining.")
     # Check resources and deduct from player.
@@ -2133,10 +2217,14 @@ class IslandersState:
       raise InvalidMove("There are no development cards left.")
     self._remove_resources(resources, player, "buy a development card")
     card_type = self.add_dev_card(player)
-    self.event_log.append(Event(
-        "buy_dev", "{player%s} bought a dev card" % player,
-        "{player%s} bought a %s" % (player, card_type), [player],
-    ))
+    self.event_log.append(
+      Event(
+        "buy_dev",
+        "{player%s} bought a dev card" % player,
+        "{player%s} bought a %s" % (player, card_type),
+        [player],
+      )
+    )
 
   def add_dev_card(self, player):
     card_type = self.dev_cards.pop()
@@ -2150,8 +2238,8 @@ class IslandersState:
     if card_type == "knight":
       if self.turn_phase not in ["dice", "main"]:
         raise InvalidMove(
-            "You must play the knight before you roll the dice or during the "
-            "build/trade part of your turn."
+          "You must play the knight before you roll the dice or during the "
+          "build/trade part of your turn."
         )
     else:
       self._check_main_phase("play_dev", "play a development card")
@@ -2261,8 +2349,9 @@ class IslandersState:
     if len(resource_selection) != 1 or sum(resource_selection.values()) != 1:
       raise InvalidMove("You must choose exactly one resource to monopolize.")
     card_type = list(resource_selection.keys())[0]
-    self.event_log.append(Event(
-        "monopoly", "{player%s} played a monopoly on {%s}" % (player, card_type)))
+    self.event_log.append(
+      Event("monopoly", "{player%s} played a monopoly on {%s}" % (player, card_type))
+    )
     counts = {}
     for opponent_idx, opponent in enumerate(self.player_data):
       if player == opponent_idx:
@@ -2341,10 +2430,13 @@ class IslandersState:
 
     gave_text = ", ".join(["%s {%s}" % (count, rsrc) for rsrc, count in my_give.items()])
     recv_text = ", ".join(["%s {%s}" % (count, rsrc) for rsrc, count in my_want.items()])
-    self.event_log.append(Event(
-        "trade", "{player%s} traded %s for %s with {player%s}" % (
-            player, gave_text, recv_text, counter_player),
-    ))
+    self.event_log.append(
+      Event(
+        "trade",
+        "{player%s} traded %s for %s with {player%s}"
+        % (player, gave_text, recv_text, counter_player),
+      )
+    )
     for rsrc, count in my_give.items():
       self.player_data[player].cards[rsrc] -= count
       self.player_data[counter_player].cards[rsrc] += count
@@ -2370,14 +2462,15 @@ class IslandersState:
       available += give // ratio
     if available != requested:
       raise InvalidMove(
-          "You should receive %s resources, but you requested %s." % (available, requested),
+        "You should receive %s resources, but you requested %s." % (available, requested)
       )
     # TODO: make sure there is enough left in the bank.
 
     gave_txt = ", ".join(f"{count} {{{rsrc}}}" for rsrc, count in offer[self.GIVE].items() if count)
     recv_txt = ", ".join(f"{count} {{{rsrc}}}" for rsrc, count in offer[self.WANT].items() if count)
-    self.event_log.append(Event(
-        "trade", "{player%s} traded %s with the bank for %s" % (player, gave_txt, recv_txt)))
+    self.event_log.append(
+      Event("trade", "{player%s} traded %s with the bank for %s" % (player, gave_txt, recv_txt))
+    )
     # Now, make the trade.
     for rsrc, want in offer[self.WANT].items():
       self.player_data[player].cards[rsrc] += want
@@ -2403,7 +2496,7 @@ class IslandersState:
         tile_data.variant = "corner"
       else:
         # Takes advantage of the return order of get_adjacent_tiles.
-        upper_left = locs[(tile_rotation+2) % 6]
+        upper_left = locs[(tile_rotation + 2) % 6]
         if upper_left in self.tiles:
           tile_data.variant = "edgeleft"
         else:
@@ -2415,8 +2508,9 @@ class IslandersState:
         continue
       adjacent_tiles = [self.tiles.get(loc) for loc in location.get_adjacent_tiles()]
       lands = [
-          idx for idx, tile in enumerate(adjacent_tiles)
-          if tile and tile.is_land and tile.tile_type != "discover"
+        idx
+        for idx, tile in enumerate(adjacent_tiles)
+        if tile and tile.is_land and tile.tile_type != "discover"
       ]
       tile_data.land_rotations = lands
 
@@ -2470,11 +2564,11 @@ class IslandersState:
         raise RuntimeError("You screwed it up.")
       new_loc = (loc[0] + directions[dir_idx][0], loc[1] + directions[dir_idx][1])
       if not self.tiles.get(new_loc):
-        dir_idx = (dir_idx+1) % len(directions)
+        dir_idx = (dir_idx + 1) % len(directions)
         bad_dir_count += 1
         continue
       if new_loc in visited or not self.tiles[new_loc].is_land:
-        dir_idx = (dir_idx+1) % len(directions)
+        dir_idx = (dir_idx + 1) % len(directions)
         bad_dir_count += 1
         continue
       bad_dir_count = 0
@@ -2538,7 +2632,6 @@ class IslandersState:
 
 
 class Scenario(metaclass=abc.ABCMeta):
-
   @classmethod
   @abc.abstractmethod
   def preview(cls, state):
@@ -2568,7 +2661,6 @@ class Scenario(metaclass=abc.ABCMeta):
 
 
 class StandardMap(Scenario):
-
   @classmethod
   def preview(cls, state):
     if len(state.player_data) <= 4:
@@ -2604,7 +2696,6 @@ class StandardMap(Scenario):
 
 
 class BeginnerMap(Scenario):
-
   @classmethod
   def preview(cls, state):
     filename = "beginner4.json" if len(state.player_data) >= 4 else "beginner3.json"
@@ -2644,7 +2735,6 @@ class BeginnerMap(Scenario):
 
 
 class TestMap(Scenario):
-
   @classmethod
   def preview(cls, state):
     cls.load_file(state, "test.json")
@@ -2658,7 +2748,6 @@ class TestMap(Scenario):
 
 
 class SeafarerScenario(Scenario, metaclass=abc.ABCMeta):
-
   @classmethod
   def init(cls, state):
     if len(state.player_data) < 3:
@@ -2674,7 +2763,6 @@ class SeafarerScenario(Scenario, metaclass=abc.ABCMeta):
 
 
 class SeafarerShores(SeafarerScenario):
-
   @classmethod
   def preview(cls, state):
     if len(state.player_data) <= 3:
@@ -2714,7 +2802,6 @@ class SeafarerShores(SeafarerScenario):
 
 
 class SeafarerIslands(SeafarerScenario):
-
   @classmethod
   def preview(cls, state):
     if len(state.player_data) <= 3:
@@ -2750,7 +2837,6 @@ class SeafarerIslands(SeafarerScenario):
 
 
 class SeafarerDesert(SeafarerScenario):
-
   @classmethod
   def preview(cls, state):
     if len(state.player_data) <= 3:
@@ -2788,7 +2874,6 @@ class SeafarerDesert(SeafarerScenario):
 
 
 class SeafarerFog(SeafarerScenario):
-
   @classmethod
   def preview(cls, state):
     if len(state.player_data) <= 3:
@@ -2819,8 +2904,18 @@ class SeafarerFog(SeafarerScenario):
     else:
       raise InvalidPlayer("Must have 3 or 4 players.")
     state.discoverable_tiles = [
-        "space", "space", "anyrsrc", "anyrsrc", "rsrc1", "rsrc2", "rsrc3", "rsrc3", "rsrc4",
-        "rsrc4", "rsrc5", "rsrc5",
+      "space",
+      "space",
+      "anyrsrc",
+      "anyrsrc",
+      "rsrc1",
+      "rsrc2",
+      "rsrc3",
+      "rsrc3",
+      "rsrc4",
+      "rsrc4",
+      "rsrc5",
+      "rsrc5",
     ]
     state.recompute()
     state.init_dev_cards()
@@ -2835,7 +2930,6 @@ class SeafarerFog(SeafarerScenario):
 
 
 class TreasureIslands(SeafarerScenario):
-
   @classmethod
   def preview(cls, state):
     cls.load_file(state, "treasure4.json")
@@ -2860,15 +2954,30 @@ class TreasureIslands(SeafarerScenario):
     state.init_robber()
 
     state.discoverable_tiles = [
-        "space", "space", "space", "anyrsrc", "anyrsrc", "norsrc", "norsrc",
-        "rsrc1", "rsrc2", "rsrc3", "rsrc3", "rsrc4", "rsrc4", "rsrc5", "rsrc5",
+      "space",
+      "space",
+      "space",
+      "anyrsrc",
+      "anyrsrc",
+      "norsrc",
+      "norsrc",
+      "rsrc1",
+      "rsrc2",
+      "rsrc3",
+      "rsrc3",
+      "rsrc4",
+      "rsrc4",
+      "rsrc5",
+      "rsrc5",
     ]
     state.discoverable_numbers = [2, 3, 4, 4, 5, 6, 9, 10, 10, 11]
     random.shuffle(state.discoverable_tiles)
     random.shuffle(state.discoverable_numbers)
-    treasures = list(collections.Counter({
-        "collect1": 5, "collect2": 4, "takedev": 4, "roadbuilding": 4, "collectpi": 3,
-    }).elements())
+    treasures = list(
+      collections.Counter(
+        {"collect1": 5, "collect2": 4, "takedev": 4, "roadbuilding": 4, "collectpi": 3}
+      ).elements()
+    )
     random.shuffle(treasures)
     for key in state.treasures:
       state.treasures[key] = treasures.pop()
@@ -2891,7 +3000,6 @@ class TreasureIslands(SeafarerScenario):
 
 
 class IntoTheUnknown(SeafarerScenario):
-
   @classmethod
   def preview(cls, state):
     if len(state.player_data) <= 3:
@@ -2923,14 +3031,16 @@ class IntoTheUnknown(SeafarerScenario):
     else:
       disc = {"rsrc1": 3, "rsrc2": 3, "rsrc3": 4, "rsrc4": 4, "rsrc5": 4, "space": 9, "norsrc": 1}
       state.discoverable_numbers = [
-          2, 12, 6, 8, 4, 4, 10, 10, 3, 3, 3, 5, 5, 5, 9, 9, 9, 11, 11, 11,
-      ]
+        2, 12, 6, 8, 4, 4, 10, 10, 3, 3, 3, 5, 5, 5, 9, 9, 9, 11, 11, 11,
+      ]  # fmt: skip
     state.discoverable_tiles = list(collections.Counter(disc).elements())
     random.shuffle(state.discoverable_tiles)
     random.shuffle(state.discoverable_numbers)
-    treasures = list(collections.Counter({
-        "collect1": 5, "collect2": 4, "takedev": 4, "roadbuilding": 4, "collectpi": 3,
-    }).elements())
+    treasures = list(
+      collections.Counter(
+        {"collect1": 5, "collect2": 4, "takedev": 4, "roadbuilding": 4, "collectpi": 3}
+      ).elements()
+    )
     random.shuffle(treasures)
     for key in state.treasures:
       state.treasures[key] = treasures.pop()
@@ -2946,7 +3056,6 @@ class IntoTheUnknown(SeafarerScenario):
 
 
 class GreaterIslands(SeafarerScenario):
-
   @classmethod
   def preview(cls, state):
     if len(state.player_data) <= 3:
@@ -3003,7 +3112,6 @@ class GreaterIslands(SeafarerScenario):
 
 
 class DesertRiders(SeafarerScenario):
-
   FIXED_TILES = [(19, 3), (19, 5), (19, 7), (10, 6), (10, 10), (16, 6), (16, 10)]
 
   @classmethod
@@ -3030,12 +3138,14 @@ class DesertRiders(SeafarerScenario):
     else:
       raise InvalidPlayer("Must have 3 or 4 players.")
     home_lands = [
-        loc for loc, tile in state.tiles.items()
-        if tile.is_land and loc.x > 7 and loc.y < 13 and loc not in cls.FIXED_TILES
+      loc
+      for loc, tile in state.tiles.items()
+      if tile.is_land and loc.x > 7 and loc.y < 13 and loc not in cls.FIXED_TILES
     ]
     foreign_lands = [
-        loc for loc, tile in state.tiles.items()
-        if tile.is_land and loc not in home_lands and loc not in cls.FIXED_TILES
+      loc
+      for loc, tile in state.tiles.items()
+      if tile.is_land and loc not in home_lands and loc not in cls.FIXED_TILES
     ]
     state.shuffle_land_tiles(home_lands)
     state.shuffle_land_tiles(foreign_lands)
@@ -3054,7 +3164,6 @@ class DesertRiders(SeafarerScenario):
 
 
 class MapMakerState(IslandersState):
-
   def handle(self, player_idx, data):
     if data["type"] not in ["robber", "pirate", "end_turn", "settle", "city"]:
       raise InvalidMove("This is the mapmaker. You can only change tiles and add treasure.")
@@ -3107,7 +3216,7 @@ class MapMakerState(IslandersState):
     # Change tile types or add tiles.
     tile_order = ["space"] + RESOURCES + ["anyrsrc", "norsrc", "discover"]
     idx = tile_order.index(self.tiles[loc].tile_type)
-    new_type = tile_order[(idx+1) % len(tile_order)]
+    new_type = tile_order[(idx + 1) % len(tile_order)]
     self.tiles[loc].tile_type = new_type
     if new_type == "norsrc":
       self.tiles[loc].is_land = True
@@ -3127,7 +3236,6 @@ class MapMakerState(IslandersState):
 
 
 class MapMaker(Scenario):
-
   @classmethod
   def preview(cls, state):
     pass
@@ -3144,9 +3252,9 @@ class MapMaker(Scenario):
 
 
 class IslandersGame(BaseGame):
-
   # The order of this dictionary determines the method resolution order of the created class.
-  SCENARIOS = collections.OrderedDict([
+  SCENARIOS = collections.OrderedDict(
+    [
       ("Standard Map", StandardMap),
       ("Beginner's Map", BeginnerMap),
       ("Test Map", TestMap),
@@ -3159,7 +3267,8 @@ class IslandersGame(BaseGame):
       ("Greater Islands", GreaterIslands),
       ("Desert Riders", DesertRiders),
       ("Map Maker", MapMaker),
-  ])
+    ]
+  )
   COLORS = {"red", "blue", "limegreen", "darkviolet", "saddlebrown", "darkorange"}
 
   def __init__(self):
@@ -3222,18 +3331,22 @@ class IslandersGame(BaseGame):
       except Exception:  # pylint: disable=broad-except
         tmp_game.add_tile(Tile(1, 1, "randomized", True, None))
       data = tmp_game.for_player(None)
-      data.update({
+      data.update(
+        {
           "type": "game_state",
           "host": self.host == session,
           "you": player_idx,
           "started": False,
           "colors": sorted(self.COLORS - {p.color for p in self.player_sessions.values()}),
-      })
+        }
+      )
 
       data["options"] = collections.OrderedDict([(key, self.choices[key]) for key in self.choices])
       data["scenario"] = GameOption(
-          name="Scenario", default=list(self.SCENARIOS.keys())[0],
-          choices=list(self.SCENARIOS.keys()), value=self.scenario,
+        name="Scenario",
+        default=list(self.SCENARIOS.keys())[0],
+        choices=list(self.SCENARIOS.keys()),
+        value=self.scenario,
       )
 
       return json.dumps(data, cls=CustomEncoder)

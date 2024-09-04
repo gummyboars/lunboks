@@ -25,7 +25,6 @@ from game import InvalidMove
 
 
 class ClueTokenTest(EventTest):
-
   def setUp(self):
     super().setUp()
     self.check = Check(self.char, "combat", 0)
@@ -47,8 +46,8 @@ class ClueTokenTest(EventTest):
 
     new_successes = self.check.successes
     new_roll = self.check.roll
-    self.assertEqual(len(new_roll), 1+len(old_roll))
-    self.assertEqual(new_successes, old_successes+1)
+    self.assertEqual(len(new_roll), 1 + len(old_roll))
+    self.assertEqual(new_successes, old_successes + 1)
     self.assertEqual(len(self.state.event_stack), 2)
     self.assertEqual(self.state.event_stack[-1], self.check.spend)
 
@@ -100,7 +99,7 @@ class ClueTokenTest(EventTest):
     choice = self.resolve_to_choice(SpendChoice)
 
     new_roll = self.check.roll[:]
-    self.assertEqual(len(new_roll), 2+len(old_roll))
+    self.assertEqual(len(new_roll), 2 + len(old_roll))
 
     self.assertEqual(len(self.state.event_stack), 2)
     self.spend("clues", 1, choice)
@@ -108,11 +107,10 @@ class ClueTokenTest(EventTest):
     self.resolve_until_done()
 
     last_roll = self.check.roll[:]
-    self.assertEqual(len(last_roll), 2+len(new_roll))
+    self.assertEqual(len(last_roll), 2 + len(new_roll))
 
 
 class RerollTest(EventTest):
-
   def setUp(self):
     super().setUp()
     self.char.clues = 2
@@ -175,7 +173,6 @@ class RerollTest(EventTest):
 
 
 class ResearchTest(EventTest):
-
   def testUseOnOwnCheck(self):
     self.char.clues = 2
     self.char.possessions.append(abilities.Research())
@@ -302,7 +299,6 @@ class SpeedBoostTest(EventTest):
 
 
 class CigaretteTest(EventTest):
-
   def setUp(self):
     super().setUp()
     self.char.possessions.append(items.CigaretteCase(0))
@@ -350,7 +346,6 @@ class CigaretteTest(EventTest):
 
 
 class TrustFundTest(EventTest):
-
   def testGainADollarDuringUpkeep(self):
     self.char.possessions.append(abilities.TrustFund())
     self.assertEqual(self.char.dollars, 0)
@@ -360,15 +355,13 @@ class TrustFundTest(EventTest):
 
 
 class DeputyTest(EventTest):
-
   def testBecomingDeputyGivesItems(self):
     self.state.tradables.extend(items.CreateTradables())
     self.state.event_stack.append(DrawSpecific(self.char, "specials", "Deputy"))
     self.resolve_until_done()
     self.assertEqual(len(self.char.possessions), 3)
     self.assertCountEqual(
-        [pos.name for pos in self.char.possessions],
-        ["Deputy", "Deputy's Revolver", "Patrol Wagon"],
+      [pos.name for pos in self.char.possessions], ["Deputy", "Deputy's Revolver", "Patrol Wagon"]
     )
 
   def testGainADollarDuringUpkeep(self):
@@ -410,7 +403,6 @@ class DeputyTest(EventTest):
 
 
 class WagonTest(EventTest):
-
   def setUp(self):
     super().setUp()
     self.char.possessions.append(items.PatrolWagon())
@@ -599,7 +591,6 @@ class WagonTest(EventTest):
 
 
 class OneshotItemTest(EventTest):
-
   def setUp(self):
     super().setUp()
     self.char.possessions.append(items.Dynamite(0))
@@ -622,7 +613,6 @@ class OneshotItemTest(EventTest):
 
 
 class TomeTest(EventTest):
-
   def setUp(self):
     super().setUp()
     self.state.turn_phase = "movement"
@@ -677,7 +667,6 @@ class TomeTest(EventTest):
 
 
 class LossPreventionTest(EventTest):
-
   def setUp(self):
     super().setUp()
     self.food = items.Food(0)
@@ -724,7 +713,6 @@ class LossPreventionTest(EventTest):
 
 
 class FindGateTest(EventTest):
-
   def setUp(self):
     super().setUp()
     self.char.possessions.append(items.FindGate(0))
@@ -949,7 +937,6 @@ class FleshWardTest(EventTest):
 
 
 class HealTest(EventTest):
-
   def setUp(self):
     super().setUp()
     self.char.place = self.state.places["Uptown"]
@@ -968,9 +955,8 @@ class HealTest(EventTest):
     self.spend("sanity", 1, choice)
     choice.resolve(self.state, "Heal0")
     with mock.patch.object(
-            events.random,
-            "randint",
-            new=mock.MagicMock(side_effect=[5, 1, 1, 1, 1, 1, 1])):
+      events.random, "randint", new=mock.MagicMock(side_effect=[5, 1, 1, 1, 1, 1, 1])
+    ):
       choice = self.resolve_to_choice(MultipleChoice)
     self.assertEqual(choice.choices, ["Dummy"])
     choice.resolve(self.state, "Dummy")
@@ -1079,7 +1065,6 @@ class HealTest(EventTest):
 
 
 class VoiceTest(EventTest):
-
   def setUp(self):
     super().setUp()
     self.state.turn_phase = "upkeep"
@@ -1208,7 +1193,6 @@ class VoiceTest(EventTest):
 
 
 class PhysicianTest(EventTest):
-
   def setUp(self):
     super().setUp()
     self.char.place = self.state.places["Uptown"]
@@ -1264,7 +1248,6 @@ class PhysicianTest(EventTest):
 
 
 class ExtraDrawTest(EventTest):
-
   def testOtherDecksNotAffected(self):
     self.char.possessions.append(abilities.Studious())
     self.state.skills.extend([abilities.Marksman(0), abilities.Bravery(0)])
@@ -1301,7 +1284,7 @@ class ExtraDrawTest(EventTest):
 
     self.assertEqual(len(self.char.possessions), 3)
     self.assertEqual(
-        [item.handle for item in self.char.possessions], ["Shrewd Dealer", "Cross0", "Food0"],
+      [item.handle for item in self.char.possessions], ["Shrewd Dealer", "Cross0", "Food0"]
     )
     self.assertEqual(len(self.state.common), 2)
     self.assertEqual(self.state.common[-1].handle, "Dark Cloak0")
@@ -1325,14 +1308,14 @@ class ExtraDrawTest(EventTest):
   def testDraw3Purchase1BecomesDraw4(self):
     self.char.possessions.append(abilities.Archaeology())
     self.char.dollars = 12
-    self.state.unique.extend([
-        items.HolyWater(0), items.MagicLamp(0), items.MagicPowder(0), items.SwordOfGlory(1),
-    ])
+    self.state.unique.extend(
+      [items.HolyWater(0), items.MagicLamp(0), items.MagicPowder(0), items.SwordOfGlory(1)]
+    )
     self.state.event_stack.append(Purchase(self.char, "unique", 3, keep_count=1))
 
     choice = self.resolve_to_choice(CardSpendChoice)
     self.assertEqual(
-        choice.choices, ["Holy Water", "Magic Lamp", "Magic Powder", "Sword of Glory", "Nothing"],
+      choice.choices, ["Holy Water", "Magic Lamp", "Magic Powder", "Sword of Glory", "Nothing"]
     )
     self.spend("dollars", 4, choice)
     choice.resolve(self.state, "Holy Water")
@@ -1346,10 +1329,12 @@ class ExtraDrawTest(EventTest):
   def testWithEncounters(self):
     self.char.possessions.append(abilities.HometownAdvantage())
     self.state.event_stack.append(EncounterPhase(self.char))
-    self.state.places["Easttown"].encounters.extend([
+    self.state.places["Easttown"].encounters.extend(
+      [
         encounters.EncounterCard("Easttown2", {"Diner": encounters.Diner2}),
         encounters.EncounterCard("Easttown3", {"Diner": encounters.Store7}),
-    ])
+      ]
+    )
     self.state.common.extend([items.Whiskey(0), items.Food(0)])
     choice = self.resolve_to_choice(CardChoice)
     self.assertCountEqual(choice.choices, ["Easttown2", "Easttown3"])
@@ -1363,11 +1348,13 @@ class ExtraDrawTest(EventTest):
     self.char.place = self.state.places["Plateau1"]
     self.char.possessions.append(abilities.PsychicSensitivity())
     self.state.event_stack.append(OtherWorldPhase(self.char))
-    self.state.gate_cards.extend([
+    self.state.gate_cards.extend(
+      [
         gate_encounters.GateCard("Gate10", {"red"}, {"Other": gate_encounters.Other10}),
         gate_encounters.GateCard("Gate00", {"yellow"}, {"Other": gate_encounters.Dreamlands10}),
         gate_encounters.GateCard("Gate16", {"green"}, {"Other": gate_encounters.Plateau16}),
-    ])
+      ]
+    )
     choice = self.resolve_to_choice(CardChoice)
     # Gate00 is not a choice - wrong color
     self.assertCountEqual(choice.choices, ["Gate10", "Gate16"])
@@ -1376,7 +1363,6 @@ class ExtraDrawTest(EventTest):
 
 
 class PreventionTest(EventTest):
-
   def testPreventStaminaLoss(self):
     self.char.possessions.append(abilities.StrongBody())
     self.char.possessions.append(items.TommyGun(0))
@@ -1487,7 +1473,6 @@ class GuardianTest(EventTest):
 
 
 class HunchesTest(EventTest):
-
   def testAddsBonusDieToAnyCheck(self):
     self.char.possessions.append(abilities.Hunches())
     self.char.clues = 2
@@ -1594,7 +1579,6 @@ class MistsTest(EventTest):
 
 
 class SpendingOutputTest(EventTest):
-
   def setUp(self):
     super().setUp()
     self.char.possessions.append(items.ResearchMaterials(0))

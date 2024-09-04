@@ -13,7 +13,6 @@ from powerplant import cost
 
 
 class TestCosts(unittest.TestCase):
-
   def testNoCities(self):
     germany = cities.Germany()
     self.assertEqual(cost.total_cost(germany, 0, []), 0)

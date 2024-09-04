@@ -2,7 +2,6 @@ from collections import namedtuple
 
 
 class Place:
-
   def is_unstable(self, state):
     if any(char.name == "Scientist" and char.place == self for char in state.characters):
       return False
@@ -12,7 +11,6 @@ class Place:
 
 
 class FinalBattle(Place):
-
   def __init__(self):
     self.name = "Battle"
 
@@ -21,7 +19,6 @@ class FinalBattle(Place):
 
 
 class LostInTimeAndSpace(Place):
-
   def __init__(self):
     self.name = "Lost"
 
@@ -30,7 +27,6 @@ class LostInTimeAndSpace(Place):
 
 
 class Outskirts(Place):
-
   def __init__(self):
     self.name = "Outskirts"
 
@@ -39,7 +35,6 @@ class Outskirts(Place):
 
 
 class CityPlace(Place):
-
   MOVEMENT_OPPOSITES = {"black": "white", "white": "black"}
 
   def __init__(self, name, long_name):
@@ -65,16 +60,16 @@ class CityPlace(Place):
 
   def json_repr(self):
     movement = {
-        "white": self.movement["white"].name if self.movement["white"] else None,
-        "black": self.movement["black"].name if self.movement["black"] else None,
+      "white": self.movement["white"].name if self.movement["white"] else None,
+      "black": self.movement["black"].name if self.movement["black"] else None,
     }
     return {
-        "name": self.name,
-        "long_name": self.long_name,
-        "connections": [x.name for x in self.connections],
-        "movement": movement,
-        "neighborhood": self.neighborhood.name if self.neighborhood else None,
-        "closed": self.closed,
+      "name": self.name,
+      "long_name": self.long_name,
+      "connections": [x.name for x in self.connections],
+      "movement": movement,
+      "neighborhood": self.neighborhood.name if self.neighborhood else None,
+      "closed": self.closed,
     }
 
   def _add_connections(self, *other_places):
@@ -89,13 +84,11 @@ class CityPlace(Place):
 
 
 class Sky(CityPlace):
-
   def __init__(self):
     super().__init__("Sky", "Sky")
 
 
 class Street(CityPlace):
-
   def __init__(self, name, long_name):
     super().__init__(name, long_name)
     self.encounters = []
@@ -116,7 +109,6 @@ class Street(CityPlace):
 
 
 class Location(CityPlace):
-
   def __init__(self, name, long_name, unstable):
     super().__init__(name, long_name)
     self.unstable = unstable
@@ -210,18 +202,51 @@ def CreatePlaces():
   # TODO: assert that each location and street has both black and white monster movement
 
   return {
-      place.name: place for place in [
-          # Locations
-          Shop, Newspaper, Train, Bank, Asylum, Square,
-          Roadhouse, Diner, Police, Graveyard, Cave, Store,
-          WitchHouse, Lodge, House, Church, Society, Woods, Shoppe, Hospital,
-          Library, Administration, Science, Unnamable, Docks, Isle,
-          # Streets
-          Northside, Downtown, Easttown, Rivertown,
-          FrenchHill, Southside, Uptown, University, Merchant,
-          # Other
-          Sky(), Outskirts(), LostInTimeAndSpace(), FinalBattle(),
-      ]
+    place.name: place
+    for place in [
+      # Locations
+      Shop,
+      Newspaper,
+      Train,
+      Bank,
+      Asylum,
+      Square,
+      Roadhouse,
+      Diner,
+      Police,
+      Graveyard,
+      Cave,
+      Store,
+      WitchHouse,
+      Lodge,
+      House,
+      Church,
+      Society,
+      Woods,
+      Shoppe,
+      Hospital,
+      Library,
+      Administration,
+      Science,
+      Unnamable,
+      Docks,
+      Isle,
+      # Streets
+      Northside,
+      Downtown,
+      Easttown,
+      Rivertown,
+      FrenchHill,
+      Southside,
+      Uptown,
+      University,
+      Merchant,
+      # Other
+      Sky(),
+      Outskirts(),
+      LostInTimeAndSpace(),
+      FinalBattle(),
+    ]
   }
 
 
@@ -229,7 +254,6 @@ OtherWorldInfo = namedtuple("OtherWorldInfo", ["name", "colors"])
 
 
 class OtherWorld(Place):
-
   def __init__(self, info, order):
     self.info = info
     self.order = order
@@ -249,14 +273,14 @@ class OtherWorld(Place):
 
 def CreateOtherWorlds():
   infos = [
-      OtherWorldInfo("Abyss", {"blue", "red"}),
-      OtherWorldInfo("Another Dimension", {"blue", "green", "red", "yellow"}),
-      OtherWorldInfo("City", {"green", "yellow"}),
-      OtherWorldInfo("Great Hall", {"blue", "green"}),
-      OtherWorldInfo("Plateau", {"green", "red"}),
-      OtherWorldInfo("Sunken City", {"red", "yellow"}),
-      OtherWorldInfo("Dreamlands", {"blue", "green", "red", "yellow"}),
-      OtherWorldInfo("Pluto", {"blue", "yellow"}),
+    OtherWorldInfo("Abyss", {"blue", "red"}),
+    OtherWorldInfo("Another Dimension", {"blue", "green", "red", "yellow"}),
+    OtherWorldInfo("City", {"green", "yellow"}),
+    OtherWorldInfo("Great Hall", {"blue", "green"}),
+    OtherWorldInfo("Plateau", {"green", "red"}),
+    OtherWorldInfo("Sunken City", {"red", "yellow"}),
+    OtherWorldInfo("Dreamlands", {"blue", "green", "red", "yellow"}),
+    OtherWorldInfo("Pluto", {"blue", "yellow"}),
   ]
   worlds = []
   for info in infos:

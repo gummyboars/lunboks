@@ -4,44 +4,62 @@ from eldritch import events, values
 from .base import Item, Weapon, OneshotWeapon, Tome
 
 __all__ = [
-    "CreateUnique", "EnchantedKnife", "EnchantedBlade", "HolyWater", "MagicLamp", "MagicPowder",
-    "SwordOfGlory",
-    "AncientTablet", "EnchantedJewelry", "GateBox", "HealingStone", "BlueWatcher", "SunkenCityRuby",
-    "ObsidianStatue", "OuterGodlyFlute", "SilverKey", "PallidMask",
-    # TODO: AlienStatue, DragonsEye,
-    "ElderSign",
-    "WardingStatue",
-    "TibetanTome", "MysticismTome", "BlackMagicTome", "BlackBook", "BookOfTheDead", "YellowPlay",
+  "CreateUnique",
+  "EnchantedKnife",
+  "EnchantedBlade",
+  "HolyWater",
+  "MagicLamp",
+  "MagicPowder",
+  "SwordOfGlory",
+  "AncientTablet",
+  "EnchantedJewelry",
+  "GateBox",
+  "HealingStone",
+  "BlueWatcher",
+  "SunkenCityRuby",
+  "ObsidianStatue",
+  "OuterGodlyFlute",
+  "SilverKey",
+  "PallidMask",
+  # TODO: AlienStatue, DragonsEye,
+  "ElderSign",
+  "WardingStatue",
+  "TibetanTome",
+  "MysticismTome",
+  "BlackMagicTome",
+  "BlackBook",
+  "BookOfTheDead",
+  "YellowPlay",
 ]
 
 
 def CreateUnique():
   counts = {
-      AncientTablet: 1,
-      BlueWatcher: 1,
-      EnchantedJewelry: 1,
-      # TODO: Have inclusion of elder signs be a configurable option?
-      ElderSign: 1,  # 4
-      OuterGodlyFlute: 1,
-      GateBox: 1,
-      HealingStone: 1,
-      ObsidianStatue: 1,
-      PallidMask: 1,
-      SunkenCityRuby: 1,
-      SilverKey: 1,
-      HolyWater: 4,
-      EnchantedBlade: 2,
-      EnchantedKnife: 2,
-      MagicLamp: 1,
-      MagicPowder: 2,
-      SwordOfGlory: 1,
-      WardingStatue: 1,
-      TibetanTome: 1,
-      MysticismTome: 2,
-      BlackMagicTome: 2,
-      BlackBook: 2,
-      BookOfTheDead: 1,
-      YellowPlay: 2,
+    AncientTablet: 1,
+    BlueWatcher: 1,
+    EnchantedJewelry: 1,
+    # TODO: Have inclusion of elder signs be a configurable option?
+    ElderSign: 1,  # 4
+    OuterGodlyFlute: 1,
+    GateBox: 1,
+    HealingStone: 1,
+    ObsidianStatue: 1,
+    PallidMask: 1,
+    SunkenCityRuby: 1,
+    SilverKey: 1,
+    HolyWater: 4,
+    EnchantedBlade: 2,
+    EnchantedKnife: 2,
+    MagicLamp: 1,
+    MagicPowder: 2,
+    SwordOfGlory: 1,
+    WardingStatue: 1,
+    TibetanTome: 1,
+    MysticismTome: 2,
+    BlackMagicTome: 2,
+    BlackBook: 2,
+    BookOfTheDead: 1,
+    YellowPlay: 2,
   }
   uniques = []
   for item, count in counts.items():
@@ -74,10 +92,12 @@ class MagicPowder(Weapon):
       return None
     if event.character != owner or not self.active:
       return None
-    return events.Sequence([
+    return events.Sequence(
+      [
         events.DiscardSpecific(event.character, [self]),
         events.Loss(event.character, {"sanity": 1}),
-    ], event.character
+      ],
+      event.character,
     )
 
 
@@ -107,19 +127,21 @@ class AncientTablet(Item):
     rolls = events.DiceRoll(owner, 2, name=self.handle)
     two_success = events.Draw(owner, "spells", 2, keep_count=2)
     one_success = events.Sequence(
-        [events.Draw(owner, "spells", 1), events.Gain(owner, {"clues": 2})],
-        owner
+      [events.Draw(owner, "spells", 1), events.Gain(owner, {"clues": 2})], owner
     )
     no_success = events.Gain(owner, {"clues": 4})
 
-    return events.Sequence([
+    return events.Sequence(
+      [
         events.DiscardSpecific(owner, [self]),
         events.ChangeMovementPoints(owner, -movement_cost),
         rolls,
         events.Conditional(
-            owner, rolls, "successes", {0: no_success, 1: one_success, 2: two_success}
-        )
-    ], owner)
+          owner, rolls, "successes", {0: no_success, 1: one_success, 2: two_success}
+        ),
+      ],
+      owner,
+    )
 
 
 class BlueWatcher(Item):
@@ -141,15 +163,20 @@ class BlueWatcher(Item):
     if isinstance(event, events.CombatChoice):
       if event.combat_round is None:
         return None
-      return events.Sequence([
+      return events.Sequence(
+        [
           events.PassCombatRound(
-              event.combat_round,
-              log_message=("{char_name} passed a combat round against"
-                           " {monster_name} using Blue Watcher of the Pyramid")
+            event.combat_round,
+            log_message=(
+              "{char_name} passed a combat round against"
+              " {monster_name} using Blue Watcher of the Pyramid"
+            ),
           ),
           events.DiscardSpecific(owner, [self]),
-          events.Loss(owner, {"stamina": 2})
-      ], owner)
+          events.Loss(owner, {"stamina": 2}),
+        ],
+        owner,
+      )
     if len(state.event_stack) < 3:
       return None
     # GateCloseAttempt -> Check -> DiceRoll/SpendChoice
@@ -158,19 +185,25 @@ class BlueWatcher(Item):
     if state.event_stack[-2] != state.event_stack[-3].check:
       return None
     if isinstance(event, events.SpendChoice):
-      return events.Sequence([
+      return events.Sequence(
+        [
           events.PassCheck(owner, state.event_stack[-2], self),
           events.DiscardSpecific(owner, [self]),
           events.CancelEvent(event),
-          events.Loss(owner, {"stamina": 2})
-      ], owner)
+          events.Loss(owner, {"stamina": 2}),
+        ],
+        owner,
+      )
     if isinstance(event, events.DiceRoll) and event == state.event_stack[-2].dice:
-      return events.Sequence([
+      return events.Sequence(
+        [
           events.PassCheck(owner, state.event_stack[-2], self),
           events.DiscardSpecific(owner, [self]),
           events.CancelEvent(event),
-          events.Loss(owner, {"stamina": 2})
-      ], owner)
+          events.Loss(owner, {"stamina": 2}),
+        ],
+        owner,
+      )
     return None
 
 
@@ -180,21 +213,24 @@ class ElderSign(Item):
 
   def get_usable_interrupt(self, event, owner, state: "eldritch.eldritch.GameState"):
     if (
-        isinstance(event, events.MultipleChoice)
-        and event.prompt() == "Close the gate?"
-        and event.character == owner
-        and state.get_override(self, "can_seal")
-        and len(state.event_stack) > 1
+      isinstance(event, events.MultipleChoice)
+      and event.prompt() == "Close the gate?"
+      and event.character == owner
+      and state.get_override(self, "can_seal")
+      and len(state.event_stack) > 1
     ):
       close = state.event_stack[-2]
-      return events.Sequence([
+      return events.Sequence(
+        [
           events.DiscardSpecific(owner, [self], to_box=True),
           events.CancelEvent(event),
           events.CancelEvent(close),
           events.CloseGate(owner, close.location_name, True, True, force_seal=True),
           events.RemoveDoom(owner),
           events.Loss(owner, {"sanity": 1, "stamina": 1}, source=self),
-      ], character=owner)
+        ],
+        character=owner,
+      )
     return None
 
 
@@ -227,28 +263,29 @@ class GateBox(Item):
     super().__init__("Gate Box", idx, "unique", {}, {}, None, 4)
 
   def is_usable(self, event, owner, state, need_neighbors):
-    has_neighbors = len([
-        char for char in state.characters if char.place == owner.place and char != owner]) > 0
+    has_neighbors = (
+      len([char for char in state.characters if char.place == owner.place and char != owner]) > 0
+    )
     return (
-        isinstance(event, events.GateChoice)
-        and event.character == owner
-        and len(state.event_stack) >= 2
-        and isinstance(state.event_stack[-2], events.Return)
-        and event.gate_name is not None
-        and (bool(has_neighbors) == need_neighbors)
+      isinstance(event, events.GateChoice)
+      and event.character == owner
+      and len(state.event_stack) >= 2
+      and isinstance(state.event_stack[-2], events.Return)
+      and event.gate_name is not None
+      and (bool(has_neighbors) == need_neighbors)
     )
 
   def get_interrupt(self, event, owner, state):
     if self.is_usable(event, owner, state, False):
       return events.OverrideGateChoice(
-          owner, event, gate_name=None, _prompt="Gate box allows you to choose any open gate"
+        owner, event, gate_name=None, _prompt="Gate box allows you to choose any open gate"
       )
     return None
 
   def get_usable_interrupt(self, event, owner, state):
     if self.is_usable(event, owner, state, True):
       return events.OverrideGateChoice(
-          owner, event, gate_name=None, _prompt="Gate box allows you to choose any open gate"
+        owner, event, gate_name=None, _prompt="Gate box allows you to choose any open gate"
       )
     return None
 
@@ -266,8 +303,9 @@ class HealingStone(Item):
       return None
 
     available = [
-        attr for attr in ["stamina", "sanity"]
-        if getattr(owner, attr) < getattr(owner, f"max_{attr}")(state)
+      attr
+      for attr in ["stamina", "sanity"]
+      if getattr(owner, attr) < getattr(owner, f"max_{attr}")(state)
     ]
     if not available:
       return None
@@ -275,12 +313,12 @@ class HealingStone(Item):
       gain = events.Gain(owner, {available[0]: 1})
     else:
       gain = events.BinaryChoice(
-          owner,
-          "Gain 1 Stamina or 1 Sanity?",
-          "1 Stamina",
-          "1 Sanity",
-          events.Gain(owner, {"stamina": 1}),
-          events.Gain(owner, {"sanity": 1}),
+        owner,
+        "Gain 1 Stamina or 1 Sanity?",
+        "1 Stamina",
+        "1 Sanity",
+        events.Gain(owner, {"stamina": 1}),
+        events.Gain(owner, {"sanity": 1}),
       )
     # While the text doesn't explicitly say to exhaust, if you don't,
     # you can keep gaining forever!
@@ -302,10 +340,10 @@ class ObsidianStatue(Item):
       return None
 
     types = [
-        loss_type
-        for loss_type in ("sanity", "stamina")
-        if loss_type in event.losses
-        and values.Calculation(event.losses[loss_type], operand=operator.gt, right=0).value(state)
+      loss_type
+      for loss_type in ("sanity", "stamina")
+      if loss_type in event.losses
+      and values.Calculation(event.losses[loss_type], operand=operator.gt, right=0).value(state)
     ]
     seq = [events.DiscardSpecific(owner, [self])]
     if len(types) == 0:
@@ -315,14 +353,14 @@ class ObsidianStatue(Item):
       seq.append(events.LossPrevention(self, event, loss_type, float("inf")))
     else:
       seq.append(
-          events.BinaryChoice(
-              owner,
-              "Prevent Sanity or Stamina loss?",
-              "Sanity",
-              "Stamina",
-              events.LossPrevention(self, event, "sanity", float("inf")),
-              events.LossPrevention(self, event, "stamina", float("inf")),
-          )
+        events.BinaryChoice(
+          owner,
+          "Prevent Sanity or Stamina loss?",
+          "Sanity",
+          "Stamina",
+          events.LossPrevention(self, event, "sanity", float("inf")),
+          events.LossPrevention(self, event, "stamina", float("inf")),
+        )
       )
     return events.Sequence(seq, owner)
 
@@ -341,10 +379,7 @@ class OuterGodlyFlute(Item):
 
     combat_round = state.event_stack[-2]
 
-    seq = [
-        events.DiscardSpecific(owner, [self]),
-        events.PassCombatRound(combat_round)
-    ]
+    seq = [events.DiscardSpecific(owner, [self]), events.PassCombatRound(combat_round)]
     for monster in state.monsters:
       if monster.place == owner.place and monster != event.monster:
         seq.append(events.TakeTrophy(owner, monster))
@@ -361,14 +396,13 @@ class SilverKey(Item):
   def get_usable_interrupt(self, event, owner, state):
     # TODO: maybe it would make more sense to attach this usable to the FightOrEvadeChoice
     if (
-        isinstance(event, events.EvadeRound)
-        and event.character == owner
-        and not (event.evaded or (event.check and event.check.successes))
+      isinstance(event, events.EvadeRound)
+      and event.character == owner
+      and not (event.evaded or (event.check and event.check.successes))
     ):
-      return events.Sequence([
-          events.PassEvadeRound(event),
-          events.AddToken(self, "stamina", owner)
-      ], owner)
+      return events.Sequence(
+        [events.PassEvadeRound(event), events.AddToken(self, "stamina", owner)], owner
+      )
     return None
 
 
@@ -389,19 +423,15 @@ class WardingStatue(Item):
   def get_usable_interrupt(self, event, owner, state):
     discard = events.DiscardSpecific(owner, [self])
     if isinstance(event, events.AncientAttack):
-      return events.Sequence(
-          [discard, events.CancelEvent(event)],
-          owner
-      )
+      return events.Sequence([discard, events.CancelEvent(event)], owner)
     if (
-        isinstance(event, events.GainOrLoss)
-        and len(state.event_stack) > 1
-        and isinstance(state.event_stack[-2], events.CombatRound)
-        and state.event_stack[-2].damage == event
+      isinstance(event, events.GainOrLoss)
+      and len(state.event_stack) > 1
+      and isinstance(state.event_stack[-2], events.CombatRound)
+      and state.event_stack[-2].damage == event
     ):
       return events.Sequence(
-          [discard, events.LossPrevention(self, event, "stamina", float("inf"))],
-          owner
+        [discard, events.LossPrevention(self, event, "stamina", float("inf"))], owner
       )
     return None
 
@@ -417,11 +447,13 @@ class TibetanTome(Tome):
 
   def read_event(self, owner):
     check = events.Check(owner, "lore", -1, name=self.handle)
-    success = events.Sequence([
+    success = events.Sequence(
+      [
         events.AddToken(self, "stamina", owner),
         events.Draw(owner, "spells", 1),
         events.Loss(owner, {"sanity": 1}, source=self),
-    ], owner
+      ],
+      owner,
     )
     return events.PassFail(owner, check, success, events.Nothing())
 
@@ -432,10 +464,8 @@ class MysticismTome(Tome):
 
   def read_event(self, owner):
     check = events.Check(owner, "lore", -2, name=self.handle)
-    success = events.Sequence([
-        events.DiscardSpecific(owner, [self]),
-        events.Draw(owner, "skills", 1),
-    ], owner
+    success = events.Sequence(
+      [events.DiscardSpecific(owner, [self]), events.Draw(owner, "skills", 1)], owner
     )
     return events.PassFail(owner, check, success, events.Nothing())
 
@@ -446,11 +476,13 @@ class BlackMagicTome(Tome):
 
   def read_event(self, owner):
     check = events.Check(owner, "lore", -2, name=self.handle)
-    success = events.Sequence([
+    success = events.Sequence(
+      [
         events.DiscardSpecific(owner, [self]),
         events.Draw(owner, "spells", 1),
         events.GainOrLoss(owner, gains={"clues": 1}, losses={"sanity": 2}, source=self),
-    ], owner
+      ],
+      owner,
     )
     return events.PassFail(owner, check, success, events.Nothing())
 
@@ -461,11 +493,13 @@ class BlackBook(Tome):
 
   def read_event(self, owner):
     check = events.Check(owner, "lore", -1, name=self.handle)
-    success = events.Sequence([
+    success = events.Sequence(
+      [
         events.DiscardSpecific(owner, [self]),
         events.Draw(owner, "spells", 1),
         events.Loss(owner, losses={"sanity": 1}, source=self),
-    ], owner
+      ],
+      owner,
     )
     return events.PassFail(owner, check, success, events.Nothing())
 
@@ -476,10 +510,9 @@ class BookOfTheDead(Tome):
 
   def read_event(self, owner):
     check = events.Check(owner, "lore", -2, name=self.handle)
-    success = events.Sequence([
-        events.Draw(owner, "spells", 1),
-        events.Loss(owner, losses={"sanity": 2}, source=self),
-    ], owner
+    success = events.Sequence(
+      [events.Draw(owner, "spells", 1), events.Loss(owner, losses={"sanity": 2}, source=self)],
+      owner,
     )
     return events.PassFail(owner, check, success, events.Nothing())
 
@@ -490,9 +523,11 @@ class YellowPlay(Tome):
 
   def read_event(self, owner):
     check = events.Check(owner, "lore", -2, name=self.handle)
-    success = events.Sequence([
+    success = events.Sequence(
+      [
         events.DiscardSpecific(owner, [self]),
         events.GainOrLoss(owner, gains={"clues": 4}, losses={"sanity": 1}, source=self),
-    ], owner
+      ],
+      owner,
     )
     return events.PassFail(owner, check, success, events.Nothing())

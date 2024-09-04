@@ -560,10 +560,7 @@ class GateBoxTest(EventTest):
     self.advance_turn(0, "movement")
 
   def get_gate(self, gate_name):
-    return next(
-        gate for gate in self.state.gates
-        if gate.name == gate_name
-    )
+    return next(gate for gate in self.state.gates if gate.name == gate_name)
 
   def testTwoGates(self):
     self.state.places["Woods"].gate = self.get_gate("Sunken City")
@@ -666,9 +663,7 @@ class ObsidianStatueTest(EventTest):
   def testLossIsValueType(self):
     die = events.DiceRoll(self.char, 1)
     loss = events.Loss(self.char, {"stamina": values.Calculation(die, "successes")})
-    self.state.event_stack.append(events.Sequence(
-        [die, loss], self.char
-    ))
+    self.state.event_stack.append(events.Sequence([die, loss], self.char))
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       statue = self.resolve_to_usable(0, "Obsidian Statue0")
       self.state.event_stack.append(statue)
@@ -679,9 +674,7 @@ class ObsidianStatueTest(EventTest):
   def testLossIsZeroValueType(self):
     die = events.DiceRoll(self.char, 1)
     loss = events.Loss(self.char, {"stamina": values.Calculation(die, "successes")})
-    self.state.event_stack.append(events.Sequence(
-        [die, loss], self.char
-    ))
+    self.state.event_stack.append(events.Sequence([die, loss], self.char))
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
       self.resolve_until_done()
     self.assertEqual(self.char.stamina, 5)
@@ -832,8 +825,12 @@ class WardingStatueTest(EventTest):
 class TomeTest(EventTest):
   def testTomes(self):
     unique_tomes = [
-        items.TibetanTome, items.BlackMagicTome, items.BlackBook, items.BookOfTheDead,
-        items.MysticismTome, items.YellowPlay
+      items.TibetanTome,
+      items.BlackMagicTome,
+      items.BlackBook,
+      items.BookOfTheDead,
+      items.MysticismTome,
+      items.YellowPlay,
     ]
     for i, tome_class in enumerate(unique_tomes):
       tome = tome_class(0)

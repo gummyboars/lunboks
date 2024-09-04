@@ -14,9 +14,9 @@ class Streetwise(assets.Asset):
 
   def get_interrupt(self, event, owner, state):
     if (
-        isinstance(event, events.EvadeRound)
-        and event.character == owner
-        and isinstance(owner.place, places.Street)
+      isinstance(event, events.EvadeRound)
+      and event.character == owner
+      and isinstance(owner.place, places.Street)
     ):
       return events.PassEvadeRound(event)
     return None
@@ -28,9 +28,9 @@ class BlessedIsTheChild(assets.Asset):
 
   def get_interrupt(self, event, owner, state):
     if (
-        isinstance(event, (events.Arrested, events.Curse))
-        and event.character == owner
-        and "Elder Sign" in [p.name for p in owner.possessions]
+      isinstance(event, (events.Arrested, events.Curse))
+      and event.character == owner
+      and "Elder Sign" in [p.name for p in owner.possessions]
     ):
       return events.CancelEvent(event)
     return None

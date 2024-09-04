@@ -51,7 +51,6 @@ def ValidatePlayer(playerdata):
 
 
 class CustomEncoder(json.JSONEncoder):
-
   def default(self, o):
     if isinstance(o, enum.Enum):
       return o.value
@@ -63,7 +62,6 @@ class CustomEncoder(json.JSONEncoder):
 
 
 class BaseGame(metaclass=abc.ABCMeta):
-
   @abc.abstractmethod
   def game_url(self, game_id):
     pass
@@ -98,7 +96,6 @@ class BaseGame(metaclass=abc.ABCMeta):
 
 
 class GameHandler:
-
   def __init__(self, game_id, game_class):
     self.game_id = game_id
     self.game = game_class()
@@ -193,7 +190,7 @@ class GameHandler:
       print(sys.exc_info()[1])
       traceback.print_tb(sys.exc_info()[2])
       await self.push_error(
-          websocket, f"unexpected error of type {sys.exc_info()[0]}: {sys.exc_info()[1]}",
+        websocket, f"unexpected error of type {sys.exc_info()[0]}: {sys.exc_info()[1]}"
       )
     if not pushed:
       await self.push()

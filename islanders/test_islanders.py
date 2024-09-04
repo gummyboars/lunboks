@@ -24,7 +24,6 @@ Road = islanders.Road
 
 
 class TestInitBoard(unittest.TestCase):
-
   def testBeginner(self):
     state = islanders.IslandersState()
     state.add_player("red", "player1")
@@ -47,8 +46,15 @@ class TestInitBoard(unittest.TestCase):
     for card in state.dev_cards:
       counts[card] += 1
     expected = {
-        "knight": 14, "monopoly": 2, "yearofplenty": 2, "roadbuilding": 2,
-        "chapel": 1, "university": 1, "palace": 1, "library": 1, "market": 1,
+      "knight": 14,
+      "monopoly": 2,
+      "yearofplenty": 2,
+      "roadbuilding": 2,
+      "chapel": 1,
+      "university": 1,
+      "palace": 1,
+      "library": 1,
+      "market": 1,
     }
     self.assertDictEqual(counts, expected)
     self.assertIsNone(state.dice_cards)
@@ -97,8 +103,15 @@ class TestInitBoard(unittest.TestCase):
     for card in state.dev_cards:
       counts[card] += 1
     expected = {
-        "knight": 20, "monopoly": 3, "yearofplenty": 3, "roadbuilding": 3,
-        "chapel": 1, "university": 1, "palace": 1, "library": 1, "market": 1,
+      "knight": 20,
+      "monopoly": 3,
+      "yearofplenty": 3,
+      "roadbuilding": 3,
+      "chapel": 1,
+      "university": 1,
+      "palace": 1,
+      "library": 1,
+      "market": 1,
     }
     self.assertDictEqual(counts, expected)
 
@@ -115,7 +128,6 @@ class TestInitBoard(unittest.TestCase):
 
 
 class TestLoadState(unittest.TestCase):
-
   def testLoadState(self):
     path = os.path.join(os.path.dirname(__file__), "sample.json")
     with open(path, encoding="ascii") as json_file:
@@ -159,8 +171,11 @@ class TestLoadState(unittest.TestCase):
   def testDumpAndLoad(self):
     # TODO: test with different numbers of users
     scenarios = [
-        "Standard Map", "The Four Islands", "Through the Desert", "The Fog Islands",
-        "The Treasure Islands",
+      "Standard Map",
+      "The Four Islands",
+      "Through the Desert",
+      "The Fog Islands",
+      "The Treasure Islands",
     ]
     for scenario in scenarios:
       with self.subTest(scenario=scenario):
@@ -209,7 +224,6 @@ class TestLoadState(unittest.TestCase):
 
 
 class BreakpointTestMixin(unittest.TestCase):
-
   def breakpoint(self):
     t = threading.Thread(target=server.ws_main, args=(server.GLOBAL_LOOP,))
     t.start()
@@ -220,7 +234,6 @@ class BreakpointTestMixin(unittest.TestCase):
 
 
 class CornerComputationTest(unittest.TestCase):
-
   def testIslandCorners(self):
     c = islanders.IslandersState()
     islanders.SeafarerIslands.mutate_options(c.options)
@@ -314,7 +327,6 @@ class CornerComputationTest(unittest.TestCase):
 
 
 class PlacementRestrictionsTest(unittest.TestCase):
-
   def testSaveAndLoad(self):
     c = islanders.IslandersState()
     c.add_player("red", "player1")
@@ -476,7 +488,6 @@ class PlacementRestrictionsTest(unittest.TestCase):
 
 
 class TestIslandCalculations(BreakpointTestMixin):
-
   def setUp(self):
     self.c = islanders.IslandersState()
     self.c.add_player("red", "player1")
@@ -549,12 +560,13 @@ class TestIslandCalculations(BreakpointTestMixin):
     data = self.c.for_player(None)
     self.assertIn("landings", data)
     self.assertCountEqual(
-        data["landings"], [
-            {"player": 0, "location": (9, 3)},
-            {"player": 1, "location": (12, 2)},
-            {"player": 1, "location": (5, 7)},
-            {"player": 2, "location": (8, 6)},
-        ],
+      data["landings"],
+      [
+        {"player": 0, "location": (9, 3)},
+        {"player": 1, "location": (12, 2)},
+        {"player": 1, "location": (5, 7)},
+        {"player": 2, "location": (8, 6)},
+      ],
     )
 
   def testSaveAndLoad(self):
@@ -573,7 +585,6 @@ class TestIslandCalculations(BreakpointTestMixin):
 
 
 class TestFogLandingCalculations(BreakpointTestMixin):
-
   def setUp(self):
     self.c = islanders.IslandersState()
     self.c.add_player("red", "player1")
@@ -633,7 +644,6 @@ class TestFogLandingCalculations(BreakpointTestMixin):
 
 
 class BaseInputHandlerTest(BreakpointTestMixin):
-
   TEST_FILE = "test.json"
   DEBUG = False
 
@@ -643,19 +653,18 @@ class BaseInputHandlerTest(BreakpointTestMixin):
       json_data = json.loads(json_file.read())
     if self.DEBUG:
       json_data["options"]["debug"] = {
-          "name": "Debug",
-          "forced": False,
-          "default": True,
-          "choices": None,
-          "hidden": False,
-          "value": True,
+        "name": "Debug",
+        "forced": False,
+        "default": True,
+        "choices": None,
+        "hidden": False,
+        "value": True,
       }
     self.g = islanders.IslandersGame.parse_json(json.dumps(json_data))
     self.c = self.g.game
 
 
 class TestLoadTestData(BaseInputHandlerTest):
-
   def testSessions(self):
     self.assertIn("Player1", self.g.player_sessions)
     self.assertEqual(self.g.player_sessions["Player1"], 0)
@@ -667,7 +676,6 @@ class TestLoadTestData(BaseInputHandlerTest):
 
 
 class DebugRulesOffTest(BaseInputHandlerTest):
-
   def testDebugDisabledNormalGame(self):
     with mock.patch.object(self.c, "distribute_resources") as dist:
       with self.assertRaisesRegex(InvalidMove, "debug mode"):
@@ -676,7 +684,6 @@ class DebugRulesOffTest(BaseInputHandlerTest):
 
 
 class DebugRulesOnTest(BaseInputHandlerTest):
-
   DEBUG = True
 
   def testDebugEnabledRollDice(self):
@@ -699,7 +706,6 @@ class DebugRulesOnTest(BaseInputHandlerTest):
 
 
 class TestGetEdgeType(BaseInputHandlerTest):
-
   TEST_FILE = "sea_test.json"
 
   def setUp(self):
@@ -723,7 +729,6 @@ class TestGetEdgeType(BaseInputHandlerTest):
 
 
 class TestDistributeResources(BaseInputHandlerTest):
-
   def setUp(self):
     BaseInputHandlerTest.setUp(self)
     self.c.add_piece(islanders.Piece(5, 3, "city", 0))
@@ -762,7 +767,6 @@ class TestDistributeResources(BaseInputHandlerTest):
 
 
 class TestDevCards(BaseInputHandlerTest):
-
   def setUp(self):
     BaseInputHandlerTest.setUp(self)
     for card in islanders.PLAYABLE_DEV_CARDS:
@@ -824,7 +828,6 @@ class TestDevCards(BaseInputHandlerTest):
 
 
 class TestRollDice(BaseInputHandlerTest):
-
   def setUp(self):
     super().setUp()
     self.c.options["randomness"].force(5)
@@ -850,7 +853,6 @@ class TestRollDice(BaseInputHandlerTest):
 
 
 class TestCollectResources(BaseInputHandlerTest):
-
   TEST_FILE = "sea_test.json"
   DEBUG = True
 
@@ -1053,7 +1055,6 @@ class TestCollectResources(BaseInputHandlerTest):
 
 
 class TestDiscovery(BaseInputHandlerTest):
-
   TEST_FILE = "sea_test.json"
 
   def setUp(self):
@@ -1238,7 +1239,6 @@ class TestDiscovery(BaseInputHandlerTest):
 
 
 class TestDepletion(BaseInputHandlerTest):
-
   TEST_FILE = "sea_test.json"
 
   def setUp(self):
@@ -1399,7 +1399,6 @@ class TestDepletion(BaseInputHandlerTest):
 
 
 class TestTreasures(BaseInputHandlerTest):
-
   TEST_FILE = "treasure_test.json"
 
   def setUp(self):
@@ -1549,7 +1548,6 @@ class TestTreasures(BaseInputHandlerTest):
 
 
 class TestBuryTreasures(BaseInputHandlerTest):
-
   TEST_FILE = "treasure_test.json"
 
   def setUp(self):
@@ -1654,7 +1652,6 @@ class TestBuryTreasures(BaseInputHandlerTest):
 
 
 class PlacePortTest(BaseInputHandlerTest):
-
   TEST_FILE = "treasure_test.json"
 
   def setUp(self):
@@ -1702,7 +1699,6 @@ class PlacePortTest(BaseInputHandlerTest):
 
 
 class TestRobberMovement(BaseInputHandlerTest):
-
   def setUp(self):
     BaseInputHandlerTest.setUp(self)
     self.c.action_stack = ["rob", "robber"]
@@ -1774,7 +1770,6 @@ class TestRobberMovement(BaseInputHandlerTest):
 
 
 class TestPiratePlacement(BaseInputHandlerTest):
-
   TEST_FILE = "ship_test.json"
 
   def setUp(self):
@@ -1855,7 +1850,6 @@ class TestPiratePlacement(BaseInputHandlerTest):
 
 @mock.patch.object(islanders.random, "randint", return_value=3.5)
 class TestRobberDisabled(BreakpointTestMixin):
-
   def setUp(self):
     self.c = islanders.IslandersState()
     self.c.add_player("red", "player0")
@@ -1900,7 +1894,6 @@ class TestRobberDisabled(BreakpointTestMixin):
 
 
 class TestHandleSettleInput(BaseInputHandlerTest):
-
   def setUp(self):
     BaseInputHandlerTest.setUp(self)
     # Add this to home_corners to avoid getting a landing event.
@@ -1977,7 +1970,6 @@ class TestHandleSettleInput(BaseInputHandlerTest):
 
 
 class TestInitialSettlement(BaseInputHandlerTest):
-
   def setUp(self):
     BaseInputHandlerTest.setUp(self)
     self.c.pieces.clear()
@@ -2039,7 +2031,6 @@ class TestInitialSettlement(BaseInputHandlerTest):
 
 
 class TestSettlementTurnOrder(BreakpointTestMixin):
-
   def setUp(self):
     self.c = islanders.IslandersState()
     self.c.add_player("red", "player0")
@@ -2136,7 +2127,6 @@ def AddThirteenRoads(c):
 
 
 class TestHandleRoadInput(BaseInputHandlerTest):
-
   def testRoadsMustConnect(self):
     with self.assertRaisesRegex(InvalidMove, "must be connected"):
       self.c.handle(0, {"type": "road", "location": [3, 3, 5, 3]})
@@ -2233,7 +2223,6 @@ class TestHandleRoadInput(BaseInputHandlerTest):
 
 
 class TestHandleShipInput(BaseInputHandlerTest):
-
   TEST_FILE = "sea_test.json"
 
   def setUp(self):
@@ -2283,11 +2272,12 @@ class TestHandleShipInput(BaseInputHandlerTest):
         [-4, 4, -3, 3], [-3, 3, -1, 3], [-1, 3, 0, 2], [0, 2, 2, 2], [2, 2, 3, 3],
         [-4, 4, -3, 5], [-3, 5, -1, 5], [-1, 5, 0, 4], [-1, 3, 0, 4], [0, 4, 2, 4], [2, 4, 3, 3],
         [-1, 5, 0, 6], [0, 6, 2, 6], [2, 4, 3, 5], [2, 6, 3, 5],
-    ]
+    ]  # fmt: skip
     for road in roads:
       self.c._add_road(Road(road, "road", 0))
     self.assertEqual(
-        len([x for x in self.c.roads.values() if x.player == 0 and x.road_type == "road"]), 15)
+      len([x for x in self.c.roads.values() if x.player == 0 and x.road_type == "road"]), 15
+    )
     self.c.handle(0, {"type": "ship", "location": [3, 5, 5, 5]})
 
   def testRoadBuildingCanBuildShips(self):
@@ -2318,17 +2308,17 @@ class TestHandleShipInput(BaseInputHandlerTest):
         [2, 4, 3, 5], [2, 6, 3, 5], [2, 6, 3, 7], [3, 7, 5, 7], [5, 7, 6, 6], [5, 5, 6, 6],
         [5, 5, 6, 4], [6, 4, 8, 4], [8, 4, 9, 5], [6, 6, 8, 6], [8, 6, 9, 5],
         [5, 3, 6, 4], [5, 3, 6, 2], [8, 4, 9, 3], [8, 2, 9, 3],
-    ]
+    ]  # fmt: skip
     for road in roads:
       self.c._add_road(Road(road, "ship", 0))
     self.assertEqual(
-        len([x for x in self.c.roads.values() if x.player == 0 and x.road_type == "ship"]), 15)
+      len([x for x in self.c.roads.values() if x.player == 0 and x.road_type == "ship"]), 15
+    )
     with self.assertRaisesRegex(InvalidMove, "no ships remaining"):
       self.c.handle(0, {"type": "ship", "location": [6, 2, 8, 2]})
 
 
 class TestShipOpenClosedCalculation(BaseInputHandlerTest):
-
   TEST_FILE = "sea_test.json"
 
   def testBasicMovable(self):
@@ -2444,9 +2434,7 @@ class TestShipOpenClosedCalculation(BaseInputHandlerTest):
     self.assertFalse(self.c.roads[locs[-1]].closed)
 
   def testReturnToOrigin(self):
-    road_locs = [
-        (3, 5, 5, 5), (5, 5, 6, 6), (5, 7, 6, 6), (3, 7, 5, 7), (2, 6, 3, 7), (2, 6, 3, 5),
-    ]
+    road_locs = [(3, 5, 5, 5), (5, 5, 6, 6), (5, 7, 6, 6), (3, 7, 5, 7), (2, 6, 3, 7), (2, 6, 3, 5)]
     for loc in road_locs:
       self.c.add_road(Road(loc, "ship", 0))
     for loc in road_locs:
@@ -2469,9 +2457,7 @@ class TestShipOpenClosedCalculation(BaseInputHandlerTest):
   def testMakeALoop(self):
     first_loc = (3, 5, 5, 5)
     self.c.add_road(Road(first_loc, "ship", 0))
-    road_locs = [
-        (5, 5, 6, 4), (6, 4, 8, 4), (8, 4, 9, 5), (5, 5, 6, 6), (6, 6, 8, 6), (8, 6, 9, 5),
-    ]
+    road_locs = [(5, 5, 6, 4), (6, 4, 8, 4), (8, 4, 9, 5), (5, 5, 6, 6), (6, 6, 8, 6), (8, 6, 9, 5)]
     for loc in road_locs:
       self.c.add_road(Road(loc, "ship", 0))
     for loc in [first_loc] + road_locs:
@@ -2493,7 +2479,7 @@ class TestShipOpenClosedCalculation(BaseInputHandlerTest):
         (3, 5, 5, 5),
         (5, 5, 6, 4), (6, 4, 8, 4), (8, 4, 9, 5), (5, 5, 6, 6), (6, 6, 8, 6), (8, 6, 9, 5),
         (5, 7, 6, 6), (3, 7, 5, 7), (2, 6, 3, 7), (2, 6, 3, 5),
-    ]
+    ]  # fmt: skip
 
     for loc in road_locs[:-1]:
       self.c.add_road(Road(loc, "ship", 0))
@@ -2588,7 +2574,6 @@ class TestShipOpenClosedCalculation(BaseInputHandlerTest):
 
 
 class TestShipMovement(BaseInputHandlerTest):
-
   TEST_FILE = "sea_test.json"
 
   def setUp(self):
@@ -2671,18 +2656,13 @@ class TestShipMovement(BaseInputHandlerTest):
 
 
 class TestShipMovementLongestRoute(BaseInputHandlerTest):
-
   TEST_FILE = "ship_test.json"
 
   def setUp(self):
     BaseInputHandlerTest.setUp(self)
     self.c.add_piece(islanders.Piece(9, 5, "settlement", 1))
-    p0_roads = [
-        (2, 4, 3, 3), (3, 3, 5, 3),
-    ]
-    p1_roads = [
-        (8, 6, 9, 5), (8, 4, 9, 5), (8, 4, 9, 3), (8, 2, 9, 3), (9, 5, 11, 5),
-    ]
+    p0_roads = [(2, 4, 3, 3), (3, 3, 5, 3)]
+    p1_roads = [(8, 6, 9, 5), (8, 4, 9, 5), (8, 4, 9, 3), (8, 2, 9, 3), (9, 5, 11, 5)]
     for road in p0_roads:
       self.c.add_road(Road(road, "ship", 0))
     for road in p1_roads:
@@ -2721,7 +2701,6 @@ class TestShipMovementLongestRoute(BaseInputHandlerTest):
 
 
 class TestCalculateRobPlayers(BaseInputHandlerTest):
-
   def setUp(self):
     BaseInputHandlerTest.setUp(self)
     self.c.add_player("green", "Player3")  # New player's index is 2.
@@ -2833,7 +2812,6 @@ class TestCalculateRobPlayers(BaseInputHandlerTest):
 
 
 class TestLongestRouteCalculation(BaseInputHandlerTest):
-
   def setUp(self):
     BaseInputHandlerTest.setUp(self)
 
@@ -2963,7 +2941,6 @@ class TestLongestRouteCalculation(BaseInputHandlerTest):
 
 
 class TestLongestRouteAssignment(BreakpointTestMixin):
-
   def setUp(self):
     # Be sure to call add_road on the last road for each player to recalculate longest road.
     path = os.path.join(os.path.dirname(__file__), "sample.json")
@@ -3000,7 +2977,8 @@ class TestLongestRouteAssignment(BreakpointTestMixin):
     self.c.add_road(Road([9, 5, 11, 5], "road", 0))
     self.assertEqual(self.c.longest_route_player, 0)
     self.assertEqual(
-        "{player0} takes longest route from {player1}", self.c.event_log[-1].public_text)
+      "{player0} takes longest route from {player1}", self.c.event_log[-1].public_text
+    )
 
   def testBreakLongestRoad(self):
     self.c.add_road(Road([11, 1, 12, 2], "road", 1))
@@ -3075,7 +3053,6 @@ class TestLongestRouteAssignment(BreakpointTestMixin):
 
 
 class TestLargestArmy(BaseInputHandlerTest):
-
   def testLargestArmy(self):
     self.c._handle_knight(0)
     self.c._handle_knight(0)
@@ -3103,7 +3080,6 @@ class TestLargestArmy(BaseInputHandlerTest):
 
 
 class TestPlayerPoints(BaseInputHandlerTest):
-
   def setUp(self):
     super().setUp()
     self.c.pieces[(8, 4)].piece_type = "city"
@@ -3138,7 +3114,6 @@ class TestPlayerPoints(BaseInputHandlerTest):
 
 @mock.patch.object(islanders.random, "randint", return_value=3.5)
 class TestDiscard(BaseInputHandlerTest):
-
   def setUp(self):
     BaseInputHandlerTest.setUp(self)
     self.c.add_player("green", "Player3")
@@ -3201,7 +3176,6 @@ class TestDiscard(BaseInputHandlerTest):
 
 
 class TestBuyDevCard(BaseInputHandlerTest):
-
   def setUp(self):
     BaseInputHandlerTest.setUp(self)
     self.c.player_data[0].cards.update({"rsrc1": 4, "rsrc3": 4, "rsrc5": 4})
@@ -3229,7 +3203,6 @@ class TestBuyDevCard(BaseInputHandlerTest):
 
 
 class TestHastenInvasion(BaseInputHandlerTest):
-
   TEST_FILE = "test_riders.json"
 
   def setUp(self):
@@ -3240,7 +3213,7 @@ class TestHastenInvasion(BaseInputHandlerTest):
 
   def testSettlementHastensInvasion(self):
     self.c.handle_settle([18, 8], 0)
-    self.assertEqual(self.c.invasion_countdown, 18-3)
+    self.assertEqual(self.c.invasion_countdown, 18 - 3)
     num_barbs = sum(tile.barbarians for tile in self.c.tiles.values())
     self.assertEqual(num_barbs, 3)
     num_barbs = sum(tile.barbarians for tile in self.c.tiles.values() if tile.tile_type == "norsrc")
@@ -3250,9 +3223,9 @@ class TestHastenInvasion(BaseInputHandlerTest):
 
   def testCityHastensInvasion(self):
     self.c.handle_settle([18, 8], 0)
-    self.assertEqual(self.c.invasion_countdown, 18-3)
+    self.assertEqual(self.c.invasion_countdown, 18 - 3)
     self.c.handle_city([18, 8], 0)
-    self.assertEqual(self.c.invasion_countdown, 18-6)
+    self.assertEqual(self.c.invasion_countdown, 18 - 6)
     num_barbs = sum(tile.barbarians for tile in self.c.tiles.values())
     self.assertEqual(num_barbs, 6)
     max_barbs = max(tile.barbarians for tile in self.c.tiles.values())
@@ -3261,14 +3234,14 @@ class TestHastenInvasion(BaseInputHandlerTest):
   def testFourPlayerHastening(self):
     self.c.add_player("green", "PlayerB")
     self.c.handle_settle([18, 8], 0)
-    self.assertEqual(self.c.invasion_countdown, 18-2)
+    self.assertEqual(self.c.invasion_countdown, 18 - 2)
     num_barbs = sum(tile.barbarians for tile in self.c.tiles.values())
     self.assertEqual(num_barbs, 2)
     max_barbs = max(tile.barbarians for tile in self.c.tiles.values())
     self.assertEqual(max_barbs, 1)
 
     self.c.handle_city([18, 8], 0)
-    self.assertEqual(self.c.invasion_countdown, 18-4)
+    self.assertEqual(self.c.invasion_countdown, 18 - 4)
     num_barbs = sum(tile.barbarians for tile in self.c.tiles.values())
     self.assertEqual(num_barbs, 4)
     max_barbs = max(tile.barbarians for tile in self.c.tiles.values())
@@ -3284,9 +3257,9 @@ class TestHastenInvasion(BaseInputHandlerTest):
 
   def testRoadDoesNotHasten(self):
     self.c.handle_settle([18, 8], 0)
-    self.assertEqual(self.c.invasion_countdown, 18-3)
+    self.assertEqual(self.c.invasion_countdown, 18 - 3)
     self.c.handle_road([17, 7, 18, 8], 0, "road", [("rsrc2", 1), ("rsrc4", 1)])
-    self.assertEqual(self.c.invasion_countdown, 18-3)
+    self.assertEqual(self.c.invasion_countdown, 18 - 3)
 
   def testNoEffectAfterInvasionStarts(self):
     self.c.invasion_countdown = 3
@@ -3311,7 +3284,6 @@ class TestHastenInvasion(BaseInputHandlerTest):
 
 
 class TestInvasion(BaseInputHandlerTest):
-
   TEST_FILE = "test_riders.json"
 
   def setUp(self):
@@ -3384,7 +3356,7 @@ class TestInvasion(BaseInputHandlerTest):
     self.assertEqual(self.c.tiles[(16, 4)].barbarians, 1)
     self.assertEqual(self.c.tiles[(10, 6)].barbarians, 1)
     num_barbs = sum(tile.barbarians for tile in self.c.tiles.values() if tile.tile_type == "norsrc")
-    self.assertEqual(num_barbs, 18-3)
+    self.assertEqual(num_barbs, 18 - 3)
 
   def testConqueredCitiesAfterInvasion(self):
     self.c.next_die_roll = 4
@@ -3454,7 +3426,6 @@ class TestInvasion(BaseInputHandlerTest):
 
 
 class TestInvasionEdgeCases(BreakpointTestMixin):
-
   def setUp(self):
     super().setUp()
     # Somebody puts their starting road between the two deserts because they think it's funny.
@@ -3494,7 +3465,6 @@ class TestInvasionEdgeCases(BreakpointTestMixin):
 
 
 class TestExpelBarbarians(BaseInputHandlerTest):
-
   TEST_FILE = "test_riders.json"
 
   def setUp(self):
@@ -3612,7 +3582,6 @@ class TestExpelBarbarians(BaseInputHandlerTest):
 
 
 class TestExtraBuildPhase(BreakpointTestMixin):
-
   def setUp(self):
     self.g = islanders.IslandersGame()
     self.g.connected = {"player1", "player2", "player3", "player4", "player5"}
@@ -3687,7 +3656,6 @@ class TestExtraBuildPhase(BreakpointTestMixin):
 
 
 class TestUnstartedGame(unittest.TestCase):
-
   def setUp(self):
     self.c = islanders.IslandersGame()
 
@@ -3737,17 +3705,14 @@ class TestUnstartedGame(unittest.TestCase):
     self.c.handle_join("two", {"name": "player2", "color": "blue"})
     self.c.handle_join("three", {"name": "player3", "color": "limegreen"})
     self.assertSetEqual(
-        {p.color for p in self.c.player_sessions.values()},
-        {"red", "blue", "limegreen"},
+      {p.color for p in self.c.player_sessions.values()}, {"red", "blue", "limegreen"}
     )
     self.c.handle_join("three", {"name": "3player", "color": "saddlebrown"})
     self.assertSetEqual(
-        {p.color for p in self.c.player_sessions.values()},
-        {"red", "blue", "saddlebrown"},
+      {p.color for p in self.c.player_sessions.values()}, {"red", "blue", "saddlebrown"}
     )
     self.assertSetEqual(
-        {p.name for p in self.c.player_sessions.values()},
-        {"player1", "player2", "3player"},
+      {p.name for p in self.c.player_sessions.values()}, {"player1", "player2", "3player"}
     )
 
   def testChooseBadScenario(self):
@@ -3812,7 +3777,6 @@ class TestUnstartedGame(unittest.TestCase):
 
 
 class TestGameOptions(unittest.TestCase):
-
   def setUp(self):
     self.c = islanders.IslandersGame()
 

@@ -4,7 +4,6 @@ from eldritch import values
 
 
 class MonsterCup:
-
   def __init__(self):
     self.name = "cup"
 
@@ -13,19 +12,26 @@ class MonsterCup:
 
 
 class Monster:
-
   MOVEMENTS = ["unique", "flying", "stalker", "aquatic", "fast", "stationary", "normal"]
   DIMENSIONS = {"circle", "triangle", "moon", "hex", "square", "diamond", "star", "slash", "plus"}
   DIFFICULTIES = {"horror", "combat", "evade"}
   DAMAGES = {"horror", "combat"}
   ATTRIBUTES = {
-      "magical resistance", "magical immunity", "physical resistance", "physical immunity",
-      "undead", "ambush", "elusive", "endless", "mask", "spawn",
+    "magical resistance",
+    "magical immunity",
+    "physical resistance",
+    "physical immunity",
+    "undead",
+    "ambush",
+    "elusive",
+    "endless",
+    "mask",
+    "spawn",
   }
   ALL_ATTRIBUTES = ATTRIBUTES | {"nightmarish", "overwhelming"}
 
   def __init__(
-      self, name, movement, dimension, ratings, damages, toughness, attributes=None, bypass=None,
+    self, name, movement, dimension, ratings, damages, toughness, attributes=None, bypass=None
   ):
     if attributes is None:
       attributes = set()
@@ -73,20 +79,20 @@ class Monster:
 
   def json_repr(self, state, char):
     return {
-        "name": self.name,
-        "handle": self.handle,
-        "movement": self.movement(state),
-        "dimension": self.dimension,
-        "idx": self.idx,
-        "place": getattr(self.place, "name", None),
-        "horror_difficulty": self.difficulty("horror", state, char),
-        "horror_damage": self.damage("horror", state, char),
-        "horror_bypass": self.bypass_damage("horror", state),
-        "combat_difficulty": self.difficulty("combat", state, char),
-        "combat_damage": self.damage("combat", state, char),
-        "combat_bypass": self.bypass_damage("combat", state),
-        "toughness": self.toughness(state, char),
-        "attributes": sorted(self.attributes(state, char)),
+      "name": self.name,
+      "handle": self.handle,
+      "movement": self.movement(state),
+      "dimension": self.dimension,
+      "idx": self.idx,
+      "place": getattr(self.place, "name", None),
+      "horror_difficulty": self.difficulty("horror", state, char),
+      "horror_damage": self.damage("horror", state, char),
+      "horror_bypass": self.bypass_damage("horror", state),
+      "combat_difficulty": self.difficulty("combat", state, char),
+      "combat_damage": self.damage("combat", state, char),
+      "combat_bypass": self.bypass_damage("combat", state),
+      "toughness": self.toughness(state, char),
+      "attributes": sorted(self.attributes(state, char)),
     }
 
   def difficulty(self, check_type, state, char):
@@ -135,14 +141,16 @@ class Monster:
     return "normal"
 
   def get_interrupt(self, event, state):
-    if (isinstance(event, events.TakeTrophy)
-            and self.has_attribute("endless", state, event.character)):
+    if isinstance(event, events.TakeTrophy) and self.has_attribute(
+      "endless", state, event.character
+    ):
       # TODO: Should this be coded into TakeTrophy instead?
       return events.Sequence(
-          [
-              events.CancelEvent(event),
-              events.ReturnToCup(handles=[self.handle], character=event.character),
-          ], event.character
+        [
+          events.CancelEvent(event),
+          events.ReturnToCup(handles=[self.handle], character=event.character),
+        ],
+        event.character,
       )
     return None
 
@@ -152,24 +160,34 @@ class Monster:
 
 def GiantInsect():
   return Monster(
-      "Giant Insect", "flying", "circle", {"evade": -2, "horror": -1, "combat": 0},
-      {"horror": 1, "combat": 2}, 1,
+    "Giant Insect",
+    "flying",
+    "circle",
+    {"evade": -2, "horror": -1, "combat": 0},
+    {"horror": 1, "combat": 2},
+    1,
   )
 
 
 class LandSquid(Monster):
-
   def __init__(self):
     super().__init__(
-        "Land Squid", "unique", "triangle", {"evade": 1, "horror": -2, "combat": -3},
-        {"horror": 2, "combat": 3}, 3,
+      "Land Squid",
+      "unique",
+      "triangle",
+      {"evade": 1, "horror": -2, "combat": -3},
+      {"horror": 2, "combat": 3},
+      3,
     )
 
   def move_event(self, state):
-    seq = events.Sequence([
-        events.Loss(char, {"stamina": 1}) for char in state.characters
+    seq = events.Sequence(
+      [
+        events.Loss(char, {"stamina": 1})
+        for char in state.characters
         if isinstance(char.place, places.CityPlace)
-    ])
+      ]
+    )
     first_player = state.characters[state.first_player]
     roll = events.DiceRoll(first_player, 1, name=self.handle, bad=[4, 5, 6])
     cond = events.Conditional(first_player, roll, "sum", {0: events.Nothing(), 4: seq})
@@ -183,17 +201,26 @@ class Cultist(Monster):
 
 def TentacleTree():
   return Monster(
-      "Tentacle Tree", "stationary", "hex", {"evade": -2, "horror": 0, "combat": -1},
-      {"horror": 3, "combat": 3}, 3, {"physical resistance"}, {"horror": 1},
+    "Tentacle Tree",
+    "stationary",
+    "hex",
+    {"evade": -2, "horror": 0, "combat": -1},
+    {"horror": 3, "combat": 3},
+    3,
+    {"physical resistance"},
+    {"horror": 1},
   )
 
 
 class DimensionalShambler(Monster):
-
   def __init__(self):
     super().__init__(
-        "Dimensional Shambler", "fast", "square", {"evade": -3, "horror": -2, "combat": -2},
-        {"horror": 1, "combat": 0}, 1,
+      "Dimensional Shambler",
+      "fast",
+      "square",
+      {"evade": -3, "horror": -2, "combat": -2},
+      {"horror": 1, "combat": 0},
+      1,
     )
 
   def get_trigger(self, event, state):
@@ -214,18 +241,26 @@ class DimensionalShambler(Monster):
 
 def GiantWorm():
   return Monster(
-      "Giant Worm", "normal", "circle", {"evade": -1, "horror": -1, "combat": -3},
-      {"horror": 4, "combat": 4}, 3, {"physical resistance", "magical resistance"},
-      {"combat": 1, "horror": 1},
+    "Giant Worm",
+    "normal",
+    "circle",
+    {"evade": -1, "horror": -1, "combat": -3},
+    {"horror": 4, "combat": 4},
+    3,
+    {"physical resistance", "magical resistance"},
+    {"combat": 1, "horror": 1},
   )
 
 
 class ElderThing(Monster):
-
   def __init__(self):
     super().__init__(
-        "Elder Thing", "normal", "diamond", {"evade": -2, "horror": -3, "combat": 0},
-        {"horror": 2, "combat": 1}, 2,
+      "Elder Thing",
+      "normal",
+      "diamond",
+      {"evade": -2, "horror": -3, "combat": 0},
+      {"horror": 2, "combat": 1},
+      2,
     )
 
   def get_trigger(self, event, state):
@@ -234,73 +269,119 @@ class ElderThing(Monster):
     if getattr(event, "defeated", False) or getattr(event, "evaded", False):
       return None
     loss = events.WeaponOrSpellLossChoice(
-        event.character, "Choose a weapon or spell to lose", 1, self,
+      event.character, "Choose a weapon or spell to lose", 1, self
     )
     return events.Sequence([loss, events.DiscardSpecific(event.character, loss)], event.character)
 
 
 def FlameMatrix():
   return Monster(
-      "Flame Matrix", "flying", "star", {"evade": 0, "combat": -2}, {"combat": 2}, 1,
-      {"physical immunity", "ambush"},
+    "Flame Matrix",
+    "flying",
+    "star",
+    {"evade": 0, "combat": -2},
+    {"combat": 2},
+    1,
+    {"physical immunity", "ambush"},
   )
 
 
 def SubterraneanFlier():
   return Monster(
-      "Subterranean Flier", "flying", "hex", {"evade": 0, "horror": -2, "combat": -3},
-      {"horror": 4, "combat": 3}, 3, {"physical resistance"}, {"combat": 1, "horror": 1},
+    "Subterranean Flier",
+    "flying",
+    "hex",
+    {"evade": 0, "horror": -2, "combat": -3},
+    {"horror": 4, "combat": 3},
+    3,
+    {"physical resistance"},
+    {"combat": 1, "horror": 1},
   )
 
 
 def FormlessSpawn():
   return Monster(
-      "Formless Spawn", "normal", "hex", {"evade": 0, "horror": -1, "combat": -2},
-      {"horror": 2, "combat": 2}, 2, {"physical immunity"},
+    "Formless Spawn",
+    "normal",
+    "hex",
+    {"evade": 0, "horror": -1, "combat": -2},
+    {"horror": 2, "combat": 2},
+    2,
+    {"physical immunity"},
   )
 
 
 def Ghost():
   return Monster(
-      "Ghost", "stationary", "moon", {"evade": -3, "horror": -2, "combat": -3},
-      {"horror": 2, "combat": 2}, 1, {"physical immunity", "undead"},
+    "Ghost",
+    "stationary",
+    "moon",
+    {"evade": -3, "horror": -2, "combat": -3},
+    {"horror": 2, "combat": 2},
+    1,
+    {"physical immunity", "undead"},
   )
 
 
 def Ghoul():
   return Monster(
-      "Ghoul", "normal", "hex", {"evade": -3, "horror": 0, "combat": -1},
-      {"horror": 1, "combat": 1}, 1, {"ambush"},
+    "Ghoul",
+    "normal",
+    "hex",
+    {"evade": -3, "horror": 0, "combat": -1},
+    {"horror": 1, "combat": 1},
+    1,
+    {"ambush"},
   )
 
 
 def FurryBeast():
   return Monster(
-      "Furry Beast", "normal", "slash", {"evade": -2, "horror": -1, "combat": -2},
-      {"horror": 2, "combat": 4}, 3, None, {"combat": 1},
+    "Furry Beast",
+    "normal",
+    "slash",
+    {"evade": -2, "horror": -1, "combat": -2},
+    {"horror": 2, "combat": 4},
+    3,
+    None,
+    {"combat": 1},
   )
 
 
 def Haunter():
   return Monster(
-      "Haunter", "flying", "square", {"evade": -3, "horror": -2, "combat": -2},
-      {"horror": 2, "combat": 2}, 2, {"mask", "endless"},
+    "Haunter",
+    "flying",
+    "square",
+    {"evade": -3, "horror": -2, "combat": -2},
+    {"horror": 2, "combat": 2},
+    2,
+    {"mask", "endless"},
   )
 
 
 def HighPriest():
   return Monster(
-      "High Priest", "normal", "plus", {"evade": -2, "horror": 1, "combat": -2},
-      {"horror": 1, "combat": 2}, 2, {"magical immunity"},
+    "High Priest",
+    "normal",
+    "plus",
+    {"evade": -2, "horror": 1, "combat": -2},
+    {"horror": 1, "combat": 2},
+    2,
+    {"magical immunity"},
   )
 
 
 class Hound(Monster):
-
   def __init__(self):
     super().__init__(
-        "Hound", "unique", "square", {"evade": -1, "horror": -2, "combat": -1},
-        {"horror": 4, "combat": 3}, 2, {"physical immunity"},
+      "Hound",
+      "unique",
+      "square",
+      {"evade": -1, "horror": -2, "combat": -1},
+      {"horror": 4, "combat": 3},
+      2,
+      {"physical immunity"},
     )
 
   def move_event(self, state):
@@ -313,30 +394,36 @@ class Maniac(Monster):
 
 
 class Pinata(Monster):
-
   def __init__(self):
     super().__init__(
-        "Pinata", "flying", "circle", {"evade": -2, "horror": -1, "combat": 0},
-        {"horror": 2, "combat": 1}, 1,
+      "Pinata",
+      "flying",
+      "circle",
+      {"evade": -2, "horror": -1, "combat": 0},
+      {"horror": 2, "combat": 1},
+      1,
     )
 
   def get_interrupt(self, event, state):
     if not isinstance(event, events.TakeTrophy):
       return super().get_interrupt(event, state)
     seq = [
-        events.CancelEvent(event),
-        events.ReturnToCup(handles=[self.handle], character=event.character, to_box=True),
+      events.CancelEvent(event),
+      events.ReturnToCup(handles=[self.handle], character=event.character, to_box=True),
     ]
     seq += events.Draw(event.character, "unique", 1).events
     return events.Sequence(seq, event.character)
 
 
 class DreamFlier(Monster):
-
   def __init__(self):
     super().__init__(
-        "Dream Flier", "flying", "slash", {"evade": -2, "horror": -1, "combat": -2},
-        {"horror": 1, "combat": 0}, 2,
+      "Dream Flier",
+      "flying",
+      "slash",
+      {"evade": -2, "horror": -1, "combat": -2},
+      {"horror": 1, "combat": 0},
+      2,
     )
 
   def get_trigger(self, event, state):
@@ -359,39 +446,60 @@ class DreamFlier(Monster):
     nearest_gate = events.NearestGateChoice(event.character, prompt, "Choose", monster=self)
     travel = events.Travel(event.character, nearest_gate)
     pulled_through = events.Sequence([nearest_gate, travel], event.character)
-    seq.append(events.Conditional(
-        event.character, values.InCity(event.character), None, {0: return_city, 1: pulled_through},
-    ))
+    seq.append(
+      events.Conditional(
+        event.character, values.InCity(event.character), None, {0: return_city, 1: pulled_through}
+      )
+    )
     return events.Sequence(seq, event.character)
 
 
 def GiantAmoeba():
   return Monster(
-      "Giant Amoeba", "fast", "diamond", {"evade": -1, "horror": -1, "combat": -1},
-      {"horror": 3, "combat": 3}, 3, {"physical resistance"}, {"horror": 1},
+    "Giant Amoeba",
+    "fast",
+    "diamond",
+    {"evade": -1, "horror": -1, "combat": -1},
+    {"horror": 3, "combat": 3},
+    3,
+    {"physical resistance"},
+    {"horror": 1},
   )
 
 
 def Octopoid():
   return Monster(
-      "Octopoid", "normal", "plus", {"evade": -1, "horror": -3, "combat": -3},
-      {"horror": 2, "combat": 3}, 3,
+    "Octopoid",
+    "normal",
+    "plus",
+    {"evade": -1, "horror": -3, "combat": -3},
+    {"horror": 2, "combat": 3},
+    3,
   )
 
 
 def Vampire():
   return Monster(
-      "Vampire", "normal", "moon", {"evade": -3, "horror": 0, "combat": -3},
-      {"horror": 2, "combat": 3}, 2, {"undead", "physical resistance"},
+    "Vampire",
+    "normal",
+    "moon",
+    {"evade": -3, "horror": 0, "combat": -3},
+    {"horror": 2, "combat": 3},
+    2,
+    {"undead", "physical resistance"},
   )
 
 
 class Warlock(Monster):
-
   def __init__(self):
     super().__init__(
-        "Warlock", "stationary", "circle", {"evade": -2, "horror": -1, "combat": -3},
-        {"horror": 1, "combat": 1}, 2, {"magical immunity"},
+      "Warlock",
+      "stationary",
+      "circle",
+      {"evade": -2, "horror": -1, "combat": -3},
+      {"horror": 1, "combat": 1},
+      2,
+      {"magical immunity"},
     )
 
   def get_interrupt(self, event, state):
@@ -400,24 +508,34 @@ class Warlock(Monster):
     if len(state.event_stack) < 2 or not isinstance(state.event_stack[-2], events.PassCombatRound):
       return super().get_interrupt(event, state)
     seq = [
-        events.CancelEvent(event),
-        events.ReturnToCup(handles=[self.handle], character=event.character, to_box=True),
-        events.Gain(event.character, {"clues": 2}),
+      events.CancelEvent(event),
+      events.ReturnToCup(handles=[self.handle], character=event.character, to_box=True),
+      events.Gain(event.character, {"clues": 2}),
     ]
     return events.Sequence(seq, event.character)
 
 
 def Witch():
   return Monster(
-      "Witch", "normal", "circle", {"evade": -1, "combat": -3}, {"combat": 2}, 1,
-      {"magical resistance"},
+    "Witch",
+    "normal",
+    "circle",
+    {"evade": -1, "combat": -3},
+    {"combat": 2},
+    1,
+    {"magical resistance"},
   )
 
 
 def Zombie():
   return Monster(
-      "Zombie", "normal", "moon", {"evade": 1, "horror": -1, "combat": -1},
-      {"horror": 1, "combat": 2}, 1, {"undead"},
+    "Zombie",
+    "normal",
+    "moon",
+    {"evade": 1, "horror": -1, "combat": -1},
+    {"horror": 1, "combat": 2},
+    1,
+    {"undead"},
   )
 
 
@@ -426,8 +544,7 @@ class EventMonster(Monster):
 
   def __init__(self, name, rating, pass_event, fail_event, toughness=1, attributes=None):
     super().__init__(
-        name, "normal", "moon",  {"evade": 0, **rating},
-        {"combat": 0, }, toughness, attributes or set()
+      name, "normal", "moon", {"evade": 0, **rating}, {"combat": 0}, toughness, attributes or set()
     )
     self.pass_event = pass_event
     self.fail_event = fail_event
@@ -445,9 +562,11 @@ class EventMonster(Monster):
     if isinstance(event, events.PassCombatRound):
       return self.pass_event
 
-    if ((not isinstance(event, events.CombatRound))
-        or event.check is None
-            or not event.check.is_done()):
+    if (
+      (not isinstance(event, events.CombatRound))
+      or event.check is None
+      or not event.check.is_done()
+    ):
       return None
 
     if not event.check.success:
@@ -456,41 +575,63 @@ class EventMonster(Monster):
 
 
 MONSTERS = {
-    x().name: x for x in [
-        GiantInsect, LandSquid, Cultist, TentacleTree, DimensionalShambler, GiantWorm, ElderThing,
-        FlameMatrix, SubterraneanFlier, FormlessSpawn, Ghost, Ghoul, FurryBeast, Haunter,
-        HighPriest, Hound, Maniac, Pinata, DreamFlier, GiantAmoeba, Octopoid, Vampire, Warlock,
-        Witch, Zombie,
-    ]
+  x().name: x
+  for x in [
+    GiantInsect,
+    LandSquid,
+    Cultist,
+    TentacleTree,
+    DimensionalShambler,
+    GiantWorm,
+    ElderThing,
+    FlameMatrix,
+    SubterraneanFlier,
+    FormlessSpawn,
+    Ghost,
+    Ghoul,
+    FurryBeast,
+    Haunter,
+    HighPriest,
+    Hound,
+    Maniac,
+    Pinata,
+    DreamFlier,
+    GiantAmoeba,
+    Octopoid,
+    Vampire,
+    Warlock,
+    Witch,
+    Zombie,
+  ]
 }
 
 
 def CreateMonsters():
   counts = {
-      "Giant Insect": 3,
-      "Land Squid": 2,
-      "Cultist": 6,
-      "Tentacle Tree": 3,
-      "Dimensional Shambler": 2,
-      "Giant Worm": 1,
-      "Elder Thing": 2,
-      "Flame Matrix": 2,
-      "Subterranean Flier": 1,
-      "Formless Spawn": 2,
-      "Ghost": 3,
-      "Ghoul": 3,
-      "Furry Beast": 2,
-      "High Priest": 1,
-      "Hound": 2,
-      "Maniac": 3,
-      "Pinata": 3,
-      "Dream Flier": 2,
-      "Giant Amoeba": 2,
-      "Octopoid": 2,
-      "Vampire": 1,
-      "Warlock": 2,
-      "Witch": 2,
-      "Zombie": 3,
+    "Giant Insect": 3,
+    "Land Squid": 2,
+    "Cultist": 6,
+    "Tentacle Tree": 3,
+    "Dimensional Shambler": 2,
+    "Giant Worm": 1,
+    "Elder Thing": 2,
+    "Flame Matrix": 2,
+    "Subterranean Flier": 1,
+    "Formless Spawn": 2,
+    "Ghost": 3,
+    "Ghoul": 3,
+    "Furry Beast": 2,
+    "High Priest": 1,
+    "Hound": 2,
+    "Maniac": 3,
+    "Pinata": 3,
+    "Dream Flier": 2,
+    "Giant Amoeba": 2,
+    "Octopoid": 2,
+    "Vampire": 1,
+    "Warlock": 2,
+    "Witch": 2,
+    "Zombie": 3,
   }
   monsters = []
   for name, count in counts.items():

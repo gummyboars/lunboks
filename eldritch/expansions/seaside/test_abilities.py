@@ -28,7 +28,7 @@ class TestFarmhandAbility(EventTest):
     # The horror check normally happens here
     fight_or_flee = self.resolve_to_choice(events.FightOrEvadeChoice)
     combat = next(
-        event for event in reversed(self.state.event_stack) if isinstance(event, events.Combat)
+      event for event in reversed(self.state.event_stack) if isinstance(event, events.Combat)
     )
     self.assertIsNone(combat.horror)
     self.assertEqual(self.char.sanity, 5)
@@ -85,7 +85,7 @@ class TestFarmhandAbility(EventTest):
     # The horror check normally happens here
     fight_or_flee = self.resolve_to_choice(events.FightOrEvadeChoice)
     combat = next(
-        event for event in reversed(self.state.event_stack) if isinstance(event, events.Combat)
+      event for event in reversed(self.state.event_stack) if isinstance(event, events.Combat)
     )
     self.assertIsNone(combat.horror)
     self.assertEqual(self.char.sanity, 5)
@@ -110,7 +110,7 @@ class TestSecretaryAbilities(EventTest):
     self.char.possessions.append(spell)
 
     self.char.lore_luck_slider = 0
-    self.assertEqual(self.char.lore(self.state), self.char.base_lore()+1)
+    self.assertEqual(self.char.lore(self.state), self.char.base_lore() + 1)
     self.assertEqual(self.char.base_lore(), 1)
 
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)) as rand:

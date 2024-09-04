@@ -7,24 +7,35 @@ from eldritch import values
 from .base import Item
 
 __all__ = [
-    "Spell", "CreateSpells", "BindMonster", "DreadCurse", "EnchantWeapon", "FindGate", "FleshWard",
-    "Heal", "Mists", "RedSign", "Shrivelling", "Voice", "Wither"
+  "Spell",
+  "CreateSpells",
+  "BindMonster",
+  "DreadCurse",
+  "EnchantWeapon",
+  "FindGate",
+  "FleshWard",
+  "Heal",
+  "Mists",
+  "RedSign",
+  "Shrivelling",
+  "Voice",
+  "Wither",
 ]
 
 
 def CreateSpells():
   counts = {
-      BindMonster: 2,
-      DreadCurse: 4,
-      EnchantWeapon: 3,
-      FindGate: 4,
-      FleshWard: 4,
-      Heal: 3,
-      Mists: 4,
-      RedSign: 2,
-      Shrivelling: 5,
-      Voice: 3,
-      Wither: 6,
+    BindMonster: 2,
+    DreadCurse: 4,
+    EnchantWeapon: 3,
+    FindGate: 4,
+    FleshWard: 4,
+    Heal: 3,
+    Mists: 4,
+    RedSign: 2,
+    Shrivelling: 5,
+    Voice: 3,
+    Wither: 6,
   }
   spells = []
   for item, count in counts.items():
@@ -33,7 +44,6 @@ def CreateSpells():
 
 
 class Spell(Item):
-
   combat = False
 
   def __init__(self, name, idx, active_bonuses, hands, difficulty, sanity_cost):
@@ -62,7 +72,6 @@ class Spell(Item):
 
 
 class CombatSpell(Spell):
-
   combat = True
 
   def is_combat(self, event, owner):
@@ -133,20 +142,16 @@ class BindMonster(CombatSpell):
 
   def get_usable_interrupt(self, event, owner, state):
     if (
-        isinstance(event, events.CombatChoice)
-        and event.combat_round is not None
-        and isinstance(event.combat_round.monster, monsters.Monster)
+      isinstance(event, events.CombatChoice)
+      and event.combat_round is not None
+      and isinstance(event.combat_round.monster, monsters.Monster)
     ):
       return super().get_usable_interrupt(event, owner, state)
     return None
 
   def get_cast_event(self, owner, state):
     return events.Sequence(
-        [
-            events.DiscardSpecific(owner, [self]),
-            events.PassCombatRound(self.combat_round),
-        ],
-        owner,
+      [events.DiscardSpecific(owner, [self]), events.PassCombatRound(self.combat_round)], owner
     )
 
 
@@ -166,20 +171,20 @@ class EnchantWeapon(CombatSpell):
     # valid choices (or if they choose nothing), then don't cast the spell at all.
     spend = values.ExactSpendPrerequisite({"sanity": self.sanity_cost(state)})
     choice = events.SinglePhysicalWeaponChoice(
-        owner, "Choose a physical weapon to enchant", spend=spend,
+      owner, "Choose a physical weapon to enchant", spend=spend
     )
     return events.CastSpell(owner, self, choice=choice)
 
   def get_interrupt(self, event, owner, state):
     if (
-        isinstance(event, (events.DiscardSpecific, events.DiscardNamed))
-        and event.character == owner
-        and event.discarded
-        and (
-            self in event.discarded
-            if hasattr(event.discarded, "__contains__")
-            else self == event.discarded
-        )
+      isinstance(event, (events.DiscardSpecific, events.DiscardNamed))
+      and event.character == owner
+      and event.discarded
+      and (
+        self in event.discarded
+        if hasattr(event.discarded, "__contains__")
+        else self == event.discarded
+      )
     ):
       # TODO: Should we figure out a way to have the effect last until the end of combat?
       # The only way I can think of to lose an item during combat is the Elder Thing, which is not
@@ -223,11 +228,11 @@ class FleshWard(Spell):
 
   def get_usable_interrupt(self, event, owner, state):
     if (
-        not isinstance(event, events.GainOrLoss)
-        or event.character != owner
-        or "stamina" not in event.losses
-        or owner.sanity < self.sanity_cost(state)
-        or self.exhausted
+      not isinstance(event, events.GainOrLoss)
+      or event.character != owner
+      or "stamina" not in event.losses
+      or owner.sanity < self.sanity_cost(state)
+      or self.exhausted
     ):
       return None
     stam_loss = event.losses["stamina"]
@@ -252,10 +257,13 @@ class Heal(Spell):
 
   def get_cast_event(self, owner, state):
     neighbors = [char for char in state.characters if char.place == owner.place]
-    gains = {idx: events.Gain(char, {"stamina": self.check.successes})
-             for idx, char in enumerate(neighbors)}
+    gains = {
+      idx: events.Gain(char, {"stamina": self.check.successes})
+      for idx, char in enumerate(neighbors)
+    }
     choice = events.MultipleChoice(
-        owner, "Choose a character to heal", [char.name for char in neighbors])
+      owner, "Choose a character to heal", [char.name for char in neighbors]
+    )
     cond = events.Conditional(owner, choice, "choice_index", gains)
     return events.Sequence([choice, cond], owner)
 
@@ -274,11 +282,11 @@ class Mists(Spell):
       self.evade = event
       return events.CastSpell(owner, self)
     if (
-        isinstance(event, events.SpendChoice)
-        and len(state.event_stack) >= 3
-        and isinstance(state.event_stack[-2], events.Check)
-        and isinstance(state.event_stack[-3], events.EvadeRound)
-        and not state.event_stack[-3].is_done()
+      isinstance(event, events.SpendChoice)
+      and len(state.event_stack) >= 3
+      and isinstance(state.event_stack[-2], events.Check)
+      and isinstance(state.event_stack[-3], events.EvadeRound)
+      and not state.event_stack[-3].is_done()
     ):
       self.evade = state.event_stack[-3]
       self.difficulty = self.evade.monster.difficulty("evade", state, owner)
@@ -290,7 +298,6 @@ class Mists(Spell):
 
 
 class RedSign(CombatSpell):
-
   INVALID_ATTRIBUTES = {"magical immunity", "elusive", "mask", "spawn"}
 
   def __init__(self, idx):
@@ -308,7 +315,7 @@ class RedSign(CombatSpell):
       return None
     choices = attributes + ["none", "Cancel"]
     spend = values.ExactSpendPrerequisite({"sanity": self.sanity_cost(state)})
-    spends = [spend] * (len(choices)-1) + [None]
+    spends = [spend] * (len(choices) - 1) + [None]
     choice = events.SpendChoice(owner, "Choose an ability to ignore", choices, spends=spends)
     return events.CastSpell(owner, self, choice=choice)
 
@@ -324,9 +331,8 @@ class RedSign(CombatSpell):
 
 
 class Voice(Spell):
-
   def __init__(self, idx):
-    super().__init__("Voice", idx, {}, 0, -1, 1,)
+    super().__init__("Voice", idx, {}, 0, -1, 1)
 
   def get_usable_interrupt(self, event, owner, state):
     if not isinstance(event, events.SliderInput) or event.character != owner or event.is_done():
@@ -345,7 +351,6 @@ class Voice(Spell):
 
 
 class FindGate(Spell):
-
   def __init__(self, idx):
     super().__init__("Find Gate", idx, {}, 0, -1, 1)
 
@@ -380,7 +385,7 @@ class FindGate(Spell):
   def get_cast_event(self, owner, state):
     if len(state.event_stack) > 1 and isinstance(state.event_stack[-2], events.ForceMovement):
       return events.Sequence(
-          [events.Return(owner, owner.place.info.name), events.CancelEvent(state.event_stack[-2])],
-          owner,
+        [events.Return(owner, owner.place.info.name), events.CancelEvent(state.event_stack[-2])],
+        owner,
       )
     return events.Return(owner, owner.place.info.name)

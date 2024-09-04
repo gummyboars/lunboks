@@ -16,7 +16,6 @@ MAX_TYPES = {"max_sanity", "max_stamina"}
 
 
 class Asset(metaclass=abc.ABCMeta):
-
   # pylint: disable=unused-argument
 
   JSON_ATTRS = {"name", "handle", "active", "exhausted", "hands", "in_use", "max_tokens", "tokens"}
@@ -47,11 +46,11 @@ class Asset(metaclass=abc.ABCMeta):
 
   @property
   def bonuses(self):
-    bonuses = {check: self.get_bonus(check, None, None, None) for check in CHECK_TYPES |
-               SUB_CHECKS.keys()}
+    bonuses = {
+      check: self.get_bonus(check, None, None, None) for check in CHECK_TYPES | SUB_CHECKS.keys()
+    }
     bonuses["combat"] = sum(
-        self.get_bonus(check, None, None, None)
-        for check in {"combat"} | COMBAT_SUBTYPES
+      self.get_bonus(check, None, None, None) for check in {"combat"} | COMBAT_SUBTYPES
     )
     return bonuses
 
@@ -94,7 +93,6 @@ class Asset(metaclass=abc.ABCMeta):
 
 
 class Card(Asset):
-
   DECKS = {"common", "unique", "spells", "skills", "allies", "tradables", "specials"}
   VALID_BONUS_TYPES = CHECK_TYPES | SUB_CHECKS.keys() | COMBAT_SUBTYPES | MAX_TYPES
   VALID_BONUS_TYPES |= {f"{ct}_check" for ct in CHECK_TYPES | SUB_CHECKS.keys()}
@@ -123,7 +121,6 @@ class Card(Asset):
 
 
 class FortuneTeller(Card):
-
   def __init__(self):
     super().__init__("Fortune Teller", None, "allies", {}, {"luck": 2})
 
@@ -134,7 +131,6 @@ class FortuneTeller(Card):
 
 
 class TravelingSalesman(Card):
-
   def __init__(self):
     super().__init__("Traveling Salesman", None, "allies", {}, {"sneak": 1, "will": 1})
 
@@ -145,7 +141,6 @@ class TravelingSalesman(Card):
 
 
 class PoliceDetective(Card):
-
   def __init__(self):
     super().__init__("Police Detective", None, "allies", {}, {"fight": 1, "lore": 1})
 
@@ -156,7 +151,6 @@ class PoliceDetective(Card):
 
 
 class Thief(Card):
-
   def __init__(self):
     super().__init__("Thief", None, "allies", {}, {"sneak": 2})
 
@@ -167,7 +161,6 @@ class Thief(Card):
 
 
 class StatIncreaser(Card):
-
   def __init__(self, name, stat):
     assert stat in MAX_TYPES
     super().__init__(name, None, "allies", {}, {stat: 1})
@@ -204,19 +197,16 @@ class StatIncreaser(Card):
 
 
 class ArmWrestler(StatIncreaser):
-
   def __init__(self):
     super().__init__("Arm Wrestler", "max_stamina")
 
 
 class Dog(StatIncreaser):
-
   def __init__(self):
     super().__init__("Dog", "max_sanity")
 
 
 class BraveGuy(Card):
-
   def __init__(self):
     super().__init__("Brave Guy", None, "allies", {}, {"speed": 2})
 
@@ -227,7 +217,6 @@ class BraveGuy(Card):
 
 
 class PoliceInspector(Card):
-
   def __init__(self):
     super().__init__("Police Inspector", None, "allies", {}, {"will": 2})
 
@@ -238,7 +227,6 @@ class PoliceInspector(Card):
 
 
 class VisitingPainter(Card):
-
   def __init__(self):
     super().__init__("Visiting Painter", None, "allies", {}, {"speed": 1, "luck": 1})
 
@@ -249,7 +237,6 @@ class VisitingPainter(Card):
 
 
 class OldProfessor(Card):
-
   def __init__(self):
     super().__init__("Old Professor", None, "allies", {}, {"lore": 2})
 
@@ -260,7 +247,6 @@ class OldProfessor(Card):
 
 
 class ToughGuy(Card):
-
   def __init__(self):
     super().__init__("Tough Guy", None, "allies", {}, {"fight": 2})
 
@@ -271,7 +257,6 @@ class ToughGuy(Card):
 
 
 class Deputy(Card):
-
   def __init__(self):
     super().__init__("Deputy", None, "specials", {}, {})
 
@@ -279,10 +264,13 @@ class Deputy(Card):
     if isinstance(event, events.RefreshAssets) and event.character == owner:
       return events.Gain(owner, {"dollars": 1})
     if isinstance(event, events.KeepDrawn) and self.name in event.kept:
-      return events.Sequence([
+      return events.Sequence(
+        [
           events.DrawSpecific(owner, "tradables", "Deputy's Revolver"),
           events.DrawSpecific(owner, "tradables", "Patrol Wagon"),
-      ], owner)
+        ],
+        owner,
+      )
     return None
 
 
@@ -291,7 +279,7 @@ class SelfDiscardingCard(Card):
     active_bonuses = active_bonuses or {}
     passive_bonuses = passive_bonuses or {}
     super().__init__(
-        name, idx, "specials", active_bonuses=active_bonuses, passive_bonuses=passive_bonuses
+      name, idx, "specials", active_bonuses=active_bonuses, passive_bonuses=passive_bonuses
     )
     self.tokens["must_roll"] = 0
     self.upkeep_bad_rolls = [1]
@@ -301,10 +289,13 @@ class SelfDiscardingCard(Card):
       selves = [p for p in event.character.possessions if p.name == self.name]
       kept, *duplicates = sorted(selves, key=lambda x: x.tokens["must_roll"])
       if duplicates:
-        return events.Sequence([
+        return events.Sequence(
+          [
             events.DiscardSpecific(event.character, duplicates),
             events.RemoveToken(kept, "must_roll", owner),
-        ], owner)
+          ],
+          owner,
+        )
 
     if isinstance(event, events.RefreshAssets) and event.character == owner:
       if self.tokens["must_roll"]:
@@ -325,10 +316,13 @@ class BlessingOrCurse(SelfDiscardingCard):
   def get_trigger(self, event, owner, state):
     if isinstance(event, events.KeepDrawn) and self.name in event.kept:
       if self.opposite in [p.name for p in event.character.possessions]:
-        return events.Sequence([
+        return events.Sequence(
+          [
             events.DiscardNamed(event.character, self.name),
             events.DiscardNamed(event.character, self.opposite),
-        ], event.character)
+          ],
+          event.character,
+        )
     return super().get_trigger(event, owner, state)
 
   def __repr__(self):
@@ -364,30 +358,30 @@ class BankLoan(SelfDiscardingCard):
 
   def upkeep_penalty(self, character):
     default = events.Sequence(
-        [
-            events.LoseItems(
-                character,
-                values.ItemCount(character),
-            ),
-            events.DiscardSpecific(character, [self]),
-            events.DrawSpecific(character, "specials", "Bad Credit"),
-        ],
-        character
+      [
+        events.LoseItems(character, values.ItemCount(character)),
+        events.DiscardSpecific(character, [self]),
+        events.DrawSpecific(character, "specials", "Bad Credit"),
+      ],
+      character,
     )
     interest = events.SpendChoice(
-        character,
-        "Pay interest on loan",
-        choices=["Pay", "Default"],
-        prereqs=[
-            values.AttributePrerequisite(character, "dollars", 1, "at least"),
-            values.AttributePrerequisite(character, "dollars", 0, "exactly"),
-        ],
-        spends=[values.ExactSpendPrerequisite({"dollars": 1}), None],
+      character,
+      "Pay interest on loan",
+      choices=["Pay", "Default"],
+      prereqs=[
+        values.AttributePrerequisite(character, "dollars", 1, "at least"),
+        values.AttributePrerequisite(character, "dollars", 0, "exactly"),
+      ],
+      spends=[values.ExactSpendPrerequisite({"dollars": 1}), None],
     )
-    return events.Sequence([
+    return events.Sequence(
+      [
         interest,
-        events.Conditional(character, interest, "choice_index", {0: events.Nothing(), 1: default})
-    ], character)
+        events.Conditional(character, interest, "choice_index", {0: events.Nothing(), 1: default}),
+      ],
+      character,
+    )
 
   def get_trigger(self, event, owner, state):
     if isinstance(event, events.TakeBankLoan):
@@ -398,23 +392,20 @@ class BankLoan(SelfDiscardingCard):
     if isinstance(event, events.SliderInput) and event.character == owner and not event.is_done():
       # TODO: Usable "anytime"
       return events.BinarySpend(
-          owner,
-          "dollars", 10,
-          "Pay off loan?", "Yes", "No",
-          events.DiscardSpecific(owner, [self]),
+        owner, "dollars", 10, "Pay off loan?", "Yes", "No", events.DiscardSpecific(owner, [self])
       )
     return None
 
   def get_interrupt(self, event, owner, state):
     if (
-        isinstance(event, events.KeepDrawn)
-        and event.character == owner
-        and event.drawn is not None
-        and self in event.drawn
-        and not (
-            state.get_override(self, "can_get_bank_loan")
-            or owner.get_override(self, "can_get_bank_loan")
-        )
+      isinstance(event, events.KeepDrawn)
+      and event.character == owner
+      and event.drawn is not None
+      and self in event.drawn
+      and not (
+        state.get_override(self, "can_get_bank_loan")
+        or owner.get_override(self, "can_get_bank_loan")
+      )
     ):
       return events.CancelEvent(event)
     return None
@@ -436,10 +427,10 @@ class LodgeMembership(Card):
 
   def get_interrupt(self, event, owner, state):
     if (
-        isinstance(event, events.KeepDrawn)
-        and len([c for c in event.draw.drawn if isinstance(c, LodgeMembership)]) > 0
-        and event.character == owner
-        and event.character.lodge_membership
+      isinstance(event, events.KeepDrawn)
+      and len([c for c in event.draw.drawn if isinstance(c, LodgeMembership)]) > 0
+      and event.character == owner
+      and event.character.lodge_membership
     ):
       return events.CancelEvent(event)
     return None
@@ -447,10 +438,7 @@ class LodgeMembership(Card):
 
 class BonusToAllChecks(Card):
   def __init__(self, name, idx):
-    super().__init__(
-        name, idx, "specials", {},
-        {f"{ability}_check": 1 for ability in CHECK_TYPES}
-    )
+    super().__init__(name, idx, "specials", {}, {f"{ability}_check": 1 for ability in CHECK_TYPES})
 
   def get_interrupt(self, event, owner, state):
     if isinstance(event, events.Mythos) and event.is_done():
@@ -460,8 +448,18 @@ class BonusToAllChecks(Card):
 
 def CreateAllies():
   return [
-      ally() for ally in [
-          FortuneTeller, TravelingSalesman, PoliceDetective, Thief, BraveGuy,
-          PoliceInspector, ArmWrestler, VisitingPainter, ToughGuy, OldProfessor, Dog,
-      ]
+    ally()
+    for ally in [
+      FortuneTeller,
+      TravelingSalesman,
+      PoliceDetective,
+      Thief,
+      BraveGuy,
+      PoliceInspector,
+      ArmWrestler,
+      VisitingPainter,
+      ToughGuy,
+      OldProfessor,
+      Dog,
+    ]
   ]

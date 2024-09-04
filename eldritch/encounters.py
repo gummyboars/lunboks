@@ -7,7 +7,6 @@ from eldritch.monsters import EventMonster
 
 
 class EncounterCard:
-
   def __init__(self, name, encounter_creators):
     self.name = name
     self.encounters = {}
@@ -43,17 +42,16 @@ class CardRevealer(mythos.GlobalEffect):
     return events.RemoveGlobalEffect(self)
 
   def json_repr(self, state):
-    return {
-        "name": state.places[self.choice.choice].encounters[0].name,
-        "annotation": "Next Card",
-    }
+    return {"name": state.places[self.choice.choice].encounters[0].name, "annotation": "Next Card"}
 
 
 def Diner1(char):
   spend = values.RangeSpendPrerequisite("dollars", 1, 6)
   dollar_choice = events.SpendChoice(
-      char, "Spend money to restore stamina and/or sanity?", ["Spend", "No Thanks"],
-      spends=[spend, None],
+    char,
+    "Spend money to restore stamina and/or sanity?",
+    ["Spend", "No Thanks"],
+    spends=[spend, None],
   )
   gain = events.SplitGain(char, "stamina", "sanity", values.SpendCount(dollar_choice, "dollars"))
   cond = events.Conditional(char, dollar_choice, "choice_index", {0: gain, 1: events.Nothing()})
@@ -135,7 +133,7 @@ def Roadhouse6(char):
   discard = events.DiscardSpecific(char, choice)
   item = events.Sequence([choice, discard], char)
   loss = events.BinaryChoice(
-      char, "Lose an item or all your money?", "Item", "Money", item, dollars, prereq,
+    char, "Lose an item or all your money?", "Item", "Money", item, dollars, prereq
   )
   # NOTE: we are explicitly using ItemCountChoice instead of ItemLossChoice here because we do not
   # believe it is okay for a player with only a derringer to choose to lose an item, and then avoid
@@ -178,7 +176,7 @@ def Police4(char):
 def Police5(char):
   loss = events.LoseItems(char, float("inf"), "Discard your weapons", item_type="weapon")
   return events.BinarySpend(
-      char, "dollars", 5, "Bribe Sheriff?", "Bribe ($5)", "Discard Weapons", events.Nothing(), loss,
+    char, "dollars", 5, "Bribe Sheriff?", "Bribe ($5)", "Discard Weapons", events.Nothing(), loss
   )
 
 
@@ -220,7 +218,7 @@ def Lodge4(char):
   move = events.ForceMovement(char, "FrenchHill")
   resist = events.PassFail(char, check, move, events.Sequence([damage, move], char))
   return events.BinarySpend(
-      char, "dollars", 3, "Pay $3 to join the Lodge?", "Yes", "No", membership, resist,
+    char, "dollars", 3, "Pay $3 to join the Lodge?", "Yes", "No", membership, resist
   )
 
 
@@ -245,9 +243,7 @@ def Lodge7(char):
   two_common = events.Draw(char, "common", 2, keep_count=2)
   two_unique = events.Draw(char, "unique", 2, keep_count=2)
   one_each = events.Sequence([common1, unique1], char)
-  cond = events.Conditional(
-      char, rolls, "successes", {0: two_common, 1: one_each, 2: two_unique, }
-  )
+  cond = events.Conditional(char, rolls, "successes", {0: two_common, 1: one_each, 2: two_unique})
   return events.PassFail(char, check, events.Sequence([rolls, cond], char), events.Nothing())
 
 
@@ -272,12 +268,12 @@ def Sanctum2(char):
 def Sanctum3(char):
   # NOTE: this card does not say "spend"; it specifically says lose.
   choice = events.MultipleChoice(
-      char, "How many sanity do you want to trade for clues?", list(range(min(char.sanity, 3)+1))
+    char, "How many sanity do you want to trade for clues?", list(range(min(char.sanity, 3) + 1))
   )
   gain = events.GainOrLoss(
-      char,
-      {"clues": values.Calculation(choice, "choice")},
-      {"sanity": values.Calculation(choice, "choice")},
+    char,
+    {"clues": values.Calculation(choice, "choice")},
+    {"sanity": values.Calculation(choice, "choice")},
   )
   return events.Sequence([choice, gain], char)
 
@@ -287,7 +283,7 @@ def Sanctum4(char):
   membership = events.MembershipChange(char, False)
   decline = events.Sequence([membership, dreams], char)
   return events.BinarySpend(
-      char, "dollars", 3, "Pay your dues?", "Spend $3", "Decline", events.Nothing(), decline,
+    char, "dollars", 3, "Pay your dues?", "Spend $3", "Decline", events.Nothing(), decline
   )
 
 
@@ -308,7 +304,7 @@ def Sanctum7(char):
   ceremony = events.PassFail(char, check, close, events.Nothing())
   spend = values.ExactSpendPrerequisite({"clues": 2, "sanity": 1})
   choice = events.SpendChoice(
-      char, "Participate in a gating ceremony?", ["Yes", "No"], spends=[spend, None],
+    char, "Participate in a gating ceremony?", ["Yes", "No"], spends=[spend, None]
   )
   cond = events.Conditional(char, choice, "choice_index", {0: ceremony, 1: events.Nothing()})
   participate = events.Sequence([choice, cond], char)
@@ -317,7 +313,7 @@ def Sanctum7(char):
 
 def WitchHouse1(char):
   reward = events.Gain(char, {"clues": 2})
-  ally = events.GainAllyOrReward(char,  "Police Detective", reward)
+  ally = events.GainAllyOrReward(char, "Police Detective", reward)
   check = events.Check(char, "lore", -1)
   return events.PassFail(char, check, ally, events.Nothing())
 
@@ -331,13 +327,15 @@ def WitchHouse2(char):
 def WitchHouse3(char):
   check = events.Check(char, "luck", 0)
   cond = events.Conditional(
-      char, check, "successes",
-      {
-          0: events.Loss(char, {"sanity": 3}),
-          1: events.Delayed(char),
-          2: events.Loss(char, {"stamina": 1}),
-          3: events.Gain(char, {"stamina": 3})
-      },
+    char,
+    check,
+    "successes",
+    {
+      0: events.Loss(char, {"sanity": 3}),
+      1: events.Delayed(char),
+      2: events.Loss(char, {"stamina": 1}),
+      3: events.Gain(char, {"stamina": 3}),
+    },
   )
   return events.Sequence([check, cond], char)
 
@@ -359,10 +357,7 @@ def WitchHouse6(char):
 def WitchHouse7(char):
   check = events.Check(char, "will", -2)
   spell = events.Draw(char, "spells", 1)
-  lose_count = values.Calculation(
-      values.ItemCount(char), None,
-      operator.floordiv, 2,
-  )
+  lose_count = values.Calculation(values.ItemCount(char), None, operator.floordiv, 2)
   loss = events.LoseItems(char, lose_count, "Which items are you missing when you wake up?")
   return events.PassFail(char, check, spell, loss)
 
@@ -392,10 +387,10 @@ def Cave4(char):
 def Cave5(char):
   check = events.Check(char, "lore", -2)
   return events.PassFail(
-      char,
-      check,
-      events.Nothing(),
-      events.Sequence([events.Loss(char, {"stamina": 1}), events.Delayed(char)], char),
+    char,
+    check,
+    events.Nothing(),
+    events.Sequence([events.Loss(char, {"stamina": 1}), events.Delayed(char)], char),
   )
 
 
@@ -404,13 +399,14 @@ def Cave6(char):
   check = events.Check(char, "luck", -2)
   look = events.LookAtItems(char, "common", 1, target_type="weapon")
   ally = events.GainAllyOrReward(
-      char, "Tough Guy", events.Sequence([look, events.KeepDrawn(char, look)], char),
+    char, "Tough Guy", events.Sequence([look, events.KeepDrawn(char, look)], char)
   )
   give_whiskey = events.DiscardNamed(char, "Whiskey")
   gain = events.PassFail(char, check, ally, events.Nothing())
   seq = events.Sequence([give_whiskey, ally], char)
   return events.BinaryChoice(
-      char, "Discard whiskey to pass automatically?", "Yes", "No", seq, gain, prereq)
+    char, "Discard whiskey to pass automatically?", "Yes", "No", seq, gain, prereq
+  )
 
 
 def Cave7(char):
@@ -450,7 +446,7 @@ def Store6(char):
   check = events.Check(char, "lore", -2)
   guess = events.PassFail(char, check, events.Gain(char, {"dollars": 5}), events.Nothing())
   return events.BinarySpend(
-      char, "dollars", 1, "Pay $1 to guess how many beans the jar contains?", "Yes", "No", guess,
+    char, "dollars", 1, "Pay $1 to guess how many beans the jar contains?", "Yes", "No", guess
   )
 
 
@@ -475,9 +471,9 @@ def Graveyard3(char):
   defeat = events.Loss(char, {"stamina": values.Die(damage)})
   fail_event = events.Sequence([damage, defeat], char)
   return events.CombatRound(
-      char,
-      EventMonster("vampire", {"combat": -2}, pass_event=victory, fail_event=fail_event),
-      deactivate=True
+    char,
+    EventMonster("vampire", {"combat": -2}, pass_event=victory, fail_event=fail_event),
+    deactivate=True,
   )
 
 
@@ -490,7 +486,7 @@ def Graveyard4(char):
 def Graveyard5(char):
   check = events.Check(char, "luck", -2)
   choice = events.PlaceChoice(
-      char, "Move anywhere in the city and have an encounter?", none_choice="No thanks",
+    char, "Move anywhere in the city and have an encounter?", none_choice="No thanks"
   )
   clues = events.Gain(char, {"clues": 2})
   rubbings = events.Sequence([clues, choice, events.MoveAndEncounter(char, choice)], char)
@@ -523,7 +519,7 @@ def Society2(char):
   spell = events.Draw(char, "spells", 1)
   searchstacks = events.PassFail(char, luck, spell, dreamlands)
   return events.BinarySpend(
-      char, "dollars", 3, "Pay $3 to access the private library", "Yes", "No", searchstacks, move,
+    char, "dollars", 3, "Pay $3 to access the private library", "Yes", "No", searchstacks, move
   )
 
 
@@ -560,7 +556,7 @@ def Society7(char):
 
 
 def House1(char):
-  luck = events. Check(char, "luck", 0)
+  luck = events.Check(char, "luck", 0)
   move_dream = events.ForceMovement(char, "Dreamlands1")
   enc_dream = events.GateEncounter(char)
   ret = events.ForceMovement(char, "House")
@@ -580,7 +576,7 @@ def House2(char):
 
 def House3(char):
   die = events.DiceRoll(char, 1, bad=[])
-  stamina = events.Gain(char, {"stamina":  values.Die(die)})
+  stamina = events.Gain(char, {"stamina": values.Die(die)})
   return events.Sequence([die, stamina], char)
 
 
@@ -589,12 +585,12 @@ def House4(char):
   common = events.Purchase(char, "common", 1)
   unique = events.Purchase(char, "unique", 1)
   item = events.BinaryChoice(
-      char, "Purchase a common or unique item?", "Common", "Unique", common, unique,
+    char, "Purchase a common or unique item?", "Common", "Unique", common, unique
   )
   will = events.Check(char, "will", 0)
   converse = events.PassFail(char, will, item, stay)
   return events.BinaryChoice(
-      char, "Converse with travelling Salesman?", "Yes", "No", converse, events.Nothing(),
+    char, "Converse with travelling Salesman?", "Yes", "No", converse, events.Nothing()
   )
 
 
@@ -607,7 +603,7 @@ def House6(char):
   stamina = events.Loss(char, {"stamina": 1})
   sanity = events.Loss(char, {"sanity": 1})
   choice = events.BinaryChoice(
-      char, "Lose 1 stamina or sanity?", "Stamina", "Sanity", stamina, sanity,
+    char, "Lose 1 stamina or sanity?", "Stamina", "Sanity", stamina, sanity
   )
   return events.PassFail(char, luck, events.Nothing(), choice)
 
@@ -629,22 +625,20 @@ def Church3(char):
   dollars_up = values.Calculation(char, "dollars", operator.add, 1)
   half_dollar_ceil = values.Calculation(dollars_up, None, operator.floordiv, 2)  # ceil(dollars/2)
   money = events.Loss(char, {"dollars": half_dollar_ceil})
-  items_up = values.Calculation(
-      values.ItemCount(char), None,
-      operator.add, 1,
-  )
+  items_up = values.Calculation(values.ItemCount(char), None, operator.add, 1)
   half_items_ceil = values.Calculation(items_up, None, operator.floordiv, 2)
   lose = events.LoseItems(char, half_items_ceil, "Choose items to donate.")
   # TODO: if you choose to donate half your items, but you only have two derringers, do you still
   # have to donate a derringer to the poor?
   return events.BinaryChoice(
-      char, "Donate half or your money or half of your items.", "Money", "Items", money, lose)
+    char, "Donate half or your money or half of your items.", "Money", "Items", money, lose
+  )
 
 
 def Church4(char):
   holywater = events.DrawSpecific(char, "unique", "Holy Water")
   return events.BinaryChoice(
-      char, "Search for Holy Water?", "Yes", "No", holywater, events.Nothing(),
+    char, "Search for Holy Water?", "Yes", "No", holywater, events.Nothing()
   )
 
 
@@ -664,8 +658,7 @@ def Church6(char):
   cond = events.Conditional(char, roll, "successes", {0: events.Nothing(), 1: doom})
   chance = events.Sequence([roll, cond], char)
   return events.BinarySpend(
-      char, "clues", 1, "Spend a clue token for a chance to remove a Doom Token?",
-      "Yes", "No", chance,
+    char, "clues", 1, "Spend a clue token for a chance to remove a Doom Token?", "Yes", "No", chance
   )
 
 
@@ -699,7 +692,8 @@ def Administration4(char):
   curse = events.Curse(char)
   assist = events.PassFail(char, check, spell, curse)
   return events.BinaryChoice(
-      char, "Help the professor and his students?", "Yes", "No", assist, events.Nothing())
+    char, "Help the professor and his students?", "Yes", "No", assist, events.Nothing()
+  )
 
 
 def Administration5(char):
@@ -792,7 +786,7 @@ def Science4(char):
   stamina = events.Loss(char, {"stamina": 2})
   ally = events.GainAllyOrReward(char, "Arm Wrestler", events.Gain(char, {"dollars": 5}))
   return events.BinaryChoice(
-      char, "Arm Wrestle?", "Yes", "No", events.Sequence([stamina, ally], char), events.Nothing(),
+    char, "Arm Wrestle?", "Yes", "No", events.Sequence([stamina, ally], char), events.Nothing()
   )
 
 
@@ -881,7 +875,7 @@ def Shop7(char):
 def Newspaper1(char):
   money = events.Gain(char, {"dollars": 2})
   choice = events.PlaceChoice(
-      char, "Get a ride anywhere in the city and have an encounter?", none_choice="No thanks",
+    char, "Get a ride anywhere in the city and have an encounter?", none_choice="No thanks"
   )
   return events.Sequence([money, choice, events.MoveAndEncounter(char, choice)], char)
 
@@ -940,7 +934,7 @@ def Train4(char):
 
 def Train5(char):
   choice = events.PlaceChoice(
-      char, "Get a ride anywhere in the city and have an encounter?", none_choice="No thanks",
+    char, "Get a ride anywhere in the city and have an encounter?", none_choice="No thanks"
   )
   return events.Sequence([choice, events.MoveAndEncounter(char, choice)], char)
 
@@ -951,7 +945,7 @@ def Train6(char):
   unique = events.Draw(char, "unique", 1)
   item = events.PassFail(char, check, unique, common)
   return events.BinarySpend(
-      char, "dollars", 3, "Claim item left at lost and found for $3?", "Yes", "No", item,
+    char, "dollars", 3, "Claim item left at lost and found for $3?", "Yes", "No", item
   )
 
 
@@ -1006,11 +1000,13 @@ def Asylum5(char):
   overall_sum = values.Calculation(skill_spell_sum, None, operator.add, clue_prereq)
   none_prereq = values.Calculation(overall_sum, None, operator.not_)
   choice = events.MultipleChoice(
-      char, "Choose something to lose", ["Nothing", "4 Clues", "2 Spells", "1 Skill"],
-      prereqs=[none_prereq, clue_prereq, spell_prereq, skill_prereq],
+    char,
+    "Choose something to lose",
+    ["Nothing", "4 Clues", "2 Spells", "1 Skill"],
+    prereqs=[none_prereq, clue_prereq, spell_prereq, skill_prereq],
   )
   losses = events.Conditional(
-      char, choice, "choice_index", {0: nothing, 1: clue_loss, 2: spell_loss, 3: skill_loss},
+    char, choice, "choice_index", {0: nothing, 1: clue_loss, 2: spell_loss, 3: skill_loss}
   )
   lose = events.Sequence([choice, losses], char)
   skill = events.Draw(char, "skills", 1)
@@ -1034,7 +1030,7 @@ def Asylum7(char):
 
 def Bank1(char):
   choice = events.PlaceChoice(
-      char, "Catch a lift to anywhere in the city and have an encounter?", none_choice="No thanks",
+    char, "Catch a lift to anywhere in the city and have an encounter?", none_choice="No thanks"
   )
   return events.Sequence([choice, events.MoveAndEncounter(char, choice)], char)
 
@@ -1044,8 +1040,13 @@ def Bank2(char):
   common = events.Draw(char, "common", 1)
   unique = events.Draw(char, "unique", 1)
   return events.BinarySpend(
-      char, "dollars", 2, "Pay $2 for man's last possession?", "Pay $2",
-      "Let man and his family go hungry", events.PassFail(char, check, unique, common),
+    char,
+    "dollars",
+    2,
+    "Pay $2 for man's last possession?",
+    "Pay $2",
+    "Let man and his family go hungry",
+    events.PassFail(char, check, unique, common),
   )
 
 
@@ -1053,9 +1054,7 @@ def Bank3(char):
   robbed = events.Loss(char, {"dollars": float("inf")})
   nothing = events.Nothing()
   return events.CombatRound(
-      char,
-      EventMonster("bank robbers", {"combat": -1}, nothing, robbed),
-      deactivate=True
+    char, EventMonster("bank robbers", {"combat": -1}, nothing, robbed), deactivate=True
   )
 
 
@@ -1115,7 +1114,7 @@ def Square6(char):
   buy = events.Purchase(char, "unique", 1, discount=1)
   interact = events.PassFail(char, check, buy, lose)
   return events.BinaryChoice(
-      char, "Interact with the gypsies?", "Yes", "No", interact, events.Nothing(),
+    char, "Interact with the gypsies?", "Yes", "No", interact, events.Nothing()
   )
 
 
@@ -1210,9 +1209,7 @@ def Unnamable5(char):
   unique = events.Draw(char, "unique", 1)
   loss = events.Loss(char, {"sanity": 1, "stamina": 2})
   return events.BinaryChoice(
-      char, "Reach in?", "Yes", "No",
-      events.PassFail(char, check, unique, loss),
-      events.Nothing()
+    char, "Reach in?", "Yes", "No", events.PassFail(char, check, unique, loss), events.Nothing()
   )
 
 
@@ -1279,17 +1276,18 @@ def Hospital2(char):
   won = events.Gain(char, {"clues": 1})
   lost = events.ForceMovement(char, "Uptown")
   combat = events.CombatRound(
-      char,
-      EventMonster("corpse", {"combat": -1}, won, lost),
-      deactivate=True)
+    char, EventMonster("corpse", {"combat": -1}, won, lost), deactivate=True
+  )
   return events.Sequence([sanity, combat], char)
 
 
 def Hospital3(char):
   die = events.DiceRoll(char, 1, bad=[])
   cond = events.Conditional(
-      char, die, "sum",
-      {0: events.Nothing(), 1: events.Gain(char, {"stamina": values.Die(die)}), 4: events.Nothing()}
+    char,
+    die,
+    "sum",
+    {0: events.Nothing(), 1: events.Gain(char, {"stamina": values.Die(die)}), 4: events.Nothing()},
   )
   return events.Sequence([die, cond], char)
 
@@ -1346,7 +1344,7 @@ def Woods3(char):
   check = events.Check(char, "sneak", -2)
   shotgun = events.DrawSpecific(char, "common", "Shotgun")
   fail = events.Sequence(
-      [events.Loss(char, {"stamina": 2}), events.ForceMovement(char, "Uptown")], char,
+    [events.Loss(char, {"stamina": 2}), events.ForceMovement(char, "Uptown")], char
   )
   return events.PassFail(char, check, shotgun, fail)
 
@@ -1375,7 +1373,7 @@ def Woods6(char):
 
 def Woods7(char):
   choice = events.MultipleChoice(
-      char, "Which would you like to gain?", ["A skill", "2 spells", "4 clues"],
+    char, "Which would you like to gain?", ["A skill", "2 spells", "4 clues"]
   )
   skill = events.Draw(char, "skills", 1)
   spells = events.Draw(char, "spells", 2, keep_count=2)
@@ -1387,7 +1385,7 @@ def Woods7(char):
   turn = events.LoseTurn(char)
   seq = events.Sequence([turn, cond], char)
   return events.BinaryChoice(
-      char, "Share in the old wise-guy's wisdom?", "Yes", "No", seq, events.Nothing(),
+    char, "Share in the old wise-guy's wisdom?", "Yes", "No", seq, events.Nothing()
   )
 
 
@@ -1439,120 +1437,113 @@ def Shoppe7(char):
 
 def CreateEncounterCards():
   return {
-      "Downtown": [
-          EncounterCard("Downtown1", {"Asylum": Asylum1, "Bank": Bank1, "Square": Square1}),
-          EncounterCard("Downtown2", {"Asylum": Asylum2, "Bank": Bank2, "Square": Square2}),
-          EncounterCard("Downtown3", {"Asylum": Asylum3, "Bank": Bank3, "Square": Square3}),
-          EncounterCard("Downtown4", {"Asylum": Asylum4, "Bank": Bank4, "Square": Square4}),
-          EncounterCard("Downtown5", {"Asylum": Asylum5, "Bank": Bank5, "Square": Square5}),
-          EncounterCard("Downtown6", {"Asylum": Asylum6, "Bank": Bank6, "Square": Square6}),
-          EncounterCard("Downtown7", {"Asylum": Asylum7, "Bank": Bank7, "Square": Square7}),
-      ],
-      "Easttown": [
-          EncounterCard("Easttown1", {"Diner": Diner1, "Roadhouse": Roadhouse1, "Police": Police1}),
-          EncounterCard("Easttown2", {"Diner": Diner2, "Roadhouse": Roadhouse2, "Police": Police2}),
-          EncounterCard("Easttown3", {"Diner": Diner3, "Roadhouse": Roadhouse3, "Police": Police3}),
-          EncounterCard("Easttown4", {"Diner": Diner4, "Roadhouse": Roadhouse4, "Police": Police4}),
-          EncounterCard("Easttown5", {"Diner": Diner5, "Roadhouse": Roadhouse5, "Police": Police5}),
-          EncounterCard("Easttown6", {"Diner": Diner6, "Roadhouse": Roadhouse6, "Police": Police6}),
-          EncounterCard("Easttown7", {"Diner": Diner7, "Roadhouse": Roadhouse7, "Police": Police7}),
-      ],
-      "FrenchHill": [
-          EncounterCard(
-              "FrenchHill1", {"Lodge": Lodge1, "WitchHouse": WitchHouse1, "Sanctum": Sanctum1},
-          ),
-          EncounterCard(
-              "FrenchHill2", {"Lodge": Lodge2, "WitchHouse": WitchHouse2, "Sanctum": Sanctum2},
-          ),
-          EncounterCard(
-              "FrenchHill3", {"Lodge": Lodge3, "WitchHouse": WitchHouse3, "Sanctum": Sanctum3},
-          ),
-          EncounterCard(
-              "FrenchHill4", {"Lodge": Lodge4, "WitchHouse": WitchHouse4, "Sanctum": Sanctum4},
-          ),
-          EncounterCard(
-              "FrenchHill5", {"Lodge": Lodge5, "WitchHouse": WitchHouse5, "Sanctum": Sanctum5},
-          ),
-          EncounterCard(
-              "FrenchHill6", {"Lodge": Lodge6, "WitchHouse": WitchHouse6, "Sanctum": Sanctum6},
-          ),
-          EncounterCard(
-              "FrenchHill7", {"Lodge": Lodge7, "WitchHouse": WitchHouse7, "Sanctum": Sanctum7},
-          ),
-      ],
-      "Merchant": [
-          EncounterCard("Merchant1", {"Docks": Docks1, "Unnamable": Unnamable1, "Isle": Isle1}),
-          EncounterCard("Merchant2", {"Docks": Docks2, "Unnamable": Unnamable2, "Isle": Isle2}),
-          EncounterCard("Merchant3", {"Docks": Docks3, "Unnamable": Unnamable3, "Isle": Isle3}),
-          EncounterCard("Merchant4", {"Docks": Docks4, "Unnamable": Unnamable4, "Isle": Isle4}),
-          EncounterCard("Merchant5", {"Docks": Docks5, "Unnamable": Unnamable5, "Isle": Isle5}),
-          EncounterCard("Merchant6", {"Docks": Docks6, "Unnamable": Unnamable6, "Isle": Isle6}),
-          EncounterCard("Merchant7", {"Docks": Docks7, "Unnamable": Unnamable7, "Isle": Isle7}),
-      ],
-      "Northside": [
-          EncounterCard("Northside1", {"Shop": Shop1, "Newspaper": Newspaper1, "Train": Train1}),
-          EncounterCard("Northside2", {"Shop": Shop2, "Newspaper": Newspaper2, "Train": Train2}),
-          EncounterCard("Northside3", {"Shop": Shop3, "Newspaper": Newspaper3, "Train": Train3}),
-          EncounterCard("Northside4", {"Shop": Shop4, "Newspaper": Newspaper4, "Train": Train4}),
-          EncounterCard("Northside5", {"Shop": Shop5, "Newspaper": Newspaper5, "Train": Train5}),
-          EncounterCard("Northside6", {"Shop": Shop6, "Newspaper": Newspaper6, "Train": Train6}),
-          EncounterCard("Northside7", {"Shop": Shop7, "Newspaper": Newspaper7, "Train": Train7}),
-      ],
-      "Rivertown": [
-          EncounterCard("Rivertown1", {"Cave": Cave1, "Store": Store1, "Graveyard": Graveyard1}),
-          EncounterCard("Rivertown2", {"Cave": Cave2, "Store": Store2, "Graveyard": Graveyard2}),
-          EncounterCard("Rivertown3", {"Cave": Cave3, "Store": Store3, "Graveyard": Graveyard3}),
-          EncounterCard("Rivertown4", {"Cave": Cave4, "Store": Store4, "Graveyard": Graveyard4}),
-          EncounterCard("Rivertown5", {"Cave": Cave5, "Store": Store5, "Graveyard": Graveyard5}),
-          EncounterCard("Rivertown6", {"Cave": Cave6, "Store": Store6, "Graveyard": Graveyard6}),
-          EncounterCard("Rivertown7", {"Cave": Cave7, "Store": Store7, "Graveyard": Graveyard7}),
-      ],
-      "Southside": [
-          EncounterCard("Southside1", {"Society": Society1, "House": House1, "Church": Church1}),
-          EncounterCard("Southside2", {"Society": Society2, "House": House2, "Church": Church2}),
-          EncounterCard("Southside3", {"Society": Society3, "House": House3, "Church": Church3}),
-          EncounterCard("Southside4", {"Society": Society4, "House": House4, "Church": Church4}),
-          EncounterCard("Southside5", {"Society": Society5, "House": House5, "Church": Church5}),
-          EncounterCard("Southside6", {"Society": Society6, "House": House6, "Church": Church6}),
-          EncounterCard("Southside7", {"Society": Society7, "House": House7, "Church": Church7}),
-      ],
-      "University": [
-          EncounterCard(
-              "University1",
-              {"Administration": Administration1, "Library": Library1, "Science": Science1},
-          ),
-          EncounterCard(
-              "University2",
-              {"Administration": Administration2, "Library": Library2, "Science": Science2},
-          ),
-          EncounterCard(
-              "University3",
-              {"Administration": Administration3, "Library": Library3, "Science": Science3},
-          ),
-          EncounterCard(
-              "University4",
-              {"Administration": Administration4, "Library": Library4, "Science": Science4},
-          ),
-          EncounterCard(
-              "University5",
-              {"Administration": Administration5, "Library": Library5, "Science": Science5},
-          ),
-          EncounterCard(
-              "University6",
-              {"Administration": Administration6, "Library": Library6, "Science": Science6},
-          ),
-          EncounterCard(
-              "University7",
-              {"Administration": Administration7, "Library": Library7, "Science": Science7},
-          ),
-      ],
-      "Uptown": [
-          EncounterCard("Uptown1", {"Hospital": Hospital1, "Woods": Woods1, "Shoppe": Shoppe1}),
-          EncounterCard("Uptown2", {"Hospital": Hospital2, "Woods": Woods2, "Shoppe": Shoppe2}),
-          EncounterCard("Uptown3", {"Hospital": Hospital3, "Woods": Woods3, "Shoppe": Shoppe3}),
-          EncounterCard("Uptown4", {"Hospital": Hospital4, "Woods": Woods4, "Shoppe": Shoppe4}),
-          EncounterCard("Uptown5", {"Hospital": Hospital5, "Woods": Woods5, "Shoppe": Shoppe5}),
-          EncounterCard("Uptown6", {"Hospital": Hospital6, "Woods": Woods6, "Shoppe": Shoppe6}),
-          EncounterCard("Uptown7", {"Hospital": Hospital7, "Woods": Woods7, "Shoppe": Shoppe7}),
-      ],
+    "Downtown": [
+      EncounterCard("Downtown1", {"Asylum": Asylum1, "Bank": Bank1, "Square": Square1}),
+      EncounterCard("Downtown2", {"Asylum": Asylum2, "Bank": Bank2, "Square": Square2}),
+      EncounterCard("Downtown3", {"Asylum": Asylum3, "Bank": Bank3, "Square": Square3}),
+      EncounterCard("Downtown4", {"Asylum": Asylum4, "Bank": Bank4, "Square": Square4}),
+      EncounterCard("Downtown5", {"Asylum": Asylum5, "Bank": Bank5, "Square": Square5}),
+      EncounterCard("Downtown6", {"Asylum": Asylum6, "Bank": Bank6, "Square": Square6}),
+      EncounterCard("Downtown7", {"Asylum": Asylum7, "Bank": Bank7, "Square": Square7}),
+    ],
+    "Easttown": [
+      EncounterCard("Easttown1", {"Diner": Diner1, "Roadhouse": Roadhouse1, "Police": Police1}),
+      EncounterCard("Easttown2", {"Diner": Diner2, "Roadhouse": Roadhouse2, "Police": Police2}),
+      EncounterCard("Easttown3", {"Diner": Diner3, "Roadhouse": Roadhouse3, "Police": Police3}),
+      EncounterCard("Easttown4", {"Diner": Diner4, "Roadhouse": Roadhouse4, "Police": Police4}),
+      EncounterCard("Easttown5", {"Diner": Diner5, "Roadhouse": Roadhouse5, "Police": Police5}),
+      EncounterCard("Easttown6", {"Diner": Diner6, "Roadhouse": Roadhouse6, "Police": Police6}),
+      EncounterCard("Easttown7", {"Diner": Diner7, "Roadhouse": Roadhouse7, "Police": Police7}),
+    ],
+    "FrenchHill": [
+      EncounterCard(
+        "FrenchHill1", {"Lodge": Lodge1, "WitchHouse": WitchHouse1, "Sanctum": Sanctum1}
+      ),
+      EncounterCard(
+        "FrenchHill2", {"Lodge": Lodge2, "WitchHouse": WitchHouse2, "Sanctum": Sanctum2}
+      ),
+      EncounterCard(
+        "FrenchHill3", {"Lodge": Lodge3, "WitchHouse": WitchHouse3, "Sanctum": Sanctum3}
+      ),
+      EncounterCard(
+        "FrenchHill4", {"Lodge": Lodge4, "WitchHouse": WitchHouse4, "Sanctum": Sanctum4}
+      ),
+      EncounterCard(
+        "FrenchHill5", {"Lodge": Lodge5, "WitchHouse": WitchHouse5, "Sanctum": Sanctum5}
+      ),
+      EncounterCard(
+        "FrenchHill6", {"Lodge": Lodge6, "WitchHouse": WitchHouse6, "Sanctum": Sanctum6}
+      ),
+      EncounterCard(
+        "FrenchHill7", {"Lodge": Lodge7, "WitchHouse": WitchHouse7, "Sanctum": Sanctum7}
+      ),
+    ],
+    "Merchant": [
+      EncounterCard("Merchant1", {"Docks": Docks1, "Unnamable": Unnamable1, "Isle": Isle1}),
+      EncounterCard("Merchant2", {"Docks": Docks2, "Unnamable": Unnamable2, "Isle": Isle2}),
+      EncounterCard("Merchant3", {"Docks": Docks3, "Unnamable": Unnamable3, "Isle": Isle3}),
+      EncounterCard("Merchant4", {"Docks": Docks4, "Unnamable": Unnamable4, "Isle": Isle4}),
+      EncounterCard("Merchant5", {"Docks": Docks5, "Unnamable": Unnamable5, "Isle": Isle5}),
+      EncounterCard("Merchant6", {"Docks": Docks6, "Unnamable": Unnamable6, "Isle": Isle6}),
+      EncounterCard("Merchant7", {"Docks": Docks7, "Unnamable": Unnamable7, "Isle": Isle7}),
+    ],
+    "Northside": [
+      EncounterCard("Northside1", {"Shop": Shop1, "Newspaper": Newspaper1, "Train": Train1}),
+      EncounterCard("Northside2", {"Shop": Shop2, "Newspaper": Newspaper2, "Train": Train2}),
+      EncounterCard("Northside3", {"Shop": Shop3, "Newspaper": Newspaper3, "Train": Train3}),
+      EncounterCard("Northside4", {"Shop": Shop4, "Newspaper": Newspaper4, "Train": Train4}),
+      EncounterCard("Northside5", {"Shop": Shop5, "Newspaper": Newspaper5, "Train": Train5}),
+      EncounterCard("Northside6", {"Shop": Shop6, "Newspaper": Newspaper6, "Train": Train6}),
+      EncounterCard("Northside7", {"Shop": Shop7, "Newspaper": Newspaper7, "Train": Train7}),
+    ],
+    "Rivertown": [
+      EncounterCard("Rivertown1", {"Cave": Cave1, "Store": Store1, "Graveyard": Graveyard1}),
+      EncounterCard("Rivertown2", {"Cave": Cave2, "Store": Store2, "Graveyard": Graveyard2}),
+      EncounterCard("Rivertown3", {"Cave": Cave3, "Store": Store3, "Graveyard": Graveyard3}),
+      EncounterCard("Rivertown4", {"Cave": Cave4, "Store": Store4, "Graveyard": Graveyard4}),
+      EncounterCard("Rivertown5", {"Cave": Cave5, "Store": Store5, "Graveyard": Graveyard5}),
+      EncounterCard("Rivertown6", {"Cave": Cave6, "Store": Store6, "Graveyard": Graveyard6}),
+      EncounterCard("Rivertown7", {"Cave": Cave7, "Store": Store7, "Graveyard": Graveyard7}),
+    ],
+    "Southside": [
+      EncounterCard("Southside1", {"Society": Society1, "House": House1, "Church": Church1}),
+      EncounterCard("Southside2", {"Society": Society2, "House": House2, "Church": Church2}),
+      EncounterCard("Southside3", {"Society": Society3, "House": House3, "Church": Church3}),
+      EncounterCard("Southside4", {"Society": Society4, "House": House4, "Church": Church4}),
+      EncounterCard("Southside5", {"Society": Society5, "House": House5, "Church": Church5}),
+      EncounterCard("Southside6", {"Society": Society6, "House": House6, "Church": Church6}),
+      EncounterCard("Southside7", {"Society": Society7, "House": House7, "Church": Church7}),
+    ],
+    "University": [
+      EncounterCard(
+        "University1", {"Administration": Administration1, "Library": Library1, "Science": Science1}
+      ),
+      EncounterCard(
+        "University2", {"Administration": Administration2, "Library": Library2, "Science": Science2}
+      ),
+      EncounterCard(
+        "University3", {"Administration": Administration3, "Library": Library3, "Science": Science3}
+      ),
+      EncounterCard(
+        "University4", {"Administration": Administration4, "Library": Library4, "Science": Science4}
+      ),
+      EncounterCard(
+        "University5", {"Administration": Administration5, "Library": Library5, "Science": Science5}
+      ),
+      EncounterCard(
+        "University6", {"Administration": Administration6, "Library": Library6, "Science": Science6}
+      ),
+      EncounterCard(
+        "University7", {"Administration": Administration7, "Library": Library7, "Science": Science7}
+      ),
+    ],
+    "Uptown": [
+      EncounterCard("Uptown1", {"Hospital": Hospital1, "Woods": Woods1, "Shoppe": Shoppe1}),
+      EncounterCard("Uptown2", {"Hospital": Hospital2, "Woods": Woods2, "Shoppe": Shoppe2}),
+      EncounterCard("Uptown3", {"Hospital": Hospital3, "Woods": Woods3, "Shoppe": Shoppe3}),
+      EncounterCard("Uptown4", {"Hospital": Hospital4, "Woods": Woods4, "Shoppe": Shoppe4}),
+      EncounterCard("Uptown5", {"Hospital": Hospital5, "Woods": Woods5, "Shoppe": Shoppe5}),
+      EncounterCard("Uptown6", {"Hospital": Hospital6, "Woods": Woods6, "Shoppe": Shoppe6}),
+      EncounterCard("Uptown7", {"Hospital": Hospital7, "Woods": Woods7, "Shoppe": Shoppe7}),
+    ],
   }

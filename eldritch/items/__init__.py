@@ -1,6 +1,16 @@
 from typing import List
-from eldritch.assets import (Asset, Card, Deputy, Blessing, Curse, Retainer, BankLoan, BadCredit,
-                             LodgeMembership, BonusToAllChecks)
+from eldritch.assets import (
+  Asset,
+  Card,
+  Deputy,
+  Blessing,
+  Curse,
+  Retainer,
+  BankLoan,
+  BadCredit,
+  LodgeMembership,
+  BonusToAllChecks,
+)
 from eldritch.expansions.seaside.abilities import TeamPlayerBonus
 from .base import Item, Weapon, OneshotWeapon, Tome
 from .common import *
@@ -14,12 +24,10 @@ def CreateTradables():
 
 
 def CreateSpecials():
-  ret: List[Asset] = (
-      [Deputy(), TeamPlayerBonus(0)]
-      + [
-          card(i) for i in range(12)
-          for card in [Blessing, Curse, Retainer, BankLoan, BadCredit, LodgeMembership]
-      ]
-  )
+  ret: List[Asset] = [Deputy(), TeamPlayerBonus(0)] + [
+    card(i)
+    for i in range(12)
+    for card in [Blessing, Curse, Retainer, BankLoan, BadCredit, LodgeMembership]
+  ]
   ret.extend([BonusToAllChecks("Voice Bonus", i) for i in range(12)])
   return ret

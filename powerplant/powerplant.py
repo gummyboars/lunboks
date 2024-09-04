@@ -6,8 +6,15 @@ from random import SystemRandom
 from typing import Dict, List
 
 from game import (  # pylint: disable=unused-import
-    BaseGame, ValidatePlayer, CustomEncoder, InvalidInput, UnknownMove, InvalidMove,
-    InvalidPlayer, TooManyPlayers, NotYourTurn,
+  BaseGame,
+  ValidatePlayer,
+  CustomEncoder,
+  InvalidInput,
+  UnknownMove,
+  InvalidMove,
+  InvalidPlayer,
+  TooManyPlayers,
+  NotYourTurn,
 )
 from powerplant import cities
 from powerplant import cost
@@ -33,29 +40,47 @@ class Count:
 
 
 COUNTS = {
-    2: Count(play_regions=3, plants_removed=8, max_plants=4, stage_2_count=10, end_game_count=21),
-    3: Count(play_regions=3, plants_removed=8, max_plants=3, stage_2_count=7, end_game_count=17),
-    4: Count(play_regions=4, plants_removed=4, max_plants=3, stage_2_count=7, end_game_count=17),
-    5: Count(play_regions=5, plants_removed=0, max_plants=3, stage_2_count=7, end_game_count=15),
-    6: Count(play_regions=5, plants_removed=0, max_plants=3, stage_2_count=6, end_game_count=14),
+  2: Count(play_regions=3, plants_removed=8, max_plants=4, stage_2_count=10, end_game_count=21),
+  3: Count(play_regions=3, plants_removed=8, max_plants=3, stage_2_count=7, end_game_count=17),
+  4: Count(play_regions=4, plants_removed=4, max_plants=3, stage_2_count=7, end_game_count=17),
+  5: Count(play_regions=5, plants_removed=0, max_plants=3, stage_2_count=7, end_game_count=15),
+  6: Count(play_regions=5, plants_removed=0, max_plants=3, stage_2_count=6, end_game_count=14),
 }
 SUPPLY_RATES = {
-    2: {COAL: [3, 4, 3], OIL: [2, 2, 4], GAS: [1, 2, 3], URANIUM: [1, 1, 1]},
-    3: {COAL: [4, 5, 3], OIL: [2, 3, 4], GAS: [1, 2, 3], URANIUM: [1, 1, 1]},
-    4: {COAL: [5, 6, 4], OIL: [3, 4, 5], GAS: [2, 3, 4], URANIUM: [1, 2, 2]},
-    5: {COAL: [5, 7, 5], OIL: [4, 5, 6], GAS: [3, 3, 5], URANIUM: [2, 3, 2]},
-    6: {COAL: [7, 9, 6], OIL: [5, 6, 7], GAS: [3, 5, 6], URANIUM: [2, 3, 3]},
+  2: {COAL: [3, 4, 3], OIL: [2, 2, 4], GAS: [1, 2, 3], URANIUM: [1, 1, 1]},
+  3: {COAL: [4, 5, 3], OIL: [2, 3, 4], GAS: [1, 2, 3], URANIUM: [1, 1, 1]},
+  4: {COAL: [5, 6, 4], OIL: [3, 4, 5], GAS: [2, 3, 4], URANIUM: [1, 2, 2]},
+  5: {COAL: [5, 7, 5], OIL: [4, 5, 6], GAS: [3, 3, 5], URANIUM: [2, 3, 2]},
+  6: {COAL: [7, 9, 6], OIL: [5, 6, 7], GAS: [3, 5, 6], URANIUM: [2, 3, 3]},
 }
 COSTS: Dict[materials.Resource, List[int]] = {
-    COAL: sum([[x] * 3 for x in range(8, 0, -1)], []),
-    OIL: sum([[x] * 3 for x in range(8, 0, -1)], []),
-    GAS: sum([[x] * 3 for x in range(8, 0, -1)], []),
-    URANIUM: [16, 14, 12, 10, 8, 7, 6, 5, 4, 3, 2, 1],
+  COAL: sum([[x] * 3 for x in range(8, 0, -1)], []),
+  OIL: sum([[x] * 3 for x in range(8, 0, -1)], []),
+  GAS: sum([[x] * 3 for x in range(8, 0, -1)], []),
+  URANIUM: [16, 14, 12, 10, 8, 7, 6, 5, 4, 3, 2, 1],
 }
 PAYMENTS = [
-    10, 22, 33, 44, 54, 64, 73,
-    82, 90, 98, 105, 112, 118, 124,
-    129, 134, 138, 142, 145, 148, 150,
+  10,
+  22,
+  33,
+  44,
+  54,
+  64,
+  73,
+  82,
+  90,
+  98,
+  105,
+  112,
+  118,
+  124,
+  129,
+  134,
+  138,
+  142,
+  145,
+  148,
+  150,
 ]
 STAGE_3_COST = 10000
 
@@ -81,7 +106,6 @@ class TurnPhase(str, Enum):
 
 
 class GameState:
-
   PHASES = [TurnPhase.AUCTION, TurnPhase.MATERIALS, TurnPhase.BUILDING, TurnPhase.BUREAUCRACY]
 
   def __init__(self, players, region, plantlist):
@@ -154,7 +178,7 @@ class GameState:
     players = [Player.parse_json(playerdata) for playerdata in gamedata["players"]]
     state = cls(players, gamedata["region"], "old")
     state.all_cities = {
-        name: cities.City.parse_json(data) for name, data in gamedata["all_cities"].items()
+      name: cities.City.parse_json(data) for name, data in gamedata["all_cities"].items()
     }
     state.cities = {name: cities.City.parse_json(data) for name, data in gamedata["cities"].items()}
     state.plants = [plantinfo.Plant.parse_json(data) for data in gamedata["plants"]]
@@ -165,8 +189,14 @@ class GameState:
     state.pending_buy = {materials.Resource(rsrc): n for rsrc, n in gamedata["pending_buy"].items()}
 
     handled = {
-        "players", "cities", "plants", "resources", "colors", "auction_passed", "market",
-        "pending_buy",
+      "players",
+      "cities",
+      "plants",
+      "resources",
+      "colors",
+      "auction_passed",
+      "market",
+      "pending_buy",
     }
     for attr in state.__dict__.keys() - handled:
       setattr(state, attr, gamedata[attr])
@@ -197,7 +227,7 @@ class GameState:
 
     if data.get("type") == "shuffle":
       return self.handle_shuffle(
-          player_idx, data.get("resource"), data.get("source"), data.get("dest"),
+        player_idx, data.get("resource"), data.get("source"), data.get("dest")
       )
 
     if self.auction_discard_idx is not None:
@@ -414,14 +444,14 @@ class GameState:
     money_available = self.players[self.turn_idx].money - self.pending_spend
     spend = 0
     for _ in range(count):
-      spend += COSTS[resource][rsrc_available-1]
+      spend += COSTS[resource][rsrc_available - 1]
       rsrc_available -= 1
     if spend > money_available:
       raise InvalidMove(f"You would need {spend} to buy that much")
 
     capacity = collections.defaultdict(int)
     for plant in self.players[self.turn_idx].plants:
-      capacity[plant.resource] += 2*plant.intake - sum(plant.storage.values())
+      capacity[plant.resource] += 2 * plant.intake - sum(plant.storage.values())
 
     overflow = {}
     for rsrc in self.pending_buy.keys() | {resource}:
@@ -447,7 +477,7 @@ class GameState:
     city = self.cities[city_name]
     if len(city.occupants) > self.stage_idx:
       raise InvalidMove(
-          f"Cities may only be occupied by {self.stage_idx+1} players in this stage of the game"
+        f"Cities may only be occupied by {self.stage_idx+1} players in this stage of the game"
       )
     if self.turn_idx in city.occupants:
       raise InvalidMove(f"You are already in {city_name}")
@@ -481,7 +511,7 @@ class GameState:
     for idx, plant in enumerate(self.players[self.turn_idx].plants):
       if not remaining_buy.get(plant.resource):  # This skips hybrid plants and irrelevant plants.
         continue
-      remaining_capacity = 2*plant.intake - sum(plant.storage.values())
+      remaining_capacity = 2 * plant.intake - sum(plant.storage.values())
       allocated = min(remaining_capacity, remaining_buy[plant.resource])
       allocate[idx][plant.resource] += allocated
       remaining_buy[plant.resource] -= allocated
@@ -490,7 +520,7 @@ class GameState:
     for idx, plant in enumerate(self.players[self.turn_idx].plants):
       if plant.resource is not HYBRID:
         continue
-      remaining_capacity = 2*plant.intake - sum(plant.storage.values())
+      remaining_capacity = 2 * plant.intake - sum(plant.storage.values())
       if remaining_buy.get(COAL):
         coal = min(remaining_capacity, remaining_buy[COAL])
         allocate[idx][COAL] += coal
@@ -556,7 +586,7 @@ class GameState:
       raise InvalidMove(f"You do not have any {resource} on that plant")
     if not player.plants[dest].can_take(resource):
       raise InvalidMove(f"You cannot store {resource} on that plant")
-    if sum(player.plants[dest].storage.values()) < 2*player.plants[dest].intake:
+    if sum(player.plants[dest].storage.values()) < 2 * player.plants[dest].intake:
       player.plants[source].storage[resource] -= 1
       player.plants[dest].storage[resource] = player.plants[dest].storage.get(resource, 0) + 1
       return
@@ -621,7 +651,7 @@ class GameState:
 
     operated = len([c for c in self.cities.values() if self.turn_idx in c.occupants])
     self.powered[self.turn_idx] = min(output, operated)
-    payable = min(self.powered[self.turn_idx], len(PAYMENTS)-1)
+    payable = min(self.powered[self.turn_idx], len(PAYMENTS) - 1)
     self.players[self.turn_idx].money += PAYMENTS[payable]
 
     yield from self.next_turn()
@@ -642,13 +672,13 @@ class GameState:
     # If we're staying in the same phase, just advance to the next player's turn.
     phase = self.PHASES[self.phase_idx]
     if phase is TurnPhase.BUREAUCRACY:
-      next_idx = self.turn_order.index(self.turn_idx)+1
+      next_idx = self.turn_order.index(self.turn_idx) + 1
       if next_idx < len(self.turn_order):
         self.turn_idx = self.turn_order[next_idx]
         yield None
         return
     elif phase in [TurnPhase.MATERIALS, TurnPhase.BUILDING]:
-      next_idx = self.turn_order.index(self.turn_idx)-1
+      next_idx = self.turn_order.index(self.turn_idx) - 1
       if next_idx >= 0:
         self.turn_idx = self.turn_order[next_idx]
         yield None
@@ -743,7 +773,6 @@ class GameState:
 
 
 class PowerPlantGame(BaseGame):
-
   COLORS = {"red", "blue", "forestgreen", "darkviolet", "saddlebrown", "deepskyblue"}
   OPTIONS = {"region": ["Germany", "USA"], "plantlist": ["old", "new"]}
 
@@ -788,13 +817,13 @@ class PowerPlantGame(BaseGame):
       if session in self.pending_players:
         idx = sorted(self.pending_players).index(session)
       data = {
-          "type": "game_state",
-          "host": self.host == session,
-          "player_idx": idx,
-          "started": False,
-          "options": self.options,
-          "players": [],
-          "colors": sorted(self.COLORS - {p.get("color") for p in self.pending_players.values()})
+        "type": "game_state",
+        "host": self.host == session,
+        "player_idx": idx,
+        "started": False,
+        "options": self.options,
+        "players": [],
+        "colors": sorted(self.COLORS - {p.get("color") for p in self.pending_players.values()}),
       }
       for sess in sorted(self.pending_players):
         data["players"].append(self.pending_players[sess])

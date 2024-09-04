@@ -25,14 +25,10 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install "autopep8<2.0.3"
-        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-    - name: Auto-formatting with autopep8
-      uses: wearerequired/lint-action@v2
-      with:
-        auto_fix: ${{ github.event_name == 'pull_request' }}
-        commit_message: "Fix code style issues with ${linter}"
-        autopep8: true
+        pip install -r requirements-dev.txt
+    - name: Format check with Ruff
+      run: |
+        ruff format --diff .
   lint-check:
     runs-on: ubuntu-latest
     steps:
@@ -44,8 +40,7 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install pylint
-        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+        pip install -r requirements-dev.txt
     - name: Analyze the code with pylint
       run: |
         pylint -j 0 **/*.py
@@ -60,7 +55,7 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+        pip install -r requirements.txt
     - name: Run Tests
       run: |
         python -m unittest

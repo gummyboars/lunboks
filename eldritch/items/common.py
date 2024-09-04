@@ -3,20 +3,57 @@ from eldritch import values
 from .base import Item, Weapon, OneshotWeapon, Tome
 
 __all__ = [
-    "CreateCommon",
-    "Automatic45", "Axe", "Bullwhip", "CavalrySaber", "Cross", "Derringer18", "Dynamite",
-    "Knife", "Revolver38", "Rifle", "Shotgun", "TommyGun", "AncientTome", "DarkCloak",
-    "Food", "Lantern", "ResearchMaterials", "Whiskey", "OldJournal",
-    "Map", "Motorcycle", "CigaretteCase"
+  "CreateCommon",
+  "Automatic45",
+  "Axe",
+  "Bullwhip",
+  "CavalrySaber",
+  "Cross",
+  "Derringer18",
+  "Dynamite",
+  "Knife",
+  "Revolver38",
+  "Rifle",
+  "Shotgun",
+  "TommyGun",
+  "AncientTome",
+  "DarkCloak",
+  "Food",
+  "Lantern",
+  "ResearchMaterials",
+  "Whiskey",
+  "OldJournal",
+  "Map",
+  "Motorcycle",
+  "CigaretteCase",
 ]
 
 
 def CreateCommon():
   common = []
   for item in [
-      AncientTome, Automatic45, DarkCloak, Derringer18, Revolver38, Dynamite, Rifle, Shotgun,
-      TommyGun, Food, ResearchMaterials, Bullwhip, Cross, CavalrySaber, Knife, Whiskey, Axe,
-      Lantern, OldJournal, Map, Motorcycle, CigaretteCase
+    AncientTome,
+    Automatic45,
+    DarkCloak,
+    Derringer18,
+    Revolver38,
+    Dynamite,
+    Rifle,
+    Shotgun,
+    TommyGun,
+    Food,
+    ResearchMaterials,
+    Bullwhip,
+    Cross,
+    CavalrySaber,
+    Knife,
+    Whiskey,
+    Axe,
+    Lantern,
+    OldJournal,
+    Map,
+    Motorcycle,
+    CigaretteCase,
   ]:
     common.extend([item(0), item(1)])
   return common
@@ -30,7 +67,6 @@ def Automatic45(idx):
 
 
 class Axe(Weapon):
-
   def __init__(self, idx):
     super().__init__("Axe", idx, "common", {"physical": 2}, {}, 1, 3)
     self._two_handed = False
@@ -55,7 +91,6 @@ class Axe(Weapon):
 
 
 class Bullwhip(Weapon):
-
   def __init__(self, idx):
     super().__init__("Bullwhip", idx, "common", {"physical": 1}, {}, 1, 2)
 
@@ -68,10 +103,14 @@ class Bullwhip(Weapon):
       return None
     choice = events.MultipleChoice(owner, "Choose a die to reroll", state.event_stack[-2].roll[:])
     chosen = values.Calculation(choice, "choice_index")
-    return events.Sequence([
-        events.ExhaustAsset(owner, self), choice,
+    return events.Sequence(
+      [
+        events.ExhaustAsset(owner, self),
+        choice,
         events.RerollSpecific(owner, state.event_stack[-2], chosen),
-    ], owner)
+      ],
+      owner,
+    )
 
 
 def CavalrySaber(idx):
@@ -79,7 +118,6 @@ def CavalrySaber(idx):
 
 
 class Cross(Weapon):
-
   def __init__(self, idx):
     super().__init__("Cross", idx, "common", {}, {"horror": 1}, 1, 3)
 
@@ -91,7 +129,6 @@ class Cross(Weapon):
 
 
 class Derringer18(Weapon):
-
   def __init__(self, idx):
     super().__init__(".18 Derringer", idx, "common", {"physical": 2}, {}, 1, 3)
     self.losable = False
@@ -123,15 +160,15 @@ def TommyGun(idx):
 
 # Tome
 
-class AncientTome(Tome):
 
+class AncientTome(Tome):
   def __init__(self, idx):
     super().__init__("Ancient Tome", idx, "common", 4, 2)
 
   def read_event(self, owner):
     check = events.Check(owner, "lore", -1, name=self.handle)
     success = events.Sequence(
-        [events.DiscardSpecific(owner, [self]), events.Draw(owner, "spells", 1)], owner,
+      [events.DiscardSpecific(owner, [self]), events.Draw(owner, "spells", 1)], owner
     )
     return events.PassFail(owner, check, success, events.Nothing())
 
@@ -143,9 +180,10 @@ class OldJournal(Tome):
   def read_event(self, owner):
     check = events.Check(owner, "lore", -1, name=self.handle)
     success = events.Sequence(
-        [events.DiscardSpecific(owner, [self]), events.Gain(owner, {"clues": 3})], owner
+      [events.DiscardSpecific(owner, [self]), events.Gain(owner, {"clues": 3})], owner
     )
     return events.PassFail(owner, check, success, events.Nothing())
+
 
 # Other
 
@@ -159,10 +197,13 @@ class CigaretteCase(Item):
       return None
     if len(state.event_stack) < 2 or not isinstance(state.event_stack[-2], events.Check):
       return None
-    return events.Sequence([
+    return events.Sequence(
+      [
         events.DiscardSpecific(owner, [self]),
         events.RerollCheck(state.event_stack[-2].character, state.event_stack[-2]),
-    ], owner)
+      ],
+      owner,
+    )
 
 
 def DarkCloak(idx):
@@ -170,7 +211,6 @@ def DarkCloak(idx):
 
 
 class Food(Item):
-
   def __init__(self, idx):
     super().__init__("Food", idx, "common", {}, {}, None, 1)
 
@@ -201,10 +241,9 @@ class SpeedBoost(Item):
     if self.exhausted:
       return None
     if isinstance(event, events.CityMovement) and event.character == owner and not event.is_done():
-      return events.Sequence([
-          events.ChangeMovementPoints(owner, self.boost_amount),
-          events.ExhaustAsset(owner, self)
-      ])
+      return events.Sequence(
+        [events.ChangeMovementPoints(owner, self.boost_amount), events.ExhaustAsset(owner, self)]
+      )
     return None
 
 
@@ -217,7 +256,6 @@ def Motorcycle(idx):
 
 
 class ResearchMaterials(Item):
-
   def __init__(self, idx):
     super().__init__("Research Materials", idx, "common", {}, {}, None, 1)
 
@@ -235,7 +273,6 @@ class ResearchMaterials(Item):
 
 
 class Whiskey(Item):
-
   def __init__(self, idx):
     super().__init__("Whiskey", idx, "common", {}, {}, None, 1)
 

@@ -31,20 +31,29 @@ class BaseCharacter(metaclass=abc.ABCMeta):
 
   def get_json(self, state):
     attrs = [
-        "name", "stamina", "sanity", "focus",
-        "movement_points", "focus_points",
-        "dollars", "clues", "possessions",  # TODO: special cards
-        "delayed_until", "lose_turn_until", "arrested_until", "gone",
+      "name",
+      "stamina",
+      "sanity",
+      "focus",
+      "movement_points",
+      "focus_points",
+      "dollars",
+      "clues",
+      "possessions",  # TODO: special cards
+      "delayed_until",
+      "lose_turn_until",
+      "arrested_until",
+      "gone",
     ]
     data = {attr: getattr(self, attr) for attr in attrs}
     for numeric in ["delayed_until", "lose_turn_until", "arrested_until"]:
       if data[numeric] is not None and math.isinf(data[numeric]):
-        data[numeric] = "\u221E"  # Any placeholder non-integer value.
+        data[numeric] = "\u221e"  # Any placeholder non-integer value.
     data["sliders"] = OrderedDict()
     for slider in self._slider_names:
       data["sliders"][slider] = {
-          "pairs": getattr(self, "_" + slider),
-          "selection": getattr(self, slider + "_slider"),
+        "pairs": getattr(self, "_" + slider),
+        "selection": getattr(self, slider + "_slider"),
       }
     data["trophies"] = []
     for trophy in self.trophies:
@@ -171,7 +180,7 @@ class BaseCharacter(metaclass=abc.ABCMeta):
     successes = len([result for result in roll if self.is_success(result, check_type)])
     if check_type == "combat":  # HACK: hard-code the Shotgun's functionality here.
       shotgun_active = any(
-          item.name == "Shotgun" for item in self.possessions if getattr(item, "active", False)
+        item.name == "Shotgun" for item in self.possessions if getattr(item, "active", False)
       )
       if shotgun_active:
         successes += roll.count(6)
@@ -224,25 +233,24 @@ class BaseCharacter(metaclass=abc.ABCMeta):
 
   def get_interrupts(self, event, state):
     return [
-        p.get_interrupt(event, self, state) for p in self.possessions
-        if p.get_interrupt(event, self, state)
+      p.get_interrupt(event, self, state)
+      for p in self.possessions
+      if p.get_interrupt(event, self, state)
     ]
 
   def get_usable_interrupts(self, event, state):
     interrupts = {
-        pos.handle: pos.get_usable_interrupt(event, self, state)
-        for pos in self.possessions
-        if (
-            pos.get_usable_interrupt(event, self, state)
-            and state.get_override(pos, "can_use")
-        )
+      pos.handle: pos.get_usable_interrupt(event, self, state)
+      for pos in self.possessions
+      if (pos.get_usable_interrupt(event, self, state) and state.get_override(pos, "can_use"))
     }
     return interrupts
 
   def get_spendables(self, event, state):
     spendables = {
-        pos.handle: pos.get_spend_amount(event, self, state)
-        for pos in self.possessions if pos.get_spend_amount(event, self, state) is not None
+      pos.handle: pos.get_spend_amount(event, self, state)
+      for pos in self.possessions
+      if pos.get_spend_amount(event, self, state) is not None
     }
     if isinstance(event, events.SpendMixin) and event.character == self and not event.is_done():
       spent_handles = event.spent_handles()
@@ -263,24 +271,27 @@ class BaseCharacter(metaclass=abc.ABCMeta):
   def get_triggers(self, event, state):
     triggers = []
     if isinstance(event, events.DiscardSpecific):
-      triggers.extend([
-          p.get_trigger(event, self, state) for p in event.discarded
+      triggers.extend(
+        [
+          p.get_trigger(event, self, state)
+          for p in event.discarded
           if p.get_trigger(event, self, state)
-      ])
+        ]
+      )
     if isinstance(event, events.DiscardNamed) and event.discarded:
       trig = event.discarded.get_trigger(event, self, state)
       triggers.extend([trig] if trig else [])
     return triggers + [
-        p.get_trigger(event, self, state) for p in self.possessions
-        if p.get_trigger(event, self, state)
+      p.get_trigger(event, self, state)
+      for p in self.possessions
+      if p.get_trigger(event, self, state)
     ]
 
   def get_usable_triggers(self, event, state):
     return {
-        pos.handle: pos.get_usable_trigger(event, self, state)
-        for pos in self.possessions
-        if pos.get_usable_trigger(event, self, state)
-        and state.get_override(pos, "can_use")
+      pos.handle: pos.get_usable_trigger(event, self, state)
+      for pos in self.possessions
+      if pos.get_usable_trigger(event, self, state) and state.get_override(pos, "can_use")
     }
 
   def get_spend_event(self, handle):
@@ -315,11 +326,22 @@ class BaseCharacter(metaclass=abc.ABCMeta):
 
 class Character(BaseCharacter):
   """A character with the standard sliders"""
+
   _slider_names = ["speed_sneak", "fight_will", "lore_luck"]
 
   def __init__(
-      self, name, max_stamina, max_sanity, max_speed, max_sneak,
-      max_fight, max_will, max_lore, max_luck, focus, home,
+    self,
+    name,
+    max_stamina,
+    max_sanity,
+    max_speed,
+    max_sneak,
+    max_fight,
+    max_will,
+    max_lore,
+    max_luck,
+    focus,
+    home,
   ):
     super().__init__(name, focus, home)
     self._max_stamina = max_stamina
@@ -360,7 +382,6 @@ class Character(BaseCharacter):
 
 
 class Student(Character):
-
   def __init__(self):
     super().__init__("Student", 5, 5, 4, 4, 4, 4, 4, 4, 3, "Bank")
 
@@ -378,7 +399,6 @@ class Student(Character):
 
 
 class Drifter(Character):
-
   def __init__(self):
     super().__init__("Drifter", 6, 4, 3, 6, 5, 5, 3, 3, 1, "Docks")
 
@@ -396,7 +416,6 @@ class Drifter(Character):
 
 
 class Salesman(Character):
-
   def __init__(self):
     super().__init__("Salesman", 6, 4, 5, 3, 4, 6, 3, 4, 1, "Store")
 
@@ -414,7 +433,6 @@ class Salesman(Character):
 
 
 class Psychologist(Character):
-
   def __init__(self):
     super().__init__("Psychologist", 4, 6, 3, 3, 4, 4, 5, 5, 2, "Asylum")
 
@@ -432,7 +450,6 @@ class Psychologist(Character):
 
 
 class Photographer(Character):
-
   def __init__(self):
     super().__init__("Photographer", 6, 4, 5, 3, 5, 4, 3, 4, 2, "Newspaper")
 
@@ -450,7 +467,6 @@ class Photographer(Character):
 
 
 class Magician(Character):
-
   def __init__(self):
     super().__init__("Magician", 5, 5, 5, 4, 4, 3, 5, 3, 2, "Shoppe")
 
@@ -468,7 +484,6 @@ class Magician(Character):
 
 
 class Author(Character):
-
   def __init__(self):
     super().__init__("Author", 4, 6, 4, 3, 3, 5, 4, 5, 2, "Diner")
 
@@ -486,7 +501,6 @@ class Author(Character):
 
 
 class Professor(Character):
-
   def __init__(self):
     super().__init__("Professor", 3, 7, 3, 5, 3, 3, 6, 4, 2, "Administration")
 
@@ -504,7 +518,6 @@ class Professor(Character):
 
 
 class Dilettante(Character):
-
   def __init__(self):
     super().__init__("Dilettante", 4, 6, 3, 4, 4, 5, 4, 5, 1, "Train")
 
@@ -522,7 +535,6 @@ class Dilettante(Character):
 
 
 class PrivateEye(Character):
-
   def __init__(self):
     super().__init__("Private Eye", 6, 4, 6, 4, 5, 3, 3, 3, 3, "Police")
 
@@ -540,7 +552,6 @@ class PrivateEye(Character):
 
 
 class Scientist(Character):
-
   def __init__(self):
     super().__init__("Scientist", 4, 6, 4, 5, 4, 3, 5, 4, 1, "Science")
 
@@ -558,7 +569,6 @@ class Scientist(Character):
 
 
 class Researcher(Character):
-
   def __init__(self):
     super().__init__("Researcher", 5, 5, 4, 5, 3, 5, 4, 3, 2, "Library")
 
@@ -576,7 +586,6 @@ class Researcher(Character):
 
 
 class Nun(Character):
-
   def __init__(self):
     super().__init__("Nun", 3, 7, 4, 4, 3, 4, 4, 6, 1, "Church")
 
@@ -594,7 +603,6 @@ class Nun(Character):
 
 
 class Doctor(Character):
-
   def __init__(self):
     super().__init__("Doctor", 5, 5, 3, 5, 3, 4, 5, 4, 2, "Hospital")
 
@@ -612,7 +620,6 @@ class Doctor(Character):
 
 
 class Archaeologist(Character):
-
   def __init__(self):
     super().__init__("Archaeologist", 7, 3, 4, 3, 5, 3, 4, 5, 2, "Shop")
 
@@ -630,7 +637,6 @@ class Archaeologist(Character):
 
 
 class Gangster(Character):
-
   def __init__(self):
     super().__init__("Gangster", 7, 3, 5, 4, 6, 4, 3, 3, 1, "House")
 
@@ -651,11 +657,29 @@ def CreateCharacters():
   # pylint: disable=import-outside-toplevel
   from eldritch.expansions.clifftown import characters as clifftown_characters
   from eldritch.expansions.seaside import characters as seaside_characters
+
   return {
-      c.name: c for c in [
-          Student(), Drifter(), Salesman(), Psychologist(), Photographer(), Magician(), Author(),
-          Professor(), Dilettante(), PrivateEye(), Scientist(), Researcher(), Nun(), Doctor(),
-          Archaeologist(), Gangster(), seaside_characters.Secretary(), seaside_characters.Spy(),
-          seaside_characters.Farmhand(), clifftown_characters.Urchin(),
-      ]
+    c.name: c
+    for c in [
+      Student(),
+      Drifter(),
+      Salesman(),
+      Psychologist(),
+      Photographer(),
+      Magician(),
+      Author(),
+      Professor(),
+      Dilettante(),
+      PrivateEye(),
+      Scientist(),
+      Researcher(),
+      Nun(),
+      Doctor(),
+      Archaeologist(),
+      Gangster(),
+      seaside_characters.Secretary(),
+      seaside_characters.Spy(),
+      seaside_characters.Farmhand(),
+      clifftown_characters.Urchin(),
+    ]
   }

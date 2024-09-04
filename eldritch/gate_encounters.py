@@ -5,7 +5,6 @@ from eldritch import values
 
 
 class GateCard:
-
   def __init__(self, name, colors, encounter_creators):
     assert "Other" in encounter_creators
     self.name = name
@@ -75,14 +74,10 @@ def Abyss3(char) -> events.Event:
 
 def Pluto3(char) -> events.Event:
   check = events.Check(char, "sneak", -1)
-  lose_count = values.Calculation(
-      values.ItemCount(char), None,
-      operator.floordiv, 2,
+  lose_count = values.Calculation(values.ItemCount(char), None, operator.floordiv, 2)
+  fail = events.Sequence(
+    [events.LoseItems(char, lose_count), events.Return(char, char.place.info.name)], char
   )
-  fail = events.Sequence([
-      events.LoseItems(char, lose_count),
-      events.Return(char, char.place.info.name)
-  ], char)
   return events.PassFail(char, check, events.Nothing(), fail)
 
 
@@ -97,10 +92,9 @@ def Abyss4(char) -> events.Event:
   # I assume that you always move to the first dreamlands, regardless of where in the Abyss you were
   temple_check = events.Check(char, "luck", -1)
   temple = events.PassFail(char, temple_check, events.Draw(char, "unique", 1), events.Nothing())
-  return events.Sequence([
-      check,
-      events.Conditional(char, check, "successes", {0: cave, 2: dreamlands, 3: temple}),
-  ], char)
+  return events.Sequence(
+    [check, events.Conditional(char, check, "successes", {0: cave, 2: dreamlands, 3: temple})], char
+  )
 
 
 def GreatHall4(char) -> events.Event:
@@ -108,8 +102,12 @@ def GreatHall4(char) -> events.Event:
   spells = events.Draw(char, "spells", 3, keep_count=2)
   loss = events.Loss(char, {"stamina": 3})
   return events.BinaryChoice(
-      char, "Read the book?", "Yes", "No",
-      events.PassFail(char, check, spells, loss), events.Nothing()
+    char,
+    "Read the book?",
+    "Yes",
+    "No",
+    events.PassFail(char, check, spells, loss),
+    events.Nothing(),
   )
 
 
@@ -123,19 +121,16 @@ def Dreamlands5(char) -> events.Event:
 
 def Abyss5(char) -> events.Event:
   check = events.Check(char, "luck", -1)
-  fishy_object = events.Sequence([
-      events.Gain(char, {"dollars": 3}),
-      events.Draw(char, "unique", 1),
-  ], char)
+  fishy_object = events.Sequence(
+    [events.Gain(char, {"dollars": 3}), events.Draw(char, "unique", 1)], char
+  )
   return events.PassFail(char, check, fishy_object, events.Nothing())
 
 
 def Other5(char) -> events.Event:
   check = events.Check(char, "luck", -1)
   gain = events.Gain(char, {"clues": values.Calculation(check, "successes")})
-  gain_cond = events.PassFail(
-      char, values.Calculation(check, "successes"), gain, events.Nothing()
-  )
+  gain_cond = events.PassFail(char, values.Calculation(check, "successes"), gain, events.Nothing())
   return events.Sequence([check, gain_cond], char)
 
 
@@ -194,15 +189,12 @@ def Other8(char) -> events.Event:
 
 def Dreamlands9(char) -> events.Event:
   check = events.Check(char, "sneak", 0)
-  lose_item_count = values.Calculation(
-      values.ItemCount(char), None,
-      values.ceildiv, 2,
-  )
+  lose_item_count = values.Calculation(values.ItemCount(char), None, values.ceildiv, 2)
   lose_money_count = values.Calculation(char, "dollars", values.ceildiv, 2)
-  loss = events.Sequence([
-      events.LoseItems(char, lose_item_count),
-      events.Loss(char, {"dollars": lose_money_count})
-  ], char)
+  loss = events.Sequence(
+    [events.LoseItems(char, lose_item_count), events.Loss(char, {"dollars": lose_money_count})],
+    char,
+  )
   return events.PassFail(char, check, events.Nothing(), loss)
 
 
@@ -247,7 +239,7 @@ def GreatHall11(char) -> events.Event:
   monster = events.MonsterAppears(char)
   delayed = events.Delayed(char)
   prison = events.Sequence(
-      [dice_roll, events.Conditional(char, successes, None, {0: monster, 1: delayed})], char,
+    [dice_roll, events.Conditional(char, successes, None, {0: monster, 1: delayed})], char
   )
   return events.PassFail(char, check, events.Nothing(), prison)
 
@@ -265,10 +257,13 @@ def Pluto12(char) -> events.Event:
   spell_loss = events.LoseItems(char, 2, "Lose spells", {"spells"})
   prereq = values.ItemDeckPrerequisite(char, "spells", threshold=2)
   choice = events.BinaryChoice(
-      char, "Lose spells or sanity?",
-      "Lose 2 spells", "Lose 2 sanity",
-      spell_loss, san_loss,
-      prereq=prereq
+    char,
+    "Lose spells or sanity?",
+    "Lose 2 spells",
+    "Lose 2 sanity",
+    spell_loss,
+    san_loss,
+    prereq=prereq,
   )
   return events.PassFail(char, check, events.Nothing(), choice)
 
@@ -284,10 +279,9 @@ def Other12(char) -> events.Event:
 
 def City13(char) -> events.Event:
   check = events.Check(char, "sneak", -1, difficulty=2)
-  escape = events.Sequence([
-      events.Draw(char, "unique", 1),
-      events.Return(char, char.place.info.name),
-  ], char)
+  escape = events.Sequence(
+    [events.Draw(char, "unique", 1), events.Return(char, char.place.info.name)], char
+  )
   captors = events.Loss(char, {"sanity": 3, "stamina": 1})
   return events.PassFail(char, check, escape, captors)
 
@@ -297,9 +291,12 @@ def Plateau13(char) -> events.Event:
   trade = events.Gain(char, {"dollars": 6})
   lost = events.LostInTimeAndSpace(char)
   choice = events.BinaryChoice(
-      char, "Trade with the dangerous hooved folk?",
-      "Yes", "No",
-      events.PassFail(char, check, trade, lost), events.Nothing(),
+    char,
+    "Trade with the dangerous hooved folk?",
+    "Yes",
+    "No",
+    events.PassFail(char, check, trade, lost),
+    events.Nothing(),
   )
   return choice
 
@@ -311,12 +308,9 @@ def Other13(char) -> events.Event:
 
 def City14(char) -> events.Event:
   check = events.Check(char, "luck", -1)
-  statue = events.Sequence([
-      events.Gain(char, {"dollars": 10}),
-      events.Curse(char),
-  ])
+  statue = events.Sequence([events.Gain(char, {"dollars": 10}), events.Curse(char)])
   choice = events.BinaryChoice(
-      char, "Take the golden statue?", "Yes", "No", statue, events.Nothing()
+    char, "Take the golden statue?", "Yes", "No", statue, events.Nothing()
   )
   return events.PassFail(char, check, choice, events.Nothing())
 
@@ -328,10 +322,7 @@ def GreatHall14(char) -> events.Event:
 def Other14(char) -> events.Event:
   check = events.Check(char, "fight", -1)
   rope = events.Return(char, char.place.info.name)
-  fall = events.Sequence([
-      events.Loss(char, {"stamina": 2}),
-      events.Delayed(char),
-  ], char)
+  fall = events.Sequence([events.Loss(char, {"stamina": 2}), events.Delayed(char)], char)
   return events.PassFail(char, check, rope, fall)
 
 
@@ -344,9 +335,7 @@ def City15(char) -> events.Event:
 def GreatHall15(char) -> events.Event:
   check = events.Check(char, "lore", 2)
   gain = events.Gain(char, {"clues": values.Calculation(check, "successes")})
-  gain_cond = events.PassFail(
-      char, values.Calculation(check, "successes"), gain, events.Nothing()
-  )
+  gain_cond = events.PassFail(char, values.Calculation(check, "successes"), gain, events.Nothing())
   return events.Sequence([check, gain_cond], char)
 
 
@@ -392,12 +381,12 @@ def City18(char) -> events.Event:
   draw = events.Draw(char, "unique", draw_count=2, keep_count=1)
   lost = events.LostInTimeAndSpace(char)
   return events.BinaryChoice(
-      char,
-      "Infiltrate the structures?",
-      "Yes",
-      "No",
-      events.PassFail(char, check, draw, lost),
-      events.Nothing(),
+    char,
+    "Infiltrate the structures?",
+    "Yes",
+    "No",
+    events.PassFail(char, check, draw, lost),
+    events.Nothing(),
   )
 
 
@@ -500,11 +489,9 @@ def Plateau23(char) -> events.Event:
 def Other23(char) -> events.Event:
   check = events.Check(char, "luck", -1)
   draw = events.DrawMonstersFromCup(1, char)
-  creature = events.Sequence([
-      draw,
-      events.ForceTakeTrophy(char, draw),
-      events.Gain(char, {"clues": 2})
-  ], char)
+  creature = events.Sequence(
+    [draw, events.ForceTakeTrophy(char, draw), events.Gain(char, {"clues": 2})], char
+  )
   return events.PassFail(char, check, creature, events.Nothing())
 
 
@@ -526,12 +513,12 @@ def Other24(char) -> events.Event:
   steal = events.Draw(char, "spells", 1)
   pain = events.Loss(char, {"sanity": 3})
   return events.BinaryChoice(
-      char,
-      "Steal the scroll?",
-      "Yes",
-      "No",
-      events.PassFail(char, check, steal, pain),
-      events.Nothing(),
+    char,
+    "Steal the scroll?",
+    "Yes",
+    "No",
+    events.PassFail(char, check, steal, pain),
+    events.Nothing(),
   )
 
 
@@ -547,11 +534,7 @@ def Dreamlands25(char) -> events.Event:
 
 def Other25(char) -> events.Event:
   check = events.Check(char, "luck", -2)
-  chant = events.Sequence([
-      events.Gain(char, {"clues": 2}),
-      events.Draw(char, "spells", 1)
-  ], char
-  )
+  chant = events.Sequence([events.Gain(char, {"clues": 2}), events.Draw(char, "spells", 1)], char)
   return events.PassFail(char, check, chant, events.MonsterAppears(char))
 
 
@@ -562,12 +545,12 @@ def Abyss26(char) -> events.Event:
   gain = events.Sequence([die, events.Gain(char, {"stamina": val})], char)
   loss = events.Sequence([die, events.Loss(char, {"stamina": val})], char)
   return events.BinaryChoice(
-      char,
-      "Eat the mushrooms?",
-      "Yes",
-      "No",
-      events.PassFail(char, check, gain, loss),
-      events.Nothing(),
+    char,
+    "Eat the mushrooms?",
+    "Yes",
+    "No",
+    events.PassFail(char, check, gain, loss),
+    events.Nothing(),
   )
 
 
@@ -577,24 +560,19 @@ def Plateau26(char) -> events.Event:
 
 def Other26(char) -> events.Event:
   return events.PassFail(
-      char, events.Check(char, "sneak", 0),
-      events.Nothing(), events.Loss(char, {"stamina": 2})
+    char, events.Check(char, "sneak", 0), events.Nothing(), events.Loss(char, {"stamina": 2})
   )
 
 
 def Abyss27(char) -> events.Event:
   return events.PassFail(
-      char, events.Check(char, "sneak", -1),
-      events.Nothing(), events.Loss(char, {"sanity": 2})
+    char, events.Check(char, "sneak", -1), events.Nothing(), events.Loss(char, {"sanity": 2})
   )
 
 
 def Plateau27(char) -> events.Event:
   check = events.Check(char, "fight", -1, difficulty=2)
-  victory = events.Sequence([
-      events.Gain(char, {"clues": 1}),
-      events.Draw(char, "unique", 1),
-  ], char)
+  victory = events.Sequence([events.Gain(char, {"clues": 1}), events.Draw(char, "unique", 1)], char)
   defeat = events.Loss(char, {"sanity": 1, "stamina": 2})
   return events.PassFail(char, check, victory, defeat)
 
@@ -602,43 +580,41 @@ def Plateau27(char) -> events.Event:
 def Other27(char) -> events.Event:
   dice = events.DiceRoll(char, values.Calculation(char, "stamina"), bad=[])
   loss = events.Loss(
-      char,
-      {"stamina": values.Calculation(
-          left=char, left_attr="stamina",
-          operand=operator.sub,
-          right=dice, right_attr="successes",
-      )})
+    char,
+    {
+      "stamina": values.Calculation(
+        left=char, left_attr="stamina", operand=operator.sub, right=dice, right_attr="successes"
+      )
+    },
+  )
   final = events.PassFail(
-      char,
-      values.Calculation(char, "stamina"),
-      events.Gain(char, {"clues": values.Calculation(dice, "successes")}),
-      events.Nothing()
+    char,
+    values.Calculation(char, "stamina"),
+    events.Gain(char, {"clues": values.Calculation(dice, "successes")}),
+    events.Nothing(),
   )
   return events.Sequence([dice, loss, final], char)
 
 
 def Plateau28(char) -> events.Event:
   check = events.Check(char, "sneak", -1)
-  rites = events.Sequence([
-      events.Loss(char, {"sanity": 3, "stamina": 3}),
-      events.Delayed(char),
-  ], char)
+  rites = events.Sequence(
+    [events.Loss(char, {"sanity": 3, "stamina": 3}), events.Delayed(char)], char
+  )
   return events.PassFail(char, check, events.Nothing(), rites)
 
 
 def Dreamlands28(char) -> events.Event:
   check = events.Check(char, "sneak", -1)
-  success = events.Sequence([
-      events.Gain(char, {"clues": 3}),
-      events.Return(char, char.place.info.name),
-  ], char)
+  success = events.Sequence(
+    [events.Gain(char, {"clues": 3}), events.Return(char, char.place.info.name)], char
+  )
   return events.PassFail(char, check, success, events.Devoured(char))
 
 
 def Other28(char) -> events.Event:
   return events.PassFail(
-      char, events.Check(char, "speed", -1),
-      events.Draw(char, "spells", 1), events.Nothing()
+    char, events.Check(char, "speed", -1), events.Draw(char, "spells", 1), events.Nothing()
   )
 
 
@@ -664,7 +640,7 @@ def Abyss30(char) -> events.Event:
 
 def Dreamlands30(char) -> events.Event:
   return events.PassFail(
-      char, events.Check(char, "luck", -1), events.Nothing(), events.LostInTimeAndSpace(char)
+    char, events.Check(char, "luck", -1), events.Nothing(), events.LostInTimeAndSpace(char)
   )
 
 
@@ -674,10 +650,7 @@ def Other30(char) -> events.Event:
 
 def SunkenCity31(char) -> events.Event:
   check = events.Check(char, "luck", 0)
-  pit = events.Sequence([
-      events.Loss(char, {"sanity": 1}),
-      events.Delayed(char),
-  ], char)
+  pit = events.Sequence([events.Loss(char, {"sanity": 1}), events.Delayed(char)], char)
   return events.PassFail(char, check, events.Nothing(), pit)
 
 
@@ -695,40 +668,37 @@ def SunkenCity32(char) -> events.Event:
 
 def Abyss32(char) -> events.Event:
   return events.PassFail(
-      char, events.Check(char, "speed", -1), events.Nothing(), events.LostInTimeAndSpace(char)
+    char, events.Check(char, "speed", -1), events.Nothing(), events.LostInTimeAndSpace(char)
   )
 
 
 def Other32(char) -> events.Event:
   return events.PassFail(
-      char, events.Check(char, "lore", -1), events.Nothing(), events.Delayed(char)
+    char, events.Check(char, "lore", -1), events.Nothing(), events.Delayed(char)
   )
 
 
 def SunkenCity33(char) -> events.Event:
   return events.PassFail(
-      char, events.Check(char, "speed", -1), events.Nothing(), events.Loss(char, {"stamina": 3})
+    char, events.Check(char, "speed", -1), events.Nothing(), events.Loss(char, {"stamina": 3})
   )
 
 
 def Abyss33(char) -> events.Event:
   return events.PassFail(
-      char, events.Check(char, "luck", -1), events.Nothing(), events.Loss(char, {"sanity": 3})
+    char, events.Check(char, "luck", -1), events.Nothing(), events.Loss(char, {"sanity": 3})
   )
 
 
 def Other33(char) -> events.Event:
   return events.PassFail(
-      char, events.Check(char, "fight", -1), events.Nothing(), events.Delayed(char)
+    char, events.Check(char, "fight", -1), events.Nothing(), events.Delayed(char)
   )
 
 
 def SunkenCity34(char) -> events.Event:
   check = events.Check(char, "fight", -2)
-  shadow = events.Sequence([
-      events.Loss(char, {"stamina": 2}),
-      events.Delayed(char)
-  ], char)
+  shadow = events.Sequence([events.Loss(char, {"stamina": 2}), events.Delayed(char)], char)
   return events.PassFail(char, check, events.Nothing(), shadow)
 
 
@@ -741,22 +711,22 @@ def Dreamlands34(char) -> events.Event:
 
 def Other34(char) -> events.Event:
   return events.PassFail(
-      char, events.Check(char, "luck", -1),
-      events.Gain(char, {"sanity": 2, "stamina": 2}), events.Nothing()
+    char,
+    events.Check(char, "luck", -1),
+    events.Gain(char, {"sanity": 2, "stamina": 2}),
+    events.Nothing(),
   )
 
 
 def SunkenCity35(char) -> events.Event:
   return events.PassFail(
-      char, events.Check(char, "fight", -1),
-      events.Nothing(), events.Loss(char, {"stamina": 3}),
+    char, events.Check(char, "fight", -1), events.Nothing(), events.Loss(char, {"stamina": 3})
   )
 
 
 def Dreamlands35(char) -> events.Event:
   return events.PassFail(
-      char, events.Check(char, "fight", -1),
-      events.Nothing(), events.Loss(char, {"stamina": 2})
+    char, events.Check(char, "fight", -1), events.Nothing(), events.Loss(char, {"stamina": 2})
   )
 
 
@@ -770,14 +740,16 @@ def SunkenCity36(char) -> events.Event:
 
 def Plateau36(char) -> events.Event:
   return events.PassFail(
-      char, events.Check(char, "lore", -2),
-      events.Draw(char, "spells", 1), events.LostInTimeAndSpace(char)
+    char,
+    events.Check(char, "lore", -2),
+    events.Draw(char, "spells", 1),
+    events.LostInTimeAndSpace(char),
   )
 
 
 def Other36(char) -> events.Event:
   return events.PassFail(
-      char, events.Check(char, "luck", -1), events.Draw(char, "unique", 1), events.Nothing()
+    char, events.Check(char, "luck", -1), events.Draw(char, "unique", 1), events.Nothing()
   )
 
 
@@ -790,7 +762,7 @@ def City37(char) -> events.Event:
 
 def Pluto37(char) -> events.Event:
   return events.PassFail(
-      char, events.Check(char, "will", -2), events.Nothing(), events.Loss(char, {"sanity": 2})
+    char, events.Check(char, "will", -2), events.Nothing(), events.Loss(char, {"sanity": 2})
   )
 
 
@@ -804,21 +776,22 @@ def City38(char) -> events.Event:
 
 def Dreamlands38(char) -> events.Event:
   return events.PassFail(
-      char, events.Check(char, "lore", -1), events.Nothing(), events.Loss(char, {"sanity": 3})
+    char, events.Check(char, "lore", -1), events.Nothing(), events.Loss(char, {"sanity": 3})
   )
 
 
 def Other38(char) -> events.Event:
   return events.PassFail(
-      char, events.Check(char, "will", -1),
-      events.Nothing(), events.Loss(char, {"sanity": 1, "stamina": 1})
+    char,
+    events.Check(char, "will", -1),
+    events.Nothing(),
+    events.Loss(char, {"sanity": 1, "stamina": 1}),
   )
 
 
 def City39(char) -> events.Event:
   return events.PassFail(
-      char, events.Check(char, "speed", -1),
-      events.Nothing(), events.LostInTimeAndSpace(char)
+    char, events.Check(char, "speed", -1), events.Nothing(), events.LostInTimeAndSpace(char)
   )
 
 
@@ -845,42 +818,43 @@ def City40(char) -> events.Event:
 
 def Other40(char) -> events.Event:
   return events.PassFail(
-      char, events.Check(char, "luck", -1),
-      events.Return(char, char.place.info.name), events.Delayed(char)
+    char,
+    events.Check(char, "luck", -1),
+    events.Return(char, char.place.info.name),
+    events.Delayed(char),
   )
 
 
 def SunkenCity41(char) -> events.Event:
   die = events.DiceRoll(char, 1, bad=[])
-  seq = events.Sequence([
-      die, events.Loss(char, {"sanity": values.Calculation(die, "sum")})
-  ], char)
+  seq = events.Sequence([die, events.Loss(char, {"sanity": values.Calculation(die, "sum")})], char)
   return seq
 
 
 def City41(char) -> events.Event:
   return events.PassFail(
-      char, events.Check(char, "will", -1), events.Nothing(), events.Loss(char, {"sanity": 2})
+    char, events.Check(char, "will", -1), events.Nothing(), events.Loss(char, {"sanity": 2})
   )
 
 
 def Other41(char) -> events.Event:
   return events.PassFail(
-      char, events.Check(char, "will", -2), events.Nothing(), events.Delayed(char)
+    char, events.Check(char, "will", -2), events.Nothing(), events.Delayed(char)
   )
 
 
 def City42(char) -> events.Event:
   return events.PassFail(
-      char, events.Check(char, "fight", -1),
-      events.Nothing(), events.Loss(char, {"sanity": 1, "stamina": 1})
+    char,
+    events.Check(char, "fight", -1),
+    events.Nothing(),
+    events.Loss(char, {"sanity": 1, "stamina": 1}),
   )
 
 
 def Pluto42(char) -> events.Event:
   return events.PassFail(
-      char, events.Check(char, "luck", -2),
-      events.Gain(char, {"clues": 2}), events.Delayed(char)
+    char, events.Check(char, "luck", -2), events.Gain(char, {"clues": 2}), events.Delayed(char)
   )
 
 
@@ -890,13 +864,12 @@ def Other42(char) -> events.Event:
 
 def SunkenCity43(char) -> events.Event:
   return events.PassFail(
-      char, events.Check(char, "speed", -1),
-      events.Nothing(), events.Loss(char, {"sanity": 1})
+    char, events.Check(char, "speed", -1), events.Nothing(), events.Loss(char, {"sanity": 1})
   )
 
 
 def Pluto43(char) -> events.Event:
-  return events.PassOrLoseDice(char, "luck", -1, {"stamina", "sanity"},  adjustment=-2)
+  return events.PassOrLoseDice(char, "luck", -1, {"stamina", "sanity"}, adjustment=-2)
 
 
 def Other43(char) -> events.Event:
@@ -905,19 +878,13 @@ def Other43(char) -> events.Event:
 
 def SunkenCity44(char) -> events.Event:
   check = events.Check(char, "will", 0)
-  visage = events.Sequence([
-      events.Loss(char, {"stamina": 1}),
-      events.Delayed(char)
-  ], char)
+  visage = events.Sequence([events.Loss(char, {"stamina": 1}), events.Delayed(char)], char)
   return events.PassFail(char, check, events.Nothing(), visage)
 
 
 def Dreamlands44(char) -> events.Event:
   check = events.Check(char, "luck", 0)
-  web = events.Sequence([
-      events.Loss(char, {"sanity": 2}),
-      events.Delayed(char)
-  ], char)
+  web = events.Sequence([events.Loss(char, {"sanity": 2}), events.Delayed(char)], char)
   return events.PassFail(char, check, events.Nothing(), web)
 
 
@@ -927,15 +894,13 @@ def Other44(char) -> events.Event:
 
 def SunkenCity45(char) -> events.Event:
   return events.PassFail(
-      char, events.Check(char, "speed", -1),
-      events.Nothing(), events.LostInTimeAndSpace(char)
+    char, events.Check(char, "speed", -1), events.Nothing(), events.LostInTimeAndSpace(char)
   )
 
 
 def Dreamlands45(char) -> events.Event:
   return events.PassFail(
-      char, events.Check(char, "will", -2),
-      events.Nothing(), events.Loss(char, {"sanity": 2})
+    char, events.Check(char, "will", -2), events.Nothing(), events.Loss(char, {"sanity": 2})
   )
 
 
@@ -945,8 +910,7 @@ def Other45(char) -> events.Event:
 
 def Pluto46(char) -> events.Event:
   return events.PassFail(
-      char, events.Check(char, "will", -1),
-      events.Nothing(), events.Loss(char, {"sanity": 2})
+    char, events.Check(char, "will", -1), events.Nothing(), events.Loss(char, {"sanity": 2})
   )
 
 
@@ -956,49 +920,52 @@ def Dreamlands46(char) -> events.Event:
 
 def Other46(char) -> events.Event:
   return events.PassFail(
-      char, events.Check(char, "lore", -1),
-      events.Nothing(), events.LoseItems(char, 1, decks={"spells"})
+    char,
+    events.Check(char, "lore", -1),
+    events.Nothing(),
+    events.LoseItems(char, 1, decks={"spells"}),
   )
 
 
 def Pluto47(char) -> events.Event:
   check = events.Check(char, "sneak", -2)
-  space_mead = events.Sequence([
-      events.Gain(char, {"clues": 2}),
-      events.Return(char, char.place.info.name),
-  ], char)
+  space_mead = events.Sequence(
+    [events.Gain(char, {"clues": 2}), events.Return(char, char.place.info.name)], char
+  )
   return events.PassFail(char, check, space_mead, events.LostInTimeAndSpace(char))
 
 
 def Dreamlands47(char) -> events.Event:
   return events.PassFail(
-      char, events.Check(char, "luck", -1),
-      events.Nothing(), events.Delayed(char)
+    char, events.Check(char, "luck", -1), events.Nothing(), events.Delayed(char)
   )
 
 
 def Other47(char) -> events.Event:
   dice = events.DiceRoll(char, values.Calculation(char, "sanity"), bad=[])
   loss = events.Loss(
-      char,
-      {"sanity": values.Calculation(
-          left=char, left_attr="sanity",
-          operand=operator.sub,
-          right=dice, right_attr="successes",
-      )})
+    char,
+    {
+      "sanity": values.Calculation(
+        left=char, left_attr="sanity", operand=operator.sub, right=dice, right_attr="successes"
+      )
+    },
+  )
   final = events.PassFail(
-      char,
-      values.Calculation(char, "sanity"),
-      events.Gain(char, {"clues": values.Calculation(dice, "successes")}),
-      events.Nothing()
+    char,
+    values.Calculation(char, "sanity"),
+    events.Gain(char, {"clues": values.Calculation(dice, "successes")}),
+    events.Nothing(),
   )
   return events.Sequence([dice, loss, final], char)
 
 
 def SunkenCity48(char) -> events.Event:
   return events.PassFail(
-      char, events.Check(char, "speed", -1, difficulty=2),
-      events.Gain(char, {"clues": 5}), events.Delayed(char),
+    char,
+    events.Check(char, "speed", -1, difficulty=2),
+    events.Gain(char, {"clues": 5}),
+    events.Delayed(char),
   )
 
 
@@ -1007,120 +974,105 @@ def Pluto48(char) -> events.Event:
 
 
 def Other48(char) -> events.Event:
-  knowledge = events.Sequence([
-      events.Draw(char, "spells", 1),
-      events.Loss(char, {"sanity": 1})
-  ], char)
+  knowledge = events.Sequence(
+    [events.Draw(char, "spells", 1), events.Loss(char, {"sanity": 1})], char
+  )
   return events.PassFail(char, events.Check(char, "lore", -2), knowledge, events.Nothing())
 
 
 def CreateGateCards():
   return [
-      GateCard(
-          "Gate1", {"blue"}, {"Abyss": Abyss1, "Great Hall": GreatHall1, "Other": Other1}),
-      GateCard(
-          "Gate2", {"blue"}, {"Abyss": Abyss2, "Pluto": Pluto2, "Other": Other2}),
-      GateCard(
-          "Gate3", {"blue"}, {"Abyss": Abyss3, "Pluto": Pluto3, "Other": Other3}),
-      GateCard(
-          "Gate4", {"blue"}, {"Abyss": Abyss4, "Great Hall": GreatHall4, "Other": Other4}),
-      GateCard(
-          "Gate5", {"blue"}, {"Dreamlands": Dreamlands5, "Abyss": Abyss5, "Other": Other5}),
-      GateCard(
-          "Gate6", {"blue"},
-          {"Dreamlands": Dreamlands6, "Great Hall": GreatHall6, "Other": Other6}),
-      GateCard(
-          "Gate7", {"blue"},
-          {"Dreamlands": Dreamlands7, "Great Hall": GreatHall7, "Other": Other7}),
-      GateCard(
-          "Gate8", {"blue"}, {"Dreamlands": Dreamlands8, "Pluto": Pluto8, "Other": Other8}),
-      GateCard(
-          "Gate9", {"blue"}, {"Dreamlands": Dreamlands9, "Pluto": Pluto9, "Other": Other9}),
-      GateCard(
-          "Gate10", {"blue"}, {"Dreamlands": Dreamlands10, "Abyss": Abyss10, "Other": Other10}),
-      GateCard(
-          "Gate11", {"blue"}, {"Pluto": Pluto11, "Great Hall": GreatHall11, "Other": Other11}),
-      GateCard(
-          "Gate12", {"blue"}, {"Pluto": Pluto12, "Great Hall": GreatHall12, "Other": Other12}),
-      GateCard(
-          "Gate13", {"green"}, {"City": City13, "Plateau": Plateau13, "Other": Other13}),
-      GateCard(
-          "Gate14", {"green"}, {"City": City14, "Great Hall": GreatHall14, "Other": Other14}),
-      GateCard(
-          "Gate15", {"green"}, {"City": City15, "Great Hall": GreatHall15, "Other": Other15}),
-      GateCard(
-          "Gate16", {"green"}, {"Plateau": Plateau16, "Great Hall": GreatHall16, "Other": Other16}),
-      GateCard(
-          "Gate17", {"green"}, {"Plateau": Plateau17, "Great Hall": GreatHall17, "Other": Other17}),
-      GateCard(
-          "Gate18", {"green"}, {"City": City18, "Plateau": Plateau18, "Other": Other18}),
-      GateCard(
-          "Gate19", {"green"}, {"Dreamlands": Dreamlands19, "City": City19, "Other": Other19}),
-      GateCard(
-          "Gate20", {"green"},
-          {"Dreamlands": Dreamlands20, "Great Hall": GreatHall20, "Other": Other20}),
-      GateCard(
-          "Gate21", {"green"},
-          {"Dreamlands": Dreamlands21, "Great Hall": GreatHall21, "Other": Other21}),
-      GateCard(
-          "Gate22",
-          {"green"}, {"Dreamlands": Dreamlands22, "Plateau": Plateau22, "Other": Other22}),
-      GateCard(
-          "Gate23",
-          {"green"}, {"Dreamlands": Dreamlands23, "Plateau": Plateau23, "Other": Other23}),
-      GateCard(
-          "Gate24", {"green"}, {"Dreamlands": Dreamlands24, "City": City24, "Other": Other24}),
-      GateCard(
-          "Gate25", {"red"}, {"Abyss": Abyss25, "Dreamlands": Dreamlands25, "Other": Other25}),
-      GateCard(
-          "Gate26", {"red"}, {"Abyss": Abyss26, "Plateau": Plateau26, "Other": Other26}),
-      GateCard(
-          "Gate27", {"red"}, {"Abyss": Abyss27, "Plateau": Plateau27, "Other": Other27}),
-      GateCard(
-          "Gate28", {"red"}, {"Plateau": Plateau28, "Dreamlands": Dreamlands28, "Other": Other28}),
-      GateCard(
-          "Gate29", {"red"}, {"Plateau": Plateau29, "Dreamlands": Dreamlands29, "Other": Other29}),
-      GateCard(
-          "Gate30", {"red"}, {"Abyss": Abyss30, "Dreamlands": Dreamlands30, "Other": Other30}),
-      GateCard(
-          "Gate31", {"red"}, {"Sunken City": SunkenCity31, "Plateau": Plateau31, "Other": Other31}),
-      GateCard(
-          "Gate32", {"red"}, {"Sunken City": SunkenCity32, "Abyss": Abyss32, "Other": Other32}),
-      GateCard(
-          "Gate33", {"red"}, {"Sunken City": SunkenCity33, "Abyss": Abyss33, "Other": Other33}),
-      GateCard(
-          "Gate34", {"red"},
-          {"Sunken City": SunkenCity34, "Dreamlands": Dreamlands34, "Other": Other34}),
-      GateCard(
-          "Gate35", {"red"},
-          {"Sunken City": SunkenCity35, "Dreamlands": Dreamlands35, "Other": Other35}),
-      GateCard(
-          "Gate36", {"red"}, {"Sunken City": SunkenCity36, "Plateau": Plateau36, "Other": Other36}),
-      GateCard(
-          "Gate37", {"yellow"}, {"City": City37, "Pluto": Pluto37, "Other": Other37}),
-      GateCard(
-          "Gate38", {"yellow"}, {"City": City38, "Dreamlands": Dreamlands38, "Other": Other38}),
-      GateCard(
-          "Gate39", {"yellow"}, {"City": City39, "Dreamlands": Dreamlands39, "Other": Other39}),
-      GateCard(
-          "Gate40", {"yellow"}, {"Sunken City": SunkenCity40, "City": City40, "Other": Other40}),
-      GateCard(
-          "Gate41", {"yellow"}, {"Sunken City": SunkenCity41, "City": City41, "Other": Other41}),
-      GateCard(
-          "Gate42", {"yellow"}, {"City": City42, "Pluto": Pluto42, "Other": Other42}),
-      GateCard(
-          "Gate43", {"yellow"}, {"Sunken City": SunkenCity43, "Pluto": Pluto43, "Other": Other43}),
-      GateCard(
-          "Gate44", {"yellow"},
-          {"Sunken City": SunkenCity44, "Dreamlands": Dreamlands44, "Other": Other44}),
-      GateCard(
-          "Gate45", {"yellow"},
-          {"Sunken City": SunkenCity45, "Dreamlands": Dreamlands45, "Other": Other45}),
-      GateCard(
-          "Gate46", {"yellow"}, {"Pluto": Pluto46, "Dreamlands": Dreamlands46, "Other": Other46}),
-      GateCard(
-          "Gate47", {"yellow"}, {"Pluto": Pluto47, "Dreamlands": Dreamlands47, "Other": Other47}),
-      GateCard(
-          "Gate48", {"yellow"}, {"Sunken City": SunkenCity48, "Pluto": Pluto48, "Other": Other48}),
-      GateCard("ShuffleGate", set(), {"Other": lambda char: events.Nothing()}),
+    GateCard("Gate1", {"blue"}, {"Abyss": Abyss1, "Great Hall": GreatHall1, "Other": Other1}),
+    GateCard("Gate2", {"blue"}, {"Abyss": Abyss2, "Pluto": Pluto2, "Other": Other2}),
+    GateCard("Gate3", {"blue"}, {"Abyss": Abyss3, "Pluto": Pluto3, "Other": Other3}),
+    GateCard("Gate4", {"blue"}, {"Abyss": Abyss4, "Great Hall": GreatHall4, "Other": Other4}),
+    GateCard("Gate5", {"blue"}, {"Dreamlands": Dreamlands5, "Abyss": Abyss5, "Other": Other5}),
+    GateCard(
+      "Gate6", {"blue"}, {"Dreamlands": Dreamlands6, "Great Hall": GreatHall6, "Other": Other6}
+    ),
+    GateCard(
+      "Gate7", {"blue"}, {"Dreamlands": Dreamlands7, "Great Hall": GreatHall7, "Other": Other7}
+    ),
+    GateCard("Gate8", {"blue"}, {"Dreamlands": Dreamlands8, "Pluto": Pluto8, "Other": Other8}),
+    GateCard("Gate9", {"blue"}, {"Dreamlands": Dreamlands9, "Pluto": Pluto9, "Other": Other9}),
+    GateCard("Gate10", {"blue"}, {"Dreamlands": Dreamlands10, "Abyss": Abyss10, "Other": Other10}),
+    GateCard("Gate11", {"blue"}, {"Pluto": Pluto11, "Great Hall": GreatHall11, "Other": Other11}),
+    GateCard("Gate12", {"blue"}, {"Pluto": Pluto12, "Great Hall": GreatHall12, "Other": Other12}),
+    GateCard("Gate13", {"green"}, {"City": City13, "Plateau": Plateau13, "Other": Other13}),
+    GateCard("Gate14", {"green"}, {"City": City14, "Great Hall": GreatHall14, "Other": Other14}),
+    GateCard("Gate15", {"green"}, {"City": City15, "Great Hall": GreatHall15, "Other": Other15}),
+    GateCard(
+      "Gate16", {"green"}, {"Plateau": Plateau16, "Great Hall": GreatHall16, "Other": Other16}
+    ),
+    GateCard(
+      "Gate17", {"green"}, {"Plateau": Plateau17, "Great Hall": GreatHall17, "Other": Other17}
+    ),
+    GateCard("Gate18", {"green"}, {"City": City18, "Plateau": Plateau18, "Other": Other18}),
+    GateCard("Gate19", {"green"}, {"Dreamlands": Dreamlands19, "City": City19, "Other": Other19}),
+    GateCard(
+      "Gate20", {"green"}, {"Dreamlands": Dreamlands20, "Great Hall": GreatHall20, "Other": Other20}
+    ),
+    GateCard(
+      "Gate21", {"green"}, {"Dreamlands": Dreamlands21, "Great Hall": GreatHall21, "Other": Other21}
+    ),
+    GateCard(
+      "Gate22", {"green"}, {"Dreamlands": Dreamlands22, "Plateau": Plateau22, "Other": Other22}
+    ),
+    GateCard(
+      "Gate23", {"green"}, {"Dreamlands": Dreamlands23, "Plateau": Plateau23, "Other": Other23}
+    ),
+    GateCard("Gate24", {"green"}, {"Dreamlands": Dreamlands24, "City": City24, "Other": Other24}),
+    GateCard("Gate25", {"red"}, {"Abyss": Abyss25, "Dreamlands": Dreamlands25, "Other": Other25}),
+    GateCard("Gate26", {"red"}, {"Abyss": Abyss26, "Plateau": Plateau26, "Other": Other26}),
+    GateCard("Gate27", {"red"}, {"Abyss": Abyss27, "Plateau": Plateau27, "Other": Other27}),
+    GateCard(
+      "Gate28", {"red"}, {"Plateau": Plateau28, "Dreamlands": Dreamlands28, "Other": Other28}
+    ),
+    GateCard(
+      "Gate29", {"red"}, {"Plateau": Plateau29, "Dreamlands": Dreamlands29, "Other": Other29}
+    ),
+    GateCard("Gate30", {"red"}, {"Abyss": Abyss30, "Dreamlands": Dreamlands30, "Other": Other30}),
+    GateCard(
+      "Gate31", {"red"}, {"Sunken City": SunkenCity31, "Plateau": Plateau31, "Other": Other31}
+    ),
+    GateCard("Gate32", {"red"}, {"Sunken City": SunkenCity32, "Abyss": Abyss32, "Other": Other32}),
+    GateCard("Gate33", {"red"}, {"Sunken City": SunkenCity33, "Abyss": Abyss33, "Other": Other33}),
+    GateCard(
+      "Gate34", {"red"}, {"Sunken City": SunkenCity34, "Dreamlands": Dreamlands34, "Other": Other34}
+    ),
+    GateCard(
+      "Gate35", {"red"}, {"Sunken City": SunkenCity35, "Dreamlands": Dreamlands35, "Other": Other35}
+    ),
+    GateCard(
+      "Gate36", {"red"}, {"Sunken City": SunkenCity36, "Plateau": Plateau36, "Other": Other36}
+    ),
+    GateCard("Gate37", {"yellow"}, {"City": City37, "Pluto": Pluto37, "Other": Other37}),
+    GateCard("Gate38", {"yellow"}, {"City": City38, "Dreamlands": Dreamlands38, "Other": Other38}),
+    GateCard("Gate39", {"yellow"}, {"City": City39, "Dreamlands": Dreamlands39, "Other": Other39}),
+    GateCard("Gate40", {"yellow"}, {"Sunken City": SunkenCity40, "City": City40, "Other": Other40}),
+    GateCard("Gate41", {"yellow"}, {"Sunken City": SunkenCity41, "City": City41, "Other": Other41}),
+    GateCard("Gate42", {"yellow"}, {"City": City42, "Pluto": Pluto42, "Other": Other42}),
+    GateCard(
+      "Gate43", {"yellow"}, {"Sunken City": SunkenCity43, "Pluto": Pluto43, "Other": Other43}
+    ),
+    GateCard(
+      "Gate44",
+      {"yellow"},
+      {"Sunken City": SunkenCity44, "Dreamlands": Dreamlands44, "Other": Other44},
+    ),
+    GateCard(
+      "Gate45",
+      {"yellow"},
+      {"Sunken City": SunkenCity45, "Dreamlands": Dreamlands45, "Other": Other45},
+    ),
+    GateCard(
+      "Gate46", {"yellow"}, {"Pluto": Pluto46, "Dreamlands": Dreamlands46, "Other": Other46}
+    ),
+    GateCard(
+      "Gate47", {"yellow"}, {"Pluto": Pluto47, "Dreamlands": Dreamlands47, "Other": Other47}
+    ),
+    GateCard(
+      "Gate48", {"yellow"}, {"Sunken City": SunkenCity48, "Pluto": Pluto48, "Other": Other48}
+    ),
+    GateCard("ShuffleGate", set(), {"Other": lambda char: events.Nothing()}),
   ]

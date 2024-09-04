@@ -11,10 +11,12 @@ from eldritch import items
 
 def mock_randint(return_value=None, side_effect=None) -> mock.MagicMock:
   return cast(
-      mock.MagicMock, mock.patch.object(
-          events.random, "randint",
-          new=mock.MagicMock(return_value=return_value, side_effect=side_effect)
-      ),
+    mock.MagicMock,
+    mock.patch.object(
+      events.random,
+      "randint",
+      new=mock.MagicMock(return_value=return_value, side_effect=side_effect),
+    ),
   )
 
 
@@ -30,8 +32,7 @@ class CurseBlessTest(EventTest):
     self.resolve_until_done()
     self.assertEqual(self.char.bless_curse, bless_int)
     self.assertEqual(
-        len([p for p in self.char.possessions if isinstance(p, assets.BlessingOrCurse)]),
-        bless_int
+      len([p for p in self.char.possessions if isinstance(p, assets.BlessingOrCurse)]), bless_int
     )
     with mock_randint(return_value=4):
       roll = events.DiceRoll(self.char, 1)
@@ -196,7 +197,10 @@ class BankLoanTest(EventTest):
 
   def testDefaultWithDerringer(self):
     self.char.possessions = [
-        items.Derringer18(0), items.Wither(0), items.MagicPowder(0), items.LodgeMembership(0)
+      items.Derringer18(0),
+      items.Wither(0),
+      items.MagicPowder(0),
+      items.LodgeMembership(0),
     ]
     self.char.dollars = 0
     loss_choice = self.defaultSequence()
@@ -205,8 +209,7 @@ class BankLoanTest(EventTest):
     loss_choice.resolve(self.state, "done")
     self.resolve_to_choice(events.SliderInput)
     self.assertListEqual(
-        [p.name for p in self.char.possessions],
-        [".18 Derringer", "Lodge Membership", "Bad Credit"]
+      [p.name for p in self.char.possessions], [".18 Derringer", "Lodge Membership", "Bad Credit"]
     )
 
 

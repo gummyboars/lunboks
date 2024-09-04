@@ -20,12 +20,12 @@ from powerplant import powerplant
 def SampleCities(_):
   # Triangle of cities A-B-C, connected to triangle of cities D-E-F
   mapping = {
-      "RED": cities.City("RED", cities.Color.RED),
-      "BLUE": cities.City("BLUE", cities.Color.BLUE),
-      "YELLOW": cities.City("YELLOW", cities.Color.YELLOW),
-      "PURPLE": cities.City("PURPLE", cities.Color.PURPLE),
-      "CYAN": cities.City("CYAN", cities.Color.CYAN),
-      "BROWN": cities.City("BROWN", cities.Color.BROWN),
+    "RED": cities.City("RED", cities.Color.RED),
+    "BLUE": cities.City("BLUE", cities.Color.BLUE),
+    "YELLOW": cities.City("YELLOW", cities.Color.YELLOW),
+    "PURPLE": cities.City("PURPLE", cities.Color.PURPLE),
+    "CYAN": cities.City("CYAN", cities.Color.CYAN),
+    "BROWN": cities.City("BROWN", cities.Color.BROWN),
   }
   cities.connect(mapping, "RED", "BLUE", 4)
   cities.connect(mapping, "RED", "YELLOW", 8)
@@ -41,37 +41,34 @@ def SampleCities(_):
 
 def SamplePlants(_):
   return [
-      plants.Plant(cost=4, resource=Resource.COAL, intake=2, output=1),
-      plants.Plant(cost=8, resource=Resource.COAL, intake=3, output=2),
-      plants.Plant(cost=10, resource=Resource.COAL, intake=2, output=2),
-      plants.Plant(cost=3, resource=Resource.OIL, intake=2, output=1),
-      plants.Plant(cost=7, resource=Resource.OIL, intake=3, output=2),
-      plants.Plant(cost=9, resource=Resource.OIL, intake=1, output=1),
-      plants.Plant(cost=5, resource=Resource.HYBRID, intake=2, output=1),
-      plants.Plant(cost=6, resource=Resource.GAS, intake=1, output=1),
-      plants.Plant(cost=11, resource=Resource.URANIUM, intake=1, output=2),
-      plants.Plant(cost=13, resource=Resource.GREEN, intake=0, output=1),
-      plants.Plant(cost=11, resource=Resource.GREEN, intake=0, output=1, plus=True),
-      plants.Plant(cost=12, resource=Resource.HYBRID, intake=2, output=2),
-      plants.Plant(cost=17, resource=Resource.URANIUM, intake=1, output=2),
+    plants.Plant(cost=4, resource=Resource.COAL, intake=2, output=1),
+    plants.Plant(cost=8, resource=Resource.COAL, intake=3, output=2),
+    plants.Plant(cost=10, resource=Resource.COAL, intake=2, output=2),
+    plants.Plant(cost=3, resource=Resource.OIL, intake=2, output=1),
+    plants.Plant(cost=7, resource=Resource.OIL, intake=3, output=2),
+    plants.Plant(cost=9, resource=Resource.OIL, intake=1, output=1),
+    plants.Plant(cost=5, resource=Resource.HYBRID, intake=2, output=1),
+    plants.Plant(cost=6, resource=Resource.GAS, intake=1, output=1),
+    plants.Plant(cost=11, resource=Resource.URANIUM, intake=1, output=2),
+    plants.Plant(cost=13, resource=Resource.GREEN, intake=0, output=1),
+    plants.Plant(cost=11, resource=Resource.GREEN, intake=0, output=1, plus=True),
+    plants.Plant(cost=12, resource=Resource.HYBRID, intake=2, output=2),
+    plants.Plant(cost=17, resource=Resource.URANIUM, intake=1, output=2),
   ]
 
 
 class OrderTest(unittest.TestCase):
-
   def testPlantOrdering(self):
     plantlist = SamplePlants(None)
     plantlist.sort()
     self.assertListEqual(
-        [3, 4, 5, 6, 7, 8, 9, 10, 11, 11, 12, 13, 17],
-        [plant.cost for plant in plantlist],
+      [3, 4, 5, 6, 7, 8, 9, 10, 11, 11, 12, 13, 17], [plant.cost for plant in plantlist]
     )
     self.assertFalse(plantlist[8].plus)
     self.assertTrue(plantlist[9].plus)
 
 
 class BaseBaseTest(unittest.TestCase):
-
   NUM_PLAYERS = 5  # Carefully chosen to not throw out any power plants to start the game.
 
   def setUp(self):
@@ -83,7 +80,6 @@ class BaseBaseTest(unittest.TestCase):
 
 
 class RegionConnectionTest(BaseBaseTest):
-
   def testConnectivity(self):
     self.game.handle_region("red")
     self.assertSetEqual(self.game.colors, {cities.Color.RED})
@@ -133,7 +129,6 @@ class RegionConnectionTest(BaseBaseTest):
 
 
 class BaseTest(BaseBaseTest):
-
   def setUp(self):
     super().setUp()
     for color in ["red", "blue", "cyan", "purple", "yellow"]:
@@ -159,7 +154,6 @@ class BaseTest(BaseBaseTest):
 
 
 class RemovePlantTest(BaseTest):
-
   def testCycleLowestPlant(self):
     self.assertEqual(len(self.game.market), 8)
     old_plants = self.game.plants[:]
@@ -169,13 +163,12 @@ class RemovePlantTest(BaseTest):
     self.assertEqual(len(self.game.market), 8)
     plant_numbers = [plant.cost for plant in self.game.market]
     self.assertListEqual(plant_numbers, sorted(plant_numbers))
-    self.assertEqual(len(self.game.plants), len(old_plants)-1)
+    self.assertEqual(len(self.game.plants), len(old_plants) - 1)
     self.assertNotIn(lowest, self.game.market)
     self.assertNotIn(lowest, self.game.plants)
 
 
 class AuctionTest(BaseTest):
-
   def setUp(self):
     super().setUp()
     self.game.turn_order = [3, 0, 4, 1, 2]
@@ -355,7 +348,6 @@ class AuctionTest(BaseTest):
 
 
 class Stage3AuctionTest(BaseTest):
-
   def setUp(self):
     super().setUp()
     self.game.turn_order = [3, 0, 4, 1, 2]
@@ -386,7 +378,6 @@ class Stage3AuctionTest(BaseTest):
 
 
 class DiscardPlantTest(BaseTest):
-
   def setUp(self):
     super().setUp()
     self.game.turn_order = [3, 0, 4, 1, 2]
@@ -422,7 +413,7 @@ class DiscardPlantTest(BaseTest):
     self.assertEqual([plant.cost for plant in self.game.players[3].plants], [4, 5, 8])
     self.assertDictEqual(self.game.players[3].plants[0].storage, {Resource.COAL: 2})
     self.assertDictEqual(
-        self.game.players[3].plants[1].storage, {Resource.OIL: 1, Resource.COAL: 1},
+      self.game.players[3].plants[1].storage, {Resource.OIL: 1, Resource.COAL: 1}
     )
     self.assertDictEqual(self.game.players[3].plants[2].storage, {})
 
@@ -441,7 +432,7 @@ class DiscardPlantTest(BaseTest):
     self.assertEqual([plant.cost for plant in self.game.players[3].plants], [3, 5, 8])
     self.assertDictEqual(self.game.players[3].plants[0].storage, {Resource.OIL: 2})
     self.assertDictEqual(
-        self.game.players[3].plants[1].storage, {Resource.OIL: 1, Resource.COAL: 2},
+      self.game.players[3].plants[1].storage, {Resource.OIL: 1, Resource.COAL: 2}
     )
     self.assertDictEqual(self.game.players[3].plants[2].storage, {Resource.COAL: 1})
 
@@ -471,7 +462,6 @@ class DiscardPlantTest(BaseTest):
 
 
 class BuyResourcesTest(BaseTest):
-
   def setUp(self):
     super().setUp()
     self.game.players[0].money = 15
@@ -603,7 +593,7 @@ class BuyResourcesTest(BaseTest):
     self.assertDictEqual(self.game.players[0].plants[0].storage, {Resource.OIL: 4})
     self.assertDictEqual(self.game.players[0].plants[1].storage, {Resource.COAL: 4})
     self.assertDictEqual(
-        self.game.players[0].plants[2].storage, {Resource.OIL: 2, Resource.COAL: 2},
+      self.game.players[0].plants[2].storage, {Resource.OIL: 2, Resource.COAL: 2}
     )
 
   def testInvalidResources(self):
@@ -626,7 +616,6 @@ class BuyResourcesTest(BaseTest):
 
 
 class BuyHybridResourcesTest(BaseTest):
-
   def setUp(self):
     super().setUp()
     # Grant the player plants 5 and 9 (hybrid and oil).
@@ -645,7 +634,7 @@ class BuyHybridResourcesTest(BaseTest):
     self.handle_confirm()
 
     self.assertDictEqual(
-        self.game.players[0].plants[0].storage, {Resource.COAL: 2, Resource.OIL: 1},
+      self.game.players[0].plants[0].storage, {Resource.COAL: 2, Resource.OIL: 1}
     )
     self.assertDictEqual(self.game.players[0].plants[1].storage, {Resource.OIL: 2})
 
@@ -655,7 +644,7 @@ class BuyHybridResourcesTest(BaseTest):
     self.handle_confirm()
 
     self.assertDictEqual(
-        self.game.players[0].plants[0].storage, {Resource.COAL: 2, Resource.OIL: 1},
+      self.game.players[0].plants[0].storage, {Resource.COAL: 2, Resource.OIL: 1}
     )
     self.assertDictEqual(self.game.players[0].plants[1].storage, {Resource.OIL: 2})
 
@@ -665,7 +654,7 @@ class BuyHybridResourcesTest(BaseTest):
     self.handle_confirm()
 
     self.assertDictEqual(
-        self.game.players[0].plants[0].storage, {Resource.COAL: 2, Resource.OIL: 1},
+      self.game.players[0].plants[0].storage, {Resource.COAL: 2, Resource.OIL: 1}
     )
     self.assertDictEqual(self.game.players[0].plants[1].storage, {Resource.OIL: 2})
 
@@ -685,8 +674,8 @@ class BuyHybridResourcesTest(BaseTest):
   def testOverBuyCoalAndOil(self):
     # Tests to make sure we correctly track remaining capacity on hybrid plants.
     self.game.players[0].plants = [
-        plants.Plant(cost=5, resource=Resource.HYBRID, intake=2, output=1),
-        plants.Plant(cost=12, resource=Resource.HYBRID, intake=2, output=2),
+      plants.Plant(cost=5, resource=Resource.HYBRID, intake=2, output=1),
+      plants.Plant(cost=12, resource=Resource.HYBRID, intake=2, output=2),
     ]
     self.game.handle_buy("coal", 4)
     self.game.handle_buy("oil", 4)
@@ -697,7 +686,6 @@ class BuyHybridResourcesTest(BaseTest):
 
 
 class BuildTest(BaseTest):
-
   def setUp(self):
     super().setUp()
     self.game.phase_idx = self.game.PHASES.index(powerplant.TurnPhase.BUILDING)
@@ -855,7 +843,6 @@ class BuildTest(BaseTest):
 
 
 class BuildOutsidePlayAreaTest(BaseBaseTest):
-
   def setUp(self):
     super().setUp()
     for color in ["red", "purple", "cyan", "yellow", "brown"]:
@@ -876,7 +863,6 @@ class BuildOutsidePlayAreaTest(BaseBaseTest):
 
 
 class MultiBuildTest(BaseTest):
-
   def setUp(self):
     super().setUp()
     self.game.phase_idx = self.game.PHASES.index(powerplant.TurnPhase.BUILDING)
@@ -920,22 +906,21 @@ class MultiBuildTest(BaseTest):
 
 
 class ShuffleResourcesTest(BaseTest):
-
   def setUp(self):
     super().setUp()
     self.game.players[0].plants = [
-        plants.Plant(cost=5, resource=Resource.HYBRID, intake=2, output=1),
-        plants.Plant(cost=12, resource=Resource.HYBRID, intake=2, output=2),
+      plants.Plant(cost=5, resource=Resource.HYBRID, intake=2, output=1),
+      plants.Plant(cost=12, resource=Resource.HYBRID, intake=2, output=2),
     ]
     self.game.players[1].plants = [
-        plants.Plant(cost=6, resource=Resource.GAS, intake=1, output=1),
-        plants.Plant(cost=11, resource=Resource.URANIUM, intake=1, output=2),
-        plants.Plant(cost=13, resource=Resource.GREEN, intake=0, output=1),
+      plants.Plant(cost=6, resource=Resource.GAS, intake=1, output=1),
+      plants.Plant(cost=11, resource=Resource.URANIUM, intake=1, output=2),
+      plants.Plant(cost=13, resource=Resource.GREEN, intake=0, output=1),
     ]
     self.game.players[2].plants = [
-        plants.Plant(cost=4, resource=Resource.COAL, intake=2, output=1),
-        plants.Plant(cost=8, resource=Resource.COAL, intake=3, output=2),
-        plants.Plant(cost=10, resource=Resource.COAL, intake=2, output=2),
+      plants.Plant(cost=4, resource=Resource.COAL, intake=2, output=1),
+      plants.Plant(cost=8, resource=Resource.COAL, intake=3, output=2),
+      plants.Plant(cost=10, resource=Resource.COAL, intake=2, output=2),
     ]
     self.game.turn_idx = 0
     self.game.players[0].plants[0].storage.update({Resource.COAL: 2, Resource.OIL: 2})
@@ -1007,7 +992,6 @@ class ShuffleResourcesTest(BaseTest):
 
 
 class AdvanceStageTest(unittest.TestCase):
-
   def setUpGame(self, num):
     colors = sorted(list(powerplant.PowerPlantGame.COLORS))
     players = [powerplant.Player(name=f"p{x}", color=colors[x], money=999) for x in range(num)]
@@ -1045,11 +1029,19 @@ class AdvanceStageTest(unittest.TestCase):
         game = self.setUpGame(num)
 
         to_build = [
-            "ESSEN", "DUISBURG", "DUSSELDORF", "DORTMUND", "MUNSTER",
-            "KOLN", "OSNABRUCK", "AACHEN", "BREMEN", "CUXHAVEN",
+          "ESSEN",
+          "DUISBURG",
+          "DUSSELDORF",
+          "DORTMUND",
+          "MUNSTER",
+          "KOLN",
+          "OSNABRUCK",
+          "AACHEN",
+          "BREMEN",
+          "CUXHAVEN",
         ]
         # Build count-1 cities first.
-        for i in range(count-1):
+        for i in range(count - 1):
           self.handle(game, 0, {"type": "build", "city": to_build[i]})
         self.handle(game, 0, {"type": "confirm"})
 
@@ -1069,13 +1061,13 @@ class AdvanceStageTest(unittest.TestCase):
         self.assertEqual(game.market[0].cost, 16)
         self.assertIs(game.PHASES[game.phase_idx], powerplant.TurnPhase.MATERIALS)
         for idx in range(num):
-          self.handle(game, game.turn_order[num-idx-1], {"type": "confirm"})
+          self.handle(game, game.turn_order[num - idx - 1], {"type": "confirm"})
         self.assertIs(game.PHASES[game.phase_idx], powerplant.TurnPhase.BUILDING)
-        for idx in range(num-1):
-          self.handle(game, game.turn_order[num-idx-1], {"type": "confirm"})
+        for idx in range(num - 1):
+          self.handle(game, game.turn_order[num - idx - 1], {"type": "confirm"})
 
         # Build the last city to trigger the next stage.
-        self.handle(game, 0, {"type": "build", "city": to_build[count-1]})
+        self.handle(game, 0, {"type": "build", "city": to_build[count - 1]})
         self.handle(game, 0, {"type": "confirm"})
         self.assertIs(game.PHASES[game.phase_idx], powerplant.TurnPhase.BUREAUCRACY)
         self.assertEqual(game.stage_idx, 1)
@@ -1230,9 +1222,7 @@ class AdvanceStageTest(unittest.TestCase):
     self.assertEqual(game.stage_idx, 0)
 
     # Next player builds 8, forcing plant 8 to be discarded. Stage 3 card comes out.
-    to_build = [
-        "ESSEN", "DUISBURG", "DUSSELDORF", "DORTMUND", "MUNSTER", "KOLN", "AACHEN", "TRIER",
-    ]
+    to_build = ["ESSEN", "DUISBURG", "DUSSELDORF", "DORTMUND", "MUNSTER", "KOLN", "AACHEN", "TRIER"]
     for idx in range(8):
       self.handle(game, 0, {"type": "build", "city": to_build[idx]})
     self.handle(game, 0, {"type": "confirm"})
@@ -1310,11 +1300,11 @@ class AdvanceStageTest(unittest.TestCase):
     self.assertEqual(game.market[0].cost, 17)
     self.assertIs(game.PHASES[game.phase_idx], powerplant.TurnPhase.MATERIALS)
     for idx in range(num):
-      self.handle(game, game.turn_order[num-idx-1], {"type": "confirm"})
+      self.handle(game, game.turn_order[num - idx - 1], {"type": "confirm"})
     self.assertIs(game.PHASES[game.phase_idx], powerplant.TurnPhase.BUILDING)
 
-    for idx in range(num-1):
-      self.handle(game, game.turn_order[num-idx-1], {"type": "confirm"})
+    for idx in range(num - 1):
+      self.handle(game, game.turn_order[num - idx - 1], {"type": "confirm"})
     to_build = ["FLENSBURG", "KIEL", "HAMBURG", "CUXHAVEN", "BREMEN", "HANNOVER", "OSNABRUCK"]
     for idx in range(7):
       self.handle(game, game.turn_order[0], {"type": "build", "city": to_build[idx]})
@@ -1327,7 +1317,6 @@ class AdvanceStageTest(unittest.TestCase):
 
 
 class BureaucracyTest(BaseTest):
-
   def setUp(self):
     colors = sorted(list(powerplant.PowerPlantGame.COLORS))
     players = [powerplant.Player(name=f"p{x}", color=colors[x], money=0) for x in range(4)]
@@ -1373,7 +1362,6 @@ class BureaucracyTest(BaseTest):
 
 
 class BurnTest(BureaucracyTest):
-
   def testNormalBurn(self):
     self.handle_burn([{"coal": 2}, {"coal": 1, "oil": 1}])
     self.handle_burn([{"gas": 1}, {"uranium": 1}, {}])
@@ -1439,7 +1427,7 @@ class BurnTest(BureaucracyTest):
     self.handle_burn([None, None, None])
     self.handle_burn([None, None])
     self.assertListEqual([plant.cost for plant in self.game.market], [4, 5, 6, 7, 8, 13])
-    self.assertEqual(len(self.game.plants), orig_len-1)
+    self.assertEqual(len(self.game.plants), orig_len - 1)
 
   def testNoPlantsLeft(self):
     self.game.stage_idx = 2
@@ -1489,7 +1477,6 @@ class BurnTest(BureaucracyTest):
 
 
 class ResupplyTest(BureaucracyTest):
-
   def testStage1(self):
     self.game.stage_idx = 0
     orig = Counter(self.game.resources)

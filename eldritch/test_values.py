@@ -15,14 +15,12 @@ from eldritch.values import *
 
 # pylint: disable=attribute-defined-outside-init
 class Dummy:
-
   def __init__(self, **kwargs):
     for name, value in kwargs.items():
       setattr(self, name, value)
 
 
 class DummyChar(Dummy):
-
   def __init__(self, **kwargs):
     self.possessions = []
     self.override = None
@@ -33,7 +31,6 @@ class DummyChar(Dummy):
 
 
 class DummyMonster(Dummy):
-
   def has_attribute(self, attribute, state, char):  # pylint: disable=unused-argument
     if char.get_override(self, attribute) is not None:
       return char.get_override(self, attribute)
@@ -41,7 +38,6 @@ class DummyMonster(Dummy):
 
 
 class DummyPlace(Dummy):
-
   def __init__(self, **kwargs):
     self.sealed = False
     self.gate = None
@@ -52,14 +48,12 @@ class DummyPlace(Dummy):
 
 
 class DummyState(Dummy):
-
   def __init__(self, **kwargs):
     self.common = []
     super().__init__(**kwargs)
 
 
 class CalculationTest(unittest.TestCase):
-
   def testDelayedAttribute(self):
     obj = Dummy()
     calc = Calculation(obj, "attr")
@@ -114,7 +108,6 @@ class CalculationTest(unittest.TestCase):
 
 
 class ItemCountTest(unittest.TestCase):
-
   def testNamedItemCount(self):
     char = DummyChar()
     char.possessions.extend([Dummy(name="Food"), Dummy(name="Water")])
@@ -149,7 +142,6 @@ class ItemCountTest(unittest.TestCase):
 
 
 class PrerequisiteTest(unittest.TestCase):
-
   def testAttributePrereq(self):
     char = DummyChar(clues=0, dollars=0)
     prereq = AttributePrerequisite(char, "clues", 2, "at least")
@@ -193,7 +185,6 @@ class PrerequisiteTest(unittest.TestCase):
 
 
 class StabilityTest(unittest.TestCase):
-
   def testStability(self):
     place = DummyPlace()
     state = DummyState()
@@ -207,7 +198,6 @@ class StabilityTest(unittest.TestCase):
 
 
 class OnGateTest(unittest.TestCase):
-
   def testOnGate(self):
     place = DummyPlace(gate=Dummy(name="Abyss"))
     state = DummyState()
@@ -219,7 +209,6 @@ class OnGateTest(unittest.TestCase):
 
 
 class OpenGatesTest(unittest.TestCase):
-
   def testOpenGates(self):
     state = DummyState()
     place1 = DummyPlace(name="one", gate="hello")
@@ -237,7 +226,6 @@ class OpenGatesTest(unittest.TestCase):
 
 
 class UnsuccessfulDiceTest(unittest.TestCase):
-
   def testUnsuccessfulDice(self):
     char = Dummy(is_success=lambda roll, _: roll >= 5)
     check = Dummy(character=char, roll=[1, 6, 3, 4, 5, 2], check_type="combat")
@@ -249,7 +237,6 @@ class UnsuccessfulDiceTest(unittest.TestCase):
 
 
 class BadDiceTest(unittest.TestCase):
-
   def testBadDice(self):
     state = DummyState()
     roll = Dummy(roll=[1, 2, 3, 4], bad=[1, 2])
@@ -266,7 +253,6 @@ class BadDiceTest(unittest.TestCase):
 
 
 class SpendTest(unittest.TestCase):
-
   def testFixedValuePrerequisite(self):
     state = DummyState()
     spend = ExactSpendPrerequisite({"dollars": 1})
@@ -401,7 +387,6 @@ class SpendTest(unittest.TestCase):
 
 
 class SpendToughnessTest(unittest.TestCase):
-
   def testToughnessExactSpending(self):
     state = DummyState()
     spend = ToughnessSpend(5)
@@ -491,7 +476,6 @@ class SpendToughnessTest(unittest.TestCase):
 
 
 class SpendCountTest(unittest.TestCase):
-
   def testSpendCountValue(self):
     spend_choice = Dummy()
     spend_choice.spend_map = collections.defaultdict(dict)

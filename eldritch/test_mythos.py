@@ -27,7 +27,6 @@ from game import InvalidMove, InvalidInput
 
 
 class OpenGateTest(EventTest):
-
   def setUp(self):
     super().setUp()
     self.state.gates.clear()
@@ -76,7 +75,7 @@ class OpenGateTest(EventTest):
     monster_counts = self.monstersByPlace()
     self.assertEqual(monster_counts["Square"], 1)
     self.assertEqual(monster_counts["Woods"], 0)
-    self.assertEqual(monster_counts["cup"], cup_count-1)
+    self.assertEqual(monster_counts["cup"], cup_count - 1)
 
   def testOpenGateSealed(self):
     self.assertEqual(len(self.state.gates), 1)
@@ -192,14 +191,20 @@ class OpenGateTest(EventTest):
 
 
 class MonsterSurgeTest(EventTest):
-
   def setUp(self):
     super().setUp()
     self.state.monsters.clear()
-    self.state.monsters.extend([
-        monsters.Cultist(), monsters.Ghost(), monsters.Maniac(), monsters.Vampire(),
-        monsters.Warlock(), monsters.Witch(), monsters.Zombie(),
-    ])
+    self.state.monsters.extend(
+      [
+        monsters.Cultist(),
+        monsters.Ghost(),
+        monsters.Maniac(),
+        monsters.Vampire(),
+        monsters.Warlock(),
+        monsters.Witch(),
+        monsters.Zombie(),
+      ]
+    )
     for monster in self.state.monsters:
       monster.place = self.state.monster_cup
     self.state.gates.clear()
@@ -443,14 +448,21 @@ class MonsterSurgeTest(EventTest):
   def testAutoOutskirts(self):
     # Add 4 monsters to the outskirts.
     outskirt_monsters = [
-        monsters.Cultist(), monsters.Maniac(), monsters.Vampire(), monsters.Witch(),
+      monsters.Cultist(),
+      monsters.Maniac(),
+      monsters.Vampire(),
+      monsters.Witch(),
     ]
     self.state.monsters.extend(outskirt_monsters)
     for monster in outskirt_monsters:
       monster.place = self.state.places["Outskirts"]
     # Add 5 monsters to the board.
     board_monsters = [
-        monsters.Cultist(), monsters.Ghost(), monsters.Maniac(), monsters.Ghost(), monsters.Witch(),
+      monsters.Cultist(),
+      monsters.Ghost(),
+      monsters.Maniac(),
+      monsters.Ghost(),
+      monsters.Witch(),
     ]
     for monster in board_monsters:
       monster.place = self.state.places["Square"]
@@ -474,14 +486,22 @@ class MonsterSurgeTest(EventTest):
     self.state.allies.extend([assets.Dog(), assets.Thief()])
     # Add 5 monsters to the outskirts.
     outskirt_monsters = [
-        monsters.Cultist(), monsters.Maniac(), monsters.Ghost(), monsters.Witch(), monsters.Ghoul(),
+      monsters.Cultist(),
+      monsters.Maniac(),
+      monsters.Ghost(),
+      monsters.Witch(),
+      monsters.Ghoul(),
     ]
     self.state.monsters.extend(outskirt_monsters)
     for monster in outskirt_monsters:
       monster.place = self.state.places["Outskirts"]
     # Add 5 monsters to the board.
     board_monsters = [
-        monsters.Cultist(), monsters.Ghost(), monsters.Maniac(), monsters.Ghost(), monsters.Witch(),
+      monsters.Cultist(),
+      monsters.Ghost(),
+      monsters.Maniac(),
+      monsters.Ghost(),
+      monsters.Witch(),
     ]
     for monster in board_monsters:
       monster.place = self.state.places["Square"]
@@ -506,7 +526,11 @@ class MonsterSurgeTest(EventTest):
       monster.place = self.state.places["Outskirts"]
     # Add 5 monsters to the board.
     board_monsters = [
-        monsters.Cultist(), monsters.Ghost(), monsters.Maniac(), monsters.Ghost(), monsters.Witch(),
+      monsters.Cultist(),
+      monsters.Ghost(),
+      monsters.Maniac(),
+      monsters.Ghost(),
+      monsters.Witch(),
     ]
     for monster in board_monsters:
       monster.place = self.state.places["Square"]
@@ -636,7 +660,6 @@ class MonsterSurgeTest(EventTest):
 
 
 class MonsterSpawnCountTest(unittest.TestCase):
-
   def testCounts(self):
     test_cases = [
         {
@@ -695,7 +718,7 @@ class MonsterSpawnCountTest(unittest.TestCase):
             "num_gates": 4, "num_chars": 8, "on_board": 11, "in_outskirts": 0,
             "board": 0, "outskirts": 1, "steps": 7,
         },
-    ]
+    ]  # fmt: skip
 
     for test_case in test_cases:
       with self.subTest(**test_case):
@@ -707,7 +730,7 @@ class MonsterSpawnCountTest(unittest.TestCase):
         expected_additional_steps = test_case["steps"]
 
         board, outskirts, steps = MonsterSpawnChoice.spawn_counts(
-            max(num_gates, num_chars), on_board, in_outskirts, monster_limit, outskirts_limit,
+          max(num_gates, num_chars), on_board, in_outskirts, monster_limit, outskirts_limit
         )
 
         self.assertEqual(board, expected_board)
@@ -716,7 +739,6 @@ class MonsterSpawnCountTest(unittest.TestCase):
 
 
 class CloseGateTest(EventTest):
-
   def setUp(self):
     super().setUp()
     self.square = self.state.places["Square"]
@@ -1023,7 +1045,6 @@ class CloseGateTest(EventTest):
 
 
 class SpawnClueTest(EventTest):
-
   def setUp(self):
     super().setUp()
     self.square = self.state.places["Square"]
@@ -1084,7 +1105,6 @@ class SpawnClueTest(EventTest):
 
 
 class MoveMonsterTest(EventTest):
-
   def testMoveMonsterWhite(self):
     monster = self.state.monsters[0]
     monster.place = self.state.places["Rivertown"]
@@ -1114,12 +1134,14 @@ class MoveMonsterTest(EventTest):
 
   def testMovementDimensionsAndTypes(self):
     self.state.monsters.clear()
-    self.state.monsters.extend([
+    self.state.monsters.extend(
+      [
         monsters.Cultist(),  # moon, moves on black
         monsters.Ghost(),  # moon, stationary
         monsters.DimensionalShambler(),  # square, moves on white
         monsters.Ghoul(),  # hex, no movement
-    ])
+      ]
+    )
 
     for monster in self.state.monsters:
       monster.place = self.state.places["Rivertown"]
@@ -1134,9 +1156,9 @@ class MoveMonsterTest(EventTest):
 
   def testMonstersDontMoveFromPlayer(self):
     self.state.monsters.clear()
-    self.state.monsters.extend([
-        monsters.Cultist(), monsters.Ghost(), monsters.DimensionalShambler(), monsters.Ghoul(),
-    ])
+    self.state.monsters.extend(
+      [monsters.Cultist(), monsters.Ghost(), monsters.DimensionalShambler(), monsters.Ghoul()]
+    )
 
     for monster in self.state.monsters:
       monster.place = self.state.places["Rivertown"]
@@ -1168,7 +1190,8 @@ class MoveMonsterTest(EventTest):
 
   def testFlyingMonsterMovement(self):
     self.state.monsters.clear()
-    self.state.monsters.extend([
+    self.state.monsters.extend(
+      [
         monsters.DreamFlier(),  # Slash
         monsters.Pinata(),  # Circle
         monsters.GiantInsect(),  # Circle
@@ -1176,7 +1199,8 @@ class MoveMonsterTest(EventTest):
         monsters.SubterraneanFlier(),  # Hex
         monsters.Pinata(),  # Circle
         monsters.DreamFlier(),  # Slash
-    ])
+      ]
+    )
 
     self.char.place = self.state.places["Merchant"]
     self.state.monsters[0].place = self.state.places["Merchant"]  # Next to player, will not move.
@@ -1430,9 +1454,9 @@ class MoveMonsterTest(EventTest):
 
   def testOneMovementCancelled(self):
     self.state.monsters.clear()
-    self.state.monsters.extend([
-        monsters.Cultist(), monsters.Maniac(), monsters.Maniac(), monsters.Witch(),
-    ])
+    self.state.monsters.extend(
+      [monsters.Cultist(), monsters.Maniac(), monsters.Maniac(), monsters.Witch()]
+    )
 
     for monster in self.state.monsters:
       monster.place = self.state.places["Rivertown"]
@@ -1466,7 +1490,6 @@ class MoveMonsterTest(EventTest):
 
 
 class ReturnToCupTest(EventTest):
-
   def setUp(self):
     super().setUp()
     self.cultist = monsters.Cultist()
@@ -1483,9 +1506,9 @@ class ReturnToCupTest(EventTest):
     self.trophy.place = None
     self.char.trophies.append(self.trophy)
     self.state.monsters.clear()
-    self.state.monsters.extend([
-        self.cultist, self.maniac, self.dream_flier, self.zombie, self.furry_beast, self.trophy
-    ])
+    self.state.monsters.extend(
+      [self.cultist, self.maniac, self.dream_flier, self.zombie, self.furry_beast, self.trophy]
+    )
 
   def testReturnByName(self):
     ret = ReturnToCup(names={"Dream Flier", "Maniac", "Zombie"})
@@ -1546,7 +1569,6 @@ class ReturnToCupTest(EventTest):
 
 
 class GlobalModifierTest(EventTest):
-
   def setUp(self):
     super().setUp()
     more_monsters = [monsters.Cultist(), monsters.Maniac()]
@@ -1608,7 +1630,6 @@ class GlobalModifierTest(EventTest):
 
 
 class EnvironmentTests(EventTest):
-
   def testMythos15Pass(self):
     self.state.environment = Mythos15()
     self.state.turn_phase = "movement"
@@ -1761,12 +1782,11 @@ class EnvironmentTests(EventTest):
 
 
 class DrawMythosTest(EventTest):
-
   def testMythosShuffle(self):
     self.state.mythos.clear()
-    self.state.mythos.extend([
-        ShuffleMythos(), Mythos1(), Mythos2(), Mythos3(), Mythos4(), Mythos5(),
-    ])
+    self.state.mythos.extend(
+      [ShuffleMythos(), Mythos1(), Mythos2(), Mythos3(), Mythos4(), Mythos5()]
+    )
     draw = DrawMythosCard(self.char)
     self.state.event_stack.append(draw)
     self.resolve_until_done()
@@ -1778,7 +1798,6 @@ class DrawMythosTest(EventTest):
 
 
 class RumorTest(EventTest):
-
   def setUp(self):
     super().setUp()
     self.state.turn_number = 0
@@ -1812,7 +1831,7 @@ class RumorTest(EventTest):
     self.assertEqual(self.state.terror, 6)
     self.assertEqual(len(self.state.boxed_allies), 6)
 
-    self.advance_turn(self.state.turn_number+1, "mythos")
+    self.advance_turn(self.state.turn_number + 1, "mythos")
     self.assertTrue(self.state.event_stack)
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=[3])):
       self.resolve_until_done()
@@ -1822,7 +1841,7 @@ class RumorTest(EventTest):
     self.assertEqual(len(self.state.boxed_allies), 6)
     self.assertFalse(self.state.rumor.failed)
 
-    self.advance_turn(self.state.turn_number+1, "mythos")
+    self.advance_turn(self.state.turn_number + 1, "mythos")
     self.assertTrue(self.state.event_stack)
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=[1])):
       self.resolve_until_done()
@@ -1832,7 +1851,7 @@ class RumorTest(EventTest):
     self.assertEqual(len(self.state.boxed_allies), 7)
     self.assertFalse(self.state.allies)
 
-    self.advance_turn(self.state.turn_number+1, "mythos")
+    self.advance_turn(self.state.turn_number + 1, "mythos")
     self.assertTrue(self.state.event_stack)
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=[3])):
       self.resolve_until_done()
@@ -1840,7 +1859,7 @@ class RumorTest(EventTest):
     self.assertEqual(self.state.terror, 7)
     self.assertFalse(self.state.rumor.failed)
 
-    self.advance_turn(self.state.turn_number+1, "mythos")
+    self.advance_turn(self.state.turn_number + 1, "mythos")
     self.assertTrue(self.state.event_stack)
     self.assertFalse(self.state.allies)
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=[1])):
@@ -1862,7 +1881,7 @@ class RumorTest(EventTest):
 
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=[1])):
       # This turn starts the rumor, so you have to advance past the next mythos phase.
-      self.advance_turn(self.state.turn_number+2, "upkeep")
+      self.advance_turn(self.state.turn_number + 2, "upkeep")
     self.assertIsNone(self.state.rumor)
     self.assertTrue(rumor.failed)
     self.assertNotIn(rumor, self.state.other_globals)
@@ -1910,7 +1929,7 @@ class RumorTest(EventTest):
     self.assertEqual(self.state.rumor.name, "Mythos27")
     self.assertEqual(self.state.rumor.progress, 6)
 
-    self.advance_turn(self.state.turn_number+1, "mythos")
+    self.advance_turn(self.state.turn_number + 1, "mythos")
     self.assertTrue(self.state.event_stack)
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=[3, 3])):
       self.resolve_until_done()
@@ -1918,7 +1937,7 @@ class RumorTest(EventTest):
     self.assertEqual(self.state.rumor.progress, 6)
     self.assertFalse(self.state.rumor.failed)
 
-    self.advance_turn(self.state.turn_number+1, "mythos")
+    self.advance_turn(self.state.turn_number + 1, "mythos")
     self.assertTrue(self.state.event_stack)
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=[1, 2])):
       self.resolve_until_done()
@@ -1926,7 +1945,7 @@ class RumorTest(EventTest):
     self.assertEqual(self.state.rumor.progress, 8)
     self.assertFalse(self.state.rumor.failed)
 
-    self.advance_turn(self.state.turn_number+1, "mythos")
+    self.advance_turn(self.state.turn_number + 1, "mythos")
     self.assertTrue(self.state.event_stack)
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=[3, 2])):
       self.resolve_until_done()
@@ -1950,7 +1969,7 @@ class RumorTest(EventTest):
 
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=[3, 2])):
       # This turn starts the rumor, so you have to advance past the next mythos phase.
-      self.advance_turn(self.state.turn_number+2, "upkeep")
+      self.advance_turn(self.state.turn_number + 2, "upkeep")
     self.assertIsNone(self.state.rumor)
     self.assertTrue(rumor.failed)
     self.assertNotIn(rumor, self.state.other_globals)
@@ -2020,7 +2039,7 @@ class RumorTest(EventTest):
     self.assertEqual(self.state.rumor.name, "Mythos59")
     self.assertEqual(self.state.rumor.progress, 0)
 
-    self.advance_turn(self.state.turn_number+1, "mythos")
+    self.advance_turn(self.state.turn_number + 1, "mythos")
     self.assertTrue(self.state.event_stack)
     self.resolve_until_done()
     self.assertEqual(self.state.rumor.name, "Mythos59")
@@ -2035,7 +2054,7 @@ class RumorTest(EventTest):
     self.assertEqual(self.state.rumor.name, "Mythos59")
     self.state.rumor.progress = 4
 
-    self.advance_turn(self.state.turn_number+2, "upkeep")
+    self.advance_turn(self.state.turn_number + 2, "upkeep")
     self.assertIsNone(self.state.rumor)
     self.assertTrue(rumor.failed)
     self.assertIn(rumor, self.state.other_globals)
@@ -2077,9 +2096,9 @@ class RumorTest(EventTest):
     self.state.turn_number = 1
     self.state.turn_phase = "encounter"
     self.char.place = self.state.places["FrenchHill"]
-    self.char.possessions.extend([
-        items.Wither(0), items.Wither(1), items.FindGate(0), items.FindGate(1), items.Food(0),
-    ])
+    self.char.possessions.extend(
+      [items.Wither(0), items.Wither(1), items.FindGate(0), items.FindGate(1), items.Food(0)]
+    )
     self.state.event_stack.append(EncounterPhase(self.char))
     choice = self.resolve_to_choice(MultipleChoice)
     choice.resolve(self.state, "Yes")
@@ -2107,7 +2126,7 @@ class RumorTest(EventTest):
     rumor27.progress = 2
 
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=2)):
-      self.advance_turn(self.state.turn_number+2, "upkeep")
+      self.advance_turn(self.state.turn_number + 2, "upkeep")
 
     self.assertEqual(rumor27.progress, 4)
     self.assertEqual(rumor59.progress, 5)
@@ -2276,7 +2295,7 @@ class Mythos7Test(EventTest):
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=2)):
       self.resolve_until_done()
     self.assertEqual(self.char.place.name, "Police")
-    self.assertEqual(self.char.arrested_until, self.state.turn_number+2)
+    self.assertEqual(self.char.arrested_until, self.state.turn_number + 2)
 
 
 class Mythos8Test(EventTest):
@@ -2387,9 +2406,7 @@ class Mythos18Test(EventTest):
     specials = location_specials.CreateFixedEncounters()
     for location_name, fixed_encounters in specials.items():
       self.state.places[location_name].fixed_encounters.extend(fixed_encounters)
-    self.state.places["Downtown"].encounters.extend(
-        encounters.CreateEncounterCards()["Downtown"]
-    )
+    self.state.places["Downtown"].encounters.extend(encounters.CreateEncounterCards()["Downtown"])
 
   def testCanGainFromPsychology(self):
     self.char.possessions.append(abilities.Psychology())
@@ -2538,8 +2555,8 @@ class CloseStreetLocationTest(EventTest):
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=1)):
       choice = self.resolve_to_choice(MapChoice)
     self.assertListEqual(
-        sorted(choice.choices),
-        ["Downtown", "Isle", "Northside", "Rivertown", "University", "Unnamable"]
+      sorted(choice.choices),
+      ["Downtown", "Isle", "Northside", "Rivertown", "University", "Unnamable"],
     )
     with self.assertRaises(InvalidMove):
       choice.resolve(self.state, "done")
@@ -2554,8 +2571,7 @@ class CloseStreetLocationTest(EventTest):
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=1)):
       choice = self.resolve_to_choice(MapChoice)
     self.assertListEqual(
-        sorted(choice.choices),
-        ["Downtown", "Northside", "Rivertown", "University", "Unnamable"]
+      sorted(choice.choices), ["Downtown", "Northside", "Rivertown", "University", "Unnamable"]
     )
     with self.assertRaises(InvalidMove):
       choice.resolve(self.state, "done")
@@ -2638,7 +2654,7 @@ class Mythos29Test(EventTest):
     super().setUp()
     self.mythos = Mythos29()
     self.monster = monsters.Monster(
-        "FakeMonster", "fast", "plus", {"evade": 0, "combat": 0}, {"combat": 1}, 1
+      "FakeMonster", "fast", "plus", {"evade": 0, "combat": 0}, {"combat": 1}, 1
     )
     self.monster.place = self.state.monster_cup
     self.state.monsters.append(self.monster)
@@ -2720,7 +2736,6 @@ class Mythos42Test(EventTest):
 
 
 class Mythos44Test(EventTest):
-
   def testReducesMovementPoints(self):
     self.assertEqual(self.char.speed(self.state), 4)
     self.state.environment = Mythos44()
@@ -2820,7 +2835,7 @@ class Mythos57Test(EventTest):
 
   def testMultipleWhiskeyOneCheck(self):
     self.char.speed_sneak_slider -= 1
-    with mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=[5, 1, ])):
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=[5, 1])):
       self.advance_turn(1, "movement")
     self.assertIsNone(self.char.arrested_until)
     self.assertListEqual(self.char.possessions, [self.whiskey0, self.whiskey1])
@@ -2857,7 +2872,6 @@ class Mythos58Test(EventTest):
 
 
 class MythosPhaseTest(EventTest):
-
   def setUp(self):
     super().setUp()
     self.mythos = Mythos(self.char)
@@ -2887,7 +2901,6 @@ class MythosPhaseTest(EventTest):
 
 
 class MythosCardsTest(EventTest):
-
   def testAllEventsCanBeCreated(self):
     cards = CreateMythos()
     for card in cards:

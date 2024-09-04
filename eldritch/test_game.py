@@ -27,7 +27,6 @@ import game
 
 
 class NoMythos(mythos.GlobalEffect):
-
   def __init__(self):
     self.name = "NoMythos"
 
@@ -36,7 +35,6 @@ class NoMythos(mythos.GlobalEffect):
 
 
 class PauseMythos(mythos.GlobalEffect):
-
   def __init__(self):
     self.name = "PauseMythos"
 
@@ -45,7 +43,6 @@ class PauseMythos(mythos.GlobalEffect):
 
 
 class DevourFirstPlayer(mythos.GlobalEffect):
-
   def __init__(self):
     self.name = "DevourFirstPlayer"
 
@@ -54,7 +51,6 @@ class DevourFirstPlayer(mythos.GlobalEffect):
 
 
 class FixedEncounterBaseTest(unittest.TestCase):
-
   def setUp(self):
     self.state = eldritch.GameState()
     self.state.initialize_for_tests()
@@ -70,7 +66,6 @@ class FixedEncounterBaseTest(unittest.TestCase):
 
 
 class RestorationFixedEncounterTest(FixedEncounterBaseTest):
-
   def testRegainStamina(self):
     self.char.stamina = 3
     self.char.dollars = 2
@@ -126,7 +121,7 @@ class RestorationFixedEncounterTest(FixedEncounterBaseTest):
     self.char.dollars = 2
     self.char.place = self.state.places["Hospital"]
     self.state.places["Uptown"].encounters.append(
-        encounters.EncounterCard("Uptown5", {"Hospital": encounters.Shoppe5}),
+      encounters.EncounterCard("Uptown5", {"Hospital": encounters.Shoppe5})
     )
     self.state.event_stack.append(events.EncounterPhase(self.char))
     for _ in self.state.resolve_loop():
@@ -145,7 +140,6 @@ class RestorationFixedEncounterTest(FixedEncounterBaseTest):
 
 
 class DrawCardsFixedEncounterTest(FixedEncounterBaseTest):
-
   def setUp(self):
     super().setUp()
     self.state.common.extend([items.Cross(0), items.Food(0), items.DarkCloak(0), items.TommyGun(0)])
@@ -194,7 +188,7 @@ class DrawCardsFixedEncounterTest(FixedEncounterBaseTest):
     self.char.dollars = 1
     self.char.place = self.state.places["Store"]
     self.state.places["Rivertown"].encounters.append(
-        encounters.EncounterCard("Rivertown1", {"Store": encounters.Store1}),
+      encounters.EncounterCard("Rivertown1", {"Store": encounters.Store1})
     )
     self.state.event_stack.append(events.EncounterPhase(self.char))
     for _ in self.state.resolve_loop():
@@ -223,7 +217,6 @@ class DrawCardsFixedEncounterTest(FixedEncounterBaseTest):
 
 
 class SpendTrophiesEncounterTest(FixedEncounterBaseTest):
-
   def setUp(self):
     super().setUp()
     self.char.trophies.append(self.state.gates.popleft())
@@ -393,8 +386,7 @@ class SpendTrophiesEncounterTest(FixedEncounterBaseTest):
     self.assertEqual(len(self.char.trophies), 0)
     self.assertEqual(len(self.char.possessions), 3)
     self.assertCountEqual(
-        [card.name for card in self.char.possessions],
-        ["Deputy", "Deputy's Revolver", "Patrol Wagon"],
+      [card.name for card in self.char.possessions], ["Deputy", "Deputy's Revolver", "Patrol Wagon"]
     )
 
   def testCannotBecomeDeputyIfSomeoneElseIs(self):
@@ -450,7 +442,6 @@ class SpendTrophiesEncounterTest(FixedEncounterBaseTest):
 
 
 class GateTravelTest(unittest.TestCase):
-
   def setUp(self):
     self.state = eldritch.GameState()
     self.state.initialize_for_tests()
@@ -553,7 +544,6 @@ class GateTravelTest(unittest.TestCase):
 
 
 class TradingTestBase(unittest.TestCase):
-
   def setUp(self):
     self.state = eldritch.GameState()
     self.state.initialize_for_tests()
@@ -572,7 +562,6 @@ class TradingTestBase(unittest.TestCase):
 
 
 class TradingTest(TradingTestBase):
-
   def setUp(self):
     super().setUp()
     for char in self.state.characters:
@@ -586,7 +575,8 @@ class TradingTest(TradingTestBase):
     self.state.handle_give(0, 1, "Cross0", None)
     self.assertEqual([pos.name for pos in self.nun.possessions], ["Bravery"])
     self.assertEqual(
-        [pos.name for pos in self.gangster.possessions], ["Tommy Gun", "Marksman", "Cross"])
+      [pos.name for pos in self.gangster.possessions], ["Tommy Gun", "Marksman", "Cross"]
+    )
 
   def testGiveDollars(self):
     self.nun.dollars = 3
@@ -674,7 +664,6 @@ class TradingTest(TradingTestBase):
 
 
 class OtherWorldTradingTest(TradingTestBase):
-
   def testTradeBeforeMoving(self):
     for char in self.state.characters:
       char.place = self.state.places["Dreamlands1"]
@@ -714,7 +703,8 @@ class OtherWorldTradingTest(TradingTestBase):
     self.state.handle_give(0, 1, "Cross0", None)
     self.assertEqual([pos.name for pos in self.nun.possessions], ["Bravery"])
     self.assertEqual(
-        [pos.name for pos in self.gangster.possessions], ["Tommy Gun", "Marksman", "Cross"])
+      [pos.name for pos in self.gangster.possessions], ["Tommy Gun", "Marksman", "Cross"]
+    )
 
   def testTradeBeforeReturnMultipleGates(self):
     self.state.places["Square"].gate = self.state.gates.popleft()
@@ -729,7 +719,8 @@ class OtherWorldTradingTest(TradingTestBase):
     self.state.handle_give(0, 1, "Cross0", None)
     self.assertEqual([pos.name for pos in self.nun.possessions], ["Bravery"])
     self.assertEqual(
-        [pos.name for pos in self.gangster.possessions], ["Tommy Gun", "Marksman", "Cross"])
+      [pos.name for pos in self.gangster.possessions], ["Tommy Gun", "Marksman", "Cross"]
+    )
 
   def testTradeOnReturn(self):
     self.state.places["Square"].gate = self.state.gates.popleft()
@@ -745,7 +736,6 @@ class OtherWorldTradingTest(TradingTestBase):
 
 
 class InitializePlayersTest(unittest.TestCase):
-
   def testInitializePlayers(self):
     chars = characters.CreateCharacters()
     for name in chars:
@@ -755,7 +745,7 @@ class InitializePlayersTest(unittest.TestCase):
         state.handle_join(None, name)
         state.handle_start()
         science_clue_missing = name == "Scientist"
-        self.assertEqual(state.places["Science"].clues, 1-int(science_clue_missing))
+        self.assertEqual(state.places["Science"].clues, 1 - int(science_clue_missing))
 
   def testInitializeSquidFace(self):
     state = eldritch.GameState()
@@ -770,7 +760,6 @@ class InitializePlayersTest(unittest.TestCase):
 
 
 class NextTurnBase(unittest.TestCase):
-
   def setUp(self):
     self.state = eldritch.GameState()
     self.state.initialize_for_tests()
@@ -786,7 +775,6 @@ class NextTurnBase(unittest.TestCase):
 
 
 class NextTurnTest(NextTurnBase):
-
   def testTurnProgression(self):
     self.assertEqual(self.state.first_player, 0)
     self.assertEqual(self.state.turn_number, 0)
@@ -941,7 +929,6 @@ class NextTurnTest(NextTurnBase):
 
 
 class NextAwakenedTurnTestBase(NextTurnBase):
-
   ALIVE_COUNT = 3
   FIRST_ALIVE = 0
 
@@ -1051,7 +1038,6 @@ class NextTurnAwakenedOnePlayerLeftTest(NextAwakenedTurnTestBase):
 
 
 class TradingWhenAwakenedTest(NextTurnBase):
-
   def setUp(self):
     super().setUp()
     self.state.game_stage = "awakened"
@@ -1097,7 +1083,6 @@ class TradingWhenAwakenedTest(NextTurnBase):
 
 
 class EndGameTest(NextTurnBase):
-
   def testInstantDefeatFromAwakening(self):
     self.state.ancient_one = ancient_ones.ChaosGod()
     self.state.event_stack.append(events.AddDoom(count=float("inf")))
@@ -1155,6 +1140,7 @@ class EndGameTest(NextTurnBase):
 
     def devour(state):  # pylint: disable=unused-argument
       return events.AncientOneAttack([events.Devoured(char)])
+
     with mock.patch.object(self.state.ancient_one, "attack", new=devour):
       for _ in self.state.resolve_loop():
         pass
@@ -1210,7 +1196,6 @@ class EndGameTest(NextTurnBase):
 
 
 class InsaneTest(unittest.TestCase):
-
   def setUp(self):
     self.state = eldritch.GameState()
     self.state.initialize_for_tests()
@@ -1293,8 +1278,9 @@ class InsaneTest(unittest.TestCase):
     self.state.event_stack.append(events.OtherWorldPhase(self.state.characters[0]))
     self.state.turn_idx = 0
     self.state.turn_phase = "otherworld"
-    self.state.gate_cards.append(gate_encounters.GateCard(
-        "Gate29", {"red"}, {"Other": gate_encounters.Other29}))  # lose one stamina
+    self.state.gate_cards.append(
+      gate_encounters.GateCard("Gate29", {"red"}, {"Other": gate_encounters.Other29})
+    )  # lose one stamina
     for _ in self.state.resolve_loop():
       if self.state.turn_phase != "otherworld":
         break
@@ -1345,7 +1331,7 @@ class InsaneTest(unittest.TestCase):
     self.state.turn_idx = 0
     self.state.turn_phase = "otherworld"
     self.state.event_stack.append(
-        events.Loss(self.state.characters[0], {"sanity": 1, "stamina": 1}),
+      events.Loss(self.state.characters[0], {"sanity": 1, "stamina": 1})
     )
     for _ in self.state.resolve_loop():
       if self.state.turn_idx != 0:
@@ -1373,7 +1359,6 @@ class InsaneTest(unittest.TestCase):
 
 
 class OpenGateCountTest(unittest.TestCase):
-
   def testOpenGateCount(self):
     state = eldritch.GameState()
     expected = {1: 8, 2: 8, 3: 7, 4: 7, 5: 6, 6: 6, 7: 5, 8: 5}
@@ -1384,7 +1369,6 @@ class OpenGateCountTest(unittest.TestCase):
 
 
 class AwakenTest(unittest.TestCase):
-
   def setUp(self):
     self.state = eldritch.GameState()
     self.state.initialize_for_tests()
@@ -1505,7 +1489,6 @@ class AwakenTest(unittest.TestCase):
 
 
 class RollDiceTest(unittest.TestCase):
-
   def setUp(self):
     self.state = eldritch.GameState()
     self.state.initialize_for_tests()
@@ -1643,7 +1626,7 @@ class RollDiceTest(unittest.TestCase):
       data = self.state.for_player(0)
       self.assertIn("dice", data)
       self.assertIsInstance(data["dice"]["roll"], list)
-    self.assertEqual(len(data["dice"]["roll"]), roll_length+1)
+    self.assertEqual(len(data["dice"]["roll"]), roll_length + 1)
 
     # The player decides to reroll this check.
     self.assertIn(0, self.state.usables)
@@ -1659,7 +1642,7 @@ class RollDiceTest(unittest.TestCase):
         self.assertIsNone(data["dice"]["roll"])
       else:
         self.assertIsInstance(data["dice"]["roll"], list)
-        self.assertEqual(len(data["dice"]["roll"]), roll_length+1)
+        self.assertEqual(len(data["dice"]["roll"]), roll_length + 1)
 
     # The player rolls the dice again.
     self.assertIsInstance(self.state.event_stack[-1], events.DiceRoll)
@@ -1682,7 +1665,7 @@ class RollDiceTest(unittest.TestCase):
     for _ in self.state.resolve_loop():
       if not self.state.event_stack:
         break
-      self.assertEqual(len(data["dice"]["roll"]), roll_length+1)
+      self.assertEqual(len(data["dice"]["roll"]), roll_length + 1)
 
   def testCheckAndRerollSpecific(self):
     self.state.test_mode = False
@@ -1748,7 +1731,6 @@ class RollDiceTest(unittest.TestCase):
 
 
 class MapChoiceTest(unittest.TestCase):
-
   def setUp(self):
     self.state = eldritch.GameState()
     self.state.initialize_for_tests()
@@ -1785,7 +1767,6 @@ class MapChoiceTest(unittest.TestCase):
 
 
 class PlayerTest(unittest.TestCase):
-
   def setUp(self):
     self.game = eldritch.EldritchGame()
     self.game.game.ancient_one = ancient_ones.DummyAncient()
@@ -1811,7 +1792,6 @@ class PlayerTest(unittest.TestCase):
 
 
 class ChooseAncientOneTest(PlayerTest):
-
   def setUp(self):
     super().setUp()
     self.game.game.ancient_one = None
@@ -1839,7 +1819,6 @@ class ChooseAncientOneTest(PlayerTest):
 
 
 class PlayerJoinTest(PlayerTest):
-
   def testJoinJSON(self):
     self.game.connect_user("session")
     data = self.game.for_player("session")
@@ -1966,7 +1945,6 @@ class PlayerJoinTest(PlayerTest):
 
 
 class DevouredPlayerJoinTest(PlayerTest):
-
   def setUp(self):
     super().setUp()
     self.game.connect_user("A")
@@ -2033,7 +2011,7 @@ class DevouredPlayerJoinTest(PlayerTest):
     self.assertTrue(self.game.game.event_stack)
     self.assertEqual(len(self.game.game.characters), 3)
     self.assertEqual(
-        [char.name for char in self.game.game.characters], ["Gangster", "Doctor", "Student"],
+      [char.name for char in self.game.game.characters], ["Gangster", "Doctor", "Student"]
     )
 
     self.handle("A", {"type": "set_slider", "name": "done"})

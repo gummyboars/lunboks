@@ -6,7 +6,6 @@ from eldritch import values
 
 
 class BonusSkill(assets.Card):
-
   def __init__(self, name, idx, check_type):
     assert check_type in assets.CHECK_TYPES
     super().__init__(name, idx, "skills", {}, {check_type: 1})
@@ -26,7 +25,6 @@ class BonusSkill(assets.Card):
 
 
 class RerollSkill(assets.Card):
-
   def __init__(self, name, idx, check_type):
     assert check_type in assets.SUB_CHECKS
     super().__init__(name, idx, "skills", {}, {})
@@ -40,7 +38,7 @@ class RerollSkill(assets.Card):
     if self.exhausted or state.event_stack[-2].check_type != self.check_type:
       return None
     return events.Sequence(
-        [events.ExhaustAsset(owner, self), events.RerollCheck(owner, state.event_stack[-2])], owner,
+      [events.ExhaustAsset(owner, self), events.RerollCheck(owner, state.event_stack[-2])], owner
     )
 
 
@@ -93,7 +91,6 @@ def CreateSkills():
 
 
 class FluxStabilizer(assets.Asset):
-
   def __init__(self):
     super().__init__("Flux Stabilizer")
 
@@ -119,7 +116,6 @@ class GuardianAngel(assets.Asset):
 
 
 class ExtraDraw(assets.Asset):
-
   def __init__(self, name, draw_type, deck, attribute="draw_count"):
     super().__init__(name)
     self.draw_type = draw_type
@@ -163,7 +159,6 @@ def Archaeology():
 
 
 class Prevention(assets.Asset):
-
   def __init__(self, name, attribute):
     super().__init__(name)
     self.attribute = attribute
@@ -188,7 +183,6 @@ def StrongBody():
 
 
 class TrustFund(assets.Asset):
-
   def __init__(self):
     super().__init__("Trust Fund")
 
@@ -199,7 +193,6 @@ class TrustFund(assets.Asset):
 
 
 class Hunches(assets.Asset):
-
   def __init__(self):
     super().__init__("Hunches")
 
@@ -212,7 +205,6 @@ class Hunches(assets.Asset):
 
 
 class Research(assets.Asset):
-
   def __init__(self):
     super().__init__("Research")
 
@@ -222,14 +214,16 @@ class Research(assets.Asset):
     if len(state.event_stack) < 2 or not isinstance(state.event_stack[-2], events.Check):
       return None
     bad_dice = values.UnsuccessfulDice(state.event_stack[-2])
-    return events.Sequence([
+    return events.Sequence(
+      [
         events.ExhaustAsset(owner, self),
         events.RerollSpecific(state.event_stack[-2].character, state.event_stack[-2], bad_dice),
-    ], owner)
+      ],
+      owner,
+    )
 
 
 class UpkeepRestoreStat(assets.Asset):
-
   def __init__(self, name, stat, verb):
     super().__init__(name)
     self.stat = stat
@@ -244,16 +238,19 @@ class UpkeepRestoreStat(assets.Asset):
       return None
     neighbors = [char for char in state.characters if char.place == owner.place]
     eligible = [
-        char for char in neighbors
-        if getattr(char, self.stat) < getattr(char, "max_"+self.stat)(state)
+      char
+      for char in neighbors
+      if getattr(char, self.stat) < getattr(char, "max_" + self.stat)(state)
     ]
     if not eligible:
       return None
-    gains = {idx: events.Gain(char, {self.stat: 1}, source=self)
-             for idx, char in enumerate(eligible)}
+    gains = {
+      idx: events.Gain(char, {self.stat: 1}, source=self) for idx, char in enumerate(eligible)
+    }
     gains[len(eligible)] = events.Nothing()
     choice = events.MultipleChoice(
-        owner, f"Choose a character to {self.verb}", [char.name for char in eligible] + ["nobody"])
+      owner, f"Choose a character to {self.verb}", [char.name for char in eligible] + ["nobody"]
+    )
     # TODO: Should choosing nobody not exhaust the ability?
     cond = events.Conditional(owner, choice, "choice_index", gains)
     return events.Sequence([events.ExhaustAsset(owner, self), choice, cond], owner)
@@ -269,10 +266,28 @@ def Psychology():
 
 def CreateSpecials():
   abilities = [
-      FluxStabilizer(), Studious(), ShrewdDealer(), HometownAdvantage(), MagicalGift(),
-      PsychicSensitivity(), Archaeology(), StrongMind(), StrongBody(), TrustFund(), Hunches(),
-      Physician(), Psychology(), Research(), GuardianAngel(),
-      Synergy(), TeamPlayer(), BreakingTheLimits(), AbnormalFocus(), ThickSkulled(),
-      Streetwise(), BlessedIsTheChild(), Minor(),
+    FluxStabilizer(),
+    Studious(),
+    ShrewdDealer(),
+    HometownAdvantage(),
+    MagicalGift(),
+    PsychicSensitivity(),
+    Archaeology(),
+    StrongMind(),
+    StrongBody(),
+    TrustFund(),
+    Hunches(),
+    Physician(),
+    Psychology(),
+    Research(),
+    GuardianAngel(),
+    Synergy(),
+    TeamPlayer(),
+    BreakingTheLimits(),
+    AbnormalFocus(),
+    ThickSkulled(),
+    Streetwise(),
+    BlessedIsTheChild(),
+    Minor(),
   ]
   return {ability.name: ability for ability in abilities}

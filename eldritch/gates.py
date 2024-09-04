@@ -1,5 +1,4 @@
 class Gate:
-
   def __init__(self, name, idx, difficulty, dimension):
     self.name = name
     self.idx = idx
@@ -21,14 +20,14 @@ class Gate:
 
 def CreateGates():
   gate_info = [
-      ("Abyss", -2, "hex"),
-      ("Another Dimension", 0, "square"),
-      ("City", 0, "triangle"),
-      ("Great Hall", -1, "star"),
-      ("Plateau", -1, "diamond"),
-      ("Sunken City", -3, "plus"),
-      ("Dreamlands", 1, "slash"),
-      ("Pluto", -2, "circle"),
+    ("Abyss", -2, "hex"),
+    ("Another Dimension", 0, "square"),
+    ("City", 0, "triangle"),
+    ("Great Hall", -1, "star"),
+    ("Plateau", -1, "diamond"),
+    ("Sunken City", -3, "plus"),
+    ("Dreamlands", 1, "slash"),
+    ("Pluto", -2, "circle"),
   ]
   gates = []
   for info in gate_info:
