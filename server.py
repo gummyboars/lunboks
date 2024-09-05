@@ -3,7 +3,8 @@
 import argparse
 import asyncio
 from http import HTTPStatus
-from http.server import HTTPServer, BaseHTTPRequestHandler
+from http.server import (HTTPServer,
+    BaseHTTPRequestHandler)
 import json
 import os
 import random
