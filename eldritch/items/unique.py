@@ -1,7 +1,12 @@
 import operator
+import typing
 
 from eldritch import events, values
 from .base import Item, Weapon, OneshotWeapon, Tome
+
+if typing.TYPE_CHECKING:
+  from eldritch.eldritch import GameState
+
 
 __all__ = [
   "CreateUnique",
@@ -153,7 +158,7 @@ class BlueWatcher(Item):
       return None
     if event.is_done():
       return None
-    if not owner == event.character:
+    if owner != event.character:
       return None
     if owner.stamina < 2:
       # TODO: What if the gangster wants to do this with one stamina?
@@ -211,7 +216,7 @@ class ElderSign(Item):
   def __init__(self, idx):
     super().__init__("Elder Sign", idx, "unique", {}, {}, None, 5)
 
-  def get_usable_interrupt(self, event, owner, state: "eldritch.eldritch.GameState"):
+  def get_usable_interrupt(self, event, owner, state: "GameState"):
     if (
       isinstance(event, events.MultipleChoice)
       and event.prompt() == "Close the gate?"
@@ -244,7 +249,7 @@ class EnchantedJewelry(Item):
     if not isinstance(event, events.GainOrLoss):
       return None
 
-    if not owner == event.character:
+    if owner != event.character:
       return None
 
     loss = event.losses.get("stamina", 0)
@@ -336,7 +341,7 @@ class ObsidianStatue(Item):
     super().__init__("Obsidian Statue", idx, "unique", {}, {}, None, 4)
 
   def get_usable_interrupt(self, event, owner, state):
-    if not isinstance(event, events.GainOrLoss) or not event.character == owner:
+    if not isinstance(event, events.GainOrLoss) or event.character != owner:
       return None
 
     types = [
@@ -382,7 +387,7 @@ class OuterGodlyFlute(Item):
     seq = [events.DiscardSpecific(owner, [self]), events.PassCombatRound(combat_round)]
     for monster in state.monsters:
       if monster.place == owner.place and monster != event.monster:
-        seq.append(events.TakeTrophy(owner, monster))
+        seq.append(events.TakeTrophy(owner, monster))  # noqa: PERF401
     seq.append(events.Loss(owner, {"stamina": 3, "sanity": 3}))
     return events.Sequence(seq, owner)
 

@@ -29,8 +29,4 @@ def CreateGates():
     ("Dreamlands", 1, "slash"),
     ("Pluto", -2, "circle"),
   ]
-  gates = []
-  for info in gate_info:
-    for idx in range(2):
-      gates.append(Gate(info[0], idx, *info[1:]))
-  return gates
+  return [Gate(info[0], idx, *info[1:]) for info in gate_info for idx in range(2)]

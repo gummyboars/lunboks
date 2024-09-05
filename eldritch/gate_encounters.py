@@ -285,10 +285,9 @@ def Plateau13(char) -> events.Event:
   trade = events.Gain(char, {"dollars": 6})
   lost = events.LostInTimeAndSpace(char)
   prompt = "Trade with the dangerous hooved folk?"
-  choice = events.BinaryChoice(
+  return events.BinaryChoice(
     char, prompt, "Yes", "No", events.PassFail(char, check, trade, lost), events.Nothing()
   )
-  return choice
 
 
 def Other13(char) -> events.Event:
@@ -797,8 +796,7 @@ def Other40(char) -> events.Event:
 
 def SunkenCity41(char) -> events.Event:
   die = events.DiceRoll(char, 1, bad=[])
-  seq = events.Sequence([die, events.Loss(char, {"sanity": values.Calculation(die, "sum")})], char)
-  return seq
+  return events.Sequence([die, events.Loss(char, {"sanity": values.Calculation(die, "sum")})], char)
 
 
 def City41(char) -> events.Event:

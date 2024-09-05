@@ -1,4 +1,3 @@
-import abc
 import collections
 from typing import TYPE_CHECKING, Optional
 
@@ -15,10 +14,12 @@ COMBAT_SUBTYPES = {"physical", "magical"}
 MAX_TYPES = {"max_sanity", "max_stamina"}
 
 
-class Asset(metaclass=abc.ABCMeta):
+class Asset:
   # pylint: disable=unused-argument
 
-  JSON_ATTRS = {"name", "handle", "active", "exhausted", "hands", "in_use", "max_tokens", "tokens"}
+  JSON_ATTRS = frozenset(
+    {"name", "handle", "active", "exhausted", "hands", "in_use", "max_tokens", "tokens"}
+  )
 
   def __init__(self, name, idx=None):
     self._name = name
@@ -93,7 +94,7 @@ class Asset(metaclass=abc.ABCMeta):
 
 
 class Card(Asset):
-  DECKS = {"common", "unique", "spells", "skills", "allies", "tradables", "specials"}
+  DECKS = frozenset({"common", "unique", "spells", "skills", "allies", "tradables", "specials"})
   VALID_BONUS_TYPES = CHECK_TYPES | SUB_CHECKS.keys() | COMBAT_SUBTYPES | MAX_TYPES
   VALID_BONUS_TYPES |= {f"{ct}_check" for ct in CHECK_TYPES | SUB_CHECKS.keys()}
 
@@ -183,7 +184,8 @@ class StatIncreaser(Card):
     return events.Sequence([restore, discard], owner)
 
   def is_usable(self, event, owner, state):  # pylint: disable=unused-argument
-    """
+    """Determines whether this is usable.
+
     when can you discard this?
     - after items have refreshed so that you can use some spell during upkeep
     - when adjusting sliders

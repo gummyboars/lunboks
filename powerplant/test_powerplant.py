@@ -72,7 +72,7 @@ class BaseBaseTest(unittest.TestCase):
   NUM_PLAYERS = 5  # Carefully chosen to not throw out any power plants to start the game.
 
   def setUp(self):
-    colors = sorted(list(powerplant.PowerPlantGame.COLORS))
+    colors = sorted(powerplant.PowerPlantGame.COLORS)
     players = [powerplant.Player(name=f"p{x}", color=colors[x]) for x in range(self.NUM_PLAYERS)]
     with mock.patch.object(cities, "CreateCities", new=SampleCities):
       with mock.patch.object(plants, "CreatePlants", new=SamplePlants):
@@ -993,7 +993,7 @@ class ShuffleResourcesTest(BaseTest):
 
 class AdvanceStageTest(unittest.TestCase):
   def setUpGame(self, num):
-    colors = sorted(list(powerplant.PowerPlantGame.COLORS))
+    colors = sorted(powerplant.PowerPlantGame.COLORS)
     players = [powerplant.Player(name=f"p{x}", color=colors[x], money=999) for x in range(num)]
     game = powerplant.GameState(players, "Germany", "old")
     # Replace plants with plants numbered > 14 to avoid cycling out small plants.
@@ -1308,7 +1308,7 @@ class AdvanceStageTest(unittest.TestCase):
 
 class BureaucracyTest(BaseTest):
   def setUp(self):
-    colors = sorted(list(powerplant.PowerPlantGame.COLORS))
+    colors = sorted(powerplant.PowerPlantGame.COLORS)
     players = [powerplant.Player(name=f"p{x}", color=colors[x], money=0) for x in range(4)]
     with mock.patch.object(plants, "CreatePlants", new=SamplePlants):
       self.game = powerplant.GameState(players, "Germany", "old")

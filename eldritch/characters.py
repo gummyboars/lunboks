@@ -136,7 +136,7 @@ class BaseCharacter(metaclass=abc.ABCMeta):
 
   def combat(self, state, attributes):
     combat = self.fight(state)
-    for bonus_type in {"physical", "magical", "combat"}:
+    for bonus_type in ["physical", "magical", "combat"]:
       combat += self.bonus(bonus_type, state, attributes, check=True)
     return combat
 
@@ -239,12 +239,11 @@ class BaseCharacter(metaclass=abc.ABCMeta):
     ]
 
   def get_usable_interrupts(self, event, state):
-    interrupts = {
+    return {
       pos.handle: pos.get_usable_interrupt(event, self, state)
       for pos in self.possessions
       if (pos.get_usable_interrupt(event, self, state) and state.get_override(pos, "can_use"))
     }
-    return interrupts
 
   def get_spendables(self, event, state):
     spendables = {
@@ -325,9 +324,9 @@ class BaseCharacter(metaclass=abc.ABCMeta):
 
 
 class Character(BaseCharacter):
-  """A character with the standard sliders"""
+  """A character with the standard sliders."""
 
-  _slider_names = ["speed_sneak", "fight_will", "lore_luck"]
+  _slider_names = ("speed_sneak", "fight_will", "lore_luck")
 
   def __init__(
     self,

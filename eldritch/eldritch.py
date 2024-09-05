@@ -21,13 +21,13 @@ from eldritch import ancient_ones
 from game import (  # pylint: disable=unused-import
   BaseGame,
   CustomEncoder,
-  InvalidInput,
+  InvalidInput,  # noqa: F401
   UnknownMove,
   InvalidMove,
   InvalidPlayer,
   NotYourTurn,
-  ValidatePlayer,
-  TooManyPlayers,
+  ValidatePlayer,  # noqa: F401
+  TooManyPlayers,  # noqa: F401
 )
 
 
@@ -35,46 +35,36 @@ random = SystemRandom()
 
 
 class GameState:
-  DEQUE_ATTRIBUTES = {
-    "common",
-    "unique",
-    "spells",
-    "skills",
-    "allies",
-    "specials",
-    "boxed_allies",
-    "gates",
-  }
-  HIDDEN_ATTRIBUTES = {
-    "event_stack",
-    "interrupt_stack",
-    "trigger_stack",
-    "log_stack",
-    "mythos",
-    "gate_cards",
-  }
-  CUSTOM_ATTRIBUTES = {
-    "characters",
-    "all_characters",
-    "environment",
-    "mythos",
-    "other_globals",
-    "ancient_one",
-    "all_ancients",
-    "monsters",
-    "usables",
-    "spendables",
-  }
-  TURN_PHASES = ["upkeep", "movement", "encounter", "otherworld", "mythos"]
-  AWAKENED_PHASES = ["upkeep", "attack", "ancient"]
-  TURN_TYPES = {
+  DEQUE_ATTRIBUTES = frozenset(
+    {"common", "unique", "spells", "skills", "allies", "specials", "boxed_allies", "gates"}
+  )
+  HIDDEN_ATTRIBUTES = frozenset(
+    {"event_stack", "interrupt_stack", "trigger_stack", "log_stack", "mythos", "gate_cards"}
+  )
+  CUSTOM_ATTRIBUTES = frozenset(
+    {
+      "characters",
+      "all_characters",
+      "environment",
+      "mythos",
+      "other_globals",
+      "ancient_one",
+      "all_ancients",
+      "monsters",
+      "usables",
+      "spendables",
+    }
+  )
+  TURN_PHASES = ("upkeep", "movement", "encounter", "otherworld", "mythos")
+  AWAKENED_PHASES = ("upkeep", "attack", "ancient")
+  TURN_TYPES = {  # noqa: RUF012
     "upkeep": events.Upkeep,
     "movement": events.Movement,
     "encounter": events.EncounterPhase,
     "otherworld": events.OtherWorldPhase,
     "mythos": events.Mythos,
   }
-  AWAKENED_TURNS = {
+  AWAKENED_TURNS = {  # noqa: RUF012
     "upkeep": events.Upkeep,
     "attack": events.InvestigatorAttack,
     "ancient": events.AncientAttack,
@@ -206,7 +196,7 @@ class GameState:
           keep.append(card)
         else:
           rest.append(card)
-      assert not names, f"could not find {str(names)} for {char.name} in {deck}"
+      assert not names, f"could not find {names!s} for {char.name} in {deck}"
       char.possessions.extend(keep)
       cards.extend(rest)
 
@@ -439,7 +429,7 @@ class GameState:
         ]
         if choice.none_choice is not None:
           output["choice"]["monsters"] += [choice.none_choice]
-      elif isinstance(choice, events.FightOrEvadeChoice):
+      elif isinstance(choice, events.FightOrEvadeChoice):  # noqa: SIM114
         output["choice"]["choices"] = choice.choices
       elif isinstance(choice, events.MultipleChoice):
         output["choice"]["choices"] = choice.choices
@@ -558,9 +548,9 @@ class GameState:
       self.handle_remove_trophy(data.get("char"), data.get("handle"))
     elif data.get("type") == "redo_sliders":
       self.handle_redo_sliders(data.get("char"))
-    elif data.get("type") == "set_encounter":
+    elif data.get("type") == "set_encounter":  # noqa: SIM114
       self.handle_set_card(data.get("card"))
-    elif data.get("type") == "set_mythos":
+    elif data.get("type") == "set_mythos":  # noqa: SIM114
       self.handle_set_card(data.get("card"))
     elif data.get("type") == "set_gate":
       self.handle_set_card(data.get("card"))
@@ -761,9 +751,8 @@ class GameState:
 
     # Lost investigators are devoured when the ancient one awakens.
     if isinstance(event, events.Awaken):
-      for char in self.characters:
-        if char.place == self.places["Lost"]:
-          triggers.append(events.Devoured(char))
+      devour = [events.Devoured(cha) for cha in self.characters if cha.place == self.places["Lost"]]
+      triggers.extend(devour)
 
     # Must fight monsters when you end your movement.
     if isinstance(event, (events.CityMovement, events.WagonMove, events.Return)):
@@ -1224,7 +1213,7 @@ class GameState:
       return False
     if isinstance(event, events.GateChoice) and event.overridden:
       return False
-    if isinstance(self.event_stack[-2], events.Return) and isinstance(event, events.GateChoice):
+    if isinstance(self.event_stack[-2], events.Return) and isinstance(event, events.GateChoice):  # noqa: SIM103
       return True
     return False
 
@@ -1391,7 +1380,7 @@ class EldritchGame(BaseGame):
       if not self.connected:
         self.host = None
       else:
-        self.host = list(self.connected)[0]
+        self.host = next(iter(self.connected))
 
   def handle(self, session, data):
     if not isinstance(data, dict):

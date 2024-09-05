@@ -12,22 +12,26 @@ class MonsterCup:
 
 
 class Monster:
-  MOVEMENTS = ["unique", "flying", "stalker", "aquatic", "fast", "stationary", "normal"]
-  DIMENSIONS = {"circle", "triangle", "moon", "hex", "square", "diamond", "star", "slash", "plus"}
-  DIFFICULTIES = {"horror", "combat", "evade"}
-  DAMAGES = {"horror", "combat"}
-  ATTRIBUTES = {
-    "magical resistance",
-    "magical immunity",
-    "physical resistance",
-    "physical immunity",
-    "undead",
-    "ambush",
-    "elusive",
-    "endless",
-    "mask",
-    "spawn",
-  }
+  MOVEMENTS = ("unique", "flying", "stalker", "aquatic", "fast", "stationary", "normal")
+  DIMENSIONS = frozenset(
+    {"circle", "triangle", "moon", "hex", "square", "diamond", "star", "slash", "plus"}
+  )
+  DIFFICULTIES = frozenset({"horror", "combat", "evade"})
+  DAMAGES = frozenset({"horror", "combat"})
+  ATTRIBUTES = frozenset(
+    {
+      "magical resistance",
+      "magical immunity",
+      "physical resistance",
+      "physical immunity",
+      "undead",
+      "ambush",
+      "elusive",
+      "endless",
+      "mask",
+      "spawn",
+    }
+  )
   ALL_ATTRIBUTES = ATTRIBUTES | {"nightmarish", "overwhelming"}
 
   def __init__(
@@ -531,7 +535,7 @@ def Zombie():
 
 
 class EventMonster(Monster):
-  """A pseudo-monster used for events like Bank3, Hospital2, and Graveyard3"""
+  """A pseudo-monster used for events like Bank3, Hospital2, and Graveyard3."""
 
   def __init__(self, name, rating, pass_event, fail_event, toughness=1, attributes=None):
     super().__init__(

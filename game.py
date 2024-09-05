@@ -9,7 +9,7 @@ import sys
 import traceback
 
 
-class GameException(Exception):
+class GameException(Exception):  # noqa: N818
   pass
 
 
@@ -129,7 +129,7 @@ class GameHandler:
       return
     try:
       new_game = self.game_class.parse_json(data)
-    except Exception as err:  # pylint: disable=broad-except
+    except Exception as err:  # pylint: disable=broad-except # noqa: BLE001
       print(sys.exc_info()[0])
       print(sys.exc_info()[1])
       traceback.print_tb(sys.exc_info()[2])
@@ -163,7 +163,7 @@ class GameHandler:
   async def handle(self, websocket, session, raw_data):
     try:
       data = json.loads(raw_data, object_pairs_hook=collections.OrderedDict)
-    except Exception as err:  # pylint: disable=broad-except
+    except Exception as err:  # pylint: disable=broad-except # noqa: BLE001
       await self.push_error(websocket, str(err))
       return
     pushed = False
@@ -185,7 +185,7 @@ class GameHandler:
       else:
         await self.push_error(websocket, str(err))
       # Intentionally fall through so that we can push the new state.
-    except Exception as err:  # pylint: disable=broad-except
+    except Exception:  # pylint: disable=broad-except # noqa: BLE001
       print(sys.exc_info()[0])
       print(sys.exc_info()[1])
       traceback.print_tb(sys.exc_info()[2])
@@ -199,8 +199,7 @@ class GameHandler:
     callbacks = []
     for session, ws_list in self.websockets.items():
       data = self.game.for_player(session)
-      for websocket in ws_list:
-        callbacks.append(websocket.send(data))
+      callbacks.extend([websocket.send(data) for websocket in ws_list])
     await asyncio.gather(*callbacks)
 
   async def push_error(self, websocket, err):

@@ -5,7 +5,7 @@ __all__ = ["Item", "Weapon", "OneshotWeapon", "Tome"]
 
 
 class Item(Card):
-  ITEM_TYPES = {"weapon", "tome", None}
+  ITEM_TYPES = ("weapon", "tome", None)
 
   def __init__(
     self, name, idx, deck, active_bonuses, passive_bonuses, hands, price, item_type=None

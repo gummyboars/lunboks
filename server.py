@@ -56,7 +56,7 @@ class MyHandler(BaseHTTPRequestHandler):
       game.handle_get(GLOBAL_LOOP, self, path.rstrip("/"), args)
       return
 
-    if path == "/":
+    if path == "/":  # noqa: SIM108
       filepath = "/".join([ROOT_DIR, "index.html"])
     else:
       filepath = "/".join([ROOT_DIR, path])
@@ -95,7 +95,7 @@ class MyHandler(BaseHTTPRequestHandler):
       new_session = f"session={uuid.uuid4()}"
       self.send_header("Set-Cookie", new_session)
       print(f"setting session cookie {new_session}")
-    if filepath.endswith(".jpg") or filepath.endswith(".jpeg") or filepath.endswith(".png"):
+    if filepath.endswith((".jpg", ".jpeg", ".png")):
       self.send_header("Cache-Control", "public, max-age=604800")
 
     self.end_headers()
@@ -157,9 +157,7 @@ def CreateGame(http_handler, data):
 def GenerateId(length):
   generated = None
   for _ in range(5):
-    chars = []
-    for _ in range(length):
-      chars.append(random.choice(string.ascii_lowercase))
+    chars = [random.choice(string.ascii_lowercase) for _ in range(length)]
     generated = "".join(chars)
     # TODO: concurrency
     if generated not in GAMES:
@@ -233,9 +231,9 @@ async def SendGameUpdates():
 
 def ws_main(loop):
   port = 8081  # TODO: this is hard-coded into various .js files.
-  global GLOBAL_WS_SERVER  # pylint: disable=global-statement
+  global GLOBAL_WS_SERVER  # pylint: disable=global-statement # noqa: PLW0603
   asyncio.set_event_loop(loop)
-  asyncio.ensure_future(SendGameUpdates())
+  asyncio.ensure_future(SendGameUpdates())  # noqa: RUF006
   start_server = websockets.server.serve(HandleWebsocket, "", port)
   GLOBAL_WS_SERVER = loop.run_until_complete(start_server)
   print(f"Websocket server started on port {port}")

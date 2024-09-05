@@ -40,6 +40,7 @@ disable=missing-module-docstring,
         unused-wildcard-import,
         wildcard-import,
         wrong-import-position,
+        line-too-long,
 
 [REPORTS]
 score=no

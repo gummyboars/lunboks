@@ -36,7 +36,7 @@ class Secretary(characters.Character):
 
 
 class Spy(characters.BaseCharacter):
-  _slider_names = ["fight_sneak", "lore_will", "speed_luck"]
+  _slider_names = ("fight_sneak", "lore_will", "speed_luck")
 
   def __init__(self):
     super().__init__("Spy", 1, "Newspaper")

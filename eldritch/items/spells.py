@@ -298,7 +298,7 @@ class Mists(Spell):
 
 
 class RedSign(CombatSpell):
-  INVALID_ATTRIBUTES = {"magical immunity", "elusive", "mask", "spawn"}
+  INVALID_ATTRIBUTES = frozenset({"magical immunity", "elusive", "mask", "spawn"})
 
   def __init__(self, idx):
     super().__init__("Red Sign", idx, {}, 1, -1, 1)
@@ -357,7 +357,7 @@ class FindGate(Spell):
   def movement_in_other_world(self, owner, state):
     if state.turn_phase != "movement" or state.characters[state.turn_idx] != owner:
       return False
-    if not isinstance(owner.place, places.OtherWorld):
+    if not isinstance(owner.place, places.OtherWorld):  # noqa: SIM103
       return False
     return True
 

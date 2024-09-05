@@ -13,7 +13,6 @@ from game import InvalidMove, InvalidInput
 
 if TYPE_CHECKING:
   from eldritch.eldritch import GameState
-  from eldritch import items
 
 random = SystemRandom()
 
@@ -882,7 +881,7 @@ class SplitGain(Event):
       return
 
     prompt = f"How much of the {amount} do you want to go to {self.attr1}?"
-    self.choice = MultipleChoice(self.character, prompt, list(range(0, amount + 1)))
+    self.choice = MultipleChoice(self.character, prompt, list(range(amount + 1)))
     state.event_stack.append(self.choice)
 
   def is_resolved(self):
@@ -1098,7 +1097,7 @@ class Devoured(StackClearMixin, Event):
       self.character.place = None
       for pos in self.character.possessions:
         if hasattr(pos, "deck"):
-          getattr(state, getattr(pos, "deck")).append(pos)
+          getattr(state, pos.deck).append(pos)
       self.character.possessions.clear()
       if state.game_stage == "awakened":
         if all(char.gone for char in state.characters):
@@ -1198,10 +1197,7 @@ class LostInTimeAndSpace(Sequence):
 class BlessCurse(Sequence):
   # TODO: make a subclass of conditional?
   def __init__(self, character, positive):
-    if positive:
-      card = "Blessing"
-    else:
-      card = "Curse"
+    card = "Blessing" if positive else "Curse"
     draw = DrawNamed(character, "specials", card)
     super().__init__([draw, KeepDrawn(character, draw)], character)
 
@@ -1355,7 +1351,7 @@ class LookAtItems(Event):
         return f"[{self.character.name}] draws {self.draw_count} cards from the {self.deck} deck"
       return (
         f"[{self.character.name}] draws {self.draw_count} {self.target_type} "
-        + f"cards from the {self.deck} deck"
+        f"cards from the {self.deck} deck"
       )
     return f"[{self.character.name}] drew " + ", ".join(f"[{c.name}]" for c in self.drawn)
 
@@ -2734,7 +2730,7 @@ class Conditional(Event):
     else:
       value = getattr(self.condition, self.attribute)
 
-    for min_result in reversed(sorted(self.result_map)):
+    for min_result in sorted(self.result_map, reverse=True):
       if value >= min_result:
         self.result = self.result_map[min_result]
         state.event_stack.append(self.result)
@@ -2850,7 +2846,7 @@ class MultipleChoice(ChoiceEvent):
       return f"[{self.character.name}] did not get to choose"
     if self.choice is None:
       return f"[{self.character.name}] must choose one of" + ",".join(f" {c}" for c in self.choices)
-    return f"[{self.character.name}] chose {str(self.choice)}"
+    return f"[{self.character.name}] chose {self.choice}"
 
   def prompt(self):
     return self._prompt
@@ -3040,8 +3036,8 @@ class SpendMultiChoiceMixin(SpendMixin):
     self.spendable = set()
     self.remaining_spend = [value is not None for value in spends]
     self.remaining_max = [value is not None for value in spends]
-    for spend in spends:
-      spend = spend or values.SpendNothing()
+    for spnd in spends:
+      spend = spnd or values.SpendNothing()
       assert isinstance(spend, values.SpendValue)
       self.spends.append(spend)
       spend.spend_event = self
@@ -3393,7 +3389,7 @@ class MapChoice(ChoiceEvent, metaclass=abc.ABCMeta):
 
 
 class PlaceChoice(MapChoice):
-  VALID_FILTERS = {"streets", "locations", "open", "closed"}
+  VALID_FILTERS = frozenset({"streets", "locations", "open", "closed"})
 
   def __init__(
     self, character, prompt, choices=None, choice_filters=None, none_choice=None, annotation=None
@@ -3503,7 +3499,7 @@ class OverrideGateChoice(Event):
     return self.done
 
   def log(self, state) -> str:
-    changes = [f"{key} to {repr(value)}" for key, value in self.changes.items()]
+    changes = [f"{key} to {value!r}" for key, value in self.changes.items()]
     if self.done:
       return "Gate choice updated " + ", ".join(changes)
     return "Gate choice to update " + ", ".join(changes)
@@ -3915,7 +3911,7 @@ class EvadeRound(Event):
       return f"[{self.character.name}] evaded a [{self.monster.name}]"
     return (
       f"[{self.character.name}] did not evade the [{self.monster.name}]"
-      + " and lost any remaining movement"
+      " and lost any remaining movement"
     )
 
 
@@ -4395,7 +4391,7 @@ class CloseGate(Event):
     self.seal_choice: Optional[ChoiceEvent] = None
     self.sealed = None
 
-  def resolve(self, state: "eldritch.GameState"):
+  def resolve(self, state: "GameState"):
     if isinstance(self.location_name, MapChoice):
       if self.location_name.is_cancelled() or self.location_name.choice is None:
         self.cancelled = True
@@ -5394,9 +5390,7 @@ class CloseLocation(Event):
     if place.closed and self.evict:
       # TODO: is it possible for a street to evict on close?
       to_place = next(iter(place.connections))
-      evictions = []
-      for char in chars_in_place:
-        evictions.append(ForceMovement(char, to_place.name))
+      evictions = [ForceMovement(char, to_place.name) for char in chars_in_place]
       for monster in monsters_in_place:
         monster.place = to_place
       state.event_stack.append(Sequence(evictions))

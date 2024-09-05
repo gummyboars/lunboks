@@ -71,8 +71,8 @@ class TestFarmhandAbility(EventTest):
     self.assertEqual(self.char.place.name, "Diner")
     self.char.place = self.state.places["Northside"]
     # Two gates - one to the Abyss, and one to Pluto. The Abyss gate is closer than the Pluto gate.
-    self.state.places["Isle"].gate = [gate for gate in self.state.gates if gate.name == "Abyss"][0]
-    self.state.places["Woods"].gate = [gate for gate in self.state.gates if gate.name == "Pluto"][0]
+    self.state.places["Isle"].gate = next(gate for gate in self.state.gates if gate.name == "Abyss")
+    self.state.places["Woods"].gate = next(gat for gat in self.state.gates if gat.name == "Pluto")
     self.char.fight_will_slider = 3
     self.assertEqual(self.char.fight(self.state), 4)
     self.assertEqual(self.char.will(self.state), 1)
