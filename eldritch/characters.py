@@ -186,7 +186,7 @@ class BaseCharacter(metaclass=abc.ABCMeta):
         successes += roll.count(6)
     return successes
 
-  def is_success(self, die, check_type):  # pylint: disable=unused-argument
+  def is_success(self, die, check_type):
     return die >= 5 - self.bless_curse
 
   def hands_available(self):
