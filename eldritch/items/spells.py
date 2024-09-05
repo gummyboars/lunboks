@@ -55,7 +55,7 @@ class Spell(Item):
     self.choice = None
     self.check = None
 
-  def get_difficulty(self, state):
+  def get_difficulty(self, state):  # pylint: disable=unused-argument
     return self.difficulty
 
   def get_required_successes(self, state):  # pylint: disable=unused-argument
