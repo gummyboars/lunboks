@@ -5,17 +5,7 @@ from random import SystemRandom
 from typing import List, Dict, Optional, Tuple
 import os
 
-from game import (
-  BaseGame,
-  ValidatePlayer,
-  CustomEncoder,
-  InvalidInput,
-  UnknownMove,
-  InvalidMove,
-  InvalidPlayer,
-  TooManyPlayers,
-  NotYourTurn,
-)
+from game import ( BaseGame, ValidatePlayer, CustomEncoder, InvalidInput, UnknownMove, InvalidMove, InvalidPlayer, TooManyPlayers, NotYourTurn,)
 
 random = SystemRandom()
 
