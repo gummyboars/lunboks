@@ -20,7 +20,7 @@ jobs:
     steps:
     - uses: actions/checkout@v2
       with:
-        fetch-depth: 2
+        ref: ${{ github.head_ref }}
     - name: Set up Python 3.7
       uses: actions/setup-python@v2
       with:
