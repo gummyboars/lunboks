@@ -5196,7 +5196,6 @@ class MoveMonsters(Event):
 
     if not self.moves.is_done():
       state.event_stack.append(self.moves)
-      return
 
   def is_resolved(self):
     return self.moves is not None and self.moves.is_done()

@@ -268,7 +268,7 @@ class CornerLocation(collections.namedtuple("CornerLocation", ["x", "y"])):
       lower_hex = TileLocation(self.x - 1, self.y + 1)
       upper_hex = TileLocation(self.x - 1, self.y - 1)
       middle_hex = TileLocation(self.x + 2, self.y)
-    return [lower_hex, upper_hex, middle_hex]
+    return [lower_hex, upper_hex, middle_hex]  # pylint: disable=possibly-used-before-assignment
 
   def get_adjacent_corners(self):
     """Returns locations of adjacent corners.
