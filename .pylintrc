@@ -41,6 +41,7 @@ disable=missing-module-docstring,
         wildcard-import,
         wrong-import-position,
         line-too-long,
+        cylic-import,
 
 [REPORTS]
 score=no
