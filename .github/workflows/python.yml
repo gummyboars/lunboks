@@ -14,8 +14,7 @@ permissions:
   contents: write
 
 jobs:
-  auto-format:
-    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+  format-check:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
@@ -29,35 +28,26 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements-dev.txt
+    - name: Format check with Ruff
+      if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository
+      run: |
+        ruff format --diff .
     - name: Auto-format code with Ruff
+      if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
       run: |
         ruff format .
     - name: Check for changes
+      if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
       id: git-check
       run: echo "modified=$(if git diff-index --quiet HEAD --; then echo "false"; else echo "true"; fi)" >> $GITHUB_OUTPUT
     - name: Push Changes
-      if: steps.git-check.outputs.modified == 'true'
+      if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && steps.git-check.outputs.modified == 'true'
       run: |
         git config --global user.name 'Lint Action'
         git config --global user.email 'lint-action@samuelmeuli.com'
         git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}
         git commit -am "Auto-format with Ruff"
         git push
-  format-check:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v2
-    - name: Set up Python 3.7
-      uses: actions/setup-python@v2
-      with:
-        python-version: 3.7
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements-dev.txt
-    - name: Format check with Ruff
-      run: |
-        ruff format --diff .
   ruff-check:
     runs-on: ubuntu-latest
     steps:
