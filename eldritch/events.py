@@ -5204,6 +5204,9 @@ class MoveMonsters(Event):
     movement = ", ".join(self.white_dimensions) + " move on white; "
     return movement + ", ".join(self.black_dimensions) + " move on black"
 
+  def animated(self):
+    return True
+
 
 class MoveMonster(Event):
   def __init__(self, monster, color):

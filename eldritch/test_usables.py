@@ -18,8 +18,10 @@ from eldritch.events import *
 from eldritch import gates
 from eldritch import gate_encounters
 from eldritch import items
+from eldritch import location_specials
 from eldritch import monsters
-from eldritch.test_events import EventTest, Canceller
+from eldritch import mythos
+from eldritch.test_events import EventTest, Canceller, NoMythos
 
 from game import InvalidMove
 
@@ -1624,6 +1626,236 @@ class SpendingOutputTest(EventTest):
       self.assertEqual(data["choice"]["spendable"], ["clues"])
       self.assertIsNotNone(data["spendables"])
       self.assertIn("Research Materials0", data["spendables"])
+
+
+class GetStatIncreaserTest(EventTest):
+  def setUp(self):
+    super().setUp()
+    self.state.allies.append(assets.Dog())
+
+  def testGainStats(self):
+    self.char.sanity = 4
+    self.state.event_stack.append(DrawSpecific(self.char, "allies", "Dog"))
+    self.resolve_until_done()
+
+    self.assertEqual(len(self.char.possessions), 1)
+    self.assertEqual(self.char.sanity, 5)
+    self.assertEqual(self.char.max_sanity(self.state), 6)
+
+  def testGainAtMax(self):
+    self.char.sanity = 5
+    self.state.event_stack.append(Draw(self.char, "allies", 1))
+    self.resolve_until_done()
+
+    self.assertEqual(len(self.char.possessions), 1)
+    self.assertEqual(self.char.sanity, 6)
+    self.assertEqual(self.char.max_sanity(self.state), 6)
+
+
+class StatIncreaserTest(EventTest):
+  def setUp(self):
+    super().setUp()
+    self.char.possessions.append(assets.Dog())
+
+  def testUsableInUpkeep(self):
+    self.state.turn_phase = "upkeep"
+    self.state.event_stack.append(Upkeep(self.char))
+    sliders = self.resolve_to_choice(SliderInput)
+    self.assertIn("Dog", self.state.usables[0])
+    sliders.resolve(self.state, "done", None)
+    self.resolve_until_done()
+
+  def testNotUsableInUpkeepIfTurnIsLost(self):
+    self.state.turn_phase = "upkeep"
+    self.char.lose_turn_until = self.state.turn_number + 3
+    self.state.event_stack.append(Upkeep(self.char))
+    self.resolve_until_done()
+
+  def testUsableDuringCityMovement(self):
+    self.state.turn_phase = "movement"
+    self.state.event_stack.append(Movement(self.char))
+    move = self.resolve_to_choice(CityMovement)
+    self.assertIn("Dog", self.state.usables[0])
+    move.resolve(self.state, "done")
+    self.resolve_until_done()
+
+  def testNotUsableWhenDelayed(self):  # FAQ page 5
+    self.state.turn_phase = "movement"
+    self.char.delayed_until = self.state.turn_number + 3
+    self.state.event_stack.append(Movement(self.char))
+    self.resolve_until_done()
+
+  def testUsableMovingInOtherWorld(self):
+    self.state.turn_phase = "movement"
+    self.char.place = self.state.places["City1"]
+    self.state.event_stack.append(Movement(self.char))
+    self.resolve_to_usable(0, "Dog", Sequence)
+    self.state.done_using[0] = True
+    self.resolve_until_done()
+
+  def testUsableReturningFromOtherWorld(self):
+    self.state.turn_phase = "movement"
+    self.state.places["Isle"].gate = next(gate for gate in self.state.gates if gate.name == "City")
+    self.char.place = self.state.places["City2"]
+    self.state.event_stack.append(Movement(self.char))
+    ret = self.resolve_to_choice(GateChoice)
+    self.assertIn("Dog", self.state.usables[0])
+    ret.resolve(self.state, "Isle")
+    self.resolve_until_done()
+
+  def testUsableBeforeEncounter(self):
+    self.state.turn_phase = "encounter"
+    self.state.event_stack.append(EncounterPhase(self.char))
+    self.resolve_to_usable(0, "Dog", Sequence)
+    self.assertIsInstance(self.state.event_stack[-1], DrawEncounter)
+    self.state.done_using[0] = True
+    self.resolve_until_done()
+
+  def testUsableBeforeTravel(self):
+    self.state.turn_phase = "encounter"
+    self.state.places["Isle"].gate = next(gate for gate in self.state.gates if gate.name == "City")
+    self.char.place = self.state.places["Isle"]
+    self.state.event_stack.append(EncounterPhase(self.char))
+    self.resolve_to_usable(0, "Dog", Sequence)
+    self.assertIsInstance(self.state.event_stack[-1], Travel)
+    self.state.done_using[0] = True
+    self.resolve_until_done()
+
+  def testNotUsableBeforeTravelInEncounter(self):
+    self.state.turn_phase = "encounter"
+    card = encounters.EncounterCard("Uptown6", {"Woods": encounters.Woods6})
+    self.state.places["Uptown"].encounters.append(card)
+    self.char.place = self.state.places["Woods"]
+    self.state.event_stack.append(EncounterPhase(self.char))
+    self.resolve_to_usable(0, "Dog", Sequence)
+    self.assertIsInstance(self.state.event_stack[-1], DrawEncounter)
+    self.state.done_using[0] = True
+    self.resolve_until_done()
+
+  def testUsableLocationSpecialChoice(self):
+    specials = location_specials.CreateFixedEncounters()
+    for location_name, fixed_encounters in specials.items():
+      self.state.places[location_name].fixed_encounters.extend(fixed_encounters)
+
+    self.state.turn_phase = "encounter"
+    self.char.place = self.state.places["Science"]
+    self.state.event_stack.append(EncounterPhase(self.char))
+    pick = self.resolve_to_choice(CardChoice)
+    self.assertIn("Dog", self.state.usables[0])
+    pick.resolve(self.state, "University Card")
+    self.resolve_until_done()
+
+  def testNotUsableInNestedEncounter(self):
+    self.state.turn_phase = "encounter"
+    card = encounters.EncounterCard("Southside1", {"Society": encounters.Society1})
+    self.state.places["Southside"].encounters.append(card)
+    self.char.place = self.state.places["Society"]
+    self.state.event_stack.append(EncounterPhase(self.char))
+    self.resolve_to_usable(0, "Dog", Sequence)
+    self.assertIsInstance(self.state.event_stack[-1], DrawEncounter)
+    self.state.done_using[0] = True
+    choice = self.resolve_to_choice(MultipleChoice)
+    choice.resolve(self.state, "Yes")
+    self.resolve_until_done()
+
+  def testUsableBeforeClosingGate(self):
+    self.state.turn_phase = "encounter"
+    self.state.places["Isle"].gate = next(gate for gate in self.state.gates if gate.name == "City")
+    self.char.place = self.state.places["Isle"]
+    self.char.explored = True
+    self.state.event_stack.append(EncounterPhase(self.char))
+    choice = self.resolve_to_choice(MultipleChoice)
+    self.assertIn("Dog", self.state.usables[0])
+    choice.resolve(self.state, choice.choices[2])
+    self.resolve_until_done()
+
+  def testUsableBeforeGateEncounter(self):
+    self.state.turn_phase = "otherworld"
+    card = gate_encounters.GateCard("Gate1", {"green"}, {"Other": gate_encounters.Pluto48})
+    self.state.gate_cards.append(card)
+    self.char.place = self.state.places["City1"]
+    self.state.event_stack.append(OtherWorldPhase(self.char))
+    self.resolve_to_usable(0, "Dog", Sequence)
+    self.assertIsInstance(self.state.event_stack[-1], GateEncounter)
+    self.state.done_using[0] = True
+    self.resolve_until_done()
+
+  def testUsableOnlyOnceDrawingTwoGateEncounters(self):
+    self.state.turn_phase = "otherworld"
+    for i in range(2):
+      card = gate_encounters.GateCard(f"Gate{i}", {"green"}, {"Other": gate_encounters.Pluto48})
+      self.state.gate_cards.append(card)
+    self.char.place = self.state.places["City1"]
+    self.char.possessions.append(abilities.PsychicSensitivity())
+    self.state.event_stack.append(OtherWorldPhase(self.char))
+    self.resolve_to_usable(0, "Dog", Sequence)
+    self.assertIsInstance(self.state.event_stack[-1], GateEncounter)
+    self.state.done_using[0] = True
+    choice = self.resolve_to_choice(CardChoice)
+    self.assertEqual(self.state.usables, {})
+    choice.resolve(self.state, choice.choices[0])
+    self.resolve_until_done()
+
+  def testUsableBeforeMythos(self):
+    self.state.turn_phase = "mythos"
+    self.state.mythos.append(NoMythos())
+    self.state.event_stack.append(Mythos(self.char))
+    self.resolve_to_usable(0, "Dog", Sequence)
+    self.assertIsInstance(self.state.event_stack[-1], DrawMythosCard)
+    self.state.done_using[0] = True
+    self.resolve_until_done()
+
+  def testNotUsableOtherMythosCardDraw(self):
+    self.state.turn_phase = "encounter"
+    self.state.mythos.append(mythos.Mythos1())
+    self.char.place = self.state.places["Shop"]
+    card = encounters.EncounterCard("Northside7", {"Shop": encounters.Shop7})
+    self.state.places["Northside"].encounters.append(card)
+    self.state.event_stack.append(EncounterPhase(self.char))
+    self.resolve_to_usable(0, "Dog", Sequence)
+    self.assertIsInstance(self.state.event_stack[-1], DrawEncounter)
+    self.state.done_using[0] = True
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=1)):
+      self.resolve_until_done()
+
+  def testUsableWhileFightingMonsters(self):
+    self.state.turn_phase = "movement"
+    for mon in self.state.monsters:
+      mon.place = self.state.places["Isle"]
+    self.char.place = self.state.places["Isle"]
+    self.state.event_stack.append(Movement(self.char))
+    move = self.resolve_to_choice(CityMovement)
+    move.resolve(self.state, "done")
+    choice = self.resolve_to_choice(MonsterChoice)
+    self.assertIn("Dog", self.state.usables[0])
+    choice.resolve(self.state, choice.monsters[0].handle)
+
+    fight = self.resolve_to_choice(FightOrEvadeChoice)
+    self.assertIn("Dog", self.state.usables[0])
+    fight.resolve(self.state, "Fight")
+    fight = self.resolve_to_choice(FightOrEvadeChoice)
+    self.assertIn("Dog", self.state.usables[0])
+    fight.resolve(self.state, "Fight")
+
+    combat = self.resolve_to_choice(CombatChoice)
+    self.assertIn("Dog", self.state.usables[0])
+    self.choose_items(combat, [])
+
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      choice = self.resolve_to_choice(MonsterChoice)
+    self.assertIn("Dog", self.state.usables[0])
+
+  def testNotUsableWhileFightingMonsterInEncounter(self):
+    self.state.turn_phase = "encounter"
+    self.char.place = self.state.places["Roadhouse"]
+    card = encounters.EncounterCard("Easttown5", {"Roadhouse": encounters.Roadhouse5})
+    self.state.places["Easttown"].encounters.append(card)
+    self.state.event_stack.append(EncounterPhase(self.char))
+    self.resolve_to_usable(0, "Dog", Sequence)
+    self.assertIsInstance(self.state.event_stack[-1], DrawEncounter)
+    self.state.done_using[0] = True
+    self.resolve_to_choice(FightOrEvadeChoice)
+    self.assertEqual(self.state.usables, {})
 
 
 if __name__ == "__main__":
