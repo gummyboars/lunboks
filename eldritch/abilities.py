@@ -218,6 +218,18 @@ class Research(assets.Asset):
     return events.Sequence([events.ExhaustAsset(owner, self), reroll], owner)
 
 
+class Scrounge(assets.Asset):
+  def __init__(self):
+    super().__init__("Scrounge")
+
+  def get_interrupt(self, event, owner, state):
+    if not isinstance(event, events.DrawItems):
+      return None
+    if event.character != owner or event.deck not in ["common", "unique", "spells"]:
+      return None
+    return events.ScroungeItems(owner, event)
+
+
 class UpkeepRestoreStat(assets.Asset):
   def __init__(self, name, stat, verb):
     super().__init__(name)
@@ -274,6 +286,7 @@ def CreateSpecials():
     Physician(),
     Psychology(),
     Research(),
+    Scrounge(),
     GuardianAngel(),
     Synergy(),
     TeamPlayer(),

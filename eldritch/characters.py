@@ -402,7 +402,7 @@ class Drifter(Character):
     super().__init__("Drifter", 6, 4, 3, 6, 5, 5, 3, 3, 1, "Docks")
 
   def abilities(self):
-    return []  # TODO: Scrounge
+    return ["Scrounge"]
 
   def initial_attributes(self):
     return {"dollars": 1, "clues": 3}

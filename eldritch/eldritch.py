@@ -286,6 +286,16 @@ class GameState:
     output["gate_limit"] = self.gate_limit()
     output["log"] = "" if not self.log_stack else self.log_stack[-1].text
 
+    # If the Drifter is playing, these cards are visible.
+    if any(char.name == "Drifter" for char in self.characters):
+      output["bottom"] = {}
+      if self.common:
+        output["bottom"]["common"] = self.common[-1].name
+      if self.unique:
+        output["bottom"]["unique"] = self.unique[-1].name
+      if self.spells:
+        output["bottom"]["spells"] = self.spells[-1].name
+
     # Also give a map from location to activity markers. Environment is always 2, rumor is always 3.
     # Everything else is activity marker 1.
     output["activity"] = collections.defaultdict(list)
@@ -1313,8 +1323,6 @@ class GameState:
       else:
         assert self.characters[idx].gone
         self.characters[idx] = self.all_characters[name]
-      self.all_characters[name].stamina = self.all_characters[name].max_stamina(self)
-      self.all_characters[name].sanity = self.all_characters[name].max_sanity(self)
 
     new_characters.sort(key=self.characters.index)  # Sort by order in self.characters.
     self.pending_chars.clear()
@@ -1330,6 +1338,8 @@ class GameState:
       self.give_random_possessions(char, char.random_possessions())
     # Initial attributes.
     for char in new_characters:
+      char.stamina = char.max_stamina(self)
+      char.sanity = char.max_sanity(self)
       for attr, val in char.initial_attributes().items():
         setattr(char, attr, val)
 
