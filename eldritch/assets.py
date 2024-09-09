@@ -334,15 +334,14 @@ class SelfDiscardingCard(Card):
     self.upkeep_bad_rolls = [1]
 
   def get_trigger(self, event, owner, state):
-    if isinstance(event, events.KeepDrawn) and self.name in event.kept:
-      selves = [p for p in event.character.possessions if p.name == self.name]
+    if isinstance(event, events.KeepDrawn) and event.character == owner and self.name in event.kept:
+      selves = [p for p in owner.possessions if p.name == self.name]
       kept, *duplicates = sorted(selves, key=lambda x: x.tokens["must_roll"])
       if duplicates:
-        seq = [
-          events.DiscardSpecific(event.character, duplicates),
-          events.RemoveToken(kept, "must_roll", owner),
-        ]
-        return events.Sequence(seq, owner)
+        return events.Sequence(
+          [events.DiscardSpecific(owner, duplicates), events.RemoveToken(kept, "must_roll", owner)],
+          owner,
+        )
 
     if isinstance(event, events.RefreshAssets) and event.character == owner:
       if self.tokens["must_roll"]:
@@ -361,13 +360,10 @@ class BlessingOrCurse(SelfDiscardingCard):
     self.opposite = "Curse" if name == "Blessing" else "Blessing"
 
   def get_trigger(self, event, owner, state):
-    if isinstance(event, events.KeepDrawn) and self.name in event.kept:
-      if self.opposite in [p.name for p in event.character.possessions]:
-        seq = [
-          events.DiscardNamed(event.character, self.name),
-          events.DiscardNamed(event.character, self.opposite),
-        ]
-        return events.Sequence(seq, event.character)
+    if isinstance(event, events.KeepDrawn) and event.character == owner and self.name in event.kept:
+      opposites = [p for p in owner.possessions if p.name == self.opposite]
+      if opposites:
+        return events.DiscardSpecific(owner, [self, *opposites])
     return super().get_trigger(event, owner, state)
 
   def __repr__(self):
