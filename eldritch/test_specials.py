@@ -1,10 +1,20 @@
+#!/usr/bin/env python3
+
+import os
+import sys
+import unittest
 from unittest import mock
 from typing import cast
+
+# Hack to allow the test to be run directly instead of invoking python from the base dir.
+if os.path.abspath(sys.path[0]) == os.path.dirname(os.path.abspath(__file__)):
+  sys.path[0] = os.path.dirname(sys.path[0])
 
 import eldritch.eldritch
 import game
 from eldritch.test_events import EventTest
 from eldritch import assets
+from eldritch import characters
 from eldritch import events
 from eldritch import items
 
@@ -106,6 +116,69 @@ class BlessingTest(CurseBlessTest):
     self.assertTrue(curse.is_resolved())
     self.assertEqual(self.char.bless_curse, 0)
     self.assertListEqual(self.char.possessions, [self.dummy_possession])
+
+  def testCursedWhileSomeoneElseIsBlessed(self):
+    buddy = characters.Character("Buddy", 5, 5, 4, 4, 4, 4, 4, 4, 4, "Square")
+    buddy.place = self.state.places["Square"]
+    self.state.all_characters["Buddy"] = buddy
+    self.state.characters.append(buddy)
+
+    self.state.event_stack.append(events.Bless(self.char))
+    self.resolve_until_done()
+    self.state.event_stack.append(events.Bless(buddy))
+    self.resolve_until_done()
+
+    self.assertEqual(self.char.bless_curse, 1)
+    self.assertEqual(buddy.bless_curse, 1)
+
+    self.state.event_stack.append(events.Curse(self.char))
+    self.resolve_until_done()
+
+    self.assertEqual(self.char.bless_curse, 0)
+    self.assertEqual(buddy.bless_curse, 1)
+
+  def testDoubleCursedWhileSomeoneElseIsBlessed(self):
+    buddy = characters.Character("Buddy", 5, 5, 4, 4, 4, 4, 4, 4, 4, "Square")
+    buddy.place = self.state.places["Square"]
+    self.state.all_characters["Buddy"] = buddy
+    self.state.characters.append(buddy)
+
+    self.state.event_stack.append(events.Bless(self.char))
+    self.resolve_until_done()
+    self.state.event_stack.append(events.Curse(buddy))
+    self.resolve_until_done()
+
+    self.assertEqual(self.char.bless_curse, 1)
+    self.assertEqual(buddy.bless_curse, -1)
+
+    self.state.event_stack.append(events.Curse(self.char))
+    self.resolve_until_done()
+
+    self.assertEqual(self.char.bless_curse, 0)
+    self.assertEqual(buddy.bless_curse, -1)
+
+  def testDoubleBlessedWhileSomeoneElseIsBlessed(self):
+    buddy = characters.Character("Buddy", 5, 5, 4, 4, 4, 4, 4, 4, 4, "Square")
+    buddy.place = self.state.places["Square"]
+    self.state.all_characters["Buddy"] = buddy
+    self.state.characters.append(buddy)
+
+    self.state.event_stack.append(events.Bless(self.char))
+    self.resolve_until_done()
+    self.state.event_stack.append(events.Bless(buddy))
+    self.resolve_until_done()
+    bless1 = next(pos for pos in self.char.possessions if pos.name == "Blessing")
+    bless2 = next(pos for pos in buddy.possessions if pos.name == "Blessing")
+    for bless in [bless1, bless2]:
+      bless.tokens["must_roll"] = 1
+
+    self.state.event_stack.append(events.Bless(buddy))
+    self.resolve_until_done()
+
+    self.assertEqual(self.char.bless_curse, 1)
+    self.assertEqual(buddy.bless_curse, 1)
+    self.assertEqual(bless1.tokens["must_roll"], 1)
+    self.assertEqual(bless2.tokens["must_roll"], 0)
 
 
 class BankLoanTest(EventTest):
@@ -245,3 +318,7 @@ class RetainerTest(EventTest):
       self.assertEqual(self.char.dollars, 6)
       self.assertEqual(roll.call_count, 1)
       self.assertNotIn("Retainer", [p.name for p in self.char.possessions])
+
+
+if __name__ == "__main__":
+  unittest.main()
