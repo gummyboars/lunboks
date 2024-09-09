@@ -170,6 +170,12 @@ button:disabled {
   pointer-events: none;
   z-index: 20;
 }
+.cardscroll.hidden {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform: translateY(-200%);
+}
 #enteringscroll {
   z-index: 25;
   width: calc(min(80vw, 128vh));

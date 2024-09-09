@@ -21,7 +21,7 @@ runningAnim = [];
 messageQueue = [];
 statTimeout = null;
 autoClickTimeout = null;
-cardsStyle = "flex";
+cardsShown = true;
 stepping = false;
 statNames = {"stamina": "Stamina", "sanity": "Sanity", "clues": "Clue", "dollars": "Dollar"};
 cursorURLs = {};
@@ -495,7 +495,7 @@ function finishAnim() {
   runningAnim.shift();
   if (!runningAnim.length) {
     let numVisuals = document.getElementById("uicardchoice").getElementsByClassName("cardholder").length;
-    document.getElementById("cardchoicescroll").style.display = numVisuals ? cardsStyle : "none";
+    document.getElementById("cardchoicescroll").classList.toggle("hidden", numVisuals == 0 || !cardsShown);
     document.getElementById("togglecards").classList.toggle("hidden", numVisuals == 0);
     setCardButtonText();
   }
@@ -1292,17 +1292,13 @@ function updateSliderButton(sliders, isMySliders) {
 }
 
 function toggleCards(e) {
-  if (cardsStyle == "flex") {
-    cardsStyle = "none";
-  } else {
-    cardsStyle = "flex";
-  }
-  document.getElementById("cardchoicescroll").style.display = cardsStyle;
+  cardsShown = !cardsShown;
+  document.getElementById("cardchoicescroll").classList.toggle("hidden", !cardsShown);
   setCardButtonText();
 }
 
 function setCardButtonText() {
-  document.getElementById("togglecards").classList.toggle("hide", cardsStyle == "flex");
+  document.getElementById("togglecards").classList.toggle("hide", cardsShown);
 }
 
 function scrollCards(e, dir) {
@@ -1448,10 +1444,11 @@ function animateVisuals() {
   }
 
   if (enteringVisuals.length || movingVisuals.length || leavingVisuals.length || actuallyNewVisuals.length) {
-    document.getElementById("cardchoicescroll").style.display = cardsStyle;
+    cardsShown = true;
+    document.getElementById("cardchoicescroll").classList.remove("hidden");
     document.getElementById("togglecards").classList.remove("hidden");
   } else {
-    document.getElementById("cardchoicescroll").style.display = "none";
+    document.getElementById("cardchoicescroll").classList.add("hidden");
     document.getElementById("togglecards").classList.add("hidden");
   }
   setCardButtonText();
