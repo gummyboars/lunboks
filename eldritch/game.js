@@ -24,6 +24,7 @@ autoClickTimeout = null;
 cardsStyle = "flex";
 stepping = false;
 statNames = {"stamina": "Stamina", "sanity": "Sanity", "clues": "Clue", "dollars": "Dollar"};
+cursorURLs = {};
 
 isDragging = false;
 startX = null;
@@ -335,6 +336,8 @@ function continueInit(gameId) {
   offsetX = (contRect.right + contRect.left - boardRect.right - boardRect.left) / 2;
   moveBoard();
 
+  createCursors();
+
   // Debug menu stuff
   changeOtherChoice(null);
   changePlaceChoice(null);
@@ -391,6 +394,38 @@ function adjustLocationClasses() {
         box.classList.toggle("placeright", div.ypct >= 0.5);
       }
     }
+  }
+}
+
+function createCursors() {
+  let spendables = ["Stamina", "Sanity", "Clue", "Dollar"];
+  for (let spendable of spendables) {
+    for (let def of [true, false]) {
+      let div = document.createElement("DIV");
+      div.classList.add("cursordiv");
+      div.id = (def ? "default" : "") + spendable + "cursor";
+      let cnv = document.createElement("CANVAS");
+      cnv.width = 26;
+      cnv.height = 26;
+      cnv.classList.add("markercnv");
+      div.appendChild(cnv);
+      document.getElementById("uimain").appendChild(div);
+      if (!def) {
+        renderAssetToDiv(div, spendable).then(function() {
+          cnv.toBlob(function(blob) { storeBlobURL(blob, spendable, def); } );
+        });
+      } else {
+        renderDefaultToCanvas(cnv, 26, 26, spendable);
+        cnv.toBlob(function(blob) { storeBlobURL(blob, spendable, def); });
+      }
+    }
+  }
+}
+
+function storeBlobURL(blob, spendable, isDefault) {
+  let url = URL.createObjectURL(blob);
+  if (!isDefault || cursorURLs[spendable] == null) {
+    cursorURLs[spendable] = url;
   }
 }
 
@@ -1874,6 +1909,7 @@ function createVisual(scrollParent, visual, existing) {
     div = holder.firstChild;
     div.className = "";
     div.onclick = null;
+    div.style.removeProperty("cursor");
     delete div.monsterInfo;
     while (div.children.length) {
       div.removeChild(div.firstChild);
@@ -1882,6 +1918,7 @@ function createVisual(scrollParent, visual, existing) {
     div = document.createElement("DIV");
   }
   div.classList.toggle("visualchoice", visual.choice != null || visual.doneUse);
+  div.classList.toggle("mustspend", visual.defaultSpend != null);
   div.classList.add(className);
   if (existing == null) {
     holder.appendChild(div);
@@ -1949,6 +1986,7 @@ function createVisual(scrollParent, visual, existing) {
   }
 
   if (visual.defaultSpend != null) {
+    setDefaultSpendCursor(div, visual.defaultSpend);
     div.onclick = function(e) { defaultSpend(visual.defaultSpend, visual.choice); };
   } else if (visual.choice != null) {
     div.onclick = function(e) { clearTimeout(autoClickTimeout); autoClickTimeout = null; makeChoice(visual.choice); };
@@ -1962,6 +2000,19 @@ function createVisual(scrollParent, visual, existing) {
 
   holder.handle = visual.handle;
   return holder;
+}
+
+function setDefaultSpendCursor(div, defaultSpend) {
+  let cursorType = null;
+  for (let stat in defaultSpend) {
+    if (statNames[stat] != null) {
+      cursorType = statNames[stat];
+      break;
+    }
+  }
+  if (cursorType != null) {
+    div.style.cursor = "url(" + cursorURLs[cursorType] + ") 13 13, grab";
+  }
 }
 
 function addFightOrEvadeChoices(uichoice, cardChoice, monster, choices, invalidChoices, annotations, current, isMyChoice) {
@@ -2046,11 +2097,8 @@ function addCardChoices(uichoice, cardChoice, cards, invalidChoices, spent, rema
       let rem = remainingMax[idx];
       let spentPct = spentPercent(spent, rem);
       visual.backgroundPct = 100-spentPct;
-      if (remainingSpend[idx]) {
-        visual.classes.push("mustspend");
-        if (isMyChoice) {
-          visual.defaultSpend = rem;
-        }
+      if (remainingSpend[idx] && isMyChoice) {
+        visual.defaultSpend = rem;
       }
     }
     newVisuals.push(visual);
@@ -2080,8 +2128,9 @@ function addChoices(uichoice, choices, invalidChoices, spent, remainingSpend, re
     }
     div.innerText = choiceText;
     // Start with a clean slate and redo all class list calculations.
-    div.classList.remove("success", "fail", "unchoosable", "mustspend", "choosable", "todelete");
+    div.className = "";
     div.style.removeProperty("background-position");
+    div.style.removeProperty("cursor");
     div.classList.add("choice");
     if (c == "Pass") {
       div.classList.add("success");
@@ -2097,6 +2146,7 @@ function addChoices(uichoice, choices, invalidChoices, spent, remainingSpend, re
       let spentPct = spentPercent(spent, rem);
       div.style.backgroundPosition = "left " + (100-spentPct) + "% top";
       if (remainingSpend[idx]) {
+        setDefaultSpendCursor(div, rem);
         div.classList.add("mustspend");
         div.onclick = function(e) { defaultSpend(rem, c); };
       } else {
