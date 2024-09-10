@@ -1493,6 +1493,19 @@ class DrawRandomTest(EventTest):
     self.assertEqual(self.char.possessions, [food])
     self.assertFalse(self.state.common)
 
+  def testKeepTwoOnlyOneLeft(self):
+    draw = Draw(self.char, "common", 2, keep_count=2)
+    self.assertFalse(draw.is_resolved())
+    self.assertFalse(self.char.possessions)
+    food = items.Food(0)
+    self.state.common.append(food)
+
+    self.state.event_stack.append(draw)
+    self.resolve_until_done()
+
+    self.assertTrue(draw.is_resolved())
+    self.assertEqual(self.char.possessions, [food])
+
   def testDrawSpecificTypeTop(self):
     draw = Draw(self.char, "common", 1, target_type="weapon")
     tommygun = items.TommyGun(0)
@@ -1583,6 +1596,92 @@ class DrawRandomTest(EventTest):
     self.assertEqual(len(self.char.possessions), 1)
     self.assertIsInstance(self.char.possessions[0], Canceller)
     self.assertEqual(len(self.state.common), 3)
+
+  def testScroungeOne(self):
+    self.char.possessions.append(abilities.Scrounge())
+    self.state.common.clear()
+    self.state.common.extend([items.Food(0), items.Dynamite(0), items.Revolver38(0)])
+    draw = Draw(self.char, "common", 1)
+    self.state.event_stack.append(draw)
+
+    choice = self.resolve_to_choice(CardChoice)
+    self.assertEqual(choice.choices[0], "common")
+    self.assertEqual(choice.choices[1], ".38 Revolver")
+    self.assertListEqual(choice.annotations(self.state), ["Top", "Bottom"])
+
+    choice.resolve(self.state, ".38 Revolver")
+    self.resolve_until_done()
+
+    self.assertEqual(len(self.char.possessions), 2)
+    self.assertEqual(self.char.possessions[-1].name, ".38 Revolver")
+    self.assertListEqual([c.name for c in self.state.common], ["Food", "Dynamite"])
+
+  def testScroungeTopThenBottom(self):
+    self.char.possessions.append(abilities.Scrounge())
+    self.state.common.clear()
+    self.state.common.extend([items.Food(0), items.Dynamite(0), items.Revolver38(0)])
+    draw = Draw(self.char, "common", 2, keep_count=2)
+    self.state.event_stack.append(draw)
+
+    choice = self.resolve_to_choice(CardChoice)
+    self.assertEqual(choice.choices[1], ".38 Revolver")
+    choice.resolve(self.state, "common")
+
+    choice = self.resolve_to_choice(CardChoice)
+    self.assertEqual(choice.choices[1], ".38 Revolver")
+    self.assertEqual(choice.choices[2], "Food")
+    self.assertEqual(choice.annotations(self.state), ["Top", "Bottom", "Drawn"])
+    self.assertCountEqual(choice.invalid_choices.keys(), [2])
+    choice.resolve(self.state, ".38 Revolver")
+    self.resolve_until_done()
+
+    self.assertEqual([p.name for p in self.char.possessions], ["Scrounge", "Food", ".38 Revolver"])
+    self.assertEqual([c.name for c in self.state.common], ["Dynamite"])
+
+  def testScroungeNotEnoughInDeck(self):
+    self.char.possessions.append(abilities.Scrounge())
+    self.state.common.clear()
+    self.state.common.extend([items.Food(0)])
+    draw = Draw(self.char, "common", 2, keep_count=2)
+    self.state.event_stack.append(draw)
+
+    choice = self.resolve_to_choice(CardChoice)
+    self.assertEqual(choice.choices[0], "common")
+    self.assertEqual(choice.choices[1], "Food")
+    choice.resolve(self.state, "common")
+    self.resolve_until_done()
+
+    self.assertListEqual([p.name for p in self.char.possessions], ["Scrounge", "Food"])
+    self.assertListEqual([c.name for c in self.state.common], [])
+
+  def testNoScroungeForTargetType(self):
+    self.char.possessions.append(abilities.Scrounge())
+    self.state.common.clear()
+    self.state.common.extend([items.Food(0), items.Dynamite(0), items.Revolver38(0)])
+    draw = Draw(self.char, "common", 1, target_type="weapon")
+    self.state.event_stack.append(draw)
+    self.resolve_until_done()
+
+  def testNoScroungeForSearchingTheDeck(self):
+    self.char.possessions.append(abilities.Scrounge())
+    self.state.common.clear()
+    self.state.common.extend([items.Food(0), items.Dynamite(0), items.Revolver38(0)])
+    draw = Draw(self.char, "common", float("inf"))
+    self.state.event_stack.append(draw)
+
+    choice = self.resolve_to_choice(CardChoice)  # Choose which card to keep, not draw.
+    self.assertEqual(choice.choices[0], "Food")
+    choice.resolve(self.state, "Food")
+    self.resolve_until_done()
+
+  def testNoScroungeForSkills(self):
+    self.char.possessions.append(abilities.Scrounge())
+    self.state.skills.clear()
+    self.state.skills.extend([abilities.Marksman(0)])
+    draw = Draw(self.char, "skills", 1)
+    self.state.event_stack.append(draw)
+
+    self.resolve_until_done()
 
 
 class DiscardSpecificTest(EventTest):
@@ -3444,6 +3543,29 @@ class PurchaseTest(EventTest):
     self.resolve_until_done()
 
     self.assertFalse(self.char.possessions)
+
+  def testScroungeForPurchase(self):
+    buy = Purchase(self.char, "common", 2, keep_count=1)
+    self.char.dollars = 8
+    self.char.possessions.append(abilities.Scrounge())
+    self.state.common.extend([items.Cross(0), items.TommyGun(0), items.Food(0)])
+
+    self.state.event_stack.append(buy)
+    choice = self.resolve_to_choice(CardChoice)
+    self.assertEqual(choice.choices[0], "common")
+    self.assertEqual(choice.choices[1], "Food")
+    choice.resolve(self.state, "common")
+    choice = self.resolve_to_choice(CardChoice)
+    self.assertEqual(choice.choices[1], "Food")
+    choice.resolve(self.state, "Food")
+
+    buy_choice = self.resolve_to_choice(CardSpendChoice)
+    self.assertListEqual(buy_choice.choices, ["Cross", "Food", "Nothing"])
+    self.spend("dollars", 1, buy_choice)
+    buy_choice.resolve(self.state, "Food")
+    self.resolve_until_done()
+
+    self.assertListEqual([c.name for c in self.state.common], ["Tommy Gun", "Cross"])
 
   def testCancelledDraw(self):
     buy = Purchase(self.char, "common", 2, keep_count=1)

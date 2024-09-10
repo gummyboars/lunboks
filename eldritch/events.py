@@ -1310,12 +1310,11 @@ class ForceMovement(Event):
 
 
 class LookAtItems(Event):
-  def __init__(self, character, deck, draw_count, prompt="Choose a card", target_type=None):
+  def __init__(self, character, deck, draw_count, target_type=None):
     assert deck in DECKS
     super().__init__()
     self.character = character
     self.deck = deck
-    self.prompt = prompt
     self.draw_count = draw_count
     self.drawn = None
     self.target_type = target_type
@@ -1357,14 +1356,15 @@ class LookAtItems(Event):
 
 
 class DrawItems(LookAtItems):
-  pass
+  def __init__(self, character, deck, draw_count):
+    super().__init__(character, deck, draw_count)
 
 
 class KeepDrawn(Event):
   def __init__(self, character, draw, prompt="Choose a card", keep_count=1, sort_uniq=False):
     super().__init__()
     self.character = character
-    self.draw: Union[DrawItems, DrawNamed] = draw
+    self.draw: Union[LookAtItems, DrawNamed] = draw
     self.keep_count = keep_count
     self.drawn = None
     self.kept = []
@@ -1379,7 +1379,7 @@ class KeepDrawn(Event):
 
     if self.drawn is None:
       assert self.draw.is_resolved()
-      self.drawn = self.draw.drawn
+      self.drawn = self.draw.drawn[:]
 
     if self.choice is not None:
       assert self.choice.is_done()
@@ -1406,6 +1406,7 @@ class KeepDrawn(Event):
     for card in self.drawn:
       getattr(state, self.draw.deck).remove(card)
     self.character.possessions.extend(self.drawn)
+    self.drawn.clear()
 
   def is_resolved(self):
     if self.drawn is None:
@@ -1424,7 +1425,10 @@ class KeepDrawn(Event):
 
 
 def Draw(character, deck, draw_count, prompt="Choose a card", keep_count=1, target_type=None):
-  cards = DrawItems(character, deck, draw_count, target_type=target_type)
+  if target_type is None and not math.isinf(draw_count):
+    cards = DrawItems(character, deck, draw_count)
+  else:
+    cards = LookAtItems(character, deck, draw_count, target_type=target_type)
   if keep_count == "all":
     keep_count = draw_count
   keep = KeepDrawn(character, cards, prompt, keep_count, sort_uniq=math.isinf(draw_count))
@@ -1459,6 +1463,62 @@ class ChangeCount(Event):
 
   def log(self, state):
     return f"{self.delta} extra"  # TODO: add a source? card type? more descriptive in general?
+
+
+class ScroungeItems(Event):
+  def __init__(self, character, draw: DrawItems):
+    super().__init__()
+    self.character = character
+    self.draw = draw
+    self.choice = None
+
+  def resolve(self, state):
+    deck = getattr(state, self.draw.deck)
+    if not self.draw.drawn:
+      self.draw.drawn = []
+
+    if self.choice is not None:
+      if self.choice.is_cancelled():
+        self.cancelled = True
+        return
+
+      if self.choice.choice == self.draw.deck:
+        top = deck.popleft()
+        deck.append(top)
+        self.draw.drawn.append(top)
+      else:
+        bottom = next(card for card in reversed(deck) if card not in self.draw.drawn)
+        self.draw.drawn.append(bottom)
+      if len(self.draw.drawn) >= self.draw.draw_count:
+        return
+
+    try:
+      bottom = next(card for card in reversed(deck) if card not in self.draw.drawn)
+    except StopIteration:  # No cards left in deck
+      self.cancelled = True
+      return
+    prompt = "Draw from the top or the bottom"
+    remaining = self.draw.draw_count - len(self.draw.drawn or [])
+    if remaining > 1:
+      prompt += f" ({remaining} draws remaining)"
+    choices = [self.draw.deck, bottom.name] + [card.name for card in self.draw.drawn]
+    prereqs = [None, None]
+    prereqs += [
+      values.Calculation(0, operand=int, error_fmt="You have already drawn that card")
+      for _ in range(len(self.draw.drawn))
+    ]
+    notes = ["Top", "Bottom"] + ["Drawn" for _ in range(len(self.draw.drawn))]
+    self.choice = CardChoice(self.character, prompt, choices, prereqs=prereqs, annotations=notes)
+    state.event_stack.append(self.choice)
+
+  def is_resolved(self):
+    return len(self.draw.drawn or []) >= self.draw.draw_count
+
+  def flatten(self):
+    return True
+
+  def log(self, state):
+    return ""
 
 
 class SellChosen(Event):
@@ -1622,7 +1682,10 @@ def Purchase(
   prompt="Buy items?",
   must_buy=False,
 ):
-  items_to_buy = DrawItems(char, deck, draw_count, target_type=target_type)
+  if target_type is None and not math.isinf(draw_count):
+    items_to_buy = DrawItems(char, deck, draw_count)
+  else:
+    items_to_buy = LookAtItems(char, deck, draw_count, target_type=target_type)
   buy = PurchaseDrawn(
     char,
     items_to_buy,

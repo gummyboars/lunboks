@@ -533,6 +533,7 @@ function handleData(data) {
   updatePlaceBoxes(data.places, data.activity);
   updateUsables(data.usables, data.log, mySpendables, myChoice, data.sliders, data.dice);  // TODO: Better name might be updateOverlay or updateDoneUsingButton
   updateDice(data.dice, data.player_idx, data.monsters);
+  updateBottomCards(data.bottom);
   updateCurrentCard(data.current, data.visual, data.monster, data.choice);
   animateVisuals();
   oldCurrent = data.current;
@@ -1378,6 +1379,24 @@ function animateVisuals() {
     }
   }
 
+  // Re-sort the visuals so that fronts are processed before backs. This is because we want a
+  // back to consume a back from oldVisuals, but only after the fronts have had a chance to find
+  // existing backs inside of oldVisuals.
+  let newFrontVisuals = [];
+  let newBackVisuals = [];
+  for (let visual of newVisuals) {
+    if (["common", "unique", "spells", "skills", "allies"].includes(visual.handle)) {
+      newBackVisuals.push(visual);
+      continue;
+    }
+    if (visual.handle.endsWith("Card")) {
+      newBackVisuals.push(visual);
+      continue;
+    }
+    newFrontVisuals.push(visual);
+  }
+  newVisuals = [...newFrontVisuals, ...newBackVisuals];
+
   // Go through the new visuals and consume any old visuals we can. Find truly new visuals.
   for (let visual of newVisuals) {
     let [existing, isBack] = findVisual(visual.handle, visual.monster);
@@ -1493,7 +1512,7 @@ function animateVisuals() {
       continue;
     }
     entry.push(createVisual(uiCardChoice, visual));
-    if (existing.parentNode == uiCardChoice) {
+    if (existing.parentNode == uiCardChoice && existing.classList.contains("used")) {
       uiCardChoice.removeChild(existing);
     }
   }
@@ -1584,6 +1603,7 @@ function findVisual(handle, monster) {
       // Match monster backs with monster backs and monster fronts with monster fronts.
       if ((value.getElementsByClassName("monsterback").length == 0) == (monster == null)) {
         oldVisuals[handleOrName].splice(idx, 1);
+        value.classList.remove("used");
         return [value, false];
       }
     }
@@ -2080,6 +2100,8 @@ function addCardChoices(uichoice, cardChoice, cards, invalidChoices, spent, rema
     visual.descText = annotations && annotations[idx];
     if (sortUniq) {
       visual.order = cardToOrder[card];
+    } else {
+      visual.order = count;
     }
     if (autoClick) {
       visual.classes.push("willchoose");
@@ -2909,6 +2931,40 @@ function updateGlobals(env, rumor, otherGlobals) {
     globalBox.classList.remove("zoomed");
     toggleGlobals(null);
   }
+}
+
+function updateBottomCards(bottom) {
+  if (bottom == null) {
+    return;
+  }
+  let scrounge = null;
+  for (let pos of document.getElementsByClassName("possession")) {
+    if (pos.handle == "Scrounge") {
+      scrounge = pos;
+      break;
+    }
+  }
+  if (scrounge == null) {
+    return;
+  }
+  scrounge.onmouseenter = function(e) {
+    bringTop(e);
+    let enteringScroll = document.getElementById("enteringscroll");
+    for (let card of ["common", "unique", "spells"]) {
+      if (bottom[card] == null) {
+        continue;
+      }
+      let visual = newVisual(bottom[card], "card", {"classes": ["bottomcard"]});
+      let holder = createVisual(enteringScroll, visual);
+    }
+  };
+  scrounge.onmouseleave = function(e) {
+    returnBottom(e);
+    let enteringScroll = document.getElementById("enteringscroll");
+    while (enteringScroll.getElementsByClassName("bottomcard").length) {
+      enteringScroll.removeChild(enteringScroll.getElementsByClassName("bottomcard")[0]);
+    }
+  };
 }
 
 function updateCurrentCard(current, visual, monster, choice) {
