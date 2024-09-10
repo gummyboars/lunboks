@@ -535,6 +535,7 @@ function handleData(data) {
   updateDice(data.dice, data.player_idx, data.monsters);
   updateBottomCards(data.bottom);
   updateCurrentCard(data.current, data.visual, data.monster, data.choice);
+  animateMissedGate(data.missed_gate);
   animateVisuals();
   oldCurrent = data.current;
   updateEventLog(data.event_log);
@@ -1290,6 +1291,44 @@ function updateSliderButton(sliders, isMySliders) {
   if (sliderButtons != null) {
     sliderButtons.classList.toggle("hidden", !(sliders && isMySliders));
   }
+}
+
+function animateMissedGate(gate) {
+  if (gate == null) {
+    return;
+  }
+  let charsDiv = document.getElementById("place" + gate + "chars");
+  let hasSeal = charsDiv.getElementsByClassName("seal").length;
+  let toBlink = null;
+  if (hasSeal) {
+    toBlink = charsDiv.getElementsByClassName("seal")[0];
+  } else {
+    for (let charDiv of charsDiv.getElementsByClassName("marker")) {
+      if (charDiv == characterMarkers["Scientist"]) {
+        toBlink = charDiv;
+        break;
+      }
+    }
+  }
+  if (toBlink != null) {
+    runningAnim.push(true);
+    toBlink.onanimationend = function() { toBlink.onanimationend = null; toBlink.onanimationcancel = null; toBlink.classList.remove("blinking"); finishAnim(); };
+    toBlink.onanimationcancel = function() { toBlink.onanimationend = null; toBlink.onanimationcancel = null; toBlink.classList.remove("blinking"); finishAnim(); };
+    toBlink.classList.add("blinking");
+    return;
+  }
+  let gateDiv = document.getElementById("place" + gate + "gate");
+  if (gateDiv == null || !gateDiv.classList.contains("placegatepresent")) {
+    return;
+  }
+  if (!gateDiv.getElementsByClassName("gate").length) {
+    return;
+  }
+  let gateCnv = gateDiv.getElementsByClassName("gate")[0];
+  runningAnim.push(true);
+  gateCnv.onanimationend = function() { gateCnv.onanimationend = null; gateCnv.onanimationcancel = null; gateCnv.classList.remove("shaking"); finishAnim(); };
+  gateCnv.onanimationcancel = function() { gateCnv.onanimationend = null; gateCnv.onanimationcancel = null; gateCnv.classList.remove("shaking"); finishAnim(); };
+  gateCnv.classList.add("shaking");
 }
 
 function toggleCards(e) {

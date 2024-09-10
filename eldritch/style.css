@@ -1290,6 +1290,10 @@ button:disabled {
 .placeleft .gate {
   left: 0;
 }
+.shaking {
+  z-index: 26;
+  animation: 1.2s 1 normal running shake;
+}
 .closed {
   flex: 0 1 calc(min(80vw, 128vh) / 32);
   align-self: center;
@@ -1328,6 +1332,10 @@ button:disabled {
 }
 .seal {
   order: 2;
+}
+.blinking {
+  z-index: 26;
+  animation: 0.4s steps(2, jump-none) 7 alternate running blink;
 }
 .activity {
   order: 3;
@@ -1758,4 +1766,47 @@ button:disabled {
 .bonus.shown {
   color: rgba(0, 0, 0, 1);
   background: rgba(255, 255, 255, 0.7);
+}
+@keyframes blink {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes shake {
+  0% {
+    transform: none;
+  }
+  5%, 15% {
+    transform: translateX(-2%);
+  }
+  10%, 20% {
+    transform: translateX(2%);
+  }
+  25%, 35% {
+    transform: translateX(-4%);
+  }
+  30%, 40% {
+    transform: translateX(4%);
+  }
+  45%, 55% {
+    transform: translateX(-6%);
+  }
+  50%, 60% {
+    transform: translateX(6%);
+  }
+  65%, 75% {
+    transform: translateX(-8%);
+  }
+  70%, 80% {
+    transform: translateX(8%);
+  }
+  90%, 100% {
+    transform: translateX(10%);
+  }
+  85%, 95% {
+    transform: translateX(-10%);
+  }
 }

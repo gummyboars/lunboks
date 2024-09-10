@@ -477,6 +477,9 @@ class GameState:
     if top_event and isinstance(top_event, events.MoveMonsters) and top_event.is_done():
       output["visual"] = current
 
+    if top_event and isinstance(top_event, events.SpawnGate) and top_event.opened is False:
+      output["missed_gate"] = top_event.location_name
+
     if top_event and isinstance(top_event, events.SliderInput) and not top_event.is_done():
       output["sliders"] = {"prompt": top_event.prompt()}
       output["chooser"] = self.characters.index(top_event.character)
@@ -786,7 +789,7 @@ class GameState:
 
     # Pulled through a gate if it opens on top of you.
     # Ancient one awakens if gate limit has been hit.
-    if isinstance(event, events.OpenGate) and event.opened:
+    if isinstance(event, events.SpawnGate) and event.opened:
       open_gates = len([place for place in self.places.values() if getattr(place, "gate", None)])
       if open_gates >= self.gate_limit():
         triggers.append(events.Awaken())
