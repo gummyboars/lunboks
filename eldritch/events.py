@@ -4598,10 +4598,9 @@ class OpenGate(Event):
   def __init__(self, location_name):
     super().__init__()
     self.location_name = location_name
-    self.opened = None
+    self.gate: Optional[Event] = None
     self.draw_monsters: Optional[Event] = None
     self.spawn: Optional[Event] = None
-    self.add_doom: Optional[Event] = None
 
   def resolve(self, state):
     if self.spawn is not None:
@@ -4614,25 +4613,16 @@ class OpenGate(Event):
         return
       self.location_name = self.location_name.card.gate_location
 
-    if not state.places[self.location_name].is_unstable(state):
-      self.opened = False
+    if self.gate is None:
+      self.gate = SpawnGate(self.location_name)
+      state.event_stack.append(self.gate)
       return
 
-    if self.opened is None:
-      self.opened = state.places[self.location_name].gate is None
-      if self.opened:
-        if not state.gates:
-          state.event_stack.append(Awaken())
-          return
-        # TODO: should drawing a gate be its own event?
-        state.places[self.location_name].gate = state.gates.popleft()
-        state.places[self.location_name].clues = 0
-        self.add_doom = AddDoom()
-        state.event_stack.append(self.add_doom)
-        return
+    if not self.gate.opened and self.gate.stable:
+      return
 
     if self.draw_monsters is None:
-      if not self.opened:  # Monster surge
+      if not self.gate.opened:  # Monster surge
         open_gates = [place for place in state.places.values() if getattr(place, "gate", None)]
         count = max(len(open_gates), len(state.characters))
       else:  # Regular gate opening
@@ -4651,27 +4641,69 @@ class OpenGate(Event):
     self.spawn = MonsterSpawnChoice(self.draw_monsters, self.location_name, spawn_gates)
     state.event_stack.append(self.spawn)
 
+  @property
+  def opened(self):
+    if self.gate is None:
+      return None
+    return self.gate.opened
+
   def is_resolved(self):
-    if self.draw_monsters is None:
-      return self.opened is False
+    if self.gate is None:
+      return False
+    if not self.gate.opened and self.gate.stable:
+      return True
     return self.spawn is not None and self.spawn.is_done()
 
-  def log(self, state):
-    location_name = self.location_name
-    if isinstance(self.location_name, DrawMythosCard):
-      location_name = getattr(self.location_name.card, "gate_location", None)
+  def flatten(self):
+    return True
 
+  def log(self, state):
+    return ""
+
+
+class SpawnGate(Event):
+  def __init__(self, location_name):
+    super().__init__()
+    self.location_name = location_name
+    self.opened = None
+    self.stable = False
+    self.add_doom: Optional[Event] = None
+
+  def resolve(self, state):
+    if self.add_doom is not None:
+      assert self.add_doom.is_done()
+      return
+
+    if not state.places[self.location_name].is_unstable(state):
+      self.opened = False
+      self.stable = True
+      return
+
+    self.opened = state.places[self.location_name].gate is None
+    if not self.opened:
+      return
+    if not state.gates:
+      state.event_stack.append(Awaken())
+      return
+    state.places[self.location_name].gate = state.gates.popleft()
+    state.places[self.location_name].clues = 0
+    self.add_doom = AddDoom()
+    state.event_stack.append(self.add_doom)
+    return
+
+  def is_resolved(self):
+    if self.opened is False:
+      return True
+    return self.add_doom is not None and self.add_doom.is_done()
+
+  def log(self, state):
     if self.cancelled and self.opened is None:
-      if location_name is not None:
-        return f"Gate did not open at [{location_name}]"
-      return "Gate did not open"
+      return f"Gate did not open at [{self.location_name}]"
     if self.opened is None:
-      if location_name is not None:
-        return f"Gate will open at [{location_name}]"
-      return "Gate will not open"
+      return f"Gate will open at [{self.location_name}]"
     if self.opened:
       return f"A gate appeared at [{self.location_name}]."
-    if self.spawn:
+    if not self.stable:
       return f"A monster surge occurred at [{self.location_name}]."
     return f"A gate did not appear at [{self.location_name}]."
 
@@ -5055,6 +5087,9 @@ class MonsterSpawnChoice(ChoiceEvent):
 
   def prompt(self):
     return ""
+
+  def animated(self):
+    return True
 
   def log(self, state):
     first_player = state.characters[state.first_player]
