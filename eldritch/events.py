@@ -621,6 +621,7 @@ class DamageAncientOne(Event):
     state.ancient_one.health = max(0, state.ancient_one.health)
     if state.ancient_one.health <= 0:
       state.game_stage = "victory"
+      state.event_log.append(EventLog("The ancient one was defeated.", False))
     self.done = True
 
   def is_resolved(self):
@@ -1102,6 +1103,7 @@ class Devoured(StackClearMixin, Event):
       if state.game_stage == "awakened":
         if all(char.gone for char in state.characters):
           state.game_stage = "defeat"
+          state.event_log.append(EventLog("The players were all devoured.", False))
 
   def is_resolved(self):
     return self.stack_cleared
@@ -4859,6 +4861,7 @@ class RemoveDoom(Event):
         state.ancient_one.health = max(0, state.ancient_one.health - len(state.characters))
         if state.ancient_one.health <= 0:
           state.game_stage = "victory"
+          state.event_log.append(EventLog("The ancient one was defeated.", False))
       self.done = True
 
   def is_resolved(self):

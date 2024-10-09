@@ -743,6 +743,7 @@ class CloseGateTest(EventTest):
     super().setUp()
     self.square = self.state.places["Square"]
     self.square.gate = self.state.gates.popleft()
+    self.state.places["Isle"].gate = self.state.gates.popleft()  # Don't immediately win
     self.char.place = self.square
     self.char.explored = True
     # Set fight and lore to 4, since max difficulty is -3.
@@ -892,7 +893,7 @@ class CloseGateTest(EventTest):
     self.state.event_stack.append(Sequence([choice, close], self.char))
     gate_choice = self.resolve_to_choice(GateChoice)
 
-    self.assertCountEqual(gate_choice.choices, ["Square", "Woods"])
+    self.assertCountEqual(gate_choice.choices, ["Square", "Woods", "Isle"])
     gate_choice.resolve(self.state, "Square")
     seal_choice = self.resolve_to_choice(SpendChoice)
     self.spend("clues", 5, seal_choice)
