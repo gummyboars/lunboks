@@ -815,9 +815,9 @@ class GameState:
     if isinstance(event, events.CloseGate):
       gate_count = len([p for p in self.places.values() if getattr(p, "gate", None)])
       seal_count = len([p for p in self.places.values() if getattr(p, "sealed", False)])
-      trophy_count = len([
-          g for char in self.characters for g in char.trophies if isinstance(g, gates.Gate)
-      ])
+      trophy_count = len(
+        [g for char in self.characters for g in char.trophies if isinstance(g, gates.Gate)]
+      )
       if seal_count >= 6:
         self.game_stage = "victory"
         self.event_stack.clear()
