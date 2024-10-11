@@ -84,6 +84,10 @@ button:disabled {
   align-items: center;
   justify-content: center;
   pointer-events: none;
+  transition: opacity 3s;
+}
+.fade {
+  opacity: 0;
 }
 .bigchoices {
   display: flex;
@@ -790,6 +794,7 @@ button:disabled {
   z-index: 3;
   cursor: zoom-in;
   pointer-events: auto;
+  transition: opacity 3s;
 }
 #ancientone.zoomed {
   cursor: zoom-out;
@@ -974,6 +979,9 @@ button:disabled {
   position: absolute;
   top: 0;
   left: 0;
+}
+.mover {
+  transition: transform 3s 0.5s;
 }
 .moving {
   transition: transform 0.5s;
@@ -1376,6 +1384,86 @@ button:disabled {
   width: calc(min(80vw, 128vh) * 3 / 118);
   height: calc(min(80vw, 128vh) * 11 / 500);
   z-index: 11;
+}
+.sealcenter {
+  position: absolute;
+  width: calc(min(80vw, 128vh) * 3 / 118);
+  height: calc(min(80vw, 128vh) * 3 / 118);
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+.sealarm {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: calc(min(80vw, 128vh) * 3 / 118);
+  height: calc(min(80vw, 128vh) * 12 / 118);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  transform-origin: 50% 87.5%;
+}
+#sealarm0 {
+  transform: rotate(10deg);
+}
+#sealarm0 > .seal {
+  transform: rotate(-10deg);
+}
+#sealarm1 {
+  transform: rotate(82deg);
+}
+#sealarm1 > .seal {
+  transform: rotate(-82deg);
+}
+#sealarm2 {
+  transform: rotate(154deg);
+}
+#sealarm2 > .seal {
+  transform: rotate(-154deg);
+}
+#sealarm3 {
+  transform: rotate(-134deg);
+}
+#sealarm3 > .seal {
+  transform: rotate(134deg);
+}
+#sealarm4 {
+  transform: rotate(-62deg);
+}
+#sealarm4 > .seal {
+  transform: rotate(62deg);
+}
+.sealbox {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: calc(min(80vw, 128vh) * 19 / 118);
+  height: calc(min(80vw, 128vh) * 6 / 118);
+  border-top: 2px solid darkblue;
+  opacity: 0;
+  transition: opacity 3s;
+}
+#sealbox0 {
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) rotate(10deg);
+}
+#sealbox1 {
+  transform: rotate(72deg);
+}
+#sealbox2 {
+  transform: rotate(144deg);
+}
+#sealbox3 {
+  transform: rotate(-144deg);
+}
+#sealbox4 {
+  transform: rotate(-72deg);
+}
+.sealbox.shown {
+  opacity: 1;
 }
 #uidice {
   display: none;
