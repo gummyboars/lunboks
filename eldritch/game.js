@@ -12,6 +12,7 @@ pendingName = null;
 charChoice = null;
 ancientChoice = null;
 oldCurrent = null;
+oldStage = null;
 oldVisuals = {};
 newVisuals = [];
 gainedClues = [];
@@ -537,7 +538,9 @@ function handleData(data) {
   updateCurrentCard(data.current, data.visual, data.monster, data.choice);
   animateMissedGate(data.missed_gate);
   animateVisuals();
+  animateVictory(data.game_stage);
   oldCurrent = data.current;
+  oldStage = data.game_stage;
   updateEventLog(data.event_log);
   if (!stepping && messageQueue.length && !runningAnim.length) {
     let msg = messageQueue.shift();
@@ -1329,6 +1332,91 @@ function animateMissedGate(gate) {
   gateCnv.onanimationend = function() { gateCnv.onanimationend = null; gateCnv.onanimationcancel = null; gateCnv.classList.remove("shaking"); finishAnim(); };
   gateCnv.onanimationcancel = function() { gateCnv.onanimationend = null; gateCnv.onanimationcancel = null; gateCnv.classList.remove("shaking"); finishAnim(); };
   gateCnv.classList.add("shaking");
+}
+
+function animateVictory(gameStage) {
+  if (oldStage == null || oldStage == "victory" || gameStage != "victory") {
+    return;
+  }
+  let seals = document.getElementsByClassName("seal");
+  let ancientDetails = document.getElementById("ancientdetails");
+  if (seals.length < 6) {
+    ancientDetails.ontransitionend = function() { doneAnimating(ancientDetails); finishAnim(); };
+    ancientDetails.ontransitioncancel = function() { doneAnimating(ancientDetails); finishAnim(); };
+    setTimeout(function() { ancientDetails.classList.add("fade"); document.getElementById("ancientone").classList.add("fade"); }, 2500);
+    return;
+  }
+  // Animate the seals moving on top of the ancient one and making the ancient one fade away.
+  let currentSeals = [];
+  for (let i = 0; i < 6; i++) {
+    currentSeals.push(seals[i]);
+  }
+  let destinations = [];
+  let enterDiv = document.getElementById("ancientdetails");
+  let theCenter = document.createElement("DIV");
+  theCenter.classList.add("sealcenter");
+  let centerSeal = document.createElement("DIV");
+  centerSeal.classList.add("seal", "cnvcontainer");
+  let cnv = document.createElement("CANVAS");
+  cnv.classList.add("markercnv");
+  centerSeal.appendChild(cnv);
+  theCenter.appendChild(centerSeal);
+  enterDiv.appendChild(theCenter);
+  renderAssetToDiv(centerSeal, "Seal");
+  destinations.push(centerSeal);
+  let boxDiv = document.createElement("DIV");
+  boxDiv.classList.add("sealbox");
+  boxDiv.id = "sealbox0";
+  theCenter.appendChild(boxDiv);
+  for (let i = 0; i < 5; i++) {
+    let arm = document.createElement("DIV");
+    arm.classList.add("sealarm");
+    arm.id = "sealarm" + i;
+    let sealCnt = document.createElement("DIV");
+    sealCnt.classList.add("seal");
+    let newSeal = document.createElement("DIV");
+    newSeal.classList.add("seal", "cnvcontainer");
+    let cnv = document.createElement("CANVAS");
+    cnv.classList.add("markercnv");
+    newSeal.appendChild(cnv);
+    sealCnt.appendChild(newSeal);
+    arm.appendChild(sealCnt);
+    theCenter.appendChild(arm);
+    renderAssetToDiv(newSeal, "Seal");
+    destinations.push(newSeal);
+  }
+  for (let i = 1; i < 5; i++) {
+    let box = document.createElement("DIV");
+    box.classList.add("sealbox");
+    box.id = "sealbox" + i;
+    boxDiv.appendChild(box);
+  }
+
+  runningAnim.push(true);
+  for (let i = 0; i < 6; i++) {
+    translateNode(destinations[i], currentSeals[i]);
+  }
+  let fadeAncient = function() {
+    doneAnimating(boxDiv);
+    ancientDetails.ontransitionend = function() { doneAnimating(ancientDetails); finishAnim(); };
+    ancientDetails.ontransitioncancel = function() { doneAnimating(ancientDetails); finishAnim(); };
+    setTimeout(function() { ancientDetails.classList.add("fade"); document.getElementById("ancientone").classList.add("fade"); }, 5);
+  };
+  boxDiv.ontransitionend = fadeAncient;
+  boxDiv.ontransitioncancel = fadeAncient;
+  let showLines = function() {
+    for (let box of document.getElementsByClassName("sealbox")) {
+      box.classList.add("shown");
+    }
+  };
+  destinations[0].ontransitionend = function() { doneAnimating(destinations[0]); showLines(); };
+  destinations[0].ontransitioncancel = function() { doneAnimating(destinations[0]); showLines(); };
+  setTimeout(function() {
+    for (let i = 0; i < 6; i++) {
+      destinations[i].classList.add("mover");
+      destinations[i].style.removeProperty("transform");
+    }
+  }, 5);
 }
 
 function toggleCards(e) {
@@ -3337,14 +3425,22 @@ function updateAncientOne(gameStage, ancientOne, terror, gateCount, gateLimit, n
     ancientOneDiv.onclick = null;
     ancientOneDiv.classList.add("setup");
   }
-  if (["awakened", "defeat"].includes(gameStage)) {
+  if (["awakened", "defeat", "victory"].includes(gameStage)) {
     document.getElementById("ancientdetails").style.display = "flex";
     renderAssetToDiv(document.getElementById("bigancient"), chosenAncient);
-    doomTrack.innerText = "Doom " + ancientOne.health + "/" + numCharacters*doom.maxValue;
-    let ratio = Math.min(ancientOne.health / (numCharacters*doom.maxValue), 1);
-    doomTrack.style.backgroundPosition = "left " + 100*(1-ratio) + "% top";
+    if (ancientOne.health != null) {
+      doomTrack.innerText = "Doom " + ancientOne.health + "/" + numCharacters*doom.maxValue;
+      let ratio = Math.min(ancientOne.health / (numCharacters*doom.maxValue), 1);
+      doomTrack.style.backgroundPosition = "left " + 100*(1-ratio) + "% top";
+    }
     gateTrack.style.display = "none";
-    document.getElementById("uicont").style.display = "none";
+    if (gameStage != "victory") {
+      document.getElementById("uicont").style.display = "none";
+    }
+    if (gameStage == "victory" && oldStage == null) {
+      document.getElementById("ancientdetails").classList.add("fade");
+      ancientOneDiv.classList.add("fade");
+    }
   }
 }
 
