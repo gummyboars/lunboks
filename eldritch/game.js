@@ -1868,17 +1868,34 @@ function updateChoices(choice, current, isMyChoice, chooser, autoChoose) {
   } else {
     monsterBox.classList.remove("choosable");
   }
+  // Clean out any old choices it may have.
+  for (let child of uichoice.getElementsByClassName("choice")) {
+    child.classList.add("todelete");
+  }
+  let resultChoice = document.getElementById("resultchoice");
+  if (resultChoice != null) {
+    resultChoice.classList.add("todelete");
+  }
+  let spendChoice = document.getElementById("spendchoice");
+  if (spendChoice != null) {
+    spendChoice.classList.add("todelete");
+  }
   if (choice == null || choice.to_spawn != null) {
     document.getElementById("charoverlay").classList.remove("shown");
+    while (uichoice.getElementsByClassName("todelete").length) {
+      uichoice.removeChild(uichoice.getElementsByClassName("todelete")[0]);
+    }
+    if (resultChoice != null && resultChoice.classList.contains("todelete")) {
+      resultChoice.parentNode.removeChild(resultChoice);
+    }
+    if (spendChoice != null && spendChoice.classList.contains("todelete")) {
+      spendChoice.parentNode.removeChild(spendChoice);
+    }
     return;
   }
   // Set display style for uichoice div.
   if (choice.items == null && choice.board_monster == null && isMyChoice) {
     uichoice.style.display = "flex";
-  }
-  // Clean out any old choices it may have.
-  for (let child of uichoice.getElementsByClassName("choice")) {
-    child.classList.add("todelete");
   }
   // Set prompt.
   let promptText = formatServerString(choice.prompt);
@@ -1897,6 +1914,12 @@ function updateChoices(choice, current, isMyChoice, chooser, autoChoose) {
     document.getElementById("charoverlay").classList.remove("shown");
     while (uichoice.getElementsByClassName("todelete").length) {
       uichoice.removeChild(uichoice.getElementsByClassName("todelete")[0]);
+    }
+    if (resultChoice != null && resultChoice.classList.contains("todelete")) {
+      resultChoice.parentNode.removeChild(resultChoice);
+    }
+    if (spendChoice != null && spendChoice.classList.contains("todelete")) {
+      spendChoice.parentNode.removeChild(spendChoice);
     }
     return;
   }
@@ -1937,6 +1960,12 @@ function updateChoices(choice, current, isMyChoice, chooser, autoChoose) {
   }
   while (uichoice.getElementsByClassName("todelete").length) {
     uichoice.removeChild(uichoice.getElementsByClassName("todelete")[0]);
+  }
+  if (resultChoice != null && resultChoice.classList.contains("todelete")) {
+    resultChoice.parentNode.removeChild(resultChoice);
+  }
+  if (spendChoice != null && spendChoice.classList.contains("todelete")) {
+    spendChoice.parentNode.removeChild(spendChoice);
   }
 }
 
@@ -2272,12 +2301,36 @@ function addChoices(uichoice, choices, invalidChoices, spent, remainingSpend, re
   for (let child of uichoice.getElementsByClassName("choice")) {
     nameToDiv[child.innerText] = child;
   }
+  let resultChoice = document.getElementById("resultchoice");
+  if (resultChoice != null) {
+    nameToDiv[resultChoice.innerText] = resultChoice;
+  }
+  let spendChoice = document.getElementById("spendchoice");
+  if (spendChoice != null) {
+    nameToDiv[spendChoice.innerText] = spendChoice;
+  }
+  let isResultChoice = (choices.length == 2);
+  for (let c of choices) {
+    if (!["Pass", "Fail", "Spend"].includes(c)) {
+      isResultChoice = false;
+      break;
+    }
+  }
+
   for (let [idx, c] of choices.entries()) {
     choiceText = serverNames[c] ?? c;
     let div = nameToDiv[choiceText];
     if (div == null) {
       div = document.createElement("DIV");
-      uichoice.appendChild(div);
+      if (isResultChoice && ["Pass", "Fail"].includes(c)) {
+        div.id = "resultchoice";
+        document.getElementById("promptline").appendChild(div);
+      } else if (isResultChoice && c == "Spend") {
+        div.id = "spendchoice";
+        document.getElementById("uidice").appendChild(div);
+      } else {
+        uichoice.appendChild(div);
+      }
     }
     div.innerText = choiceText;
     // Start with a clean slate and redo all class list calculations.
@@ -3244,6 +3297,10 @@ function updateDice(dice, playerIdx, monsterList) {
     uidice.style.display = "none";
     return;
   }
+  // Unconditionally show the spend bar when rolling dice to avoid the dice moving around.
+  let spendDiv = document.getElementById("uispend");
+  spendDiv.classList.add("spendable");
+
   if (dice.name != null && dice.name != chosenAncient) {  // Show the monster/card that is causing this dice roll.
     let found = false;
     if (dice.check_type != "evade") {
@@ -3267,7 +3324,6 @@ function updateDice(dice, playerIdx, monsterList) {
 
   let roll = dice.roll || [];
   let diceDiv = document.getElementById("dice");
-  let btn = document.getElementById("dicebutton");
   uidice.style.display = "flex";
   while (diceDiv.getElementsByClassName("die").length > Math.max(dice.count, 0)) {
     diceDiv.removeChild(diceDiv.getElementsByClassName("die")[0])
@@ -3302,11 +3358,7 @@ function updateDice(dice, playerIdx, monsterList) {
       remaining = true;
     }
   }
-  if (dice.roller == playerIdx && remaining) {
-    btn.style.display = "inline-block";
-  } else {
-    btn.style.display = "none";
-  }
+  diceDiv.classList.toggle("rollable", dice.roller == playerIdx && remaining);
   if (dice.check_type == null) {
     runningAnim.push(true);  // let the user see the dice for a moment
     setTimeout(finishAnim, 1500);
@@ -3534,7 +3586,7 @@ function updateCharacterSheets(characters, pendingCharacters, playerIdx, firstPl
     }
   }
   let spendDiv = document.getElementById("uispend");
-  spendDiv.style.display = spendable == null ? "none" : "flex";
+  spendDiv.classList.toggle("spendable", spendable != null);
 
   let rightUI = document.getElementById("uichars");
   let toKeep = Object.keys(pendingCharacters);
