@@ -243,6 +243,10 @@ function continueInit(gameId) {
       let gate = document.createElement("CANVAS");
       gate.classList.add("gate");
       gateCont.appendChild(gate);
+      let highlight = document.createElement("DIV");
+      highlight.id = "place" + name + "highlight";
+      highlight.classList.add("placehighlight", placeType);
+      box.appendChild(highlight);
       let innerSelect = document.createElement("DIV");
       innerSelect.id = "place" + name + "innerselect";
       innerSelect.classList.add("placeinnerselect", placeType);
@@ -1849,6 +1853,9 @@ function updateChoices(choice, current, isMyChoice, chooser, autoChoose) {
     place.classList.remove("unselectable");
     place.innerText = "";
   }
+  for (let highlight of document.getElementsByClassName("placehighlight")) {
+    highlight.classList.remove("shown");
+  }
   for (let pos of pDiv.getElementsByClassName("possession")) {
     pos.classList.remove("choosable");
   }
@@ -2956,6 +2963,9 @@ function updatePlaceChoices(uichoice, places, annotations, isMyChoice) {
     place.classList.add("unselectable");
     place.innerText = "❌";
   }
+  for (let highlight of document.getElementsByClassName("placehighlight")) {
+    highlight.classList.remove("shown");
+  }
   for (let [idx, placeName] of places.entries()) {
     let place = document.getElementById("place" + placeName + "innerselect");
     if (place == null) {
@@ -2973,6 +2983,10 @@ function updatePlaceChoices(uichoice, places, annotations, isMyChoice) {
       place.innerText = formatServerString(annotations[idx]);
     } else {
       place.innerText = "Choose";
+    }
+    // Mild hack: don't highlight locations for movement choice.
+    if (!place.innerText.startsWith("Move ") && (places.length < 15)) {
+      document.getElementById("place" + placeName + "highlight").classList.add("shown");
     }
   }
   if (isMyChoice && notFound.length) {

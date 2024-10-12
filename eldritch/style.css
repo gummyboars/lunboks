@@ -1157,6 +1157,18 @@ button:disabled {
   position: relative;
   max-width: 100%;
 }
+.placehighlight {
+  height: calc(min(80vw, 128vh) * 2 / 29);
+  width: calc(min(80vw, 128vh) * 2 / 29);
+  position: absolute;
+  pointer-events: none;
+}
+.location.placehighlight {
+  border-radius: 50%;
+}
+.placehighlight.shown {
+  animation: 1s ease-in-out infinite alternate pulse;
+}
 .placeinnerselect {
   height: calc(min(80vw, 128vh) * 2 / 29);
   width: calc(min(80vw, 128vh) * 2 / 29);
@@ -1182,6 +1194,9 @@ button:disabled {
 .placeupper .placeinnerselect {
   top: 0;
 }
+.placeupper .placehighlight {
+  top: 0;
+}
 .withmonsters.placeupper .placeinnerselect {
   transform: translateY(-100%);
 }
@@ -1189,6 +1204,9 @@ button:disabled {
   transform: translateY(-100%);
 }
 .placelower .placeinnerselect {
+  bottom: 0;
+}
+.placelower .placehighlight {
   bottom: 0;
 }
 .withmonsters.placelower .placeinnerselect {
@@ -1200,7 +1218,13 @@ button:disabled {
 .placeleft .placeinnerselect {
   left: 0;
 }
+.placeleft .placehighlight {
+  left: 0;
+}
 .placeright .placeinnerselect {
+  right: 0;
+}
+.placeright .placehighlight {
   right: 0;
 }
 .placebox:hover .unselectable {
@@ -1854,6 +1878,14 @@ button:disabled {
 .bonus.shown {
   color: rgba(0, 0, 0, 1);
   background: rgba(255, 255, 255, 0.7);
+}
+@keyframes pulse {
+  from {
+    box-shadow: 0 0 min(0.625vw, 1vh) min(0.625vw, 1vh) rgba(0, 0, 0, 0);
+  }
+  to {
+    box-shadow: 0 0 min(1vw, 1.6vh) min(1vw, 1.6vh) palegoldenrod;
+  }
 }
 @keyframes blink {
   from {
