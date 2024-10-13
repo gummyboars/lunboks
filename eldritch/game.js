@@ -1555,6 +1555,18 @@ function animateVisuals() {
       if (!visual.getElementsByClassName("monsterchoice").length) {
         let hasMonster = visual.getElementsByClassName("monsterback").length;
         external = findExternal(handleOrName, hasMonster);
+        if (visuals.length == 2) {  // Special case where both fightchoices are leaving.
+          let allFightChoices = true;
+          for (let v of visuals) {
+            if (v.getElementsByClassName("fightchoice").length < 1) {
+              allFightChoices = false;
+              break;
+            }
+          }
+          if (allFightChoices) {
+            external = null;
+          }
+        }
         if (external != null && external.classList.contains("monstercontainer") && newVisuals.length) {
           external = null;
         }
