@@ -207,11 +207,10 @@
       </div>
       <div id="uibottom">
         <div id="bottomcenter">
-          <div id="uiprompt"></div>
+          <div id="promptline"><div id="uiprompt"></div></div>
           <button id="start" style="display: none" onclick="start(event)">Start</button>
-          <div id="uidice" style="display: none">
-            <div id="dice"></div>
-            <div class="buttonholder"><button id="dicebutton" onclick="roll(event)">Roll</button></div>
+          <div id="uidice">
+            <div id="dice" onclick="roll(event)"><div id="dicebg">❌</div></div>
           </div>
           <div id="uichoice"></div>
           <div id="uimonsterchoice">
