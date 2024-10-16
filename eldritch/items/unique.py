@@ -399,16 +399,27 @@ class SilverKey(Item):
     self.max_tokens["stamina"] = 3
 
   def get_usable_interrupt(self, event, owner, state):
-    # TODO: maybe it would make more sense to attach this usable to the FightOrEvadeChoice
-    if (
-      isinstance(event, events.EvadeRound)
-      and event.character == owner
-      and not (event.evaded or (event.check and event.check.successes))
-    ):
-      return events.Sequence(
-        [events.PassEvadeRound(event), events.AddToken(self, "stamina", owner)], owner
-      )
-    return None
+    evade = None
+    if not isinstance(event, (events.FightOrEvadeChoice, events.DiceRoll)):
+      return None
+    if event.character != owner or event.is_done():
+      return None
+    cancel, token = events.CancelEvent(event), events.AddToken(self, "stamina", owner)
+    if isinstance(event, events.FightOrEvadeChoice) and {"Flee", "Evade"} | set(event.choices):
+      if len(state.event_stack) < 3:
+        return None
+      if isinstance(state.event_stack[-3], (events.EvadeOrCombat, events.Combat)):
+        evade = state.event_stack[-3].evade
+        if isinstance(evade, events.EvadeRound):
+          return events.Sequence([cancel, events.PassEvadeRound(evade), token], owner)
+      return None
+    # Event is a DiceRoll
+    if len(state.event_stack) < 2 or not isinstance(state.event_stack[-2], events.Check):
+      return None
+    check = state.event_stack[-2]
+    if check.check_type != "evade" or check.dice != event:
+      return None
+    return events.Sequence([cancel, events.PassCheck(owner, check, self), token], owner)
 
 
 class SunkenCityRuby(Item):
