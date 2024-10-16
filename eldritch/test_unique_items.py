@@ -708,12 +708,11 @@ class SilverKeyTest(EventTest):
     self.char.possessions.append(self.key)
     self.combat = events.Combat(self.char, self.add_monsters(monsters.Zombie()))
     self.state.event_stack.append(self.combat)
-    evade_choice = self.resolve_to_choice(events.FightOrEvadeChoice)
-    evade_choice.resolve(self.state, "Flee")
+    self.resolve_to_choice(events.FightOrEvadeChoice)
 
   def testEvade(self):
-    key = self.resolve_to_usable(0, "Silver Key0")
-    self.state.event_stack.append(key)
+    self.assertIn("Silver Key0", self.state.usables[0])
+    self.state.event_stack.append(self.state.usables[0]["Silver Key0"])
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=1)):
       self.resolve_until_done()
     self.assertEqual(self.key.tokens["stamina"], 1)
@@ -721,8 +720,7 @@ class SilverKeyTest(EventTest):
 
   def testEvadeMaxTokens(self):
     self.key.tokens["stamina"] = 2
-    key = self.resolve_to_usable(0, "Silver Key0")
-    self.state.event_stack.append(key)
+    self.state.event_stack.append(self.state.usables[0]["Silver Key0"])
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=1)):
       self.resolve_until_done()
     self.assertNotIn(self.key, self.char.possessions)
@@ -740,32 +738,44 @@ class SilverKeyTest(EventTest):
     movement = self.resolve_to_choice(events.CityMovement)
     self.assertEqual(self.char.movement_points, 3)
     movement.resolve(self.state, "Rivertown")
-    fight_evade = self.resolve_to_choice(events.FightOrEvadeChoice)
-    fight_evade.resolve(self.state, "Evade")
-    key = self.resolve_to_usable(0, "Silver Key0")
-    self.state.event_stack.append(key)
+    self.resolve_to_choice(events.FightOrEvadeChoice)
+    self.assertIn("Silver Key0", self.state.usables[0])
+    self.state.event_stack.append(self.state.usables[0]["Silver Key0"])
     self.resolve_to_choice(events.CityMovement)
     self.assertEqual(self.char.place.name, "Rivertown")
     self.assertEqual(self.char.movement_points, 2)
     self.assertEqual(self.key.tokens["stamina"], 1)
 
   def testDeclineToUsePass(self):
-    self.resolve_to_usable(0, "Silver Key0")
-    self.state.done_using[0] = True
+    choice = self.resolve_to_choice(events.FightOrEvadeChoice)
+    choice.resolve(self.state, "Flee")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      roll = self.resolve_to_choice(events.DiceRoll)  # Also can be used here
+      roll.resolve(self.state)
       self.resolve_until_done()
     self.assertEqual(self.key.tokens["stamina"], 0)
     self.assertIn(self.key, self.char.possessions)
 
   def testDeclineToUseFail(self):
-    self.resolve_to_usable(0, "Silver Key0")
-    self.state.done_using[0] = True
+    choice = self.resolve_to_choice(events.FightOrEvadeChoice)
+    choice.resolve(self.state, "Flee")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=1)):
-      key = self.resolve_to_usable(0, "Silver Key0")
+      roll = self.resolve_to_choice(events.DiceRoll)  # Also can be used here
+      roll.resolve(self.state)
+      choice = self.resolve_to_choice(events.FightOrEvadeChoice)
+    self.assertEqual(self.char.stamina, 3)  # Failed the evade check
+    self.assertIn("Silver Key0", self.state.usables[0])  # Can use it again
+
+  def testUseOnCheck(self):
+    self.state.event_stack.clear()
+
+    gain = events.Gain(self.char, {"dollars": 5})
+    check = events.Check(self.char, "evade", 0)
+    self.state.event_stack.append(events.PassFail(self.char, check, gain, events.Nothing()))
+    key = self.resolve_to_usable(0, "Silver Key0")
     self.state.event_stack.append(key)
     self.resolve_until_done()
-    self.assertEqual(self.key.tokens["stamina"], 1)
-    self.assertIn(self.key, self.char.possessions)
+    self.assertEqual(self.char.dollars, 5)
 
 
 class WardingStatueTest(EventTest):
