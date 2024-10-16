@@ -525,13 +525,13 @@ function handleData(data) {
   updateAncientSelect(data.game_stage, data.host);
   updateCharacterSheets(data.characters, data.pending_chars, data.player_idx, data.first_player, myChoice, data.chooser == data.player_idx ? data.sliders : null);
   updateBottomText(data.game_stage, data.turn_phase, data.characters, data.turn_idx, data.player_idx, data.host);
+  recordOldVisuals();
   updateGlobals(data.environment, data.rumor, data.other_globals);
   let gateCount = updatePlaces(data.places, data.activity, data.current);
   animateClues(data.current);
   updateAncientOne(data.game_stage, data.ancient_one, data.terror, gateCount, data.gate_limit, data.characters.length);
   updateCharacters(data.characters);
   updateSliderButton(data.sliders, data.chooser == data.player_idx);
-  recordOldVisuals();
   updateMonsters(data.choice, data.monsters);
   updateChoices(data.choice, data.current, data.chooser == data.player_idx, data.characters[data.chooser], data.autochoose);
   updateMonsterChoices(data.choice, data.monsters, data.chooser == data.player_idx, data.characters[data.chooser]);
@@ -1572,7 +1572,7 @@ function animateVisuals() {
         }
       }
       if (lostCards[handleOrName] != null && gainedCards[handleOrName] == null) {
-        external = "leaving";
+        external = lostCards[handleOrName].failed ? "shaking" : "leaving";
         lostCards[handleOrName] = null;
       }
       leavingVisuals.push([visual, external, visual.getBoundingClientRect()]);
@@ -1600,6 +1600,13 @@ function animateVisuals() {
         holder.classList.add("leaving");
       }, 10);
     };
+    if (lostCards[handle].failed) {
+      startLeaving = function() {
+        doneAnimating(holder);
+        holder.classList.add("shaking");
+        setTimeout(lastAnim, 1200);
+      };
+    }
     holder.ontransitionend = startLeaving;
     holder.ontransitioncancel = startLeaving;
     setTimeout(function() { holder.classList.remove("noanimate"); holder.style.removeProperty("transform"); }, 10);
@@ -1637,8 +1644,12 @@ function animateVisuals() {
       // TODO: in some situations (i.e. passing a rumor), should this fade out instead?
       setTimeout(function() { visual.parentNode.removeChild(visual); finishAnim(); }, 10);
     } else if (typeof(dest) == "string") {
-      visual.ontransitionend = function() { doneAnimating(visual); visual.parentNode.removeChild(visual); finishAnim(); };
-      visual.ontransitioncancel = function() { doneAnimating(visual); visual.parentNode.removeChild(visual); finishAnim(); };
+      if (dest == "shaking") {
+        setTimeout(function() { visual.parentNode.removeChild(visual); finishAnim(); }, 1200);
+      } else {
+        visual.ontransitionend = function() { doneAnimating(visual); visual.parentNode.removeChild(visual); finishAnim(); };
+        visual.ontransitioncancel = function() { doneAnimating(visual); visual.parentNode.removeChild(visual); finishAnim(); };
+      }
       setTimeout(function() { visual.classList.add(dest); }, 10);
     } else {
       let trueDest = dest.classList.contains("monstercontainer");
@@ -1939,7 +1950,10 @@ function updateChoices(choice, current, isMyChoice, chooser, autoChoose) {
   document.getElementById("charoverlay").classList.toggle("shown", showOverlay);
   if (choice.cards == null && choice.monster == null && choice.monsters == null) {
     if (choice.visual != null) {
-      newVisuals.push(newVisual(choice.visual, "card"));
+      let rumorDiv = document.getElementById("rumor");
+      let desc = (choice.visual == rumorDiv.name) ? rumorDiv.annotation : null;
+      let pct = (choice.visual == rumorDiv.name) ? rumorDiv.percent : null;
+      newVisuals.push(newVisual(choice.visual, "card", {"descText": desc, "backgroundPct": pct}));
     }
   }
   if (choice.items != null) {
@@ -3093,14 +3107,31 @@ function updateGlobals(env, rumor, otherGlobals) {
     renderAssetToDiv(envCnt, envDiv.name);
   }
   if (rumor == null) {
+    if (rumorDiv.name != null) {  // Animate the rumor leaving.
+      lostCards[rumorDiv.name] = rumorDiv;
+      rumorDiv.failed = (rumorDiv.percent == 0);
+    } else {
+      rumorDiv.failed = null;
+    }
     clearAssetFromDiv(rumorCnt);
     rumorDiv.classList.add("missing");
     rumorDiv.name = null;
     rumorDiv.annotation = null;
+    rumorDiv.percent = null;
   } else {
+    let oldPercent = rumorDiv.percent;
     rumorDiv.classList.remove("missing");
     rumorDiv.name = rumor.name;
     rumorDiv.annotation = "Rumor: " + rumor.progress + "/" + rumor.max_progress;
+    rumorDiv.percent = 100 - (100 * rumor.progress / rumor.max_progress);
+    rumorDiv.failed = null;
+    if (rumorDiv.percent != oldPercent) {
+      if (document.getElementById("eventlog").children.length) {  // Hack to not do this on the first message.
+        newVisuals.push(newVisual(rumorDiv.name, "card", {"descText": rumorDiv.annotation, "backgroundPct": rumorDiv.percent}));
+        runningAnim.push(true);  // let the user see the progress change
+        setTimeout(finishAnim, (oldVisuals[rumorDiv.name] != null) ? 1200 : 2100);
+      }
+    }
     renderAssetToDiv(rumorCnt, rumorDiv.name);
   }
   let toRemove = {};
@@ -3262,7 +3293,7 @@ function toggleGlobals(e, frontCard) {
       continue;
     }
     count++;
-    let visual = newVisual(cont.name, "mythos", {"descText": cont.annotation});
+    let visual = newVisual(cont.name, "mythos", {"descText": cont.annotation, "backgroundPct": cont.percent});
     if (frontCard != null && cont.name != frontCard) {
       visual.classes.push("unchoosable");
     }
@@ -3327,7 +3358,10 @@ function updateDice(dice, playerIdx, monsterList) {
       }
     }
     if (!found) {
-      newVisuals.push(newVisual(dice.name, "card"));
+      let rumorDiv = document.getElementById("rumor");
+      let desc = (dice.name == rumorDiv.name) ? rumorDiv.annotation : null;
+      let pct = (dice.name == rumorDiv.name) ? rumorDiv.percent : null;
+      newVisuals.push(newVisual(dice.name, "card", {"descText": desc, "backgroundPct": pct}));
     }
   }
   if (dice.prompt) {

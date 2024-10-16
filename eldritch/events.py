@@ -3318,9 +3318,17 @@ class CombatChoice(ItemChoice):
 
 class ItemCountChoice(ItemChoice):
   def __init__(
-    self, character, prompt, count, min_count=None, decks=None, item_type=None, select_type=None
+    self,
+    character,
+    prompt,
+    count,
+    min_count=None,
+    decks=None,
+    item_type=None,
+    select_type=None,
+    visual=None,
   ):
-    super().__init__(character, prompt, decks=decks, item_type=item_type)
+    super().__init__(character, prompt, decks=decks, item_type=item_type, visual=visual)
     self.count = count
     self.min_count = count if min_count is None else min_count
     self._select_type = select_type or "check"

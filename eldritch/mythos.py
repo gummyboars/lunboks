@@ -1137,8 +1137,9 @@ class Mythos59(Rumor):
     if event.character.place != state.places["FrenchHill"]:
       return None
     num_spells = 3 if len(state.characters) <= 4 else 4
+    prompt = "Choose spells to discard"
     discard_choice = events.ItemCountChoice(
-      event.character, "Choose spells to discard", num_spells, decks={"spells"}, select_type="x"
+      event.character, prompt, num_spells, decks={"spells"}, select_type="x", visual=self.name
     )
     success = [
       discard_choice,
