@@ -790,7 +790,18 @@ class Mythos33(ReleaseMonstersHeadline):
     )
 
 
-# TODO: Mythos34 return those lost in Time and Space
+class Mythos34(Headline):
+  def __init__(self):
+    super().__init__("Mythos34", "Unnamable", "Woods", {"slash", "triangle", "star"}, {"hex"})
+
+  def create_event(self, state):
+    seq = super().create_event(state)
+    for char in state.characters:
+      if getattr(char.place, "name", None) == "Lost":
+        place_choice = events.PlaceChoice(char, "Choose a place to return to")
+        move = events.ForceMovement(char, place_choice)
+        seq.events.extend([place_choice, move])
+    return seq
 
 
 class Mythos35(Headline):
@@ -1030,7 +1041,17 @@ class Mythos53(ReturnAndIncreaseHeadline):
     )
 
 
-# TODO: Mythos 54, may return from Other Worlds
+class Mythos54(Headline):
+  def __init__(self):
+    super().__init__("Mythos54", "Square", "Unnamable", {"slash", "triangle", "star"}, {"hex"})
+
+  def create_event(self, state):
+    seq = super().create_event(state)
+    evts = seq.events
+    for char in state.characters:
+      if isinstance(char.place, places.OtherWorld):
+        evts.append(events.Return(char, char.place.info.name, get_lost=False, none_choice="Cancel"))
+    return seq
 
 
 class Mythos55(Environment):
@@ -1177,6 +1198,88 @@ class Mythos60(Environment):
     return 0
 
 
+class Mythos62(Rumor):
+  def __init__(self):
+    super().__init__("Mythos62", "Square", {"slash", "triangle", "star"}, {"hex"}, "Southside")
+
+  def progress_event(self, state):
+    fail = [events.EndRumor(self, failed=True)]
+    prompt = "Lower your max sanity or stamina?"
+    for char in state.characters:
+      if char.gone:
+        continue
+      sanity = events.DrawSpecific(char, "specials", "Sanity Decrease")
+      stamina = events.DrawSpecific(char, "specials", "Stamina Decrease")
+      fail.append(
+        events.BinaryChoice(char, prompt, "Sanity", "Stamina", sanity, stamina, visual=self.name)
+      )
+    results = {0: events.Sequence(fail), 1: events.AllyToBox()}
+    return events.Conditional(None, values.Calculation(state, "allies", len), None, results)
+
+  def get_interrupt(self, event, state):
+    if isinstance(event, events.EncounterPhase) and event.character.place == state.places["House"]:
+      success = [events.EndRumor(self, failed=False)]
+      success += [events.Gain(char, {"dollars": 5}) for char in state.characters if not char.gone]
+      prompt = "Spend 5 clue tokens to end the rumor?"
+      return events.BinarySpend(
+        event.character, "clues", 5, prompt, "Yes", "No", events.Sequence(success), visual=self.name
+      )
+    return super().get_interrupt(event, state)
+
+  def get_progress(self, state):
+    return 11 - len(state.allies)
+
+  def max_progress(self, state):  # pylint: disable=unused-argument
+    return 11
+
+
+class Mythos63(Rumor):
+  def __init__(self):
+    super().__init__("Mythos63", "Science", {"slash", "triangle", "star"}, {"hex"}, "Downtown")
+
+  def progress_event(self, state):
+    first_player = state.characters[state.first_player]
+    dice = events.DiceRoll(first_player, 1, name=self.name, bad=[1, 2])
+    prog = events.AddDoom()
+    cond = events.Conditional(first_player, values.Die(dice), "", {0: prog, 3: events.Nothing()})
+    return events.Sequence([dice, cond])
+
+  def get_interrupt(self, event, state):
+    downtown = state.places["Downtown"]
+    if not isinstance(event, events.EncounterPhase) or event.character.place != downtown:
+      return super().get_interrupt(event, state)
+
+    prompt = "Choose ally to discard"
+    discard_choice = events.ItemCountChoice(
+      event.character, prompt, 1, decks={"allies"}, select_type="x", visual=self.name
+    )
+    success = [
+      discard_choice,
+      events.DiscardSpecific(event.character, discard_choice),
+      events.EndRumor(self, failed=False),
+    ]
+    success.extend(
+      [events.Draw(char, "common", 2, keep_count=2) for char in state.characters if not char.gone]
+    )
+    prereq = values.ItemDeckPrerequisite(event.character, "allies", 1, "at least")
+    return events.BinaryChoice(
+      event.character,
+      "Discard an ally to end the rumor?",
+      "Yes",
+      "No",
+      events.Sequence(success),
+      events.Nothing(),
+      prereq,
+      visual=self.name,
+    )
+
+  def get_progress(self, state):
+    return state.ancient_one.doom
+
+  def max_progress(self, state):
+    return state.ancient_one.max_doom
+
+
 class Mythos64(Environment):
   def __init__(self):
     super().__init__("Mythos64", "Lodge", "Graveyard", {"square", "diamond"}, {"circle"}, "mystic")
@@ -1189,6 +1292,45 @@ class Mythos64(Environment):
     ):
       return 1
     return 0
+
+
+class Mythos65(Rumor):
+  def __init__(self):
+    super().__init__("Mythos65", "Isle", {"slash", "triangle", "star"}, {"hex"}, "University")
+
+  def progress_event(self, state):
+    draw = events.DrawMonstersFromCup(1, to_board=False)
+    return events.Sequence([draw, events.PlaceMonstersOnRumor(draw, self)])
+
+  def get_interrupt(self, event, state):
+    university = state.places["University"]
+    if not isinstance(event, events.EncounterPhase) or event.character.place != university:
+      return super().get_interrupt(event, state)
+    monsters_on_rumor = [m for m in state.monsters if m.place == self]
+    return events.EvadeOrFightAll(event.character, monsters_on_rumor, auto_evade=True)
+
+  def get_trigger(self, event, state):
+    if isinstance(event, events.StartRumor) and event.rumor == self:
+      draw = events.DrawMonstersFromCup(5, to_board=False)
+      return events.Sequence([draw, events.PlaceMonstersOnRumor(draw, self)])
+    monsters_on_rumor = [m for m in state.monsters if m.place == self]
+    if isinstance(event, events.EvadeOrCombat):
+      if not monsters_on_rumor:
+        success = [events.EndRumor(self, failed=False)]
+        success += [events.Draw(char, "skills", 1) for char in state.characters if not char.gone]
+        return events.Sequence(success)
+    if isinstance(event, events.PlaceMonstersOnRumor) and len(monsters_on_rumor) >= 8:
+      terror = events.IncreaseTerror(10 - state.terror)
+      spawn = events.MonsterSpawnChoice([m.idx for m in monsters_on_rumor], None, ["University"])
+      fail = events.EndRumor(self, failed=True)
+      return events.Sequence([fail, terror, spawn])
+    return super().get_trigger(event, state)
+
+  def get_progress(self, state):
+    return len([m for m in state.monsters if m.place == self])
+
+  def max_progress(self, state):  # pylint: disable=unused-argument
+    return 8
 
 
 class Mythos66(ReleaseMonstersHeadline):
@@ -1247,7 +1389,8 @@ def CreateMythos():
     Mythos30(),
     Mythos31(),
     Mythos32(),
-    Mythos33(),  # Mythos34(),
+    Mythos33(),
+    Mythos34(),
     Mythos35(),
     Mythos36(),
     Mythos37(),
@@ -1266,16 +1409,19 @@ def CreateMythos():
     Mythos50(),
     Mythos51(),
     Mythos52(),
-    Mythos53(),  # Mythos54(),
+    Mythos53(),
+    Mythos54(),
     Mythos55(),
     Mythos56(),
     Mythos57(),
     Mythos58(),
     Mythos59(),
     Mythos60(),
-    # Mythos61(), Mythos62(), Mythos63(),
-    Mythos64(),  # Mythos65(),
+    ShuffleMythos(),
+    Mythos62(),
+    Mythos63(),
+    Mythos64(),
+    Mythos65(),
     Mythos66(),
     Mythos67(),
-    ShuffleMythos(),
   ]

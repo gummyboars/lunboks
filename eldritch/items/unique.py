@@ -381,6 +381,10 @@ class OuterGodlyFlute(Item):
       return None
     if owner.stamina < 3 or owner.sanity < 3:
       return None
+    # In some instances, the character may be fighting a monster that is not in a location (for
+    # example, Mythos65). In these cases, the flute is not usable.
+    if event.monster.place != owner.place:
+      return None
 
     combat_round = state.event_stack[-2]
 

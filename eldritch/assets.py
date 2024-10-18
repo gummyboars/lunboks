@@ -487,6 +487,25 @@ class BonusToAllChecks(Card):
     return None
 
 
+class StatDecrease(Card):
+  def __init__(self, name, idx, stat):
+    assert stat in {"sanity", "stamina"}
+    super().__init__(name, idx, "specials", {}, {f"max_{stat}": -1})
+
+  def get_trigger(self, event, owner, state):
+    if isinstance(event, events.KeepDrawn) and self.name in event.kept:
+      return events.CapStatsAtMax(owner)
+    return None
+
+
+def StaminaDecrease(idx):
+  return StatDecrease("Stamina Decrease", idx, "stamina")
+
+
+def SanityDecrease(idx):
+  return StatDecrease("Sanity Decrease", idx, "sanity")
+
+
 def CreateAllies():
   return [
     ally()

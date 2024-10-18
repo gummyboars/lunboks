@@ -236,9 +236,10 @@ class GameState:
     limit = 9 - (len(self.characters) + 1) // 2
     return limit + self.get_modifier(self, "gate_limit")
 
-  def monster_limit(self):
-    if self.terror >= 10:
-      return float("inf")
+  def monster_limit(self, original=False):
+    if not original:
+      if self.terror >= 10:
+        return float("inf")
     limit = len(self.characters) + 3
     return limit + self.get_modifier(self, "monster_limit")
 
@@ -748,6 +749,13 @@ class GameState:
     # If the ancient one's doom track is full, it wakes up.
     if isinstance(event, events.AddDoom) and self.ancient_one.doom == self.ancient_one.max_doom:
       if self.game_stage == "slumber":
+        triggers.append(events.Awaken())
+
+    # If there are twice as many monsters as the normal monster limit, the ancient one awakens.
+    if isinstance(event, events.MonsterSpawnChoice):
+      limit = self.monster_limit(original=True)
+      count = len([mon for mon in self.monsters if isinstance(mon.place, places.CityPlace)])
+      if count >= 2 * limit:
         triggers.append(events.Awaken())
 
     # Insane/Unconscious after sanity/stamina loss.

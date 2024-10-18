@@ -1534,6 +1534,21 @@ class AwakenTest(unittest.TestCase):
     self.assertEqual(self.state.game_stage, "awakened")
     self.assertEqual(self.state.turn_phase, "upkeep")
 
+  def testAwakenIfDoubleNormalMonsterLimit(self):
+    for _ in range(6):
+      self.state.monsters.append(monsters.Cultist())
+      self.state.monsters[-1].idx = len(self.state.monsters) - 1
+      self.state.monsters[-1].place = self.state.monster_cup
+    self.state.terror = 10
+    for i in range(7):
+      self.state.monsters[i].place = self.state.places["Isle"]
+    self.state.event_stack.append(events.OpenGate("Isle"))
+    for _ in self.state.resolve_loop():
+      pass
+    self.assertIsInstance(self.state.event_stack[-1], events.SliderInput)
+    self.assertEqual(self.state.game_stage, "awakened")
+    self.assertEqual(self.state.turn_phase, "upkeep")
+
   def testAwakenIfNoGatesLeft(self):
     self.state.gates.clear()
     self.state.event_stack.append(events.OpenGate("Isle"))
