@@ -3763,7 +3763,7 @@ class EvadeOrFightAll(Event):
       self.done[idx] = True
       for idx, monster in enumerate(self.monsters):
         # Maybe an item defeated these monsters
-        if monster.place != self.character.place:
+        if monster.place is None or monster.place == state.monster_cup:
           self.done[idx] = True
       self.combat = None
     if all(self.done):
@@ -3774,8 +3774,12 @@ class EvadeOrFightAll(Event):
 
     # Give the user a choice of monsters.
     if self.choice is None:
-      # This will ignore any monsters that have been taken as trophies.
-      present_monsters = [pair for pair in enumerate(self.monsters) if pair[1].place == self.place]
+      # This will ignore any monsters that have been taken as trophies or returned to the cup.
+      present_monsters = [
+        (idx, monster)
+        for idx, monster in enumerate(self.monsters)
+        if monster.place is not None and monster.place != state.monster_cup
+      ]
       # Annotate all monsters already fought or evaded with "Done".
       shown_monsters = [monster for _, monster in present_monsters]
       annotations = ["Done" if self.done[idx] else None for idx, _ in present_monsters]
@@ -4238,38 +4242,35 @@ class RespawnTrophies(Event):
     super().__init__()
     self.monster_name = monster_name
     self.location_name = location_name
-    self.respawned_monsters = None
+    self.respawn: Optional[Event] = None
+    self.monsters = None
 
   def resolve(self, state):
-    monsters = [
+    self.monsters = [
       monster
       for char in state.characters
       for monster in char.trophies
       if monster.name == self.monster_name
     ]
 
-    place = state.places[self.location_name]
-    for monster in monsters:
-      monster.place = place
+    for monster in self.monsters:
       for char in state.characters:
         if monster in char.trophies:
           char.trophies.remove(monster)
           break
-    self.respawned_monsters = monsters
+    self.respawn = MonsterSpawnChoice([m.idx for m in self.monsters], None, [self.location_name])
+    state.event_stack.append(self.respawn)
 
   def is_resolved(self):
-    return self.respawned_monsters is not None
+    return self.respawn is not None and self.respawn.is_done()
 
   def log(self, state):
-    if self.cancelled and self.respawned_monsters is None:
+    if self.cancelled and self.monsters is None:
       return f"Respawning of [{self.monster_name}]s at [{self.location_name}] cancelled"
-    if self.respawned_monsters is None:
+    if self.monsters is None:
       return f"[{self.monster_name}]s taken as trophies will respawn at [{self.location_name}]"
-    if self.respawned_monsters:
-      return (
-        f"{len(self.respawned_monsters)} [{self.monster_name}](s) respawned at "
-        f"[{self.location_name}]"
-      )
+    if self.monsters:
+      return f"{len(self.monsters)} [{self.monster_name}](s) respawned at [{self.location_name}]"
     return f"No [{self.monster_name}]s to respawn at [{self.location_name}]"
 
 
@@ -4333,19 +4334,21 @@ class Travel(Event):
 
 
 class Return(Event):
-  def __init__(self, character, world_name, get_lost=True):
+  def __init__(self, character, world_name, get_lost=True, none_choice=None):
     super().__init__()
     self.character = character
     self.world_name = world_name
     self.return_choice: Optional[ChoiceEvent] = None
     self.get_lost = get_lost
+    self.none_choice = none_choice
     self.lost: Optional[Event] = None
     self.returned = None
 
   def resolve(self, state):
     if self.return_choice is None:
+      prompt = "Choose a gate to return to"
       self.return_choice = GateChoice(
-        self.character, "Choose a gate to return to", self.world_name, annotation="Return"
+        self.character, prompt, self.world_name, annotation="Return", none_choice=self.none_choice
       )
       state.event_stack.append(self.return_choice)
       return
@@ -4927,6 +4930,34 @@ class DrawMonstersFromCup(Event):
     )
 
 
+class PlaceMonstersOnRumor(Event):
+  def __init__(self, draw_monsters, rumor):
+    super().__init__()
+    self.draw_monsters = draw_monsters
+    self.rumor = rumor
+    self.count = None
+
+  def resolve(self, state):
+    if self.draw_monsters.is_cancelled() or len(self.draw_monsters.monsters) < 1:
+      self.cancelled = True
+      return
+
+    indexes = self.draw_monsters.monsters
+    for idx in indexes:
+      state.monsters[idx].place = self.rumor
+    self.count = len(indexes)
+
+  def is_resolved(self):
+    return self.count is not None
+
+  def log(self, state):
+    if self.cancelled:
+      return "monsters were not placed on the rumor"
+    if self.count is None:
+      return "monsters will be placed on the rumor"
+    return f"{self.count} monsters were placed on the rumor"
+
+
 class MonsterSpawnChoice(ChoiceEvent):
   def __init__(self, draw_monsters, location_name, open_gates):
     super().__init__()
@@ -4970,17 +5001,24 @@ class MonsterSpawnChoice(ChoiceEvent):
     return available_board_count, available_outskirts_count + 1, steps_remaining
 
   def compute_choices(self, state):
-    if self.draw_monsters.is_cancelled() or len(self.draw_monsters.monsters) < 1:
-      self.cancelled = True
-      return
+    if self.to_spawn is None:
+      if isinstance(self.draw_monsters, Event):
+        if self.draw_monsters.is_cancelled():
+          self.cancelled = True
+          return
+        self.to_spawn = self.draw_monsters.monsters[:]
+      else:
+        self.to_spawn = self.draw_monsters
+      if len(self.to_spawn) < 1:
+        self.cancelled = True
+        return
+
     open_count = len(self.open_gates)
     if not open_count:
       self.cancelled = True
       return
     if self.location_name is not None:
       assert getattr(state.places[self.location_name], "gate", None) is not None
-    if self.to_spawn is None:
-      self.to_spawn = self.draw_monsters.monsters[:]
 
     on_board = len([m for m in state.monsters if isinstance(m.place, places.CityPlace)])
     in_outskirts = len([m for m in state.monsters if isinstance(m.place, places.Outskirts)])

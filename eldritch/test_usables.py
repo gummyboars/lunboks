@@ -1628,10 +1628,12 @@ class SpendingOutputTest(EventTest):
       self.assertIn("Research Materials0", data["spendables"])
 
 
-class GetStatIncreaserTest(EventTest):
+class GetStatModifierTest(EventTest):
   def setUp(self):
     super().setUp()
     self.state.allies.append(assets.Dog())
+    self.state.specials.append(assets.StaminaDecrease(0))
+    self.state.specials.append(assets.SanityDecrease(0))
 
   def testGainStats(self):
     self.char.sanity = 4
@@ -1650,6 +1652,24 @@ class GetStatIncreaserTest(EventTest):
     self.assertEqual(len(self.char.possessions), 1)
     self.assertEqual(self.char.sanity, 6)
     self.assertEqual(self.char.max_sanity(self.state), 6)
+
+  def testLoseStats(self):
+    self.char.stamina = 3
+    self.state.event_stack.append(DrawSpecific(self.char, "specials", "Stamina Decrease"))
+    self.resolve_until_done()
+
+    self.assertEqual(len(self.char.possessions), 1)
+    self.assertEqual(self.char.stamina, 3)
+    self.assertEqual(self.char.max_stamina(self.state), 4)
+
+  def testLoseStatsAtMax(self):
+    self.char.sanity = 5
+    self.state.event_stack.append(DrawSpecific(self.char, "specials", "Sanity Decrease"))
+    self.resolve_until_done()
+
+    self.assertEqual(len(self.char.possessions), 1)
+    self.assertEqual(self.char.sanity, 4)
+    self.assertEqual(self.char.max_sanity(self.state), 4)
 
 
 class StatIncreaserTest(EventTest):
