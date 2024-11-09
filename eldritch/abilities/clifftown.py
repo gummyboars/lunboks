@@ -1,4 +1,4 @@
-from eldritch import assets
+from eldritch import cards as assets
 from eldritch import events
 from eldritch import places
 
@@ -45,3 +45,8 @@ class Minor(assets.Asset):
     if attribute == "can_get_bank_loan":
       return False
     return None
+
+
+def CreateAbilities():
+  abilities = [Streetwise(), BlessedIsTheChild(), Minor()]
+  return {ability.name: ability for ability in abilities}

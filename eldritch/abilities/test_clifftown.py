@@ -2,11 +2,11 @@ from unittest import mock
 
 import game
 from eldritch.test_events import EventTest
-from eldritch.expansions.clifftown import abilities
+from eldritch.abilities import clifftown
 from eldritch import events
 from eldritch import location_specials
 from eldritch import monsters
-from eldritch.items import unique
+from eldritch.items.unique import base as unique
 
 
 class TestUrchinAbilities(EventTest):
@@ -16,9 +16,9 @@ class TestUrchinAbilities(EventTest):
     for location_name, fixed_encounters in specials.items():
       self.state.places[location_name].fixed_encounters.extend(fixed_encounters)
     self.elder_sign = unique.ElderSign(0)
-    self.minor = abilities.Minor()
+    self.minor = clifftown.Minor()
     self.char.possessions.extend(
-      [abilities.Streetwise(), abilities.BlessedIsTheChild(), self.minor, self.elder_sign]
+      [clifftown.Streetwise(), clifftown.BlessedIsTheChild(), self.minor, self.elder_sign]
     )
 
   def testEvadeInStreets(self):

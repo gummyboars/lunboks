@@ -1,6 +1,6 @@
 import typing
 
-from eldritch import assets
+from eldritch import cards as assets
 from eldritch import characters
 from eldritch import events
 from eldritch import values
@@ -182,3 +182,8 @@ class ThickSkulled(assets.Asset):
         [events.CancelEvent(event), ThickSkulledCombat(event.character, event.monster)]
       )
     return None
+
+
+def CreateAbilities():
+  abilities = [Synergy(), TeamPlayer(), BreakingTheLimits(), AbnormalFocus(), ThickSkulled()]
+  return {ability.name: ability for ability in abilities}

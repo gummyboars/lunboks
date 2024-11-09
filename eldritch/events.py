@@ -5,7 +5,7 @@ import operator
 from random import SystemRandom
 from typing import Collection, List, Dict, Optional, Union, NoReturn, TYPE_CHECKING
 
-from eldritch import assets
+from eldritch import cards as assets
 from eldritch import places
 from eldritch import values
 

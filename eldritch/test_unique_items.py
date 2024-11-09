@@ -11,9 +11,12 @@ if os.path.abspath(sys.path[0]) == os.path.dirname(os.path.abspath(__file__)):
 
 from eldritch import ancient_ones
 from eldritch import characters
-from eldritch import encounters
+from eldritch.characters import base as base_characters
+from eldritch.encounters.location import base as encounters
 from eldritch import events
 from eldritch import items
+from eldritch.items import deputy
+from eldritch.items.spells import base as spells
 from eldritch import monsters
 from eldritch import values
 from eldritch.test_events import EventTest
@@ -25,7 +28,7 @@ class AncientTabletTest(EventTest):
     self.tablet = items.AncientTablet(0)
     self.char.possessions = [self.tablet]
     self.advance_turn(0, "movement")
-    self.state.spells.extend([items.spells.Wither(0), items.spells.FindGate(0)])
+    self.state.spells.extend([spells.Wither(0), spells.FindGate(0)])
 
   def testNoSuccesses(self):
     self.assertIn(self.tablet, self.char.possessions)
@@ -78,7 +81,7 @@ class AncientTabletTest(EventTest):
     self.assertEqual(self.char.place.name, "Abyss2")
 
   def testNotUsableWithPatrolWagon(self):
-    self.char.possessions.append(items.PatrolWagon())
+    self.char.possessions.append(deputy.PatrolWagon())
     wagon = self.resolve_to_usable(0, "Patrol Wagon")
     self.state.event_stack.append(wagon)
     self.resolve_to_choice(events.PlaceChoice)
@@ -583,7 +586,7 @@ class GateBoxTest(EventTest):
   def testTradeBeforeReturnMultipleGates(self):
     self.state.places["Woods"].gate = self.get_gate("Sunken City")
     self.state.places["Diner"].gate = self.get_gate("Abyss")
-    nun = characters.Nun()
+    nun = base_characters.Nun()
     self.state.characters.append(nun)
     self.assertEqual(self.char.place.name, "Sunken City2")
     nun.place = self.char.place

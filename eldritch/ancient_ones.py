@@ -1,7 +1,8 @@
 import abc
 from typing import Optional, TYPE_CHECKING, Union
 
-from eldritch import events, places, monsters, values, mythos
+from eldritch import events, places, monsters, values
+from eldritch.mythos.core import GlobalEffect
 from eldritch.events import AncientOneAttack
 from eldritch.characters import BaseCharacter
 
@@ -9,7 +10,7 @@ if TYPE_CHECKING:
   from eldritch.eldritch import GameState
 
 
-class AncientOne(mythos.GlobalEffect, metaclass=abc.ABCMeta):
+class AncientOne(GlobalEffect, metaclass=abc.ABCMeta):
   # pylint: disable=unused-argument
   def __init__(self, name: str, max_doom: int, attributes: set, combat_rating: Union[int, float]):
     self.name = name
@@ -373,7 +374,7 @@ class SpaceBubbles(AncientOne):
     return 0
 
 
-def AncientOnes():
+def AncientOnes(expansions):  # pylint: disable=unused-argument
   ancients = [
     SquidFace,
     YellowKing,

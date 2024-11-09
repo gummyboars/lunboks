@@ -1,5 +1,5 @@
 from eldritch import events
-from eldritch.assets import Card
+from eldritch.cards import Card
 
 __all__ = ["Item", "Weapon", "OneshotWeapon", "Tome"]
 

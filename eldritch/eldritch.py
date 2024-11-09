@@ -5,17 +5,21 @@ from random import SystemRandom
 from typing import List, Dict
 
 from eldritch import values
+from eldritch import specials
+from eldritch import skills
 from eldritch import places
 from eldritch import mythos
+import eldritch.mythos.core
 from eldritch import monsters
 from eldritch import location_specials
 from eldritch import items
-from eldritch import gate_encounters
+from eldritch.encounters import gate as gate_encounters
 from eldritch import gates
 from eldritch import events
-from eldritch import encounters
+from eldritch.encounters import location as encounters
 from eldritch import characters
-from eldritch import assets
+from eldritch import cards as assets
+from eldritch import allies
 from eldritch import abilities
 from eldritch import ancient_ones
 from game import (  # pylint: disable=unused-import
@@ -43,6 +47,7 @@ class GameState:
   )
   CUSTOM_ATTRIBUTES = frozenset(
     {
+      "options",
       "characters",
       "all_characters",
       "environment",
@@ -69,6 +74,17 @@ class GameState:
     "attack": events.InvestigatorAttack,
     "ancient": events.AncientAttack,
   }
+  EXPANSIONS = frozenset({"hilltown", "clifftown", "seaside", "pharaoh", "king", "goat", "lurker"})
+  EXPANSION_OPTIONS = frozenset(
+    {"characters", "ancient_ones", "monsters", "mythos", "encounters", "items", "allies", "rules"}
+  )
+  HILLTOWN_OPTIONS = EXPANSION_OPTIONS | {"injuries"}
+  CLIFFTOWN_OPTIONS = EXPANSION_OPTIONS | {"epic"}
+  SEASIDE_OPTIONS = (EXPANSION_OPTIONS | {"stories"}) - {"items", "allies"}
+  PHARAOH_OPTIONS = frozenset({"mythos", "encounters", "items", "allies", "rules"})
+  KING_OPTIONS = frozenset({"mythos", "encounters", "items", "rules"})
+  GOAT_OPTIONS = frozenset({"monsters", "mythos", "encounters", "items"})
+  LURKER_OPTIONS = frozenset({"gates", "mythos", "encounters", "items", "rules"})
   MONSTER_EVENTS = (
     events.Combat,
     events.CombatRound,
@@ -79,10 +95,15 @@ class GameState:
 
   def __init__(self):
     self.name = "game"
+    self.options = {
+      exp: {"characters", "ancient_ones"} for exp in ("hilltown", "clifftown", "seaside")
+    }
+    self.options.update({exp: set() for exp in ("pharaoh", "king", "goat", "lurker")})
+    self.options["seaside"].add("stories")
     self.places: Dict[str, places.Place] = {}
     self.characters = []
-    self.all_characters = characters.CreateCharacters()
-    self.all_ancients = ancient_ones.AncientOnes()
+    self.all_characters = characters.CreateCharacters(self.expansions("characters"))
+    self.all_ancients = ancient_ones.AncientOnes(self.expansions("ancient_ones"))
     self.pending_chars = {}
     self.common = collections.deque()
     self.unique = collections.deque()
@@ -115,8 +136,6 @@ class GameState:
     self.environment = None
     self.ancient_one = None
     self.other_globals = []
-    self.check_result = None
-    self.dice_result = []
     self.test_mode = False
     self.terror = 0
 
@@ -136,20 +155,20 @@ class GameState:
     self.turn_number = 0
     self.turn_phase = "upkeep"
     self.ancient_one = ancient_ones.DummyAncient()
-    self.specials.extend(items.CreateSpecials())
+    self.specials.extend(specials.CreateSpecials())
     self.test_mode = True
 
   def initialize(self):
     self.places = places.CreatePlaces()
     other_worlds = places.CreateOtherWorlds()
     self.places.update(other_worlds)
-    specials = location_specials.CreateFixedEncounters()
-    encounter_cards = encounters.CreateEncounterCards()
-    self.gate_cards.extend(gate_encounters.CreateGateCards())
+    facilities = location_specials.CreateFixedEncounters()
+    encounter_cards = encounters.CreateEncounterCards(self.expansions("encounters"))
+    self.gate_cards.extend(gate_encounters.CreateGateCards(self.expansions("encounters")))
     for neighborhood_name, cards in encounter_cards.items():
       random.shuffle(cards)
       self.places[neighborhood_name].encounters.extend(cards)
-    for location_name, fixed_encounters in specials.items():
+    for location_name, fixed_encounters in facilities.items():
       self.places[location_name].fixed_encounters.extend(fixed_encounters)
 
     gate_markers = gates.CreateGates()
@@ -161,19 +180,19 @@ class GameState:
       monster.idx = idx
       monster.place = self.monster_cup
 
-    self.common.extend(items.CreateCommon())
-    self.unique.extend(items.CreateUnique())
-    self.spells.extend(items.CreateSpells())
-    self.skills.extend(abilities.CreateSkills())
-    self.allies.extend(assets.CreateAllies())
-    self.tradables.extend(items.CreateTradables())
-    self.specials.extend(items.CreateSpecials())
+    self.common.extend(items.CreateCommon(self.expansions("items")))
+    self.unique.extend(items.CreateUnique(self.expansions("items")))
+    self.spells.extend(items.CreateSpells(self.expansions("items")))
+    self.skills.extend(skills.CreateSkills(self.expansions("items")))
+    self.allies.extend(allies.CreateAllies(self.expansions("allies")))
+    self.tradables.extend(specials.CreateTradables())
+    self.specials.extend(specials.CreateSpecials())
     all_cards = self.common + self.unique + self.spells + self.skills + self.allies + self.specials
     all_cards += self.tradables
     handles = [card.handle for card in all_cards]
     assert len(handles) == len(set(handles)), f"Card handles {handles} are not unique"
 
-    self.mythos.extend(mythos.CreateMythos())
+    self.mythos.extend(mythos.CreateMythos(self.expansions("mythos")))
 
     # Shuffle the decks.
     for deck in assets.Card.DECKS | {"gate_cards", "mythos"} - {"tradables", "specials"}:
@@ -207,6 +226,10 @@ class GameState:
       for _ in range(count):
         char.possessions.append(getattr(self, deck).popleft())
 
+  def expansions(self, option):
+    assert option in self.EXPANSION_OPTIONS
+    return {expansion for expansion, options in self.options.items() if option in options}
+
   def get_modifier(self, thing, attribute):
     modifier = 0
     for glob in self.globals():
@@ -229,7 +252,7 @@ class GameState:
       override = override and val
     return override
 
-  def globals(self) -> List[mythos.GlobalEffect]:
+  def globals(self) -> List[eldritch.mythos.core.GlobalEffect]:
     return [self.rumor, self.environment, self.ancient_one] + self.other_globals
 
   def gate_limit(self):
@@ -267,6 +290,10 @@ class GameState:
     output["monsters"] = []
     for monster in self.monsters:
       output["monsters"].append(monster.json_repr(self, None))
+
+    output["options"] = {}
+    for expansion, options in self.options.items():
+      output["options"][expansion] = sorted(options)
 
     for attr in ["environment", "rumor", "ancient_one"]:
       output[attr] = getattr(self, attr).json_repr(self) if getattr(self, attr) else None
@@ -509,6 +536,9 @@ class GameState:
     if data.get("type") == "ancient":
       self.handle_ancient(data.get("ancient"))
       return [None]  # Return a dummy iterable; do not start executing the game loop.
+    if data.get("type") == "option":
+      self.handle_option(data.get("expansion"), data.get("option"), data.get("enabled"))
+      return [None]
 
     if char_idx not in range(len(self.characters)):
       raise InvalidPlayer(f"no such player {char_idx}")
@@ -878,6 +908,67 @@ class GameState:
       raise InvalidMove(f"Unknown ancient one {ancient}")
     self.ancient_one = self.all_ancients[ancient]
 
+  def handle_option(self, expansion, option, enabled):
+    if self.game_stage != "setup":
+      raise InvalidMove("The game has already started.")
+    if expansion not in self.options:
+      raise InvalidMove(f"Unknown expansion {expansion}")
+    if option is not None:
+      exp_options = getattr(self, f"{expansion.upper()}_OPTIONS")
+      if option not in exp_options:
+        raise InvalidMove(f"Unknown option {option}")
+    if enabled not in [True, False]:
+      raise InvalidMove("Enabled must be true or false")
+
+    if (option is None or option == "characters") and not enabled:
+      new_characters = characters.CreateCharacters(self.expansions("characters") - {expansion})
+      invalid_characters = self.pending_chars.keys() - new_characters.keys()
+      if invalid_characters:
+        names = "], [".join(invalid_characters)
+        raise InvalidMove(f"Must abandon characters: [{names}] before disabling {expansion}")
+
+    if option is None:
+      if enabled:
+        self.options[expansion] = set(getattr(self, f"{expansion.upper()}_OPTIONS"))
+      else:
+        self.options[expansion] = set()
+    else:
+      if enabled:
+        self.options[expansion].add(option)
+      else:
+        self.options[expansion].discard(option)
+
+    # If expansion boards are used, the corresponding mythos and encounter cards must be used.
+    if expansion in {"hilltown", "seaside"}:
+      if enabled:
+        if "mythos" in self.options[expansion]:
+          self.options[expansion] |= {"rules"}
+        if "rules" in self.options[expansion]:
+          self.options[expansion] |= {"mythos", "encounters"}
+      else:
+        if not {"mythos", "encounters"} <= self.options[expansion]:
+          self.options[expansion] -= {"rules"}
+        if "rules" not in self.options[expansion]:
+          self.options[expansion] -= {"mythos"}
+    elif expansion == "clifftown":
+      if enabled and "rules" in self.options[expansion]:
+        self.options[expansion] |= {"encounters"}
+      if not enabled and "encounters" not in self.options[expansion]:
+        self.options[expansion] -= {"rules"}
+    elif expansion == "king":
+      if enabled and "rules" in self.options[expansion]:
+        self.options[expansion] |= {"mythos"}
+      if not enabled and "mythos" not in self.options[expansion]:
+        self.options[expansion] -= {"rules"}
+
+    if option == "characters" or option is None:
+      self.all_characters = characters.CreateCharacters(self.expansions("characters"))
+      # TODO: do we need to re-point the existing chars to the newly created instances?
+    if option == "ancient_ones" or option is None:
+      self.all_ancients = ancient_ones.AncientOnes(self.expansions("ancient_ones"))
+      if self.ancient_one is not None and self.ancient_one.name not in self.all_ancients:
+        self.ancient_one = None
+
   def handle_start(self):
     if self.game_stage != "setup":
       raise InvalidMove("The game has already started.")
@@ -885,6 +976,10 @@ class GameState:
       raise InvalidMove("You must choose an ancient one first.")
     if not self.pending_chars:
       raise InvalidMove("At least one player is required to start the game.")
+    invalid_characters = self.pending_chars.keys() - self.all_characters.keys()
+    if invalid_characters:
+      names = "], [".join(invalid_characters)
+      raise InvalidMove(f"Characters [{names}] not allowed with chosen expansions")
     self.game_stage = "slumber"
     self.turn_idx = 0
     self.turn_number = -1
@@ -1360,7 +1455,7 @@ class GameState:
     self.pending_chars.clear()
 
     # Abilities and fixed possessions.
-    char_specials = abilities.CreateSpecials()
+    char_specials = abilities.CreateAbilities(self.expansions("characters"))
     for char in new_characters:
       char.place = self.places[char.home]
       char.possessions.extend([char_specials[name] for name in char.abilities()])
@@ -1437,11 +1532,12 @@ class EldritchGame(BaseGame):
     if data.get("type") == "join":
       yield from self.handle_join(session, data)
       return
-    if session not in self.player_sessions and data.get("type") not in ["start", "ancient"]:
-      raise InvalidPlayer("Unknown player")
-    if data.get("type") in ["start", "ancient"]:
+    if data.get("type") in ["start", "ancient", "option"]:  # Host actions
       if session != self.host:
         raise InvalidMove("Only the host can do that.")
+    else:  # All other actions must be tied to a player that has joined the game.
+      if session not in self.player_sessions:
+        raise InvalidPlayer("Unknown player")
     for val in self.game.handle(self.player_sessions.get(session), data):
       self.update_pending_players()
       yield val

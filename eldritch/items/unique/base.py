@@ -2,7 +2,7 @@ import operator
 import typing
 
 from eldritch import events, values
-from .base import Item, Weapon, OneshotWeapon, Tome
+from eldritch.items.core import Item, Weapon, OneshotWeapon, Tome
 
 if typing.TYPE_CHECKING:
   from eldritch.eldritch import GameState

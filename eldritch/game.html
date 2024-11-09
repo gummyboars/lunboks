@@ -208,7 +208,111 @@
       <div id="uibottom">
         <div id="bottomcenter">
           <div id="promptline"><div id="uiprompt"></div></div>
-          <button id="start" style="display: none" onclick="start(event)">Start</button>
+          <div id="start">
+            <button onclick="start(event)">Start</button>
+            <table>
+              <thead>
+                <tr>
+                  <th>Expansion</th>
+                  <th>Board/Rules</th>
+                  <th>Characters</th>
+                  <th>Ancient Ones</th>
+                  <th>Mythos</th>
+                  <th>Encounters</th>
+                  <th>Monsters</th>
+                  <th>Items</th>
+                  <th>Allies</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <th>Hilltown <input id="expansionhilltown" type="checkbox" oninput="toggleExpansion(event, 'hilltown')"></input></th>
+                  <td><input id="hilltownrules" type="checkbox" oninput="toggleOption(event, 'hilltown', 'rules')"></input></td>
+                  <td><input id="hilltowncharacters" type="checkbox" oninput="toggleOption(event, 'hilltown', 'characters')"></input></td>
+                  <td><input id="hilltownancient_ones" type="checkbox" oninput="toggleOption(event, 'hilltown', 'ancient_ones')"></input></td>
+                  <td><input id="hilltownmythos" type="checkbox" oninput="toggleOption(event, 'hilltown', 'mythos')"></input></td>
+                  <td><input id="hilltownencounters" type="checkbox" oninput="toggleOption(event, 'hilltown', 'encounters')"></input></td>
+                  <td><input id="hilltownmonsters" type="checkbox" oninput="toggleOption(event, 'hilltown', 'monsters')"></input></td>
+                  <td><input id="hilltownitems" type="checkbox" oninput="toggleOption(event, 'hilltown', 'items')"></input></td>
+                  <td><input id="hilltownallies" type="checkbox" oninput="toggleOption(event, 'hilltown', 'allies')"></input></td>
+                  <td><input id="hilltowninjuries" type="checkbox" oninput="toggleOption(event, 'hilltown', 'injuries')"></input> Injury/Madness</td>
+                </tr>
+                <tr>
+                  <th>Clifftown <input id="expansionclifftown" type="checkbox" oninput="toggleExpansion(event, 'clifftown')"></input></th>
+                  <td><input id="clifftownrules" type="checkbox" oninput="toggleOption(event, 'clifftown', 'rules')"></input></td>
+                  <td><input id="clifftowncharacters" type="checkbox" oninput="toggleOption(event, 'clifftown', 'characters')"></input></td>
+                  <td><input id="clifftownancient_ones" type="checkbox" oninput="toggleOption(event, 'clifftown', 'ancient_ones')"></input></td>
+                  <td><input id="clifftownmythos" type="checkbox" oninput="toggleOption(event, 'clifftown', 'mythos')"></input></td>
+                  <td><input id="clifftownencounters" type="checkbox" oninput="toggleOption(event, 'clifftown', 'encounters')"></input></td>
+                  <td><input id="clifftownmonsters" type="checkbox" oninput="toggleOption(event, 'clifftown', 'monsters')"></input></td>
+                  <td><input id="clifftownitems" type="checkbox" oninput="toggleOption(event, 'clifftown', 'items')"></input></td>
+                  <td><input id="clifftownallies" type="checkbox" oninput="toggleOption(event, 'clifftown', 'allies')"></input></td>
+                  <td><input id="clifftownepic" type="checkbox" oninput="toggleOption(event, 'clifftown', 'epic')"></input> Epic Battle</td>
+                </tr>
+                <tr>
+                  <th>Seaside <input id="expansionseaside" type="checkbox" oninput="toggleExpansion(event, 'seaside')"></input></th>
+                  <td><input id="seasiderules" type="checkbox" oninput="toggleOption(event, 'seaside', 'rules')"></input></td>
+                  <td><input id="seasidecharacters" type="checkbox" oninput="toggleOption(event, 'seaside', 'characters')"></input></td>
+                  <td><input id="seasideancient_ones" type="checkbox" oninput="toggleOption(event, 'seaside', 'ancient_ones')"></input></td>
+                  <td><input id="seasidemythos" type="checkbox" oninput="toggleOption(event, 'seaside', 'mythos')"></input></td>
+                  <td><input id="seasideencounters" type="checkbox" oninput="toggleOption(event, 'seaside', 'encounters')"></input></td>
+                  <td><input id="seasidemonsters" type="checkbox" oninput="toggleOption(event, 'seaside', 'monsters')"></input></td>
+                  <td></td>
+                  <td></td>
+                  <td><input id="seasidestories" type="checkbox" oninput="toggleOption(event, 'seaside', 'stories')"></input> Personal Stories</td>
+                </tr>
+                <tr>
+                  <th>Pharaoh <input id="expansionpharaoh" type="checkbox" oninput="toggleExpansion(event, 'pharaoh')"></input></th>
+                  <td><input id="pharaohrules" type="checkbox" oninput="toggleOption(event, 'pharaoh', 'rules')"></input></td>
+                  <td></td>
+                  <td></td>
+                  <td><input id="pharaohmythos" type="checkbox" oninput="toggleOption(event, 'pharaoh', 'mythos')"></input></td>
+                  <td><input id="pharaohencounters" type="checkbox" oninput="toggleOption(event, 'pharaoh', 'encounters')"></input></td>
+                  <td></td>
+                  <td><input id="pharaohitems" type="checkbox" oninput="toggleOption(event, 'pharaoh', 'items')"></input></td>
+                  <td><input id="pharaohallies" type="checkbox" oninput="toggleOption(event, 'pharaoh', 'allies')"></input></td>
+                  <td></td>
+                </tr>
+                <tr>
+                  <th>King <input id="expansionking" type="checkbox" oninput="toggleExpansion(event, 'king')"></input></th>
+                  <td><input id="kingrules" type="checkbox" oninput="toggleOption(event, 'king', 'rules')"></input></td>
+                  <td></td>
+                  <td></td>
+                  <td><input id="kingmythos" type="checkbox" oninput="toggleOption(event, 'king', 'mythos')"></input></td>
+                  <td><input id="kingencounters" type="checkbox" oninput="toggleOption(event, 'king', 'encounters')"></input></td>
+                  <td></td>
+                  <td><input id="kingitems" type="checkbox" oninput="toggleOption(event, 'king', 'items')"></input></td>
+                  <td></td>
+                  <td></td>
+                </tr>
+                <tr>
+                  <th>Goat <input id="expansiongoat" type="checkbox" oninput="toggleExpansion(event, 'goat')"></input></th>
+                  <td></td>
+                  <td></td>
+                  <td></td>
+                  <td><input id="goatmythos" type="checkbox" oninput="toggleOption(event, 'goat', 'mythos')"></input></td>
+                  <td><input id="goatencounters" type="checkbox" oninput="toggleOption(event, 'goat', 'encounters')"></input></td>
+                  <td><input id="goatmonsters" type="checkbox" oninput="toggleOption(event, 'goat', 'monsters')"></input></td>
+                  <td><input id="goatitems" type="checkbox" oninput="toggleOption(event, 'goat', 'items')"></input></td>
+                  <td></td>
+                  <td></td>
+                </tr>
+                <tr>
+                  <th>Lurker <input id="expansionlurker" type="checkbox" oninput="toggleExpansion(event, 'lurker')"></input></th>
+                  <td><input id="lurkerrules" type="checkbox" oninput="toggleOption(event, 'lurker', 'rules')"></input></td>
+                  <td></td>
+                  <td></td>
+                  <td><input id="lurkermythos" type="checkbox" oninput="toggleOption(event, 'lurker', 'mythos')"></input></td>
+                  <td><input id="lurkerencounters" type="checkbox" oninput="toggleOption(event, 'lurker', 'encounters')"></input></td>
+                  <td></td>
+                  <td><input id="lurkeritems" type="checkbox" oninput="toggleOption(event, 'lurker', 'items')"></input></td>
+                  <td></td>
+                  <td><input id="lurkergates" type="checkbox" oninput="toggleOption(event, 'lurker', 'gates')"></input> Gates</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
           <div id="uidice">
             <div id="dice" onclick="roll(event)"><div id="dicebg">❌</div></div>
           </div>

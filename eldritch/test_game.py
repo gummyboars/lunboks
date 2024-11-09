@@ -10,23 +10,28 @@ from unittest import mock
 if os.path.abspath(sys.path[0]) == os.path.dirname(os.path.abspath(__file__)):
   sys.path[0] = os.path.dirname(sys.path[0])
 
-from eldritch import abilities
+from eldritch.allies import base as allies
 from eldritch import ancient_ones
-from eldritch import assets
 from eldritch import characters
+from eldritch.characters import base as base_characters
 from eldritch import eldritch
-from eldritch import encounters
+from eldritch.encounters.location.core import EncounterCard
+from eldritch.encounters.location import base as encounters
+from eldritch.encounters.gate.core import GateCard
+from eldritch.encounters.gate import base as gate_encounters
 from eldritch import events
-from eldritch import gate_encounters
 from eldritch import items
 from eldritch import location_specials
 from eldritch import monsters
-from eldritch import mythos
+from eldritch.mythos import base as mythos
+from eldritch.mythos.core import GlobalEffect
+from eldritch.skills import base as skills
+from eldritch import specials
 from eldritch import values
 import game
 
 
-class NoMythos(mythos.GlobalEffect):
+class NoMythos(GlobalEffect):
   def __init__(self):
     self.name = "NoMythos"
 
@@ -34,7 +39,7 @@ class NoMythos(mythos.GlobalEffect):
     return events.Nothing()
 
 
-class PauseMythos(mythos.GlobalEffect):
+class PauseMythos(GlobalEffect):
   def __init__(self):
     self.name = "PauseMythos"
 
@@ -42,7 +47,7 @@ class PauseMythos(mythos.GlobalEffect):
     return events.MultipleChoice(state.characters[0], "", ["PauseMythos"])
 
 
-class DevourFirstPlayer(mythos.GlobalEffect):
+class DevourFirstPlayer(GlobalEffect):
   def __init__(self):
     self.name = "DevourFirstPlayer"
 
@@ -54,11 +59,11 @@ class FixedEncounterBaseTest(unittest.TestCase):
   def setUp(self):
     self.state = eldritch.GameState()
     self.state.initialize_for_tests()
-    self.state.all_characters.update({"Nun": characters.Nun()})
+    self.state.all_characters.update({"Nun": base_characters.Nun()})
     self.state.characters = [self.state.all_characters["Nun"]]
     self.char = self.state.characters[0]
-    specials = location_specials.CreateFixedEncounters()
-    for location_name, fixed_encounters in specials.items():
+    facilities = location_specials.CreateFixedEncounters()
+    for location_name, fixed_encounters in facilities.items():
       self.state.places[location_name].fixed_encounters.extend(fixed_encounters)
     self.state.game_stage = "slumber"
     self.state.turn_phase = "encounter"
@@ -121,7 +126,7 @@ class RestorationFixedEncounterTest(FixedEncounterBaseTest):
     self.char.dollars = 2
     self.char.place = self.state.places["Hospital"]
     self.state.places["Uptown"].encounters.append(
-      encounters.EncounterCard("Uptown5", {"Hospital": encounters.Shoppe5})
+      EncounterCard("Uptown5", {"Hospital": encounters.Shoppe5})
     )
     self.state.event_stack.append(events.EncounterPhase(self.char))
     for _ in self.state.resolve_loop():
@@ -188,7 +193,7 @@ class DrawCardsFixedEncounterTest(FixedEncounterBaseTest):
     self.char.dollars = 1
     self.char.place = self.state.places["Store"]
     self.state.places["Rivertown"].encounters.append(
-      encounters.EncounterCard("Rivertown1", {"Store": encounters.Store1})
+      EncounterCard("Rivertown1", {"Store": encounters.Store1})
     )
     self.state.event_stack.append(events.EncounterPhase(self.char))
     for _ in self.state.resolve_loop():
@@ -327,7 +332,7 @@ class SpendTrophiesEncounterTest(FixedEncounterBaseTest):
   def testGainAlly(self):
     self.char.trophies.append(self.state.gates.popleft())
     self.char.place = self.state.places["House"]
-    self.state.allies.extend([assets.Dog(), assets.ToughGuy(), assets.BraveGuy()])
+    self.state.allies.extend([allies.Dog(), allies.ToughGuy(), allies.BraveGuy()])
     self.state.event_stack.append(events.EncounterPhase(self.char))
     for _ in self.state.resolve_loop():
       pass
@@ -359,8 +364,8 @@ class SpendTrophiesEncounterTest(FixedEncounterBaseTest):
     self.assertEqual(self.char.possessions[0].name, "Dog")
 
   def testBecomeDeputized(self):
-    self.state.specials.append(items.Deputy())
-    self.state.tradables.extend([items.DeputysRevolver(), items.PatrolWagon()])
+    self.state.specials.append(specials.Deputy())
+    self.state.tradables.extend([specials.DeputysRevolver(), specials.PatrolWagon()])
     self.char.trophies.append(self.state.gates.popleft())
     self.char.place = self.state.places["Police"]
     self.state.event_stack.append(events.EncounterPhase(self.char))
@@ -394,7 +399,7 @@ class SpendTrophiesEncounterTest(FixedEncounterBaseTest):
     deputy = next(c for c in self.state.specials if c.name == "Deputy")
     self.state.specials.remove(deputy)
 
-    self.state.tradables.extend([items.DeputysRevolver(), items.PatrolWagon()])
+    self.state.tradables.extend([specials.DeputysRevolver(), specials.PatrolWagon()])
     self.char.trophies.append(self.state.gates.popleft())
     self.char.place = self.state.places["Police"]
     self.state.event_stack.append(events.EncounterPhase(self.char))
@@ -414,7 +419,7 @@ class SpendTrophiesEncounterTest(FixedEncounterBaseTest):
       event.resolve(self.state, "Deputy")
 
   def testBecomeDeputyMissingDeputyItems(self):
-    self.state.specials.append(items.Deputy())
+    self.state.specials.append(specials.Deputy())
     self.char.trophies.append(self.state.gates.popleft())
     self.char.place = self.state.places["Police"]
     self.state.event_stack.append(events.EncounterPhase(self.char))
@@ -445,7 +450,7 @@ class GateTravelTest(unittest.TestCase):
   def setUp(self):
     self.state = eldritch.GameState()
     self.state.initialize_for_tests()
-    self.state.all_characters.update({"Nun": characters.Nun()})
+    self.state.all_characters.update({"Nun": base_characters.Nun()})
     self.state.characters = [self.state.all_characters["Nun"]]
     for char in self.state.characters:
       char.place = self.state.places[char.home]
@@ -548,12 +553,12 @@ class TradingTestBase(unittest.TestCase):
     self.state = eldritch.GameState()
     self.state.initialize_for_tests()
     for name in ["Nun", "Gangster"]:
-      self.state.all_characters[name] = getattr(characters, name)()
+      self.state.all_characters[name] = getattr(base_characters, name)()
       self.state.characters.append(self.state.all_characters[name])
     self.nun = self.state.characters[0]
     self.gangster = self.state.characters[1]
-    self.nun.possessions.extend([items.Cross(0), abilities.Bravery(0)])
-    self.gangster.possessions.extend([items.TommyGun(0), abilities.Marksman(0)])
+    self.nun.possessions.extend([items.Cross(0), skills.Bravery(0)])
+    self.gangster.possessions.extend([items.TommyGun(0), skills.Marksman(0)])
     self.state.game_stage = "slumber"
     self.state.turn_phase = "movement"
     self.state.turn_number = 0
@@ -645,7 +650,9 @@ class TradingTest(TradingTestBase):
       self.state.handle_give(0, 1, "Cross0", None)
 
   def testTradability(self):
-    self.gangster.possessions.extend([items.Deputy(), items.DeputysRevolver(), items.PatrolWagon()])
+    self.gangster.possessions.extend(
+      [specials.Deputy(), specials.DeputysRevolver(), specials.PatrolWagon()]
+    )
     self.assertEqual(len(self.nun.possessions), 2)
     self.assertEqual(len(self.gangster.possessions), 5)
     self.state.handle_give(1, 0, "Patrol Wagon", None)
@@ -737,7 +744,7 @@ class OtherWorldTradingTest(TradingTestBase):
 
 class InitializePlayersTest(unittest.TestCase):
   def testInitializePlayers(self):
-    chars = characters.CreateCharacters()
+    chars = characters.CreateCharacters(set())
     for name in chars:
       with self.subTest(char=name):
         state = eldritch.GameState()
@@ -764,7 +771,7 @@ class NextTurnBase(unittest.TestCase):
     self.state = eldritch.GameState()
     self.state.initialize_for_tests()
     for name in ["Nun", "Doctor", "Archaeologist"]:
-      self.state.all_characters[name] = getattr(characters, name)()
+      self.state.all_characters[name] = getattr(base_characters, name)()
       self.state.characters.append(self.state.all_characters[name])
     for char in self.state.characters:
       char.place = self.state.places[char.home]
@@ -1270,7 +1277,7 @@ class InsaneTest(unittest.TestCase):
     self.state = eldritch.GameState()
     self.state.initialize_for_tests()
     for name in ["Nun", "Doctor", "Archaeologist"]:
-      self.state.all_characters[name] = getattr(characters, name)()
+      self.state.all_characters[name] = getattr(base_characters, name)()
       self.state.characters.append(self.state.all_characters[name])
     for char in self.state.characters:
       char.place = self.state.places[char.home]
@@ -1349,7 +1356,7 @@ class InsaneTest(unittest.TestCase):
     self.state.turn_idx = 0
     self.state.turn_phase = "otherworld"
     self.state.gate_cards.append(
-      gate_encounters.GateCard("Gate29", {"red"}, {"Other": gate_encounters.Other29})
+      GateCard("Gate29", {"red"}, {"Other": gate_encounters.Other29})
     )  # lose one stamina
     for _ in self.state.resolve_loop():
       if self.state.turn_phase != "otherworld":
@@ -1442,7 +1449,7 @@ class AwakenTest(unittest.TestCase):
   def setUp(self):
     self.state = eldritch.GameState()
     self.state.initialize_for_tests()
-    self.state.all_characters["Gangster"] = characters.Gangster()
+    self.state.all_characters["Gangster"] = base_characters.Gangster()
     self.state.characters.append(self.state.all_characters["Gangster"])
     self.state.characters[0].place = self.state.places["House"]
     self.state.game_stage = "slumber"
@@ -1559,7 +1566,7 @@ class AwakenTest(unittest.TestCase):
     self.assertEqual(self.state.turn_phase, "upkeep")
 
   def testLostInvestigatorsAreDevoured(self):
-    self.state.all_characters["Doctor"] = characters.Doctor()
+    self.state.all_characters["Doctor"] = base_characters.Doctor()
     self.state.characters.append(self.state.all_characters["Doctor"])
     self.state.characters[1].place = self.state.places["Lost"]
     self.state.event_stack.append(events.AddDoom(count=float("inf")))
@@ -1578,7 +1585,7 @@ class RollDiceTest(unittest.TestCase):
     self.state = eldritch.GameState()
     self.state.initialize_for_tests()
     for name in ["Nun", "Doctor"]:
-      self.state.all_characters[name] = getattr(characters, name)()
+      self.state.all_characters[name] = getattr(base_characters, name)()
       self.state.characters.append(self.state.all_characters[name])
     for char in self.state.characters:
       char.place = self.state.places[char.home]
@@ -1652,7 +1659,7 @@ class RollDiceTest(unittest.TestCase):
     self.state.test_mode = False
     self.state.characters[0].clues = 2
     self.state.characters[0].speed_sneak_slider = 1
-    self.state.characters[0].possessions.append(abilities.Stealth(0))
+    self.state.characters[0].possessions.append(skills.Stealth(0))
     check = events.Check(self.state.characters[0], "evade", 0, name="Land Squid")
     # Start with a basic check.
     self.state.event_stack.append(check)
@@ -1820,7 +1827,7 @@ class MapChoiceTest(unittest.TestCase):
     self.state = eldritch.GameState()
     self.state.initialize_for_tests()
     for name in ["Nun"]:
-      self.state.all_characters[name] = getattr(characters, name)()
+      self.state.all_characters[name] = getattr(base_characters, name)()
       self.state.characters.append(self.state.all_characters[name])
     self.state.game_stage = "slumber"
     self.state.turn_phase = "upkeep"
@@ -1858,8 +1865,8 @@ class PlayerTest(unittest.TestCase):
 
     orig_spells = items.CreateSpells
 
-    def spells():
-      orig = orig_spells()
+    def spells(expansions):
+      orig = orig_spells(expansions)
       # Remove these two spells from the pool of random spells. Otherwise, they can interrupt
       # the normal turn flow by asking the user if they wish to cast the spell during upkeep.
       return [spell for spell in orig if spell.name not in ("Voice", "Heal")]
@@ -1901,6 +1908,99 @@ class ChooseAncientOneTest(PlayerTest):
     self.handle("A", {"type": "start"})
     with self.assertRaisesRegex(game.InvalidMove, "already started"):
       self.handle("A", {"type": "ancient", "ancient": "Wendigo"})
+
+
+class ExpansionOptionsTest(PlayerTest):
+  def testInitialState(self):
+    # Test that all expansions are present in the initial options list.
+    self.assertSetEqual(self.game.game.EXPANSIONS, set(self.game.game.options.keys()))
+    # Test that expansion characters are available initially. TODO: expansion ancient ones.
+    self.assertIn("Urchin", self.game.game.all_characters)
+    self.assertIn("Farmhand", self.game.game.all_characters)
+
+    # TODO: test for items/encounters/etc
+
+  def testChangeOptions(self):
+    self.assertSetEqual(
+      self.game.game.options["seaside"], {"characters", "ancient_ones", "stories"}
+    )
+    self.game.connect_user("A")
+    self.handle(
+      "A", {"type": "option", "expansion": "seaside", "option": "monsters", "enabled": True}
+    )
+    self.assertSetEqual(
+      self.game.game.options["seaside"], {"characters", "ancient_ones", "monsters", "stories"}
+    )
+    self.handle(
+      "A", {"type": "option", "expansion": "seaside", "option": "characters", "enabled": False}
+    )
+    self.assertSetEqual(self.game.game.options["seaside"], {"ancient_ones", "monsters", "stories"})
+    self.handle("A", {"type": "option", "expansion": "seaside", "enabled": True})
+    self.assertSetEqual(
+      self.game.game.options["seaside"],
+      {"characters", "ancient_ones", "monsters", "mythos", "encounters", "stories", "rules"},
+    )
+
+  def testChangeAncientOne(self):
+    self.game.game.ancient_one = None
+    self.game.connect_user("A")
+    self.handle(
+      "A", {"type": "option", "expansion": "seaside", "option": "ancient_ones", "enabled": False}
+    )
+
+  def testForcedClifftownOptions(self):
+    self.game.connect_user("A")
+    self.handle("A", {"type": "option", "expansion": "clifftown", "enabled": False})
+    self.assertSetEqual(self.game.game.options["clifftown"], set())
+    # Turning on the rules/board means you must use the encounters too
+    self.handle(
+      "A", {"type": "option", "expansion": "clifftown", "option": "rules", "enabled": True}
+    )
+    self.assertSetEqual(self.game.game.options["clifftown"], {"rules", "encounters"})
+
+  def testForcedHilltownOptions(self):
+    self.game.connect_user("A")
+    self.handle("A", {"type": "option", "expansion": "hilltown", "enabled": False})
+    self.assertSetEqual(self.game.game.options["hilltown"], set())
+
+    # Turning on the rules/board means you must use the encounters and mythos
+    self.handle(
+      "A", {"type": "option", "expansion": "hilltown", "option": "rules", "enabled": True}
+    )
+    self.assertSetEqual(self.game.game.options["hilltown"], {"rules", "encounters", "mythos"})
+
+    # Turning off the rules/board means you cannot use thy mythos cards
+    self.handle(
+      "A", {"type": "option", "expansion": "hilltown", "option": "rules", "enabled": False}
+    )
+    self.assertSetEqual(self.game.game.options["hilltown"], {"encounters"})
+
+    # Turning on the mythos cards means you must use the board/rules
+    self.handle(
+      "A", {"type": "option", "expansion": "hilltown", "option": "mythos", "enabled": True}
+    )
+    self.assertSetEqual(self.game.game.options["hilltown"], {"rules", "encounters", "mythos"})
+
+    # Turning off the encounters means you cannot use the board/rules/mythos
+    self.handle(
+      "A", {"type": "option", "expansion": "hilltown", "option": "encounters", "enabled": False}
+    )
+    self.assertSetEqual(self.game.game.options["hilltown"], set())
+
+  def testChangingOptionsRemovesCharacters(self):
+    self.game.connect_user("A")
+    self.handle("A", {"type": "option", "expansion": "clifftown", "enabled": False})
+    self.assertNotIn("Urchin", self.game.game.all_characters)
+
+  def testCannotInvalidateExistingCharacters(self):
+    self.game.connect_user("A")
+    self.handle("A", {"type": "join", "char": "Urchin"})
+    self.assertIn("Urchin", self.game.game.pending_chars)
+
+    with self.assertRaisesRegex(game.InvalidMove, "before disabling"):
+      self.handle("A", {"type": "option", "expansion": "clifftown", "enabled": False})
+    self.assertIn("Urchin", self.game.game.all_characters)
+    self.assertIn("Urchin", self.game.game.pending_chars)
 
 
 class PlayerJoinTest(PlayerTest):
