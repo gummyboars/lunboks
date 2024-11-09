@@ -1508,6 +1508,30 @@ button:disabled {
   right: -1.25em;
   transform: translate(100%, 0);
 }
+#start {
+  font-size: calc(min(1vw, 1.6vh));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+table {
+  border-collapse: collapse;
+  border-spacing: 0;
+  margin-bottom: 1.5em;
+}
+th, td {
+  border: 1px solid black;
+  text-align: center;
+  padding-left: 1ch;
+  padding-right: 1ch;
+}
+tbody > tr > th {
+  text-align: right;
+}
+tbody > tr > td:last-of-type {
+  text-align: left;
+}
 #uidice {
   position: relative;
   display: none;

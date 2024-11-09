@@ -12,13 +12,16 @@ if os.path.abspath(sys.path[0]) == os.path.dirname(os.path.abspath(__file__)):
   sys.path[0] = os.path.dirname(sys.path[0])
 
 from game import InvalidMove
-from eldritch import abilities
-from eldritch import gate_encounters
+from eldritch.encounters.gate.core import GateCard
+from eldritch.encounters.gate import base as gate_encounters
 from eldritch import events
 from eldritch.events import *
 from eldritch import items
+from eldritch.items.spells import base as spells
 from eldritch import monsters
 from eldritch import places
+from eldritch.skills import base as skills
+from eldritch import specials
 from eldritch.test_events import EventTest
 
 
@@ -27,10 +30,10 @@ class DrawGateEncounter(EventTest):
     super().setUp()
     self.state.gate_cards = deque(
       [
-        gate_encounters.GateCard("Gate1", {"blue"}, {"Other": lambda char: Nothing()}),
-        gate_encounters.GateCard("Gate2", {"green"}, {"Other": lambda char: Nothing()}),
-        gate_encounters.GateCard("ShuffleGate", set(), {"Other": lambda char: Nothing()}),
-        gate_encounters.GateCard("Gate3", {"yellow"}, {"Other": lambda char: Nothing()}),
+        GateCard("Gate1", {"blue"}, {"Other": lambda char: Nothing()}),
+        GateCard("Gate2", {"green"}, {"Other": lambda char: Nothing()}),
+        GateCard("ShuffleGate", set(), {"Other": lambda char: Nothing()}),
+        GateCard("Gate3", {"yellow"}, {"Other": lambda char: Nothing()}),
       ]
     )
 
@@ -132,7 +135,7 @@ class Gate3Test(GateEncounterTest):
 
   def testPluto3FailOddItems(self):
     self.char.possessions.extend(
-      [items.Derringer18(0), items.EnchantedKnife(0), items.PatrolWagon()]
+      [items.Derringer18(0), items.EnchantedKnife(0), specials.PatrolWagon()]
     )
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=4)):
       choice = self.resolve_to_choice(ItemLossChoice)
@@ -145,7 +148,7 @@ class Gate3Test(GateEncounterTest):
   def testPluto3FailEvenItems(self):
     self.char.place = self.state.places["Pluto2"]
     self.char.possessions.extend(
-      [items.Derringer18(0), items.EnchantedKnife(0), items.PatrolWagon(), items.MagicPowder(0)]
+      [items.Derringer18(0), items.EnchantedKnife(0), specials.PatrolWagon(), items.MagicPowder(0)]
     )
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=4)):
       choice = self.resolve_to_choice(ItemLossChoice)
@@ -398,8 +401,8 @@ class Pluto12Test(GateEncounterTest):
   def setUp(self):
     super().setUp()
     self.char.place = self.state.places["Pluto1"]
-    self.spell1 = items.spells.DreadCurse(0)
-    self.spell2 = items.spells.Voice(0)
+    self.spell1 = spells.DreadCurse(0)
+    self.spell2 = spells.Voice(0)
     self.char.possessions.append(self.spell1)
     self.state.event_stack.append(gate_encounters.Pluto12(self.char))
 
@@ -605,7 +608,7 @@ class GreatHall15Test(GateEncounterTest):
 
 class Gate16Test(GateEncounterTest):
   def testGreatHall16Pass(self):
-    self.state.skills.append(abilities.Stealth(0))
+    self.state.skills.append(skills.Stealth(0))
     self.state.event_stack.append(gate_encounters.GreatHall16(self.char))
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
       self.resolve_until_done()
@@ -613,7 +616,7 @@ class Gate16Test(GateEncounterTest):
     self.assertEqual(self.char.possessions[0].deck, "skills")
 
   def testGreatHall16Fail(self):
-    self.state.skills.append(abilities.Stealth(0))
+    self.state.skills.append(skills.Stealth(0))
     self.state.event_stack.append(gate_encounters.GreatHall16(self.char))
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
       self.resolve_until_done()

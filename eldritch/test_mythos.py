@@ -11,15 +11,20 @@ if os.path.abspath(sys.path[0]) == os.path.dirname(os.path.abspath(__file__)):
   sys.path[0] = os.path.dirname(sys.path[0])
 
 from eldritch import characters
+from eldritch.characters import base as base_characters
 from eldritch.events import *
 from eldritch import gates
 from eldritch import items
+from eldritch.items.unique import base as unique
 from eldritch import monsters
-from eldritch.mythos import *
+from eldritch.mythos.base import *
+from eldritch.mythos.core import GlobalEffect, ShuffleMythos
 from eldritch import places
-from eldritch import assets
-from eldritch import abilities
-from eldritch import encounters
+from eldritch import allies
+from eldritch.abilities import base as abilities
+from eldritch.encounters.location import base as encounters
+from eldritch.skills import base as skills
+from eldritch import specials
 from eldritch import location_specials
 from eldritch.test_events import EventTest, Canceller, NoMythos
 
@@ -105,7 +110,7 @@ class OpenGateTest(EventTest):
   def testOpenGateOnScientist(self):
     self.assertEqual(len(self.state.gates), 1)
     self.assertIsNone(self.square.gate)
-    scientist = characters.Scientist()
+    scientist = base_characters.Scientist()
     self.state.characters.append(scientist)
     self.state.all_characters["Scientist"] = scientist
     scientist.place = self.square
@@ -121,7 +126,7 @@ class OpenGateTest(EventTest):
   def testOpenGateAwayFromScientist(self):
     self.assertEqual(len(self.state.gates), 1)
     self.assertIsNone(self.square.gate)
-    scientist = characters.Scientist()
+    scientist = base_characters.Scientist()
     self.state.characters.append(scientist)
     self.state.all_characters["Scientist"] = scientist
     scientist.place = self.woods
@@ -483,7 +488,7 @@ class MonsterSurgeTest(EventTest):
     self.assertEqual(self.state.ancient_one.doom, 0)
 
   def testAllToCup(self):
-    self.state.allies.extend([assets.Dog(), assets.Thief()])
+    self.state.allies.extend([allies.base.Dog(), allies.base.Thief()])
     # Add 5 monsters to the outskirts.
     outskirt_monsters = [
       monsters.Cultist(),
@@ -627,7 +632,7 @@ class MonsterSurgeTest(EventTest):
     self.assertEqual(self.state.terror, 2)
 
   def testMonsterSurgeOnScientist(self):
-    self.state.characters.append(characters.Scientist())
+    self.state.characters.append(base_characters.Scientist())
     self.state.all_characters["Scientist"] = self.state.characters[-1]
     self.state.characters[-1].place = self.state.places["Woods"]
 
@@ -641,7 +646,7 @@ class MonsterSurgeTest(EventTest):
     self.assertEqual(self.state.terror, 0)
 
   def testMonsterSurgeWithScientistOnGate(self):
-    self.state.characters.append(characters.Scientist())
+    self.state.characters.append(base_characters.Scientist())
     self.state.all_characters["Scientist"] = self.state.characters[-1]
     self.state.characters[-1].place = self.state.places["Square"]
 
@@ -1007,7 +1012,7 @@ class CloseGateTest(EventTest):
     self.state.event_stack.append(events.AddDoom())
     self.resolve_until_done()
     self.assertEqual(self.state.ancient_one.doom, 1)
-    self.char.possessions.append(items.unique.ElderSign(0))
+    self.char.possessions.append(unique.ElderSign(0))
     close = GateCloseAttempt(self.char, "Square")
     self.state.event_stack.append(close)
 
@@ -1022,7 +1027,7 @@ class CloseGateTest(EventTest):
     self.assertEqual(self.state.ancient_one.doom, 0)
 
   def testElderSignNotUsableIfCantSeal(self):
-    self.char.possessions.append(items.unique.ElderSign(0))
+    self.char.possessions.append(unique.ElderSign(0))
     self.state.other_globals.append(Mythos39())
     close = GateCloseAttempt(self.char, "Square")
     self.state.event_stack.append(close)
@@ -1031,7 +1036,7 @@ class CloseGateTest(EventTest):
 
   def testElderSignInsane(self):
     self.char.sanity = 1
-    self.char.possessions.append(items.unique.ElderSign(0))
+    self.char.possessions.append(unique.ElderSign(0))
     close = GateCloseAttempt(self.char, "Square")
     self.state.event_stack.append(close)
 
@@ -1675,7 +1680,7 @@ class EnvironmentTests(EventTest):
     self.state.environment = Mythos15()
     self.state.turn_phase = "movement"
     self.state.event_stack.append(Movement(self.char))
-    self.char.possessions.append(items.Deputy())
+    self.char.possessions.append(specials.Deputy())
     choice = self.resolve_to_choice(CityMovement)
     choice.resolve(self.state, "Easttown")
     choice = self.resolve_to_choice(CityMovement)
@@ -1839,7 +1844,7 @@ class RumorTest(EventTest):
     super().setUp()
     self.state.turn_number = 0
     self.state.turn_phase = "mythos"
-    self.state.spells.extend(items.CreateSpells())
+    self.state.spells.extend(items.CreateSpells(set()))
     self.char.place = self.state.places["Uptown"]
     self.state.monsters.clear()
     # Replace all monsters with stationary monsters so that none move during the mythos phase.
@@ -1858,7 +1863,7 @@ class RumorTest(EventTest):
     self.assertNotIn(self.state.rumor, self.state.mythos)
 
   def testRumor13Progress(self):
-    self.state.allies.extend(assets.CreateAllies()[:7])
+    self.state.allies.extend(allies.CreateAllies(set())[:7])
     self.state.event_stack.append(IncreaseTerror(6))
     self.resolve_until_done()
     self.state.mythos.append(Mythos13())
@@ -2440,8 +2445,8 @@ class Mythos18Test(EventTest):
     self.resolve_until_done()
     self.char.sanity = 2
 
-    specials = location_specials.CreateFixedEncounters()
-    for location_name, fixed_encounters in specials.items():
+    facilities = location_specials.CreateFixedEncounters()
+    for location_name, fixed_encounters in facilities.items():
       self.state.places[location_name].fixed_encounters.extend(fixed_encounters)
     self.state.places["Downtown"].encounters.extend(encounters.CreateEncounterCards()["Downtown"])
 
@@ -3014,7 +3019,7 @@ class Mythos58Test(EventTest):
 class Mythos62Test(EventTest):
   def testDoesNotRemoveAllyFirstTurn(self):
     self.state.allies.clear()
-    self.state.allies.extend([assets.Dog(), assets.Thief()])
+    self.state.allies.extend([allies.base.Dog(), allies.base.Thief()])
     self.state.mythos.append(Mythos62())
     self.state.event_stack.append(Mythos(self.char))
     self.resolve_until_done()
@@ -3023,7 +3028,7 @@ class Mythos62Test(EventTest):
 
   def testRemovesOneAlly(self):
     self.state.allies.clear()
-    self.state.allies.extend([assets.Dog(), assets.Thief()])
+    self.state.allies.extend([allies.base.Dog(), allies.base.Thief()])
     self.state.rumor = Mythos62()
     self.state.rumor.start_turn = -float("inf")
     self.state.mythos.append(NoMythos())
@@ -3034,7 +3039,7 @@ class Mythos62Test(EventTest):
 
   def testProgressUpdates(self):
     self.state.allies.clear()
-    self.state.allies.extend([assets.Dog(), assets.Thief()])
+    self.state.allies.extend([allies.base.Dog(), allies.base.Thief()])
     self.state.rumor = Mythos62()
     self.state.rumor.start_turn = -float("inf")
     self.assertEqual(self.state.rumor.get_progress(self.state), 11 - 2)
@@ -3053,7 +3058,7 @@ class Mythos62Test(EventTest):
 
   def testRemovingLastAllyDoesNotFailRumor(self):
     self.state.allies.clear()
-    self.state.allies.extend([assets.Dog()])
+    self.state.allies.extend([allies.base.Dog()])
     self.state.rumor = Mythos62()
     self.state.rumor.start_turn = -float("inf")
     self.state.mythos.append(NoMythos())
@@ -3081,7 +3086,7 @@ class Mythos62Test(EventTest):
 
   def testRumorFails(self):
     self.state.allies.clear()
-    self.state.specials.extend(items.CreateSpecials())
+    self.state.specials.extend(specials.CreateSpecials())
     self.state.rumor = Mythos62()
     self.state.rumor.start_turn = -float("inf")
     self.state.mythos.append(NoMythos())
@@ -3160,7 +3165,7 @@ class Mythos63Test(EventTest):
 
   def testPassRumor(self):
     self.state.common.extend([items.Food(0), items.Food(1), items.Food(2)])
-    self.char.possessions.append(assets.Dog())
+    self.char.possessions.append(allies.base.Dog())
     self.char.possessions.append(items.GateBox(0))
     self.char.place = self.state.places["Downtown"]
 
@@ -3375,7 +3380,7 @@ class Mythos65Test(EventTest):
     self.state.rumor = Mythos65()
     self.state.rumor.start_turn = -float("inf")
     self.state.monsters[0].place = self.state.rumor
-    self.state.skills.extend([abilities.Marksman(0), abilities.Stealth(0)])
+    self.state.skills.extend([skills.Marksman(0), skills.Stealth(0)])
 
     self.char.place = self.state.places["University"]
     self.state.event_stack.append(EncounterPhase(self.char))

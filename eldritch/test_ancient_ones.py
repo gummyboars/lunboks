@@ -8,12 +8,13 @@ import unittest
 if os.path.abspath(sys.path[0]) == os.path.dirname(os.path.abspath(__file__)):
   sys.path[0] = os.path.dirname(sys.path[0])
 from eldritch.test_events import EventTest
-from eldritch import ancient_ones, encounters, events, monsters
+from eldritch import ancient_ones, events, monsters
+from eldritch.encounters.location import core as location_encounters
 from eldritch.events import CityMovement
 
 
 def CreateDummyEncounterCard():
-  return encounters.EncounterCard("Dummy", {"Woods": lambda char: events.Nothing()})
+  return location_encounters.EncounterCard("Dummy", {"Woods": lambda char: events.Nothing()})
 
 
 class TestAncientOnes(EventTest):

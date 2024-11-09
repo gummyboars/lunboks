@@ -13,10 +13,10 @@ if os.path.abspath(sys.path[0]) == os.path.dirname(os.path.abspath(__file__)):
 import eldritch.eldritch
 import game
 from eldritch.test_events import EventTest
-from eldritch import assets
 from eldritch import characters
 from eldritch import events
 from eldritch import items
+from eldritch import specials
 
 
 def mock_randint(return_value=None, side_effect=None) -> mock.MagicMock:
@@ -35,14 +35,14 @@ class CurseBlessTest(EventTest):
     super().setUp()
     self.advance_turn(0, "encounter")
     self.resolve_until_done()
-    self.dummy_possession = assets.SelfDiscardingCard("Fake Special", 0)
+    self.dummy_possession = specials.SelfDiscardingCard("Fake Special", 0)
     self.char.possessions.append(self.dummy_possession)
 
   def doBlessingTest(self, bless_int):
     self.resolve_until_done()
     self.assertEqual(self.char.bless_curse, bless_int)
     self.assertEqual(
-      len([p for p in self.char.possessions if isinstance(p, assets.BlessingOrCurse)]), bless_int
+      len([p for p in self.char.possessions if isinstance(p, specials.BlessingOrCurse)]), bless_int
     )
     with mock_randint(return_value=4):
       roll = events.DiceRoll(self.char, 1)
@@ -52,7 +52,7 @@ class CurseBlessTest(EventTest):
 
     # Ensure that any discarded Blessings/Curses will get a first-round pass when they're re-drawn
     for card in self.state.specials:
-      if isinstance(card, assets.SelfDiscardingCard):
+      if isinstance(card, specials.SelfDiscardingCard):
         self.assertEqual(card.tokens["must_roll"], 0)
 
 
@@ -61,7 +61,7 @@ class BlessingTest(CurseBlessTest):
     self.doBlessingTest(0)
     self.state.event_stack.append(events.Bless(self.char))
     self.resolve_until_done()
-    blessing = next(p for p in self.char.possessions if isinstance(p, assets.BlessingOrCurse))
+    blessing = next(p for p in self.char.possessions if isinstance(p, specials.BlessingOrCurse))
     self.assertFalse(blessing.tokens["must_roll"])
     self.doBlessingTest(1)
 
@@ -97,7 +97,7 @@ class BlessingTest(CurseBlessTest):
 
     self.assertTrue(bless.is_resolved())
     self.doBlessingTest(1)
-    blessing = next(p for p in self.char.possessions if isinstance(p, assets.BlessingOrCurse))
+    blessing = next(p for p in self.char.possessions if isinstance(p, specials.BlessingOrCurse))
     self.assertFalse(blessing.tokens["must_roll"])
 
     with mock_randint(return_value=1):
@@ -273,7 +273,7 @@ class BankLoanTest(EventTest):
       items.Derringer18(0),
       items.Wither(0),
       items.MagicPowder(0),
-      items.LodgeMembership(0),
+      specials.LodgeMembership(0),
     ]
     self.char.dollars = 0
     loss_choice = self.defaultSequence()

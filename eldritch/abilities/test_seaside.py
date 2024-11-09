@@ -1,19 +1,19 @@
 from unittest import mock
 
 from eldritch.test_events import EventTest, InvalidMove
-from eldritch.expansions.seaside import abilities
-from eldritch.expansions.seaside import characters as seaside_characters
-from eldritch import assets
-from eldritch import characters
+from eldritch.abilities import seaside
+from eldritch.allies import base as allies
+from eldritch.characters import seaside as seaside_characters
+from eldritch.characters import base as characters
 from eldritch import events
 from eldritch import monsters
-from eldritch.items import spells
+from eldritch.items.spells import base as spells
 
 
 class TestFarmhandAbility(EventTest):
   def setUp(self):
     super().setUp()
-    self.char.possessions.append(abilities.ThickSkulled())
+    self.char.possessions.append(seaside.ThickSkulled())
 
   def testCombatWithHorror(self):
     self.char.fight_will_slider = 3
@@ -105,7 +105,7 @@ class TestFarmhandAbility(EventTest):
 
 class TestSecretaryAbilities(EventTest):
   def doSynergyTest(self):
-    self.char.possessions.append(abilities.Synergy())
+    self.char.possessions.append(seaside.Synergy())
     spell = spells.Spell("Dummy", 0, {}, 0, 0, 0)
     self.char.possessions.append(spell)
 
@@ -116,7 +116,7 @@ class TestSecretaryAbilities(EventTest):
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)) as rand:
       self.state.event_stack.append(events.CastSpell(self.char, spell))
       choice = self.resolve_to_choice(events.MultipleChoice)
-      choice.resolve(self.state, "Dummy")
+      choice.resolve(self.state, "Dummy0")
       self.resolve_until_done()
       self.assertEqual(rand.call_count, self.char.base_lore() + 1)
 
@@ -126,7 +126,7 @@ class TestSecretaryAbilities(EventTest):
       self.assertEqual(rand.call_count, self.char.base_fight() + 1)
 
   def testSynergyAlly(self):
-    self.char.possessions.append(assets.Dog())
+    self.char.possessions.append(allies.Dog())
     self.doSynergyTest()
 
   def testSynergyInvestigator(self):
@@ -141,8 +141,8 @@ class TestSecretaryAbilities(EventTest):
 
   def testTeamPlayer(self):
     self.char.place = self.state.places["Uptown"]
-    self.char.possessions.append(abilities.TeamPlayer())
-    self.state.specials.append(abilities.TeamPlayerBonus(0))
+    self.char.possessions.append(seaside.TeamPlayer())
+    self.state.specials.append(seaside.TeamPlayerBonus(0))
     self.state.turn_phase = "upkeep"
     nun = characters.Nun()
     nun.place = self.char.place
@@ -173,7 +173,7 @@ class TestSpyAbilities(EventTest):
     self.char = seaside_characters.Spy()
     self.char.place = self.state.places["Newspaper"]
     self.state.characters = [self.char]
-    self.char.possessions.extend([abilities.AbnormalFocus(), abilities.BreakingTheLimits()])
+    self.char.possessions.extend([seaside.AbnormalFocus(), seaside.BreakingTheLimits()])
     self.advance_turn(1, "upkeep")
     sliders = self.resolve_to_choice(events.SliderInput)
     self.assertLessEqual(sum(self.char.sliders().values()), self.char.slider_focus_available())

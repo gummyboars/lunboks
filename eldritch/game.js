@@ -523,6 +523,7 @@ function handleData(data) {
   updateAvailableCharacters(data.characters, data.pending_chars);
   updateCharacterSelect(data.game_stage, data.characters, data.player_idx);
   updateAncientSelect(data.game_stage, data.host);
+  updateOptions(data.options);
   updateCharacterSheets(data.characters, data.pending_chars, data.player_idx, data.first_player, myChoice, data.chooser == data.player_idx ? data.sliders : null);
   updateBottomText(data.game_stage, data.turn_phase, data.characters, data.turn_idx, data.player_idx, data.host);
   recordOldVisuals();
@@ -812,6 +813,16 @@ function makeChoice(val) {
 
 function chooseItems(e) {
   ws.send(JSON.stringify({"type": "choice", "choice": "done"}));
+}
+
+function toggleExpansion(e, expansion) {
+  let enabled = e.target.checked;
+  ws.send(JSON.stringify({"type": "option", "expansion": expansion, "enabled": enabled}));
+}
+
+function toggleOption(e, expansion, option) {
+  let enabled = e.target.checked;
+  ws.send(JSON.stringify({"type": "option", "expansion": expansion, "option": option, "enabled": enabled}));
 }
 
 function doneUse(e) {
@@ -3080,7 +3091,7 @@ function updateBottomText(gameStage, turnPhase, characters, turnIdx, playerIdx, 
   btn.style.display = "none";
   if (gameStage == "setup") {
     if (host) {
-      btn.style.display = "inline-block";
+      btn.style.display = "flex";
     }
     return;
   }
@@ -3504,6 +3515,25 @@ function updateAncientSelect(gameStage, host) {
     choiceButton.innerText = "Change Choice";
   } else {
     choiceButton.innerText = "Choose";
+  }
+}
+
+function updateOptions(options) {
+  let expansionList = ["hilltown", "clifftown", "seaside", "pharaoh", "king", "goat", "lurker"];
+  for (let expansion of expansionList) {
+    let expCheck = document.getElementById("expansion"+expansion);
+    let tableRow = expCheck.parentNode.parentNode;
+    let count = -1;
+    for (let checkBox of tableRow.getElementsByTagName("INPUT")) {
+      checkBox.checked = false;
+      count++;
+    }
+    for (let option of options[expansion]) {
+      let checkBox = document.getElementById(expansion + option);
+      checkBox.checked = true;
+    }
+    expCheck.indeterminate = (options[expansion].length != 0 && options[expansion].length != count);
+    expCheck.checked = (options[expansion].length == count);
   }
 }
 

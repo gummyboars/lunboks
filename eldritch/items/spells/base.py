@@ -4,7 +4,7 @@ from eldritch import events
 from eldritch import monsters
 from eldritch import places
 from eldritch import values
-from .base import Item
+from eldritch.items.core import Item
 
 __all__ = [
   "Spell",

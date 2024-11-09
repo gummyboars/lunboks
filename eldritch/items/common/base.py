@@ -1,6 +1,6 @@
 from eldritch import events
 from eldritch import values
-from .base import Item, Weapon, OneshotWeapon, Tome
+from eldritch.items.core import Item, Weapon, OneshotWeapon, Tome
 
 __all__ = [
   "CreateCommon",

@@ -9,14 +9,15 @@ from unittest import mock
 if os.path.abspath(sys.path[0]) == os.path.dirname(os.path.abspath(__file__)):
   sys.path[0] = os.path.dirname(sys.path[0])
 
-from eldritch import abilities
-from eldritch import assets
+from eldritch.abilities import base as abilities
+from eldritch.allies import base as allies
 from eldritch import events
 from eldritch.events import *
 from eldritch import items
 from eldritch import monsters
-from eldritch import mythos
-from eldritch import encounters
+from eldritch.mythos import base as mythos
+from eldritch.encounters.location import base as encounters
+from eldritch import specials
 from eldritch.test_events import EventTest, Canceller
 
 
@@ -1273,7 +1274,7 @@ class ElderThingCombatTest(EventTest):
 
   def testNoDiscardableItems(self):
     self.char.possessions.clear()
-    self.char.possessions.extend([assets.OldProfessor(), items.Deputy()])
+    self.char.possessions.extend([allies.OldProfessor(), specials.Deputy()])
 
     fight_or_evade = self.resolve_to_choice(FightOrEvadeChoice)
     fight_or_evade.resolve(self.state, "Fight")
@@ -1840,7 +1841,7 @@ class ResistanceAndImmunityTest(EventTest):
       self.assertEqual(rand.call_count, 5)  # Fight of 4, -2 combat rating, +3 revolver.
 
   def testOldProfessorNegatesMagicalResistance(self):
-    self.char.possessions.extend([items.MagicLamp(0), assets.OldProfessor()])
+    self.char.possessions.extend([items.MagicLamp(0), allies.OldProfessor()])
     witch = self.add_monsters(monsters.Witch())
     combat = Combat(self.char, witch)
     self.state.event_stack.append(combat)
@@ -1858,7 +1859,7 @@ class ResistanceAndImmunityTest(EventTest):
       self.assertEqual(rand.call_count, 6)  # Fight of 4, -3 combat rating, +5 magic lamp.
 
   def testOldProfessorHasNoEffectOnMagicalImmunity(self):
-    self.char.possessions.extend([items.MagicLamp(0), assets.OldProfessor()])
+    self.char.possessions.extend([items.MagicLamp(0), allies.OldProfessor()])
     priest = self.add_monsters(monsters.HighPriest())
     combat = Combat(self.char, priest)
     self.state.event_stack.append(combat)
@@ -1926,7 +1927,7 @@ class ResistanceAndImmunityTest(EventTest):
       self.assertEqual(rand.call_count, 4)  # Fight of 4, -3 combat rating, +3 knife, +0 revolver.
 
   def testPainterNegatesPhysicalResistance(self):
-    self.char.possessions.extend([items.TommyGun(0), assets.VisitingPainter()])
+    self.char.possessions.extend([items.TommyGun(0), allies.VisitingPainter()])
     vampire = self.add_monsters(monsters.Vampire())
     combat = Combat(self.char, vampire)
     self.state.event_stack.append(combat)
@@ -1942,7 +1943,7 @@ class ResistanceAndImmunityTest(EventTest):
       self.assertEqual(rand.call_count, 7)  # Fight of 4, -3 combat rating, +6 tommy gun.
 
   def testPainterHasNoEffectOnPhysicalImmunity(self):
-    self.char.possessions.extend([items.TommyGun(0), assets.VisitingPainter()])
+    self.char.possessions.extend([items.TommyGun(0), allies.VisitingPainter()])
     ghost = self.add_monsters(monsters.Ghost())
     combat = Combat(self.char, ghost)
     self.state.event_stack.append(combat)
@@ -2023,7 +2024,7 @@ class NightmarishOverwhelmingTest(EventTest):
 
   def testBraveGuyNegatesNightmarish(self):
     self.char.fight_will_slider = 0
-    self.char.possessions.extend([items.MagicLamp(0), assets.BraveGuy()])
+    self.char.possessions.extend([items.MagicLamp(0), allies.BraveGuy()])
     flier = self.add_monsters(monsters.SubterraneanFlier())
     combat = Combat(self.char, flier)
     self.state.event_stack.append(combat)
@@ -2048,7 +2049,7 @@ class NightmarishOverwhelmingTest(EventTest):
     self.assertEqual(self.char.stamina, 4)
 
   def testToughGuyNegatesOverwhelming(self):
-    self.char.possessions.extend([items.MagicLamp(0), assets.ToughGuy()])
+    self.char.possessions.extend([items.MagicLamp(0), allies.ToughGuy()])
     beast = self.add_monsters(monsters.FurryBeast())
     combat = Combat(self.char, beast)
     self.state.event_stack.append(combat)
@@ -3115,7 +3116,7 @@ class CombatWithRedSignTest(EventTest):
     self.assertEqual(self.char.stamina, 5)
 
   def testWithToughGuy(self):
-    self.char.possessions.append(assets.ToughGuy())  # Ignores overwhelming
+    self.char.possessions.append(allies.ToughGuy())  # Ignores overwhelming
     self.char.fight_will_slider = 1
     self.assertEqual(self.char.will(self.state), 3)
     flier = monsters.SubterraneanFlier()
@@ -3149,7 +3150,7 @@ class CombatWithRedSignTest(EventTest):
     self.assertEqual(self.char.stamina, 5)
 
   def testWithPainter(self):
-    self.char.possessions.append(assets.VisitingPainter())  # Ignores physical resistance
+    self.char.possessions.append(allies.VisitingPainter())  # Ignores physical resistance
     self.char.fight_will_slider = 1
     self.assertEqual(self.char.will(self.state), 3)
     flier = monsters.SubterraneanFlier()

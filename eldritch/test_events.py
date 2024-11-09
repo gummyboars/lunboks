@@ -11,16 +11,22 @@ from typing import TypeVar, Type
 if os.path.abspath(sys.path[0]) == os.path.dirname(os.path.abspath(__file__)):
   sys.path[0] = os.path.dirname(sys.path[0])
 
-from eldritch import abilities
-from eldritch import assets
+from eldritch.abilities import base as abilities
+from eldritch.allies import base as allies
+from eldritch import cards as assets
 from eldritch import characters
 from eldritch import eldritch
-from eldritch import encounters
+from eldritch.encounters.location.core import EncounterCard
+from eldritch.encounters.location import base as encounters
+from eldritch.encounters.gate.core import GateCard
+from eldritch.encounters.gate import base as gate_encounters
 from eldritch import events
 from eldritch.events import *
-from eldritch import gate_encounters
 from eldritch import items
-from eldritch import mythos
+from eldritch.mythos.core import GlobalEffect
+from eldritch.mythos import base as mythos
+from eldritch.skills import base as skills
+from eldritch import specials
 from eldritch import values
 from eldritch import monsters
 
@@ -28,7 +34,7 @@ from eldritch import monsters
 ChoiceT = TypeVar("ChoiceT", bound=Union[events.ChoiceEvent, events.SliderInput])
 
 
-class NoMythos(mythos.GlobalEffect):
+class NoMythos(GlobalEffect):
   def __init__(self):
     self.name = "NoMythos"
 
@@ -766,13 +772,13 @@ class EncounterPhaseTest(EventTest):
   def testEncounterInLocation(self):
     self.char.place = self.state.places["Cave"]
     self.state.places["Rivertown"].encounters = [
-      encounters.EncounterCard("Rivertown7", {"Cave": encounters.Cave7}),
-      encounters.EncounterCard("Rivertown6", {"Cave": encounters.Cave6}),
-      encounters.EncounterCard("Rivertown5", {"Cave": encounters.Cave5}),
-      encounters.EncounterCard("Rivertown4", {"Cave": encounters.Cave4}),
-      encounters.EncounterCard("Rivertown3", {"Cave": encounters.Cave3}),
-      encounters.EncounterCard("Rivertown2", {"Cave": encounters.Cave2}),
-      encounters.EncounterCard("Rivertown1", {"Cave": encounters.Cave1}),
+      EncounterCard("Rivertown7", {"Cave": encounters.Cave7}),
+      EncounterCard("Rivertown6", {"Cave": encounters.Cave6}),
+      EncounterCard("Rivertown5", {"Cave": encounters.Cave5}),
+      EncounterCard("Rivertown4", {"Cave": encounters.Cave4}),
+      EncounterCard("Rivertown3", {"Cave": encounters.Cave3}),
+      EncounterCard("Rivertown2", {"Cave": encounters.Cave2}),
+      EncounterCard("Rivertown1", {"Cave": encounters.Cave1}),
     ]
     choice = self.resolve_to_choice(MultipleChoice)
     self.assertEqual(choice.choices, ["Yes", "No"])
@@ -786,8 +792,8 @@ class EncounterPhaseTest(EventTest):
     unimp_enc = mock.Mock(return_value=events.Unimplemented())
     encounter = gate_encounters.Other29
     self.state.places["Rivertown"].encounters = [
-      encounters.EncounterCard("Rivertown7", {"Cave": unimp_enc}),
-      encounters.EncounterCard("Rivertown6", {"Cave": encounter}),
+      EncounterCard("Rivertown7", {"Cave": unimp_enc}),
+      EncounterCard("Rivertown6", {"Cave": encounter}),
     ]
     self.resolve_until_done()
     self.assertEqual(self.char.stamina, 4)
@@ -821,7 +827,7 @@ class EncounterPhaseTest(EventTest):
     self.char.place = self.state.places["Cave"]
     self.char.possessions.append(Canceller(Encounter))
     self.state.places["Rivertown"].encounters = [
-      encounters.EncounterCard("Rivertown7", {"Cave": encounters.Cave7})
+      EncounterCard("Rivertown7", {"Cave": encounters.Cave7})
     ]
     self.resolve_until_done()
     self.assertTrue(self.encounter.action.is_cancelled())
@@ -830,7 +836,7 @@ class EncounterPhaseTest(EventTest):
     self.char.place = self.state.places["Cave"]
     self.char.possessions.append(Canceller(DrawEncounter))
     self.state.places["Rivertown"].encounters = [
-      encounters.EncounterCard("Rivertown7", {"Cave": encounters.Cave7})
+      EncounterCard("Rivertown7", {"Cave": encounters.Cave7})
     ]
     self.resolve_until_done()
     self.assertTrue(self.encounter.action.is_cancelled())
@@ -839,7 +845,7 @@ class EncounterPhaseTest(EventTest):
     self.char.place = self.state.places["Store"]
     self.char.possessions.append(Canceller(GainOrLoss))
     self.state.places["Rivertown"].encounters = [
-      encounters.EncounterCard("Rivertown1", {"Store": encounters.Store1})
+      EncounterCard("Rivertown1", {"Store": encounters.Store1})
     ]
     self.resolve_until_done()
     self.assertFalse(self.encounter.action.is_cancelled())
@@ -866,9 +872,7 @@ class OtherWoldPhaseTest(EventTest):
     super().setUp()
     self.other_world = OtherWorldPhase(self.char)
     self.state.event_stack.append(self.other_world)
-    self.state.gate_cards.append(
-      gate_encounters.GateCard("Gate29", {"red"}, {"Other": gate_encounters.Other29})
-    )
+    self.state.gate_cards.append(GateCard("Gate29", {"red"}, {"Other": gate_encounters.Other29}))
 
   def testNotInOtherWorld(self):
     self.resolve_until_done()
@@ -885,8 +889,8 @@ class OtherWoldPhaseTest(EventTest):
     encounter = gate_encounters.Other29
     self.state.gate_cards.extendleft(
       [
-        gate_encounters.GateCard("FakeGate", {"red"}, {"Other": encounter}),
-        gate_encounters.GateCard("UnimplementedGate", {"red"}, {"Other": unimp_enc}),
+        GateCard("FakeGate", {"red"}, {"Other": encounter}),
+        GateCard("UnimplementedGate", {"red"}, {"Other": unimp_enc}),
       ]
     )
     self.char.place = self.state.places["Abyss1"]
@@ -1004,7 +1008,7 @@ class GainLossTest(EventTest):
 
 class MaxSanityStaminaTest(EventTest):
   def testStaminaCannotExceedMaxStamina(self):
-    self.char.possessions.append(assets.ArmWrestler())
+    self.char.possessions.append(allies.ArmWrestler())
     self.assertEqual(self.char.max_stamina(self.state), 6)
 
     self.char.stamina = 6
@@ -1013,7 +1017,7 @@ class MaxSanityStaminaTest(EventTest):
     self.assertEqual(self.char.stamina, 5)
 
   def testLossPreventionDoesNotWorkOnMaxStamina(self):
-    self.char.possessions.extend([assets.ArmWrestler(), abilities.StrongBody()])
+    self.char.possessions.extend([allies.ArmWrestler(), abilities.StrongBody()])
     self.assertEqual(self.char.max_stamina(self.state), 6)
 
     self.char.stamina = 6
@@ -1022,7 +1026,7 @@ class MaxSanityStaminaTest(EventTest):
     self.assertEqual(self.char.stamina, 5)
 
   def testDoNotLoseStaminaAtLessThanMax(self):
-    self.char.possessions.append(assets.ArmWrestler())
+    self.char.possessions.append(allies.ArmWrestler())
     self.assertEqual(self.char.max_stamina(self.state), 6)
 
     self.char.stamina = 5
@@ -1032,7 +1036,7 @@ class MaxSanityStaminaTest(EventTest):
 
   def testDevouredIfReducedToZeroMax(self):
     terrible_curse = assets.Card("Frogurt", 0, "common", {}, {"max_stamina": -5})
-    self.char.possessions.extend([assets.ArmWrestler(), terrible_curse])
+    self.char.possessions.extend([allies.ArmWrestler(), terrible_curse])
     self.assertEqual(self.char.max_stamina(self.state), 1)
 
     self.char.stamina = 1
@@ -1106,7 +1110,7 @@ class CollectCluesTest(EventTest):
 class InsaneUnconsciousTest(EventTest):
   def testGoInsane(self):
     self.assertEqual(self.char.place.name, "Diner")
-    self.char.possessions.extend([assets.Dog(), abilities.Marksman(0), items.Food(0)])
+    self.char.possessions.extend([allies.Dog(), skills.Marksman(0), items.Food(0)])
     self.char.sanity = 0
     self.char.clues = 3
     insane = Insane(self.char)
@@ -1144,7 +1148,7 @@ class InsaneUnconsciousTest(EventTest):
 
   def testInsaneInOtherWorld(self):
     self.char.place = self.state.places["Abyss1"]
-    self.char.possessions.extend([assets.Dog(), abilities.Stealth(0), items.Food(0), items.Food(1)])
+    self.char.possessions.extend([allies.Dog(), skills.Stealth(0), items.Food(0), items.Food(1)])
     self.char.sanity = 0
     self.char.clues = 2
     insane = Insane(self.char)
@@ -1189,14 +1193,14 @@ class InsaneUnconsciousTest(EventTest):
     self.char.stamina = 2
     self.char.possessions.extend(
       [
-        assets.Dog(),
-        abilities.Marksman(0),
+        allies.Dog(),
+        skills.Marksman(0),
         items.Cross(0),
         items.MagicLamp(0),
         items.Wither(0),
-        assets.Deputy(),
-        items.DeputysRevolver(),
-        items.PatrolWagon(),
+        specials.Deputy(),
+        specials.DeputysRevolver(),
+        specials.PatrolWagon(),
       ]
     )
     self.state.event_stack.append(Loss(self.char, {"sanity": 2, "stamina": 3}))
@@ -1346,14 +1350,14 @@ class StatusChangeTest(EventTest):
     self.assertTrue(self.char.lodge_membership)
 
   def testAlreadyMember(self):
-    self.char.possessions.append(assets.LodgeMembership(13))
+    self.char.possessions.append(specials.LodgeMembership(13))
     self.assertTrue(self.char.lodge_membership)
 
     self.state.event_stack.append(MembershipChange(self.char, True))
     self.resolve_until_done()
 
     self.assertEqual(
-      len([p for p in self.char.possessions if isinstance(p, assets.LodgeMembership)]), 1
+      len([p for p in self.char.possessions if isinstance(p, specials.LodgeMembership)]), 1
     )
 
   def testArrested(self):
@@ -1677,7 +1681,7 @@ class DrawRandomTest(EventTest):
   def testNoScroungeForSkills(self):
     self.char.possessions.append(abilities.Scrounge())
     self.state.skills.clear()
-    self.state.skills.extend([abilities.Marksman(0)])
+    self.state.skills.extend([skills.Marksman(0)])
     draw = Draw(self.char, "skills", 1)
     self.state.event_stack.append(draw)
 
@@ -1915,7 +1919,7 @@ class CheckTest(EventTest):
 
   @mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=[4]))
   def testCheckBlessed(self):
-    self.char.possessions.append(items.Blessing(0))
+    self.char.possessions.append(specials.Blessing(0))
     check = Check(self.char, "sneak", 0)
     self.assertEqual(self.char.sneak(self.state), 1)
     self.assertFalse(check.is_resolved())
@@ -1931,7 +1935,7 @@ class CheckTest(EventTest):
   @mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=[2, 4]))
   def testSubCheck(self):
     check = Check(self.char, "horror", 0)
-    self.char.possessions.append(abilities.Will(0))
+    self.char.possessions.append(skills.Will(0))
     self.assertEqual(self.char.will(self.state), 2)
     self.assertFalse(check.is_resolved())
 
@@ -2267,7 +2271,7 @@ class MonsterChoiceTest(EventTest):
     choice = self.resolve_to_choice(MonsterChoice)
     output = self.state.for_player(0)
     self.assertIn("magical resistance", output["choice"]["monsters"][0]["attributes"])
-    self.char.possessions.append(assets.OldProfessor())
+    self.char.possessions.append(allies.OldProfessor())
     output = self.state.for_player(0)
     self.assertNotIn("magical resistance", output["choice"]["monsters"][0]["attributes"])
 
@@ -2652,7 +2656,7 @@ class ItemChoiceTest(EventTest):
     self.assertEqual(choice.choice_count, 1)
 
   def testNonItemsInPossessions(self):
-    self.char.possessions.extend([assets.Dog(), abilities.Marksman(0)])
+    self.char.possessions.extend([allies.Dog(), skills.Marksman(0)])
     choice = ItemChoice(self.char, "", None)
     self.state.event_stack.append(choice)
 
@@ -2666,7 +2670,7 @@ class ItemChoiceTest(EventTest):
     self.resolve_until_done()
 
   def testChoiceNotRestrictedToItems(self):
-    self.char.possessions.extend([assets.Dog(), abilities.Marksman(0)])
+    self.char.possessions.extend([allies.Dog(), skills.Marksman(0)])
     choice = ItemChoice(self.char, "", decks={"allies"})
     self.state.event_stack.append(choice)
 
@@ -2736,7 +2740,7 @@ class LossChoiceTest(EventTest):
     self.assertTrue(choice.is_resolved())
 
   def testRevolverIsNotLosable(self):
-    self.char.possessions.append(items.DeputysRevolver())
+    self.char.possessions.append(specials.DeputysRevolver())
     choice = ItemLossChoice(self.char, "choose", 3)
     self.state.event_stack.append(choice)
     choice = self.resolve_to_choice(ItemLossChoice)
@@ -3843,7 +3847,7 @@ class AddDoomTest(EventTest):
 class IncreaseTerrorTest(EventTest):
   def setUp(self):
     super().setUp()
-    self.state.allies.extend(assets.CreateAllies())
+    self.state.allies.extend(allies.CreateAllies())
 
   def testAddSingleTerror(self):
     self.assertEqual(self.state.terror, 0)

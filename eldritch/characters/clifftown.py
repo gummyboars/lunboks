@@ -1,7 +1,7 @@
-from eldritch import characters
+from eldritch.characters import core
 
 
-class Urchin(characters.Character):
+class Urchin(core.Character):
   def __init__(self):
     super().__init__("Urchin", 4, 4, 5, 6, 3, 3, 4, 5, 3, "Bank")
 
@@ -16,3 +16,7 @@ class Urchin(characters.Character):
 
   def random_possessions(self):
     return {"common": 1, "skills": 1}
+
+
+def CreateCharacters():
+  return {c.name: c for c in [Urchin()]}

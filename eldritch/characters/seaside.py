@@ -1,7 +1,7 @@
-from eldritch import characters
+from eldritch.characters import core
 
 
-class Farmhand(characters.Character):
+class Farmhand(core.Character):
   def __init__(self):
     super().__init__("Farmhand", 5, 6, 5, 4, 5, 3, 3, 4, 2, "Store")
 
@@ -18,7 +18,7 @@ class Farmhand(characters.Character):
     return {"common": 2, "unique": 1, "skills": 1}
 
 
-class Secretary(characters.Character):
+class Secretary(core.Character):
   def __init__(self):
     super().__init__("Secretary", 4, 6, 5, 4, 4, 4, 4, 3, 2, "Hospital")
 
@@ -35,7 +35,7 @@ class Secretary(characters.Character):
     return {"common": 2, "unique": 1, "spells": 1, "skills": 1}
 
 
-class Spy(characters.BaseCharacter):
+class Spy(core.BaseCharacter):
   _slider_names = ("fight_sneak", "lore_will", "speed_luck")
 
   def __init__(self):
@@ -71,10 +71,10 @@ class Spy(characters.BaseCharacter):
     return self._lore_will[self.lore_will_slider][1]
 
   def max_stamina(self, state):
-    return self._max_stamina + self.bonus("max_stamina", state)
+    return self._max_stamina + self.bonus("max_stamina", state, check=False)
 
   def max_sanity(self, state):
-    return self._max_sanity + self.bonus("max_sanity", state)
+    return self._max_sanity + self.bonus("max_sanity", state, check=False)
 
   def abilities(self):
     return ["Abnormal Focus", "Breaking the Limits"]
@@ -90,3 +90,7 @@ class Spy(characters.BaseCharacter):
 
   def focus_cost(self, pending_sliders):
     return sum(pending_sliders[name] for name in self.sliders())
+
+
+def CreateCharacters():
+  return {c.name: c for c in [Farmhand(), Secretary(), Spy()]}

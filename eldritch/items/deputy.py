@@ -1,8 +1,8 @@
 import operator
-from eldritch.assets import Card
+from eldritch.cards import Card
 from eldritch import events
 from eldritch import values
-from .base import Weapon
+from .core import Weapon
 
 
 class DeputysRevolver(Weapon):

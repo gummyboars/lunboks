@@ -9,18 +9,22 @@ from unittest import mock
 if os.path.abspath(sys.path[0]) == os.path.dirname(os.path.abspath(__file__)):
   sys.path[0] = os.path.dirname(sys.path[0])
 
-from eldritch import abilities
-from eldritch import assets
+from eldritch.abilities import base as abilities
+from eldritch.allies import base as allies
 from eldritch import characters
-from eldritch import encounters
+from eldritch.encounters.location.core import EncounterCard
+from eldritch.encounters.location import base as encounters
+from eldritch.encounters.gate.core import GateCard
+from eldritch.encounters.gate import base as gate_encounters
 from eldritch import events
 from eldritch.events import *
 from eldritch import gates
-from eldritch import gate_encounters
 from eldritch import items
 from eldritch import location_specials
 from eldritch import monsters
-from eldritch import mythos
+from eldritch.mythos import base as mythos
+from eldritch.skills import base as skills
+from eldritch import specials
 from eldritch.test_events import EventTest, Canceller, NoMythos
 
 from game import InvalidMove
@@ -89,7 +93,7 @@ class ClueTokenTest(EventTest):
 
   def testBonusDieFromSkill(self):
     self.char.clues = 2
-    self.char.possessions.append(abilities.Fight(None))
+    self.char.possessions.append(skills.Fight(None))
     choice = self.resolve_to_choice(SpendChoice)
     self.assertFalse(self.check.is_resolved())
     self.assertEqual(len(self.state.event_stack), 2)
@@ -116,7 +120,7 @@ class RerollTest(EventTest):
   def setUp(self):
     super().setUp()
     self.char.clues = 2
-    self.char.possessions.append(abilities.Marksman(0))
+    self.char.possessions.append(skills.Marksman(0))
     self.check = Check(self.char, "combat", 0)
     self.state.event_stack.append(self.check)
 
@@ -358,7 +362,7 @@ class TrustFundTest(EventTest):
 
 class DeputyTest(EventTest):
   def testBecomingDeputyGivesItems(self):
-    self.state.tradables.extend(items.CreateTradables())
+    self.state.tradables.extend(specials.CreateTradables())
     self.state.event_stack.append(DrawSpecific(self.char, "specials", "Deputy"))
     self.resolve_until_done()
     self.assertEqual(len(self.char.possessions), 3)
@@ -367,7 +371,7 @@ class DeputyTest(EventTest):
     )
 
   def testGainADollarDuringUpkeep(self):
-    self.char.possessions.append(assets.Deputy())
+    self.char.possessions.append(specials.Deputy())
     self.assertEqual(self.char.dollars, 0)
     self.state.event_stack.append(Upkeep(self.char))
     self.resolve_to_choice(SliderInput)
@@ -379,7 +383,7 @@ class DeputyTest(EventTest):
     self.state.all_characters["Buddy"] = buddy
     self.state.characters.append(buddy)
 
-    self.state.tradables.extend(items.CreateTradables())
+    self.state.tradables.extend(specials.CreateTradables())
 
     self.state.event_stack.append(DrawSpecific(buddy, "specials", "Deputy"))
     self.resolve_until_done()
@@ -390,7 +394,7 @@ class DeputyTest(EventTest):
     self.assertEqual(len(self.char.possessions), 0)
 
   def testDeputyCardsReturnIfDevoured(self):
-    self.state.tradables.extend([items.DeputysRevolver(), items.PatrolWagon()])
+    self.state.tradables.extend([items.deputy.DeputysRevolver(), items.deputy.PatrolWagon()])
     self.state.event_stack.append(DrawSpecific(self.char, "specials", "Deputy"))
     self.resolve_until_done()
 
@@ -407,7 +411,7 @@ class DeputyTest(EventTest):
 class WagonTest(EventTest):
   def setUp(self):
     super().setUp()
-    self.char.possessions.append(items.PatrolWagon())
+    self.char.possessions.append(items.deputy.PatrolWagon())
     self.state.turn_phase = "movement"
 
   def testCanWagonInsteadOfMove(self):
@@ -1012,7 +1016,7 @@ class HealTest(EventTest):
     self.resolve_until_done()
 
   def testMultipleOptions(self):
-    all_chars = characters.CreateCharacters()
+    all_chars = characters.CreateCharacters(set())
     nun = all_chars["Nun"]
     doctor = all_chars["Doctor"]
     nun.stamina = 1
@@ -1219,7 +1223,7 @@ class PhysicianTest(EventTest):
     self.resolve_until_done()
 
   def testMultipleOptions(self):
-    nun = characters.CreateCharacters()["Nun"]
+    nun = characters.CreateCharacters(set())["Nun"]
     nun.stamina = 1
     nun.place = self.char.place
     self.state.all_characters["Nun"] = nun
@@ -1252,7 +1256,7 @@ class PhysicianTest(EventTest):
 class ExtraDrawTest(EventTest):
   def testOtherDecksNotAffected(self):
     self.char.possessions.append(abilities.Studious())
-    self.state.skills.extend([abilities.Marksman(0), abilities.Bravery(0)])
+    self.state.skills.extend([skills.Marksman(0), skills.Bravery(0)])
     self.state.common.extend([items.Food(0), items.DarkCloak(0)])
     self.state.event_stack.append(Draw(self.char, "skills", 1))
     choice = self.resolve_to_choice(CardChoice)
@@ -1333,8 +1337,8 @@ class ExtraDrawTest(EventTest):
     self.state.event_stack.append(EncounterPhase(self.char))
     self.state.places["Easttown"].encounters.extend(
       [
-        encounters.EncounterCard("Easttown2", {"Diner": encounters.Diner2}),
-        encounters.EncounterCard("Easttown3", {"Diner": encounters.Store7}),
+        EncounterCard("Easttown2", {"Diner": encounters.Diner2}),
+        EncounterCard("Easttown3", {"Diner": encounters.Store7}),
       ]
     )
     self.state.common.extend([items.Whiskey(0), items.Food(0)])
@@ -1352,9 +1356,9 @@ class ExtraDrawTest(EventTest):
     self.state.event_stack.append(OtherWorldPhase(self.char))
     self.state.gate_cards.extend(
       [
-        gate_encounters.GateCard("Gate10", {"red"}, {"Other": gate_encounters.Other10}),
-        gate_encounters.GateCard("Gate00", {"yellow"}, {"Other": gate_encounters.Dreamlands10}),
-        gate_encounters.GateCard("Gate16", {"green"}, {"Other": gate_encounters.Plateau16}),
+        GateCard("Gate10", {"red"}, {"Other": gate_encounters.Other10}),
+        GateCard("Gate00", {"yellow"}, {"Other": gate_encounters.Dreamlands10}),
+        GateCard("Gate16", {"green"}, {"Other": gate_encounters.Plateau16}),
       ]
     )
     choice = self.resolve_to_choice(CardChoice)
@@ -1496,7 +1500,7 @@ class HunchesTest(EventTest):
 
   def testStacksWithOtherSkills(self):
     self.char.possessions.append(abilities.Hunches())
-    self.char.possessions.append(abilities.Speed(0))
+    self.char.possessions.append(skills.Speed(0))
     self.char.clues = 2
 
     self.state.event_stack.append(Check(self.char, "speed", 1))
@@ -1631,9 +1635,9 @@ class SpendingOutputTest(EventTest):
 class GetStatModifierTest(EventTest):
   def setUp(self):
     super().setUp()
-    self.state.allies.append(assets.Dog())
-    self.state.specials.append(assets.StaminaDecrease(0))
-    self.state.specials.append(assets.SanityDecrease(0))
+    self.state.allies.append(allies.Dog())
+    self.state.specials.append(specials.StaminaDecrease(0))
+    self.state.specials.append(specials.SanityDecrease(0))
 
   def testGainStats(self):
     self.char.sanity = 4
@@ -1675,7 +1679,7 @@ class GetStatModifierTest(EventTest):
 class StatIncreaserTest(EventTest):
   def setUp(self):
     super().setUp()
-    self.char.possessions.append(assets.Dog())
+    self.char.possessions.append(allies.Dog())
 
   def testUsableInUpkeep(self):
     self.state.turn_phase = "upkeep"
@@ -1743,7 +1747,7 @@ class StatIncreaserTest(EventTest):
 
   def testNotUsableBeforeTravelInEncounter(self):
     self.state.turn_phase = "encounter"
-    card = encounters.EncounterCard("Uptown6", {"Woods": encounters.Woods6})
+    card = EncounterCard("Uptown6", {"Woods": encounters.Woods6})
     self.state.places["Uptown"].encounters.append(card)
     self.char.place = self.state.places["Woods"]
     self.state.event_stack.append(EncounterPhase(self.char))
@@ -1753,8 +1757,8 @@ class StatIncreaserTest(EventTest):
     self.resolve_until_done()
 
   def testUsableLocationSpecialChoice(self):
-    specials = location_specials.CreateFixedEncounters()
-    for location_name, fixed_encounters in specials.items():
+    facilities = location_specials.CreateFixedEncounters()
+    for location_name, fixed_encounters in facilities.items():
       self.state.places[location_name].fixed_encounters.extend(fixed_encounters)
 
     self.state.turn_phase = "encounter"
@@ -1767,7 +1771,7 @@ class StatIncreaserTest(EventTest):
 
   def testNotUsableInNestedEncounter(self):
     self.state.turn_phase = "encounter"
-    card = encounters.EncounterCard("Southside1", {"Society": encounters.Society1})
+    card = EncounterCard("Southside1", {"Society": encounters.Society1})
     self.state.places["Southside"].encounters.append(card)
     self.char.place = self.state.places["Society"]
     self.state.event_stack.append(EncounterPhase(self.char))
@@ -1791,7 +1795,7 @@ class StatIncreaserTest(EventTest):
 
   def testUsableBeforeGateEncounter(self):
     self.state.turn_phase = "otherworld"
-    card = gate_encounters.GateCard("Gate1", {"green"}, {"Other": gate_encounters.Pluto48})
+    card = GateCard("Gate1", {"green"}, {"Other": gate_encounters.Pluto48})
     self.state.gate_cards.append(card)
     self.char.place = self.state.places["City1"]
     self.state.event_stack.append(OtherWorldPhase(self.char))
@@ -1803,7 +1807,7 @@ class StatIncreaserTest(EventTest):
   def testUsableOnlyOnceDrawingTwoGateEncounters(self):
     self.state.turn_phase = "otherworld"
     for i in range(2):
-      card = gate_encounters.GateCard(f"Gate{i}", {"green"}, {"Other": gate_encounters.Pluto48})
+      card = GateCard(f"Gate{i}", {"green"}, {"Other": gate_encounters.Pluto48})
       self.state.gate_cards.append(card)
     self.char.place = self.state.places["City1"]
     self.char.possessions.append(abilities.PsychicSensitivity())
@@ -1829,7 +1833,7 @@ class StatIncreaserTest(EventTest):
     self.state.turn_phase = "encounter"
     self.state.mythos.append(mythos.Mythos1())
     self.char.place = self.state.places["Shop"]
-    card = encounters.EncounterCard("Northside7", {"Shop": encounters.Shop7})
+    card = EncounterCard("Northside7", {"Shop": encounters.Shop7})
     self.state.places["Northside"].encounters.append(card)
     self.state.event_stack.append(EncounterPhase(self.char))
     self.resolve_to_usable(0, "Dog", Sequence)
@@ -1868,7 +1872,7 @@ class StatIncreaserTest(EventTest):
   def testNotUsableWhileFightingMonsterInEncounter(self):
     self.state.turn_phase = "encounter"
     self.char.place = self.state.places["Roadhouse"]
-    card = encounters.EncounterCard("Easttown5", {"Roadhouse": encounters.Roadhouse5})
+    card = EncounterCard("Easttown5", {"Roadhouse": encounters.Roadhouse5})
     self.state.places["Easttown"].encounters.append(card)
     self.state.event_stack.append(EncounterPhase(self.char))
     self.resolve_to_usable(0, "Dog", Sequence)
