@@ -7,7 +7,7 @@ class FortuneTeller(Card):
     super().__init__("Fortune Teller", None, "allies", {}, {"luck": 2})
 
   def get_trigger(self, event, owner, state):
-    if isinstance(event, events.KeepDrawn) and self.name in event.kept:
+    if isinstance(event, events.KeepDrawn) and self.handle in event.kept:
       return events.Gain(owner, {"clues": 2})
     return None
 
@@ -17,7 +17,7 @@ class TravelingSalesman(Card):
     super().__init__("Traveling Salesman", None, "allies", {}, {"sneak": 1, "will": 1})
 
   def get_trigger(self, event, owner, state):
-    if isinstance(event, events.KeepDrawn) and self.name in event.kept:
+    if isinstance(event, events.KeepDrawn) and self.handle in event.kept:
       return events.Draw(owner, "common", 1)
     return None
 
@@ -27,7 +27,7 @@ class PoliceDetective(Card):
     super().__init__("Police Detective", None, "allies", {}, {"fight": 1, "lore": 1})
 
   def get_trigger(self, event, owner, state):
-    if isinstance(event, events.KeepDrawn) and self.name in event.kept:
+    if isinstance(event, events.KeepDrawn) and self.handle in event.kept:
       return events.Draw(owner, "spells", 1)
     return None
 
@@ -37,7 +37,7 @@ class Thief(Card):
     super().__init__("Thief", None, "allies", {}, {"sneak": 2})
 
   def get_trigger(self, event, owner, state):
-    if isinstance(event, events.KeepDrawn) and self.name in event.kept:
+    if isinstance(event, events.KeepDrawn) and self.handle in event.kept:
       return events.Draw(owner, "unique", 1)
     return None
 
@@ -49,7 +49,7 @@ class StatIncreaser(Card):
     self.stat = stat[4:]
 
   def get_trigger(self, event, owner, state):
-    if isinstance(event, events.KeepDrawn) and self.name in event.kept:
+    if isinstance(event, events.KeepDrawn) and self.handle in event.kept:
       return events.Gain(owner, {self.stat: 1})
     if isinstance(event, events.DiscardNamed) and event.discarded == self:
       return events.CapStatsAtMax(owner)

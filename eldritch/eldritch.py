@@ -176,6 +176,8 @@ class GameState:
     self.gates.extend(gate_markers)
 
     self.monsters = monsters.CreateMonsters()
+    if self.ancient_one.name != "The Thousand Masks":
+      self.monsters = [mon for mon in self.monsters if not mon.has_attribute("mask", self, None)]
     for idx, monster in enumerate(self.monsters):
       monster.idx = idx
       monster.place = self.monster_cup

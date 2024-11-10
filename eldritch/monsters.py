@@ -616,6 +616,7 @@ def CreateMonsters():
     "Ghost": 3,
     "Ghoul": 3,
     "Furry Beast": 2,
+    "Haunter": 1,
     "High Priest": 1,
     "Hound": 2,
     "Maniac": 3,

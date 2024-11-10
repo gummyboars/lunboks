@@ -3,6 +3,7 @@ from typing import Optional, TYPE_CHECKING, Union
 
 from eldritch import events, places, monsters, values
 from eldritch.mythos.core import GlobalEffect
+from eldritch.gates import Gate
 from eldritch.events import AncientOneAttack
 from eldritch.characters import BaseCharacter
 
@@ -83,14 +84,21 @@ class SquidFace(AncientOne):
   def get_modifier(self, thing, attribute, state):
     if isinstance(thing, monsters.Cultist):
       return {"horrordifficulty": -2, "horrordamage": 2}.get(attribute, 0)
-    if isinstance(thing, BaseCharacter):
+    if isinstance(thing, BaseCharacter) and state.game_stage != "awakened":
       return {"max_sanity": -1, "max_stamina": -1}.get(attribute, 0)
     return super().get_modifier(thing, attribute, state)
 
   def attack(self, state):
-    self.doom = min(self.doom + 1, self.max_doom)
-    # TODO: Each character lowers max sanity or stamina
-    return AncientOneAttack([events.AddDoom()])
+    attack = []
+    prompt = "Lower your max sanity or stamina?"
+    for char in state.characters:
+      if char.gone:
+        continue
+      sanity = events.DrawSpecific(char, "specials", "Sanity Decrease")
+      stamina = events.DrawSpecific(char, "specials", "Stamina Decrease")
+      attack.append(events.BinaryChoice(char, prompt, "Sanity", "Stamina", sanity, stamina))
+    attack.append(events.AddDoom())
+    return AncientOneAttack(attack)
 
   def setup(self, state: "GameState"):
     for char in state.characters:
@@ -100,17 +108,16 @@ class SquidFace(AncientOne):
 
 class YellowKing(AncientOne):
   def __init__(self):
-    # TODO: change this to always have a combat rating equal to the terror level
     super().__init__("The Yellow King", 13, {"physical resistance"}, 0)
     self.luck_modifier = 1
 
   def awaken(self, state):
-    self._combat_rating = state.terror
+    self._combat_rating = -state.terror
 
   def get_modifier(self, thing, attribute, state):
     if isinstance(thing, monsters.Cultist):
       return {"combatdifficulty": -3}.get(attribute, 0)
-    if isinstance(thing, events.GateCloseAttempt) and attribute == "seal_clues":
+    if isinstance(thing, Gate) and attribute == "seal_clues":
       return 3
     return super().get_modifier(thing, attribute, state)
 
@@ -139,7 +146,7 @@ class ChaosGod(AncientOne):
     super().__init__("God of Chaos", 14, set(), float("-inf"))
 
   def awaken(self, state):
-    state.game_stage = "defeat"  # TODO: do we want to do this through an event?
+    state.game_stage = "defeat"
     state.event_log.append(events.EventLog("The ancient one devoured the world.", False))
 
   def attack(self, state):
@@ -162,7 +169,6 @@ class Wendigo(AncientOne):
     self.fight_modifier = 1
 
   def get_interrupt(self, event, state):
-    # TODO: Discard weather cards
     if isinstance(event, events.ActivateEnvironment) and event.env.environment_type == "weather":
       return events.CancelEvent(event)
     return None
@@ -175,8 +181,19 @@ class Wendigo(AncientOne):
           losses.append(events.Loss(char, {"stamina": 1}))  # noqa: PERF401
       return events.Sequence(losses)
     if isinstance(event, events.Awaken):
-      # TODO: Roll a die for each item, discard on a failure
-      pass
+      for char in state.characters:
+        if char.gone:
+          continue
+        for pos in char.possessions:
+          if getattr(pos, "deck", "") not in ("common", "unique", "spells", "tradables"):
+            continue
+          if not getattr(pos, "losable", True):
+            continue
+          roll = events.DiceRoll(char, 1, name=pos.handle)
+          discard = events.DiscardSpecific(char, [pos])
+          cond = events.Conditional(char, roll, "successes", {0: discard, 1: events.Nothing()})
+          losses.extend([roll, cond])
+      return events.Sequence(losses)
     return None
 
   def get_modifier(self, thing, attribute, state):
@@ -289,9 +306,9 @@ class SerpentGod(AncientOne):
 
   def get_modifier(self, thing, attribute, state):
     if isinstance(thing, monsters.Cultist):
-      if attribute == "combat_difficulty":
+      if attribute == "combatdifficulty":
         return -1
-      if attribute == "combat_damage":
+      if attribute == "combatdamage":
         return 3
     return 0
 
@@ -336,7 +353,7 @@ class SpaceBubbles(AncientOne):
     self.will_modifier = 1
 
   def get_trigger(self, event, state):
-    if isinstance(event, events.Awaken):
+    if isinstance(event, (events.Awaken, events.AncientOneAttack)):
       to_devour = []
       for char in state.characters:
         assert isinstance(char, BaseCharacter)
@@ -352,7 +369,7 @@ class SpaceBubbles(AncientOne):
     for char in state.characters:
       if char.gone:
         continue
-      check = events.Check(char, "speed", self.will_modifier, name=self.name)
+      check = events.Check(char, "will", self.will_modifier, name=self.name)
       prompt = "Lose one gate trophy or be devoured"
       spend = events.BinarySpend(
         char, "gates", 1, prompt, "Lose", "Be Devoured", events.Nothing(), events.Devoured(char)
@@ -369,8 +386,10 @@ class SpaceBubbles(AncientOne):
     return None
 
   def get_modifier(self, thing, attribute, state):
-    if isinstance(thing, monsters.Cultist) and attribute == "combat_difficulty":
+    if isinstance(thing, monsters.Cultist) and attribute == "combatdifficulty":
       return -2
+    if isinstance(thing, Gate) and attribute == "difficulty":
+      return 1
     return 0
 
 

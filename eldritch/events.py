@@ -1389,7 +1389,7 @@ class KeepDrawn(Event):
         self.cancelled = True
         return
       kept_card = self.drawn.pop(self.choice.choice_index)
-      self.kept.append(kept_card.name)
+      self.kept.append(kept_card.handle)
       getattr(state, self.draw.deck).remove(kept_card)
       self.character.possessions.append(kept_card)
 
@@ -1404,7 +1404,7 @@ class KeepDrawn(Event):
       state.event_stack.append(self.choice)
       return
 
-    self.kept += [card.name for card in self.drawn]
+    self.kept += [card.handle for card in self.drawn]
     for card in self.drawn:
       getattr(state, self.draw.deck).remove(card)
     self.character.possessions.extend(self.drawn)
@@ -1523,6 +1523,24 @@ class ScroungeItems(Event):
     return ""
 
 
+class ReplenishStatDecrease(Event):
+  def __init__(self, card):
+    super().__init__()
+    self.card = card
+    self.done = False
+
+  def resolve(self, state):
+    # pylint: disable=protected-access
+    state.specials.append(self.card.__class__(self.card.name, self.card._idx + 1, self.card.stat))
+    self.done = True
+
+  def is_resolved(self):
+    return self.done
+
+  def log(self, state):
+    return ""
+
+
 class SellChosen(Event):
   def __init__(self, character, choice, discount_type="fixed", discount=0):
     assert discount_type in {"fixed", "rate"}
@@ -1625,7 +1643,7 @@ class PurchaseDrawn(Event):
         self.resolved = True
         return
       kept_card = self.drawn.pop(self.choice.choice_index)
-      self.kept.append(self.choice.choice)
+      self.kept.append(kept_card.handle)
       getattr(state, self.draw.deck).remove(kept_card)
       self.character.possessions.append(kept_card)  # TODO: should be KeepDrawn
       self.keep_count -= 1
@@ -1661,7 +1679,7 @@ class PurchaseDrawn(Event):
       return f"[{self.character.name}] chooses among cards to buy"
     if not self.kept:
       return f"[{self.character.name}] bought nothing"
-    return f"[{self.character.name}] bought " + ", ".join(self.kept)
+    return f"[{self.character.name}] bought [" + "], [".join(self.kept) + "]"
 
   def discounted_price(self, card):
     if self.discount_type == "fixed":
@@ -2655,7 +2673,7 @@ class Check(Event):
       return f"[{self.character.name}] did not make a {self.check_str()}"
     if self.roll is None:
       return f"[{self.character.name}] makes a {self.check_str()}"
-    if not self.successes:
+    if not self.success:
       return f"[{self.character.name}] failed a {self.check_str()}"
     return f"[{self.character.name}] passed a {self.check_str()} with {self.successes} successes"
 
@@ -4419,10 +4437,12 @@ class GateCloseAttempt(Event):
       return
 
     if self.check is None:
-      difficulty = state.places[self.location_name].gate.difficulty(state)
+      gate = state.places[self.location_name].gate
+      modifier = gate.rating(state)
       attribute = "lore" if self.choice.choice == "Close with lore" else "fight"
+      difficulty = max(1 + state.get_modifier(gate, "difficulty"), 1)
       self.check = Check(
-        self.character, attribute, difficulty, name=state.places[self.location_name].gate.handle
+        self.character, attribute, modifier, difficulty=difficulty, name=gate.handle
       )
       state.event_stack.append(self.check)
       return
@@ -4518,7 +4538,7 @@ class CloseGate(Event):
 
     if self.seal_choice is None:
       seal_clues = 5
-      seal_clues += state.get_modifier(self, "seal_clues")
+      seal_clues += state.get_modifier(self.gate, "seal_clues")
       spend = values.ExactSpendPrerequisite({"clues": seal_clues})
       self.seal_choice = SpendChoice(
         self.character, "Spend clues to seal the gate?", ["Yes", "No"], spends=[spend, None]
