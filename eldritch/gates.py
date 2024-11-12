@@ -5,8 +5,8 @@ class Gate:
     self._difficulty = difficulty
     self.dimension = dimension
 
-  def difficulty(self, state):
-    return self._difficulty + state.get_modifier(self, "difficulty")
+  def rating(self, state):
+    return self._difficulty + state.get_modifier(self, "rating")
 
   @property
   def handle(self):

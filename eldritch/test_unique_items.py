@@ -827,12 +827,20 @@ class WardingStatueTest(EventTest):
 
   def testCancelAncientOne(self):
     self.char.possessions.append(items.WardingStatue(0))
-    self.state.ancient_one = ancient_ones.Wendigo()
+    self.state.ancient_one = ancient_ones.SerpentGod()
     self.state.event_stack.append(events.Awaken())
     self.resolve_until_done()
     self.advance_turn(0, "ancient")
     self.state.event_stack.append(events.AncientAttack(None))
     self.resolve_to_usable(0, "Warding Statue0")
+    self.state.event_stack.append(self.state.usables[0]["Warding Statue0"])
+    self.resolve_until_done()
+
+    # If the ancient one attacks again, it the rating should not have increased.
+    self.state.event_stack.append(events.AncientAttack(None))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)) as rand:
+      self.resolve_until_done()
+      self.assertEqual(rand.call_count, 5)  # Speed 4 + rating of +1 = 5
 
 
 class TomeTest(EventTest):

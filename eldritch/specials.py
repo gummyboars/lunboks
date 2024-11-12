@@ -14,7 +14,7 @@ class Deputy(Card):
   def get_trigger(self, event, owner, state):
     if isinstance(event, events.RefreshAssets) and event.character == owner:
       return events.Gain(owner, {"dollars": 1})
-    if isinstance(event, events.KeepDrawn) and self.name in event.kept:
+    if isinstance(event, events.KeepDrawn) and self.handle in event.kept:
       seq = [
         events.DrawSpecific(owner, "tradables", "Deputy's Revolver"),
         events.DrawSpecific(owner, "tradables", "Patrol Wagon"),
@@ -34,7 +34,8 @@ class SelfDiscardingCard(Card):
     self.upkeep_bad_rolls = [1]
 
   def get_trigger(self, event, owner, state):
-    if isinstance(event, events.KeepDrawn) and event.character == owner and self.name in event.kept:
+    matches = isinstance(event, events.KeepDrawn) and event.character == owner
+    if matches and self.handle in event.kept:
       selves = [p for p in owner.possessions if p.name == self.name]
       kept, *duplicates = sorted(selves, key=lambda x: x.tokens["must_roll"])
       if duplicates:
@@ -60,7 +61,8 @@ class BlessingOrCurse(SelfDiscardingCard):
     self.opposite = "Curse" if name == "Blessing" else "Blessing"
 
   def get_trigger(self, event, owner, state):
-    if isinstance(event, events.KeepDrawn) and event.character == owner and self.name in event.kept:
+    matches = isinstance(event, events.KeepDrawn) and event.character == owner
+    if matches and self.handle in event.kept:
       opposites = [p for p in owner.possessions if p.name == self.opposite]
       if opposites:
         return events.DiscardSpecific(owner, [self, *opposites])
@@ -195,10 +197,13 @@ class StatDecrease(Card):
   def __init__(self, name, idx, stat):
     assert stat in {"sanity", "stamina"}
     super().__init__(name, idx, "specials", {}, {f"max_{stat}": -1})
+    self.stat = stat
 
   def get_trigger(self, event, owner, state):
-    if isinstance(event, events.KeepDrawn) and self.name in event.kept:
-      return events.CapStatsAtMax(owner)
+    if isinstance(event, events.KeepDrawn) and self.handle in event.kept:
+      return events.Sequence(
+        [events.ReplenishStatDecrease(self), events.CapStatsAtMax(owner)], owner
+      )
     return None
 
 
@@ -215,15 +220,6 @@ def CreateTradables():
 
 
 def CreateSpecials() -> List[Asset]:
-  cards = [
-    Blessing,
-    Curse,
-    Retainer,
-    BankLoan,
-    BadCredit,
-    LodgeMembership,
-    StaminaDecrease,
-    SanityDecrease,
-    VoiceBonus,
-  ]
-  return [Deputy(), TeamPlayerBonus(0)] + [card(i) for i in range(12) for card in cards]
+  cards = [Blessing, Curse, Retainer, BankLoan, BadCredit, LodgeMembership, VoiceBonus]
+  result = [Deputy(), TeamPlayerBonus(0)] + [card(i) for i in range(12) for card in cards]
+  return result + [StaminaDecrease(0), SanityDecrease(0)]

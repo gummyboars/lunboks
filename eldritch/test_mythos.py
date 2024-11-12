@@ -1801,6 +1801,34 @@ class EnvironmentTests(EventTest):
     self.assertIn(fm3, self.char.trophies)
     self.assertFalse(self.state.get_override(fm1, "can_draw_to_board"))
 
+  def testMythos45(self):
+    self.char.clues = 1
+    self.state.environment = Mythos45()
+    cgate = next(gate for gate in self.state.gates if gate.name == "Sunken City")
+    agate = next(gate for gate in self.state.gates if gate.name == "Abyss")
+    self.state.places["Isle"].gate = cgate
+    self.state.places["Woods"].gate = agate
+
+    self.state.event_stack.append(events.GateCloseAttempt(self.char, "Woods"))
+    choice = self.resolve_to_choice(events.MultipleChoice)
+    choice.resolve(self.state, "Close with lore")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=[5, 1, 1, 1])):
+      choice = self.resolve_to_choice(events.SpendChoice)
+      self.assertIn("Pass", choice.choices)
+      choice.resolve(self.state, "Pass")
+    seal_choice = self.resolve_to_choice(events.SpendChoice)
+    seal_choice.resolve(self.state, "No")
+    self.resolve_until_done()
+
+    self.state.event_stack.append(events.GateCloseAttempt(self.char, "Isle"))
+    choice = self.resolve_to_choice(events.MultipleChoice)
+    choice.resolve(self.state, "Close with lore")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=[5, 1, 1])):
+      choice = self.resolve_to_choice(events.SpendChoice)
+      self.assertIn("Fail", choice.choices)
+      choice.resolve(self.state, "Fail")
+    self.resolve_until_done()
+
 
 class DrawMythosTest(EventTest):
   def testMythosShuffle(self):

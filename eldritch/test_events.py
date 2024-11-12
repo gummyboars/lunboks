@@ -1688,6 +1688,29 @@ class DrawRandomTest(EventTest):
     self.resolve_until_done()
 
 
+class DrawDecreaseStatTest(EventTest):
+  def testReplenishes(self):
+    for _ in range(2):
+      self.state.event_stack.append(DrawSpecific(self.char, "specials", "Sanity Decrease"))
+      self.resolve_until_done()
+    self.assertEqual(self.char.max_sanity(self.state), 3)
+    self.assertIn("Sanity Decrease", [card.name for card in self.state.specials])
+
+  def testReplenishesInSequence(self):
+    seq = [DrawSpecific(self.char, "specials", "Sanity Decrease") for _ in range(3)]
+    self.state.event_stack.append(Sequence(seq, self.char))
+    self.resolve_until_done()
+    self.assertEqual(self.char.max_sanity(self.state), 2)
+    self.assertIn("Sanity Decrease", [card.name for card in self.state.specials])
+
+  def testReplenishesIfDevoured(self):
+    seq = [DrawSpecific(self.char, "specials", "Sanity Decrease") for _ in range(5)]
+    self.state.event_stack.append(Sequence(seq, self.char))
+    self.resolve_until_done()
+    self.assertTrue(self.char.gone)
+    self.assertIn("Sanity Decrease", [card.name for card in self.state.specials])
+
+
 class DiscardSpecificTest(EventTest):
   def testDiscardSpecific(self):
     self.char.possessions.extend([items.Food(0), items.TommyGun(0)])
