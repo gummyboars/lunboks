@@ -2452,7 +2452,7 @@ function updateUsables(usables, log, spendables, choice, sliders, dice) {
   for (let pos of posList) {
     let isUsable = usableList.includes(pos.handle);
     pos.classList.toggle("usable", isUsable);
-    anyPosUsable = anyPosUsable || isUsable;
+    anyPosUsable = anyPosUsable || isUsable || pos.classList.contains("choosable");
   }
   for (let pos of trophyList) {
     let isUsable = usableList.includes(pos.handle);
