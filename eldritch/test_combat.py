@@ -10,6 +10,7 @@ if os.path.abspath(sys.path[0]) == os.path.dirname(os.path.abspath(__file__)):
   sys.path[0] = os.path.dirname(sys.path[0])
 
 from eldritch.abilities import base as abilities
+from eldritch.abilities import seaside as seaside_abilities
 from eldritch.allies import base as allies
 from eldritch import events
 from eldritch.events import *
@@ -1066,6 +1067,244 @@ class WarlockCombatTest(PinataCombatBaseTestMixin, EventTest):
     self.assertEqual(self.char.clues, 0)
     self.assertEqual(len(self.char.possessions), 1)
     self.assertEqual(self.char.possessions[0].handle, "Tommy Gun0")
+
+
+class ManInBlackCombatTest(EventTest):
+  def setUp(self):
+    super().setUp()
+    self.char.lore_luck_slider = 2
+    self.mib = self.add_monsters(monsters.ManInBlack())
+    self.mib.place = self.state.places["Isle"]
+    self.char.place = self.mib.place
+
+  def testSuccess(self):
+    combat = EvadeOrCombat(self.char, self.mib)
+    self.state.event_stack.append(combat)
+    fight_or_evade = self.resolve_to_choice(FightOrEvadeChoice)
+    fight_or_evade.resolve(self.state, "Fight")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)) as rand:
+      self.resolve_until_done()
+      self.assertEqual(rand.call_count, 1)  # Luck of 2 + rating of -1 = 1
+    self.assertEqual(self.mib.place, self.state.monster_cup)
+    self.assertEqual(len(self.char.trophies), 0)
+    self.assertEqual(self.char.clues, 2)
+
+  def testFailure(self):
+    combat = EvadeOrCombat(self.char, self.mib)
+    self.state.event_stack.append(combat)
+    fight_or_evade = self.resolve_to_choice(FightOrEvadeChoice)
+    fight_or_evade.resolve(self.state, "Fight")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)) as rand:
+      self.resolve_until_done()
+      self.assertEqual(rand.call_count, 1)  # Luck of 2 + rating of -1 = 1
+    self.assertEqual(self.mib.place, self.state.monster_cup)
+    self.assertTrue(self.char.gone)
+
+  def testEvadeFailure(self):
+    combat = EvadeOrCombat(self.char, self.mib)
+    self.state.event_stack.append(combat)
+    fight_or_evade = self.resolve_to_choice(FightOrEvadeChoice)
+    fight_or_evade.resolve(self.state, "Evade")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)) as rand:
+      self.resolve_until_done()
+      self.assertEqual(rand.call_count, 1)  # Evade check: 0 dice; luck check: 1 die
+    self.assertEqual(self.mib.place, self.state.monster_cup)
+    self.assertTrue(self.char.gone)
+
+  def testThickSkulled(self):
+    self.state.characters.append(self.state.all_characters["Farmhand"])
+    farmhand = self.state.characters[-1]
+    farmhand.place = self.mib.place
+    farmhand.possessions.append(seaside_abilities.ThickSkulled())
+    farmhand.lore_luck_slider = 2
+    combat = EvadeOrCombat(farmhand, self.mib)
+    self.state.event_stack.append(combat)
+    fight_or_evade = self.resolve_to_choice(FightOrEvadeChoice)
+    fight_or_evade.resolve(self.state, "Fight")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)) as rand:
+      self.resolve_until_done()
+      self.assertEqual(rand.call_count, 1)  # Luck of 2 + rating of -1 = 1
+    self.assertEqual(self.mib.place, self.state.monster_cup)
+    self.assertEqual(len(farmhand.trophies), 0)
+    self.assertEqual(farmhand.clues, 2)
+
+
+class BloatedWomanCombatTest(EventTest):
+  def setUp(self):
+    super().setUp()
+    self.woman = self.add_monsters(monsters.BloatedWoman())
+    self.woman.place = self.state.places["Isle"]
+    self.char.place = self.woman.place
+    self.char.fight_will_slider = 1
+
+  def testSuccess(self):
+    self.char.clues = 1
+    self.char.possessions.append(items.EnchantedBlade(0))
+    combat = EvadeOrCombat(self.char, self.woman)
+    self.state.event_stack.append(combat)
+    fight_or_evade = self.resolve_to_choice(FightOrEvadeChoice)
+    fight_or_evade.resolve(self.state, "Fight")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)) as rand:
+      spend_choice = self.resolve_to_choice(SpendChoice)
+      self.assertEqual(rand.call_count, 1)  # Will 3 + rating -2 = 1
+      spend_choice.resolve(self.state, "Pass")
+
+    self.char.clues = 0
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      fight_or_flee = self.resolve_to_choice(FightOrEvadeChoice)
+    self.assertEqual(self.char.sanity, 5)
+    self.assertEqual(self.char.stamina, 5)
+
+    fight_or_flee.resolve(self.state, "Fight")
+    choose_weapons = self.resolve_to_choice(CombatChoice)
+    self.choose_items(choose_weapons, ["Enchanted Blade0"])
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.sanity, 5)
+    self.assertEqual(self.char.stamina, 5)
+
+  def testFailure(self):
+    self.char.clues = 1
+    combat = EvadeOrCombat(self.char, self.woman)
+    self.state.event_stack.append(combat)
+    fight_or_evade = self.resolve_to_choice(FightOrEvadeChoice)
+    fight_or_evade.resolve(self.state, "Fight")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)) as rand:
+      spend_choice = self.resolve_to_choice(SpendChoice)
+      self.assertEqual(rand.call_count, 1)  # Will 3 + rating -2 = 1
+      spend_choice.resolve(self.state, "Fail")
+
+    self.char.clues = 0
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)) as rand:
+      fight_or_flee = self.resolve_to_choice(FightOrEvadeChoice)
+      self.assertEqual(rand.call_count, 0)  # Auto-fail the horror check
+    self.assertEqual(self.char.sanity, 3)
+    self.assertEqual(self.char.stamina, 3)
+
+    fight_or_flee.resolve(self.state, "Fight")
+    choose_weapons = self.resolve_to_choice(CombatChoice)
+    self.choose_items(choose_weapons, [])
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
+      self.resolve_to_choice(FightOrEvadeChoice)
+    self.assertEqual(self.char.sanity, 3)
+    self.assertEqual(self.char.stamina, 1)
+
+  def testThickSkulledFirstRoundSuccess(self):
+    self.state.characters.append(self.state.all_characters["Farmhand"])
+    farmhand = self.state.characters[-1]
+    farmhand.place = self.woman.place
+    farmhand.possessions.append(seaside_abilities.ThickSkulled())
+    combat = EvadeOrCombat(farmhand, self.woman)
+    self.state.event_stack.append(combat)
+    fight_or_evade = self.resolve_to_choice(FightOrEvadeChoice)
+    fight_or_evade.resolve(self.state, "Fight")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)) as rand:
+      fight_or_flee = self.resolve_to_choice(FightOrEvadeChoice)
+      fight_or_flee.resolve(self.state, "Fight")
+      choose_weapons = self.resolve_to_choice(CombatChoice)
+      self.choose_items(choose_weapons, [])
+      self.assertEqual(rand.call_count, 0)  # No horror check, no will check
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)) as rand:
+      self.resolve_until_done()
+
+  def testThickSkulledSecondRoundSuccess(self):
+    self.state.characters.append(self.state.all_characters["Farmhand"])
+    farmhand = self.state.characters[-1]
+    farmhand.place = self.woman.place
+    farmhand.possessions.append(seaside_abilities.ThickSkulled())
+    self.assertEqual(farmhand.sanity, 5)
+    self.assertEqual(farmhand.stamina, 6)
+
+    combat = EvadeOrCombat(farmhand, self.woman)
+    self.state.event_stack.append(combat)
+    fight_or_evade = self.resolve_to_choice(FightOrEvadeChoice)
+    fight_or_evade.resolve(self.state, "Fight")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)) as rand:
+      fight_or_flee = self.resolve_to_choice(FightOrEvadeChoice)
+      fight_or_flee.resolve(self.state, "Fight")
+      choose_weapons = self.resolve_to_choice(CombatChoice)
+      self.choose_items(choose_weapons, [])
+      self.assertEqual(rand.call_count, 0)  # No horror check, no will check
+    farmhand.clues = 1
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)) as rand:
+      spend_choice = self.resolve_to_choice(SpendChoice)
+      spend_choice.resolve(self.state, "Fail")  # Fail the first combat check
+
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)) as rand:
+      spend_choice = self.resolve_to_choice(SpendChoice)
+      self.assertEqual(farmhand.sanity, 5)  # Has not failed the horror check yet
+      self.assertEqual(farmhand.stamina, 4)  # Has failed one combat check
+      self.spend("clues", 1, spend_choice)
+      spend_choice.resolve(self.state, "Spend")
+      fight_or_flee = self.resolve_to_choice(FightOrEvadeChoice)
+      self.assertEqual(rand.call_count, 1)  # Pass the will check, fail the horror check
+
+    fight_or_flee.resolve(self.state, "Fight")
+    choose_weapons = self.resolve_to_choice(CombatChoice)
+    self.choose_items(choose_weapons, [])
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+    self.assertEqual(farmhand.sanity, 3)  # Failed the horror check
+    self.assertEqual(farmhand.stamina, 4)  # Has not failed another combat check
+
+  def testThickSkulledSecondRoundFailure(self):
+    self.state.characters.append(self.state.all_characters["Farmhand"])
+    farmhand = self.state.characters[-1]
+    farmhand.place = self.woman.place
+    farmhand.possessions.append(seaside_abilities.ThickSkulled())
+
+    combat = EvadeOrCombat(farmhand, self.woman)
+    self.state.event_stack.append(combat)
+    fight_or_evade = self.resolve_to_choice(FightOrEvadeChoice)
+    fight_or_evade.resolve(self.state, "Fight")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)) as rand:
+      fight_or_flee = self.resolve_to_choice(FightOrEvadeChoice)
+      fight_or_flee.resolve(self.state, "Fight")
+      choose_weapons = self.resolve_to_choice(CombatChoice)
+      self.choose_items(choose_weapons, [])
+      self.assertEqual(rand.call_count, 0)  # No horror check, no will check
+    farmhand.clues = 1
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)) as rand:
+      spend_choice = self.resolve_to_choice(SpendChoice)
+      spend_choice.resolve(self.state, "Fail")  # Fail the first combat check
+
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)) as rand:
+      spend_choice = self.resolve_to_choice(SpendChoice)
+      self.assertEqual(farmhand.sanity, 5)  # Has not failed the horror check yet
+      self.assertEqual(farmhand.stamina, 4)  # Has failed one combat check
+      spend_choice.resolve(self.state, "Fail")
+      fight_or_flee = self.resolve_to_choice(FightOrEvadeChoice)
+      self.assertEqual(rand.call_count, 0)  # Failed the will check; never rolled the horror check.
+    self.assertEqual(farmhand.sanity, 3)  # Auto-failed the horror check
+    self.assertEqual(farmhand.stamina, 2)  # Auto-failed the second combat check
+
+    farmhand.clues = 0
+    fight_or_flee.resolve(self.state, "Fight")
+    choose_weapons = self.resolve_to_choice(CombatChoice)
+    self.choose_items(choose_weapons, [])
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+    self.assertEqual(farmhand.sanity, 3)  # Unchanged after succeeding at the third combat check
+    self.assertEqual(farmhand.stamina, 2)
+
+
+class DarkPharaohCombatTest(EventTest):
+  def testCombatUsesLore(self):
+    self.char.possessions.append(items.EnchantedBlade(0))
+    self.char.fight_will_slider = 0
+    pharaoh = self.add_monsters(monsters.DarkPharaoh())
+    pharaoh.place = self.state.places["Isle"]
+    self.char.place = pharaoh.place
+    combat = Combat(self.char, pharaoh)
+    self.state.event_stack.append(combat)
+    fight_or_evade = self.resolve_to_choice(FightOrEvadeChoice)
+    fight_or_evade.resolve(self.state, "Fight")
+    choose_weapons = self.resolve_to_choice(CombatChoice)
+    self.choose_items(choose_weapons, ["Enchanted Blade0"])
+
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)) as rand:
+      self.resolve_until_done()
+      self.assertEqual(rand.call_count, 5)  # Lore 4 + Blade 4 - Pharaoh 3 = 5
 
 
 class CombatOutputTest(EventTest):

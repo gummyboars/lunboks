@@ -91,6 +91,7 @@ class GameState:
     events.PassCombatRound,
     events.TakeTrophy,
     events.EvadeRound,
+    events.MonsterCheck,
   )
 
   def __init__(self):

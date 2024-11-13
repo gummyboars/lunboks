@@ -144,28 +144,21 @@ class TeamPlayerBonus(assets.Card):
     return None
 
 
-class ThickSkulledCombat(events.Combat):
-  def resolve(self, state):
-    # Horror check
-    if (
-      self.monster.difficulty("horror", state, self.character) is not None
-      and self.horror is None
-      and (self.evade is not None or self.combat is not None)
-      and any(
-        [
-          getattr(self.evade, "evaded", None) is False,
-          getattr(self.combat, "defeated", None) is False,
-        ]
-      )
-    ):
-      self._setup_horror(state)
-    if self.horror is not None:
-      return_early = self._do_horror(state)
-      if return_early:
-        return
+class ThickSkulledCombat(events.Event):
+  def __init__(self, combat):
+    super().__init__()
+    self.combat = combat
+    self.done = False
 
-    # Combat or flee choice.
-    self._do_combat_or_evade(state)
+  def resolve(self, state):
+    self.combat.first_combat = True
+    self.done = True
+
+  def is_resolved(self):
+    return self.done
+
+  def log(self, state):
+    return ""
 
 
 class ThickSkulled(assets.Asset):
@@ -173,14 +166,8 @@ class ThickSkulled(assets.Asset):
     super().__init__("Thick Skulled")
 
   def get_interrupt(self, event, owner, state):
-    if (
-      isinstance(event, events.Combat)
-      and not isinstance(event, ThickSkulledCombat)
-      and event.character == owner
-    ):
-      return events.Sequence(
-        [events.CancelEvent(event), ThickSkulledCombat(event.character, event.monster)]
-      )
+    if isinstance(event, events.Combat) and event.character == owner:
+      return ThickSkulledCombat(event)
     return None
 
 

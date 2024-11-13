@@ -291,6 +291,7 @@ class TestBlackPharaohMasks(unittest.TestCase):
     state.ancient_one = ancient_ones.BlackPharaoh()
     state.initialize()
     self.assertIn("Haunter", [mon.name for mon in state.monsters])
+    self.assertIn("Dark Pharaoh", [mon.name for mon in state.monsters])
 
   def testMasksNotIncluded(self):
     state = GameState()

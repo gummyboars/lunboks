@@ -132,19 +132,19 @@ class BaseCharacter(metaclass=abc.ABCMeta):
     return speed
 
   def evade(self, state):
-    return self.sneak(state) + self.bonus("evade", state, check=True)
+    return self.bonus("evade", state, check=True)
 
   def combat(self, state, attributes):
-    combat = self.fight(state)
+    combat = 0
     for bonus_type in ["physical", "magical", "combat"]:
       combat += self.bonus(bonus_type, state, attributes, check=True)
     return combat
 
   def horror(self, state):
-    return self.will(state) + self.bonus("horror", state, check=True)
+    return self.bonus("horror", state, check=True)
 
   def spell(self, state):
-    return self.lore(state) + self.bonus("spell", state, check=True)
+    return self.bonus("spell", state, check=True)
 
   def bonus(self, check_name, state, attributes=None, check=True):
     modifier = 0

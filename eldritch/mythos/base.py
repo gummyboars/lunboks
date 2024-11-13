@@ -178,6 +178,11 @@ class Mythos9(CityBonus):
       penalty_skill="luck",
     )
 
+  def get_modifier(self, thing, attribute, state):
+    if getattr(thing, "name", None) == "Haunter" and attribute == "combatdifficulty":
+      return -3
+    return super().get_modifier(thing, attribute, state)
+
 
 class Mythos10(CloseLocationsHeadline):
   def __init__(self):

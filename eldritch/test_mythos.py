@@ -1636,6 +1636,12 @@ class GlobalModifierTest(EventTest):
 
 
 class EnvironmentTests(EventTest):
+  def testMythos9(self):
+    haunter = self.add_monsters(monsters.Haunter())
+    self.assertEqual(haunter.difficulty("combat", self.state, self.char), -2)
+    self.state.environment = Mythos9()
+    self.assertEqual(haunter.difficulty("combat", self.state, self.char), -5)
+
   def testMythos15Pass(self):
     self.state.environment = Mythos15()
     self.state.turn_phase = "movement"
