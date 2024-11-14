@@ -9,7 +9,7 @@ from eldritch import cards as assets
 from eldritch import places
 from eldritch import values
 
-from game import InvalidMove, InvalidInput
+from game import InvalidMove, InvalidInput, NotYourTurn
 
 if TYPE_CHECKING:
   from eldritch.eldritch import GameState
@@ -233,6 +233,57 @@ class Upkeep(Turn):
     if self.cancelled and not self.focus_given:
       return f"[{self.character.name}]'s upkeep was skipped"
     return f"[{self.character.name}]'s upkeep"
+
+
+class InitialSliders(Event):
+  def __init__(self, characters):
+    super().__init__()
+    self.characters = characters
+    self.pending = {char.name: char.sliders() for char in characters}
+    self.done_chars = set()
+
+  def resolve(self, state, name, value, char_idx):  # pylint: disable=arguments-differ
+    if state.characters[char_idx] not in self.characters:
+      raise NotYourTurn("It is not your turn to set sliders.")
+    char = state.characters[char_idx]
+
+    if not isinstance(name, str):
+      raise InvalidInput(f"Invalid slider name {name}")
+    if name not in self.pending[char.name].keys() | {"done"}:
+      raise InvalidInput(f"Unknown slider {name}")
+    if name == "done":
+      # Set this player's sliders so that it appears in the UI.
+      for slider_name, slider_value in self.pending[char.name].items():
+        setattr(char, slider_name + "_slider", slider_value)
+      self.done_chars.add(char.name)
+
+      if len(self.done_chars) == len(self.characters):
+        # If all players are done, set all characters sliders to lock in their current choices.
+        for character in self.characters:
+          for slider_name, slider_value in self.pending[character.name].items():
+            setattr(character, slider_name + "_slider", slider_value)
+      return
+
+    if not isinstance(value, int):
+      raise InvalidMove(f"Invalid slider stop {value}")
+    if value < 0:
+      raise InvalidMove(f"Slider stop {value} must be >= 0")
+    if value >= len(getattr(char, "_" + name)):
+      raise InvalidMove(f"Slider stop {value} is too large")
+    self.pending[char.name][name] = value
+
+  def prompt(self):
+    return "Player(s) to set initial sliders"
+
+  def is_resolved(self):
+    return len(self.done_chars) == len(self.characters)
+
+  def log(self, state):
+    if self.cancelled:
+      return "Players did not get to set initial sliders"
+    if self.is_resolved():
+      return "Players set initial sliders"
+    return "Players must set initial sliders"
 
 
 class SliderInput(Event):

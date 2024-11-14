@@ -517,6 +517,15 @@ class GameState:
       for name, value in top_event.pending.items():
         output["sliders"][name] = {"selection": value}
 
+    if top_event and isinstance(top_event, events.InitialSliders) and not top_event.is_done():
+      slider_char = self.characters[char_idx]
+      if slider_char not in top_event.characters:
+        slider_char = next(c for c in top_event.characters if c.name not in top_event.done_chars)
+      output["sliders"] = {"prompt": top_event.prompt()}
+      output["chooser"] = self.characters.index(slider_char)
+      for name, value in top_event.pending[slider_char.name].items():
+        output["sliders"][name] = {"selection": value}
+
     output["spendables"] = None
     output["usables"] = None
     if self.spendables.get(char_idx):
@@ -641,7 +650,7 @@ class GameState:
       if not self.test_mode and isinstance(event, events.DiceRoll) and not event.is_done():
         yield None
         return
-      if isinstance(event, events.SliderInput) and not event.is_done():
+      if isinstance(event, (events.SliderInput, events.InitialSliders)) and not event.is_done():
         yield None
         return
       if not all(self.done_using.get(char_idx) for char_idx in self.usables):
@@ -675,7 +684,7 @@ class GameState:
       return
     if self.event_stack[-1] != event:
       return
-    if isinstance(event, (events.ChoiceEvent, events.SliderInput)):
+    if isinstance(event, (events.ChoiceEvent, events.SliderInput, events.InitialSliders)):
       return
     raise RuntimeError(
       f"Event {event} returned from resolve() without (a) becoming resolved or "
@@ -989,12 +998,11 @@ class GameState:
     self.turn_phase = "mythos"
     self.initialize()
     self.ancient_one.setup(self)
-    seq = self.add_pending_players()
+    sliders = self.add_pending_players()
     if any(char.name == "Scientist" for char in self.characters):
       self.places["Science"].clues = 0
-    assert seq.events, "no players?"
-    seq.events.append(events.Mythos(None))
-    self.event_stack.append(seq)
+    assert sliders.characters, "no players?"
+    self.event_stack.append(events.Sequence([sliders, events.Mythos(None)], None))
 
   def validate_new_character(self, name):
     if name not in self.all_characters:
@@ -1297,11 +1305,15 @@ class GameState:
   def handle_slider(self, char_idx, name, value):
     assert self.event_stack
     event = self.event_stack[-1]
-    if not isinstance(event, events.SliderInput):
-      raise InvalidMove("It is not time to move your sliders.")
-    if event.character != self.characters[char_idx]:
-      raise NotYourTurn("It is not your turn to set sliders.")
-    event.resolve(self, name, value)
+    if isinstance(event, events.SliderInput):
+      if event.character != self.characters[char_idx]:
+        raise NotYourTurn("It is not your turn to set sliders.")
+      event.resolve(self, name, value)
+      return
+    if isinstance(event, events.InitialSliders):
+      event.resolve(self, name, value, char_idx)
+      return
+    raise InvalidMove("It is not time to move your sliders.")
 
   def handle_give(self, char_idx, recipient_idx, handle, amount):
     if not isinstance(recipient_idx, int):
@@ -1473,7 +1485,7 @@ class GameState:
       for attr, val in char.initial_attributes().items():
         setattr(char, attr, val)
 
-    return events.Sequence([events.SliderInput(char, free=True) for char in new_characters], None)
+    return events.InitialSliders(new_characters)
 
 
 class EldritchGame(BaseGame):
