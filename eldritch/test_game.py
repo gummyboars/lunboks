@@ -472,6 +472,7 @@ class GateTravelTest(unittest.TestCase):
     char = self.state.characters[0]
     self.assertTrue(self.state.places["Square"].gate)
     world_name = self.state.places["Square"].gate.name
+    gate_handle = self.state.places["Square"].gate.handle
 
     self.assertFalse(self.state.event_stack)
     self.state.turn_phase = "movement"
@@ -487,6 +488,7 @@ class GateTravelTest(unittest.TestCase):
     self.assertEqual(self.state.turn_idx, 0)
     self.assertEqual(self.state.turn_phase, "otherworld")
     self.assertEqual(char.place.name, world_name + "1")
+    self.assertEqual(char.entered_gate, gate_handle)
     self.assertTrue(self.state.event_stack)
     self.assertIsInstance(self.state.event_stack[-1], events.OtherWorldPhase)
 
@@ -494,6 +496,7 @@ class GateTravelTest(unittest.TestCase):
     self.state.gate_cards.extend(gate_encounters.CreateGateCards())
     char = self.state.characters[0]
     char.place = self.state.places["City1"]
+    char.entered_gate = "Gate City0"
     self.state.turn_phase = "upkeep"
     upkeep = events.Upkeep(char)
     upkeep.done = True
@@ -503,11 +506,13 @@ class GateTravelTest(unittest.TestCase):
         break
     self.assertEqual(self.state.turn_phase, "otherworld")
     self.assertEqual(char.place.name, "City2")
+    self.assertEqual(char.entered_gate, "Gate City0")
 
   def testReturnFromOtherWorld(self):
     char = self.state.characters[0]
     world_name = self.state.places["Square"].gate.name
     char.place = self.state.places[world_name + "2"]
+    char.entered_gate = f"Gate {world_name}0"
     self.state.turn_phase = "upkeep"
     upkeep = events.Upkeep(char)
     upkeep.done = True
@@ -517,6 +522,7 @@ class GateTravelTest(unittest.TestCase):
 
     self.assertEqual(self.state.turn_phase, "encounter")
     self.assertEqual(char.place.name, "Square")
+    self.assertIsNone(char.entered_gate)
     self.assertTrue(self.state.event_stack)
     self.assertIsInstance(self.state.event_stack[-1], events.MultipleChoice)
     self.assertEqual(self.state.event_stack[-1].prompt(), "Close the gate?")

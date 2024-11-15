@@ -35,19 +35,24 @@ def Pluto2(char) -> events.Event:
 
 
 def Other2(char) -> events.Event:
-  # check = events.Check(char, "speed", -2)
-  # return events.Sequence(
-  #     [
-  #       events.PassFail(
-  #           char,
-  #           check,
-  #           events.Return(char, char.place.info.name),
-  #           events.LostInTimeAndSpace(char),
-  #       ),
-  #       events.CloseGate(char, "the one you entered"),
-  #      ], char
-  # )
-  return events.Unimplemented()
+  def return_and_close(name):
+    return events.Sequence(
+      [events.Return(char, char.place.info.name), events.CloseGate(char, name, True, True)], char
+    )
+
+  check = events.Check(char, "speed", -2)
+  place = values.EnteredGate(char)
+  gate_exists = values.Calculation(place, None, bool)
+  place_as_list = values.Calculation(place, None, lambda name: [name] if name is not None else [])
+  fail = events.Sequence(
+    [events.CloseGate(char, place, False, False), events.LostInTimeAndSpace(char)], char
+  )
+  # TODO: this is a horrible hack where we use a ForEach to evaluate the place name before the
+  # Return event is finished (which will erase the entered gate from the character).
+  foreach = events.ForEach(char, place_as_list, return_and_close)
+  results = {0: events.Return(char, char.place.info.name), 1: foreach}
+  success = events.Conditional(char, gate_exists, None, results)
+  return events.PassFail(char, check, success, fail)
 
 
 def Abyss3(char) -> events.Event:

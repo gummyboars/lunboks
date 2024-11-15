@@ -225,6 +225,23 @@ class OpenGatesTest(unittest.TestCase):
     self.assertEqual(count.value(state), 0)
 
 
+class EnteredGateTest(unittest.TestCase):
+  def testEnteredGate(self):
+    state = DummyState()
+    place1 = DummyPlace(name="one", gate=Dummy(handle="Gate A0"))
+    place2 = DummyPlace(name="two", gate=Dummy(handle="Gate A1"))
+    place3 = Dummy(name="three")  # Streets have no gate
+    state.places = {"three": place3, "one": place1, "two": place2}
+
+    char = DummyChar(entered_gate="Gate A0")
+    entered_gate = EnteredGate(char)
+    self.assertEqual(entered_gate.value(state), "one")
+    char.entered_gate = "Gate A1"
+    self.assertEqual(entered_gate.value(state), "two")
+    char.entered_gate = None
+    self.assertIsNone(entered_gate.value(state))
+
+
 class UnsuccessfulDiceTest(unittest.TestCase):
   def testUnsuccessfulDice(self):
     char = Dummy(is_success=lambda roll, _: roll >= 5)

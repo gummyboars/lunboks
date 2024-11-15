@@ -24,6 +24,7 @@ class BaseCharacter(metaclass=abc.ABCMeta):
     self.home = home
     self.place = None
     self.explored = False
+    self.entered_gate = None
     self.avoid_monsters = []
     self.movement_points = 0
     self.sanity = 0

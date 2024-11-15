@@ -279,6 +279,20 @@ def OpenGateCount():
   return Calculation(OpenGates(), None, len)
 
 
+class EnteredGate(Value):
+  def __init__(self, character):
+    super().__init__()
+    self.character = character
+
+  def value(self, state):
+    if self.character.entered_gate is None:
+      return None
+    for name, place in state.places.items():
+      if getattr(place, "gate", None) and place.gate.handle == self.character.entered_gate:
+        return name
+    return None
+
+
 class SpendValue(metaclass=abc.ABCMeta):
   SPEND_TYPES = {  # noqa: RUF012
     "stamina": "stamina",

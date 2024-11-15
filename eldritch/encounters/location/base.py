@@ -442,7 +442,7 @@ def Graveyard2(char):
 
 def Graveyard3(char):
   victory = events.Sequence([events.Draw(char, "unique", 1), events.Gain(char, {"clues": 1})])
-  damage = events.DiceRoll(char, 1, bad=[])
+  damage = events.DiceRoll(char, 1, bad=list(range(1, 7)))
   defeat = events.Loss(char, {"stamina": values.Die(damage)})
   fail_event = events.Sequence([damage, defeat], char)
   return events.CombatRound(
@@ -774,22 +774,29 @@ def Science5(char):
 
 
 def Science6(char):
-  # check = events.Check(char, "luck", -1)
-  # success = events.Nothing()  # TODO: OH NO!!  Pick a new investigator...
-  # return events.PassFail(char, check, success, events.Nothing())
-  return events.Unimplemented()
+  check = events.Check(char, "luck", -1)
+  leave = events.SpiritedAway(char)
+  prompt = "Choose a new investigator?"
+  success = events.BinaryChoice(char, prompt, "Yes", "No", leave, events.Nothing())
+  return events.PassFail(char, check, success, events.Nothing())
 
 
 def Science7(char):
-  # check = events.Check(char, "lore", -2)
-  # die = events.DiceRoll(char, 1, bad=[])
-  # stamina = events.Loss(char, {"stamina": values.Die(die)})
-  # close_gates = events.Nothing()  # TODO: close all of the gates!
-  # move = events.ForceMovement(char, "Hospital")
-  # fail = events.Sequence([die, stamina, move], char)
-  # helping = events.PassFail(char, check, close_gates, fail)
-  return events.Unimplemented()
-  # return events.BinaryChoice(char, "Offer to help?", "Yes", "No", helping, events.Nothing())
+  def roll_to_close(location_name):
+    roll = events.DiceRoll(char, 1)
+    close_gate = events.CloseGate(char, location_name, can_take=False, can_seal=False)
+    cond = events.Conditional(char, roll, "successes", {0: events.Nothing(), 1: close_gate})
+    return events.Sequence([roll, cond], char)
+
+  open_gates = values.OpenGates()
+  close_gates = events.ForEach(char, open_gates, roll_to_close)
+  check = events.Check(char, "lore", -2)
+  die = events.DiceRoll(char, 1, bad=list(range(1, 7)))
+  stamina = events.Loss(char, {"stamina": values.Die(die)})
+  move = events.ForceMovement(char, "Hospital")
+  fail = events.Sequence([die, stamina, move], char)
+  helping = events.PassFail(char, check, close_gates, fail)
+  return events.BinaryChoice(char, "Offer to help?", "Yes", "No", helping, events.Nothing())
 
 
 def Shop1(char):
@@ -830,12 +837,33 @@ def Shop5(char):
   return events.Unimplemented()
 
 
+class CombinedDraw:
+  def __init__(self, *draws):
+    self.draws = draws
+
+  def is_cancelled(self):
+    return False
+
+  def is_resolved(self):
+    return True
+
+  def is_done(self):
+    return True
+
+  @property
+  def drawn(self):
+    return sum([draw.drawn for draw in self.draws], [])
+
+
 def Shop6(char):
-  # check = events.Check(char, "luck", -1)
-  # common_unique = events.Nothing()  # TODO: purchase the top item of the common and/or unique deck
-  # common = events.Nothing()  # TODO: you may purchase the top item of the common deck
-  # return events.PassFail(char, check, common_unique, common)
-  return events.Unimplemented()
+  look_common = events.LookAtItems(char, "common", 1)
+  look_unique = events.LookAtItems(char, "unique", 1)
+  buy_common = events.PurchaseDrawn(char, look_common)
+  buy_both = events.PurchaseDrawn(char, CombinedDraw(look_common, look_unique), keep_count=2)
+  common = events.Sequence([look_common, buy_common], char)
+  both = events.Sequence([look_common, look_unique, buy_both], char)
+  check = events.Check(char, "luck", -1)
+  return events.PassFail(char, check, both, common)
 
 
 def Shop7(char):
@@ -894,7 +922,7 @@ def Train1(char):
 def Train2(char):
   check = events.Check(char, "speed", -2)
   spell = events.Draw(char, "spells", 1)
-  die = events.DiceRoll(char, 1, bad=[])
+  die = events.DiceRoll(char, 1, bad=list(range(1, 7)))
   sanity = events.Loss(char, {"sanity": values.Die(die)})
   return events.PassFail(char, check, spell, events.Sequence([die, sanity], char))
 
@@ -927,7 +955,7 @@ def Train6(char):
 def Train7(char):
   check = events.Check(char, "luck", -1)
   unique = events.Draw(char, "unique", 1)
-  die = events.DiceRoll(char, 1, bad=[])
+  die = events.DiceRoll(char, 1, bad=list(range(1, 7)))
   stab = events.Loss(char, {"stamina": values.Die(die)})
   return events.PassFail(char, check, unique, events.Sequence([die, stab], char))
 
