@@ -2100,11 +2100,10 @@ class PlayerJoinTest(PlayerTest):
     # Validate that new characters get a chance to set their sliders before upkeep.
     self.assertEqual(self.game.game.turn_phase, "mythos")
     self.assertTrue(self.game.game.event_stack)
-    self.assertIsInstance(self.game.game.event_stack[-1], events.SliderInput)
-    self.assertTrue(self.game.game.event_stack[-1].free)
+    self.assertIsInstance(self.game.game.event_stack[-1], events.InitialSliders)
 
-    self.handle("B", {"type": "set_slider", "name": "done"})
     self.handle("C", {"type": "set_slider", "name": "done"})
+    self.handle("B", {"type": "set_slider", "name": "done"})
 
     # Now that they've set their sliders, the next upkeep phase can begin.
     self.assertEqual(self.game.game.turn_phase, "upkeep")
@@ -2148,8 +2147,8 @@ class DevouredPlayerJoinTest(PlayerTest):
   def startNormal(self):
     with mock.patch.object(mythos, "CreateMythos", return_value=[PauseMythos(), PauseMythos()]):
       self.handle("A", {"type": "start"})
-    self.handle("A", {"type": "set_slider", "name": "done"})
     self.handle("B", {"type": "set_slider", "name": "done"})
+    self.handle("A", {"type": "set_slider", "name": "done"})
     self.handle("A", {"type": "choice", "choice": "PauseMythos"})
 
   def testDevouredCharacterRejoin(self):

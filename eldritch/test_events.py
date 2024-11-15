@@ -15,6 +15,7 @@ from eldritch.abilities import base as abilities
 from eldritch.allies import base as allies
 from eldritch import cards as assets
 from eldritch import characters
+from eldritch.characters import seaside as seaside_characters
 from eldritch import eldritch
 from eldritch.encounters.location.core import EncounterCard
 from eldritch.encounters.location import base as encounters
@@ -296,6 +297,95 @@ class SliderTest(EventTest):
     self.assertEqual(self.char.speed_sneak_slider, 0)
     self.assertEqual(self.char.fight_will_slider, 0)
     self.assertEqual(self.char.lore_luck_slider, 3)
+
+
+class InitialSlidersTest(EventTest):
+  def setUp(self):
+    super().setUp()
+    self.buddy = characters.Character("Buddy", 5, 5, 4, 4, 4, 4, 4, 4, 4, "Square")
+    self.state.all_characters["Buddy"] = self.buddy
+    self.state.characters.append(self.buddy)
+    self.chum = characters.Character("Chum", 5, 5, 4, 4, 4, 4, 4, 4, 4, "Square")
+    self.state.all_characters["Chum"] = self.chum
+    self.state.characters.append(self.chum)
+
+  def testInitialSlidersForTwo(self):
+    sliders = InitialSliders([self.buddy, self.chum])
+    self.state.event_stack.append(sliders)
+    sliders = self.resolve_to_choice(InitialSliders)
+
+    sliders.resolve(self.state, "fight_will", 0, 1)
+    sliders.resolve(self.state, "fight_will", 2, 2)
+    sliders.resolve(self.state, "lore_luck", 1, 1)
+    sliders.resolve(self.state, "lore_luck", 3, 2)
+    self.resolve_to_choice(InitialSliders)
+
+    sliders.resolve(self.state, "done", None, 1)
+    self.resolve_to_choice(InitialSliders)  # Not done if just one char is done
+    sliders.resolve(self.state, "done", None, 2)
+    self.resolve_until_done()
+
+    self.assertEqual(self.buddy.fight_will_slider, 0)
+    self.assertEqual(self.buddy.lore_luck_slider, 1)
+    self.assertEqual(self.chum.fight_will_slider, 2)
+    self.assertEqual(self.chum.lore_luck_slider, 3)
+
+  def testCanChangeMindUntilAllDone(self):
+    sliders = InitialSliders([self.buddy, self.chum])
+    self.state.event_stack.append(sliders)
+    sliders = self.resolve_to_choice(InitialSliders)
+
+    sliders.resolve(self.state, "fight_will", 0, 1)
+    sliders.resolve(self.state, "done", None, 1)  # Player 1 claims to be done
+    self.resolve_to_choice(InitialSliders)
+    sliders.resolve(self.state, "done", None, 1)  # Player 1 can hit done again; no change
+    self.resolve_to_choice(InitialSliders)
+    sliders.resolve(self.state, "lore_luck", 3, 2)
+    sliders.resolve(self.state, "fight_will", 2, 2)
+    sliders.resolve(self.state, "lore_luck", 1, 1)  # Player 1 makes changes before player 2 is done
+
+    sliders.resolve(self.state, "done", None, 2)
+    self.resolve_until_done()
+
+    self.assertEqual(self.buddy.fight_will_slider, 0)
+    self.assertEqual(self.buddy.lore_luck_slider, 1)
+    self.assertEqual(self.chum.fight_will_slider, 2)
+    self.assertEqual(self.chum.lore_luck_slider, 3)
+
+  def testInvalidPlayers(self):
+    sliders = InitialSliders([self.buddy])
+    self.state.event_stack.append(sliders)
+    sliders = self.resolve_to_choice(InitialSliders)
+
+    with self.assertRaisesRegex(NotYourTurn, "not your turn"):
+      sliders.resolve(self.state, "fight_will", 0, 0)
+    with self.assertRaisesRegex(NotYourTurn, "not your turn"):
+      sliders.resolve(self.state, "fight_will", 0, 2)
+
+  def testDifferentSliderNames(self):
+    self.state.all_characters.update({"Spy": seaside_characters.Spy()})
+    self.state.characters.append(self.state.all_characters["Spy"])
+    spy = self.state.characters[-1]
+    sliders = InitialSliders([self.buddy, spy])
+    self.state.event_stack.append(sliders)
+    sliders = self.resolve_to_choice(InitialSliders)
+
+    with self.assertRaisesRegex(InvalidInput, "Unknown slider"):
+      sliders.resolve(self.state, "fight_will", 0, 3)
+    sliders.resolve(self.state, "fight_will", 0, 1)
+    sliders.resolve(self.state, "fight_sneak", 2, 3)
+    sliders.resolve(self.state, "done", None, 3)
+    sliders.resolve(self.state, "done", None, 1)
+
+    self.assertEqual(self.buddy.fight_will_slider, 0)
+    self.assertEqual(spy.fight_sneak_slider, 2)
+
+  def testCannotUseUpkeepItems(self):
+    self.char.possessions.append(items.Voice(0))
+    sliders = InitialSliders([self.char])
+    self.state.event_stack.append(sliders)
+    sliders = self.resolve_to_choice(InitialSliders)
+    self.assertNotIn(0, self.state.usables)
 
 
 class MovementPhaseTest(EventTest):
