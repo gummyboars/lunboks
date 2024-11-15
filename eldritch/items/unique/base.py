@@ -26,7 +26,8 @@ __all__ = [
   "OuterGodlyFlute",
   "SilverKey",
   "PallidMask",
-  # TODO: AlienStatue, DragonsEye,
+  "DragonsEye",
+  "AlienStatue",
   "ElderSign",
   "WardingStatue",
   "TibetanTome",
@@ -50,6 +51,8 @@ def CreateUnique():
     HealingStone: 1,
     ObsidianStatue: 1,
     PallidMask: 1,
+    DragonsEye: 1,
+    AlienStatue: 1,
     SunkenCityRuby: 1,
     SilverKey: 1,
     HolyWater: 4,
@@ -112,6 +115,80 @@ def SwordOfGlory(idx):
 
 def PallidMask(idx):
   return Item("Pallid Mask", idx, "unique", {}, {"evade": 2}, None, 4)
+
+
+class DragonsEye(Item):
+  def __init__(self, idx):
+    super().__init__("Dragon's Eye", idx, "unique", {}, {}, None, 6)
+
+  def get_usable_interrupt(self, event, owner, state):
+    if len(state.event_stack) < 3 or not isinstance(event, events.CardChoice):
+      return None
+    if event.is_done() or event.prompt() != "Choose an Encounter":  # TODO: hacky/fragile
+      return None
+    if event.character != owner or self.exhausted:
+      return None
+    parent = state.event_stack[-3]
+    if not isinstance(parent, (events.Encounter, events.GateEncounter)):
+      return None
+    return events.Sequence(
+      [
+        events.ExhaustAsset(owner, self),
+        events.MulliganEncounter(owner, parent),
+        events.Loss(owner, {"sanity": 1}),
+      ],
+      owner,
+    )
+
+
+class AlienStatue(Item):
+  def __init__(self, idx):
+    super().__init__("Alien Statue", idx, "unique", {}, {}, None, 5)
+    self.movement_cost = 2
+
+  def get_usable_interrupt(self, event, owner, state):
+    if not isinstance(event, events.CityMovement) or event.character != owner or event.is_done():
+      return None
+    if self.exhausted:
+      return None
+    if event.character.movement_points < self.movement_cost:
+      return None
+    return self.event(owner)
+
+  def get_usable_trigger(self, event, owner, state):
+    if not isinstance(event, events.WagonMove) or event.character != owner:
+      return None
+    if self.exhausted:
+      return None
+    if event.character.movement_points < self.movement_cost:
+      return None
+    return self.event(owner)
+
+  def event(self, owner):
+    spell = events.Draw(owner, "spells", 1)
+    clues = events.Gain(owner, {"clues": 3})
+    prompt = "Draw 1 spell or gain 3 clues?"
+    gain_choice = events.CardChoice(owner, prompt, ["spells", "3 clues"])
+    gain_cond = events.Conditional(owner, gain_choice, "choice_index", {0: spell, 1: clues})
+    gain = events.Sequence([gain_choice, gain_cond], owner)
+    loss = events.Loss(owner, {"stamina": 2})
+    die = events.DiceRoll(owner, 1)
+    cond = events.Conditional(owner, die, "successes", {0: loss, 1: gain})
+    spend = values.ExactSpendPrerequisite({"sanity": 1})
+    use_choice = events.CardSpendChoice(
+      owner, f"Use [{self.name}]?", [self.handle, "Cancel"], spends=[spend, None]
+    )
+    use = events.Sequence(
+      [
+        events.ExhaustAsset(owner, self),
+        events.ChangeMovementPoints(owner, -self.movement_cost),
+        die,
+        cond,
+      ],
+      owner,
+    )
+    use_cond = events.Conditional(owner, use_choice, "choice_index", {0: use, 1: events.Nothing()})
+    return events.Sequence([use_choice, use_cond], owner)
 
 
 class AncientTablet(Item):

@@ -939,7 +939,7 @@ class EncounterPhaseTest(EventTest):
     ]
     self.resolve_until_done()
     self.assertFalse(self.encounter.action.is_cancelled())
-    self.assertTrue(self.encounter.action.encounter.is_cancelled())
+    self.assertTrue(self.encounter.action.encounter.events[1].result.is_cancelled())
 
   def testCancelledTravel(self):
     self.char.place = self.state.places["Cave"]
@@ -1015,8 +1015,8 @@ class OtherWoldPhaseTest(EventTest):
     self.resolve_until_done()
     self.assertTrue(self.other_world.is_resolved())
     self.assertTrue(self.other_world.action.is_resolved())
-    self.assertFalse(self.other_world.action.encounter.is_resolved())
-    self.assertTrue(self.other_world.action.encounter.is_cancelled())
+    self.assertFalse(self.other_world.action.encounter.events[1].result.is_resolved())
+    self.assertTrue(self.other_world.action.encounter.events[1].result.is_cancelled())
     self.assertEqual(len(self.state.gate_cards), num_cards)
 
 

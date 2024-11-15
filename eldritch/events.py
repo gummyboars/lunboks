@@ -1821,11 +1821,6 @@ class Encounter(Event):
       state.event_stack.append(Nothing())
       return
 
-    if len(self.draw.cards) == 1 and state.test_mode:  # TODO: test this
-      self.encounter = self.draw.cards[0].encounter_event(self.character, self.loc_name)
-      state.event_stack.append(self.encounter)
-      return
-
     choice = CardChoice(
       self.character, "Choose an Encounter", [card.name for card in self.draw.cards]
     )
@@ -1866,6 +1861,82 @@ class DrawEncounter(Event):
     if not self.cards:
       return f"[{self.character.name}] draws {self.count} encounter cards"
     return f"[{self.character.name}] drew " + ", ".join([card.name for card in self.cards])
+
+
+class MulliganEncounter(Event):
+  def __init__(self, character, encounter):
+    assert isinstance(encounter, (Encounter, GateEncounter))
+    super().__init__()
+    self.character = character
+    self.encounter = encounter
+    self.replacement = None
+    self.cards = None
+    self.choice = None
+
+  def resolve(self, state):
+    if isinstance(self.encounter, Encounter):  # pylint: disable=no-else-return
+      drawable_cards = [
+        card
+        for card in self.encounter.draw.neighborhood.encounters
+        if card not in self.encounter.draw.cards
+      ]
+      if not drawable_cards:
+        self.cancelled = True
+        return
+
+      pop_index = 0
+      if len(self.encounter.draw.cards) > 1:
+        if self.choice is None:
+          card_list = [card.name for card in self.encounter.draw.cards]
+          self.choice = CardChoice(self.character, "Choose a card to replace", card_list)
+          state.event_stack.append(self.choice)
+          return
+        if self.choice.is_cancelled():
+          self.cancelled = True
+          return
+        pop_index = self.choice.choice_index
+
+      self.cards = self.encounter.draw.cards[:]
+      self.cards.pop(pop_index)
+      self.replacement = random.choice(drawable_cards)
+      self.cards.append(self.replacement)
+      self.encounter.draw = self
+      self.encounter.encounter.cancelled = True
+      self.encounter.encounter.events[0].cancelled = True
+      self.encounter.encounter = None
+      return
+    else:  # noqa: RET505
+      pop_index = 0
+      if len(self.encounter.cards) > 1:
+        if self.choice is None:
+          card_list = [card.name for card in self.encounter.cards]
+          self.choice = CardChoice(self.character, "Choose a card to replace", card_list)
+          state.event_stack.append(self.choice)
+          return
+        if self.choice.is_cancelled():
+          self.cancelled = True
+          return
+        pop_index = self.choice.choice_index
+      removed = self.encounter.cards.pop(pop_index)
+      state.gate_cards.append(removed)
+      self.encounter.draw = None
+      self.encounter.encounter.cancelled = True
+      self.encounter.encounter.events[0].cancelled = True
+      self.encounter.encounter = None
+      self.cards = True
+      return
+
+  def is_resolved(self):
+    return self.cards is not None
+
+  def log(self, state):
+    if self.cancelled:
+      return f"[{self.character.name}] did not replace an encounter card"
+    if not self.cards:
+      return f"[{self.character.name}] will replace an encounter card"
+    if self.replacement is not None:
+      return f"[{self.character.name}] replaced an encounter card with [{self.replacement.name}]"
+    return f"[{self.character.name}] replaced an encounter card"
 
 
 class GateEncounter(Event):
@@ -1912,11 +1983,6 @@ class GateEncounter(Event):
       state.gate_cards.extend(self.cards)
       self.cards = []
       state.event_stack.append(Nothing())
-      return
-
-    if len(self.cards) == 1 and state.test_mode:  # TODO: test this
-      self.encounter = self.cards[0].encounter_event(self.character, world_name)
-      state.event_stack.append(self.encounter)
       return
 
     choice = CardChoice(self.character, "Choose an Encounter", [card.name for card in self.cards])
@@ -3517,6 +3583,12 @@ class CardChoice(MultipleChoice):
   def __init__(self, *args, **kwargs):
     self.sort_uniq = kwargs.pop("sort_uniq", False)
     super().__init__(*args, **kwargs)
+
+  def compute_choices(self, state):
+    super().compute_choices(state)
+    if len(self.choices) == 1 and not state.usables and state.test_mode:
+      self.validate_choice(self.choices[0])
+      self.choice = self.choices[0]
 
 
 class CardSpendChoice(SpendMultiChoiceMixin, CardChoice):

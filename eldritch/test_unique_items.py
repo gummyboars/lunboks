@@ -11,8 +11,12 @@ if os.path.abspath(sys.path[0]) == os.path.dirname(os.path.abspath(__file__)):
 
 from eldritch import ancient_ones
 from eldritch import characters
+from eldritch.abilities import base as abilities
 from eldritch.characters import base as base_characters
+from eldritch.encounters.gate import base as gate_encounters
+from eldritch.encounters.gate.core import GateCard
 from eldritch.encounters.location import base as encounters
+from eldritch.encounters.location.core import EncounterCard
 from eldritch import events
 from eldritch import items
 from eldritch.items import deputy
@@ -87,6 +91,80 @@ class AncientTabletTest(EventTest):
     self.resolve_to_choice(events.PlaceChoice)
     self.assertFalse(self.state.usables)
     self.assertIn(self.tablet, self.char.possessions)
+
+
+class AlienStatueTest(EventTest):
+  def setUp(self):
+    super().setUp()
+    self.char.possessions.append(items.AlienStatue(0))
+    self.state.spells.append(spells.Wither(0))
+
+  def testDeclineToUse(self):
+    self.state.event_stack.append(events.Movement(self.char))
+    statue = self.resolve_to_usable(0, "Alien Statue0")
+    self.state.event_stack.append(statue)
+    use_choice = self.resolve_to_choice(events.CardChoice)
+    use_choice.resolve(self.state, "Cancel")
+    self.resolve_to_choice(events.CityMovement)
+    self.assertFalse(self.char.possessions[0].exhausted)
+    self.assertEqual(self.char.movement_points, 4)
+    self.assertEqual(self.char.sanity, 5)
+    self.assertIn(0, self.state.usables)
+    self.assertIn("Alien Statue0", self.state.usables[0])
+
+  def testUseAndFail(self):
+    self.state.event_stack.append(events.Movement(self.char))
+    statue = self.resolve_to_usable(0, "Alien Statue0")
+    self.state.event_stack.append(statue)
+    use_choice = self.resolve_to_choice(events.CardChoice)
+    self.spend("sanity", 1, use_choice)
+    use_choice.resolve(self.state, "Alien Statue0")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
+      self.resolve_to_choice(events.CityMovement)
+    self.assertTrue(self.char.possessions[0].exhausted)
+    self.assertEqual(self.char.movement_points, 2)
+    self.assertEqual(self.char.sanity, 4)
+    self.assertEqual(self.char.stamina, 3)
+    self.assertNotIn(0, self.state.usables)
+
+  def testUseAndDraw(self):
+    self.state.event_stack.append(events.Movement(self.char))
+    statue = self.resolve_to_usable(0, "Alien Statue0")
+    self.state.event_stack.append(statue)
+    use_choice = self.resolve_to_choice(events.CardChoice)
+    self.spend("sanity", 1, use_choice)
+    use_choice.resolve(self.state, "Alien Statue0")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      choice = self.resolve_to_choice(events.CardChoice)
+    self.assertCountEqual(choice.choices, ["spells", "3 clues"])
+    choice.resolve(self.state, "spells")
+    self.resolve_to_choice(events.CityMovement)
+    self.assertEqual(len(self.char.possessions), 2)
+    self.assertTrue(self.char.possessions[0].exhausted)
+    self.assertEqual(self.char.possessions[1].name, "Wither")
+    self.assertEqual(self.char.clues, 0)
+    self.assertEqual(self.char.movement_points, 2)
+    self.assertEqual(self.char.sanity, 4)
+    self.assertEqual(self.char.stamina, 5)
+
+  def testUseForClues(self):
+    self.state.event_stack.append(events.Movement(self.char))
+    statue = self.resolve_to_usable(0, "Alien Statue0")
+    self.state.event_stack.append(statue)
+    use_choice = self.resolve_to_choice(events.CardChoice)
+    self.spend("sanity", 1, use_choice)
+    use_choice.resolve(self.state, "Alien Statue0")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      choice = self.resolve_to_choice(events.CardChoice)
+    self.assertCountEqual(choice.choices, ["spells", "3 clues"])
+    choice.resolve(self.state, "3 clues")
+    self.resolve_to_choice(events.CityMovement)
+    self.assertEqual(len(self.char.possessions), 1)
+    self.assertTrue(self.char.possessions[0].exhausted)
+    self.assertEqual(self.char.clues, 3)
+    self.assertEqual(self.char.movement_points, 2)
+    self.assertEqual(self.char.sanity, 4)
+    self.assertEqual(self.char.stamina, 5)
 
 
 class EnchantedJewelryTest(EventTest):
@@ -841,6 +919,152 @@ class WardingStatueTest(EventTest):
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)) as rand:
       self.resolve_until_done()
       self.assertEqual(rand.call_count, 5)  # Speed 4 + rating of +1 = 5
+
+
+class DragonsEyeLocationTest(EventTest):
+  def setUp(self):
+    super().setUp()
+    self.state.places["Rivertown"].encounters = [
+      EncounterCard("Rivertown1", {"Store": encounters.Store1}),  # Gain $1
+      EncounterCard("Rivertown2", {"Store": encounters.Store2}),  # No encounter
+      EncounterCard("Rivertown4", {"Store": encounters.Store4}),  # Lose 1 sanity
+    ]
+    self.char.place = self.state.places["Store"]
+    self.char.possessions.append(items.DragonsEye(0))
+
+  def testOneMulligan(self):
+    with mock.patch.object(events.random, "shuffle", new=mock.MagicMock()):
+      self.state.event_stack.append(events.EncounterPhase(self.char))
+      eye = self.resolve_to_usable(0, "Dragon's Eye0")
+      self.state.event_stack.append(eye)
+      with mock.patch.object(events.random, "choice", new=mock.MagicMock()) as rand:
+        rand.side_effect = lambda choices: choices[0]
+        self.resolve_until_done()
+        self.assertEqual(rand.call_count, 1)
+    self.assertEqual(self.char.dollars, 0)
+    self.assertEqual(self.char.sanity, 4)
+    self.assertTrue(self.char.possessions[0].exhausted)
+
+  def testDeclineToUse(self):
+    self.state.event_stack.append(events.EncounterPhase(self.char))
+    self.resolve_to_usable(0, "Dragon's Eye0")
+    self.state.event_stack[-1].resolve(self.state, "Rivertown1")
+    self.resolve_until_done()
+    self.assertEqual(self.char.dollars, 1)
+    self.assertEqual(self.char.sanity, 5)
+
+  def testMultipleCards(self):
+    encounter = events.TravelOrEncounter(self.char, 2)
+    self.state.event_stack.append(encounter)
+    with mock.patch.object(events.random, "shuffle", new=mock.MagicMock()):
+      eye = self.resolve_to_usable(0, "Dragon's Eye0")
+      self.state.event_stack.append(eye)
+      mulligan = self.resolve_to_choice(events.CardChoice)
+      self.assertCountEqual(mulligan.choices, ["Rivertown1", "Rivertown2"])
+      mulligan.resolve(self.state, "Rivertown2")
+      new_choice = self.resolve_to_choice(events.CardChoice)
+      self.assertCountEqual(new_choice.choices, ["Rivertown1", "Rivertown4"])
+      new_choice.resolve(self.state, "Rivertown4")
+      self.resolve_until_done()
+    self.assertEqual(self.char.dollars, 0)
+    self.assertEqual(self.char.sanity, 3)
+
+  def testNotEnoughCardsForMulligan(self):
+    for _ in range(2):
+      self.state.places["Rivertown"].encounters.pop()
+    self.state.event_stack.append(events.EncounterPhase(self.char))
+    eye = self.resolve_to_usable(0, "Dragon's Eye0")
+    self.state.event_stack.append(eye)
+    self.resolve_until_done()
+    self.assertEqual(self.char.dollars, 1)
+    self.assertEqual(self.char.sanity, 4)  # You still lose 1 sanity, even if there's no cards left.
+
+  def testCannotUseWhileExhausted(self):
+    self.char.possessions[0]._exhausted = True  # pylint: disable=protected-access
+    self.state.event_stack.append(events.EncounterPhase(self.char))
+    self.resolve_until_done()
+    self.assertEqual(self.char.dollars, 1)
+    self.assertEqual(self.char.sanity, 5)
+
+  def testGoInsane(self):
+    for _ in range(2):
+      self.state.places["Rivertown"].encounters.pop()
+    self.char.sanity = 1
+    self.state.event_stack.append(events.EncounterPhase(self.char))
+    eye = self.resolve_to_usable(0, "Dragon's Eye0")
+    self.state.event_stack.append(eye)
+    choice = self.resolve_to_choice(events.ItemLossChoice)
+    self.choose_items(choice, [])
+    self.resolve_until_done()
+    self.assertEqual(self.char.dollars, 0)  # Went insane before the encounter started
+    self.assertEqual(self.char.sanity, 1)
+    self.assertEqual(self.char.place.name, "Asylum")
+
+
+class DragonsEyeGateTest(EventTest):
+  def setUp(self):
+    super().setUp()
+    self.state.gate_cards.clear()
+    self.state.gate_cards.extend(
+      [
+        GateCard("Gate15", {"green"}, {"Other": gate_encounters.Other15}),  # Gain $3
+        GateCard("Gate5", {"blue"}, {"Other": gate_encounters.Dreamlands5}),  # No encounter
+        GateCard("Gate3", {"blue"}, {"Other": gate_encounters.Other3}),  # Lose 1 sanity
+      ]
+    )
+    self.char.place = self.state.places["Dreamlands1"]
+    self.char.possessions.append(items.DragonsEye(0))
+
+  def testOneMulligan(self):
+    self.state.event_stack.append(events.OtherWorldPhase(self.char))
+    eye = self.resolve_to_usable(0, "Dragon's Eye0")
+    self.state.event_stack.append(eye)
+    self.resolve_until_done()
+    self.assertEqual(self.char.sanity, 4)
+    self.assertEqual(self.char.dollars, 0)
+
+  def testTwoCards(self):
+    self.char.possessions.append(abilities.PsychicSensitivity())
+    self.state.event_stack.append(events.OtherWorldPhase(self.char))
+    eye = self.resolve_to_usable(0, "Dragon's Eye0")
+    self.state.event_stack.append(eye)
+    choice = self.resolve_to_choice(events.CardChoice)
+    self.assertCountEqual(choice.choices, ["Gate15", "Gate5"])
+    choice.resolve(self.state, "Gate5")
+    new_choice = self.resolve_to_choice(events.CardChoice)
+    self.assertCountEqual(new_choice.choices, ["Gate15", "Gate3"])
+    new_choice.resolve(self.state, "Gate3")
+    self.resolve_until_done()
+    self.assertEqual(self.char.sanity, 3)
+    self.assertEqual(self.char.dollars, 0)
+
+  def testShuffleIgnoresDrawnCards(self):
+    def gate_sort(_):
+      cards_to_sort = list(self.state.gate_cards)
+      cards_to_sort.sort(key=lambda card: card.name)
+      self.state.gate_cards.clear()
+      self.state.gate_cards.extend(cards_to_sort)
+
+    shuffle = GateCard("ShuffleGate", set(), {"Other": lambda char: events.Nothing()})
+    self.state.gate_cards.insert(2, shuffle)
+
+    self.char.possessions.append(abilities.PsychicSensitivity())
+    self.state.event_stack.append(events.OtherWorldPhase(self.char))
+    with mock.patch.object(events.random, "shuffle", new=mock.MagicMock(side_effect=gate_sort)):
+      # Replace shuffle with sort. Order would be Gate15 < Gate3 < Gate5 < ShuffleGate
+      # But Gate15 should be removed unless we made a mistake, so Gate3 should be on top.
+      # Note that Gate5 goes back into the deck and can theoretically be drawn again.
+      eye = self.resolve_to_usable(0, "Dragon's Eye0")
+      self.state.event_stack.append(eye)
+      choice = self.resolve_to_choice(events.CardChoice)
+      choice.resolve(self.state, "Gate5")
+      new_choice = self.resolve_to_choice(events.CardChoice)
+      self.assertCountEqual(new_choice.choices, ["Gate15", "Gate3"])
+      new_choice.resolve(self.state, "Gate3")
+      self.resolve_until_done()
+    self.assertEqual(self.char.sanity, 3)
+    self.assertEqual(self.char.dollars, 0)
+    self.assertEqual(len(self.state.gate_cards), 4)
 
 
 class TomeTest(EventTest):
