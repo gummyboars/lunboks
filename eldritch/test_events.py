@@ -159,6 +159,8 @@ class EventTest(unittest.TestCase):
         if self.state.turn_number >= target_turn and self.state.turn_phase == target_phase:
           break
         continue
+      if isinstance(self.state.event_stack[-1], InitialSliders):
+        self.state.event_stack[-1].done_chars = set(self.state.event_stack[-1].pending.keys())
       if self.state.turn_phase == "upkeep":
         self.assertIsInstance(self.state.event_stack[-1], events.SliderInput)
         self.state.event_stack[-1].resolve(self.state, "done", None)
@@ -193,6 +195,24 @@ class SequenceTest(EventTest):
     self.assertFalse(seq.events[1].is_resolved())
     self.assertTrue(seq.events[1].is_cancelled())
     self.assertTrue(seq.events[2].is_resolved())
+
+
+class ForEachTest(EventTest):
+  def testForEach(self):
+    open_gates = values.OpenGates()
+    foreach = ForEach(self.char, open_gates, lambda loc: CloseGate(self.char, loc, False, False))
+    self.state.event_stack.append(foreach)
+
+    names = ["Isle", "Woods", "Square", "Cave"]
+    for name in names:
+      self.state.places[name].gate = self.state.gates.popleft()
+    self.resolve_until_done()
+    self.assertEqual(len(foreach.events), 4)
+    self.assertCountEqual(foreach.value, names)
+
+    for name in names:
+      with self.subTest(name=name):
+        self.assertIsNone(self.state.places[name].gate)
 
 
 class DiceRollTest(EventTest):
@@ -482,9 +502,11 @@ class LostInTimeAndSpaceTest(EventTest):
     self.char.clues = 6
     self.state.turn_phase = "movement"
     self.char.place = self.state.places["Dreamlands2"]
+    self.char.entered_gate = "Gate Dreamlands0"
     self.state.event_stack.append(events.Movement(self.char))
     self.resolve_until_done()
     self.assertEqual(self.char.place.name, "Lost")
+    self.assertIsNone(self.char.entered_gate)
     self.assertEqual(self.char.clues, 6)  # You do not lose clues/items when lost in time and space.
 
   def testRecoverFromLostInTimeAndSpace(self):
@@ -1241,6 +1263,7 @@ class InsaneUnconsciousTest(EventTest):
     self.char.possessions.extend([allies.Dog(), skills.Stealth(0), items.Food(0), items.Food(1)])
     self.char.sanity = 0
     self.char.clues = 2
+    self.char.entered_gate = "Gate Abyss0"
     insane = Insane(self.char)
 
     self.state.event_stack.append(insane)
@@ -1254,6 +1277,7 @@ class InsaneUnconsciousTest(EventTest):
     self.assertEqual(self.char.clues, 1)
     self.assertEqual(len(self.char.possessions), 3)
     self.assertEqual(self.char.lose_turn_until, self.state.turn_number + 2)
+    self.assertIsNone(self.char.entered_gate)
 
   @mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5))
   def testInsaneClearsEvents(self):
@@ -1304,6 +1328,27 @@ class InsaneUnconsciousTest(EventTest):
       [item.name for item in self.state.tradables], ["Deputy's Revolver", "Patrol Wagon"]
     )
     self.assertIn("Deputy", [item.name for item in self.state.specials])
+
+  def testDevourKeepsTrophies(self):
+    self.state.turn_phase = "mythos"
+    self.state.turn_number = 1
+    self.char.stamina = 2
+    self.char.sanity = 2
+    self.char.trophies.append(self.state.monsters[-1])
+    self.state.monsters[-1].place = None
+    self.char.trophies.append(self.state.gates.popleft())
+    self.state.event_stack.append(Loss(self.char, {"sanity": 2, "stamina": 3}))
+    self.resolve_until_done()
+    self.assertTrue(self.char.gone)
+
+    self.state.common.extend([items.Food(0), items.Food(1)])
+    self.state.unique.extend([items.HolyWater(0), items.HolyWater(1)])
+    self.state.skills.append(skills.Marksman(0))
+    self.state.handle_choose_char(0, "Salesman")
+
+    self.advance_turn(self.state.turn_number + 1, "upkeep")
+    self.assertEqual(len(self.char.trophies), 0)
+    self.assertEqual(len(self.state.characters[0].trophies), 2)
 
 
 class SplitGainTest(EventTest):

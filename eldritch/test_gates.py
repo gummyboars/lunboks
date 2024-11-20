@@ -123,6 +123,85 @@ class GateEncounterTest(EventTest):
     self.char.clues = 0
 
 
+class Other2Test(GateEncounterTest):
+  def setUp(self):
+    super().setUp()
+    self.char.place = self.state.places["Dreamlands1"]
+    self.char.speed_sneak_slider = 2
+    self.state.event_stack.append(gate_encounters.Other2(self.char))
+
+  def testOther2Fail(self):
+    self.state.places["Isle"].gate = self.state.gates.popleft()
+    self.char.entered_gate = self.state.places["Isle"].gate.handle
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.lose_turn_until, self.state.turn_number + 2)
+    self.assertEqual(self.char.place.name, "Lost")
+    self.assertIsNone(self.state.places["Isle"].gate)
+
+  def testOther2FailNoGate(self):
+    self.char.entered_gate = self.state.gates[0].handle
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.lose_turn_until, self.state.turn_number + 2)
+    self.assertEqual(self.char.place.name, "Lost")
+
+  def testOther2PassGateExists(self):
+    dgate = next(gate for gate in self.state.gates if gate.name == "Dreamlands")
+    self.state.places["Isle"].gate = dgate
+    self.state.gates.remove(dgate)
+    self.char.entered_gate = dgate.handle
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      seal_choice = self.resolve_to_choice(events.MultipleChoice)
+    seal_choice.resolve(self.state, "No")
+    self.resolve_until_done()
+    self.assertIsNone(self.state.places["Isle"].gate)
+    self.assertEqual(self.char.place.name, "Isle")
+
+  def testOther2PassGateGone(self):
+    dgate = next(gate for gate in self.state.gates if gate.name == "Dreamlands")
+    self.char.entered_gate = dgate.handle
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+    self.assertEqual(self.char.lose_turn_until, self.state.turn_number + 2)
+    self.assertEqual(self.char.place.name, "Lost")
+
+  def testOther2PassDifferentGate(self):
+    dgate = next(gate for gate in self.state.gates if gate.name == "Dreamlands")
+    self.state.places["Isle"].gate = dgate
+    self.state.gates.remove(dgate)
+    other_gate = next(gate for gate in self.state.gates if gate.name == "Dreamlands")
+    # Two gates to the dreamlands, but the player entered through the one that already closed.
+    self.char.entered_gate = other_gate.handle
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+    self.assertIsNone(self.char.lose_turn_until)
+    self.assertEqual(self.char.place.name, "Isle")
+    # The player returns, but the gate they entered through doesn't exist and they don't close
+    # the one that they end up returning through.
+    self.assertIsNotNone(self.state.places["Isle"].gate)
+
+  def testOther2PassGateBox(self):
+    dgate = next(gate for gate in self.state.gates if gate.name == "Dreamlands")
+    self.state.places["Isle"].gate = dgate
+    self.state.gates.remove(dgate)
+    agate = self.state.gates.pop()
+    self.state.places["Woods"].gate = agate
+    self.char.entered_gate = dgate.handle
+    self.char.possessions.append(items.GateBox(0))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      return_choice = self.resolve_to_choice(events.MapChoice)
+    return_choice.resolve(self.state, "Woods")
+    # The player entered through the gate on the Isle, but decided to return to the Woods.
+    seal_choice = self.resolve_to_choice(events.MultipleChoice)
+    seal_choice.resolve(self.state, "No")
+    self.resolve_until_done()
+    # The player gets an explored marker on the woods, and closes the gate at the isle.
+    self.assertTrue(self.char.explored)
+    self.assertIsNone(self.state.places["Isle"].gate)
+    self.assertIsNotNone(self.state.places["Woods"].gate)
+
+
 class Gate3Test(GateEncounterTest):
   def setUp(self):
     super().setUp()
@@ -166,17 +245,20 @@ class Abyss4Test(GateEncounterTest):
   def setUp(self):
     super().setUp()
     self.char.place = self.state.places["Abyss2"]
+    self.char.entered_gate = "Gate Abyss0"
     self.state.event_stack.append(gate_encounters.Abyss4(self.char))
 
   def testOneSuccess(self):
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=[5, 3, 3, 3])):
       self.resolve_until_done()
     self.assertEqual(self.char.place.name, "Cave")
+    self.assertIsNone(self.char.entered_gate)
 
   def testTwoSuccesses(self):
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(side_effect=[5, 5, 3, 3])):
       self.resolve_until_done()
     self.assertEqual(self.char.place.name, "Dreamlands1")
+    self.assertIsNone(self.char.entered_gate)
 
   def testThreeSuccessesPass(self):
     side_effect = [5, 5, 5, 3] + [5, 3]
@@ -187,6 +269,7 @@ class Abyss4Test(GateEncounterTest):
       self.resolve_until_done()
     self.assertListEqual(self.char.possessions, [key])
     self.assertEqual(self.char.place.name, "Abyss2")
+    self.assertEqual(self.char.entered_gate, "Gate Abyss0")
 
   def testThreeSuccessesFail(self):
     side_effect = [5, 5, 5, 3] + [3, 3]
@@ -195,6 +278,7 @@ class Abyss4Test(GateEncounterTest):
       self.resolve_until_done()
     self.assertEqual(len(self.char.possessions), 0)
     self.assertEqual(self.char.place.name, "Abyss2")
+    self.assertEqual(self.char.entered_gate, "Gate Abyss0")
 
 
 class Other5Test(GateEncounterTest):

@@ -6,6 +6,8 @@ from random import SystemRandom
 from typing import Collection, List, Dict, Optional, Union, NoReturn, TYPE_CHECKING
 
 from eldritch import cards as assets
+from eldritch.gates import Gate
+from eldritch.monsters import Monster
 from eldritch import places
 from eldritch import values
 
@@ -166,6 +168,21 @@ class Sequence(Event):
 
   def log(self, state):
     return ""
+
+
+class ForEach(Sequence):
+  def __init__(self, character, value, event_generator):
+    assert isinstance(value, values.Value)
+    super().__init__([], character)
+    self.character = character
+    self.value = value
+    self.generator = event_generator
+
+  def resolve(self, state):
+    if isinstance(self.value, values.Value):
+      self.value = self.value.value(state)
+      self.events = [self.generator(val) for val in self.value]
+    super().resolve(state)
 
 
 class CancelEvent(Event):
@@ -774,6 +791,7 @@ class MoveOne(Event):
       self.character.place = state.places[self.dest]
       self.character.movement_points -= 1
       self.character.explored = False
+      self.character.entered_gate = None
       self.character.avoid_monsters = []
       self.moved = True
     self.done = True
@@ -1134,11 +1152,12 @@ def Unconscious(character):
   return InsaneOrUnconscious(character, "stamina", "passed out")
 
 
-class Devoured(StackClearMixin, Event):
+class Retire(StackClearMixin, Event):
   def __init__(self, character):
     super().__init__()
     self.character = character
     self.stack_cleared = False
+    self.verb = "retired"
 
   def resolve(self, state):
     if not self.stack_cleared:
@@ -1151,21 +1170,45 @@ class Devoured(StackClearMixin, Event):
         if hasattr(pos, "deck"):
           getattr(state, pos.deck).append(pos)
       self.character.possessions.clear()
-      if state.game_stage == "awakened":
-        if all(char.gone for char in state.characters):
-          state.game_stage = "defeat"
-          state.event_log.append(EventLog("The players were all devoured.", False))
 
   def is_resolved(self):
     return self.stack_cleared
 
   def log(self, state):
     if self.cancelled and not self.stack_cleared:
-      return f"[{self.character.name}] was not devoured"
-    return f"[{self.character.name}] was devoured"
+      return f"[{self.character.name}] was not {self.verb}"
+    return f"[{self.character.name}] was {self.verb}"
 
   def animated(self):
     return True
+
+
+class Devoured(Retire):
+  def __init__(self, character):
+    super().__init__(character)
+    self.verb = "devoured"
+
+  def resolve(self, state):
+    super().resolve(state)
+    if state.game_stage == "awakened":
+      if all(char.gone for char in state.characters):
+        state.game_stage = "defeat"
+        state.event_log.append(EventLog("The players were all devoured.", False))
+
+
+class SpiritedAway(Retire):
+  def __init__(self, character):
+    super().__init__(character)
+    self.verb = "spirited away"
+
+  def resolve(self, state):
+    super().resolve(state)
+    for trophy in self.character.trophies:
+      if isinstance(trophy, Monster):
+        trophy.place = state.monster_cup
+      elif isinstance(trophy, Gate):
+        state.gates.append(trophy)
+    self.character.trophies.clear()
 
 
 class DelayOrLoseTurn(Event):
@@ -1340,6 +1383,15 @@ class ForceMovement(Event):
         self.cancelled = True
         return
       self.location_name = self.location_name.card.gate_location
+
+    if (
+      isinstance(self.character.place, places.OtherWorld)
+      and self.character.place.order == 1
+      and self.location_name == self.character.place.info.name + "2"
+    ):
+      pass
+    else:
+      self.character.entered_gate = None
     self.character.place = state.places[self.location_name]
     self.character.explored = False
     self.character.avoid_monsters = []
@@ -1695,7 +1747,7 @@ class PurchaseDrawn(Event):
         return
       kept_card = self.drawn.pop(self.choice.choice_index)
       self.kept.append(kept_card.handle)
-      getattr(state, self.draw.deck).remove(kept_card)
+      getattr(state, kept_card.deck).remove(kept_card)
       self.character.possessions.append(kept_card)  # TODO: should be KeepDrawn
       self.keep_count -= 1
 
@@ -4517,12 +4569,14 @@ class Travel(Event):
       if getattr(state.places[self.destination.choice], "gate", None) is None:
         self.cancelled = True
         return
+      self.character.entered_gate = state.places[self.destination.choice].gate.handle
       self.destination = state.places[self.destination.choice].gate.name
     if self.destination is None:
       if getattr(self.character.place, "gate", None) is None:
         self.cancelled = True
         return
       self.destination = self.character.place.gate.name
+      self.character.entered_gate = self.character.place.gate.handle
     self.character.place = state.places[self.destination + "1"]
     self.character.explored = False  # just in case
     self.done = True
@@ -4571,6 +4625,7 @@ class Return(Event):
       return
     self.character.place = state.places[self.return_choice.choice]
     self.character.explored = True
+    self.character.entered_gate = None
     self.returned = True
 
   def is_resolved(self):
@@ -4668,7 +4723,7 @@ class CloseGate(Event):
   def __init__(self, character, location_name, can_take, can_seal, force_seal=False):
     super().__init__()
     self.character = character
-    self.location_name: Union[MapChoice, str] = location_name
+    self.location_name: Union[MapChoice, values.Value, str] = location_name
     self.gate = None
     self.can_take = can_take
     self.can_seal = can_seal
@@ -4683,6 +4738,12 @@ class CloseGate(Event):
         self.cancelled = True
         return
       self.location_name = self.location_name.choice
+
+    if isinstance(self.location_name, values.Value):
+      self.location_name = self.location_name.value(state)
+      if self.location_name is None:
+        self.cancelled = True
+        return
 
     if self.gate is None:
       self.gate = state.places[self.location_name].gate

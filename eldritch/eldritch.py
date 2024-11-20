@@ -1464,7 +1464,10 @@ class GameState:
         self.characters.append(self.all_characters[name])
       else:
         assert self.characters[idx].gone
+        old_trophies = self.characters[idx].trophies
         self.characters[idx] = self.all_characters[name]
+        self.characters[idx].trophies.extend(old_trophies)
+        old_trophies.clear()
 
     new_characters.sort(key=self.characters.index)  # Sort by order in self.characters.
     self.pending_chars.clear()

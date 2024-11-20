@@ -912,6 +912,19 @@ class CloseGateTest(EventTest):
     self.assertTrue(close.sealed)
     self.assertTrue(self.state.places["Square"].sealed)
 
+  def testCloseGateFromValue(self):
+    self.char.place = self.state.places["Square"]
+    close = CloseGate(self.char, values.EnteredGate(self.char), can_take=False, can_seal=False)
+    self.state.event_stack.append(close)
+    self.char.entered_gate = self.state.places["Isle"].gate.handle
+    self.resolve_until_done()
+
+    self.assertIsNone(self.state.places["Isle"].gate)
+    self.assertIsNotNone(self.state.places["Square"].gate)
+    self.assertEqual(len(self.char.trophies), 0)
+    self.assertFalse(close.sealed)
+    self.assertFalse(self.state.places["Isle"].sealed)
+
   def testCannotTakeOrSealGate(self):
     self.char.clues = 5
     self.char.place = self.state.places["Woods"]
