@@ -403,6 +403,28 @@ class Maniac(Monster):
   def __init__(self):
     super().__init__("Maniac", "normal", "moon", {"evade": -1, "combat": 1}, {"combat": 1}, 1)
 
+  def difficulty(self, check_type, state, char):
+    modifier = 0
+    if check_type == "combat" and state.terror >= 6:
+      modifier = -3
+    orig = super().difficulty(check_type, state, char)
+    return orig + modifier if orig is not None else orig
+
+  def damage(self, check_type, state, char):
+    modifier = 0
+    if check_type == "combat" and state.terror >= 6:
+      modifier = 2
+    orig = super().damage(check_type, state, char)
+    return orig + modifier if orig is not None else orig
+
+  def has_attribute(self, attribute, state, char):
+    if attribute == "endless" and state.terror >= 6:
+      state_override = state.get_override(self, attribute)
+      char_override = char.get_override(self, attribute) if char else None
+      if state_override is None and char_override is None:
+        return True
+    return super().has_attribute(attribute, state, char)
+
 
 class Pinata(Monster):
   def __init__(self):

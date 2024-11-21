@@ -735,6 +735,29 @@ class LoseCombatTest(EventTest):
     self.assertEqual(self.char.stamina, 5)
 
 
+class ManiacTest(EventTest):
+  def setUp(self):
+    super().setUp()
+    self.maniac = self.add_monsters(monsters.Maniac())
+
+  def testModifiers(self):
+    self.state.terror = 5
+    self.assertEqual(self.maniac.difficulty("combat", self.state, self.char), 1)
+    self.assertEqual(self.maniac.damage("combat", self.state, self.char), 1)
+    self.state.terror = 6
+    self.assertEqual(self.maniac.difficulty("combat", self.state, self.char), -2)
+    self.assertEqual(self.maniac.damage("combat", self.state, self.char), 3)
+
+  def testEndless(self):
+    self.state.terror = 5
+    self.assertFalse(self.maniac.has_attribute("endless", self.state, self.char))
+    self.state.terror = 6
+    self.assertTrue(self.maniac.has_attribute("endless", self.state, self.char))
+
+    self.char.possessions.append(allies.PoliceInspector())
+    self.assertFalse(self.maniac.has_attribute("endless", self.state, self.char))
+
+
 class DreamFlierCombatTest(EventTest):
   def setUp(self):
     super().setUp()
