@@ -169,10 +169,11 @@ class UpkeepRestoreStat(assets.Asset):
     }
     gains[len(eligible)] = events.Nothing()
     prompt = f"Choose a character to {self.verb}"
-    choice = events.MultipleChoice(owner, prompt, [char.name for char in eligible] + ["nobody"])
-    # TODO: Should choosing nobody not exhaust the ability?
+    choice = events.MultipleChoice(owner, prompt, [char.name for char in eligible] + ["Cancel"])
     cond = events.Conditional(owner, choice, "choice_index", gains)
-    return events.Sequence([events.ExhaustAsset(owner, self), choice, cond], owner)
+    exhaust_result = {0: events.ExhaustAsset(owner, self), len(eligible): events.Nothing()}
+    exhaust = events.Conditional(owner, choice, "choice_index", exhaust_result)
+    return events.Sequence([choice, exhaust, cond], owner)
 
 
 def Physician():

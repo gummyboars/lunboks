@@ -424,7 +424,6 @@ class WagonTest(EventTest):
     choice = self.resolve_to_choice(PlaceChoice)
     self.assertIn("Woods", choice.choices)
     self.assertIn("Easttown", choice.choices)
-    # self.assertNotIn("Square", choice.choices)  TODO
     choice.resolve(self.state, "Woods")
     self.resolve_until_done()  # CityMovement should get cancelled
     self.assertEqual(self.char.place.name, "Woods")
@@ -436,6 +435,17 @@ class WagonTest(EventTest):
     choice = self.resolve_to_choice(PlaceChoice)
     choice.resolve(self.state, "Cancel")
     self.resolve_to_choice(CityMovement)
+    self.assertIn("Patrol Wagon", self.state.usables[0])  # Can change your mind again and use it.
+
+  def testNoopIsSameAsCancel(self):
+    self.char.place = self.state.places["Square"]
+    self.state.event_stack.append(Movement(self.char))
+    self.resolve_to_choice(CityMovement)
+    self.state.event_stack.append(self.state.usables[0]["Patrol Wagon"])
+    choice = self.resolve_to_choice(PlaceChoice)
+    choice.resolve(self.state, "Square")
+    self.resolve_to_choice(CityMovement)
+    self.assertEqual(self.char.place.name, "Square")
     self.assertIn("Patrol Wagon", self.state.usables[0])  # Can change your mind again and use it.
 
   def testCannotWagonAfterMoving(self):
@@ -795,7 +805,51 @@ class FindGateTest(EventTest):
     self.resolve_until_done()
     self.assertEqual(self.char.place.name, "Pluto1")
 
-  # TODO: a test covering the ability to cast after travelling during the movement phase
+  def testCanCastAfterForceMovementToAnotherWorld(self):
+    monster = self.add_monsters(monsters.DreamFlier())
+    monster.place = self.state.places["Uptown"]
+    self.char.place = self.state.places["Uptown"]
+    self.state.event_stack.append(Movement(self.char))
+    choice = self.resolve_to_choice(CityMovement)
+    choice.resolve(self.state, "done")
+    fight_or_evade = self.resolve_to_choice(FightOrEvadeChoice)
+    fight_or_evade.resolve(self.state, "Fight")
+    fight_or_flee = self.resolve_to_choice(FightOrEvadeChoice)
+    fight_or_flee.resolve(self.state, "Fight")
+    combat_choice = self.resolve_to_choice(CombatChoice)
+    combat_choice.resolve(self.state, "done")
+    # Fail the combat check against the monster. It will pull the player into the gate, where they
+    # should have the option to immediately cast Find Gate.
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
+      find_gate = self.resolve_to_usable(0, "Find Gate0", events.CastSpell)
+    self.state.event_stack.append(find_gate)
+    cast_choice = self.resolve_to_choice(SpendMixin)
+    self.spend("sanity", 1, cast_choice)
+    cast_choice.resolve(self.state, "Find Gate0")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+
+    self.assertEqual(self.char.place.name, "Woods")
+    self.assertTrue(self.char.explored)
+
+  def testDeclineToCastAfterForceMovement(self):
+    monster = self.add_monsters(monsters.DreamFlier())
+    monster.place = self.state.places["Uptown"]
+    self.char.place = self.state.places["Uptown"]
+    self.state.event_stack.append(Movement(self.char))
+    choice = self.resolve_to_choice(CityMovement)
+    choice.resolve(self.state, "done")
+    fight_or_evade = self.resolve_to_choice(FightOrEvadeChoice)
+    fight_or_evade.resolve(self.state, "Fight")
+    fight_or_flee = self.resolve_to_choice(FightOrEvadeChoice)
+    fight_or_flee.resolve(self.state, "Fight")
+    combat_choice = self.resolve_to_choice(CombatChoice)
+    combat_choice.resolve(self.state, "done")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
+      self.resolve_to_usable(0, "Find Gate0", events.CastSpell)  # Get pulled through gate
+    self.state.done_using[0] = True
+    self.resolve_until_done()
+    self.assertEqual(self.char.place.name, "Pluto1")
 
 
 class FleshWardTest(EventTest):
@@ -1069,6 +1123,30 @@ class HealTest(EventTest):
     sliders.resolve(self.state, "done", None)
     self.resolve_until_done()
 
+  def testCastAndGoInsane(self):
+    self.char.sanity = 1
+    self.char.stamina = 1
+    sliders = events.SliderInput(self.char)
+    self.state.event_stack.append(sliders)
+    self.resolve_to_usable(0, "Heal0", CastSpell)
+
+    self.state.event_stack.append(self.state.usables[0]["Heal0"])
+    choice = self.resolve_to_choice(SpendMixin)
+    self.assertEqual(choice.choices, ["Heal0", "Cancel"])
+    self.spend("sanity", 1, choice)
+    choice.resolve(self.state, "Heal0")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      choice = self.resolve_to_choice(MultipleChoice)
+    choice.resolve(self.state, "Dummy")
+    lose_items = self.resolve_to_choice(events.ItemLossChoice)
+    lose_items.resolve(self.state, "done")
+    self.resolve_until_done()
+
+    self.assertEqual(self.char.stamina, 5)
+    self.assertEqual(self.char.sanity, 1)
+    self.assertTrue(self.char.possessions[0].exhausted)
+    self.assertEqual(self.char.place.name, "Asylum")
+
 
 class VoiceTest(EventTest):
   def setUp(self):
@@ -1213,12 +1291,30 @@ class PhysicianTest(EventTest):
 
     self.state.event_stack.append(self.state.usables[0]["Physician"])
     choice = self.resolve_to_choice(MultipleChoice)
-    self.assertEqual(choice.choices, ["Dummy", "nobody"])
+    self.assertEqual(choice.choices, ["Dummy", "Cancel"])
     choice.resolve(self.state, "Dummy")
     self.resolve_to_choice(SliderInput)
 
     self.assertEqual(self.char.stamina, 4)
     self.assertTrue(self.char.possessions[0].exhausted)
+    sliders.resolve(self.state, "done", None)
+    self.resolve_until_done()
+
+  def testCancelUse(self):
+    sliders = events.SliderInput(self.char)
+    self.state.event_stack.append(sliders)
+    self.resolve_to_usable(0, "Physician", Sequence)
+
+    self.state.event_stack.append(self.state.usables[0]["Physician"])
+    choice = self.resolve_to_choice(MultipleChoice)
+    self.assertEqual(choice.choices, ["Dummy", "Cancel"])
+    choice.resolve(self.state, "Cancel")
+    self.resolve_to_choice(SliderInput)
+
+    self.assertEqual(self.char.stamina, 3)
+    self.assertFalse(self.char.possessions[0].exhausted)
+    self.assertIn(0, self.state.usables)
+    self.assertIn("Physician", self.state.usables[0])
     sliders.resolve(self.state, "done", None)
     self.resolve_until_done()
 
@@ -1235,7 +1331,7 @@ class PhysicianTest(EventTest):
 
     self.state.event_stack.append(self.state.usables[0]["Physician"])
     choice = self.resolve_to_choice(MultipleChoice)
-    self.assertEqual(choice.choices, ["Dummy", "Nun", "nobody"])
+    self.assertEqual(choice.choices, ["Dummy", "Nun", "Cancel"])
     choice.resolve(self.state, "Nun")
     self.resolve_to_choice(SliderInput)
 

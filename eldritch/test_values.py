@@ -11,6 +11,7 @@ if os.path.abspath(sys.path[0]) == os.path.dirname(os.path.abspath(__file__)):
   sys.path[0] = os.path.dirname(sys.path[0])
 
 from eldritch.values import *
+from eldritch import places
 
 
 # pylint: disable=attribute-defined-outside-init
@@ -223,6 +224,28 @@ class OpenGatesTest(unittest.TestCase):
     place1.gate = None
     self.assertCountEqual(gates.value(state), [])
     self.assertEqual(count.value(state), 0)
+
+
+class MonstersOnBoardTest(unittest.TestCase):
+  def testOpenGates(self):
+    state = DummyState()
+    outskirts = places.Outskirts()
+    sky = places.Sky()
+    street = places.CityPlace("", "")
+    cultist = DummyMonster(handle="cultist")
+    maniac = DummyMonster(handle="maniac")
+    state.monsters = [cultist, maniac]
+    cultist.place = None
+    maniac.place = street
+
+    board = MonstersOnBoard()
+    count = BoardMonsterCount()
+    self.assertCountEqual(board.value(state), ["maniac"])
+    self.assertEqual(count.value(state), 1)
+    cultist.place = outskirts
+    maniac.place = sky
+    self.assertCountEqual(board.value(state), ["cultist", "maniac"])
+    self.assertEqual(count.value(state), 2)
 
 
 class EnteredGateTest(unittest.TestCase):

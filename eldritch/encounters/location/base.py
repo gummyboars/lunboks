@@ -239,9 +239,10 @@ def Sanctum2(char):
   success = events.Sequence([choose, take], char)
   nothing = events.Nothing()
   seq = events.PassFail(char, check, success, nothing)
+  count = values.BoardMonsterCount()
   # TODO: Reach consensus on whether this is may or must spend 1 sanity
-  # TODO: Should we prevent the character from choosing yes if there are no monster on the board?
-  return events.BinarySpend(char, "sanity", 1, "Cast a banishment spell?", "Yes", "No", seq)
+  banish = events.BinarySpend(char, "sanity", 1, "Cast a banishment spell?", "Yes", "No", seq)
+  return events.PassFail(char, count, banish, events.Nothing())
 
 
 def Sanctum3(char):

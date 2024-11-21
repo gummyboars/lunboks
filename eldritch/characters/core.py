@@ -40,7 +40,7 @@ class BaseCharacter(metaclass=abc.ABCMeta):
       "focus_points",
       "dollars",
       "clues",
-      "possessions",  # TODO: special cards
+      "possessions",
       "delayed_until",
       "lose_turn_until",
       "arrested_until",

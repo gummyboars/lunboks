@@ -229,7 +229,7 @@ class CombatTest(EventTest):
       # We still expect to hit a FightOrEvadeChoice. The first one will be cancelled, but since we
       # have neither evaded nor defeated the monster, we will just start a new round of combat.
       self.resolve_to_choice(FightOrEvadeChoice)
-    # TODO: assertions on the cancelled choice
+    self.assertEqual(self.char.stamina, 5)
 
   def testCancelledEvade(self):
     self.assertEqual(self.char.stamina, 5)

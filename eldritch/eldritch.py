@@ -773,7 +773,7 @@ class GameState:
     }
     if self.turn_phase == "movement":
       # If the character is in another world with another character, let them trade before moving.
-      if isinstance(event, (events.ForceMovement, events.GateChoice)) and not event.is_done():
+      if isinstance(event, (events.ForceMovement, events.ReturnGateChoice)) and not event.is_done():
         if len([char for char in self.characters if char.place == event.character.place]) > 1:
           i[self.characters.index(event.character)]["trade"] = events.Nothing()
     return {char_idx: interrupts for char_idx, interrupts in i.items() if interrupts}
@@ -1367,9 +1367,8 @@ class GameState:
       return True
     if len(self.event_stack) < 2:
       return False
-    if isinstance(event, events.GateChoice) and event.overridden:
-      return False
-    if isinstance(self.event_stack[-2], events.Return) and isinstance(event, events.GateChoice):  # noqa: SIM103
+    parent = self.event_stack[-2]
+    if isinstance(parent, events.Return) and isinstance(event, events.ReturnGateChoice):  # noqa: SIM103
       return True
     return False
 

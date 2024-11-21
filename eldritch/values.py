@@ -279,6 +279,19 @@ def OpenGateCount():
   return Calculation(OpenGates(), None, len)
 
 
+class MonstersOnBoard(Value):
+  def value(self, state):
+    return [
+      mon.handle
+      for mon in state.monsters
+      if isinstance(mon.place, (places.CityPlace, places.Outskirts))
+    ]
+
+
+def BoardMonsterCount():
+  return Calculation(MonstersOnBoard(), None, len)
+
+
 class EnteredGate(Value):
   def __init__(self, character):
     super().__init__()

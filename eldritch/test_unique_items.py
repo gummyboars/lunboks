@@ -421,12 +421,22 @@ class BlueWatcherTest(EventTest):
       self.resolve_until_done()
 
   def testNotEnoughStamina(self):
+    # The unofficial FAQ says that this is a loss and not a cost. Therefore, the item may be used
+    # even if the player does not have at least two stamina.
     self.char.stamina = 1
     self.state.event_stack.append(events.Combat(self.char, self.add_monsters(monsters.Cultist())))
     fight_evade = self.resolve_to_choice(events.FightOrEvadeChoice)
     fight_evade.resolve(self.state, "Fight")
     self.resolve_to_choice(events.CombatChoice)
-    self.assertFalse(self.state.usables)
+    self.assertIn(0, self.state.usables)
+    self.assertIn("Blue Watcher0", self.state.usables[0])
+    self.state.event_stack.append(self.state.usables[0]["Blue Watcher0"])
+    lose_items = self.resolve_to_choice(events.ItemLossChoice)
+    lose_items.resolve(self.state, "done")
+    self.resolve_until_done()
+
+    self.assertEqual(self.char.place.name, "Hospital")
+    self.assertEqual(len(self.char.trophies), 1)  # But we still passed the combat check.
 
   def testCantUseOnAncientOne(self):
     self.state.ancient_one.health = self.state.ancient_one.max_doom
@@ -663,14 +673,15 @@ class GateBoxTest(EventTest):
 
   def testTradeBeforeReturnMultipleGates(self):
     self.state.places["Woods"].gate = self.get_gate("Sunken City")
-    self.state.places["Diner"].gate = self.get_gate("Abyss")
+    self.state.places["Isle"].gate = self.get_gate("Abyss")
     nun = base_characters.Nun()
     self.state.characters.append(nun)
     self.assertEqual(self.char.place.name, "Sunken City2")
     nun.place = self.char.place
     self.char.possessions.append(items.Cross(0))
-    self.resolve_to_choice(events.GateChoice)
-    self.assertIn("Gate Box0", self.state.usables[0])
+    choice = self.resolve_to_choice(events.GateChoice)
+    # While Dummy has the gate box, they get both choices.
+    self.assertCountEqual(choice.choices, ["Woods", "Isle"])
     self.state.handle_give(0, 1, "Gate Box0", None)
     # Dummy now only has one choice, but it is not chosen for them - they still have the ability
     # to continue to trade if they wish.
@@ -679,13 +690,31 @@ class GateBoxTest(EventTest):
     choice.resolve(self.state, "Woods")
     self.resolve_until_done()
     self.state.next_turn()
-    # Nun has no one to trade with, so automatically uses the gate box
+    # Nun automatically gets both choices because she has the gate box now.
     nun_choice = self.resolve_to_choice(events.GateChoice)
     self.assertRegex(nun_choice.prompt(), "any open gate")
     self.assertEqual(nun_choice.character, nun)
-    self.assertSequenceEqual(nun_choice.choices, ["Diner", "Woods"])
+    self.assertCountEqual(nun_choice.choices, ["Isle", "Woods"])
 
-    # TODO: what happens if they decide to give the gate box back?
+  def testTradeBackBeforeReturning(self):
+    self.state.places["Woods"].gate = self.get_gate("Sunken City")
+    self.state.places["Isle"].gate = self.get_gate("Abyss")
+    nun = base_characters.Nun()
+    self.state.characters.append(nun)
+    self.assertEqual(self.char.place.name, "Sunken City2")
+    nun.place = self.char.place
+    self.char.possessions.append(items.Cross(0))
+    choice = self.resolve_to_choice(events.GateChoice)
+    self.assertCountEqual(choice.choices, ["Woods", "Isle"])
+    self.state.handle_give(0, 1, "Gate Box0", None)
+    choice = self.resolve_to_choice(events.GateChoice)
+    self.assertEqual(choice.choices, ["Woods"])
+    self.state.handle_give(1, 0, "Gate Box0", None)
+    choice = self.resolve_to_choice(events.GateChoice)
+    self.assertCountEqual(choice.choices, ["Woods", "Isle"])
+    choice.resolve(self.state, "Isle")
+    self.resolve_until_done()
+    self.assertEqual(self.char.place.name, "Isle")
 
 
 class ObsidianStatueTest(EventTest):
