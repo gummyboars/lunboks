@@ -15,7 +15,7 @@ from eldritch.allies import base as allies
 from eldritch import events
 from eldritch.events import *
 from eldritch import items
-from eldritch import monsters
+from eldritch.monsters import base as monsters
 from eldritch.mythos import base as mythos
 from eldritch.encounters.location import base as encounters
 from eldritch import specials

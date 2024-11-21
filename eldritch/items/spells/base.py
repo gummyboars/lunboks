@@ -1,7 +1,7 @@
 import operator
 
 from eldritch import events
-from eldritch import monsters
+from eldritch.monsters import core as monsters
 from eldritch import places
 from eldritch import values
 from eldritch.items.core import Item

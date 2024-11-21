@@ -5,7 +5,7 @@ from typing import Iterable
 
 from eldritch import events
 from eldritch import gates
-from eldritch import monsters
+from eldritch.monsters import core as monsters
 
 
 class BaseCharacter(metaclass=abc.ABCMeta):

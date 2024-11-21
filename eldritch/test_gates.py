@@ -18,7 +18,7 @@ from eldritch import events
 from eldritch.events import *
 from eldritch import items
 from eldritch.items.spells import base as spells
-from eldritch import monsters
+from eldritch.monsters import base as monsters
 from eldritch import places
 from eldritch.skills import base as skills
 from eldritch import specials

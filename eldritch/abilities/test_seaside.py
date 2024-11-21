@@ -6,7 +6,7 @@ from eldritch.allies import base as allies
 from eldritch.characters import seaside as seaside_characters
 from eldritch.characters import base as characters
 from eldritch import events
-from eldritch import monsters
+from eldritch.monsters import base as monsters
 from eldritch.items.spells import base as spells
 
 

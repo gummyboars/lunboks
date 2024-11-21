@@ -5,7 +5,7 @@ from eldritch.test_events import EventTest
 from eldritch.abilities import clifftown
 from eldritch import events
 from eldritch import location_specials
-from eldritch import monsters
+from eldritch.monsters import base as monsters
 from eldritch.items.unique import base as unique
 
 

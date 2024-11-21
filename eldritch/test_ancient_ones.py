@@ -9,13 +9,15 @@ from unittest import mock
 if os.path.abspath(sys.path[0]) == os.path.dirname(os.path.abspath(__file__)):
   sys.path[0] = os.path.dirname(sys.path[0])
 from eldritch.test_events import EventTest
-from eldritch import ancient_ones, events, monsters
+from eldritch.ancient_ones import base as ancient_ones
+from eldritch import events
 from eldritch.characters import seaside as seaside_characters
 from eldritch.eldritch import GameState
 from eldritch.encounters.location import core as location_encounters
 from eldritch.events import CityMovement
 from eldritch.items.common import base as common
 from eldritch.items import deputy
+from eldritch.monsters import base as monsters
 from eldritch.skills import base as skills
 from eldritch import specials
 from eldritch.mythos import base as mythos
