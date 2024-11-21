@@ -21,7 +21,7 @@ from eldritch.events import *
 from eldritch import gates
 from eldritch import items
 from eldritch import location_specials
-from eldritch import monsters
+from eldritch.monsters import base as monsters
 from eldritch.mythos import base as mythos
 from eldritch.skills import base as skills
 from eldritch import specials

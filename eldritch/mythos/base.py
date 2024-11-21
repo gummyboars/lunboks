@@ -2,7 +2,8 @@ import operator
 
 from eldritch import events
 from eldritch import gates
-from eldritch import monsters
+from eldritch.monsters import core as monsters
+from eldritch.monsters.base import Cultist
 from eldritch import places
 from eldritch import values
 from eldritch import items
@@ -895,7 +896,7 @@ class Mythos59(Rumor):
       return 0
     if not isinstance(thing, monsters.Monster):
       return 0
-    if isinstance(thing, monsters.Cultist) or thing.name in ["High Priest", "Warlock", "Witch"]:
+    if isinstance(thing, Cultist) or thing.name in ["High Priest", "Warlock", "Witch"]:
       return {"toughness": 2}.get(attribute, 0)
     return 0
 
@@ -949,7 +950,7 @@ class Mythos60(Environment):
   def get_modifier(self, thing, attribute, state):
     if attribute != "toughness":
       return 0
-    if isinstance(thing, monsters.Cultist) or getattr(thing, "name", None) == "Flying Insect":
+    if isinstance(thing, Cultist) or getattr(thing, "name", None) == "Flying Insect":
       return 1
     return 0
 

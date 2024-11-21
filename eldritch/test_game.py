@@ -11,7 +11,8 @@ if os.path.abspath(sys.path[0]) == os.path.dirname(os.path.abspath(__file__)):
   sys.path[0] = os.path.dirname(sys.path[0])
 
 from eldritch.allies import base as allies
-from eldritch import ancient_ones
+from eldritch.ancient_ones import base as ancient_ones
+from eldritch.ancient_ones.core import DummyAncient
 from eldritch import characters
 from eldritch.characters import base as base_characters
 from eldritch import eldritch
@@ -22,7 +23,7 @@ from eldritch.encounters.gate import base as gate_encounters
 from eldritch import events
 from eldritch import items
 from eldritch import location_specials
-from eldritch import monsters
+from eldritch.monsters import base as monsters
 from eldritch.mythos import base as mythos
 from eldritch.mythos.core import GlobalEffect
 from eldritch.skills import base as skills
@@ -754,7 +755,7 @@ class InitializePlayersTest(unittest.TestCase):
     for name in chars:
       with self.subTest(char=name):
         state = eldritch.GameState()
-        state.ancient_one = ancient_ones.DummyAncient()
+        state.ancient_one = DummyAncient()
         state.handle_join(None, name)
         state.handle_start()
         science_clue_missing = name == "Scientist"
@@ -1867,7 +1868,7 @@ class MapChoiceTest(unittest.TestCase):
 class PlayerTest(unittest.TestCase):
   def setUp(self):
     self.game = eldritch.EldritchGame()
-    self.game.game.ancient_one = ancient_ones.DummyAncient()
+    self.game.game.ancient_one = DummyAncient()
 
     orig_spells = items.CreateSpells
 

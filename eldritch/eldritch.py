@@ -118,7 +118,7 @@ class GameState:
     self.gates = collections.deque()
     self.gate_cards = collections.deque()
     self.monsters = []
-    self.monster_cup = monsters.MonsterCup()
+    self.monster_cup = monsters.core.MonsterCup()
     self.game_stage = "setup"  # valid values are setup, slumber, awakened, victory, defeat
     # valid values are setup, upkeep, movement, encounter, otherworld, mythos, attack, ancient
     self.turn_phase = "setup"
@@ -146,7 +146,7 @@ class GameState:
     self.places.update(other_worlds)
 
     self.gates.extend(gates.CreateGates())
-    self.monsters = [monsters.Cultist(), monsters.Maniac()]
+    self.monsters = [monsters.base.Cultist(), monsters.base.Maniac()]
     for idx, monster in enumerate(self.monsters):
       monster.idx = idx
       monster.place = self.monster_cup
@@ -155,7 +155,7 @@ class GameState:
     self.turn_idx = 0
     self.turn_number = 0
     self.turn_phase = "upkeep"
-    self.ancient_one = ancient_ones.DummyAncient()
+    self.ancient_one = ancient_ones.core.DummyAncient()
     self.specials.extend(specials.CreateSpecials())
     self.test_mode = True
 
@@ -176,7 +176,7 @@ class GameState:
     random.shuffle(gate_markers)
     self.gates.extend(gate_markers)
 
-    self.monsters = monsters.CreateMonsters()
+    self.monsters = monsters.CreateMonsters(self.expansions("monsters"))
     if self.ancient_one.name != "The Thousand Masks":
       self.monsters = [mon for mon in self.monsters if not mon.has_attribute("mask", self, None)]
     for idx, monster in enumerate(self.monsters):
@@ -760,7 +760,7 @@ class GameState:
     )
     global_interrupts = [glob.get_interrupt(event, self) for glob in self.globals() if glob]
     interrupts.extend([interrupt for interrupt in global_interrupts if interrupt])
-    if isinstance(event, self.MONSTER_EVENTS) and isinstance(event.monster, monsters.Monster):
+    if isinstance(event, self.MONSTER_EVENTS) and isinstance(event.monster, monsters.core.Monster):
       monster_interrupt = event.monster.get_interrupt(event, self)
       interrupts.extend([monster_interrupt] if monster_interrupt else [])
     return interrupts
@@ -882,7 +882,7 @@ class GameState:
     )
     global_triggers = [glob.get_trigger(event, self) for glob in self.globals() if glob]
     triggers.extend([trigger for trigger in global_triggers if trigger])
-    if isinstance(event, self.MONSTER_EVENTS) and isinstance(event.monster, monsters.Monster):
+    if isinstance(event, self.MONSTER_EVENTS) and isinstance(event.monster, monsters.core.Monster):
       monster_trigger = event.monster.get_trigger(event, self)
       triggers.extend([monster_trigger] if monster_trigger else [])
 
@@ -1143,7 +1143,6 @@ class GameState:
 
   def handle_spawn_monster(self, monster_name, place):
     assert place in self.places
-    assert monster_name in monsters.MONSTERS
     for monster in self.monsters:
       if monster.name == monster_name and monster.place == self.monster_cup:
         monster.place = self.places[place]
@@ -1152,7 +1151,6 @@ class GameState:
 
   def handle_remove_monster(self, monster_name, place):
     assert place in self.places
-    assert monster_name in monsters.MONSTERS
     for monster in self.monsters:
       if monster.name == monster_name and monster.place == self.places[place]:
         monster.place = self.monster_cup
@@ -1263,7 +1261,7 @@ class GameState:
     found = [trophy for trophy in char.trophies if trophy.handle == handle]
     assert len(found) == 1
     trophy = found[0]
-    if isinstance(trophy, monsters.Monster):
+    if isinstance(trophy, monsters.core.Monster):
       char.trophies.remove(trophy)
       trophy.place = self.monster_cup
     elif isinstance(trophy, gates.Gate):

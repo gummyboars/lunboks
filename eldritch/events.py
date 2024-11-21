@@ -7,7 +7,7 @@ from typing import Collection, List, Dict, Optional, Union, NoReturn, TYPE_CHECK
 
 from eldritch import cards as assets
 from eldritch.gates import Gate
-from eldritch.monsters import Monster
+from eldritch.monsters.core import Monster
 from eldritch import places
 from eldritch import values
 

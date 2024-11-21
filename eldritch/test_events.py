@@ -29,7 +29,7 @@ from eldritch.mythos import base as mythos
 from eldritch.skills import base as skills
 from eldritch import specials
 from eldritch import values
-from eldritch import monsters
+from eldritch.monsters import base as monsters
 
 
 ChoiceT = TypeVar("ChoiceT", bound=Union[events.ChoiceEvent, events.SliderInput])

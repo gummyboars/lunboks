@@ -2,7 +2,7 @@ import operator
 
 from eldritch import events
 from eldritch import values
-from eldritch.monsters import EventMonster
+from eldritch.monsters.core import EventMonster
 from eldritch.mythos.core import GlobalEffect
 from eldritch.encounters.location.core import EncounterCard
 

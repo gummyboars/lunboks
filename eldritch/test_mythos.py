@@ -16,9 +16,9 @@ from eldritch.events import *
 from eldritch import gates
 from eldritch import items
 from eldritch.items.unique import base as unique
-from eldritch import monsters
 from eldritch.mythos.base import *
 from eldritch.mythos.core import GlobalEffect, ShuffleMythos
+from eldritch.monsters import base as monsters
 from eldritch import places
 from eldritch import allies
 from eldritch.abilities import base as abilities

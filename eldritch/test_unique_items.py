@@ -9,7 +9,7 @@ from unittest import mock
 if os.path.abspath(sys.path[0]) == os.path.dirname(os.path.abspath(__file__)):
   sys.path[0] = os.path.dirname(sys.path[0])
 
-from eldritch import ancient_ones
+from eldritch.ancient_ones import base as ancient_ones
 from eldritch import characters
 from eldritch.abilities import base as abilities
 from eldritch.characters import base as base_characters
@@ -21,7 +21,7 @@ from eldritch import events
 from eldritch import items
 from eldritch.items import deputy
 from eldritch.items.spells import base as spells
-from eldritch import monsters
+from eldritch.monsters import base as monsters
 from eldritch import values
 from eldritch.test_events import EventTest
 
