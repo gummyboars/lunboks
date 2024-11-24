@@ -1314,34 +1314,6 @@ def MembershipChange(character, positive):
   return DiscardNamed(character, "Lodge Membership")
 
 
-class StatusChange(Event):
-  def __init__(self, character, status, positive=True):
-    assert status in {"retainer", "bank_loan"}
-    super().__init__()
-    self.character = character
-    self.attr = status + "_start"
-    self.positive = positive
-    self.change = None
-
-  def resolve(self, state):
-    old_status = getattr(self.character, self.attr)
-    new_status = (state.turn_number + 2) if self.positive else None
-    setattr(self.character, self.attr, new_status)
-    self.change = int(new_status is not None) - int(old_status is not None)
-
-  def is_resolved(self):
-    return self.change is not None
-
-  def log(self, state):  # TODO: rewrite
-    if not self.change:
-      return "nothing changed"
-    status_map = {
-      "retainer_start": {-1: " lost their retainer", 1: " received a retainer"},
-      "bank_loan_start": {-1: " lost their bank loan??", 1: " received a bank loan"},
-    }
-    return self.character.name + status_map[self.attr][self.change]
-
-
 class TakeBankLoan(Sequence):
   def __init__(self, character):
     draw = DrawNamed(character, "specials", "Bank Loan")
@@ -3741,22 +3713,23 @@ class GateChoice(MapChoice):
   def __init__(self, character, prompt, gate_name=None, none_choice=None, annotation=None):
     super().__init__(character, prompt, none_choice=none_choice, annotation=annotation)
     self.gate_name = gate_name
-    self.overridden = False
 
-  def compute_choices(self, state):
+  def _calculate_choices(self, state):
+    self._choices = []
     if isinstance(self.gate_name, values.Value):
       self.gate_name = self.gate_name.value(state)
       if self.gate_name is None:
-        self.cancelled = True
         return
 
-    self._choices = []
     for name, place in state.places.items():
       if not isinstance(place, (places.Location, places.Street)):
         continue
       if getattr(place, "gate", None) is not None:
         if place.gate.name == self.gate_name or self.gate_name is None:
-          self.choices.append(name)
+          self._choices.append(name)
+
+  def compute_choices(self, state):
+    self._calculate_choices(state)
     if not self.choices:
       self.cancelled = True
       return
@@ -3773,30 +3746,28 @@ class GateChoice(MapChoice):
     return f"[{self.character.name}] must choose a gate"
 
 
-class OverrideGateChoice(Event):
-  def __init__(self, character, original_choice: GateChoice, **changes):
-    super().__init__()
-    self.character = character
-    self.original_choice = original_choice
-    self.changes = changes
-    assert len(changes)
-    assert {"_prompt", "gate_name", "none_choice", "annotation"}.issuperset(changes.keys())
-    self.done = False
+class ReturnGateChoice(GateChoice):
+  def _has_gate_box(self):
+    return any(pos.name == "Gate Box" for pos in self.character.possessions)
 
-  def resolve(self, state):
-    for key, value in self.changes.items():
-      setattr(self.original_choice, key, value)
-    self.original_choice.overridden = True
-    self.done = True
+  def _calculate_choices(self, state):
+    if not self._has_gate_box():
+      super()._calculate_choices(state)
+      return
 
-  def is_resolved(self) -> bool:
-    return self.done
+    self._choices = [
+      name for name, place in state.places.items() if getattr(place, "gate", None) is not None
+    ]
 
-  def log(self, state) -> str:
-    changes = [f"{key} to {value!r}" for key, value in self.changes.items()]
-    if self.done:
-      return "Gate choice updated " + ", ".join(changes)
-    return "Gate choice to update " + ", ".join(changes)
+  def prompt(self):
+    if self._has_gate_box():
+      return "Gate box allows you to choose any open gate"
+    return super().prompt()
+
+  def log(self, state):
+    if self._has_gate_box() and not self.cancelled and self.choice is None:
+      return f"[{self.character.name}] must choose any gate"
+    return super().log(state)
 
 
 class NearestGateChoice(MapChoice):
@@ -4609,7 +4580,7 @@ class Return(Event):
   def resolve(self, state):
     if self.return_choice is None:
       prompt = "Choose a gate to return to"
-      self.return_choice = GateChoice(
+      self.return_choice = ReturnGateChoice(
         self.character, prompt, self.world_name, annotation="Return", none_choice=self.none_choice
       )
       state.event_stack.append(self.return_choice)

@@ -168,8 +168,11 @@ class DrawCardsFixedEncounterTest(FixedEncounterBaseTest):
     self.assertTrue(self.state.event_stack)
     event = self.state.event_stack[-1]
     self.assertIsInstance(event, events.CardSpendChoice)
-    # TODO: make sure that nothing is not allowed unless the user cannot afford anything else.
     self.assertEqual(event.choices, ["Holy Water", "Enchanted Knife", "Magic Lamp", "Nothing"])
+    event.resolve(self.state, "Nothing")
+    for _ in self.state.resolve_loop():
+      pass
+    self.assertFalse(self.state.event_stack)
 
   def testDrawCommonEncounter(self):
     self.char.dollars = 1
@@ -187,8 +190,16 @@ class DrawCardsFixedEncounterTest(FixedEncounterBaseTest):
     self.assertTrue(self.state.event_stack)
     event = self.state.event_stack[-1]
     self.assertIsInstance(event, events.CardSpendChoice)
-    # TODO: make sure that nothing is not allowed unless the user cannot afford anything else.
     self.assertEqual(event.choices, ["Cross", "Food", "Dark Cloak", "Nothing"])
+    with self.assertRaisesRegex(game.InvalidMove, "must purchase"):
+      event.resolve(self.state, "Nothing")
+    event.spend("dollars")
+    for _ in self.state.resolve_loop():
+      pass
+    event.resolve(self.state, "Food")
+    for _ in self.state.resolve_loop():
+      pass
+    self.assertFalse(self.state.event_stack)
 
   def testIgnoreDrawEncounter(self):
     self.char.dollars = 1

@@ -806,6 +806,7 @@ class LodgeTest(EncounterTest):
     self.assertEqual(len(self.char.possessions), 0)
 
   def testSanctum2Decline(self):
+    self.state.monsters[1].place = self.state.places["Uptown"]
     self.state.event_stack.append(encounters.Sanctum2(self.char))
     choice = self.resolve_to_choice(SpendChoice)
     choice.resolve(self.state, "No")
@@ -847,19 +848,15 @@ class LodgeTest(EncounterTest):
     self.assertEqual(self.char.clues, 0)
 
   def testSanctum2PassNoMonsters(self):
-    # TODO: if we decide they cannot choose yes when there are no monters, rewrite this test.
     self.state.event_stack.append(encounters.Sanctum2(self.char))
-    choice = self.resolve_to_choice(SpendChoice)
-    self.spend("sanity", 1, choice)
-    choice.resolve(self.state, "Yes")
-    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
-      self.resolve_until_done()
-    self.assertEqual(self.char.sanity, 2)
+    self.resolve_until_done()
+    self.assertEqual(self.char.sanity, 3)
     self.assertIsNotNone(self.state.monsters[0].place)
     self.assertIsNotNone(self.state.monsters[1].place)
     self.assertEqual(len(self.char.trophies), 0)
 
   def testSanctum2Fail(self):
+    self.state.monsters[1].place = self.state.places["Uptown"]
     self.state.event_stack.append(encounters.Sanctum2(self.char))
     choice = self.resolve_to_choice(SpendChoice)
     self.spend("sanity", 1, choice)
@@ -1152,8 +1149,16 @@ class WitchHouseTest(EncounterTest):
     self.assertEqual(self.char.place.name, "Asylum")
 
   def testWitchHouse5(self):
-    # TODO: A gate and monster appear
-    pass
+    self.state.event_stack.append(encounters.WitchHouse5(self.char))
+    self.assertFalse(self.state.places["WitchHouse"].gate)
+    self.resolve_until_done()
+    self.assertTrue(self.state.places["WitchHouse"].gate)
+    monster_count = len(
+      [mon for mon in self.state.monsters if mon.place and mon.place.name == "WitchHouse"]
+    )
+    self.assertEqual(monster_count, 1)
+    self.assertEqual(self.char.place.name, self.state.places["WitchHouse"].gate.name + "1")
+    self.assertEqual(self.char.delayed_until, self.state.turn_idx + 2)
 
   def testWitchHouse6One(self):
     self.char.sanity = 3
@@ -3597,16 +3602,17 @@ class UnnamableTest(EncounterTest):
     self.assertEqual(self.char.clues, 3)
 
   def testUnnamable1InSane(self):
-    # TODO: can't test clue token loss from going insane
     self.state.event_stack.append(encounters.Unnamable1(self.char))
     self.state.allies.extend([allies.BraveGuy()])
     self.char.sanity = 2
+    self.char.clues = 2
     choice = self.resolve_to_choice(MultipleChoice)
     choice.resolve(self.state, "Yes")
     choice = self.resolve_to_choice(ItemLossChoice)
     self.choose_items(choice, [])
     self.resolve_until_done()
     self.assertEqual(self.char.sanity, 1)
+    self.assertEqual(self.char.clues, 1)
     self.assertEqual(len(self.char.possessions), 0)
     self.assertEqual(len(self.state.allies), 1)
     self.assertEqual(self.char.place.name, "Asylum")

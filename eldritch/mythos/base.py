@@ -12,6 +12,7 @@ from eldritch.mythos.core import (
   Environment,
   Rumor,
   CityBonus,
+  GainPrevention,
   ReturnMonstersHeadline,
   ReturnAndIncreaseHeadline,
   ReleaseMonstersHeadline,
@@ -57,17 +58,11 @@ class Mythos2(Environment):
     return None
 
 
-class Mythos3(Environment):
+class Mythos3(GainPrevention):
   def __init__(self):
-    super().__init__("Mythos3", "Square", "Unnamable", {"square", "diamond"}, {"circle"}, "mystic")
-
-  def get_interrupt(self, event, state):
-    if not isinstance(event, events.GainOrLoss):
-      return None
-    gain = values.Calculation(event.gains.get("stamina", 0), operand=operator.gt, right=0)
-    if gain.value(state) and getattr(event.source, "name", "") not in ("Physician", "Hospital"):
-      return events.GainPrevention(self, event, "stamina", event.gains["stamina"])
-    return None
+    super().__init__(
+      "Mythos3", "Square", "Unnamable", {"square", "diamond"}, {"circle"}, "mystic", "stamina"
+    )
 
 
 class Mythos4(ReturnAndIncreaseHeadline):
@@ -346,17 +341,9 @@ class Mythos17(Environment):
     return events.PassFail(event.character, check, gain, events.Nothing())
 
 
-class Mythos18(Environment):
+class Mythos18(GainPrevention):
   def __init__(self):
-    super().__init__("Mythos18", "Square", "Unnamable", {"plus"}, {"moon"}, "mystic")
-
-  def get_interrupt(self, event, state):
-    if not isinstance(event, events.GainOrLoss):
-      return None
-    gain = values.Calculation(event.gains.get("sanity", 0), operand=operator.gt, right=0)
-    if gain.value(state) and getattr(event.source, "name", "") not in ("Psychology", "Asylum"):
-      return events.GainPrevention(self, event, "sanity", event.gains["sanity"])
-    return None
+    super().__init__("Mythos18", "Square", "Unnamable", {"plus"}, {"moon"}, "mystic", "sanity")
 
 
 class Mythos19(CloseLocationsHeadline):
@@ -950,7 +937,7 @@ class Mythos60(Environment):
   def get_modifier(self, thing, attribute, state):
     if attribute != "toughness":
       return 0
-    if isinstance(thing, Cultist) or getattr(thing, "name", None) == "Flying Insect":
+    if isinstance(thing, Cultist) or getattr(thing, "name", None) == "Giant Insect":
       return 1
     return 0
 

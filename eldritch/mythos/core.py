@@ -158,6 +158,33 @@ class CityBonus(Environment):
     return 0
 
 
+class GainPrevention(Environment):
+  def __init__(
+    self,
+    name,
+    gate_location,
+    clue_location,
+    white_dimensions,
+    black_dimensions,
+    env_type,
+    attribute,
+  ):
+    assert attribute in ("sanity", "stamina")
+    super().__init__(
+      name, gate_location, clue_location, white_dimensions, black_dimensions, env_type
+    )
+    self.attr = attribute
+    self.names = ("Psychology", "Asylum") if self.attr == "sanity" else ("Physician", "Hospital")
+
+  def get_interrupt(self, event, state):
+    if not isinstance(event, events.GainOrLoss):
+      return None
+    gain = values.Calculation(event.gains.get(self.attr, 0), operand=operator.gt, right=0)
+    if gain.value(state) and getattr(event.source, "name", "") not in self.names:
+      return events.GainPrevention(self, event, self.attr, event.gains[self.attr])
+    return None
+
+
 class ReturnMonstersHeadline(Headline):
   def __init__(
     self, name, gate_location, clue_location, white_dimensions, black_dimensions, from_places

@@ -259,9 +259,6 @@ class UpkeepTest(EventTest):
     self.resolve_to_choice(SliderInput)
     self.assertEqual(self.char.focus_points, 2)
 
-  def testUpkeepRolls(self):
-    pass  # TODO: blessings/curses, bank loans, retainers
-
 
 class SliderTest(EventTest):
   def setUp(self):
@@ -586,8 +583,8 @@ class MovementTest(EventTest):
     self.char.place = self.state.places["Rivertown"]
     maniac.place = self.state.places["Easttown"]
     self.advance_turn(self.state.turn_number, "movement")
-    # We give them a tome to make sure that it is not usable after they have fought the maniac.
-    self.char.possessions.append(items.AncientTome(0))
+    # We give them a tome and motorcycle to make sure they are not usable after fighting the maniac.
+    self.char.possessions.extend([items.AncientTome(0), items.Motorcycle(0)])
     movement = self.resolve_to_choice(CityMovement)
     self.assertEqual(self.char.movement_points, 4)
     movement.resolve(self.state, "Easttown")
@@ -649,6 +646,7 @@ class MovementTest(EventTest):
     cultist = next(monster for monster in self.state.monsters if monster.name == "Cultist")
     cultist.place = self.state.places["Rivertown"]
     self.char.place = self.state.places["Downtown"]
+    self.char.possessions.append(items.Motorcycle(0))
 
     self.advance_turn(self.state.turn_number, "movement")
     movement = self.resolve_to_choice(CityMovement)
@@ -764,9 +762,6 @@ class MovementTest(EventTest):
     self.assertEqual(self.char.place.name, "Easttown")
     self.assertEqual(self.char.stamina, 4)
     self.assertEqual(self.char.sanity, 5)
-
-  # TODO: If you have a motorcycle, should not be able to exhaust for move movement.
-  # TODO: Fight a dream flier, get sucked through a gate, cast find gate, and return.
 
   def testForceMovement(self):
     movement = ForceMovement(self.char, "Graveyard")
@@ -3451,12 +3446,6 @@ class CastSpellTest(EventTest):
     self.assertEqual(self.char.hands_available(), 1)
     self.assertTrue(cast.is_resolved())
     self.assertTrue(cast.activation.is_cancelled())
-
-  def testCastAndGoInsane(self):
-    pass  # TODO: a spell that has a non-combat effect.
-
-
-# TODO: add tests for going unconscious/insane during a mythos/encounter.
 
 
 class PurchaseTest(EventTest):

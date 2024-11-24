@@ -237,9 +237,6 @@ class BlueWatcher(Item):
       return None
     if owner != event.character:
       return None
-    if owner.stamina < 2:
-      # TODO: What if the gangster wants to do this with one stamina?
-      return None
     if len(state.event_stack) > 1 and isinstance(state.event_stack[-2], events.InvestigatorAttack):
       return None
     if isinstance(event, events.CombatChoice):
@@ -343,33 +340,7 @@ class EnchantedJewelry(Item):
 class GateBox(Item):
   def __init__(self, idx):
     super().__init__("Gate Box", idx, "unique", {}, {}, None, 4)
-
-  def is_usable(self, event, owner, state, need_neighbors):
-    has_neighbors = (
-      len([char for char in state.characters if char.place == owner.place and char != owner]) > 0
-    )
-    return (
-      isinstance(event, events.GateChoice)
-      and event.character == owner
-      and len(state.event_stack) >= 2
-      and isinstance(state.event_stack[-2], events.Return)
-      and event.gate_name is not None
-      and (bool(has_neighbors) == need_neighbors)
-    )
-
-  def get_interrupt(self, event, owner, state):
-    if self.is_usable(event, owner, state, False):
-      return events.OverrideGateChoice(
-        owner, event, gate_name=None, _prompt="Gate box allows you to choose any open gate"
-      )
-    return None
-
-  def get_usable_interrupt(self, event, owner, state):
-    if self.is_usable(event, owner, state, True):
-      return events.OverrideGateChoice(
-        owner, event, gate_name=None, _prompt="Gate box allows you to choose any open gate"
-      )
-    return None
+    # This item is hard-coded into ReturnGateChoice to make trading work nicely.
 
 
 class HealingStone(Item):

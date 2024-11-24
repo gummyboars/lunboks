@@ -461,7 +461,7 @@ def Plateau23(char) -> events.Event:
 
 def Other23(char) -> events.Event:
   check = events.Check(char, "luck", -1)
-  draw = events.DrawMonstersFromCup(1, char)
+  draw = events.DrawMonstersFromCup(1, char, to_board=False)
   creature = events.Sequence(
     [draw, events.ForceTakeTrophy(char, draw), events.Gain(char, {"clues": 2})], char
   )

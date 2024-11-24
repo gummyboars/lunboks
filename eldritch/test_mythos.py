@@ -1749,6 +1749,12 @@ class EnvironmentTests(EventTest):
       self.resolve_until_done()
     self.assertEqual(self.char.clues, 0)
 
+  def testMythos25(self):
+    flame = self.add_monsters(monsters.FlameMatrix())
+    self.assertEqual(flame.toughness(self.state, self.char), 1)
+    self.state.environment = Mythos25()
+    self.assertEqual(flame.toughness(self.state, self.char), 2)
+
   def testMythos35(self):
     et1, et2, et3 = self.add_monsters(*(monsters.ElderThing() for _ in range(3)))
     other = self.add_monsters(monsters.Cultist())
@@ -1847,6 +1853,47 @@ class EnvironmentTests(EventTest):
       self.assertIn("Fail", choice.choices)
       choice.resolve(self.state, "Fail")
     self.resolve_until_done()
+
+  def testMythos52(self):
+    haunter = self.add_monsters(monsters.Haunter())
+    haunter.place = self.state.monster_cup
+    self.assertEqual(len(self.state.monsters), 3)
+
+    draw = DrawMonstersFromCup()
+    self.state.event_stack.append(draw)
+    with mock.patch.object(events.random, "sample", new=mock.MagicMock(return_value=[0])) as rand:
+      self.resolve_until_done()
+      rand.assert_called_once_with([0, 1, 2], 1)
+
+    self.state.environment = Mythos52()
+    draw = DrawMonstersFromCup()
+    self.state.event_stack.append(draw)
+    with mock.patch.object(events.random, "sample", new=mock.MagicMock(return_value=[0])) as rand:
+      self.resolve_until_done()
+      rand.assert_called_once_with([0, 1], 1)
+
+  def testMythos60(self):
+    cultist, insect = self.add_monsters(monsters.Cultist(), monsters.GiantInsect())
+    self.assertEqual(cultist.toughness(self.state, self.char), 1)
+    self.assertEqual(insect.toughness(self.state, self.char), 1)
+    self.state.environment = Mythos60()
+    self.assertEqual(cultist.toughness(self.state, self.char), 2)
+    self.assertEqual(insect.toughness(self.state, self.char), 2)
+
+  def testMythos64(self):
+    darkness = self.add_monsters(
+      monsters.Ghoul(),
+      monsters.FormlessSpawn(),
+      monsters.GiantAmoeba(),
+      monsters.SubterraneanFlier(),
+    )
+    for monster in darkness:
+      with self.subTest(name=monster.name):
+        self.state.environment = None
+        orig_toughness = monster.toughness(self.state, self.char)
+        self.state.environment = Mythos64()
+        new_toughness = monster.toughness(self.state, self.char)
+        self.assertEqual(new_toughness, orig_toughness + 1)
 
 
 class DrawMythosTest(EventTest):

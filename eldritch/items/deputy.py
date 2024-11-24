@@ -23,10 +23,12 @@ class PatrolWagon(Card):
     prompt = "Where to move using Patrol Wagon?"
     choice = events.PlaceChoice(owner, prompt, none_choice="Cancel", annotation="Move")
     was_cancelled = values.Calculation(choice, None, operator.methodcaller("is_cancelled"))
+    noop = values.Calculation(choice, "choice", operator.eq, owner.place, "name")
+    noop_or_cancelled = values.Calculation(was_cancelled, None, operator.add, noop)
     patrol = events.ForceMovement(owner, choice)
     cancel = events.CancelEvent(event)
     move = events.WagonMove([patrol, cancel], owner)
-    cond = events.Conditional(owner, was_cancelled, None, {0: move, 1: events.Nothing()})
+    cond = events.Conditional(owner, noop_or_cancelled, None, {0: move, 1: events.Nothing()})
     return events.Sequence([choice, cond], owner)
 
   def get_trigger(self, event, owner, state):

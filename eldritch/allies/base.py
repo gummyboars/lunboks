@@ -78,7 +78,7 @@ class StatIncreaser(Card):
     - other world movement
     --- interrupt ForceMovement (if not done and prev is Movement)
     - before returning from another world
-    --- interrupt GateChoice (if not done and chain is Return <- Movement)
+    --- interrupt ReturnGateChoice (if not done and chain is Return <- Movement)
     - before you draw a card:
     --- interrupt DrawEncounter (if chain is Encounter <- EncounterPhase)
     --- interrupt GateEncounter (if chain is OtherWorldPhase)
@@ -113,7 +113,7 @@ class StatIncreaser(Card):
     if len(state.event_stack) <= 2:
       return False
     prev_prev = state.event_stack[-3]
-    if isinstance(event, events.GateChoice):
+    if isinstance(event, events.ReturnGateChoice):
       if isinstance(prev_event, events.Return) and isinstance(prev_prev, events.Movement):
         return True
     if isinstance(event, events.DrawEncounter):
