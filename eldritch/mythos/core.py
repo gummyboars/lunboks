@@ -48,7 +48,7 @@ class MythosCard(GlobalEffect):
     self.activity_location = activity_location
 
   def create_event(self, state) -> events.Sequence:  # pylint: disable=unused-argument
-    seq = []
+    seq: list[events.Event] = []
     if self.gate_location is not None:
       seq.append(events.OpenGate(self.gate_location))
     if self.clue_location is not None:

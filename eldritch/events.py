@@ -16,6 +16,7 @@ from game import InvalidMove, InvalidInput, NotYourTurn
 
 if TYPE_CHECKING:
   from eldritch.eldritch import GameState
+  from eldritch import specials
 
 random = SystemRandom()
 
@@ -2571,7 +2572,7 @@ class DiscardSpecific(Event):
 
 
 class RollToMaintain(Event):
-  def __init__(self, character, item: "assets.SelfDiscardingCard"):
+  def __init__(self, character, item: "specials.SelfDiscardingCard"):
     super().__init__()
     self.character = character
     self.item = item
