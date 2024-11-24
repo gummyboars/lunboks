@@ -1,9 +1,10 @@
 import abc
 import collections
+from collections.abc import Collection
 import math
 import operator
 from random import SystemRandom
-from typing import Collection, List, Dict, Optional, Union, NoReturn, TYPE_CHECKING
+from typing import Optional, Union, NoReturn, TYPE_CHECKING
 
 from eldritch import cards as assets
 from eldritch.gates import Gate
@@ -27,7 +28,7 @@ class EventLog:
   def __init__(self, text, flatten):
     self.text: str = text
     self.flatten: bool = flatten
-    self.sub_events: List[EventLog] = []
+    self.sub_events: list[EventLog] = []
 
   def __str__(self):
     results = self.format()
@@ -116,7 +117,7 @@ class ChoiceEvent(Event):
   def compute_choices(self, state) -> NoReturn:
     pass
 
-  def annotations(self, state) -> Optional[List[str]]:  # pylint: disable=unused-argument
+  def annotations(self, state) -> Optional[list[str]]:  # pylint: disable=unused-argument
     return None
 
 
@@ -147,7 +148,7 @@ class Animate(Nothing):
 class Sequence(Event):
   def __init__(self, events, character=None):
     super().__init__()
-    self.events: List[Event] = events
+    self.events: list[Event] = events
     if not self.events:
       self.events = [Nothing()]
     self.idx = 0
@@ -1696,7 +1697,7 @@ class PurchaseDrawn(Event):
     self.draw: DrawItems = draw
     self.drawn = None
     self.choice: Optional[ChoiceEvent] = None
-    self.kept: List[str] = []
+    self.kept: list[str] = []
     self.resolved = False
 
   def resolve(self, state):
@@ -2156,7 +2157,7 @@ class RefreshAssets(Event):
   def __init__(self, character):
     super().__init__()
     self.character = character
-    self.refreshes: Optional[List[Event]] = None
+    self.refreshes: Optional[list[Event]] = None
     self.idx = 0
 
   def resolve(self, state):
@@ -2217,7 +2218,7 @@ class ActivateChosenItems(Event):
     super().__init__()
     self.character = character
     self.item_choice = item_choice
-    self.activations: Optional[List[Event]] = None
+    self.activations: Optional[list[Event]] = None
     self.idx = 0
     self.fix_axe = None
 
@@ -2291,7 +2292,7 @@ class DeactivateItems(Event):
   def __init__(self, character):
     super().__init__()
     self.character = character
-    self.deactivations: Optional[List[Event]] = None
+    self.deactivations: Optional[list[Event]] = None
     self.idx = 0
 
   def resolve(self, state):
@@ -2460,7 +2461,7 @@ class DeactivateCombatSpells(Event):
   def __init__(self, character):
     super().__init__()
     self.character = character
-    self.deactivations: Optional[List[Event]] = None
+    self.deactivations: Optional[list[Event]] = None
     self.idx = 0
 
   def resolve(self, state):
@@ -2497,7 +2498,7 @@ class DiscardSpecific(Event):
   def __init__(
     self,
     character,
-    items_to_discard: "Union[ItemChoice, values.Value, List[assets.Card]]",
+    items_to_discard: "Union[ItemChoice, values.Value, list[assets.Card]]",
     to_box=False,
   ):
     super().__init__()
@@ -2962,7 +2963,7 @@ class Conditional(Event):
     self.character = character
     self.condition: Union[values.Value, Event] = condition
     self.attribute = attribute
-    self.result_map: Dict[int, Event] = result_map
+    self.result_map: dict[int, Event] = result_map
     self.result: Optional[Event] = None
 
   def resolve(self, state):
@@ -3065,7 +3066,7 @@ class MultipleChoice(ChoiceEvent):
     self.character = character
     self._prompt = prompt
     self._choices = choices
-    self.prereqs: List[Optional[values.Value]] = prereqs
+    self.prereqs: list[Optional[values.Value]] = prereqs
     self._annotations = annotations
     self.visual = visual
     self.invalid_choices = {}

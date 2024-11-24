@@ -2,7 +2,7 @@ import abc
 import collections
 import json
 from random import SystemRandom
-from typing import List, Dict, Optional, Tuple
+from typing import Optional
 import os
 
 from game import (
@@ -617,31 +617,31 @@ class IslandersState:
 
   def __init__(self):
     # Player data is a sequential list of Player objects; players are identified by index.
-    self.player_data: List[Player] = []
+    self.player_data: list[Player] = []
     # Board/Card State
-    self.tiles: Dict[TileLocation, Tile] = {}
-    self.ports: Dict[TileLocation, Port] = {}
-    self.port_corners: Dict[CornerLocation, str] = {}
-    self.pieces: Dict[CornerLocation, Piece] = {}
-    self.roads: Dict[EdgeLocation, Road] = {}  # includes ships
+    self.tiles: dict[TileLocation, Tile] = {}
+    self.ports: dict[TileLocation, Port] = {}
+    self.port_corners: dict[CornerLocation, str] = {}
+    self.pieces: dict[CornerLocation, Piece] = {}
+    self.roads: dict[EdgeLocation, Road] = {}  # includes ships
     self.robber: Optional[TileLocation] = None
     self.pirate: Optional[TileLocation] = None
-    self.treasures: Dict[CornerLocation, str] = {}
-    self.dev_cards: List[str] = []
+    self.treasures: dict[CornerLocation, str] = {}
+    self.dev_cards: list[str] = []
     self.largest_army_player: Optional[int] = None
     self.longest_route_player: Optional[int] = None
-    self.dice_roll: Optional[Tuple[int, int]] = None
-    self.dice_cards: Optional[List[Tuple[int, int]]] = None
-    self.corners_to_islands: Dict[CornerLocation, CornerLocation] = {}  # corner -> canonical corner
-    self.placement_islands: Optional[List[CornerLocation]] = None
-    self.discoverable_tiles: List[str] = []
-    self.discoverable_numbers: List[int] = []
-    self.discoverable_treasures: List[str] = []
+    self.dice_roll: Optional[tuple[int, int]] = None
+    self.dice_cards: Optional[list[tuple[int, int]]] = None
+    self.corners_to_islands: dict[CornerLocation, CornerLocation] = {}  # corner -> canonical corner
+    self.placement_islands: Optional[list[CornerLocation]] = None
+    self.discoverable_tiles: list[str] = []
+    self.discoverable_numbers: list[int] = []
+    self.discoverable_treasures: list[str] = []
     # Turn Information
     self.game_phase: str = "place1"  # valid values are place1, place2, place3, main, victory
     # settle, road, dice, collect, discard, robber, rob, dev_road, deplete, expel, main, extra_build
     # collect1, collect2, collectpi, takedev, bury, placeport
-    self.action_stack: List[str] = ["road", "settle"]
+    self.action_stack: list[str] = ["road", "settle"]
     self.turn_idx: int = 0
     self.collect_idx: Optional[int] = None
     self.extra_build_idx: Optional[int] = None
@@ -649,14 +649,14 @@ class IslandersState:
     # Bookkeeping
     self.played_dev: int = 0
     self.ships_moved: int = 0
-    self.built_this_turn: List[EdgeLocation] = []  # Locations where ships were placed this turn.
-    self.discard_players: Dict[int, int] = {}  # Map of player to number of cards they must discard.
-    self.rob_players: List[int] = []  # List of players that can be robbed by this robber.
-    self.shortage_resources: List[str] = []
-    self.collect_counts: Dict[int, int] = collections.defaultdict(int)
+    self.built_this_turn: list[EdgeLocation] = []  # Locations where ships were placed this turn.
+    self.discard_players: dict[int, int] = {}  # Map of player to number of cards they must discard.
+    self.rob_players: list[int] = []  # List of players that can be robbed by this robber.
+    self.shortage_resources: list[str] = []
+    self.collect_counts: dict[int, int] = collections.defaultdict(int)
     self.target_tile: Optional[TileLocation] = None
-    self.home_corners: Dict[int, List[CornerLocation]] = collections.defaultdict(list)
-    self.foreign_landings: Dict[int, List[CornerLocation]] = collections.defaultdict(list)
+    self.home_corners: dict[int, list[CornerLocation]] = collections.defaultdict(list)
+    self.foreign_landings: dict[int, list[CornerLocation]] = collections.defaultdict(list)
     self.next_die_roll: Optional[int] = None
     # Trade Information
     self.trade_offer = None

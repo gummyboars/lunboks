@@ -1,5 +1,4 @@
 from dataclasses import dataclass, field
-from typing import Dict
 
 from powerplant.materials import Resource
 
@@ -11,7 +10,7 @@ class Plant:
   intake: int = field(compare=False)
   output: int = field(compare=False)
   plus: bool = field(compare=True, default=False)
-  storage: Dict[Resource, int] = field(default_factory=dict, compare=False)
+  storage: dict[Resource, int] = field(default_factory=dict, compare=False)
 
   def can_take(self, resource):
     if self.resource is resource:

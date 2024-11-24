@@ -1,7 +1,7 @@
 import abc
 from collections import OrderedDict
+from collections.abc import Iterable
 import math
-from typing import Iterable
 
 from eldritch import events
 from eldritch import gates

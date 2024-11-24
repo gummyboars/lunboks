@@ -1,5 +1,3 @@
-from typing import List
-
 from eldritch import events
 from eldritch import values
 from eldritch.abilities.seaside import TeamPlayerBonus
@@ -219,7 +217,7 @@ def CreateTradables():
   return [DeputysRevolver(), PatrolWagon()]
 
 
-def CreateSpecials() -> List[Asset]:
+def CreateSpecials() -> list[Asset]:
   cards = [Blessing, Curse, Retainer, BankLoan, BadCredit, LodgeMembership, VoiceBonus]
   result = [Deputy(), TeamPlayerBonus(0)] + [card(i) for i in range(12) for card in cards]
   return result + [StaminaDecrease(0), SanityDecrease(0)]

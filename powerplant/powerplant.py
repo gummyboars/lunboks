@@ -3,7 +3,6 @@ from dataclasses import asdict, dataclass, field
 from enum import Enum
 import json
 from random import SystemRandom
-from typing import Dict, List
 
 from game import (  # pylint: disable=unused-import
   BaseGame,
@@ -53,7 +52,7 @@ SUPPLY_RATES = {
   5: {COAL: [5, 7, 5], OIL: [4, 5, 6], GAS: [3, 3, 5], URANIUM: [2, 3, 2]},
   6: {COAL: [7, 9, 6], OIL: [5, 6, 7], GAS: [3, 5, 6], URANIUM: [2, 3, 3]},
 }
-COSTS: Dict[materials.Resource, List[int]] = {
+COSTS: dict[materials.Resource, list[int]] = {
   COAL: sum([[x] * 3 for x in range(8, 0, -1)], []),
   OIL: sum([[x] * 3 for x in range(8, 0, -1)], []),
   GAS: sum([[x] * 3 for x in range(8, 0, -1)], []),
@@ -89,7 +88,7 @@ STAGE_3_COST = 10000
 class Player:
   name: str
   color: str
-  plants: List[plantinfo.Plant] = field(default_factory=list)
+  plants: list[plantinfo.Plant] = field(default_factory=list)
   money: int = 50
 
   @classmethod
