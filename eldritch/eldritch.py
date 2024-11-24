@@ -2,7 +2,6 @@ import collections
 import json
 import operator
 from random import SystemRandom
-from typing import List, Dict
 
 from eldritch import values
 from eldritch import specials
@@ -101,7 +100,7 @@ class GameState:
     }
     self.options.update({exp: set() for exp in ("pharaoh", "king", "goat", "lurker")})
     self.options["seaside"].add("stories")
-    self.places: Dict[str, places.Place] = {}
+    self.places: dict[str, places.Place] = {}
     self.characters = []
     self.all_characters = characters.CreateCharacters(self.expansions("characters"))
     self.all_ancients = ancient_ones.AncientOnes(self.expansions("ancient_ones"))
@@ -255,7 +254,7 @@ class GameState:
       override = override and val
     return override
 
-  def globals(self) -> List[eldritch.mythos.core.GlobalEffect]:
+  def globals(self) -> list[eldritch.mythos.core.GlobalEffect]:
     return [self.rumor, self.environment, self.ancient_one] + self.other_globals
 
   def gate_limit(self):

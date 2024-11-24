@@ -1,6 +1,5 @@
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Dict, List
 
 from powerplant.materials import Resource
 
@@ -18,8 +17,8 @@ class Color(str, Enum):
 class City:
   name: str = field(compare=True)
   color: Color = field(compare=False)
-  occupants: List[int] = field(compare=False, default_factory=list)
-  connections: Dict[str, int] = field(compare=False, default_factory=dict)
+  occupants: list[int] = field(compare=False, default_factory=list)
+  connections: dict[str, int] = field(compare=False, default_factory=dict)
 
   @classmethod
   def parse_json(cls, data):

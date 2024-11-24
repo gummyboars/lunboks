@@ -54,6 +54,7 @@ ignore = [
   "SLF001",  # private-member-access
   "RUF005",  # collection-literal-concatenation
   "RUF017",  # quadratic-list-summation
+  "RUF022",  # unsorted-dunder-all
   "SIM102",  # collapsible-if
   "SIM117",  # multiple-with-statements
   "PYI024",  # collections-named-tuple
