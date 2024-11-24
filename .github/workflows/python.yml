@@ -82,14 +82,7 @@ jobs:
       with:
         files: |
           **.py
-    - name: Analyze changed code with pylint
-      if: github.event_name == 'pull_request' && steps.changed-files.outputs.any_changed == 'true'
-      env:
-        ALL_CHANGED_FILES: ${{ steps.changed-files.outputs.all_changed_files }}
-      run: |
-        pylint -j 0 ${ALL_CHANGED_FILES}
     - name: Analyze code with pylint
-      if: github.event_name != 'pull_request'
       run: |
         pylint -j 0 **/*.py
   tests:
