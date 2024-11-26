@@ -634,6 +634,15 @@ class MovementTest(EventTest):
     self.assertEqual(self.char.place.name, "Graveyard")
     self.assertEqual(self.char.movement_points, 1)
 
+  def testRouteIsVisuallyPleasing(self):
+    self.advance_turn(self.state.turn_number, "movement")
+    self.char.place = self.state.places["Easttown"]
+    movement = self.resolve_to_choice(CityMovement)
+    self.assertEqual(movement.routes["Merchant"], ["Rivertown", "Merchant"])
+    movement.resolve(self.state, "Rivertown")
+    movement = self.resolve_to_choice(CityMovement)
+    self.assertEqual(movement.routes["Downtown"], ["Easttown", "Downtown"])
+
   def testIllegalMoveMultipleSpaces(self):
     self.char.movement_points = 1
     movement = Sequence(

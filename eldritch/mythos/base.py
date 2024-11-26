@@ -961,7 +961,7 @@ class Mythos62(Rumor):
     return events.Conditional(None, values.Calculation(state, "allies", len), None, results)
 
   def get_interrupt(self, event, state):
-    if isinstance(event, events.EncounterPhase) and event.character.place == state.places["House"]:
+    if isinstance(event, events.EncounterPhase) and event.character.place.name == "Southside":
       success = [events.EndRumor(self, failed=False)]
       success += [events.Gain(char, {"dollars": 5}) for char in state.characters if not char.gone]
       prompt = "Spend 5 clue tokens to end the rumor?"

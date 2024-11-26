@@ -3228,7 +3228,7 @@ class Mythos62Test(EventTest):
     self.state.rumor.start_turn = -float("inf")
 
     self.char.clues = 6
-    self.char.place = self.state.places["House"]
+    self.char.place = self.state.places["Southside"]
     self.state.event_stack.append(EncounterPhase(self.char))
     choice = self.resolve_to_choice(SpendChoice)
     self.spend("clues", 5, choice)

@@ -505,8 +505,9 @@ class CityMovement(ChoiceEvent):
       if monster.place is not None:
         monster_counts[monster.place.name] += 1
 
+    preferred = ["Easttown", "Rivertown"]
     queue = collections.deque()
-    for place in self.character.place.connections:
+    for place in sorted(self.character.place.connections, key=lambda p: p.name not in preferred):
       if not place.closed:
         queue.append((place, []))
     while queue:
@@ -520,7 +521,7 @@ class CityMovement(ChoiceEvent):
         continue
       if monster_counts[place.name] > 0:
         continue
-      for next_place in place.connections:
+      for next_place in sorted(place.connections, key=lambda p: p.name not in preferred):
         queue.append((next_place, route + [place.name]))
     return routes
 
