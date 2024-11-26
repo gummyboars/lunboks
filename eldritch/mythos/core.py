@@ -184,6 +184,11 @@ class GainPrevention(Environment):
       return events.GainPrevention(self, event, self.attr, event.gains[self.attr])
     return None
 
+  def get_override(self, thing, attribute):
+    if attribute == f"can_gain_{self.attr}":
+      return False
+    return None
+
 
 class ReturnMonstersHeadline(Headline):
   def __init__(

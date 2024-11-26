@@ -77,7 +77,7 @@ class CombatSpell(Spell):
   def is_combat(self, event, owner):
     if getattr(event, "character", None) != owner:
       return False
-    if isinstance(event, events.CombatChoice) and not event.is_resolved():
+    if isinstance(event, events.CombatChoice) and not event.is_done():
       return True
     # May cast even before making the decision to fight or evade. TODO: this is hacky/fragile.
     if isinstance(event, events.MultipleChoice) and hasattr(event, "monster"):
@@ -92,7 +92,7 @@ class CombatSpell(Spell):
       if self.deactivatable:
         return events.DeactivateSpell(owner, self)
       return None
-    if self.exhausted or owner.sanity < self.sanity_cost(state):
+    if self.exhausted:
       return None
     hands_available = owner.hands_available()
     if isinstance(event, events.CombatChoice):
@@ -143,6 +143,7 @@ class BindMonster(CombatSpell):
   def get_usable_interrupt(self, event, owner, state):
     if (
       isinstance(event, events.CombatChoice)
+      and not event.is_done()
       and event.combat_round is not None
       and isinstance(event.combat_round.monster, monsters.Monster)
     ):
@@ -251,7 +252,7 @@ class Heal(Spell):
 
   def get_usable_interrupt(self, event, owner, state):
     if not self.exhausted and isinstance(event, events.SliderInput) and event.character == owner:
-      if not event.is_done():
+      if state.get_override(owner, "can_gain_stamina") and not event.is_done():
         return events.CastSpell(owner, self)
     return None
 
