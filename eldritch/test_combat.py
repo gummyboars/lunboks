@@ -1851,12 +1851,26 @@ class CombatWithItems(EventTest):
     self.assertFalse(revolver.active)
 
   def testNeedSanityToCast(self):
-    # TODO: i think we can get rid of this now that we have SpendMixin
     self.char.possessions[1] = items.DreadCurse(0)
     self.char.sanity = 1
 
     self.resolve_to_choice(CombatChoice)
-    self.assertFalse(self.state.usables)
+    self.assertIn(0, self.state.usables)
+    self.assertIn("Dread Curse0", self.state.usables[0])
+    self.state.event_stack.append(self.state.usables[0]["Dread Curse0"])
+    cast = self.resolve_to_choice(SpendMixin)
+    self.spend("sanity", 1, cast)
+    with self.assertRaisesRegex(InvalidMove, "more sanity than"):
+      self.spend("sanity", 1, cast)
+    cast = self.resolve_to_choice(SpendMixin)
+    with self.assertRaisesRegex(InvalidMove, "additional 1 sanity"):
+      cast.resolve(self.state, "Dread Curse0")
+    self.spend("sanity", -1, cast)
+    cast = self.resolve_to_choice(SpendMixin)
+
+    cast.resolve(self.state, "Cancel")
+    self.resolve_to_choice(CombatChoice)
+    self.assertIn(0, self.state.usables)  # Can still use after cancelling.
 
   def testCannotCastWithoutHands(self):
     choose_weapons = self.resolve_to_choice(CombatChoice)
@@ -3675,8 +3689,26 @@ class BindMonsterTest(EventTest):
     self.resolve_to_choice(CombatChoice)
     self.assertNotIn("Bind Monster0", self.state.usables)
 
-  # TODO: test when a successful cast drives you insane, and the monster is overwhelming,
-  #  thus devouring you
+  def testInsanePassOverwhelming(self):
+    self.char.sanity = 3
+    self.char.stamina = 1
+    self.char.fight_will_slider = 0
+    worm = monsters.GiantWorm()
+    worm.place = self.char.place
+    self.start(worm)
+    self.assertEqual(self.char.sanity, 2)  # Lost one to nightmarish
+    self.assertEqual(self.char.stamina, 1)
+    self.state.event_stack.append(self.state.usables[0]["Bind Monster0"])
+    cast_choice = self.resolve_to_choice(CardSpendChoice)
+    self.spend("sanity", 2, cast_choice)
+    choice = self.resolve_to_choice(CardSpendChoice)
+    choice.resolve(self.state, "Bind Monster0")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)):
+      self.resolve_until_done()
+    # The player goes to zero sanity from the spell, and zero stamina from overwhelming. When
+    # the spell is done being cast, they should be devoured.
+    self.assertTrue(self.char.gone)
+    self.assertIsNone(worm.place)
 
 
 class FightAncientOneTest(EventTest):

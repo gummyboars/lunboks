@@ -402,6 +402,11 @@ class Movement(Turn):
     if self.check_lose_turn():
       return
     if self.character.delayed_until is not None:
+      if self.character.delayed_until == state.turn_number + 1:
+        self.character.delayed_until = None
+        self.cancelled = True
+        self.delayed = True
+        return
       if self.character.delayed_until <= state.turn_number:
         self.character.delayed_until = None
       else:
@@ -607,17 +612,18 @@ class OtherWorldPhase(Turn):
 
 
 class Mythos(Turn):
-  def __init__(self, _):
+  def __init__(self, _, first_turn=False):
     super().__init__()
     self.draw: Optional[Event] = None
     self.action: Optional[Event] = None
+    self.first_turn = first_turn
     self.done = False
 
   def resolve(self, state):
     first_player = state.characters[state.first_player]
 
     if self.draw is None:
-      self.draw = DrawMythosCard(first_player)
+      self.draw = DrawMythosCard(first_player, skip_rumor=self.first_turn)
       state.event_stack.append(self.draw)
       return
 
@@ -2587,7 +2593,6 @@ class RollToMaintain(Event):
       return
 
     if self.roll.sum in self.item.upkeep_bad_rolls and self.penalty is None:
-      # TODO: allow the item to determine its own bad stuff
       self.penalty = self.item.upkeep_penalty(self.character)
       state.event_stack.append(self.penalty)
       return
@@ -4351,7 +4356,6 @@ class PassCombatRound(Event):
     self.log_message = log_message.format(
       char_name=combat_round.character.name,
       monster_name=getattr(combat_round.monster, "name", "No Monster"),
-      # TODO: might look weird if no monster (e.g. Bank3)
     )
     self.take_trophy: Optional[Event] = None
     self.damage: Optional[Event] = None
@@ -4815,10 +4819,11 @@ class RemoveAllSeals(Event):
 
 
 class DrawMythosCard(Event):
-  def __init__(self, character, require_gate=False):
+  def __init__(self, character, require_gate=False, skip_rumor=False):
     super().__init__()
     self.character = character
     self.require_gate = require_gate
+    self.skip_rumor = skip_rumor
     self.shuffled = False
     self.card = None
 
@@ -4831,6 +4836,8 @@ class DrawMythosCard(Event):
         self.shuffled = True
         continue
       if self.require_gate and card.gate_location is None:
+        continue
+      if self.skip_rumor and hasattr(card, "progress"):
         continue
       break
     self.card = card

@@ -328,6 +328,10 @@ class BlueWatcherTest(EventTest):
     self.assertEqual(self.char.movement_points, 0)
 
   def testPassCombatEncounter(self):
+    # Give the character one of everything that interrupts CombatChoice to make sure this works.
+    self.char.possessions.extend(
+      [spells.BindMonster(0), spells.Wither(0), items.OuterGodlyFlute(0)]
+    )
     self.state.event_stack.append(encounters.Bank3(self.char))
     watcher = self.resolve_to_usable(0, "Blue Watcher0")
     self.state.event_stack.append(watcher)

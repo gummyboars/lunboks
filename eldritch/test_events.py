@@ -413,15 +413,26 @@ class MovementPhaseTest(EventTest):
     self.movement = Movement(self.char)
     self.state.event_stack.append(self.movement)
 
+  def testDelayedMultiTurn(self):
+    self.char.delayed_until = self.state.turn_number + 2
+    self.resolve_until_done()
+
+    self.assertEqual(self.char.delayed_until, self.state.turn_number + 2)
+    self.assertIsNone(self.movement.move)
+    self.assertEqual(self.char.movement_points, 0)
+
   def testDelayed(self):
     self.char.delayed_until = self.state.turn_number + 1
     self.resolve_until_done()
 
-    self.assertEqual(self.char.delayed_until, self.state.turn_number + 1)
+    # The character is no longer delayed at the end of their movement phase. But they still don't
+    # get to do anything during their movement phase.
     self.assertIsNone(self.movement.move)
     self.assertEqual(self.char.movement_points, 0)
+    self.assertIsNone(self.char.delayed_until)
 
   def testNoLongerDelayed(self):
+    # This can happen if their previous turn was skipped, for example.
     self.char.delayed_until = self.state.turn_number
     self.resolve_to_choice(CityMovement)
 

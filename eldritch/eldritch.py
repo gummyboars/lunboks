@@ -974,7 +974,6 @@ class GameState:
 
     if option == "characters" or option is None:
       self.all_characters = characters.CreateCharacters(self.expansions("characters"))
-      # TODO: do we need to re-point the existing chars to the newly created instances?
     if option == "ancient_ones" or option is None:
       self.all_ancients = ancient_ones.AncientOnes(self.expansions("ancient_ones"))
       if self.ancient_one is not None and self.ancient_one.name not in self.all_ancients:
@@ -1001,7 +1000,7 @@ class GameState:
     if any(char.name == "Scientist" for char in self.characters):
       self.places["Science"].clues = 0
     assert sliders.characters, "no players?"
-    self.event_stack.append(events.Sequence([sliders, events.Mythos(None)], None))
+    self.event_stack.append(events.Sequence([sliders, events.Mythos(None, first_turn=True)], None))
 
   def validate_new_character(self, name):
     if name not in self.all_characters:

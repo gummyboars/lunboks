@@ -1911,6 +1911,15 @@ class DrawMythosTest(EventTest):
     self.assertCountEqual(card_names, unshuffled_names)
     self.assertNotEqual(card_names, unshuffled_names)  # NOTE: small chance of failing
 
+  def testSkipRumor(self):
+    self.state.mythos.clear()
+    self.state.mythos.extend([Mythos13(), Mythos14(), ShuffleMythos()])
+    draw = DrawMythosCard(self.char, skip_rumor=True)
+    self.state.event_stack.append(draw)
+    self.resolve_until_done()
+    self.assertEqual(draw.card.name, "Mythos14")
+    self.assertFalse(draw.shuffled)
+
 
 class PlaceMonstersOnRumorTest(EventTest):
   def testMonstersOnRumor(self):
@@ -2575,16 +2584,19 @@ class Mythos18Test(EventTest):
     self.assertEqual(self.char.sanity, 5)
 
   def testCantGainFromOthers(self):
-    # TODO: Healing stone maybe shouldn't even be usable?
+    self.char.stamina = 2
     self.char.possessions.append(items.HealingStone(0))
     self.advance_turn(0, "upkeep")
     self.state.event_stack.append(SliderInput(self.char))
     stone = self.resolve_to_usable(0, "Healing Stone0")
     self.state.event_stack.append(stone)
+    # Instead of giving the choice to gain 1 sanity or stamina, healing stone will only give stamina
     sliders = self.resolve_to_choice(SliderInput)
     self.assertEqual(self.char.sanity, 2)
+    self.assertEqual(self.char.stamina, 3)
     sliders.resolve(self.state, "done", None)
     self.resolve_until_done()
+
     self.state.event_stack.append(Gain(self.char, {"sanity": 3}))
     self.resolve_until_done()
     self.assertEqual(self.char.sanity, 2)
@@ -2593,6 +2605,22 @@ class Mythos18Test(EventTest):
     self.state.event_stack.append(Gain(self.char, {"dollars": 1}))
     self.resolve_until_done()
     self.assertEqual(self.char.dollars, 1)
+
+  def testMythos3CannotHeal(self):
+    self.state.environment = Mythos3()
+    self.char.stamina = 2
+    self.char.possessions.extend([items.HealingStone(0), items.Heal(0)])
+    self.advance_turn(0, "upkeep")
+    self.state.event_stack.append(SliderInput(self.char))
+    stone = self.resolve_to_usable(0, "Healing Stone0")
+    # Stone should is usable, heal spell is not.
+    self.assertCountEqual(self.state.usables[0].keys(), ["Healing Stone0"])
+    self.state.event_stack.append(stone)
+    sliders = self.resolve_to_choice(SliderInput)
+    self.assertEqual(self.char.sanity, 3)
+    self.assertEqual(self.char.stamina, 2)
+    sliders.resolve(self.state, "done", None)
+    self.resolve_until_done()
 
 
 class CloseLocationTest(EventTest):

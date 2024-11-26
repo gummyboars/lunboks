@@ -359,6 +359,7 @@ class HealingStone(Item):
       attr
       for attr in ["stamina", "sanity"]
       if getattr(owner, attr) < getattr(owner, f"max_{attr}")(state)
+      and state.get_override(owner, f"can_gain_{attr}")
     ]
     if not available:
       return None
