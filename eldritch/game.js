@@ -1987,7 +1987,7 @@ function updateChoices(choice, current, isMyChoice, chooser, autoChoose) {
         newVisuals.push(newVisual(choice.monster.handle, "fight", {"monster": choice.monster}));
       }
     } else if (choice.cards != null) {
-      addCardChoices(uichoice, uicardchoice, choice.cards, choice.invalid_choices, choice.spent, choice.remaining_spend, choice.remaining_max, choice.annotations, choice.sort_uniq, current, isMyChoice, autoChoose);
+      addCardChoices(uichoice, uicardchoice, choice.cards, choice.invalid_choices, choice.spent, choice.remaining_spend, choice.remaining_max, choice.annotations, choice.sort_uniq, current, isMyChoice, autoChoose, chooser);
     } else if (choice.monsters != null) {
       addMonsterChoices(uichoice, uicardchoice, choice.monsters, choice.invalid_choices, choice.annotations, current, isMyChoice);
     } else if (choice.monster != null) {
@@ -2253,7 +2253,7 @@ function addFightOrEvadeChoices(uichoice, cardChoice, monster, choices, invalidC
   }
 }
 
-function addCardChoices(uichoice, cardChoice, cards, invalidChoices, spent, remainingSpend, remainingMax, annotations, sortUniq, current, isMyChoice, autoChoose) {
+function addCardChoices(uichoice, cardChoice, cards, invalidChoices, spent, remainingSpend, remainingMax, annotations, sortUniq, current, isMyChoice, autoChoose, chooser) {
   if (!cards) {
     return;
   }
@@ -2273,7 +2273,13 @@ function addCardChoices(uichoice, cardChoice, cards, invalidChoices, spent, rema
   let autoClick = false;
   if (cards.length == 1 && isMyChoice && autoChoose && assetNames.includes(cards[0])) {
     if (annotations == null || annotations.length == 0) {
-      annotations = ["OK"];
+      let annotate = "OK";
+      if (typeof(autoChoose) == "string") {
+        annotate = replacer(autoChoose, autoChoose);
+      } else if (!cards[0].startsWith("Mythos")) {
+        annotate = replacer(chooser.place ?? "OK", chooser.place ?? "OK");
+      }
+      annotations = [annotate];
     }
     autoClick = true;
   }

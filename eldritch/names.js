@@ -310,6 +310,7 @@ locationNames = [
   "Isle",
 ];
 carefullyAdd(locationNames, true);
+nameSet.add("Sanctum");  // Not an asset, but can still have a custom name.
 tokens = ["Dollar", "Clue", "Sanity", "Stamina", "Slider", "Seal", "Doom", "Closed", "Activity"];
 carefullyAdd(tokens, false);
 terrors = [];
