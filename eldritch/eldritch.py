@@ -532,6 +532,9 @@ class GameState:
     if self.usables.get(char_idx):
       output["usables"] = list(self.usables[char_idx].keys())
     output["autochoose"] = not bool(self.usables)
+    if len(self.event_stack) >= 3 and isinstance(self.event_stack[-3], events.Encounter):
+      if isinstance(top_event, events.CardChoice) and not self.usables:
+        output["autochoose"] = self.event_stack[-3].loc_name
     return output
 
   @classmethod
