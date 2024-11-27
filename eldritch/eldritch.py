@@ -503,12 +503,17 @@ class GameState:
       output["visual"] = "Gate Card"
     if top_event and isinstance(top_event, events.DrawEncounter) and not top_event.is_resolved():
       output["visual"] = top_event.neighborhood.name + " Card"
+    if top_event and isinstance(top_event, events.LookAtItems) and top_event.drawn:
+      output["visual"] = top_event.drawn[0].handle
 
     if top_event and isinstance(top_event, events.MoveMonsters) and top_event.is_done():
       output["visual"] = current
 
     if top_event and isinstance(top_event, events.SpawnGate) and top_event.opened is False:
       output["missed_gate"] = top_event.location_name
+
+    if top_event and isinstance(top_event, events.AllyToBox) and top_event.ally:
+      output["lost_ally"] = top_event.ally.name
 
     if top_event and isinstance(top_event, events.SliderInput) and not top_event.is_done():
       output["sliders"] = {"prompt": top_event.prompt()}

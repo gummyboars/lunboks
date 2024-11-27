@@ -1396,7 +1396,7 @@ class ForceMovement(Event):
 
 
 class LookAtItems(Event):
-  def __init__(self, character, deck, draw_count, target_type=None):
+  def __init__(self, character, deck, draw_count, target_type=None, animated=False):
     assert deck in DECKS
     super().__init__()
     self.character = character
@@ -1404,6 +1404,7 @@ class LookAtItems(Event):
     self.draw_count = draw_count
     self.drawn = None
     self.target_type = target_type
+    self._animated = animated
 
   def resolve(self, state):
     if self.drawn is None:
@@ -1439,6 +1440,9 @@ class LookAtItems(Event):
         f"cards from the {self.deck} deck"
       )
     return f"[{self.character.name}] drew " + ", ".join(f"[{c.name}]" for c in self.drawn)
+
+  def animated(self):
+    return self._animated
 
 
 class DrawItems(LookAtItems):
@@ -5056,6 +5060,7 @@ def RemoveToken(asset, token_type, character=None, n_tokens=1):
 class AllyToBox(Event):
   def __init__(self):
     super().__init__()
+    self.draw = None
     self.ally = None
     self.done = False
 
@@ -5063,9 +5068,16 @@ class AllyToBox(Event):
     return self.done
 
   def resolve(self, state):
-    if state.allies:
-      self.ally = state.allies.popleft()
-      state.boxed_allies.append(self.ally)
+    if self.draw is None:
+      self.draw = LookAtItems(state.characters[state.first_player], "allies", 1, animated=True)
+      state.event_stack.append(self.draw)
+      return
+    if not self.draw.drawn:
+      self.done = True
+      return
+    self.ally = self.draw.drawn[0]
+    state.allies.remove(self.ally)
+    state.boxed_allies.append(self.ally)
     self.done = True
 
   def log(self, state):

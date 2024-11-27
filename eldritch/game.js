@@ -542,7 +542,7 @@ function handleData(data) {
   updateBottomCards(data.bottom);
   updateCurrentCard(data.current, data.visual, data.monster, data.choice);
   animateMissedGate(data.missed_gate);
-  animateVisuals();
+  animateVisuals(data.lost_ally);
   animateVictory(data.game_stage);
   oldCurrent = data.current;
   oldStage = data.game_stage;
@@ -1488,7 +1488,7 @@ function recordOldVisuals() {
   }
 }
 
-function animateVisuals() {
+function animateVisuals(lostAlly) {
   let enteringVisuals = [];
   let movingVisuals = [];
   let leavingVisuals = [];
@@ -1585,6 +1585,9 @@ function animateVisuals() {
       if (lostCards[handleOrName] != null && gainedCards[handleOrName] == null) {
         external = lostCards[handleOrName].failed ? "shaking" : "leaving";
         lostCards[handleOrName] = null;
+      }
+      if (external == null && handleOrName == lostAlly) {
+        external = "leaving";
       }
       leavingVisuals.push([visual, external, visual.getBoundingClientRect()]);
     }
