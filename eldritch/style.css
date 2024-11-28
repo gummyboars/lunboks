@@ -17,6 +17,33 @@ button {
 button:disabled {
   background-color: rgba(233, 233, 237); /* TODO: button styling */
 }
+.button {
+  display: inline-block;
+  font-size: calc(min(1.25vw, 2vh));
+  box-shadow: 0 0 0 min(0.125vw, 0.2vh) inset black;
+  color: black;
+  background: white;
+  cursor: pointer;
+  margin: 0.2em;
+  padding-left: 0.25em;
+  padding-right: 0.25em;
+  transition-property: transform;
+  transition-duration: 0.1s;
+  transition-timing-function: linear;
+}
+.button:hover {
+  transform: scale(1.05);
+}
+.button:active {
+  transform: unset;
+}
+.button.unchoosable {
+  background: darkgrey;
+  cursor: not-allowed;
+}
+.button.unchoosable:hover {
+  transform: unset;
+}
 /* TODO: dedup all of this */
 #errorText {
   position: absolute;
@@ -313,7 +340,8 @@ button:disabled {
   width: 100%;
   font-size: calc(min(2vw, 3.2vh));
   text-align: center;
-  background: linear-gradient(to right, sienna 50%, #D2A253 50%);
+  box-shadow: 0 0 0 min(0.125vw, 0.2vh) inset black;
+  background: linear-gradient(to right, white 50%, silver 50%);
   background-size: 200% 100%;
   background-position: left;
   transition: background-position 0.5s linear;
@@ -340,20 +368,22 @@ button:disabled {
 }
 .choice {
   flex: 0 0 auto;
-  border: 1px solid black;
-  background: linear-gradient(to right, sienna 50%, transparent 50%);
+  background: linear-gradient(to right, white 50%, silver 50%);
   background-size: 200% 100%;
   background-position: left;
-  transition: background-position 0.5s linear;
+  transition-property: transform, background-position;
+  transition-duration: 0.1s, 0.5s;
+  transition-timing-function: linear;
   padding-left: 0.25em;
   padding-right: 0.25em;
   text-align: center;
+  font-size: calc(min(2vw, 3.2vh));
 }
 .choice.choosable {
   cursor: pointer;
 }
 .choice.choosable:hover {
-  background: linear-gradient(to right, saddlebrown 50%, transparent 50%);
+  background: linear-gradient(to right, white 50%, silver 50%);
   background-size: 200% 100%;
 }
 .choice.mustspend {
@@ -362,7 +392,6 @@ button:disabled {
 }
 .choice.unchoosable {
   cursor: not-allowed;
-  background: darkgrey;
   background: linear-gradient(to right, darkgrey 50%, darkgrey 50%);
   text-decoration: line-through;
 }
@@ -1504,9 +1533,17 @@ button:disabled {
 }
 #spendchoice {
   position: absolute;
-  top: 0;
+  top: 50%;
   right: -1.25em;
-  transform: translate(100%, 0);
+  transform: translate(100%, -50%);
+  margin-top: 0;
+  margin-bottom: 0;
+}
+#spendchoice:hover {
+  transform: translate(100%, -50%) scale(1.05);
+}
+#spendchoice:active {
+  transform: translate(100%, -50%);
 }
 #start {
   font-size: calc(min(1vw, 1.6vh));
@@ -1601,13 +1638,16 @@ tbody > tr > td:last-of-type {
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  background: sienna;
   color: black;
   font-size: calc(min(2.5vw, 4vh));
-  border: 1px solid black;
   pointer-events: auto;
 }
 #monsterdetailsname {
+  background: white;
+  box-shadow: 0 0 0 min(0.125vw, 0.2vh) inset black;
+  text-align: center;
+  padding-left: 0.25em;
+  padding-right: 0.25em;
 }
 #monsterdetailsbox {
   display: flex;
