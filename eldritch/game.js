@@ -2046,8 +2046,8 @@ function updateMonsterChoices(choice, monsterList, isMyChoice, chooser) {
   text += (choice.board - total) + " monsters to the board";
   uiprompt.innerText = text;
   uimonsterchoice.style.display = "flex";
-  for (let btn of uimonsterchoice.getElementsByTagName("BUTTON")) {
-    btn.disabled = !isMyChoice;
+  for (let btn of uimonsterchoice.getElementsByClassName("button")) {
+    btn.classList.toggle("unchoosable", !isMyChoice);
   }
 }
 
@@ -2383,7 +2383,7 @@ function addChoices(uichoice, choices, invalidChoices, spent, remainingSpend, re
     div.className = "";
     div.style.removeProperty("background-position");
     div.style.removeProperty("cursor");
-    div.classList.add("choice");
+    div.classList.add("choice", "button");
     if (c == "Pass") {
       div.classList.add("success");
     }
@@ -3640,11 +3640,11 @@ function drawChosenChar(character) {
   if (!availableChars.includes(character.name)) {
     sheet.classList.add("nochoose");
     choiceButton.innerText = "Not Available";
-    choiceButton.disabled = true;
+    choiceButton.classList.add("unchoosable");
     return;
   }
   sheet.classList.remove("nochoose");
-  choiceButton.disabled = false;
+  choiceButton.classList.remove("unchoosable");
   if (character.name == pendingName) {
     choiceButton.innerText = "Chosen";
   } else if (pendingName != null) {
@@ -3830,10 +3830,12 @@ function createCharacterSheet(idx, character, rightUI, isPlayer) {
   if (isPlayer) {
     let sliderButtons = document.createElement("DIV");
     sliderButtons.id = "sliderbuttons";
-    let doneBtn = document.createElement("BUTTON");
+    let doneBtn = document.createElement("DIV");
+    doneBtn.classList.add("button");
     doneBtn.innerText = "Set Sliders";
     doneBtn.onclick = doneSliders;
-    let resetBtn = document.createElement("BUTTON");
+    let resetBtn = document.createElement("DIV");
+    resetBtn.classList.add("button");
     resetBtn.innerText = "Reset";
     resetBtn.onclick = resetSliders;
     sliderButtons.appendChild(doneBtn);
@@ -3869,11 +3871,13 @@ function createCharacterSheet(idx, character, rightUI, isPlayer) {
   if (isPlayer) {
     let useButtons = document.createElement("DIV");
     useButtons.id = "usebuttons";
-    let doneItems = document.createElement("BUTTON");
+    let doneItems = document.createElement("DIV");
+    doneItems.classList.add("button");
     doneItems.id = "doneitems";
     doneItems.onclick = chooseItems;
     doneItems.innerText = "Done Choosing";
-    let doneUsing = document.createElement("BUTTON");
+    let doneUsing = document.createElement("DIV");
+    doneUsing.classList.add("button");
     doneUsing.id = "doneusing";
     doneUsing.onclick = doneUse;
     doneUsing.innerText = "Done Using";

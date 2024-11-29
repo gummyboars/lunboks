@@ -34,9 +34,9 @@
               <output for="giveslider" id="givevalue">0</output>
             </div>
             <div id="givebuttons">
-              <button onclick="cancelGive(event)">Cancel</button>
+              <div class="button" onclick="cancelGive(event)">Cancel</div>
               <div class="spacer"></div>
-              <button onclick="finishGive(event)">Give</button>
+              <div class="button" onclick="finishGive(event)">Give</div>
             </div>
           </div>
           <div id="selectors">
@@ -46,7 +46,7 @@
                 <div id="charchoice"></div>
                 <div id="nextchar" class="choicebutton" onclick="nextChar(event)">▶️</div>
               </div>
-              <div class="selectbutton"><button id="choosecharbutton" onclick="selectChar(event)">Choose</button></div>
+              <div class="selectbutton"><div id="choosecharbutton" class="button" onclick="selectChar(event)">Choose</div></div>
             </div>
             <div id="ancientselect">
               <div id="ancientchoices" class="bigchoices">
@@ -54,7 +54,7 @@
                 <div id="ancientchoice" class="cnvcontainer"><canvas></canvas></div>
                 <div id="nextancient" class="choicebutton" onclick="nextAncient(event)">▶️</div>
               </div>
-              <div class="selectbutton"><button id="chooseancientbutton" onclick="selectAncient(event)">Choose</button></div>
+              <div class="selectbutton"><div id="chooseancientbutton" class="button" onclick="selectAncient(event)">Choose</div></div>
             </div>
           </div>
           <div id="cardchoicescroll" class="cardscroll">
@@ -70,7 +70,7 @@
           <div id="monsterdetails">
             <div id="monsterdetailsname"></div>
             <div id="monsterdetailsbox"></div>
-            <div id="hidemonsters"><button onclick="hideMonsters(event)">Close</button></div>
+            <div id="hidemonsters"><div class="button" onclick="hideMonsters(event)">Close</div></div>
           </div>
         </div>
         <div id="ancientdetails" style="display: none">
@@ -137,7 +137,7 @@
         <div id="admin" class="rightelem notshown">
           <div class="admincategory">
             Stepping 
-            <input type="checkbox" onclick="toggleStepping(event)"></button>
+            <input type="checkbox" onclick="toggleStepping(event)"></input>
           </div>
           <div class="admincategory">
             Ancient One<br />
@@ -209,7 +209,7 @@
         <div id="bottomcenter">
           <div id="promptline"><div id="uiprompt"></div></div>
           <div id="start">
-            <button onclick="start(event)">Start</button>
+            <div class="button" onclick="start(event)">Start</div>
             <table>
               <thead>
                 <tr>
@@ -320,9 +320,8 @@
           <div id="uimonsterchoice">
             <div id="monsterchoices"></div>
             <div id="monsterchoicebuttons">
-              <button onclick="confirmMonsterChoice(event)">Confirm</button>
-              <!--<button onclick="toOutskirts(event)">Outskirts</button>-->
-              <button onclick="resetMonsterChoice(event)">Reset</button>
+              <div class="button" onclick="confirmMonsterChoice(event)">Confirm</div>
+              <div class="button" onclick="resetMonsterChoice(event)">Reset</div>
             </div>
           </div>
           <div id="uispend"></div>
