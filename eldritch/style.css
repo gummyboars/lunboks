@@ -1030,7 +1030,7 @@ button:disabled {
   transition: transform 0.8s;
   z-index: 5;
 }
-.place {
+.place, .fakeplace {
   position: absolute;
   background-color: rgba(0, 255, 0, 0);
   color: rgba(0, 0, 0, 0);
@@ -1040,6 +1040,10 @@ button:disabled {
   justify-content: center;
   width: calc(min(80vw, 128vh) * 2 / 29);
   height: calc(min(80vw, 128vh) * 2 / 29);
+}
+.fakeplace {
+  z-index: -1;
+  pointer-events: none;
 }
 .placebox {
   position: absolute;

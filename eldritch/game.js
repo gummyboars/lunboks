@@ -279,6 +279,17 @@ function continueInit(gameId) {
   }
   placeLocations();
   adjustLocationClasses();
+
+  // HACK: add a custom monsters location for Mythos65 next to the university.
+  let rumorMonsters = document.createElement("DIV");
+  rumorMonsters.id = "place" + "Mythos65" + "monsters";
+  rumorMonsters.classList.add("fakeplace");
+  cont.appendChild(rumorMonsters);
+  if (!setDivXYPercent(rumorMonsters, document.getElementById("boardcanvas"), "board", "University")) {
+    rumorMonsters.style.top = 100 * places["University"].y + "%";
+    rumorMonsters.style.left = 100 * places["University"].x + "%";
+  }
+
   for (let name of monsterNames) {
     addOptionToSelect("monsterchoice", name);
   }
@@ -2071,7 +2082,7 @@ function addMonsterChoices(uichoice, cardChoice, monsters, invalidChoices, annot
     newVisuals.push(visual);
   }
   let scrollParent = cardChoice.parentNode;
-  if (monsters.length > 4) {
+  if (monsters.length - otherChoices.length > 4) {
     scrollParent.classList.add("overflowing");
   } else {
     scrollParent.classList.remove("overflowing");
@@ -2251,6 +2262,8 @@ function addFightOrEvadeChoices(uichoice, cardChoice, monster, choices, invalidC
     }
     newVisuals.push(visual);
   }
+  let scrollParent = cardChoice.parentNode;
+  scrollParent.classList.remove("overflowing");
 }
 
 function addCardChoices(uichoice, cardChoice, cards, invalidChoices, spent, remainingSpend, remainingMax, annotations, sortUniq, current, isMyChoice, autoChoose, chooser) {
@@ -2954,7 +2967,11 @@ function updateActivity(placeName, activity) {
     actDiv.appendChild(cnvContainer);
     charsDiv.appendChild(actDiv);
     renderAssetToDiv(cnvContainer, "Activity", number);
-    actDiv.onclick = function(e) { toggleGlobals(null, cardName) };
+    if (cardName == "Mythos65") {
+      actDiv.onclick = function(e) { toggleMonsters(document.getElementById("placeMythos65monsters"), "Mythos65"); };
+    } else {
+      actDiv.onclick = function(e) { toggleGlobals(null, cardName) };
+    }
   }
   for (let cardName in toRemove) {
     charsDiv.removeChild(toRemove[cardName]);
