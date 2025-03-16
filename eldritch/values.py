@@ -17,7 +17,7 @@ OPER_MAP = {"at least": operator.ge, "at most": operator.le, "exactly": operator
 
 
 def ceildiv(lhs, rhs):
-  return int(math.ceil(lhs / rhs))
+  return math.ceil(lhs / rhs)
 
 
 class Value(metaclass=abc.ABCMeta):
