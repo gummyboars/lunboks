@@ -21,7 +21,7 @@ from eldritch import specials
 
 def mock_randint(return_value=None, side_effect=None) -> mock.MagicMock:
   return cast(
-    mock.MagicMock,
+    "mock.MagicMock",
     mock.patch.object(
       events.random,
       "randint",

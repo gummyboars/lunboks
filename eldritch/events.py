@@ -816,8 +816,7 @@ class MoveOne(Event):
     if self.moved:
       return f"[{self.character.name}] moved to [{self.dest}]"
     return (
-      f"[{self.character.name}] could not move from "
-      f"[{self.character.place.name}] to [{self.dest}]"
+      f"[{self.character.name}] could not move from [{self.character.place.name}] to [{self.dest}]"
     )
 
   def animated(self):
@@ -1144,8 +1143,7 @@ class InsaneOrUnconscious(StackClearMixin, Event):
       return f"[{self.character.name}] did not {neg_desc}"
     if isinstance(self.force_move, ForceMovement):
       return (
-        f"[{self.character.name}] {self.desc} "
-        f"and woke up in the [{self.force_move.location_name}]"
+        f"[{self.character.name}] {self.desc} and woke up in the [{self.force_move.location_name}]"
       )
     return f"[{self.character.name}] {self.desc}"
 
@@ -3468,7 +3466,7 @@ class ItemChoice(ChoiceEvent):
       return f"[{self.character.name}] did not choose anything"
     if not self.done:
       return f"[{self.character.name}] must {self.prompt()}"
-    return f"[{self.character.name}] chose {', '.join('['+item.name+']' for item in self.chosen)}"
+    return f"[{self.character.name}] chose {', '.join('[' + pos.name + ']' for pos in self.chosen)}"
 
   def prompt(self):
     return self._prompt

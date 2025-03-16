@@ -18,6 +18,7 @@ ignore = [
   "FA",  # future annotations
   "FBT",  # boolean trap
   "C90",  # mccabe complexity
+  "C420",  # use dict.fromkeys
   "ARG",  # unused argument - checked by pylint
   "PTH",  # pathlib - TODO: turn on again
   "F403",  # undefined names

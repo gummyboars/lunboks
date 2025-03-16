@@ -476,7 +476,7 @@ class GameState:
     city = self.cities[city_name]
     if len(city.occupants) > self.stage_idx:
       raise InvalidMove(
-        f"Cities may only be occupied by {self.stage_idx+1} players in this stage of the game"
+        f"Cities may only be occupied by {self.stage_idx + 1} players in this stage of the game"
       )
     if self.turn_idx in city.occupants:
       raise InvalidMove(f"You are already in {city_name}")
