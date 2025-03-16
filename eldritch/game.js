@@ -511,8 +511,12 @@ function finishAnim() {
   runningAnim.shift();
   if (!runningAnim.length) {
     let numVisuals = document.getElementById("uicardchoice").getElementsByClassName("cardholder").length;
-    document.getElementById("cardchoicescroll").classList.toggle("hidden", numVisuals == 0 || !cardsShown);
-    document.getElementById("togglecards").classList.toggle("hidden", numVisuals == 0);
+    let diceShown = document.getElementById("uidice").style.display != "none";
+    let choiceShown = document.getElementById("uichoice").style.display != "none";
+    let monsterShown = document.getElementById("uimonsterchoice").style.display != "none";
+    let anyShown = (numVisuals != 0) || diceShown || choiceShown || monsterShown;
+    document.getElementById("cardchoicescroll").classList.toggle("hidden", !anyShown || !cardsShown);
+    document.getElementById("togglecards").classList.toggle("hidden", !anyShown);
     setCardButtonText();
   }
   if (!stepping && messageQueue.length && !runningAnim.length) {
@@ -1637,7 +1641,10 @@ function animateVisuals(lostAlly) {
     setTimeout(function() { holder.classList.remove("noanimate"); holder.style.removeProperty("transform"); }, 10);
   }
 
-  if (enteringVisuals.length || movingVisuals.length || leavingVisuals.length || actuallyNewVisuals.length) {
+  let diceShown = document.getElementById("uidice").style.display != "none";
+  let choiceShown = document.getElementById("uichoice").style.display != "none";
+  let monsterShown = document.getElementById("uimonsterchoice").style.display != "none";
+  if (enteringVisuals.length || movingVisuals.length || leavingVisuals.length || actuallyNewVisuals.length || diceShown || choiceShown || monsterShown) {
     cardsShown = true;
     document.getElementById("cardchoicescroll").classList.remove("hidden");
     document.getElementById("togglecards").classList.remove("hidden");
@@ -1933,9 +1940,6 @@ function updateChoices(choice, current, isMyChoice, chooser, autoChoose) {
     while (uichoice.getElementsByClassName("todelete").length) {
       uichoice.removeChild(uichoice.getElementsByClassName("todelete")[0]);
     }
-    if (resultChoice != null && resultChoice.classList.contains("todelete")) {
-      resultChoice.parentNode.removeChild(resultChoice);
-    }
     if (spendChoice != null && spendChoice.classList.contains("todelete")) {
       spendChoice.parentNode.removeChild(spendChoice);
     }
@@ -1962,9 +1966,6 @@ function updateChoices(choice, current, isMyChoice, chooser, autoChoose) {
     document.getElementById("charoverlay").classList.remove("shown");
     while (uichoice.getElementsByClassName("todelete").length) {
       uichoice.removeChild(uichoice.getElementsByClassName("todelete")[0]);
-    }
-    if (resultChoice != null && resultChoice.classList.contains("todelete")) {
-      resultChoice.parentNode.removeChild(resultChoice);
     }
     if (spendChoice != null && spendChoice.classList.contains("todelete")) {
       spendChoice.parentNode.removeChild(spendChoice);
@@ -2005,15 +2006,13 @@ function updateChoices(choice, current, isMyChoice, chooser, autoChoose) {
       addFightOrEvadeChoices(uichoice, uicardchoice, choice.monster, choice.choices, choice.invalid_choices, choice.annotations, current, isMyChoice);
     } else {
       if (isMyChoice) {
+        uicardchoice.parentNode.classList.remove("overflowing");
         addChoices(uichoice, choice.choices, choice.invalid_choices, choice.spent, choice.remaining_spend, choice.remaining_max);
       }
     }
   }
   while (uichoice.getElementsByClassName("todelete").length) {
     uichoice.removeChild(uichoice.getElementsByClassName("todelete")[0]);
-  }
-  if (resultChoice != null && resultChoice.classList.contains("todelete")) {
-    resultChoice.parentNode.removeChild(resultChoice);
   }
   if (spendChoice != null && spendChoice.classList.contains("todelete")) {
     spendChoice.parentNode.removeChild(spendChoice);
@@ -2383,7 +2382,7 @@ function addChoices(uichoice, choices, invalidChoices, spent, remainingSpend, re
       div = document.createElement("DIV");
       if (isResultChoice && ["Pass", "Fail"].includes(c)) {
         div.id = "resultchoice";
-        document.getElementById("promptline").appendChild(div);
+        uichoice.appendChild(div);
       } else if (isResultChoice && c == "Spend") {
         div.id = "spendchoice";
         document.getElementById("uidice").appendChild(div);
@@ -3121,10 +3120,6 @@ function updateBottomText(gameStage, turnPhase, characters, turnIdx, playerIdx, 
     }
     return;
   }
-  if (turnIdx != null) {
-    let name = serverNames[characters[turnIdx].name] ?? characters[turnIdx].name;
-    uiprompt.innerText = name + "'s " + turnPhase + " phase";
-  }
 }
 
 function updateGlobals(env, rumor, otherGlobals) {
@@ -3373,13 +3368,15 @@ function toggleAncient(e) {
 
 function updateDice(dice, playerIdx, monsterList) {
   let uidice = document.getElementById("uidice");
+  let spendDiv = document.getElementById("uispend");
   if (dice == null) {
+    document.getElementById("uifloat").appendChild(spendDiv);
     uidice.style.display = "none";
     return;
   }
   // Unconditionally show the spend bar when rolling dice to avoid the dice moving around.
-  let spendDiv = document.getElementById("uispend");
   spendDiv.classList.add("spendable");
+  uidice.appendChild(spendDiv);
 
   if (dice.name != null && dice.name != chosenAncient) {  // Show the monster/card that is causing this dice roll.
     let found = false;
@@ -4307,7 +4304,7 @@ function updatePossession(div, info, spent, chosen, selectType) {
   let chosenDiv = div.getElementsByClassName("chosencheck")[0];
   chosenDiv.innerText = showText;
   div.classList.toggle("chosen", chosen.includes(info.handle));
-  div.classList.toggle("check", showText == "✔️");
+  chosenDiv.classList.toggle("check", showText == "✔️");
   if (selectType == "hands" || selectType == null) {
     div.classList.toggle("active", Boolean(info.active));
   } else {

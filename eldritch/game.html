@@ -61,6 +61,23 @@
             <div id="scrollcardsleft" class="cardscrollbtn" onclick="scrollCards(event, -1)">◀️</div>
             <div id="uicardchoice" class="cardscroller"></div>
             <div id="scrollcardsright" class="cardscrollbtn" onclick="scrollCards(event, 1)">▶️</div>
+            <div id="uifloat">
+              <div id="promptline"><div id="uiprompt"></div></div>
+              <div id="uispend"></div>
+            </div>
+            <div id="uihang">
+              <div id="uidice">
+                <div id="dice" onclick="roll(event)"><div id="dicebg">❌</div></div>
+              </div>
+              <div id="uichoice"></div>
+              <div id="uimonsterchoice">
+                <div id="monsterchoices"></div>
+                <div id="monsterchoicebuttons">
+                  <div class="button" onclick="confirmMonsterChoice(event)">Confirm</div>
+                  <div class="button" onclick="resetMonsterChoice(event)">Reset</div>
+                </div>
+              </div>
+            </div>
           </div>
           <div id="globalscroll" class="cardscroll">
             <div id="scrollglobalsleft" class="cardscrollbtn" onclick="scrollCards(event, -1)">◀️</div>
@@ -74,9 +91,9 @@
           </div>
         </div>
         <div id="ancientdetails" style="display: none">
-         <div id="bigancient" class="cnvcontainer"><canvas></canvas></div>
-         <div id="doomtrack" class="bigtrack"></div>
-         <div id="gatetrack" class="bigtrack"></div>
+          <div id="bigancient" class="cnvcontainer"><canvas></canvas></div>
+          <div id="doomtrack" class="bigtrack"></div>
+          <div id="gatetrack" class="bigtrack"></div>
         </div>
         <div id="enteringscroll" class="cardscroll"></div>
         <div id="uileft">
@@ -207,7 +224,6 @@
       </div>
       <div id="uibottom">
         <div id="bottomcenter">
-          <div id="promptline"><div id="uiprompt"></div></div>
           <div id="start">
             <div class="button" onclick="start(event)">Start</div>
             <table>
@@ -313,18 +329,6 @@
               </tbody>
             </table>
           </div>
-          <div id="uidice">
-            <div id="dice" onclick="roll(event)"><div id="dicebg">❌</div></div>
-          </div>
-          <div id="uichoice"></div>
-          <div id="uimonsterchoice">
-            <div id="monsterchoices"></div>
-            <div id="monsterchoicebuttons">
-              <div class="button" onclick="confirmMonsterChoice(event)">Confirm</div>
-              <div class="button" onclick="resetMonsterChoice(event)">Reset</div>
-            </div>
-          </div>
-          <div id="uispend"></div>
           <button id="stepbutton" onclick="step(event)" style="display: none">Step</button>
         </div>
       </div>
