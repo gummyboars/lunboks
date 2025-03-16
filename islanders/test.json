@@ -85,7 +85,8 @@
             "longest_route": 1,
             "name": "Casey",
             "trade_ratios": {
-                "rsrc1": 2
+                "rsrc1": 2,
+                "default": 3
             },
             "unusable": {}
         },
@@ -101,7 +102,9 @@
             "knights_played": 0,
             "longest_route": 1,
             "name": "Andy",
-            "trade_ratios": {},
+            "trade_ratios": {
+                "rsrc4": 2
+            },
             "unusable": {}
         }
     ],

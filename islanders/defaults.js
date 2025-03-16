@@ -48,6 +48,28 @@ function initializeDefaults() {
   let largestArmy = createCard("indianred", "defaultlargestarmy", cardHeight * 4 / 5, cardHeight, "Army");
   assets.appendChild(largestArmy);
 
+  let gold = document.createElement("CANVAS");
+  gold.width = cardWidth;
+  gold.height = cardHeight;
+  gold.id = "defaultgoldcard";
+  ctx = gold.getContext("2d");
+  ctx.clearRect(0, 0, cardWidth, cardHeight);
+  renderText(ctx, "\u{1fa99}", cardWidth / 2, cardHeight / 2, cardWidth);
+  let drawn = ctx.getImageData(cardWidth/2, cardHeight/2, 1, 1).data[3];
+  if (drawn == 0) {
+    ctx.clearRect(0, 0, cardWidth, cardHeight);
+    ctx.strokeStyle = "darkgray";
+    ctx.fillStyle = "gold";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(cardWidth/2, cardHeight/2, 2*cardWidth/5, 0, 2*Math.PI);
+    ctx.fill();
+    ctx.globalAlpha = 0.5;
+    ctx.filter = "grayscale(100%)";
+    renderText(ctx, "🏛️", cardWidth / 2, cardHeight / 2, 3 * cardWidth / 5, "darkgray");
+  }
+  assets.append(gold);
+
   let costCard = document.createElement("CANVAS");
   costCard.width = cardHeight * 5 / 6;
   costCard.height = cardHeight;
