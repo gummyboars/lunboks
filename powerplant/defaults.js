@@ -88,6 +88,51 @@ cityUSADefaults = {
   "BOSTON": {"x": 0.9768844221105528, "y": 0.2923399770387518},
 };
 
+cityFranceDefaults = {
+  "MARSEILLE": {"x": 0.7536, "y": 0.8881889763779528},
+  "TOULON": {"x": 0.8432, "y": 0.9102362204724409},
+  "NICE": {"x": 0.932, "y": 0.8346456692913385},
+  "AIX-EN-PROVENCE": {"x": 0.8, "y": 0.837007874015748},
+  "NIMES": {"x": 0.7008, "y": 0.7968503937007874},
+  "MONTPELLIER": {"x": 0.64, "y": 0.8559055118110236},
+  "PERPIGNAN": {"x": 0.6024, "y": 0.9582677165354331},
+  "CARCASSONNE": {"x": 0.5496, "y": 0.8992125984251969},
+  "TOULOUSE": {"x": 0.4856, "y": 0.8409448818897638},
+  "LOURDES": {"x": 0.3712, "y": 0.9062992125984252},
+  "BIARRITZ": {"x": 0.2616, "y": 0.8551181102362204},
+  "BORDEAUX": {"x": 0.3344, "y": 0.7141732283464567},
+  "LA ROCHELLE": {"x": 0.2928, "y": 0.5669291338582677},
+  "NANTES": {"x": 0.2528, "y": 0.462992125984252},
+  "CLERMONT-FERRAND": {"x": 0.608, "y": 0.6086614173228346},
+  "LIMOGES": {"x": 0.4712, "y": 0.6055118110236221},
+  "ORLEANS": {"x": 0.5336, "y": 0.38976377952755903},
+  "PARIS-A": {"x": 0.5424, "y": 0.24330708661417322},
+  "PARIS-B": {"x": 0.6096, "y": 0.2543307086614173},
+  "PARIS-C": {"x": 0.5664, "y": 0.30708661417322836},
+  "TOURS": {"x": 0.4376, "y": 0.45354330708661417},
+  "ANGERS": {"x": 0.3448, "y": 0.43622047244094486},
+  "RENNES": {"x": 0.2504, "y": 0.3535433070866142},
+  "BREST": {"x": 0.0528, "y": 0.3236220472440945},
+  "CAEN": {"x": 0.3288, "y": 0.2574803149606299},
+  "LE MANS": {"x": 0.4008, "y": 0.3606299212598425},
+  "LE HAVRE": {"x": 0.376, "y": 0.17874015748031497},
+  "ROUEN": {"x": 0.4664, "y": 0.20708661417322835},
+  "GRENOBLE": {"x": 0.8264, "y": 0.6881889763779527},
+  "SAINT-ETIENNE": {"x": 0.7024, "y": 0.6677165354330709},
+  "LYON": {"x": 0.7608, "y": 0.5937007874015748},
+  "CHAMONIX": {"x": 0.908, "y": 0.5897637795275591},
+  "DIJON": {"x": 0.756, "y": 0.4409448818897638},
+  "BESANCON": {"x": 0.8512, "y": 0.4637795275590551},
+  "MULHOUSE": {"x": 0.932, "y": 0.3937007874015748},
+  "STRASBOURG": {"x": 0.9528, "y": 0.2968503937007874},
+  "NANCY": {"x": 0.8504, "y": 0.3125984251968504},
+  "METZ": {"x": 0.8504, "y": 0.2251968503937008},
+  "REIMS": {"x": 0.6992, "y": 0.22598425196850394},
+  "AMIENS": {"x": 0.5472, "y": 0.14960629921259844},
+  "LILLE": {"x": 0.6208, "y": 0.06929133858267716},
+  "CALAIS": {"x": 0.5144, "y": 0.03700787401574803},
+};
+
 cityGermanyConnections = [
   ["FLENSBURG", "KIEL", 4],
   ["HAMBURG", "KIEL", 8],
@@ -266,6 +311,102 @@ cityUSAConnections = [
   ["NORFOLK", "RALEIGH", 3],
 ];
 
+cityFranceConnections = [
+  ["NICE", "TOULON", 7],
+  ["NICE", "AIX-EN-PROVENCE", 8],
+  ["MARSEILLE", "TOULON", 3],
+  ["MARSEILLE", "AIX-EN-PROVENCE", 0],
+  ["NIMES", "AIX-EN-PROVENCE", 8],
+  ["NIMES", "MONTPELLIER", 3],
+  ["PERPIGNAN", "MONTPELLIER", 11],
+  ["PERPIGNAN", "CARCASSONNE", 6],
+  ["MONTPELLIER", "CARCASSONNE", 9],
+  ["TOULOUSE", "MONTPELLIER", 14],
+  ["TOULOUSE", "CARCASSONNE", 6],
+  ["TOULOUSE", "LOURDES", 10],
+  ["TOULOUSE", "BORDEAUX", 14],
+  ["LOURDES", "PERPIGNAN", 20],
+  ["LOURDES", "CARCASSONNE", 15],
+  ["LOURDES", "BIARRITZ", 9],
+  ["LOURDES", "BORDEAUX", 14],
+  ["BIARRITZ", "BORDEAUX", 14],
+  ["LA ROCHELLE", "NANTES", 9],
+  ["LA ROCHELLE", "ANGERS", 12],
+  ["LA ROCHELLE", "TOURS", 13],
+  ["LA ROCHELLE", "LIMOGES", 13],
+  ["LA ROCHELLE", "BORDEAUX", 13],
+  ["LIMOGES", "BORDEAUX", 13],
+  ["LIMOGES", "TOULOUSE", 19],
+  ["LIMOGES", "TOURS", 13],
+  ["LIMOGES", "ORLEANS", 19],
+  ["LIMOGES", "CLERMONT-FERRAND", 12],
+  ["CLERMONT-FERRAND", "ORLEANS", 18],
+  ["CLERMONT-FERRAND", "TOULOUSE", 24],
+  ["CLERMONT-FERRAND", "MONTPELLIER", 22],
+  ["CLERMONT-FERRAND", "DIJON", 19],
+  ["CLERMONT-FERRAND", "LYON", 11],
+  ["CLERMONT-FERRAND", "SAINT-ETIENNE", 10],
+  ["SAINT-ETIENNE", "MONTPELLIER", 18],
+  ["SAINT-ETIENNE", "NIMES", 16],
+  ["SAINT-ETIENNE", "LYON", 6],
+  ["SAINT-ETIENNE", "GRENOBLE", 10],
+  ["GRENOBLE", "NIMES", 18],
+  ["GRENOBLE", "AIX-EN-PROVENCE", 17],
+  ["GRENOBLE", "NICE", 19],
+  ["GRENOBLE", "LYON", 7],
+  ["GRENOBLE", "CHAMONIX", 12],
+  ["CHAMONIX", "LYON", 13],
+  ["CHAMONIX", "BESANCON", 19],
+  ["BESANCON", "LYON", 16],
+  ["BESANCON", "DIJON", 6],
+  ["BESANCON", "NANCY", 14],
+  ["BESANCON", "MULHOUSE", 8],
+  ["STRASBOURG", "MULHOUSE", 6],
+  ["STRASBOURG", "METZ", 11],
+  ["NANCY", "METZ", 3],
+  ["NANCY", "STRASBOURG", 10],
+  ["NANCY", "MULHOUSE", 12],
+  ["NANCY", "DIJON", 15],
+  ["LYON", "DIJON", 13],
+  ["REIMS", "METZ", 12],
+  ["REIMS", "NANCY", 13],
+  ["REIMS", "PARIS-B", 9],
+  ["REIMS", "AMIENS", 11],
+  ["REIMS", "LILLE", 9],
+  ["PARIS-B", "NANCY", 21],
+  ["PARIS-B", "DIJON", 20],
+  ["PARIS-B", "PARIS-A", 0],
+  ["PARIS-B", "PARIS-C", 0],
+  ["PARIS-C", "PARIS-A", 0],
+  ["PARIS-C", "ORLEANS", 7],
+  ["PARIS-C", "LE MANS", 10],
+  ["PARIS-C", "CAEN", 12],
+  ["ORLEANS", "DIJON", 18],
+  ["ORLEANS", "TOURS", 7],
+  ["ORLEANS", "LE MANS", 8],
+  ["TOURS", "ANGERS", 6],
+  ["TOURS", "LE MANS", 5],
+  ["ANGERS", "NANTES", 5],
+  ["ANGERS", "RENNES", 7],
+  ["ANGERS", "LE MANS", 5],
+  ["BREST", "NANTES", 19],
+  ["BREST", "RENNES", 16],
+  ["RENNES", "NANTES", 7],
+  ["RENNES", "LE MANS", 9],
+  ["RENNES", "CAEN", 12],
+  ["CAEN", "LE MANS", 10],
+  ["CAEN", "ROUEN", 9],
+  ["CAEN", "LE HAVRE", 5],
+  ["ROUEN", "PARIS-A", 9],
+  ["ROUEN", "LE HAVRE", 5],
+  ["ROUEN", "AMIENS", 6],
+  ["CALAIS", "LE HAVRE", 13],
+  ["CALAIS", "AMIENS", 8],
+  ["CALAIS", "LILLE", 7],
+  ["AMIENS", "LILLE", 7],
+  ["AMIENS", "PARIS-A", 9],
+];
+
 function setDefaultXYPercent(div, boardCnv, board, city) {
   let bheight;
   let bwidth;
@@ -288,6 +429,13 @@ function setDefaultXYPercent(div, boardCnv, board, city) {
       xpct = "5.025%";
       ypct = "8.11%";
       mapping = cityUSADefaults;
+      break;
+    case "France":
+      bheight = 1270;
+      bwidth = 1250;
+      xpct = "4.10%";
+      ypct = "6.61%";
+      mapping = cityFranceDefaults;
       break;
     default:
       throw new Error("unknown board " + board);
@@ -316,6 +464,9 @@ function renderDefaultToCanvas(cnv, width, height, assetName, variant) {
   }
   if (assetName == "USA") {
     return renderUSA(cnv, width, height);
+  }
+  if (assetName == "France") {
+    return renderFrance(cnv, width, height);
   }
   if (assetName == "supply") {
     return renderSupply(cnv, width, height);
@@ -528,6 +679,70 @@ function renderUSA(cnv, width, height) {
   ctx.restore();
 
   drawDefaultCities(cityUSADefaults, cityUSAConnections, radius, renderWidth, renderHeight);
+  ctx.restore();
+}
+
+function renderFrance(cnv, width, height) {
+  let bheight = 1270;
+  let bwidth = 1250;
+  let renderWidth;
+  let renderHeight;
+  if (height / width > bheight / bwidth) {
+    renderWidth = width;
+    renderHeight = bheight * width / bwidth;
+  } else {
+    renderHeight = height;
+    renderWidth = bwidth * height / bheight;
+  }
+
+  ctx = cnv.getContext("2d");
+  ctx.clearRect(0, 0, width, height);
+  ctx.save();
+  ctx.translate((width - renderWidth)/2, (height - renderHeight)/2);
+  ctx.fillStyle = "darkgreen";
+  ctx.fillRect(0, 0, renderWidth, renderHeight);
+  let radius = renderWidth * 4 / 125;
+
+  ctx.save();
+  ctx.fillStyle = "saddlebrown";
+  ctx.fillRect(0.46*renderWidth, 0, 0.54*renderWidth, 0.355*renderHeight);
+  ctx.fillStyle = "yellow";
+  ctx.fillRect(0.65*renderWidth, 0.35*renderHeight, 0.35*renderWidth, 0.65*renderHeight);
+  ctx.fillStyle = "red";
+  ctx.fillRect(0.2*renderWidth, 0.43*renderHeight, 0.45*renderWidth, 0.57*renderHeight);
+  ctx.fillStyle = "cyan";
+  ctx.beginPath();
+  ctx.moveTo(0.555*renderWidth, renderHeight);
+  ctx.lineTo(0.64*renderWidth, 0.73*renderHeight);
+  ctx.lineTo(renderWidth, 0.73*renderHeight);
+  ctx.lineTo(renderWidth, renderHeight);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = "purple";
+  ctx.beginPath();
+  ctx.moveTo(0, 0.43*renderHeight);
+  ctx.lineTo(0.29*renderWidth, 0.43*renderHeight);
+  ctx.lineTo(0.29*renderWidth, 0.50*renderHeight);
+  ctx.lineTo(0.46*renderWidth, 0.50*renderHeight);
+  ctx.lineTo(0.51*renderWidth, 0.36*renderHeight);
+  ctx.lineTo(0.51*renderWidth, 0.18*renderHeight);
+  ctx.lineTo(0.46*renderWidth, 0);
+  ctx.lineTo(0, 0.30*renderHeight);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = "blue";
+  ctx.beginPath();
+  ctx.moveTo(0.65*renderWidth, 0.73*renderHeight);
+  ctx.lineTo(0.40*renderWidth, 0.73*renderHeight);
+  ctx.lineTo(0.40*renderWidth, 0.41*renderHeight);
+  ctx.lineTo(0.52*renderWidth, 0.31*renderHeight);
+  ctx.lineTo(0.65*renderWidth, 0.31*renderHeight);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillRect(0.50*renderWidth, 0.20*renderHeight, 0.15*renderWidth, 0.15*renderHeight);
+  ctx.restore();
+ 
+  drawDefaultCities(cityFranceDefaults, cityFranceConnections, radius, renderWidth, renderHeight);
   ctx.restore();
 }
 

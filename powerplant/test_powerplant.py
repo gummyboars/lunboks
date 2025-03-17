@@ -68,6 +68,46 @@ class OrderTest(unittest.TestCase):
     self.assertTrue(plantlist[9].plus)
 
 
+class ConnectAllCitiesTest(unittest.TestCase):
+  def testConnectAllCities(self):
+    for country in ["Germany", "USA", "France"]:
+      with self.subTest(country=country):
+        cities.CreateCities(country)
+
+
+class InitialSetupTest(unittest.TestCase):
+  def setUp(self):
+    colors = sorted(powerplant.PowerPlantGame.COLORS)
+    self.players = [powerplant.Player(name=f"p{x}", color=colors[x]) for x in range(5)]
+
+  def testOldPlants(self):
+    germany = powerplant.GameState(self.players, "Germany", "old")
+    self.assertEqual(len(germany.plants), 35)
+    self.assertEqual(germany.plants[0].cost, 13)
+    self.assertEqual([plant.cost for plant in germany.market], [3, 4, 5, 6, 7, 8, 9, 10])
+    self.assertEqual(germany.colors, set())
+
+  def testNewPlants(self):
+    germany = powerplant.GameState(self.players, "Germany", "new")
+    self.assertEqual(len(germany.plants), 35)
+    self.assertEqual(germany.plants[0].cost, 11)
+    self.assertEqual([plant.cost for plant in germany.market], [1, 2, 3, 4, 5, 6, 7, 8])
+    self.assertEqual(germany.colors, set())
+
+  def testOldPlantsFrance(self):
+    france = powerplant.GameState(self.players, "France", "old")
+    self.assertEqual(len(france.plants), 34)
+    self.assertEqual(france.plants[0].cost, 11)
+    self.assertEqual([plant.cost for plant in france.market], [3, 4, 5, 6, 7, 8, 9, 10])
+    self.assertEqual(france.colors, {cities.Color.BLUE})
+
+  def testNewPlantsFrance(self):
+    france = powerplant.GameState(self.players, "France", "new")
+    self.assertEqual(len(france.plants), 34)
+    self.assertEqual([plant.cost for plant in france.market], [1, 2, 3, 4, 5, 6, 7, 8])
+    self.assertEqual(france.colors, {cities.Color.BLUE})
+
+
 class BaseBaseTest(unittest.TestCase):
   NUM_PLAYERS = 5  # Carefully chosen to not throw out any power plants to start the game.
 

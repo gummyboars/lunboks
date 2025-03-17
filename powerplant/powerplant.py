@@ -59,27 +59,7 @@ COSTS: dict[materials.Resource, list[int]] = {
   URANIUM: [16, 14, 12, 10, 8, 7, 6, 5, 4, 3, 2, 1],
 }
 PAYMENTS = [
-  10,
-  22,
-  33,
-  44,
-  54,
-  64,
-  73,
-  82,
-  90,
-  98,
-  105,
-  112,
-  118,
-  124,
-  129,
-  134,
-  138,
-  142,
-  145,
-  148,
-  150,
+  *(10, 22, 33, 44, 54, 64, 73, 82, 90, 98, 105, 112, 118, 124, 129, 134, 138, 142, 145, 148, 150)
 ]
 STAGE_3_COST = 10000
 
@@ -138,19 +118,24 @@ class GameState:
     self.pending_spend = 0
     self.powered = {}
     self.winner = None
-    self.setup_plants(plantlist)
+    self.setup_plants(plantlist, region)
+    if region == "France":
+      self.colors.add(cities.Color.BLUE)
 
-  def setup_plants(self, plantlist):
+  def setup_plants(self, plantlist, region):
     to_randomize = []
-    top_plant = None
+    top_plant = []
     for plant in self.plants:
       if plant.cost in plantinfo.FixedPlants(plantlist):
         self.market.append(plant)
+      elif region == "France" and plantlist == "old" and plant.cost == 11:
+        top_plant = [plant]
       elif plant.cost == plantinfo.TopPlant(plantlist):
-        top_plant = plant
+        if region != "France":  # In France, this card is instead removed from the game.
+          top_plant = [plant]
       else:
         to_randomize.append(plant)
-    if top_plant is None:
+    if not top_plant and region != "France":
       raise RuntimeError("Top plant not found")
     if len(self.market) != 8:
       raise RuntimeError(f"Incorrect initial market size {self.market}")
@@ -159,7 +144,7 @@ class GameState:
     random.shuffle(to_randomize)
     for _ in range(COUNTS[len(self.players)].plants_removed):
       to_randomize.pop()
-    self.plants = [top_plant] + to_randomize + [plantinfo.Plant(STAGE_3_COST, GREEN, 0, 0)]
+    self.plants = top_plant + to_randomize + [plantinfo.Plant(STAGE_3_COST, GREEN, 0, 0)]
 
   def json_repr(self):
     data = {}
@@ -773,7 +758,7 @@ class GameState:
 
 class PowerPlantGame(BaseGame):
   COLORS = frozenset({"red", "blue", "forestgreen", "darkviolet", "saddlebrown", "deepskyblue"})
-  OPTIONS = {"region": ["Germany", "USA"], "plantlist": ["old", "new"]}  # noqa: RUF012
+  OPTIONS = {"region": ["Germany", "USA", "France"], "plantlist": ["old", "new"]}  # noqa: RUF012
 
   def __init__(self):
     self.game = None
