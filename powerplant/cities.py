@@ -27,6 +27,12 @@ class City:
 
 
 def connect(cities, name1, name2, cost):
+  if name1 not in cities:
+    raise ValueError(f"Unknown city {name1}")
+  if name2 not in cities:
+    raise ValueError(f"Unknown city {name2}")
+  if name2 in cities[name1].connections:
+    raise ValueError(f"Duplicate connection {name2} for {name1}")
   cities[name1].connections[name2] = cost
   cities[name2].connections[name1] = cost
 
@@ -108,7 +114,6 @@ def Germany():
   connect(cities, "KASSEL", "FRANKFURT-M", 13)
   connect(cities, "KASSEL", "FULDA", 8)
   connect(cities, "KASSEL", "ERFURT", 15)
-  connect(cities, "KOLN", "DUSSELDORF", 4)
   connect(cities, "KOLN", "DORTMUND", 10)
   connect(cities, "KOLN", "AACHEN", 7)
   connect(cities, "KOLN", "TRIER", 20)
@@ -139,7 +144,6 @@ def Germany():
   connect(cities, "MUNCHEN", "PASSAU", 14)
   connect(cities, "REGENSBURG", "PASSAU", 12)
   connect(cities, "REGENSBURG", "MUNCHEN", 10)
-  connect(cities, "REGENSBURG", "AUGSBURG", 13)
   connect(cities, "REGENSBURG", "NURNBERG", 12)
   connect(cities, "NURNBERG", "WURZBURG", 8)
   connect(cities, "NURNBERG", "ERFURT", 21)
@@ -301,15 +305,161 @@ def USA():
   return cities
 
 
+def France():
+  city_list = [
+    City("MARSEILLE", Color.CYAN),
+    City("TOULON", Color.CYAN),
+    City("NICE", Color.CYAN),
+    City("AIX-EN-PROVENCE", Color.CYAN),
+    City("NIMES", Color.CYAN),
+    City("MONTPELLIER", Color.CYAN),
+    City("PERPIGNAN", Color.CYAN),
+    City("CARCASSONNE", Color.RED),
+    City("TOULOUSE", Color.RED),
+    City("LOURDES", Color.RED),
+    City("BIARRITZ", Color.RED),
+    City("BORDEAUX", Color.RED),
+    City("LA ROCHELLE", Color.RED),
+    City("NANTES", Color.RED),
+    City("CLERMONT-FERRAND", Color.BLUE),
+    City("LIMOGES", Color.BLUE),
+    City("ORLEANS", Color.BLUE),
+    City("PARIS-A", Color.BLUE),
+    City("PARIS-B", Color.BLUE),
+    City("PARIS-C", Color.BLUE),
+    City("TOURS", Color.BLUE),
+    City("ANGERS", Color.PURPLE),
+    City("RENNES", Color.PURPLE),
+    City("BREST", Color.PURPLE),
+    City("CAEN", Color.PURPLE),
+    City("LE MANS", Color.PURPLE),
+    City("LE HAVRE", Color.PURPLE),
+    City("ROUEN", Color.PURPLE),
+    City("GRENOBLE", Color.YELLOW),
+    City("SAINT-ETIENNE", Color.YELLOW),
+    City("LYON", Color.YELLOW),
+    City("CHAMONIX", Color.YELLOW),
+    City("DIJON", Color.YELLOW),
+    City("BESANCON", Color.YELLOW),
+    City("MULHOUSE", Color.YELLOW),
+    City("STRASBOURG", Color.BROWN),
+    City("NANCY", Color.BROWN),
+    City("METZ", Color.BROWN),
+    City("REIMS", Color.BROWN),
+    City("AMIENS", Color.BROWN),
+    City("LILLE", Color.BROWN),
+    City("CALAIS", Color.BROWN),
+  ]
+  cities = {city.name: city for city in city_list}
+  connect(cities, "NICE", "TOULON", 7)
+  connect(cities, "NICE", "AIX-EN-PROVENCE", 8)
+  connect(cities, "MARSEILLE", "TOULON", 3)
+  connect(cities, "MARSEILLE", "AIX-EN-PROVENCE", 0)
+  connect(cities, "NIMES", "AIX-EN-PROVENCE", 8)
+  connect(cities, "NIMES", "MONTPELLIER", 3)
+  connect(cities, "PERPIGNAN", "MONTPELLIER", 11)
+  connect(cities, "PERPIGNAN", "CARCASSONNE", 6)
+  connect(cities, "MONTPELLIER", "CARCASSONNE", 9)
+  connect(cities, "TOULOUSE", "MONTPELLIER", 14)
+  connect(cities, "TOULOUSE", "CARCASSONNE", 6)
+  connect(cities, "TOULOUSE", "LOURDES", 10)
+  connect(cities, "TOULOUSE", "BORDEAUX", 14)
+  connect(cities, "LOURDES", "PERPIGNAN", 20)
+  connect(cities, "LOURDES", "CARCASSONNE", 15)
+  connect(cities, "LOURDES", "BIARRITZ", 9)
+  connect(cities, "LOURDES", "BORDEAUX", 14)
+  connect(cities, "BIARRITZ", "BORDEAUX", 14)
+  connect(cities, "LA ROCHELLE", "NANTES", 9)
+  connect(cities, "LA ROCHELLE", "ANGERS", 12)
+  connect(cities, "LA ROCHELLE", "TOURS", 13)
+  connect(cities, "LA ROCHELLE", "LIMOGES", 13)
+  connect(cities, "LA ROCHELLE", "BORDEAUX", 13)
+  connect(cities, "LIMOGES", "BORDEAUX", 13)
+  connect(cities, "LIMOGES", "TOULOUSE", 19)
+  connect(cities, "LIMOGES", "TOURS", 13)
+  connect(cities, "LIMOGES", "ORLEANS", 19)
+  connect(cities, "LIMOGES", "CLERMONT-FERRAND", 12)
+  connect(cities, "CLERMONT-FERRAND", "ORLEANS", 18)
+  connect(cities, "CLERMONT-FERRAND", "TOULOUSE", 24)
+  connect(cities, "CLERMONT-FERRAND", "MONTPELLIER", 22)
+  connect(cities, "CLERMONT-FERRAND", "DIJON", 19)
+  connect(cities, "CLERMONT-FERRAND", "LYON", 11)
+  connect(cities, "CLERMONT-FERRAND", "SAINT-ETIENNE", 10)
+  connect(cities, "SAINT-ETIENNE", "MONTPELLIER", 18)
+  connect(cities, "SAINT-ETIENNE", "NIMES", 16)
+  connect(cities, "SAINT-ETIENNE", "LYON", 6)
+  connect(cities, "SAINT-ETIENNE", "GRENOBLE", 10)
+  connect(cities, "GRENOBLE", "NIMES", 18)
+  connect(cities, "GRENOBLE", "AIX-EN-PROVENCE", 17)
+  connect(cities, "GRENOBLE", "NICE", 19)
+  connect(cities, "GRENOBLE", "LYON", 7)
+  connect(cities, "GRENOBLE", "CHAMONIX", 12)
+  connect(cities, "CHAMONIX", "LYON", 13)
+  connect(cities, "CHAMONIX", "BESANCON", 19)
+  connect(cities, "BESANCON", "LYON", 16)
+  connect(cities, "BESANCON", "DIJON", 6)
+  connect(cities, "BESANCON", "NANCY", 14)
+  connect(cities, "BESANCON", "MULHOUSE", 8)
+  connect(cities, "STRASBOURG", "MULHOUSE", 6)
+  connect(cities, "STRASBOURG", "METZ", 11)
+  connect(cities, "NANCY", "METZ", 3)
+  connect(cities, "NANCY", "STRASBOURG", 10)
+  connect(cities, "NANCY", "MULHOUSE", 12)
+  connect(cities, "NANCY", "DIJON", 15)
+  connect(cities, "LYON", "DIJON", 13)
+  connect(cities, "REIMS", "METZ", 12)
+  connect(cities, "REIMS", "NANCY", 13)
+  connect(cities, "REIMS", "PARIS-B", 9)
+  connect(cities, "REIMS", "AMIENS", 11)
+  connect(cities, "REIMS", "LILLE", 9)
+  connect(cities, "PARIS-B", "NANCY", 21)
+  connect(cities, "PARIS-B", "DIJON", 20)
+  connect(cities, "PARIS-B", "PARIS-A", 0)
+  connect(cities, "PARIS-B", "PARIS-C", 0)
+  connect(cities, "PARIS-C", "PARIS-A", 0)
+  connect(cities, "PARIS-C", "ORLEANS", 7)
+  connect(cities, "PARIS-C", "LE MANS", 10)
+  connect(cities, "PARIS-C", "CAEN", 12)
+  connect(cities, "ORLEANS", "DIJON", 18)
+  connect(cities, "ORLEANS", "TOURS", 7)
+  connect(cities, "ORLEANS", "LE MANS", 8)
+  connect(cities, "TOURS", "ANGERS", 6)
+  connect(cities, "TOURS", "LE MANS", 5)
+  connect(cities, "ANGERS", "NANTES", 5)
+  connect(cities, "ANGERS", "RENNES", 7)
+  connect(cities, "ANGERS", "LE MANS", 5)
+  connect(cities, "BREST", "NANTES", 19)
+  connect(cities, "BREST", "RENNES", 16)
+  connect(cities, "RENNES", "NANTES", 7)
+  connect(cities, "RENNES", "LE MANS", 9)
+  connect(cities, "RENNES", "CAEN", 12)
+  connect(cities, "CAEN", "LE MANS", 10)
+  connect(cities, "CAEN", "ROUEN", 9)
+  connect(cities, "CAEN", "LE HAVRE", 5)
+  connect(cities, "ROUEN", "PARIS-A", 9)
+  connect(cities, "ROUEN", "LE HAVRE", 5)
+  connect(cities, "ROUEN", "AMIENS", 6)
+  connect(cities, "CALAIS", "LE HAVRE", 13)
+  connect(cities, "CALAIS", "AMIENS", 8)
+  connect(cities, "CALAIS", "LILLE", 7)
+  connect(cities, "AMIENS", "LILLE", 7)
+  connect(cities, "AMIENS", "PARIS-A", 9)
+  return cities
+
+
 def CreateCities(region):
   if region == "Germany":
     return Germany()
   if region == "USA":
     return USA()
+  if region == "France":
+    return France()
   raise RuntimeError(f"Unknown region {region}")
 
 
 def StartingResources(region):
   if region in ["Germany", "USA"]:
     return {Resource.COAL: 24, Resource.OIL: 18, Resource.GAS: 6, Resource.URANIUM: 2}
+  if region == "France":
+    return {Resource.COAL: 24, Resource.OIL: 18, Resource.GAS: 6, Resource.URANIUM: 8}
   raise RuntimeError(f"Unknown region {region}")
