@@ -1512,6 +1512,9 @@ class IslandersState:
   def _check_road_building(self, location, player, road_type):
     left_corner = location.corner_left
     right_corner = location.corner_right
+    # Validate that the road does not go out of bounds.
+    if not all(loc in self.tiles for loc in location.get_end_tiles()):
+      raise InvalidMove(f"You cannot place a {road_type} out of bounds.")
     # Validate that one side of the road is land.
     self._check_edge_type(location, road_type)
     # Validate that ships are not placed next to the pirate.
@@ -2092,6 +2095,15 @@ class IslandersState:
         canonical_corner = self.corners_to_islands.get(loc)
         if canonical_corner not in self.placement_islands:
           raise InvalidMove("You cannot place your starting %s in that area." % piece_type)
+      else:
+        on_land = False
+        for tile_loc in loc.get_tiles():
+          if tile_loc not in self.tiles:
+            raise InvalidMove("You must place your %s in bounds." % piece_type)
+          if self.tiles[tile_loc].is_land:
+            on_land = True
+        if not on_land:
+          raise InvalidMove("You must place your starting %s on land." % piece_type)
       self.add_piece(Piece(loc.x, loc.y, piece_type, player))
       self.event_log.append(Event(piece_type, "{player%s} built a %s" % (player, piece_type)))
       self.action_stack.pop()
