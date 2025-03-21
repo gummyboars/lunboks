@@ -2008,6 +2008,16 @@ class TestInitialSettlement(BaseInputHandlerTest):
     self.assertEqual(self.c.player_data[0].trade_ratios["rsrc3"], 2)
     self.assertEqual(self.c.player_data[1].trade_ratios["rsrc1"], 2)
 
+  def testCannotSettleOutOfBounds(self):
+    self.c.tiles[(4, 2)].tile_type = "rsrc5"
+    self.c.tiles[(4, 2)].is_land = True
+    self.c.tiles[(4, 4)].tile_type = "space"
+    self.c.tiles[(4, 4)].is_land = False
+    with self.assertRaisesRegex(InvalidMove, "in bounds"):
+      self.c.handle(0, {"type": "settle", "location": [5, 1]})
+    with self.assertRaisesRegex(InvalidMove, "on land"):
+      self.c.handle(0, {"type": "settle", "location": [2, 4]})
+
   def testFirstRoadMustBeNextToFirstSettlement(self):
     self.c.handle(0, {"type": "settle", "location": [3, 7]})
     with self.assertRaisesRegex(InvalidMove, "must be connected"):
@@ -2211,6 +2221,7 @@ class TestHandleRoadInput(BaseInputHandlerTest):
       self.c.handle(0, {"type": "road", "location": [6, 4, 5, 3]})
 
   def testCannotBuildOnWater(self):
+    self.c.add_tile(islanders.Tile(13, 3, "space", False, None))  # Avoid out of bound issues
     self.c._add_road(Road([8, 4, 9, 3], "road", 0))
     with self.assertRaisesRegex(InvalidMove, "two land tiles"):
       self.c.handle(0, {"type": "road", "location": [9, 3, 11, 3]})
@@ -2271,6 +2282,12 @@ class TestHandleShipInput(BaseInputHandlerTest):
     self.c.player_data[0].cards.update({"rsrc1": 0, "rsrc2": 1, "rsrc4": 1})
     with self.assertRaisesRegex(InvalidMove, "1 {rsrc1}"):
       self.c.handle(0, {"type": "ship", "location": [3, 5, 5, 5]})
+
+  def testCannotBuildOutOfBounds(self):
+    self.c._add_road(Road([2, 6, 3, 5], "ship", 0))
+    self.c._add_road(Road([0, 6, 2, 6], "ship", 0))
+    with self.assertRaisesRegex(InvalidMove, "out of bounds"):
+      self.c.handle(0, {"type": "ship", "location": [-1, 7, 0, 6]})
 
   def testCannotBuildOnLand(self):
     self.c._add_road(Road([2, 6, 3, 5], "ship", 0))
@@ -2550,6 +2567,7 @@ class TestShipOpenClosedCalculation(BaseInputHandlerTest):
         self.assertTrue(self.c.roads[loc].closed)
 
   def testRecomputeMovableAfterShipMoveToDifferentNetwork(self):
+    self.c.add_tile(islanders.Tile(-2, 6, "space", False, None))  # Avoid out of bound issues
     self.c.add_piece(islanders.Piece(9, 5, "settlement", 0))
     self.c.add_piece(islanders.Piece(3, 7, "settlement", 0))
     roads = [(2, 6, 3, 5), (8, 4, 9, 5), (6, 4, 8, 4)]
