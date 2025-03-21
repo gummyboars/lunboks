@@ -108,6 +108,7 @@ counterOffers = [];
 handSelection = {};
 devCardType = null;  // knight, yearofplenty, roadbuilding, monopoly
 draggedWin = null;
+sizeTimeout = null;
 
 
 function formatServerString(serverString) {
@@ -918,7 +919,9 @@ function maybeShowBuryWindow() {
   if (treasure == "collectpi") {
     let cnt = document.createElement("DIV");
     cnt.style.width = 1.5*cardWidth + "px";
+    cnt.style.maxWidth = 1.5*cardWidth + "px";
     cnt.style.height = 1.5*cardHeight + "px";
+    cnt.style.position = "relative";
     cnt.style.display = "block";
     div.appendChild(cnt);
     cnt.appendChild(cnv);
@@ -932,19 +935,18 @@ function maybeShowBuryWindow() {
     cnv2.style.display = "block";
     cnt.appendChild(cnv2);
     renderAssetToCanvas(cnv2, "rsrc3card", "");
-    cnv.style.position = "absolute";
-    cnv.style.top = "0";
-    cnv.style.right = "0";
+    cnv2.style.position = "absolute";
+    cnv2.style.top = "0";
+    cnv2.style.right = "0";
     let cnv3 = document.createElement("CANVAS");
     cnv3.width = cardWidth;
     cnv3.height = cardHeight;
     cnv3.style.display = "block";
     cnt.appendChild(cnv3);
     renderAssetToCanvas(cnv3, "rsrc4card", "");
-    cnv.style.position = "absolute";
-    cnv.style.bottom = "0";
-    cnv.style.left = "16.66%";
-    // createCard("#9D6BBB", "default" + devData.name, cardWidth, cardHeight, devData.text, devData.bottomText); FIXME
+    cnv3.style.position = "absolute";
+    cnv3.style.bottom = "0";
+    cnv3.style.left = "16.66%";
   }
   if (treasure == "dev_road") {
     renderAssetToCanvas(cnv, "roadbuilding", "");
@@ -1327,6 +1329,12 @@ function onmsg(event) {
   longestRoutePlayer = data.longest_route_player;
   largestArmyPlayer = data.largest_army_player;
   eventLog = data.event_log;
+  let [oldMin, oldMax] = [minCoord, maxCoord];
+  [minCoord, maxCoord] = getTileMinMax(true);
+  if (oldMin.x != minCoord.x || oldMin.y != minCoord.y || oldMax.x != maxCoord.x || oldMax.y != maxCoord.y) {
+    remakeGrid();
+    centerCanvas();
+  }
   // TODO: this is just messy. Clean up initPlayerData.
   let myOld = myIdx;
   if ("you" in data) {
@@ -1335,7 +1343,6 @@ function onmsg(event) {
     myIdx = null;
   }
   if (firstMsg) {
-    centerCanvas();
     initPlayerData();
   } else if (myOld != myIdx) {
     initPlayerData();
@@ -1370,6 +1377,9 @@ function onmsg(event) {
   maybeShowRobWindow();
   maybeShowBuryWindow();
   maybeShowPortWindow();
+  document.getElementById("grid").classList.toggle("myturn", data.turn == myIdx);
+  document.getElementById("grid").classList.toggle("tileselect", ["robber", "expel", "deplete"].includes(turnPhase));
+  draw();
 }
 function updateEndTurn() {
   let canUseButton = false;
@@ -1999,6 +2009,7 @@ function windown(e) {
   e.currentTarget.startY = e.clientY - e.currentTarget.dY;
 }
 function bodyup(e) {
+  canvasup(e);
   if (e.button != 0) {
     return;
   }
@@ -2073,16 +2084,18 @@ function updateEventLog() {
   uidiv.scrollTop = uidiv.scrollHeight;
 }
 function sizeThings() {
-  let totalWidth = document.documentElement.clientWidth;
-  let totalHeight = document.documentElement.clientHeight;
-  document.getElementById('ui').style.width = totalWidth + "px";
-  document.getElementById('ui').style.height = totalHeight + "px";
-  rightWidth = document.getElementById('uiplayer').offsetWidth;
-  canWidth = totalWidth - rightWidth;
-  canHeight = totalHeight;
-  document.getElementById('uibottom').style.width = canWidth + "px";
-  document.getElementById('myCanvas').width = canWidth;
-  document.getElementById('myCanvas').height = canHeight;
+  clearTimeout(sizeTimeout);
+  sizeTimeout = setTimeout(function() {
+    canWidth = document.getElementById("uioverlay").offsetWidth;
+    canHeight = document.getElementById("uioverlay").offsetHeight;
+    document.getElementById("myCanvas").width = canWidth;
+    document.getElementById("myCanvas").height = canHeight;
+    if (myIdx != null) {
+      fixNameSize(null);
+    }
+    moveGrid();
+    draw();
+  }, 255);
 }
 function updateBuyDev() {
   let block = document.getElementById('buydev');
@@ -2128,6 +2141,7 @@ function flip() {
   }
   localStorage.setItem("flipped", JSON.stringify(turned));
   centerCanvas();
+  draw();
 }
 function chooseSkin(e) {
   let chosen = document.getElementById("skinchoice").value;
@@ -2199,11 +2213,10 @@ function init() {
 }
 function continueInit(gameId) {
   refreshUI();
-  window.requestAnimationFrame(draw);
+  draw();
   document.getElementById('myCanvas').onmousemove = onmove;
   document.getElementById('myCanvas').onclick = onclick;
   document.getElementById('myCanvas').onmousedown = ondown;
-  document.getElementById('myCanvas').onmouseup = onup;
   document.getElementById('myCanvas').onkeydown = onkey;
   document.getElementById('myCanvas').onwheel = onwheel;
   document.body.onclick = onBodyClick;

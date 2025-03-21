@@ -11,6 +11,8 @@ scale = 1;
 eventX = null;
 eventY = null;
 turned = false;
+minCoord = {x: 0, y: 0};
+maxCoord = {x: 0, y: 0};
 
 hoverTile = null;
 hoverNumber = null;
@@ -42,7 +44,7 @@ function isLand(loc) {
       return tile.is_land;
     }
   }
-  return true;
+  return null;
 }
 
 function draw() {
@@ -50,7 +52,6 @@ function draw() {
   var context = canvas.getContext('2d');
 
   if (tiles.length < 1) {
-    window.requestAnimationFrame(draw);
     return;
   }
 
@@ -116,7 +117,6 @@ function draw() {
   context.restore();
   drawDebug(context);
   context.restore();
-  window.requestAnimationFrame(draw);
 }
 
 function coordsToEdgeCenter(loc) {
@@ -213,7 +213,7 @@ function drawRoad(roadLoc, style, road_type, closed, movable, conquered, ctx) {
 }
 function drawDebug(ctx) {
   let min, max;
-  [min, max] = getMinMax();
+  [min, max] = getTileMinMax(false);
   let minX = min.x - 2;
   let minY = min.y - 1;
   let maxX = max.x + 2;
@@ -498,17 +498,17 @@ function drawHover(ctx) {
       return;
     }
     if (!locationsEqual(robberLoc, hoverTile) && !locationsEqual(pirateLoc, hoverTile)) {
-      if (isLand(hoverTile)) {
+      let hoverLand = isLand(hoverTile);
+      if (hoverLand) {
         drawRobber(ctx, [hoverTile[0]+1, hoverTile[1]], 0.5, true);
-      } else {
+      } else if (hoverLand === false) {
         drawRobber(ctx, hoverTile, 0.5, false);
       }
-      canvas.style.cursor = "pointer";
     }
     return;
   }
   if (hoverCorner != null) {
-    let drawType = "settlement";
+    let drawType = null;
     for (let i = 0; i < pieces.length; i++) {
       if (locationsEqual(pieces[i].location, hoverCorner)) {
         if (pieces[i].player == myIdx) {
@@ -517,15 +517,20 @@ function drawHover(ctx) {
         break;
       }
     }
-    drawPiece(hoverCorner, 'rgba(127, 127, 127, 0.5)', drawType, false, ctx);
-    canvas.style.cursor = "pointer";
+    if (drawType == null) {
+      for (let i = 0; i < corners.length; i++) {
+        if (locationsEqual(corners[i].location, hoverCorner)) {
+          drawType = "settlement";
+          break;
+        }
+      }
+    }
+    if (drawType != null) {
+      drawPiece(hoverCorner, 'rgba(127, 127, 127, 0.5)', drawType, false, ctx);
+    }
     return;
   }
-  if (hoverEdge != null) {
-    drawRoad(hoverEdge.location, 'rgba(127, 127, 127, 0.5)', hoverEdge.edge_type, null, null, false, ctx);
-    canvas.style.cursor = "pointer";
-    return;
-  }
+  let edgeType = null;
   if (hoverTileEdge != null) {
     if (turnPhase == "placeport" && placementPort != null) {
       if (tiles[hoverTileEdge.tileNum].is_land) {
@@ -537,10 +542,8 @@ function drawHover(ctx) {
         rotation: hoverTileEdge.rotation,
       };
       drawPort(tmpPort, ctx);
-      canvas.style.cursor = "pointer";
       return;
     }
-    let edgeType = null;
     for (let i = 0; i < edges.length; i++) {
       if (locationsEqual(edges[i].location, hoverTileEdge.edge)) {
         edgeType = edges[i].edge_type;
@@ -556,11 +559,13 @@ function drawHover(ctx) {
       drawType += shipAbove ? "ship" : "road";
       drawType += edgeType == "coastup" ? "up" : "down";
       drawRoad(hoverTileEdge.edge, "rgba(127, 127, 127, 0.5)", drawType, null, null, null, ctx);
-      canvas.style.cursor = "pointer";
       return;
     }
   }
-  canvas.style.cursor = "auto";
+  if ((edgeType == null || !edgeType.startsWith("coast")) && hoverEdge != null) {
+    drawRoad(hoverEdge.location, 'rgba(127, 127, 127, 0.5)', hoverEdge.edge_type, null, null, false, ctx);
+    return;
+  }
 }
 function drawRobber(ctx, loc, alpha, land) {
   if (loc == null) {
@@ -582,217 +587,168 @@ function drawRobber(ctx, loc, alpha, land) {
     ctx.drawImage(robimg, canvasLoc.x - robwidth/2, canvasLoc.y - robheight/2, robwidth, robheight);
   }
 }
-function getEdge(eventX, eventY) {
-  for (let i = 0; i < edges.length; i++) {
-    let edgeCenter = coordsToEdgeCenter(edges[i].location);
-    let centerX = edgeCenter.x * scale + offsetX + dX;
-    let centerY = edgeCenter.y * scale + offsetY + dY;
-    let distanceX = eventX - centerX;
-    let distanceY = eventY - centerY;
-    let distance = distanceX * distanceX + distanceY * distanceY;
-    let radius = pieceRadius * scale;
-    if (distance < radius * radius) {
-      return i;
-    }
+function onClickTile(event, tileLoc) {
+  if (event.button != 0) {
+    return;
   }
-}
-function getCorner(eventX, eventY, cList) {
-  for (let i = 0; i < cList.length; i++) {
-    let canvasLoc = coordToCanvasLoc(cList[i].location);
-    let centerX = canvasLoc.x * scale + offsetX + dX;
-    let centerY = canvasLoc.y * scale + offsetY + dY;
-    let distanceX = eventX - centerX;
-    let distanceY = eventY - centerY;
-    let distance = distanceX * distanceX + distanceY * distanceY;
-    let radius = pieceRadius * scale;
-    if (distance < radius * radius) {
-      return i;
-    }
-  }
-}
-function getTile(eventX, eventY) {
-  for (let i = 0; i < tiles.length; i++) {
-    let canvasLoc = coordToCanvasLoc(tiles[i].location);
-    let centerX = canvasLoc.x * scale + offsetX + dX;
-    let centerY = canvasLoc.y * scale + offsetY + dY;
-    let distanceX = eventX - centerX;
-    let distanceY = eventY - centerY;
-    let distance = distanceX * distanceX + distanceY * distanceY;
-    let radius = 42 * scale;
-    if (distance < radius * radius) {
-      return i;
-    }
-  }
-  return null;
-}
-function getTileEdge(eventX, eventY) {
-  for (let i = 0; i < tiles.length; i++) {
-    let cornerOffsets = [[1, 1], [-1, 1], [-2, 0], [-1, -1], [1, -1], [2, 0], [1, 1]];
-    for (let j = 0; j < 6; j++) {
-      let loc1 = coordToCanvasLoc(tiles[i].location);
-      let loc2 = coordToCanvasLoc([
-        tiles[i].location[0] + cornerOffsets[j][0], tiles[i].location[1] + cornerOffsets[j][1]
-      ]);
-      let loc3 = coordToCanvasLoc([
-        tiles[i].location[0] + cornerOffsets[j+1][0], tiles[i].location[1] + cornerOffsets[j+1][1]
-      ]);
-      let newX = (2*loc1.x + 3*loc2.x + 3*loc3.x) / 8;
-      let newY = (2*loc1.y + 3*loc2.y + 3*loc3.y) / 8;
-      let centerX = newX * scale + offsetX + dX;
-      let centerY = newY * scale + offsetY + dY;
-      let distanceX = eventX - centerX;
-      let distanceY = eventY - centerY;
-      let distance = distanceX * distanceX + distanceY * distanceY;
-      let radius = pieceRadius * scale;
-      if (distance < radius * radius) {
-        let edge = [
-          tiles[i].location[0] + cornerOffsets[j][0], tiles[i].location[1] + cornerOffsets[j][1],
-          tiles[i].location[0] + cornerOffsets[j+1][0], tiles[i].location[1] + cornerOffsets[j+1][1],
-        ];
-        if (cornerOffsets[j][0] > cornerOffsets[j+1][0]) {
-          edge = [edge[2], edge[3], edge[0], edge[1]];
-        }
-        return {tileNum: i, rotation: j, edge: edge};
-      }
-    }
-  }
-  return null;
-}
-function onclick(event) {
   if (ignoreNextClick) {
     ignoreNextClick = false;
     return;
   }
-  // Ignore right/middle-click.
-  if (event.button != 0) {
-    return;
-  }
-  let clickTile = getTile(event.clientX, event.clientY);
-  if (clickTile != null) {
-    let clickType = (tiles[clickTile].is_land ? "robber" : "pirate");
+  for (let i = 0; i < tiles.length; i++) {
+    if (!locationsEqual(tileLoc, tiles[i].location)) {
+      continue;
+    }
+    let clickType = (tiles[i].is_land ? "robber" : "pirate");
     if (["expel", "deplete"].includes(turnPhase)) {
       clickType = turnPhase;
     }
     let msg = {
       type: clickType,
-      location: tiles[clickTile].location,
+      location: tileLoc,
     };
     ws.send(JSON.stringify(msg));
+    break;
   }
-  let clickPiece = getCorner(event.clientX, event.clientY, pieces);
-  if (clickPiece != null && pieces[clickPiece].player == myIdx) {
-    let msg = {
-      type: "city",
-      location: pieces[clickPiece].location,
-    };
-    ws.send(JSON.stringify(msg));
-  } else {
-    let clickCorner = getCorner(event.clientX, event.clientY, corners);
-    if (clickCorner != null) {
-      let msg = {
-        type: "settle",
-        location: corners[clickCorner].location,
-      };
-      ws.send(JSON.stringify(msg));
-    }
+}
+function onClickCorner(event, cornerLoc) {
+  if (event.button != 0) {
+    return;
   }
-  let clickEdge = getEdge(event.clientX, event.clientY);
-  if (clickEdge != null) {
-    if (moveShipFromLocation != null) {
-      let msg = {
-        type: "move_ship",
-        from: moveShipFromLocation,
-        to: edges[clickEdge].location,
-      };
-      ws.send(JSON.stringify(msg));
-      moveShipFromLocation = null;
-      return;
-    }
-    if (edges[clickEdge].edge_type && !edges[clickEdge].edge_type.startsWith("coast")) {
-      for (let road of roads) {
-        if (locationsEqual(road.location, edges[clickEdge].location)) {
-          if (road.player == myIdx && road.road_type == "ship") {
-            moveShipFromLocation = road.location;
-          }
-          break;
-        }
-      }
-      if (moveShipFromLocation == null) {
+  if (ignoreNextClick) {
+    ignoreNextClick = false;
+    return;
+  }
+  for (let i = 0; i < pieces.length; i++) {
+    if (locationsEqual(cornerLoc, pieces[i].location)) {
+      if (pieces[i].player == myIdx) {
         let msg = {
-          type: edges[clickEdge].edge_type,
-          location: edges[clickEdge].location,
+          type: "city",
+          location: cornerLoc,
         };
         ws.send(JSON.stringify(msg));
+        return;
       }
+      break;
     }
-  } else if (moveShipFromLocation != null) {
-    moveShipFromLocation = null;
   }
-  let clickTileEdge = getTileEdge(event.clientX, event.clientY);
-  if (clickTileEdge != null) {
-    if (turnPhase == "placeport" && placementPort != null) {
-      let msg = {
-        type: "placeport",
-        port: placementPort,
-        location: tiles[clickTileEdge.tileNum].location,
-        rotation: clickTileEdge.rotation,
-      };
-      ws.send(JSON.stringify(msg));
+  let msg = {
+    type: "settle",
+    location: cornerLoc,
+  };
+  ws.send(JSON.stringify(msg));
+}
+function onClickEdge(event, edgeLoc) {
+  if (event.button != 0) {
+    return;
+  }
+  if (ignoreNextClick) {
+    ignoreNextClick = false;
+    return;
+  }
+  if (moveShipFromLocation != null) {
+    if (locationsEqual(moveShipFromLocation, edgeLoc)) {  // Cancel moving ship
+      moveShipFromLocation = null;
+      draw();
       return;
     }
-    let edgeType = null;
-    for (let i = 0; i < edges.length; i++) {
-      if (locationsEqual(edges[i].location, clickTileEdge.edge)) {
-        edgeType = edges[i].edge_type;
+    let msg = {
+      type: "move_ship",
+      from: moveShipFromLocation,
+      to: edgeLoc,
+    };
+    ws.send(JSON.stringify(msg));
+    moveShipFromLocation = null;
+    return;
+  }
+  let edgeType = null;
+  for (let i = 0; i < edges.length; i++) {
+    if (locationsEqual(edges[i].location, edgeLoc)) {
+      edgeType = edges[i].edge_type;
+      break;
+    }
+  }
+  if (edgeType && !edgeType.startsWith("coast")) {  // Coast must use tileedge instead
+    for (let road of roads) {
+      if (locationsEqual(road.location, edgeLoc)) {
+        if (road.player == myIdx && road.road_type == "ship") {
+          moveShipFromLocation = road.location;
+          event.stopPropagation();
+          draw();
+          return;
+        }
         break;
       }
     }
-    if (edgeType != null && edgeType.startsWith("coast")) {
-      let shipAbove = tiles[clickTileEdge.tileNum].location[1] < (clickTileEdge.edge[1] + clickTileEdge.edge[3]) / 2;
-      if (edgeType == "coastdown") {
-        shipAbove = !shipAbove;
-      }
-      let msg = {
-        type: shipAbove ? "ship" : "road",
-        location: clickTileEdge.edge,
-      };
-      ws.send(JSON.stringify(msg));
+    let msg = {
+      type: edgeType,
+      location: edgeLoc,
+    };
+    ws.send(JSON.stringify(msg));
+  }
+}
+function onClickTileEdge(event, tileLoc, edgeLoc, rotation) {
+  if (event.button != 0) {
+    return;
+  }
+  if (ignoreNextClick) {
+    ignoreNextClick = false;
+    return;
+  }
+  if (turnPhase == "placeport" && placementPort != null) {
+    let msg = {
+      type: "placeport",
+      port: placementPort,
+      location: tileLoc,
+      rotation: rotation,
+    };
+    ws.send(JSON.stringify(msg));
+    return;
+  }
+  let edgeType = null;
+  for (let i = 0; i < edges.length; i++) {
+    if (locationsEqual(edges[i].location, edgeLoc)) {
+      edgeType = edges[i].edge_type;
+      break;
     }
+  }
+  if (edgeType != null && edgeType.startsWith("coast")) {
+    let shipAbove = tileLoc[1] < (edgeLoc[1] + edgeLoc[3]) / 2;
+    if (edgeType == "coastdown") {
+      shipAbove = !shipAbove;
+    }
+    let msg = {
+      type: shipAbove ? "ship" : "road",
+      location: edgeLoc,
+    };
+    ws.send(JSON.stringify(msg));
+  }
+}
+function onclick(event) {
+  // Ignore right/middle-click.
+  if (event.button != 0) {
+    return;
+  }
+  if (ignoreNextClick) {
+    ignoreNextClick = false;
+    return;
+  }
+  if (moveShipFromLocation != null) {
+    moveShipFromLocation = null;
+    draw();
   }
 }
 function onmove(event) {
   eventX = event.clientX;
   eventY = event.clientY;
-  let hoverLoc = getTile(event.clientX, event.clientY);
-  if (hoverLoc != null) {
-    hoverTile = tiles[hoverLoc].location;
-  } else {
-    hoverTile = null;
-  }
-  if (hoverLoc != null && turn == myIdx) {
-    hoverNumber = tiles[hoverLoc].number;
-  } else {
-    hoverNumber = null;
-  }
-  hoverLoc = getCorner(event.clientX, event.clientY, corners);
-  if (hoverLoc != null) {
-    hoverCorner = corners[hoverLoc].location;
-  } else {
-    hoverCorner = null;
-  }
-  hoverLoc = getEdge(event.clientX, event.clientY);
-  if (hoverLoc != null) {
-    hoverEdge = edges[hoverLoc];
-  } else {
-    hoverEdge = null;
-  }
-  hoverTileEdge = getTileEdge(event.clientX, event.clientY);
   if (isDragging) {
     newX = event.clientX;
     newY = event.clientY;
     
     dX = newX - startX;
     dY = newY - startY;
+    moveGrid();
+    draw();
   }
 }
 function onwheel(event) {
@@ -806,6 +762,8 @@ function onwheel(event) {
   scale = Math.min(Math.max(0.125, scale), 4);
   offsetX = event.clientX - ((event.clientX - offsetX) * scale / oldScale);
   offsetY = event.clientY - ((event.clientY - offsetY) * scale / oldScale);
+  moveGrid();
+  draw();
 }
 function ondown(event) {
   // Ignore right/middle-click.
@@ -816,7 +774,7 @@ function ondown(event) {
   startY = event.clientY;
   isDragging = true;
 }
-function onup(event) {
+function canvasup(event) {
   // Ignore right/middle-click.
   if (event.button != 0) {
     return;
@@ -830,7 +788,7 @@ function onup(event) {
   dX = 0;
   dY = 0;
 }
-function getMinMax() {
+function getTileMinMax(includeAll) {
   if (tiles.length < 1) {
     return [{x: 0, y: 0}, {x: 0, y: 0}];
   }
@@ -838,7 +796,7 @@ function getMinMax() {
   let loc = tiles[0].location;
   [minX, maxX, minY, maxY] = [loc[0], loc[0], loc[1], loc[1]];
   for (let i = 0; i < tiles.length; i++) {
-    if (!tiles[i].is_land) {
+    if (!includeAll && !tiles[i].is_land) {
       continue;
     }
     minX = Math.min(tiles[i].location[0], minX);
@@ -849,14 +807,211 @@ function getMinMax() {
   return [{x: minX, y: minY}, {x: maxX, y: maxY}];
 }
 function getCenterCoord() {
-  let min, max;
-  [min, max] = getMinMax();
-  let minLoc = coordToCanvasLoc([min.x, min.y]);
-  let maxLoc = coordToCanvasLoc([max.x, max.y]);
+  let minLoc = coordToCanvasLoc([minCoord.x, minCoord.y]);
+  let maxLoc = coordToCanvasLoc([maxCoord.x, maxCoord.y]);
   return {x: (minLoc.x + maxLoc.x) / 2, y: (minLoc.y + maxLoc.y) / 2};
 }
 function centerCanvas() {
   let center = getCenterCoord();
   offsetX = canWidth / 2 - center.x;
   offsetY = canHeight / 2 - center.y;
+  moveGrid();
+}
+function moveGrid() {
+  let grid = document.getElementById("grid");
+  if (grid == null) {
+    return;
+  }
+  let minXCoord = minCoord.x - 2;  // Minimum corner coordinate is two steps left of the minimum tile x coordinate.
+  let minYCoord = minCoord.y - 1;  // Minimum corner coordinate is one step up from the minimum tile y coordinate.
+  // We want the coordinate to be in the center of the box, so adjust the x coordinate by -0.5
+  let targetXCoord = minXCoord - 0.5;
+  // We will have two boxes for each one y coordinate, so adjust the y coordinate by -0.25
+  let targetYCoord = minYCoord - 0.25;
+  let targetLoc = coordToCanvasLoc([targetXCoord, targetYCoord]);
+  let rotation = "rotate(0deg)";
+  if (turned) {
+    rotation = "rotate(-90deg)";
+  }
+  grid.style.transform = "translate(" + (offsetX + dX + targetLoc.x*scale) + "px, " + (offsetY + dY + targetLoc.y*scale) + "px) scale(" + scale + ") " + rotation;
+}
+function remakeGrid() {
+  let grid = document.getElementById("grid");
+  if (grid != null) {
+    grid.parentNode.removeChild(grid);
+  }
+  let minXCoord = minCoord.x - 2;
+  let minYCoord = minCoord.y - 1;
+  let maxXCoord = maxCoord.x + 2;
+  let maxYCoord = maxCoord.y + 1;
+  let numCols = maxXCoord - minXCoord + 1;
+  let numRows = (maxYCoord - minYCoord) * 2 + 1;
+  grid = document.createElement("DIV");
+  grid.id = "grid";
+  grid.style.gridTemplateColumns = "repeat(" + numCols + ", " + tileWidth / 4 + "px)";
+  grid.style.gridTemplateRows = "repeat(" + numRows + ", " + tileHeight / 4 + "px)";
+  grid.style.width = tileWidth * (numCols) / 4 + "px";
+  grid.style.height = tileHeight * (numRows) / 4 + "px";
+  grid.onmousemove = onmove;
+  grid.onclick = onclick;
+  grid.onmousedown = ondown;
+  grid.onwheel = onwheel;
+  document.getElementById("uioverlay").appendChild(grid);
+  for (let j = 0; j < numRows; j++) {
+    for (let i = 0; i < numCols; i++) {
+      let x = minXCoord + i;
+      let y = minYCoord + j/2;
+      let xMod6 = (x % 6 + 6) % 6;
+      let yMod4 = (y % 4 + 4) % 4;
+      if (xMod6 % 3 == 1 && yMod4 % 2 == (xMod6 % 2)) {  // Tile center
+        createTileBox(grid, x, y, i, j);
+      } 
+      if (xMod6 % 3 == 1 && j % 2 == 0 && yMod4 % 2 != (xMod6 % 2)) {  // Top/bottom edge
+        let xleft = x-1;
+        let xright = x+1;
+        createEdgeBox(grid, xleft, y, xright, y, i, j, 1);
+      }
+      if (j % 2 == 1 && (xMod6 % 3) == 2) {
+        let isUp = false;
+        let yleft;
+        let yright;
+        if (xMod6 == 2 && (y + 0.5) % 2 == 0) {
+          isUp = false;
+        } else if (xMod6 == 2) {
+          isUp = true;
+        } else if (xMod6 == 5 && (y + 0.5) % 2 == 0) {
+          isUp = true;
+        } else if (xMod6 == 5) {
+          isUp = false;
+        }
+        if (isUp) {
+          yleft = y - 0.5;
+          yright = y + 0.5;
+        } else {
+          yleft = y + 0.5;
+          yright = y - 0.5;
+        }
+        createEdgeBox(grid, x, yleft, x+1, yright, i, j, 2);
+      }
+      if (xMod6 != 1 && xMod6 != 4 && ((xMod6 < 3 && yMod4 % 2 == 0) || (xMod6 >= 3 && yMod4 % 2 == 1))) {  // Corner
+        createCornerBox(grid, x, y, i, j);
+      }
+    }
+  }
+}
+function createTileBox(grid, x, y, i, j) {
+  let elem = document.createElement("DIV");
+  elem.classList.add("gridelem", "tilebox");
+  elem.style.width = 3 * tileHeight / 5 + "px";
+  elem.style.height = 3 * tileHeight / 5 + "px";
+  elem.style.gridColumn = (i) + "/" + (i + 3);
+  elem.style.gridRow = (j) + "/" + (j + 3);
+  elem.innerText = `${x}, ${y}`;
+  grid.appendChild(elem);
+  elem.onmouseenter = function() {
+    hoverTile = [x, y];
+    hoverNumber = null;
+    if (turn == myIdx) {
+      for (let i = 0; i < tiles.length; i++) {
+        if (locationsEqual(tiles[i].location, [x, y])) {
+          hoverNumber = tiles[i].number;
+          break;
+        }
+      }
+    }
+    draw();
+  };
+  elem.onmouseleave = function() {
+    if (locationsEqual(hoverTile, [x, y])) {
+      hoverNumber = null;
+      hoverTile = null;
+      draw();
+    }
+  };
+  elem.onclick = function(event) { onClickTile(event, [x, y]); };
+  let cornerOffsets = [[1, 1], [-1, 1], [-2, 0], [-1, -1], [1, -1], [2, 0], [1, 1]];
+  for (let rotation = 0; rotation < 6; rotation++) {
+    let tileEdgeContainer = document.createElement("DIV");
+    tileEdgeContainer.classList.add("tileedgecontainer");
+    tileEdgeContainer.style.height = tileHeight + "px";
+    tileEdgeContainer.style.width = tileWidth / 4 + "px";
+    tileEdgeContainer.style.gridColumn = (i+1) + "/" + (i + 2);
+    tileEdgeContainer.style.gridRow = (j+1) + "/" + (j + 5);
+    tileEdgeContainer.style.transform = "rotate(" + 60*rotation + "deg)";
+    let tileEdge = document.createElement("DIV");
+    tileEdge.classList.add("tileedge");
+    tileEdge.style.width = tileHeight / 5 + "px";
+    tileEdge.style.height = tileHeight / 5 + "px";
+    tileEdgeContainer.appendChild(tileEdge);
+    grid.appendChild(tileEdgeContainer);
+    let tileLoc = [x, y];
+    let edgeLoc = [
+      x + cornerOffsets[rotation][0], y + cornerOffsets[rotation][1],
+      x + cornerOffsets[rotation+1][0], y + cornerOffsets[rotation+1][1],
+    ];
+    if (cornerOffsets[rotation][0] > cornerOffsets[rotation+1][0]) {
+      edgeLoc = [edgeLoc[2], edgeLoc[3], edgeLoc[0], edgeLoc[1]];
+    }
+    tileEdge.onmouseenter = function() {
+      for (let i = 0; i < tiles.length; i++) {
+        if (locationsEqual(tiles[i].location, tileLoc)) {
+          hoverTileEdge = {tileNum: i, edge: edgeLoc, rotation: rotation};
+          break;
+        }
+      }
+      draw();
+    };
+    tileEdge.onmouseleave = function() {
+      if (hoverTileEdge != null && locationsEqual(hoverTileEdge.edge, edgeLoc)) {
+        hoverTileEdge = null;
+        draw();
+      }
+    };
+    tileEdge.onclick = function(event) { onClickTileEdge(event, tileLoc, edgeLoc, rotation); };
+  }
+}
+function createEdgeBox(grid, xleft, yleft, xright, yright, i, j, width) {
+  let elem = document.createElement("DIV");
+  elem.classList.add("gridelem", "edgebox");
+  elem.style.width = tileHeight / 5 + "px";
+  elem.style.height = tileHeight / 5 + "px";
+  elem.style.gridColumn = (i + 1) + "/" + (i + 1 + width);
+  elem.style.gridRow = (j + 1) + "/" + (j + 2);
+  elem.innerText = `${xleft}, ${yleft}, ${xright}, ${yright}`;
+  elem.onmouseenter = function() { 
+    hoverEdge = {location: [xleft, yleft, xright, yright], edge_type: null};
+    for (let i = 0; i < edges.length; i++) {
+      if (locationsEqual(edges[i].location, hoverEdge.location)) {
+        hoverEdge.edge_type = edges[i].edge_type;
+        break;
+      }
+    }
+    draw();
+  };
+  elem.onmouseleave = function() {
+    if (hoverEdge != null && locationsEqual(hoverEdge.location, [xleft, yleft, xright, yright])) {
+      hoverEdge = null;
+      draw();
+    }
+  };
+  elem.onclick = function(event) { onClickEdge(event, [xleft, yleft, xright, yright]); };
+  grid.appendChild(elem);
+}
+function createCornerBox(grid, x, y, i, j) {
+  let elem = document.createElement("DIV");
+  elem.classList.add("gridelem");
+  elem.style.width = tileHeight / 5 + "px";
+  elem.style.height = tileHeight / 5 + "px";
+  elem.style.gridColumn = (i + 1) + "/" + (i + 2);
+  elem.style.gridRow = (j + 1) + "/" + (j + 2);
+  elem.innerText = `${x}, ${y}`;
+  elem.onmouseenter = function() { hoverCorner = [x, y]; draw(); };
+  elem.onmouseleave = function() {
+    if (locationsEqual(hoverCorner, [x, y])) {
+      hoverCorner = null;
+      draw();
+    }
+  };
+  elem.onclick = function(event) { onClickCorner(event, [x, y]); };
+  grid.appendChild(elem);
 }

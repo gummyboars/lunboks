@@ -1,12 +1,14 @@
 body {
-  margin: 0px;
-  padding: 0px;
+  width: 100vw;
+  height: 100vh;
+  margin: 0;
+  padding: 0;
   background: #CCCCFF;
   overflow: hidden;
 }
 div {
   display: block;
-  margin: 0px;
+  margin: 0;
 }
 .noclick {
   pointer-events: none;
@@ -22,19 +24,19 @@ div {
 }
 .hide {
   position: absolute;
-  height: 0px;
+  height: 0;
   overflow: hidden;
   margin: 0;
   padding: 0;
   white-space: pre;
 }
 #ui {
-  position: absolute;
-  width: 100%; /* width and height will be overridden by js */
+  position: relative;
+  width: 100%;
   height: 100%;
   top: 0;
   left: 0;
-  margin: 0px;
+  margin: 0;
   display: flex;
 }
 #errorText {
@@ -50,11 +52,7 @@ div {
   z-index: 40; /* error should be shown over everything else */
 }
 #uiload {
-  position: absolute;
-  top: 50%;
-  left: 50%;
   width: 25%;
-  transform: translate(-50%, -50%);
   z-index: 30;
   color: black;
   background: mediumslateblue;
@@ -84,18 +82,11 @@ div {
   z-index: -1;
 }
 #uijoin {
-  position: absolute;
   display: none;
-  width: 30%;
-  left: 50%;
-  margin-right: -50%;
-  top: 50%;
-  margin-bottom: -50%;
-  transform: translate(-50%, -50%);
-  flex-direction: column;
   z-index: 30; /* show over other elements */
 }
 #joininner {
+  width: 30%;
   display: flex;
   flex-direction: column;
   border-right: 1px solid black;
@@ -252,6 +243,7 @@ div {
   display: flex;
   flex-direction: row;
   justify-content: center;
+  position: relative;
 }
 #portselect {
   display: flex;
@@ -376,39 +368,100 @@ div {
   height: 123;
 }
 #uioverlay {
-  flex: 1 0 auto;
+  flex: 0 0 80%;
+  display: block;
+  min-width: 0;
+}
+#grid {
+  display: grid;
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform-origin: top left;
+}
+.gridelem {
+  align-self: center;
+  justify-self: center;
+  border-radius: 50%;
+  font-size: 0.8vh;
+  color: rgba(0, 0, 0, 0);
+  user-select: none;
+  -webkit-user-select: none;
+  text-align: center;
+}
+#grid.myturn .gridelem {
+  cursor: pointer;
+}
+.debug .gridelem {
+  outline: 1px solid red;
+  color: rgba(0, 0, 0, 1);
+}
+.tilebox {
+  z-index: 1;
+  cursor: auto;
+}
+#grid.myturn.tileselect .tilebox {
+  cursor: pointer;
+}
+.tileedgecontainer {
+  align-self: center;
+  justify-self: center;
+  transform-origin: center 12.5%;
   display: flex;
-  flex-direction: column;
+  justify-content: center;
   align-items: center;
+  pointer-events: none;
+  z-index: 0;
+}
+.tileedge {
+  border-radius: 50%;
+  z-index: 0;
+  pointer-events: auto;
+}
+.edgebox {
+  z-index: 1;
+}
+#myCanvas {
+  position: absolute;
+  top: 0;
+  left: 0;
 }
 #uimain {
-  flex: 1 0 auto;
   display: flex;
   flex-direction: row;
   justify-content: flex-start;
   width: 100%;
   position: relative;
+  height: 80vh;
+  z-index: 10;
 }
-#centerizer {
+.centerizer {
   position: absolute;
+  top: 0;
+  left: 0;
   width: 100%;
   height: 100%;
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
+  pointer-events: none;
 }
 #uileft {
+  position: absolute;
+  top: 0;
+  left: 0;
   flex: 0 0 auto;
   display: flex;
   flex-direction: column;
-  margin: 20px;
+  height: 100%;
 }
 #leftcontainer {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  margin-top: 2vh;
 }
 #uidice {
   position: relative;
@@ -423,9 +476,11 @@ div {
   align-items: center;
   justify-content: flex-start;
   flex: 0 0 20%;
-  padding: 0px;
-  height: 100%;
   max-width: 20%;
+  padding: 0px;
+  height: 100vh;
+  max-height: 100vh;
+  z-index: 11;
 }
 #uiplayer {
   display: flex;
@@ -462,14 +517,21 @@ div {
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
+  margin-bottom: 2vh;
+}
+#uipopup {
+  width: 80vw;
+  height: 80vh;
+  z-index: 15;
 }
 #uibottom {
-  flex: 0 0 210px;
   display: flex;
   flex-direction: row;
   padding: 0px;
   width: 100%;
-  height: 210px;
+  height: 20vh;
+  position: relative;
+  z-index: 10;
 }
 #uicost {
   flex: 0 0 auto;
@@ -585,7 +647,7 @@ div {
   flex: 1 1 auto;
   width: 100%;
   min-width: 0;
-  height: 210;
+  height: 100%;
   padding: 0px;
   margin: 0px;
   display: flex;
