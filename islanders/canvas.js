@@ -14,11 +14,10 @@ turned = false;
 minCoord = {x: 0, y: 0};
 maxCoord = {x: 0, y: 0};
 
-hoverTile = null;
-hoverNumber = null;
-hoverCorner = null;
-hoverEdge = null;
-hoverTileEdge = null;
+hoverTile = null;  // The tile object
+hoverCorner = null;  // The location x, y coordinates
+hoverEdge = null;  // An edge object with a location and an edge_type
+hoverTileEdge = null;  // An object with tile, edge, and rotation
 moveShipFromLocation = null;
 
 function locationsEqual(locA, locB) {
@@ -38,13 +37,14 @@ function locationsEqual(locA, locB) {
   }
   return true;
 }
-function isLand(loc) {
-  for (let tile of tiles) {
-    if (locationsEqual(tile.location, loc)) {
-      return tile.is_land;
-    }
+function coordsFromElem(elem) {
+  if (elem.location.length == 2) {
+    return elem.location;
   }
-  return null;
+  if (elem.location.length == 4) {
+    return [(elem.location[0]+elem.location[2])/2, (elem.location[1]+elem.location[3])/2];
+  }
+  throw new Error(`Invalid location ${elem.location}`);
 }
 
 function draw() {
@@ -242,7 +242,7 @@ function drawDebug(ctx) {
       ctx.fillText("" + i, start.x-10, start.y);
     }
     if (hoverTile != null) {
-      ctx.fillText("" + hoverTile[0] + ", " + hoverTile[1], 0, 0);
+      ctx.fillText("" + hoverTile.location[0] + ", " + hoverTile.location[1], 0, 0);
     }
     if (hoverCorner != null) {
       ctx.fillText("" + hoverCorner[0] + ", " + hoverCorner[1], 0, 0);
@@ -387,7 +387,7 @@ function drawBarbarians(tileData, ctx) {
   for (let i = 0; i < barbarians && i < 6; i++) {
     let newLoc = [tileData.location[0] + offsets[i][0], tileData.location[1] + offsets[i][1]];
     let alpha = 1;
-    if (i == barbarians - 1 && turnPhase == "expel" && locationsEqual(hoverTile, tileData.location)) {
+    if (i == barbarians - 1 && turnPhase == "expel" && hoverTile != null && locationsEqual(hoverTile.location, tileData.location)) {
       alpha = 0.5;
     }
     drawRobber(ctx, newLoc, alpha, tileData.is_land);
@@ -450,8 +450,8 @@ function drawNumber(tileData, ctx) {
   let canvasLoc = coordToCanvasLoc(tileData.location);
   ctx.save();
   let num = tileData.number;
-  if (!num && locationsEqual(targetTile, tileData.location) && hoverNumber != null) {
-    num = hoverNumber;
+  if (!num && locationsEqual(targetTile, tileData.location) && hoverTile != null && hoverTile.number != null) {
+    num = hoverTile.number;
   }
   if (num) {
     // Draw the white circle.
@@ -474,7 +474,7 @@ function drawNumber(tileData, ctx) {
       ctx.globalAlpha = 0.25;
     }
     if (turnPhase == "deplete" && turn == myIdx) {
-      if (locationsEqual(hoverTile, tileData.location)) {
+      if (hoverTile != null && locationsEqual(hoverTile.location, tileData.location)) {
         ctx.globalAlpha = 0.25;
       }
       if (locationsEqual(targetTile, tileData.location)) {
@@ -497,32 +497,25 @@ function drawHover(ctx) {
     if (["expel", "deplete"].includes(turnPhase)) {
       return;
     }
-    if (!locationsEqual(robberLoc, hoverTile) && !locationsEqual(pirateLoc, hoverTile)) {
-      let hoverLand = isLand(hoverTile);
-      if (hoverLand) {
-        drawRobber(ctx, [hoverTile[0]+1, hoverTile[1]], 0.5, true);
-      } else if (hoverLand === false) {
-        drawRobber(ctx, hoverTile, 0.5, false);
+    if (!locationsEqual(robberLoc, hoverTile.location) && !locationsEqual(pirateLoc, hoverTile.location)) {
+      if (hoverTile.is_land) {
+        drawRobber(ctx, [hoverTile.location[0]+1, hoverTile.location[1]], 0.5, true);
+      } else {
+        drawRobber(ctx, hoverTile.location, 0.5, false);
       }
     }
     return;
   }
   if (hoverCorner != null) {
     let drawType = null;
-    for (let i = 0; i < pieces.length; i++) {
-      if (locationsEqual(pieces[i].location, hoverCorner)) {
-        if (pieces[i].player == myIdx) {
-          drawType = "city";
-        }
-        break;
+    if (pieceMatrix[hoverCorner[0]] != null && pieceMatrix[hoverCorner[0]][hoverCorner[1]] != null) {
+      if (pieceMatrix[hoverCorner[0]][hoverCorner[1]].player == myIdx) {
+        drawType = "city";
       }
     }
     if (drawType == null) {
-      for (let i = 0; i < corners.length; i++) {
-        if (locationsEqual(corners[i].location, hoverCorner)) {
-          drawType = "settlement";
-          break;
-        }
+      if (cornerMatrix[hoverCorner[0]] != null && cornerMatrix[hoverCorner[0]][hoverCorner[1]] != null) {
+        drawType = "settlement";
       }
     }
     if (drawType != null) {
@@ -533,25 +526,23 @@ function drawHover(ctx) {
   let edgeType = null;
   if (hoverTileEdge != null) {
     if (turnPhase == "placeport" && placementPort != null) {
-      if (tiles[hoverTileEdge.tileNum].is_land) {
+      if (hoverTileEdge.tile.is_land) {
         return;
       }
       let tmpPort = {
         port_type: placementPort,
-        location: tiles[hoverTileEdge.tileNum].location,
+        location: hoverTileEdge.tile.location,
         rotation: hoverTileEdge.rotation,
       };
       drawPort(tmpPort, ctx);
       return;
     }
-    for (let i = 0; i < edges.length; i++) {
-      if (locationsEqual(edges[i].location, hoverTileEdge.edge)) {
-        edgeType = edges[i].edge_type;
-        break;
-      }
+    let [edgeX, edgeY] = [(hoverTileEdge.edge[0]+hoverTileEdge.edge[2])/2, (hoverTileEdge.edge[1]+hoverTileEdge.edge[3])/2];
+    if (edgeMatrix[edgeX] != null && edgeMatrix[edgeX][edgeY] != null) {
+      edgeType = edgeMatrix[edgeX][edgeY].edge_type;
     }
     if (edgeType != null && edgeType.startsWith("coast")) {
-      let shipAbove = tiles[hoverTileEdge.tileNum].location[1] < (hoverTileEdge.edge[1] + hoverTileEdge.edge[3]) / 2;
+      let shipAbove = hoverTileEdge.tile.location[1] < edgeY;
       if (edgeType == "coastdown") {
         shipAbove = !shipAbove;
       }
@@ -595,11 +586,8 @@ function onClickTile(event, tileLoc) {
     ignoreNextClick = false;
     return;
   }
-  for (let i = 0; i < tiles.length; i++) {
-    if (!locationsEqual(tileLoc, tiles[i].location)) {
-      continue;
-    }
-    let clickType = (tiles[i].is_land ? "robber" : "pirate");
+  if (tileMatrix[tileLoc[0]] != null && tileMatrix[tileLoc[0]][tileLoc[1]] != null) {
+    let clickType = (tileMatrix[tileLoc[0]][tileLoc[1]].is_land ? "robber" : "pirate");
     if (["expel", "deplete"].includes(turnPhase)) {
       clickType = turnPhase;
     }
@@ -608,7 +596,6 @@ function onClickTile(event, tileLoc) {
       location: tileLoc,
     };
     ws.send(JSON.stringify(msg));
-    break;
   }
 }
 function onClickCorner(event, cornerLoc) {
@@ -619,17 +606,14 @@ function onClickCorner(event, cornerLoc) {
     ignoreNextClick = false;
     return;
   }
-  for (let i = 0; i < pieces.length; i++) {
-    if (locationsEqual(cornerLoc, pieces[i].location)) {
-      if (pieces[i].player == myIdx) {
-        let msg = {
-          type: "city",
-          location: cornerLoc,
-        };
-        ws.send(JSON.stringify(msg));
-        return;
-      }
-      break;
+  if (pieceMatrix[cornerLoc[0]] != null && pieceMatrix[cornerLoc[0]][cornerLoc[1]] != null) {
+    if (pieceMatrix[cornerLoc[0]][cornerLoc[1]].player == myIdx) {
+      let msg = {
+        type: "city",
+        location: cornerLoc,
+      };
+      ws.send(JSON.stringify(msg));
+      return;
     }
   }
   let msg = {
@@ -662,22 +646,17 @@ function onClickEdge(event, edgeLoc) {
     return;
   }
   let edgeType = null;
-  for (let i = 0; i < edges.length; i++) {
-    if (locationsEqual(edges[i].location, edgeLoc)) {
-      edgeType = edges[i].edge_type;
-      break;
-    }
+  let [edgeX, edgeY] = [(edgeLoc[0]+edgeLoc[2])/2, (edgeLoc[1]+edgeLoc[3])/2];
+  if (edgeMatrix[edgeX] != null && edgeMatrix[edgeX][edgeY] != null) {
+    edgeType = edgeMatrix[edgeX][edgeY].edge_type;
   }
   if (edgeType && !edgeType.startsWith("coast")) {  // Coast must use tileedge instead
-    for (let road of roads) {
-      if (locationsEqual(road.location, edgeLoc)) {
-        if (road.player == myIdx && road.road_type == "ship") {
-          moveShipFromLocation = road.location;
-          event.stopPropagation();
-          draw();
-          return;
-        }
-        break;
+    if (roadMatrix[edgeX] != null && roadMatrix[edgeX][edgeY] != null) {
+      if (roadMatrix[edgeX][edgeY].player == myIdx && roadMatrix[edgeX][edgeY].road_type == "ship") {
+        moveShipFromLocation = edgeLoc;
+        event.stopPropagation();
+        draw();
+        return;
       }
     }
     let msg = {
@@ -706,11 +685,9 @@ function onClickTileEdge(event, tileLoc, edgeLoc, rotation) {
     return;
   }
   let edgeType = null;
-  for (let i = 0; i < edges.length; i++) {
-    if (locationsEqual(edges[i].location, edgeLoc)) {
-      edgeType = edges[i].edge_type;
-      break;
-    }
+  let [edgeX, edgeY] = [(edgeLoc[0]+edgeLoc[2])/2, (edgeLoc[1]+edgeLoc[3])/2];
+  if (edgeMatrix[edgeX] != null && edgeMatrix[edgeX][edgeY] != null) {
+    edgeType = edgeMatrix[edgeX][edgeY].edge_type;
   }
   if (edgeType != null && edgeType.startsWith("coast")) {
     let shipAbove = tileLoc[1] < (edgeLoc[1] + edgeLoc[3]) / 2;
@@ -909,21 +886,15 @@ function createTileBox(grid, x, y, i, j) {
   elem.innerText = `${x}, ${y}`;
   grid.appendChild(elem);
   elem.onmouseenter = function() {
-    hoverTile = [x, y];
-    hoverNumber = null;
-    if (turn == myIdx) {
-      for (let i = 0; i < tiles.length; i++) {
-        if (locationsEqual(tiles[i].location, [x, y])) {
-          hoverNumber = tiles[i].number;
-          break;
-        }
+    if (tileMatrix[x] != null && tileMatrix[x][y] != null) {
+      if (turn == myIdx) {
+        hoverTile = tileMatrix[x][y];
+        draw();
       }
     }
-    draw();
   };
   elem.onmouseleave = function() {
-    if (locationsEqual(hoverTile, [x, y])) {
-      hoverNumber = null;
+    if (hoverTile != null && locationsEqual(hoverTile.location, [x, y])) {
       hoverTile = null;
       draw();
     }
@@ -953,16 +924,13 @@ function createTileBox(grid, x, y, i, j) {
       edgeLoc = [edgeLoc[2], edgeLoc[3], edgeLoc[0], edgeLoc[1]];
     }
     tileEdge.onmouseenter = function() {
-      for (let i = 0; i < tiles.length; i++) {
-        if (locationsEqual(tiles[i].location, tileLoc)) {
-          hoverTileEdge = {tileNum: i, edge: edgeLoc, rotation: rotation};
-          break;
-        }
+      if (tileMatrix[x] != null && tileMatrix[x][y] != null) {
+        hoverTileEdge = {tile: tileMatrix[x][y], edge: edgeLoc, rotation: rotation};
+        draw();
       }
-      draw();
     };
     tileEdge.onmouseleave = function() {
-      if (hoverTileEdge != null && locationsEqual(hoverTileEdge.edge, edgeLoc)) {
+      if (hoverTileEdge != null && locationsEqual(hoverTileEdge.edge, edgeLoc) && hoverTileEdge.rotation == rotation) {
         hoverTileEdge = null;
         draw();
       }
@@ -979,14 +947,10 @@ function createEdgeBox(grid, xleft, yleft, xright, yright, i, j, width) {
   elem.style.gridRow = (j + 1) + "/" + (j + 2);
   elem.innerText = `${xleft}, ${yleft}, ${xright}, ${yright}`;
   elem.onmouseenter = function() { 
-    hoverEdge = {location: [xleft, yleft, xright, yright], edge_type: null};
-    for (let i = 0; i < edges.length; i++) {
-      if (locationsEqual(edges[i].location, hoverEdge.location)) {
-        hoverEdge.edge_type = edges[i].edge_type;
-        break;
-      }
+    if (edgeMatrix[(xleft+xright)/2] != null && edgeMatrix[(xleft+xright)/2][(yleft+yright)/2] != null) {
+      hoverEdge = {location: [xleft, yleft, xright, yright], edge_type: edgeMatrix[(xleft+xright)/2][(yleft+yright)/2].edge_type};
+      draw();
     }
-    draw();
   };
   elem.onmouseleave = function() {
     if (hoverEdge != null && locationsEqual(hoverEdge.location, [xleft, yleft, xright, yright])) {

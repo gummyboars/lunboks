@@ -71,13 +71,18 @@ amHost = false;
 colors = [];
 playerData = [];
 tiles = [];
+tileMatrix = [];
 ports = [];
 corners = [];
+cornerMatrix = [];
 pieces = [];
+pieceMatrix = [];
 landings = [];
 treasures = [];
 edges = [];
+edgeMatrix = [];
 roads = [];
+roadMatrix = [];
 cards = {};
 devCardCount = 0;
 turn = null;
@@ -1301,20 +1306,20 @@ function onmsg(event) {
   gamePhase = data.game_phase;
   let oldPhase = turnPhase;
   turnPhase = data.turn_phase;
-  tiles = data.tiles;
+  updateElems(tiles, tileMatrix, data.tiles);
   ports = data.ports;
-  corners = data.corners;
-  edges = data.edges;
+  updateElems(corners, cornerMatrix, data.corners);
+  updateElems(edges, edgeMatrix, data.edges);
   robberLoc = data.robber;
   pirateLoc = data.pirate;
   targetTile = data.target_tile;
   cards = data.cards;
   devCardCount = data.dev_cards;
   diceRoll = data.dice_roll;
-  pieces = data.pieces;
+  updateElems(pieces, pieceMatrix, data.pieces);
   landings = data.landings;
   treasures = data.treasures;
-  roads = data.roads;
+  updateElems(roads, roadMatrix, data.roads);
   let oldTurn = turn;
   turn = data.turn;
   collectTurn = data.collect_idx;
@@ -1380,6 +1385,55 @@ function onmsg(event) {
   document.getElementById("grid").classList.toggle("myturn", data.turn == myIdx);
   document.getElementById("grid").classList.toggle("tileselect", ["robber", "expel", "deplete"].includes(turnPhase));
   draw();
+}
+function updateElems(origElems, elemMatrix, newElems) {
+  let compareLocations = function(elemA, elemB) {
+    if (elemA.location.length != elemB.location.length) {
+      return elemA.location.length - elemB.location.length;  // Should never happen
+    }
+    for (let i = 0; i < elemA.location.length; i++) {
+      if (elemA.location[i] != elemB.location[i]) {
+        return elemA.location[i] - elemB.location[i];
+      }
+    }
+    return 0;
+  };
+  newElems.sort(compareLocations);
+  let i = 0;
+  let j = 0;
+  while (i < origElems.length || j < newElems.length) {
+    let comp;
+    if (i >= origElems.length) {
+      comp = 1;
+    } else if (j >= newElems.length) {
+      comp = -1;
+    } else {
+      comp = compareLocations(origElems[i], newElems[j])
+    }
+    if (comp == 0) {  // In place update
+      let [x, y] = coordsFromElem(newElems[j]);
+      elemMatrix[x][y] = newElems[j];
+      i++;
+      j++;
+      continue;
+    }
+    if (comp < 0) {  // Exists in old but not in new
+      let [x, y] = coordsFromElem(origElems[i]);
+      elemMatrix[x][y] = undefined;
+      i++;
+      continue;
+    }
+    if (comp > 0) {  // Exists in new but not in old
+      let [x, y] = coordsFromElem(newElems[j]);
+      if (elemMatrix[x] == null) {
+        elemMatrix[x] = [];
+      }
+      elemMatrix[x][y] = newElems[j];
+      j++;
+      continue;
+    }
+  }
+  origElems.splice(0, origElems.length, ...newElems)
 }
 function updateEndTurn() {
   let canUseButton = false;
@@ -2083,19 +2137,20 @@ function updateEventLog() {
   let uidiv = document.getElementById("uilog");
   uidiv.scrollTop = uidiv.scrollHeight;
 }
-function sizeThings() {
+function resizeThings() {
   clearTimeout(sizeTimeout);
-  sizeTimeout = setTimeout(function() {
-    canWidth = document.getElementById("uioverlay").offsetWidth;
-    canHeight = document.getElementById("uioverlay").offsetHeight;
-    document.getElementById("myCanvas").width = canWidth;
-    document.getElementById("myCanvas").height = canHeight;
-    if (myIdx != null) {
-      fixNameSize(null);
-    }
-    moveGrid();
-    draw();
-  }, 255);
+  sizeTimeout = setTimeout(sizeThings, 255);
+}
+function sizeThings() {
+  canWidth = document.getElementById("uioverlay").offsetWidth;
+  canHeight = document.getElementById("uioverlay").offsetHeight;
+  document.getElementById("myCanvas").width = canWidth;
+  document.getElementById("myCanvas").height = canHeight;
+  if (myIdx != null) {
+    fixNameSize(null);
+  }
+  moveGrid();
+  draw();
 }
 function updateBuyDev() {
   let block = document.getElementById('buydev');
@@ -2220,7 +2275,7 @@ function continueInit(gameId) {
   document.getElementById('myCanvas').onkeydown = onkey;
   document.getElementById('myCanvas').onwheel = onwheel;
   document.body.onclick = onBodyClick;
-  window.onresize = sizeThings;
+  window.onresize = resizeThings;
   ws = new WebSocket("ws://" + window.location.hostname + ":8081/" + gameId);
   ws.onmessage = onmsg;
 }
