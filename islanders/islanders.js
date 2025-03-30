@@ -1019,6 +1019,58 @@ function maybeShowPortWindow() {
     drawPort(tmpPort, ctx);
   }
 }
+function maybeShowStatusPopup() {
+  let statusPopup = document.getElementById("statuspopup");
+  if (turn != myIdx || !["knight", "fastknight", "treason", "intrigue", "move_knights", "discard"].includes(turnPhase)) {
+    statusPopup.style.display = "none";
+    return;
+  }
+  if (turnPhase == "discard") {
+    if (!discardPlayers[myIdx]) {
+      statusPopup.style.display = "flex";
+      statusPopup.innerText = "Waiting for players to discard";
+      return;
+    }
+    statusPopup.style.display = "none";
+    return;
+  }
+  statusPopup.style.display = "flex";
+  if (turnPhase == "knight") {
+    statusPopup.innerText = "Place a knight next to the castle";
+  } else if (turnPhase == "fastknight") {
+    statusPopup.innerText = "Place a knight on the board";
+  } else if (turnPhase == "intrigue") {
+    statusPopup.innerText = "Choose a barbarian to capture";
+  } else if (turnPhase == "move_knights") {
+    statusPopup.innerText = "Move your knights";
+  } else if (turnPhase == "treason") {
+    if (moveBarbarianTiles.length == 0) {
+      if (barbarianFromCount == 2) {
+        statusPopup.innerText = "Choose two barbarians to move";
+      } else if (barbarianFromCount == 1) {
+        statusPopup.innerText = "Choose one barbarian to move";
+      }
+    } else if (moveBarbarianTiles.length == 1) {
+      if (barbarianFromCount == 2) {
+        statusPopup.innerText = "Choose one more barbarian to move";
+      } else if (barbarianFromCount == 1) {
+        statusPopup.innerText = "Choose one barbarian to move";
+      }
+    } else if (moveBarbarianTiles.length == 2) {
+      if (barbarianToCount == 2) {
+        statusPopup.innerText = "Choose two tiles to move barbarians to";
+      } else if (barbarianToCount == 1) {
+        statusPopup.innerText = "Choose where to move the barbarian to";
+      }
+    } else if (moveBarbarianTiles.length == 3) {
+      if (barbarianToCount == 2) {
+        statusPopup.innerText = "Choose one more tile to move barbarians to";
+      } else if (barbarianToCount == 1) {
+        statusPopup.style.display = "none";
+      }
+    }
+  }
+}
 function rollDice() {
   if (turn != myIdx) {
     return;
@@ -1407,6 +1459,7 @@ function onmsg(event) {
   maybeShowRobWindow();
   maybeShowBuryWindow();
   maybeShowPortWindow();
+  maybeShowStatusPopup();
   document.getElementById("grid").classList.toggle("myturn", data.turn == myIdx);
   document.getElementById("grid").classList.toggle("tileselect", ["robber", "expel", "deplete"].includes(turnPhase));
   draw();
