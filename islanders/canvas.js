@@ -712,6 +712,7 @@ function onClickTile(event, tileLoc) {
         moveBarbarianTiles.splice(foundIdx, 1);
       }
       draw();
+      maybeShowStatusPopup();
       return;
     }
     if (moveBarbarianTiles.length < 2) {
@@ -733,9 +734,11 @@ function onClickTile(event, tileLoc) {
       };
       ws.send(JSON.stringify(msg));
       moveBarbarianTiles = [];
+      document.getElementById("statuspopup").style.display = "none";
       return;  // Do not draw - let next message do the drawing
     }
     draw();
+    maybeShowStatusPopup();
     return;
   }
   let clickType = (tileMatrix[tileLoc[0]][tileLoc[1]].is_land ? "robber" : "pirate");

@@ -229,10 +229,16 @@ div {
   flex-direction: row;
   z-index: 20; /* show over other elements */
 }
-#handpopup, #resourcepopup, #burypopup, #portpopup {
+#handpopup, #resourcepopup, #burypopup, #portpopup, #statuspopup {
   display: none;
   flex-direction: column;
   z-index: 20;
+  color: black;
+}
+#statuspopup {
+  text-align: center;
+  padding-left: 1em;
+  padding-right: 1em;
 }
 #portselecttitle {
   text-align: center;
