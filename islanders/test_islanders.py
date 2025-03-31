@@ -2068,6 +2068,58 @@ class TestSettleOffIslands(BreakpointTestMixin):
       self.handle(0, {"type": "settle", "location": [8, 12]})
 
 
+class TestCityWalls(BaseInputHandlerTest):
+  def setUp(self):
+    BaseInputHandlerTest.setUp(self)
+    self.c.options["city_walls"].force(True)
+
+  def testBuildWalls(self):
+    old_rsrcs = collections.Counter(self.c.player_data[0].cards)
+    self.c.pieces[(8, 4)].piece_type = "city"
+    self.c.handle_walls([8, 4], 0)
+    self.assertTrue(self.c.pieces[(8, 4)].walls)
+    new_rsrcs = collections.Counter(self.c.player_data[0].cards)
+    self.assertDictEqual(old_rsrcs - new_rsrcs, {"rsrc4": 2})
+    self.assertDictEqual(new_rsrcs - old_rsrcs, {})
+
+  def testCannotBuildWhenDisabled(self):
+    self.c.options["city_walls"].force(False)
+    self.c.pieces[(8, 4)].piece_type = "city"
+    with self.assertRaisesRegex(InvalidMove, "walls are not enabled"):
+      self.c.handle_walls([8, 4], 0)
+
+  def testCannotBuildOnTopOfExistingWalls(self):
+    self.c.pieces[(8, 4)].piece_type = "city"
+    self.c.pieces[(8, 4)].walls = True
+    with self.assertRaisesRegex(InvalidMove, "already has a wall"):
+      self.c.handle_walls([8, 4], 0)
+
+  def testMustAttachToOwnCity(self):
+    self.c.pieces[(5, 5)].piece_type = "city"
+    with self.assertRaisesRegex(InvalidMove, "in one of your cities"):
+      self.c.handle_walls([5, 5], 0)
+    with self.assertRaisesRegex(InvalidMove, "placed on a city"):
+      self.c.handle_walls([8, 4], 0)
+
+  def testInvalidInputs(self):
+    with self.assertRaisesRegex(InvalidMove, "tuple of size 2"):
+      self.c.handle_walls([5], 0)
+    with self.assertRaisesRegex(AssertionError, "corners must line up"):
+      self.c.handle_walls([8, 3], 0)
+
+  def testMaxThreeWalls(self):
+    self.c.add_piece(islanders.Piece(8, 4, "city", 0, walls=True))
+    self.c.add_piece(islanders.Piece(5, 3, "city", 0, walls=True))
+    self.c.add_piece(islanders.Piece(8, 2, "city", 0, walls=True))
+    self.c.add_piece(islanders.Piece(2, 4, "city", 0, walls=False))
+    with self.assertRaisesRegex(InvalidMove, "cannot have more than three"):
+      self.c.handle_walls([2, 4], 0)
+
+    # Test that other players' walls don't count.
+    self.c.pieces[(8, 2)].player = 1
+    self.c.handle_walls([2, 4], 0)
+
+
 class TestInitialSettlement(BaseInputHandlerTest):
   def setUp(self):
     BaseInputHandlerTest.setUp(self)
@@ -3332,6 +3384,23 @@ class TestDiscard(BaseInputHandlerTest):
     self.c.action_stack = ["dice"]
     self.c.handle_roll_dice()
     self.assertEqual(self.c.turn_phase, "robber")
+
+  def testCityWallsIncreaseThreshold(self, unused_randint):
+    self.c.player_data[0].cards.update({"rsrc1": 2, "rsrc2": 2, "rsrc3": 4, "rsrc5": 2})
+    self.c.player_data[1].cards.update({"rsrc1": 4, "rsrc3": 2, "rsrc5": 2, "knight": 5})
+    self.c.player_data[2].cards.update({"rsrc1": 2, "rsrc2": 4, "rsrc3": 2, "rsrc5": 2})
+    self.c.add_piece(islanders.Piece(3, 3, "city", 2, walls=True))
+    self.c.add_piece(islanders.Piece(6, 2, "city", 2, walls=True))
+    self.c.pieces[(5, 5)].piece_type = "city"
+    self.c.pieces[(5, 5)].walls = True
+    self.c.pieces[(8, 4)].piece_type = "city"
+    self.c.pieces[(8, 4)].walls = True
+    self.c.action_stack = ["dice"]
+    self.c.handle_roll_dice()
+    # Player 0 has 10 cards and one wall, and must discard 5.
+    # Player 1 has 8 cards and one wall, and does not need to discard.
+    # Player 2 has 10 cards and two walls, and does not need to discard.
+    self.assertDictEqual(self.c.discard_players, {0: 5})
 
   def testBuriedTreasureIncreasesThreshold(self, unused_randint):
     self.c.player_data[0].cards.update({"rsrc1": 4, "rsrc2": 4})
@@ -4740,6 +4809,7 @@ class TestExtraBuildPhase(BreakpointTestMixin):
       self.g.handle_join(u, {"name": u})
     self.g.handle_start("player1", {"options": {}})
     self.c = self.g.game
+    self.c.options["city_walls"].force(True)
 
   def testNoExtraBuildDuringPlacePhase(self):
     self.handle(0, {"type": "settle", "location": [3, 3]})
@@ -4765,7 +4835,7 @@ class TestExtraBuildPhase(BreakpointTestMixin):
     self.c.add_piece(islanders.Piece(3, 3, "settlement", 0))
     self.c._add_road(Road([3, 3, 5, 3], "road", 0))
     self.c._add_road(Road([5, 3, 6, 4], "road", 0))
-    self.c.player_data[0].cards.update({"rsrc1": 3, "rsrc2": 3, "rsrc3": 5, "rsrc4": 3, "rsrc5": 5})
+    self.c.player_data[0].cards.update({"rsrc1": 3, "rsrc2": 3, "rsrc3": 5, "rsrc4": 4, "rsrc5": 5})
     self.c.player_data[4].cards.update({"rsrc1": 3, "rsrc2": 3, "rsrc3": 5, "rsrc4": 3, "rsrc5": 5})
 
     with self.assertRaises(islanders.NotYourTurn):
@@ -4778,6 +4848,7 @@ class TestExtraBuildPhase(BreakpointTestMixin):
     self.handle(0, {"type": "settle", "location": [6, 4]})
     self.handle(0, {"type": "road", "location": [6, 4, 8, 4]})
     self.handle(0, {"type": "city", "location": [3, 3]})
+    self.handle(0, {"type": "walls", "location": [3, 3]})
     self.handle(0, {"type": "buy_dev"})
 
     with self.assertRaises(islanders.NotYourTurn):
