@@ -33,6 +33,10 @@ EXTRA_NUMBERS = [
 ]  # fmt: skip
 
 
+class TargetFound(Exception):  # noqa: N818
+  pass
+
+
 def _validate_name(current_name, used_names, data):
   # TODO: maybe this should actually return the new name instead of having callers figure it out.
   ValidatePlayer(data)
@@ -137,6 +141,7 @@ class Options(collections.OrderedDict):
       "", default=("settlement", "settlement"), forced=True, hidden=True, choices=schoices
     )
     self["city_walls"] = GameOption("City Walls", default=False)
+    self["knights"] = GameOption("Knights & Progress", default=False)
     self["extra_build"] = GameOption("5-6 Players", default=False, forced=True)
     self["debug"] = GameOption("Debug", default=False)
 
@@ -418,11 +423,19 @@ class Road:
 
 
 class Knight:
-  def __init__(self, location, player, source, *, movement=0):
-    self.location = EdgeLocation(*location)
+  def __init__(self, location, player, source, *, movement=0, strength=None, active=False):
+    if len(location) == 2:
+      self.location = CornerLocation(*location)
+      self.source = CornerLocation(*source)
+      strength = strength or 1
+    else:
+      self.location = EdgeLocation(*location)
+      self.source = EdgeLocation(*source)
+      strength = strength or 0
     self.player = player
-    self.source = EdgeLocation(*source)
     self.movement = movement
+    self.strength = strength
+    self.active = active
 
   def json_repr(self):
     return {
@@ -430,11 +443,20 @@ class Knight:
       "player": self.player,
       "source": self.source,
       "movement": self.movement,
+      "strength": self.strength,
+      "active": self.active,
     }
 
   @staticmethod
   def parse_json(value):
-    return Knight(value["location"], value["player"], value["source"], movement=value["movement"])
+    return Knight(
+      value["location"],
+      value["player"],
+      value["source"],
+      movement=value["movement"],
+      strength=value.get("strength", 0),
+      active=value.get("active", False),
+    )
 
   def __str__(self):
     return str(self.json_repr())
@@ -628,6 +650,8 @@ class IslandersState:
       "played_dev",
       "ships_moved",
       "built_this_turn",
+      "activated_this_turn",
+      "promoted_this_turn",
       "home_corners",
       "foreign_landings",
       "placement_islands",
@@ -688,7 +712,7 @@ class IslandersState:
     self.game_phase: str = "place1"  # valid values are place1, place2, place3, main, victory
     # settle, road, dice, collect, discard, robber, rob, dev_road, deplete, expel, main, extra_build
     # collect1, collect2, collectpi, takedev, bury, placeport, knight, fastknight, treason, intrigue
-    # move_knights, check_recapture
+    # move_knights, check_recapture, displace
     self.action_stack: list[str] = ["road", "settle"]
     self.turn_idx: int = 0
     self.collect_idx: Optional[int] = None
@@ -698,11 +722,14 @@ class IslandersState:
     self.played_dev: int = 0
     self.ships_moved: int = 0
     self.built_this_turn: list[EdgeLocation] = []  # Locations where ships were placed this turn.
+    self.activated_this_turn: list[CornerLocation] = []  # Locations of knight activation this turn.
+    self.promoted_this_turn: list[CornerLocation] = []  # Locations of knight promotion this turn.
     self.discard_players: dict[int, int] = {}  # Map of player to number of cards they must discard.
     self.rob_players: list[int] = []  # List of players that can be robbed by this robber.
     self.shortage_resources: list[str] = []
     self.collect_counts: dict[int, int] = collections.defaultdict(int)
     self.target_tile: Optional[TileLocation] = None
+    self.displaced_knight: Optional[Knight] = None
     self.home_corners: dict[int, list[CornerLocation]] = collections.defaultdict(list)
     self.foreign_landings: dict[int, list[CornerLocation]] = collections.defaultdict(list)
     self.next_die_roll: Optional[int] = None
@@ -726,7 +753,7 @@ class IslandersState:
 
     # Regular attributes
     custom_attrs = cls.LOCATION_ATTRIBUTES | cls.COMPUTED_ATTRIBUTES | cls.INDEXED_ATTRIBUTES
-    custom_attrs |= {"player_data", "event_log", "options"}
+    custom_attrs |= {"player_data", "event_log", "options", "displaced_knight"}
     for attr in cstate.__dict__.keys() & gamedata.keys() - custom_attrs:
       setattr(cstate, attr, gamedata[attr])
 
@@ -771,6 +798,12 @@ class IslandersState:
     cstate.built_this_turn = [EdgeLocation(*loc) for loc in cstate.built_this_turn]
     if cstate.placement_islands is not None:
       cstate.placement_islands = [CornerLocation(*corner) for corner in cstate.placement_islands]
+    cstate.activated_this_turn = [CornerLocation(*loc) for loc in cstate.activated_this_turn]
+    cstate.promoted_this_turn = [CornerLocation(*loc) for loc in cstate.promoted_this_turn]
+
+    # Displaced knight needs to be parsed as a knight object
+    if gamedata.get("displaced_knight") is not None:
+      cstate.displaced_knight = Knight.parse_json(gamedata["displaced_knight"])
 
     # When loading json, these islands get turned into lists. Turn them into locations instead.
     for attr in ["home_corners", "foreign_landings"]:
@@ -950,7 +983,14 @@ class IslandersState:
       "move_knights",
       "intrigue",
       "treason",
+      "displace",
+      "chaserobber",
+      "chasepirate",
     ]:
+      return
+    if self.turn_phase in ["chaserobber", "chasepirate"]:
+      self.action_stack.pop()
+      self.next_action()
       return
     if self.turn_phase == "move_knights":
       found = False
@@ -988,6 +1028,18 @@ class IslandersState:
       if dest_count == 0:
         self.handle_treason(None, None, None, None, self.turn_idx)
         return
+    if self.turn_phase == "displace":
+      try:
+        knight = self.displaced_knight  # Check that this knight has somewhere to go.
+        self._dfs_depth(knight.player, knight.location, set(), None, 0)
+      except TargetFound:
+        return
+      text = "{player%s} lost their displaced knight" % knight.player
+      self.event_log.append(Event("knight", text))
+      self.displaced_knight = None
+      self.action_stack.pop()
+      self.next_action()
+      return
     if self.turn_phase == "takedev":
       if self.options.shuffle_discards and not self.dev_cards:
         self.reshuffle_dev_cards()
@@ -1058,6 +1110,10 @@ class IslandersState:
       return
     if self.game_phase == "victory":
       raise NotYourTurn("The game is over.")
+    if self.turn_phase == "displace":
+      if player_idx != self.displaced_knight.player:
+        raise NotYourTurn("Waiting for a player to move their displaced knight.")
+      return
     if self.turn_phase == "collect" and move_type == "collect":
       if not self.collect_counts.get(player_idx):
         raise NotYourTurn("You are not eligible to collect any resources.")
@@ -1082,6 +1138,8 @@ class IslandersState:
       return self.handle_discard(data.get("selection"), player_idx)
     if move_type == "counter_offer":
       return self.handle_counter_offer(data.get("offer"), player_idx)
+    if move_type == "displace":
+      return self.handle_displace(data.get("location"), player_idx)
     location = data.get("location")
     if move_type == "roll_dice":
       return self.handle_roll_dice()
@@ -1113,12 +1171,18 @@ class IslandersState:
       return self.handle_play_dev(data.get("card_type"), data.get("selection"), player_idx)
     if move_type == "knight":
       return self.handle_place_knight(location, player_idx)
+    if move_type == "promote":
+      return self.handle_promote_knight(location, player_idx)
+    if move_type == "activate":
+      return self.handle_activate_knight(location, player_idx)
     if move_type == "move_knight":
       return self.handle_move_knight(data.get("from"), data.get("to"), player_idx)
     if move_type == "treason":
       return self.handle_treason(data["froma"], data["fromb"], data["toa"], data["tob"], player_idx)
     if move_type == "intrigue":
       return self.handle_intrigue(location, player_idx)
+    if move_type == "chase":
+      return self.handle_chase(location, data.get("knight"), player_idx)
     if move_type == "expel":
       return self.handle_expel(location, player_idx)
     if move_type == "settle":
@@ -1218,6 +1282,8 @@ class IslandersState:
     self.played_dev = 0
     self.ships_moved = 0
     self.built_this_turn.clear()
+    self.activated_this_turn.clear()
+    self.promoted_this_turn.clear()
     self.shortage_resources.clear()
     self.trade_offer = {}
     self.counter_offers.clear()
@@ -1471,6 +1537,9 @@ class IslandersState:
       raise InvalidMove(
         "You must play the %s on a valid %s tile." % (robber_type, "land" if land else "{space}")
       )
+    if len(self.action_stack) >= 2 and self.action_stack[-2].startswith("chase"):
+      if self.action_stack[-2] != f"chase{robber_type}":
+        raise InvalidMove(f"You must move the {robber_type}.")
     if chosen_tile.tile_type == "discover":
       raise InvalidMove("You cannot place the %s there before exploring it." % robber_type)
     if getattr(self, robber_type) == new_location:
@@ -1736,7 +1805,10 @@ class IslandersState:
         else:  # noqa: RET505
           # Owned by another player - continue to the next corner.
           continue
-      # If no settlement at this corner, check for other roads to this corner.
+      if corner in self.knights and self.knights[corner].player != player:
+        # Road cannot proceed past another player's knight.
+        continue
+      # If no settlement or knight at this corner, check for other roads to this corner.
       other_edges = corner.get_edges()
       for edge in other_edges:
         if edge == location or edge in ignore:
@@ -1921,11 +1993,15 @@ class IslandersState:
     max_length = 0
     for corner in all_corners:
       seen = set()
-      max_length = max(max_length, self._dfs_depth(player, corner, seen, None))
+      max_length = max(max_length, self._dfs_depth(player, corner, seen, None, None))
 
     return max_length
 
-  def _dfs_depth(self, player, corner, seen_edges, prev_edge):
+  def _dfs_depth(self, player, corner, seen_edges, prev_edge, destination):
+    if corner == destination:
+      raise TargetFound  # Slight hack to reuse this helper for knight movement.
+    if destination == 0 and corner not in self.pieces and corner not in self.knights:
+      raise TargetFound  # This is a lot of hackery.
     # First, use the type of the piece at this corner to set a baseline. If it belongs to
     # another player, the route ends. If it belongs to this player, the next edge in the route
     # may be either a road or a ship. If there is no piece, then the type of the next edge
@@ -1944,6 +2020,8 @@ class IslandersState:
         return 0
       else:
         valid_types = Road.TYPES
+      if corner in self.knights and self.knights[corner].player != player:
+        return 0
 
     # Next, get the three corners next to this corner. We can determine an edge from each one,
     # and we will throw away any edges that either do not belong to the player or that we have
@@ -1961,7 +2039,7 @@ class IslandersState:
     for edge in valid_edges:
       other_corner = edge.corner_left if edge.corner_right == corner else edge.corner_right
       seen_edges.add(edge)
-      sub_depth = self._dfs_depth(player, other_corner, seen_edges, edge)
+      sub_depth = self._dfs_depth(player, other_corner, seen_edges, edge, destination)
       max_depth = max(max_depth, 1 + sub_depth)
       seen_edges.remove(edge)
     return max_depth
@@ -2309,6 +2387,8 @@ class IslandersState:
     # Check nothing else is already there.
     if loc in self.pieces:
       raise InvalidMove("You cannot settle on top of another player's settlement.")
+    if loc in self.knights:
+      raise InvalidMove("You cannot settle on top of a knight.")
     for adjacent in loc.get_adjacent_corners():
       if adjacent in self.pieces:
         raise InvalidMove("You cannot place a settlement next to existing settlement.")
@@ -2569,6 +2649,9 @@ class IslandersState:
     self.next_action()
 
   def handle_place_knight(self, loc, player_idx):
+    if self.options.knights:
+      self.handle_buy_knight(loc, player_idx)
+      return
     if self.turn_phase not in ["knight", "fastknight"]:
       raise InvalidMove("You cannot place any knights right now.")
     location = parse_location(loc, EdgeLocation)
@@ -2584,12 +2667,77 @@ class IslandersState:
     if location in self.knights:
       raise InvalidMove("There is already a knight there.")
 
-    self.knights[location] = Knight(location, player_idx, location)
     self.event_log.append(Event("knight", "{player%s} built a knight" % player_idx))
+    self.add_knight(Knight(location, player_idx, location))
     self.action_stack.pop()
     self.next_action()
 
+  def handle_buy_knight(self, loc, player_idx):
+    self._check_main_phase("knight", "buy a knight")
+    location = parse_location(loc, CornerLocation)
+    used = len([k for k in self.knights.values() if k.player == player_idx and k.strength == 1])
+    if used >= 2:
+      raise InvalidMove("You have no conscript knights remaining.")
+    if location in self.pieces or location in self.knights:
+      raise InvalidMove("You must place your knight on an empty corner.")
+    nearby_roads = [self.roads[edge] for edge in location.get_edges() if edge in self.roads]
+    if not any(road.player == player_idx and road.road_type == "road" for road in nearby_roads):
+      raise InvalidMove("You must place your knight next to one of your roads.")
+    resources = [("rsrc1", 1), ("rsrc5", 1)]
+    self._remove_resources(resources, player_idx, "buy a knight")
+    self.event_log.append(Event("knight", "{player%s} built a knight" % player_idx))
+    self.add_knight(Knight(location, player_idx, location, strength=1))
+
+  def add_knight(self, knight):
+    self.knights[knight.location] = knight
+    if not isinstance(knight.location, CornerLocation):  # Only corner knights affect longest road.
+      return
+
+    # Knights can disrupt roads, so recompute longest road for players with adjacent roads.
+    check = {self.roads[edge].player for edge in knight.location.get_edges() if edge in self.roads}
+    for idx in check:
+      self.player_data[idx].longest_route = self._calculate_longest_road(idx)
+    self._update_longest_route_player()
+
+  def handle_promote_knight(self, loc, player_idx):
+    self._check_main_phase("promote", "promote a knight")
+    location = parse_location(loc, CornerLocation)
+    if location not in self.knights:
+      raise InvalidMove("You do not have a knight there.")
+    if self.knights[location].player != player_idx:
+      raise InvalidMove("You can only promote your own knights.")
+    if self.knights[location].strength >= 3:
+      raise InvalidMove("You cannot promote knights beyond elite.")
+    if location in self.promoted_this_turn:
+      raise InvalidMove("You cannot promote a knight more than once per turn.")
+    might = self.knights[location].strength + 1
+    used = len([k for k in self.knights.values() if k.player == player_idx and k.strength == might])
+    if used >= 2:
+      raise InvalidMove(f"You have no {'elite' if might == 3 else 'veteran'} knights remaining.")
+    resources = [("rsrc1", 1), ("rsrc5", 1)]
+    self._remove_resources(resources, player_idx, "promote a knight")
+    self.knights[location].strength += 1
+    self.promoted_this_turn.append(location)
+    self.event_log.append(Event("knight", "{player%s} promoted a knight" % player_idx))
+
+  def handle_activate_knight(self, loc, player_idx):
+    self._check_main_phase("activate", "activate a knight")
+    location = parse_location(loc, CornerLocation)
+    if location not in self.knights:
+      raise InvalidMove("You do not have a knight there.")
+    if self.knights[location].player != player_idx:
+      raise InvalidMove("You can only activate your own knights.")
+    if self.knights[location].active:
+      raise InvalidMove("That knight is already active.")
+    self._remove_resources([("rsrc3", 1)], player_idx, "activate a knight")
+    self.knights[location].active = True
+    self.activated_this_turn.append(location)
+    self.event_log.append(Event("knight", "{player%s} activated a knight" % player_idx))
+
   def handle_move_knight(self, from_loc, to_loc, player_idx):
+    if self.options.knights:
+      self._handle_knight_move(from_loc, to_loc, player_idx)
+      return
     if self.turn_phase != "move_knights":
       raise InvalidMove("You cannot move your knights right now.")
     from_location = parse_location(from_loc, EdgeLocation)
@@ -2610,7 +2758,7 @@ class IslandersState:
     knight = self.knights.pop(from_location)
     knight.location = to_location
     knight.movement = orig_movement - distance
-    self.knights[to_location] = knight
+    self.add_knight(knight)
 
   def _bfs_search(self, start, target):
     if start == target:
@@ -2637,6 +2785,80 @@ class IslandersState:
         distances[adjacent] = distances[edge] + 1
         to_search.append(adjacent)
     return None
+
+  def _handle_knight_move(self, from_loc, to_loc, player_idx):
+    self._check_main_phase("move_knights", "move your knights")
+    from_location = parse_location(from_loc, CornerLocation)
+    to_location = parse_location(to_loc, CornerLocation)
+    if from_location not in self.knights:
+      raise InvalidMove("You do not have a knight there.")
+    if self.knights[from_location].player != player_idx:
+      raise InvalidMove("You can only move your own knights.")
+    if to_location == from_location:
+      raise InvalidMove("You must move your knight to a different location.")
+    if to_location in self.knights:
+      if self.knights[to_location].player == player_idx:
+        raise InvalidMove("You cannot place your knight on top of another knight.")
+      if self.knights[to_location].strength >= self.knights[from_location].strength:
+        raise InvalidMove("You cannot displace a knight of equal or greater strength.")
+    if to_location in self.pieces:
+      raise InvalidMove("You cannot place your knight on a settlement/city.")
+    if not self.knights[from_location].active:
+      raise InvalidMove("You must activate a knight before moving it.")
+    if from_location in self.activated_this_turn:
+      raise InvalidMove("You cannot move a knight that was activated this turn.")
+
+    try:
+      self._dfs_depth(player_idx, from_location, set(), None, to_location)
+    except TargetFound:
+      pass
+    else:
+      raise InvalidMove("Your knight cannot reach that location.")
+
+    if to_location in self.knights:
+      self.displaced_knight = self.knights[to_location]
+    knight = self.knights.pop(from_location)
+    knight.active = False
+    knight.location = to_location
+    if from_location in self.promoted_this_turn:
+      self.promoted_this_turn.remove(from_location)
+      self.promoted_this_turn.append(to_location)
+    verb = "displaced" if self.displaced_knight else "moved"
+    self.event_log.append(Event("knight", "{player%s} %s a knight" % (player_idx, verb)))
+
+    # add_knight will update the longest route of the player(s) the knight is placed next to, so we
+    # have to manually update the longest route of the player(s) the knight was moved from.
+    to_check = {self.roads[edge].player for edge in from_location.get_edges() if edge in self.roads}
+    for idx in to_check:
+      self.player_data[idx].longest_route = self._calculate_longest_road(idx)
+    self.add_knight(knight)
+
+    if self.displaced_knight is not None:
+      self.action_stack.append("displace")
+      self.next_action()
+
+  def handle_displace(self, loc, player_idx):
+    if self.turn_phase != "displace":
+      raise NotYourTurn("You cannot move a displaced knight right now.")
+    if player_idx != self.displaced_knight.player:
+      raise NotYourTurn("It is not your turn to move a displaced knight.")
+    location = parse_location(loc, CornerLocation)
+    if location in self.pieces or location in self.knights:
+      raise InvalidMove("You must place your displaced knight on an empty corner.")
+
+    try:
+      self._dfs_depth(player_idx, self.displaced_knight.location, set(), None, location)
+    except TargetFound:
+      pass
+    else:
+      raise InvalidMove("Your knight cannot reach that location.")
+
+    self.event_log.append(Event("knight", "{player%s} moved their displaced knight" % player_idx))
+    self.displaced_knight.location = location
+    self.add_knight(self.displaced_knight)
+    self.displaced_knight = None
+    self.action_stack.pop()
+    self.next_action()
 
   def _calculate_treason_tiles(self):
     """Returns a pair of (tiles to take barbarians from, tiles to send barbarians to).
@@ -2755,6 +2977,30 @@ class IslandersState:
       self.recapture(tile)
     self.action_stack.pop()
     self.next_action()
+
+  def handle_chase(self, robber_loc, knight_loc, player_idx):
+    self._check_main_phase("chase", "chase away the robber")
+    robber_location = parse_location(robber_loc, TileLocation)
+    knight_location = parse_location(knight_loc, CornerLocation)
+    if knight_location not in self.knights:
+      raise InvalidMove("You do not have a knight there.")
+    if self.knights[knight_location].player != player_idx:
+      raise InvalidMove("You can only use your own knights.")
+    if not self.knights[knight_location].active:
+      raise InvalidMove("You must activate your knight first.")
+    if knight_location in self.activated_this_turn:
+      raise InvalidMove("You cannot chase the robber with a knight that was activated this turn.")
+    if robber_location not in knight_location.get_tiles():
+      raise InvalidMove("Your knight must be next to the robber to chase it away.")
+    if robber_location not in {self.robber, self.pirate}:
+      addendum = " or the pirate" if self.options.pirate else ""
+      raise InvalidMove(f"You must choose the robber{addendum} to chase away.")
+
+    self.knights[knight_location].active = False
+    rob_type = "robber" if robber_location == self.robber else "pirate"
+    self.action_stack.extend(["rob", f"chase{rob_type}", "robber"])
+    text = "{player%s} used their knight to chase away the %s" % (player_idx, rob_type)
+    self.event_log.append(Event("knight", text))
 
   def handle_expel(self, loc, player_idx):  # pylint: disable=unused-argument
     if self.turn_phase != "expel":

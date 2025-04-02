@@ -1021,6 +1021,18 @@ function maybeShowPortWindow() {
 }
 function maybeShowStatusPopup() {
   let statusPopup = document.getElementById("statuspopup");
+  if (turnPhase == "displace") {
+    if (displacedKnight != null && displacedKnight.player == myIdx) {
+      statusPopup.style.display = "flex";
+      statusPopup.innerText = "Choose where to place your displaced knight.";
+    } else if (turn == myIdx) {
+      statusPopup.style.display = "flex";
+      statusPopup.innerText = "Waiting for a player to move their displaced knight.";
+    } else {
+      statusPopup.style.display = "none";
+    }
+    return;
+  }
   if (turn != myIdx || !["knight", "fastknight", "treason", "intrigue", "move_knights", "discard"].includes(turnPhase)) {
     statusPopup.style.display = "none";
     return;
@@ -1399,6 +1411,7 @@ function onmsg(event) {
   turn = data.turn;
   collectTurn = data.collect_idx;
   collectCounts = data.collect_counts;
+  displacedKnight = data.displaced_knight;
   extraBuildTurn = data.extra_build_idx;
   discardPlayers = data.discard_players;
   let oldActiveOffer = tradeActiveOffer;
@@ -1465,6 +1478,9 @@ function onmsg(event) {
     myTurn = extraBuildTurn == myIdx;
   } else {
     myTurn = turn == myIdx;
+    if (turnPhase == "displace" && displacedKnight != null && displacedKnight.player == myIdx) {
+      myTurn = true;
+    }
   }
   document.getElementById("grid").classList.toggle("myturn", myTurn);
   document.getElementById("grid").classList.toggle("tileselect", ["robber", "expel", "deplete"].includes(turnPhase));

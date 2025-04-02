@@ -2000,6 +2000,12 @@ class TestHandleSettleInput(BaseInputHandlerTest):
     with self.assertRaisesRegex(InvalidMove, "cannot.*settle on top of"):
       self.handle(0, {"type": "settle", "location": [5, 5]})
 
+  def testCannotSettleOnKnight(self):
+    self.c.options["knights"].force(True)
+    self.c.add_knight(islanders.Knight((5, 3), 0, (5, 3), strength=1))
+    with self.assertRaisesRegex(InvalidMove, "cannot.*settle on top of"):
+      self.handle(0, {"type": "settle", "location": [5, 3]})
+
   def testMustSettleValidLocation(self):
     with self.assertRaisesRegex(InvalidMove, "should be a tuple of size 2"):
       self.handle(0, {"type": "settle", "location": [2]})
@@ -2364,6 +2370,12 @@ class TestHandleRoadInput(BaseInputHandlerTest):
     self.c._add_road(Road([5, 5, 6, 4], "road", 0))
     with self.assertRaisesRegex(InvalidMove, "must be connected"):
       self.handle(0, {"type": "road", "location": [3, 5, 5, 5]})
+
+  def testCannotBuildAcrossOpponentKnight(self):
+    self.c.options["knights"].force(True)
+    self.c.add_knight(islanders.Knight((6, 4), 1, (6, 4), strength=1))
+    with self.assertRaisesRegex(InvalidMove, "must be connected"):
+      self.handle(0, {"type": "road", "location": [5, 5, 6, 4]})
 
   def testCannotBuildConqueredRoad(self):
     for loc in [(4, 4), (4, 6), (7, 5)]:
@@ -3027,45 +3039,45 @@ class TestLongestRouteCalculation(BaseInputHandlerTest):
     BaseInputHandlerTest.setUp(self)
 
   def testSingleRoad(self):
-    val = self.c._dfs_depth(0, islanders.CornerLocation(6, 4), set(), None)
+    val = self.c._dfs_depth(0, islanders.CornerLocation(6, 4), set(), None, None)
     self.assertEqual(val, 1)
 
   def testTwoRoads(self):
     self.c._add_road(Road([8, 4, 9, 5], "road", 0))
-    val = self.c._dfs_depth(0, islanders.CornerLocation(6, 4), set(), None)
+    val = self.c._dfs_depth(0, islanders.CornerLocation(6, 4), set(), None, None)
     self.assertEqual(val, 2)
-    val = self.c._dfs_depth(0, islanders.CornerLocation(9, 5), set(), None)
+    val = self.c._dfs_depth(0, islanders.CornerLocation(9, 5), set(), None, None)
     self.assertEqual(val, 2)
     # Starting from the middle should give a length of 1.
-    val = self.c._dfs_depth(0, islanders.CornerLocation(8, 4), set(), None)
+    val = self.c._dfs_depth(0, islanders.CornerLocation(8, 4), set(), None, None)
     self.assertEqual(val, 1)
 
   def testThreeRoads(self):
     self.c._add_road(Road([8, 4, 9, 5], "road", 0))
     self.c._add_road(Road([8, 4, 9, 3], "road", 0))
     # Starting on any end of the network should still get you 2.
-    val = self.c._dfs_depth(0, islanders.CornerLocation(6, 4), set(), None)
+    val = self.c._dfs_depth(0, islanders.CornerLocation(6, 4), set(), None, None)
     self.assertEqual(val, 2)
-    val = self.c._dfs_depth(0, islanders.CornerLocation(9, 5), set(), None)
+    val = self.c._dfs_depth(0, islanders.CornerLocation(9, 5), set(), None, None)
     self.assertEqual(val, 2)
-    val = self.c._dfs_depth(0, islanders.CornerLocation(9, 3), set(), None)
+    val = self.c._dfs_depth(0, islanders.CornerLocation(9, 3), set(), None, None)
     self.assertEqual(val, 2)
     # Starting from the middle should give a length of 1.
-    val = self.c._dfs_depth(0, islanders.CornerLocation(8, 4), set(), None)
+    val = self.c._dfs_depth(0, islanders.CornerLocation(8, 4), set(), None, None)
     self.assertEqual(val, 1)
 
   def testRoadInterruption(self):
     self.c._add_road(Road([8, 4, 9, 5], "road", 0))
     self.c._add_road(Road([8, 6, 9, 5], "road", 0))
-    val = self.c._dfs_depth(0, islanders.CornerLocation(6, 4), set(), None)
+    val = self.c._dfs_depth(0, islanders.CornerLocation(6, 4), set(), None, None)
     self.assertEqual(val, 3)
-    val = self.c._dfs_depth(0, islanders.CornerLocation(8, 6), set(), None)
+    val = self.c._dfs_depth(0, islanders.CornerLocation(8, 6), set(), None, None)
     self.assertEqual(val, 3)
     # Add a piece for the other player to interrupt the road.
     self.c.add_piece(islanders.Piece(9, 5, "settlement", 1))
-    val = self.c._dfs_depth(0, islanders.CornerLocation(6, 4), set(), None)
+    val = self.c._dfs_depth(0, islanders.CornerLocation(6, 4), set(), None, None)
     self.assertEqual(val, 2)
-    val = self.c._dfs_depth(0, islanders.CornerLocation(8, 6), set(), None)
+    val = self.c._dfs_depth(0, islanders.CornerLocation(8, 6), set(), None, None)
     self.assertEqual(val, 1)
 
   def testSandwichedRoad(self):
@@ -3074,11 +3086,11 @@ class TestLongestRouteCalculation(BaseInputHandlerTest):
     self.c._add_road(Road([5, 5, 6, 4], "road", 0))
     self.c._add_road(Road([8, 4, 9, 5], "road", 0))
     self.c._add_road(Road([8, 6, 9, 5], "road", 0))
-    val = self.c._dfs_depth(0, islanders.CornerLocation(6, 4), set(), None)
+    val = self.c._dfs_depth(0, islanders.CornerLocation(6, 4), set(), None, None)
     self.assertEqual(val, 3)
-    val = self.c._dfs_depth(0, islanders.CornerLocation(5, 5), set(), None)
+    val = self.c._dfs_depth(0, islanders.CornerLocation(5, 5), set(), None, None)
     self.assertEqual(val, 4)
-    val = self.c._dfs_depth(0, islanders.CornerLocation(8, 6), set(), None)
+    val = self.c._dfs_depth(0, islanders.CornerLocation(8, 6), set(), None, None)
     self.assertEqual(val, 4)
 
   def testCircularRoad(self):
@@ -3090,15 +3102,15 @@ class TestLongestRouteCalculation(BaseInputHandlerTest):
 
     # Start by testing a simple loop.
     for corner in [(5, 3), (6, 4), (8, 4), (9, 3), (8, 2), (6, 2)]:
-      val = self.c._dfs_depth(0, islanders.CornerLocation(*corner), set(), None)
+      val = self.c._dfs_depth(0, islanders.CornerLocation(*corner), set(), None, None)
       self.assertEqual(val, 6, f"loop length for corner {corner}")
 
     # Add two tips onto the end of the loop. Length from either end should be 7.
     self.c._add_road(Road([3, 3, 5, 3], "road", 0))
     self.c._add_road(Road([8, 4, 9, 5], "road", 0))
-    val = self.c._dfs_depth(0, islanders.CornerLocation(3, 3), set(), None)
+    val = self.c._dfs_depth(0, islanders.CornerLocation(3, 3), set(), None, None)
     self.assertEqual(val, 7, "enter and loop around")
-    val = self.c._dfs_depth(0, islanders.CornerLocation(9, 5), set(), None)
+    val = self.c._dfs_depth(0, islanders.CornerLocation(9, 5), set(), None, None)
     self.assertEqual(val, 7, "enter and loop around")
 
     # Make the road longer without using the loop than with the loop.
@@ -3106,9 +3118,9 @@ class TestLongestRouteCalculation(BaseInputHandlerTest):
     self.c._add_road(Road([2, 4, 3, 5], "road", 0))
     self.c._add_road(Road([8, 6, 9, 5], "road", 0))
     self.c._add_road(Road([6, 6, 8, 6], "road", 0))
-    val = self.c._dfs_depth(0, islanders.CornerLocation(6, 6), set(), None)
+    val = self.c._dfs_depth(0, islanders.CornerLocation(6, 6), set(), None, None)
     self.assertEqual(val, 10, "take long route around loop")
-    val = self.c._dfs_depth(0, islanders.CornerLocation(3, 5), set(), None)
+    val = self.c._dfs_depth(0, islanders.CornerLocation(3, 5), set(), None, None)
     self.assertEqual(val, 10, "take long route around loop")
 
   def testPortConnection(self):
@@ -3118,27 +3130,27 @@ class TestLongestRouteCalculation(BaseInputHandlerTest):
     self.c._add_road(Road([6, 2, 8, 2], "ship", 0))
     self.c._add_road(Road([8, 2, 9, 3], "road", 0))
     self.c._add_road(Road([8, 4, 9, 3], "road", 0))
-    val = self.c._dfs_depth(0, islanders.CornerLocation(5, 3), set(), None)
+    val = self.c._dfs_depth(0, islanders.CornerLocation(5, 3), set(), None, None)
     self.assertEqual(val, 4, "no road -> ship connection")
-    val = self.c._dfs_depth(0, islanders.CornerLocation(8, 2), set(), None)
+    val = self.c._dfs_depth(0, islanders.CornerLocation(8, 2), set(), None, None)
     self.assertEqual(val, 4, "no road -> ship connection")
-    val = self.c._dfs_depth(0, islanders.CornerLocation(6, 2), set(), None)
+    val = self.c._dfs_depth(0, islanders.CornerLocation(6, 2), set(), None, None)
     self.assertEqual(val, 1, "single ship length in either direction")
-    val = self.c._dfs_depth(0, islanders.CornerLocation(8, 4), set(), None)
+    val = self.c._dfs_depth(0, islanders.CornerLocation(8, 4), set(), None, None)
     self.assertEqual(val, 2, "two roads in either direction")
 
     # Add a connector piece.
     self.c.add_piece(islanders.Piece(5, 3, "settlement", 0))
-    val = self.c._dfs_depth(0, islanders.CornerLocation(5, 3), set(), None)
+    val = self.c._dfs_depth(0, islanders.CornerLocation(5, 3), set(), None, None)
     self.assertEqual(val, 4, "still cannot go road->ship in the middle")
-    val = self.c._dfs_depth(0, islanders.CornerLocation(8, 2), set(), None)
+    val = self.c._dfs_depth(0, islanders.CornerLocation(8, 2), set(), None, None)
     self.assertEqual(val, 6, "but can go road->ship through a port")
 
     # Make sure somebody else's settlement doesn't count.
     self.c.pieces[(5, 3)].player = 1
-    val = self.c._dfs_depth(0, islanders.CornerLocation(5, 3), set(), None)
+    val = self.c._dfs_depth(0, islanders.CornerLocation(5, 3), set(), None, None)
     self.assertEqual(val, 4, "cannot go through someone else's port")
-    val = self.c._dfs_depth(0, islanders.CornerLocation(8, 2), set(), None)
+    val = self.c._dfs_depth(0, islanders.CornerLocation(8, 2), set(), None, None)
     self.assertEqual(val, 4, "cannot go through someone else's port")
 
   def testConqueredRoadsDontCount(self):
@@ -3147,7 +3159,7 @@ class TestLongestRouteCalculation(BaseInputHandlerTest):
       self.c.tiles[loc].barbarians = 1
       self.c.tiles[loc].conquered = True
     self.c.roads[(5, 3, 6, 4)].conquered = True
-    val = self.c._dfs_depth(0, islanders.CornerLocation(8, 4), set(), None)
+    val = self.c._dfs_depth(0, islanders.CornerLocation(8, 4), set(), None, None)
     self.assertEqual(val, 1, "conquered road doesn't count")
 
 
