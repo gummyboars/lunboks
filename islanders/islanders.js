@@ -1460,7 +1460,13 @@ function onmsg(event) {
   maybeShowBuryWindow();
   maybeShowPortWindow();
   maybeShowStatusPopup();
-  document.getElementById("grid").classList.toggle("myturn", data.turn == myIdx);
+  let myTurn = false;
+  if (extraBuildTurn != null) {
+    myTurn = extraBuildTurn == myIdx;
+  } else {
+    myTurn = turn == myIdx;
+  }
+  document.getElementById("grid").classList.toggle("myturn", myTurn);
   document.getElementById("grid").classList.toggle("tileselect", ["robber", "expel", "deplete"].includes(turnPhase));
   draw();
 }
