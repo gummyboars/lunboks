@@ -799,28 +799,28 @@ class TestDevCards(BaseInputHandlerTest):
 
   def testYearOfPlenty(self):
     self.c.player_data[0].cards["rsrc1"] = 3
-    self.c.handle_play_dev("yearofplenty", {"rsrc1": 2}, 0)
+    self.c.handle_play_dev("yearofplenty", {"rsrc1": 2}, None, 0)
     self.assertEqual(self.c.player_data[0].cards["rsrc1"], 5)
 
   def testYearOfPlentyDepletedResource(self):
     self.c.player_data[1].cards["rsrc1"] = 19
     orig = self.c.player_data[0].cards["rsrc2"]
     with self.assertRaisesRegex(InvalidMove, "not enough {rsrc1} in the bank"):
-      self.c.handle_play_dev("yearofplenty", {"rsrc1": 1, "rsrc2": 1}, 0)
-    self.c.handle_play_dev("yearofplenty", {"rsrc2": 2}, 0)
+      self.c.handle_play_dev("yearofplenty", {"rsrc1": 1, "rsrc2": 1}, None, 0)
+    self.c.handle_play_dev("yearofplenty", {"rsrc2": 2}, None, 0)
     self.assertEqual(self.c.player_data[0].cards["rsrc1"], 0)
     self.assertEqual(self.c.player_data[0].cards["rsrc2"], orig + 2)
 
   def testYearOfPlentyCannotGetGold(self):
     with self.assertRaisesRegex(InvalidMove, "Invalid resource"):
-      self.c.handle_play_dev("yearofplenty", {"gold": 2}, 0)
+      self.c.handle_play_dev("yearofplenty", {"gold": 2}, None, 0)
     self.assertEqual(self.c.player_data[0].cards["gold"], 0)
 
   def testYearOfPlentyMostlyDepletedResource(self):
     self.c.player_data[1].cards["rsrc1"] = 18
     with self.assertRaisesRegex(InvalidMove, "not enough {rsrc1} in the bank"):
-      self.c.handle_play_dev("yearofplenty", {"rsrc1": 2}, 0)
-    self.c.handle_play_dev("yearofplenty", {"rsrc1": 1, "rsrc2": 1}, 0)
+      self.c.handle_play_dev("yearofplenty", {"rsrc1": 2}, None, 0)
+    self.c.handle_play_dev("yearofplenty", {"rsrc1": 1, "rsrc2": 1}, None, 0)
 
   def testYearOfPlentyEmptyBank(self):
     for rsrc in islanders.RESOURCES:
@@ -828,18 +828,18 @@ class TestDevCards(BaseInputHandlerTest):
       self.c.player_data[0].cards[rsrc] = 0
     # There are no cards left in the bank.
     with self.assertRaisesRegex(InvalidMove, "no resources left"):
-      self.c.handle_play_dev("yearofplenty", {"rsrc1": 2}, 0)
+      self.c.handle_play_dev("yearofplenty", {"rsrc1": 2}, None, 0)
     self.c.player_data[1].cards["rsrc1"] -= 1
     # There is only one card left in the bank. You cannot draw two cards.
     with self.assertRaisesRegex(InvalidMove, "no resources left"):
-      self.c.handle_play_dev("yearofplenty", {"rsrc1": 2}, 0)
+      self.c.handle_play_dev("yearofplenty", {"rsrc1": 2}, None, 0)
 
   def testMonopoly(self):
     self.c.player_data[0].cards["rsrc1"] = 2
     self.c.player_data[0].cards["rsrc2"] = 0
     self.c.player_data[1].cards["rsrc1"] = 3
     self.c.player_data[1].cards["rsrc2"] = 3
-    self.c.handle_play_dev("monopoly", {"rsrc1": 1}, 0)
+    self.c.handle_play_dev("monopoly", {"rsrc1": 1}, None, 0)
     # Should receive all rsrc1 cards from the other player.
     self.assertEqual(self.c.player_data[0].cards["rsrc1"], 5)
     self.assertEqual(self.c.player_data[1].cards["rsrc1"], 0)
@@ -849,13 +849,13 @@ class TestDevCards(BaseInputHandlerTest):
 
   def testMonopolyInvalidSelection(self):
     with self.assertRaisesRegex(InvalidMove, "exactly one resource"):
-      self.c.handle_play_dev("monopoly", {"rsrc2": 1, "rsrc1": 1}, 0)
+      self.c.handle_play_dev("monopoly", {"rsrc2": 1, "rsrc1": 1}, None, 0)
     with self.assertRaisesRegex(InvalidMove, "Invalid resource selection"):
-      self.c.handle_play_dev("monopoly", {}, 0)
+      self.c.handle_play_dev("monopoly", {}, None, 0)
     with self.assertRaisesRegex(InvalidMove, "exactly one resource"):
-      self.c.handle_play_dev("monopoly", {"rsrc2": 2}, 0)
+      self.c.handle_play_dev("monopoly", {"rsrc2": 2}, None, 0)
     with self.assertRaisesRegex(InvalidMove, "exactly one resource"):
-      self.c.handle_play_dev("monopoly", {"rsrc1": 1, "rsrc2": 2}, 0)
+      self.c.handle_play_dev("monopoly", {"rsrc1": 1, "rsrc2": 2}, None, 0)
 
 
 class TestRollDice(BaseInputHandlerTest):
@@ -905,9 +905,9 @@ class TestCollectResources(BaseInputHandlerTest):
 
   def testSimpleCollection(self):
     self.c.action_stack = ["dice"]
-    self.c.next_die_roll = 9
+    self.c.handle_force_dice(9)
     self.c.handle_roll_dice()
-    self.assertIn("rolled a 9", self.c.event_log[-2].public_text)
+    self.assertIn("used the alchemist for a 9", self.c.event_log[-2].public_text)
     self.assertIn("{player0} received 1 {rsrc4}", self.c.event_log[-1].public_text)
     self.assertEqual(self.c.player_data[0].cards["rsrc4"], 1)
     self.assertEqual(self.c.player_data[1].cards["rsrc4"], 0)
@@ -925,7 +925,7 @@ class TestCollectResources(BaseInputHandlerTest):
   def testCollectDepletedResource(self):
     self.c.player_data[0].cards["rsrc3"] = 10
     self.c.action_stack = ["dice"]
-    self.c.next_die_roll = 9
+    self.c.handle_force_dice(9)
     self.c.handle_roll_dice()
     self.assertEqual(self.c.remaining_resources("rsrc3"), 1)
     self.assertEqual(self.c.turn_phase, "collect")
@@ -936,7 +936,7 @@ class TestCollectResources(BaseInputHandlerTest):
 
   def testCollectScarcityForcesOrder(self):
     self.c.action_stack = ["dice"]
-    self.c.next_die_roll = 5
+    self.c.handle_force_dice(5)
     self.c.handle_roll_dice()
     self.assertEqual(self.c.remaining_resources("rsrc3"), 3)
     self.assertEqual(self.c.turn_phase, "collect")
@@ -957,7 +957,7 @@ class TestCollectResources(BaseInputHandlerTest):
       p.cards["rsrc3"] = 3
     # With more cards available than can be claimed, there should not be a player order.
     self.c.action_stack = ["dice"]
-    self.c.next_die_roll = 5
+    self.c.handle_force_dice(5)
     self.c.handle_roll_dice()
     self.assertEqual(self.c.remaining_resources("rsrc3"), 6)
     self.assertEqual(self.c.turn_phase, "collect")
@@ -968,7 +968,7 @@ class TestCollectResources(BaseInputHandlerTest):
   def testCollectScarcityDisappears(self):
     self.c.turn_idx = 2
     self.c.action_stack = ["dice"]
-    self.c.next_die_roll = 5
+    self.c.handle_force_dice(5)
     self.c.handle_roll_dice()
     self.assertEqual(self.c.turn_phase, "collect")
     self.assertDictEqual(self.c.collect_counts, {0: 1, 1: 2, 2: 2})
@@ -987,9 +987,9 @@ class TestCollectResources(BaseInputHandlerTest):
     for p in self.c.player_data:
       p.cards["rsrc3"] = 6
     self.c.action_stack = ["dice"]
-    self.c.next_die_roll = 5
+    self.c.handle_force_dice(5)
     self.c.handle_roll_dice()
-    self.assertIn("rolled a 5", self.c.event_log[-2].public_text)
+    self.assertIn("used the alchemist for a 5", self.c.event_log[-2].public_text)
     self.assertIn("shortage of {rsrc3}", self.c.event_log[-1].public_text)
     # Not enough resources means a shortage; this resource cannot be collected.
     self.assertEqual(self.c.remaining_resources("rsrc3"), 1)
@@ -1022,7 +1022,7 @@ class TestCollectResources(BaseInputHandlerTest):
       with self.subTest(rsrc=rsrc):
         self.assertEqual(self.c.remaining_resources(rsrc), 0)
     self.c.action_stack = ["dice"]
-    self.c.next_die_roll = 5
+    self.c.handle_force_dice(5)
     self.c.handle_roll_dice()
     # If there are no cards left, we have to skip collection.
     self.assertDictEqual(self.c.collect_counts, {})
@@ -1040,7 +1040,7 @@ class TestCollectResources(BaseInputHandlerTest):
     # 3 will receive the remaining 4), nobody should be able to collect from the bonus tiles.
     self.assertEqual(self.c.remaining_resources("rsrc3"), 4)
     self.c.action_stack = ["dice"]
-    self.c.next_die_roll = 5
+    self.c.handle_force_dice(5)
     self.c.handle_roll_dice()
     self.assertDictEqual(self.c.collect_counts, {})
     self.assertIsNone(self.c.collect_idx)
@@ -1056,7 +1056,7 @@ class TestCollectResources(BaseInputHandlerTest):
     # There are exactly two rsrc1 remaining (and nothing else). Player 1 will collect one of them.
     self.assertEqual(self.c.remaining_resources("rsrc1"), 2)
     self.c.action_stack = ["dice"]
-    self.c.next_die_roll = 5
+    self.c.handle_force_dice(5)
     self.c.handle_roll_dice()
     self.assertDictEqual(self.c.collect_counts, {0: 1, 1: 2, 2: 2})
     self.assertEqual(self.c.collect_idx, 0)
@@ -1209,7 +1209,7 @@ class TestDiscovery(BaseInputHandlerTest):
   def testDiscoverDuringRoadBuilding1(self):
     old_rsrcs = collections.Counter(self.c.player_data[0].cards)
     self.c.player_data[0].cards["roadbuilding"] = 1
-    self.c.handle_play_dev("roadbuilding", None, 0)
+    self.c.handle_play_dev("roadbuilding", None, None, 0)
 
     self.c.handle_road([2, 4, 3, 5], 0, "ship", [("rsrc1", 1), ("rsrc2", 1)])
     new_rsrcs = collections.Counter(self.c.player_data[0].cards)
@@ -1220,7 +1220,7 @@ class TestDiscovery(BaseInputHandlerTest):
   def testDiscoverDuringRoadBuilding2(self):
     old_rsrcs = collections.Counter(self.c.player_data[0].cards)
     self.c.player_data[0].cards["roadbuilding"] = 1
-    self.c.handle_play_dev("roadbuilding", None, 0)
+    self.c.handle_play_dev("roadbuilding", None, None, 0)
 
     self.c.handle_road([3, 5, 5, 5], 0, "ship", [("rsrc1", 1), ("rsrc2", 1)])
     self.assertEqual(self.c.action_stack, ["dev_road"])
@@ -1237,7 +1237,7 @@ class TestDiscovery(BaseInputHandlerTest):
     self.c.discoverable_tiles = ["anyrsrc"]
     old_rsrcs = collections.Counter(self.c.player_data[0].cards)
     self.c.player_data[0].cards["roadbuilding"] = 1
-    self.c.handle_play_dev("roadbuilding", None, 0)
+    self.c.handle_play_dev("roadbuilding", None, None, 0)
 
     self.c.handle_road([2, 4, 3, 5], 0, "ship", [("rsrc1", 1), ("rsrc2", 1)])
     self.assertEqual(self.c.turn_phase, "collect")
@@ -1252,7 +1252,7 @@ class TestDiscovery(BaseInputHandlerTest):
     self.c.discoverable_tiles = ["anyrsrc"]
     old_rsrcs = collections.Counter(self.c.player_data[0].cards)
     self.c.player_data[0].cards["roadbuilding"] = 1
-    self.c.handle_play_dev("roadbuilding", None, 0)
+    self.c.handle_play_dev("roadbuilding", None, None, 0)
 
     self.c.handle_road([3, 5, 5, 5], 0, "ship", [("rsrc1", 1), ("rsrc2", 1)])
     self.assertEqual(self.c.action_stack, ["dev_road"])
@@ -1996,7 +1996,7 @@ class TestHandleSettleInput(BaseInputHandlerTest):
     with self.assertRaisesRegex(InvalidMove, "cannot.*settle on top of"):
       self.handle(0, {"type": "settle", "location": [5, 5]})
     # Also validate you cannot build on top of a city.
-    self.c.handle_city([5, 5], 1)
+    self.c.handle_city([5, 5], None, 1)
     with self.assertRaisesRegex(InvalidMove, "cannot.*settle on top of"):
       self.handle(0, {"type": "settle", "location": [5, 5]})
 
@@ -2082,7 +2082,7 @@ class TestCityWalls(BaseInputHandlerTest):
   def testBuildWalls(self):
     old_rsrcs = collections.Counter(self.c.player_data[0].cards)
     self.c.pieces[(8, 4)].piece_type = "city"
-    self.c.handle_walls([8, 4], 0)
+    self.c.handle_walls([8, 4], None, 0)
     self.assertTrue(self.c.pieces[(8, 4)].walls)
     new_rsrcs = collections.Counter(self.c.player_data[0].cards)
     self.assertDictEqual(old_rsrcs - new_rsrcs, {"rsrc4": 2})
@@ -2092,26 +2092,26 @@ class TestCityWalls(BaseInputHandlerTest):
     self.c.options["city_walls"].force(False)
     self.c.pieces[(8, 4)].piece_type = "city"
     with self.assertRaisesRegex(InvalidMove, "walls are not enabled"):
-      self.c.handle_walls([8, 4], 0)
+      self.c.handle_walls([8, 4], None, 0)
 
   def testCannotBuildOnTopOfExistingWalls(self):
     self.c.pieces[(8, 4)].piece_type = "city"
     self.c.pieces[(8, 4)].walls = True
     with self.assertRaisesRegex(InvalidMove, "already has a wall"):
-      self.c.handle_walls([8, 4], 0)
+      self.c.handle_walls([8, 4], None, 0)
 
   def testMustAttachToOwnCity(self):
     self.c.pieces[(5, 5)].piece_type = "city"
     with self.assertRaisesRegex(InvalidMove, "in one of your cities"):
-      self.c.handle_walls([5, 5], 0)
+      self.c.handle_walls([5, 5], None, 0)
     with self.assertRaisesRegex(InvalidMove, "placed on a city"):
-      self.c.handle_walls([8, 4], 0)
+      self.c.handle_walls([8, 4], None, 0)
 
   def testInvalidInputs(self):
     with self.assertRaisesRegex(InvalidMove, "tuple of size 2"):
-      self.c.handle_walls([5], 0)
+      self.c.handle_walls([5], None, 0)
     with self.assertRaisesRegex(AssertionError, "corners must line up"):
-      self.c.handle_walls([8, 3], 0)
+      self.c.handle_walls([8, 3], None, 0)
 
   def testMaxThreeWalls(self):
     self.c.add_piece(islanders.Piece(8, 4, "city", 0, walls=True))
@@ -2119,11 +2119,11 @@ class TestCityWalls(BaseInputHandlerTest):
     self.c.add_piece(islanders.Piece(8, 2, "city", 0, walls=True))
     self.c.add_piece(islanders.Piece(2, 4, "city", 0, walls=False))
     with self.assertRaisesRegex(InvalidMove, "cannot have more than three"):
-      self.c.handle_walls([2, 4], 0)
+      self.c.handle_walls([2, 4], None, 0)
 
     # Test that other players' walls don't count.
     self.c.pieces[(8, 2)].player = 1
-    self.c.handle_walls([2, 4], 0)
+    self.c.handle_walls([2, 4], None, 0)
 
 
 class TestInitialSettlement(BaseInputHandlerTest):
@@ -3820,7 +3820,7 @@ class TestHastenInvasion(BaseInputHandlerTest):
   def testCityHastensInvasion(self):
     self.c.handle_settle([18, 8], 0)
     self.assertEqual(self.c.invasion_countdown, 18 - 3)
-    self.c.handle_city([18, 8], 0)
+    self.c.handle_city([18, 8], None, 0)
     self.assertEqual(self.c.invasion_countdown, 18 - 6)
     num_barbs = sum(tile.barbarians for tile in self.c.tiles.values())
     self.assertEqual(num_barbs, 6)
@@ -3836,7 +3836,7 @@ class TestHastenInvasion(BaseInputHandlerTest):
     max_barbs = max(tile.barbarians for tile in self.c.tiles.values())
     self.assertEqual(max_barbs, 1)
 
-    self.c.handle_city([18, 8], 0)
+    self.c.handle_city([18, 8], None, 0)
     self.assertEqual(self.c.invasion_countdown, 18 - 4)
     num_barbs = sum(tile.barbarians for tile in self.c.tiles.values())
     self.assertEqual(num_barbs, 4)
@@ -3871,7 +3871,7 @@ class TestHastenInvasion(BaseInputHandlerTest):
     max_barbs = max(tile.barbarians for tile in self.c.tiles.values())
     self.assertEqual(max_barbs, 6)
 
-    self.c.handle_city([18, 8], 0)
+    self.c.handle_city([18, 8], None, 0)
     self.assertEqual(self.c.invasion_countdown, 0)
     num_barbs = sum(tile.barbarians for tile in self.c.tiles.values())
     self.assertEqual(num_barbs, 18)
@@ -3881,6 +3881,7 @@ class TestHastenInvasion(BaseInputHandlerTest):
 
 class TestInvasion(BaseInputHandlerTest):
   TEST_FILE = "test_riders.json"
+  DEBUG = True
 
   def setUp(self):
     super().setUp()
@@ -3913,7 +3914,7 @@ class TestInvasion(BaseInputHandlerTest):
     self.c.action_stack = ["dice"]
 
   def testInvadeNearbyTiles(self):
-    self.c.next_die_roll = 4
+    self.c.handle_force_dice(4)
     self.c.handle_roll_dice()
 
     self.assertEqual(self.c.tiles[(19, 9)].barbarians, 1)
@@ -3922,7 +3923,7 @@ class TestInvasion(BaseInputHandlerTest):
     self.assertEqual(num_barbs, 17)
 
     self.c.action_stack = ["dice"]
-    self.c.next_die_roll = 8
+    self.c.handle_force_dice(8)
     self.c.handle_roll_dice()
     self.assertEqual(self.c.tiles[(16, 4)].barbarians, 1)
     self.assertEqual(self.c.tiles[(10, 6)].barbarians, 0)
@@ -3930,7 +3931,7 @@ class TestInvasion(BaseInputHandlerTest):
     self.assertEqual(num_barbs, 16)
 
     self.c.action_stack = ["dice"]
-    self.c.next_die_roll = 3
+    self.c.handle_force_dice(3)
     self.c.handle_roll_dice()
     self.assertEqual(self.c.tiles[(19, 11)].barbarians, 1)
     self.assertEqual(self.c.tiles[(13, 3)].barbarians, 1)
@@ -3940,13 +3941,13 @@ class TestInvasion(BaseInputHandlerTest):
     self.assertEqual(min_barbs, 4)
 
   def testTilesCanOnlyBeInvadedOnce(self):
-    self.c.next_die_roll = 8
+    self.c.handle_force_dice(8)
     self.c.handle_roll_dice()
     self.c.action_stack = ["dice"]
-    self.c.next_die_roll = 10
+    self.c.handle_force_dice(10)
     self.c.handle_roll_dice()
     self.c.action_stack = ["dice"]
-    self.c.next_die_roll = 8
+    self.c.handle_force_dice(8)
     self.c.handle_roll_dice()
 
     self.assertEqual(self.c.tiles[(16, 4)].barbarians, 1)
@@ -3955,16 +3956,16 @@ class TestInvasion(BaseInputHandlerTest):
     self.assertEqual(num_barbs, 18 - 3)
 
   def testConqueredCitiesAfterInvasion(self):
-    self.c.next_die_roll = 4
+    self.c.handle_force_dice(4)
     self.c.handle_roll_dice()
     self.c.action_stack = ["dice"]
-    self.c.next_die_roll = 6
+    self.c.handle_force_dice(6)
     self.c.handle_roll_dice()
     self.c.action_stack = ["dice"]
-    self.c.next_die_roll = 8
+    self.c.handle_force_dice(8)
     self.c.handle_roll_dice()
     self.c.action_stack = ["dice"]
-    self.c.next_die_roll = 3
+    self.c.handle_force_dice(3)
     self.c.handle_roll_dice()
     self.assertTrue(self.c.pieces[(18, 8)].conquered)
     self.assertFalse(self.c.pieces[(18, 10)].conquered)  # Touching one free tile
@@ -3973,16 +3974,16 @@ class TestInvasion(BaseInputHandlerTest):
     self.assertEqual(self.c.player_points(2, True), 2)
 
   def testConqueredRoadsAfterInvasion(self):
-    self.c.next_die_roll = 4
+    self.c.handle_force_dice(4)
     self.c.handle_roll_dice()
     self.c.action_stack = ["dice"]
-    self.c.next_die_roll = 6
+    self.c.handle_force_dice(6)
     self.c.handle_roll_dice()
     self.c.action_stack = ["dice"]
-    self.c.next_die_roll = 8
+    self.c.handle_force_dice(8)
     self.c.handle_roll_dice()
     self.c.action_stack = ["dice"]
-    self.c.next_die_roll = 3
+    self.c.handle_force_dice(3)
     self.c.handle_roll_dice()
     self.assertTrue(self.c.roads[(14, 4, 15, 3)].conquered)
     self.assertTrue(self.c.roads[(17, 9, 18, 8)].conquered)
@@ -3990,16 +3991,16 @@ class TestInvasion(BaseInputHandlerTest):
     self.assertTrue(self.c.roads[(17, 7, 18, 8)].conquered)
 
   def testLongestRoadIsRecomputedAfterConquest(self):
-    self.c.next_die_roll = 4
+    self.c.handle_force_dice(4)
     self.c.handle_roll_dice()
     self.c.action_stack = ["dice"]
-    self.c.next_die_roll = 6
+    self.c.handle_force_dice(6)
     self.c.handle_roll_dice()
     self.c.action_stack = ["dice"]
-    self.c.next_die_roll = 8
+    self.c.handle_force_dice(8)
     self.c.handle_roll_dice()
     self.c.action_stack = ["dice"]
-    self.c.next_die_roll = 3
+    self.c.handle_force_dice(3)
     self.c.handle_roll_dice()
 
     self.assertEqual(self.c.player_data[0].longest_route, 2)
@@ -4012,7 +4013,7 @@ class TestInvasion(BaseInputHandlerTest):
         tile.barbarians = 0
     self.c.tiles[(19, 7)].barbarians = 1  # Only one barbarian left
     self.c.tiles[(16, 6)].number = 4  # Two fours next to that desert
-    self.c.next_die_roll = 4
+    self.c.handle_force_dice(4)
     self.c.handle_roll_dice()
 
     self.assertEqual(self.c.tiles[(16, 6)].barbarians, 0)
@@ -4062,6 +4063,7 @@ class TestInvasionEdgeCases(BreakpointTestMixin):
 
 class TestExpelBarbarians(BaseInputHandlerTest):
   TEST_FILE = "test_riders.json"
+  DEBUG = True
 
   def setUp(self):
     super().setUp()
@@ -4093,13 +4095,13 @@ class TestExpelBarbarians(BaseInputHandlerTest):
     self.c.hasten_invasion()  # Sets countdown to 0, adds barbarians,  and marks tiles as conquered.
     for dice_roll in [4, 9, 5, 6, 8, 3, 10, 2]:
       self.c.action_stack = ["dice"]
-      self.c.next_die_roll = dice_roll
+      self.c.handle_force_dice(dice_roll)
       self.c.handle_roll_dice()
     self.c.player_data[0].cards["knight"] += 5
 
   def testExpelOneBarbarian(self):
     self.assertTrue(self.c.tiles[(10, 10)].conquered)
-    self.c.handle_play_dev("knight", None, 0)
+    self.c.handle_play_dev("knight", None, None, 0)
     self.assertListEqual(self.c.action_stack, ["expel"])
     self.c.handle_expel([10, 10], 0)
     self.assertEqual(self.c.turn_phase, "main")
@@ -4108,12 +4110,12 @@ class TestExpelBarbarians(BaseInputHandlerTest):
   def testExpelFromDesert(self):
     # Maybe you do this to reclaim a city next to the desert without reclaiming other cities?
     self.assertTrue(self.c.tiles[(19, 7)].conquered)
-    self.c.handle_play_dev("knight", None, 0)
+    self.c.handle_play_dev("knight", None, None, 0)
     self.c.handle_expel([19, 7], 0)
     self.assertTrue(self.c.tiles[(19, 7)].conquered)
     self.assertTrue(self.c.pieces[(18, 8)].conquered)
     self.c.played_dev = 0
-    self.c.handle_play_dev("knight", None, 0)
+    self.c.handle_play_dev("knight", None, None, 0)
     self.c.handle_expel([19, 7], 0)
     self.assertFalse(self.c.tiles[(19, 7)].conquered)
     self.assertFalse(self.c.pieces[(18, 8)].conquered)
@@ -4121,7 +4123,7 @@ class TestExpelBarbarians(BaseInputHandlerTest):
   def testExpelBarbarianReclaimsCity(self):
     self.assertTrue(self.c.tiles[(16, 10)].conquered)
     self.assertTrue(self.c.pieces[(18, 10)].conquered)
-    self.c.handle_play_dev("knight", None, 0)
+    self.c.handle_play_dev("knight", None, None, 0)
     self.c.handle_expel([16, 10], 0)
     self.assertFalse(self.c.tiles[(16, 10)].conquered)
     self.assertFalse(self.c.pieces[(18, 10)].conquered)
@@ -4131,10 +4133,10 @@ class TestExpelBarbarians(BaseInputHandlerTest):
     self.assertEqual(self.c.player_data[0].longest_route, 0)
     self.assertEqual(self.c.player_data[1].longest_route, 1)
     self.assertIsNone(self.c.longest_route_player)
-    self.c.handle_play_dev("knight", None, 0)
+    self.c.handle_play_dev("knight", None, None, 0)
     self.c.handle_expel([13, 7], 0)
     self.c.played_dev = 0
-    self.c.handle_play_dev("knight", None, 0)
+    self.c.handle_play_dev("knight", None, None, 0)
     self.c.handle_expel([16, 8], 0)
     self.assertEqual(self.c.player_data[0].longest_route, 3)
     self.assertEqual(self.c.player_data[1].longest_route, 5)
@@ -4144,32 +4146,32 @@ class TestExpelBarbarians(BaseInputHandlerTest):
     self.assertEqual(self.c.player_data[0].longest_route, 0)
     self.assertEqual(self.c.player_data[1].longest_route, 1)
     self.assertIsNone(self.c.longest_route_player)
-    self.c.handle_play_dev("knight", None, 0)
+    self.c.handle_play_dev("knight", None, None, 0)
     self.c.handle_expel([16, 6], 0)
     self.c.played_dev = 0
-    self.c.handle_play_dev("knight", None, 0)
+    self.c.handle_play_dev("knight", None, None, 0)
     self.c.handle_expel([16, 8], 0)
     self.c.played_dev = 0
-    self.c.handle_play_dev("knight", None, 0)
+    self.c.handle_play_dev("knight", None, None, 0)
     self.c.handle_expel([13, 3], 0)
     self.assertEqual(self.c.player_data[1].longest_route, 4)
     self.assertEqual(self.c.player_data[2].longest_route, 3)
     self.assertIsNone(self.c.longest_route_player)
     self.c.played_dev = 0
-    self.c.handle_play_dev("knight", None, 0)
+    self.c.handle_play_dev("knight", None, None, 0)
     self.c.handle_expel([13, 5], 0)
     self.assertEqual(self.c.player_data[1].longest_route, 5)
     self.assertEqual(self.c.player_data[2].longest_route, 5)
     self.assertIsNone(self.c.longest_route_player)
 
   def testThereIsNoLargestArmy(self):
-    self.c.handle_play_dev("knight", None, 0)
+    self.c.handle_play_dev("knight", None, None, 0)
     self.c.handle_expel([16, 6], 0)
     self.c.played_dev = 0
-    self.c.handle_play_dev("knight", None, 0)
+    self.c.handle_play_dev("knight", None, None, 0)
     self.c.handle_expel([16, 8], 0)
     self.c.played_dev = 0
-    self.c.handle_play_dev("knight", None, 0)
+    self.c.handle_play_dev("knight", None, None, 0)
     self.c.handle_expel([13, 3], 0)
     self.assertEqual(self.c.player_data[0].knights_played, 0)
     self.assertEqual(self.c.player_data[1].knights_played, 0)
