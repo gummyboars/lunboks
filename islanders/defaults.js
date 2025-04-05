@@ -25,6 +25,27 @@ function initializeDefaults() {
     {name: "university", text: "⛲", bottomText: "1 point"},
     {name: "library", text: "⛲", bottomText: "1 point"},
     {name: "market", text: "⛲", bottomText: "1 point"},
+    {name: "alchemist", text: "🎲", bottomText: "choose dice"},
+    {name: "engineer", text: "🧱", bottomText: "build walls"},
+    {name: "inventor", text: "🔄", bottomText: "switch numbers"},
+    {name: "irrigation", text: "🌾", bottomText: "2 per hex"},
+    {name: "medicine", text: null, bottomText: "cheap city"},
+    {name: "mining", text: "⛰️", bottomText: "2 per hex"},
+    {name: "printer", text: "⛲", bottomText: "1 point"},
+    {name: "smith", text: null, bottomText: "promote 2"},
+    {name: "bishop", text: "💂", bottomText: "move and rob all"},
+    {name: "constitution", text: "⛲", bottomText: "1 point"},
+    {name: "defector", text: "🗡️", bottomText: "steal \u00a0\u00a0knight\u00a0\u00a0"},
+    {name: "diplomat", text: "🛤️", bottomText: "(re)move road"},
+    {name: "deception", text: "🪤", bottomText: "displace knight"},
+    {name: "saboteur", text: "🖐️", bottomText: "🏆 players discard ½"},
+    {name: "spy", text: null, bottomText: "\u00a0 \u00a0 steal card"},
+    {name: "warlord", text: "⚔️", bottomText: "activate all knights"},
+    {name: "wedding", text: "🎴", bottomText: "🏆 players donate two"},
+    {name: "peddler", text: "🎴", bottomText: "steal 2 from a 🏆 player"},
+    {name: "merchant", text: "⚖️", bottomText: "trade 2:1 1 point"},
+    {name: "convoy", text: "⛵", bottomText: "trade 2:1 this turn"},
+    {name: "guild", text: "🧲", bottomText: "2 from each"},
     {name: "treason", text: "🗡️", bottomText: "treason"},
     {name: "intrigue", text: "🎭", bottomText: "intrigue"},
     {name: "fastknight", text: "🔴", bottomText: "fast knight"},
@@ -41,6 +62,22 @@ function initializeDefaults() {
     let dev = createCard("#9D6BBB", "default" + devData.name, cardWidth, cardHeight, devData.text, devData.bottomText);
     if (devData.name == "fastknight") {
       renderText(dev.getContext("2d"), "💂", cardWidth / 2, cardHeight / 2, cardWidth);
+    }
+    if (devData.name == "medicine") {
+      renderText(dev.getContext("2d"), "⛰️", 2 * cardWidth / 5, cardHeight / 2, 4 * cardWidth / 5);
+      renderText(dev.getContext("2d"), "🌾", 3 * cardWidth / 5, cardHeight / 2, 4 * cardWidth / 5);
+    }
+    if (devData.name == "smith") {
+      renderText(dev.getContext("2d"), "💂", 1 * cardWidth / 4, cardHeight / 2, cardWidth / 2);
+      renderText(dev.getContext("2d"), "💂", 2 * cardWidth / 5, cardHeight / 2, 71 * cardWidth / 100);
+      renderText(dev.getContext("2d"), "💂", 3 * cardWidth / 5, cardHeight / 2, cardWidth);
+    }
+    if (devData.name == "spy") {
+      let ctx = dev.getContext("2d");
+      ctx.save();
+      ctx.translate(cardWidth / 5, cardHeight / 5);
+      createDevCardBack(ctx, 3 * cardWidth / 5, 3 * cardHeight / 5, true);
+      ctx.restore();
     }
     assets.appendChild(dev);
   }
@@ -261,7 +298,15 @@ function createCard(color, id, width, height, text, bottomText) {
   ctx.fillRect(width / 20, width / 20, 18 * width / 20, height - width / 10);
   ctx.restore();
   renderText(ctx, text, width / 2, height / 2, width);
-  renderText(ctx, bottomText, width / 2, 6 * height / 7, width);
+  if (bottomText != null && bottomText.length > 11) {
+    let pieces = bottomText.split(" ");
+    let topPieces = pieces.slice(0, pieces.length/2);
+    let bottomPieces = pieces.slice(pieces.length/2);
+    renderText(ctx, topPieces.join(" "), width / 2, 0.77 * height, width, bottomPieces.join(" "));
+    renderText(ctx, bottomPieces.join(" "), width / 2, 0.89 * height, width, topPieces.join(" "));
+  } else {
+    renderText(ctx, bottomText, width / 2, 6 * height / 7, width);
+  }
   return card;
 }
 
@@ -288,7 +333,7 @@ function createDevCardBack(ctx, width, height, outline) {
   ctx.restore();
 }
 
-function renderText(ctx, text, centerX, centerY, width) {
+function renderText(ctx, text, centerX, centerY, width, altText) {
   if (text == null) {
     return;
   }
@@ -298,6 +343,12 @@ function renderText(ctx, text, centerX, centerY, width) {
   ctx.textBaseline = "middle";
   ctx.translate(centerX, centerY);
   let metrics = ctx.measureText(text);
+  if (altText != null) {
+    let altMetrics = ctx.measureText(altText);
+    if (altMetrics.width > metrics.width) {
+      metrics = altMetrics;
+    }
+  }
   ctx.scale(width / metrics.width * 4 / 5, width / metrics.width * 4 / 5);
   ctx.fillText(text, 0, 0);
   ctx.restore();

@@ -19,8 +19,10 @@ hoverCorner = null;  // The location x, y coordinates
 hoverEdge = null;  // An edge object with a location and an edge_type
 hoverTileEdge = null;  // An object with tile, edge, and rotation
 altHover = false;
+moveNumberFromLocation = null;
 moveShipFromLocation = null;
 moveKnightFromLocation = null;
+promoteKnightLocation = null;
 moveBarbarianTiles = [];
 barbarianFromCount = 0;
 barbarianToCount = 0;
@@ -136,8 +138,19 @@ function draw() {
     if (moveKnightFromLocation != null && locationsEqual(knight.location, hoverCorner) && !locationsEqual(knight.location, moveKnightFromLocation) && !altHover) {
       continue;  // Draw nothing when we're hovering over this knight about to displace it
     }
+    if (devCardType == "deception" && locationsEqual(knight.location, hoverCorner) && knight.player != myIdx) {
+      continue;  // Draw nothing to show that this knight will be displaced
+    }
+    if (devCardType == "smith" && locationsEqual(knight.location, hoverCorner) && !locationsEqual(knight.location, promoteKnightLocation)) {
+      continue;  // Draw nothing to avoid confusion between strength 2 and strength 3
+    }
     let alpha = locationsEqual(moveKnightFromLocation, knight.location) ? 0.5 : 1;
-    drawKnight(knight.location, getColor(knight.player), alpha, knight.movement, knight.strength, knight.active, context);
+    let strength = knight.strength;
+    if (locationsEqual(promoteKnightLocation, knight.location)) {
+      strength++;
+      alpha = 0.7;
+    }
+    drawKnight(knight.location, getColor(knight.player), alpha, knight.movement, strength, knight.active, context);
   }
   if (displacedKnight != null) {
     let altCorner = [displacedKnight.location[0] % 3 == 0 ? displacedKnight.location[0] - 0.66 : displacedKnight.location[0] + 0.66, displacedKnight.location[1]];
@@ -161,6 +174,11 @@ function draw() {
   }
   drawRobber(context, pirateLoc, robberAlpha, false);
   context.restore();
+  if (devCardType != "merchant") {
+    drawMerchant(context, merchantLoc, merchantPlayer, 1);
+  } else if (hoverTile != null) {
+    drawMerchant(context, hoverTile.location, myIdx, 0.5);
+  }
   drawDebug(context);
   context.restore();
 }
@@ -442,26 +460,32 @@ function drawKnight(loc, color, alpha, movement, strength, active, ctx) {
   ctx.stroke();
   ctx.clip();
   ctx.fillStyle = "black";
+  if (movement == 0 && !active) {
+    ctx.fillStyle = "rgba(255, 255, 255, 0.5)";
+  }
   if (movement > 0 || strength > 1) {
     ctx.beginPath();
     ctx.moveTo(5*pieceRadius/6, -pieceRadius/2);
     ctx.ellipse(pieceRadius/2, -pieceRadius/2, pieceRadius/3, pieceRadius/3, 0, 0, 2*Math.PI);
     ctx.closePath();
-    (movement > 0 || active) ? ctx.fill() : ctx.stroke();
+    ctx.fill();
+    ctx.stroke();
   }
   if (movement > 2 || strength == 1 || strength >= 3) {
     ctx.beginPath();
     ctx.moveTo(pieceRadius/3, pieceRadius/3);
     ctx.ellipse(0, pieceRadius/3, pieceRadius/3, pieceRadius/3, 0, 0, 2*Math.PI);
     ctx.closePath();
-    (movement > 0 || active) ? ctx.fill() : ctx.stroke();
+    ctx.fill();
+    ctx.stroke();
   }
   if (movement > 1 || strength > 1) {
     ctx.beginPath();
     ctx.moveTo(-5*pieceRadius/6, -pieceRadius/2);
     ctx.ellipse(-pieceRadius/2, -pieceRadius/2, pieceRadius/3, pieceRadius/3, 0, Math.PI, 3*Math.PI);
     ctx.closePath();
-    (movement > 0 || active) ? ctx.fill() : ctx.stroke();
+    ctx.fill();
+    ctx.stroke();
   }
   if (movement < 0) {
     ctx.lineWidth = 2;
@@ -627,6 +651,29 @@ function drawNumber(tileData, ctx) {
     ctx.beginPath();
     ctx.arc(canvasLoc.x, canvasLoc.y, 28, 0, Math.PI * 2, true);
     ctx.fill();
+    if (locationsEqual(moveNumberFromLocation, tileData.location)) {  // Moving from this
+      ctx.globalAlpha = 0.4;
+    }
+    if (moveNumberFromLocation != null && hoverTile != null) {
+      if (locationsEqual(hoverTile.location, tileData.location)) {  // Hovering over this
+        if (locationsEqual(moveNumberFromLocation, hoverTile.location)) {  // Hovering over first tile
+          ctx.globalAlpha = 0.4
+        } else {  // Hovering over second tile
+          num = tileMatrix[moveNumberFromLocation[0]][moveNumberFromLocation[1]].number;
+          ctx.globalAlpha = 0.75;
+        }
+      } else if (locationsEqual(moveNumberFromLocation, tileData.location)) {  // Moving from this
+        let otherNum = tileMatrix[hoverTile.location[0]][hoverTile.location[1]].number;
+        if (otherNum) {
+          num = otherNum;
+          ctx.globalAlpha = 0.75;
+        }
+      }
+    } else if (hoverTile != null && devCardType == "inventor") {  // Hovering over first tile
+      if (locationsEqual(hoverTile.location, tileData.location)) {
+        ctx.globalAlpha = 0.6;
+      }
+    }
     // Draw the number.
     if (num == '6' || num == '8') {
       ctx.fillStyle = 'red';
@@ -651,7 +698,7 @@ function drawNumber(tileData, ctx) {
   ctx.restore();
 }
 function drawHover(ctx) {
-  if (turnPhase != "displace") {
+  if (!["displace", "defect"].includes(turnPhase)) {
     if (extraBuildTurn != null && extraBuildTurn != myIdx) {
       return;
     }
@@ -665,7 +712,7 @@ function drawHover(ctx) {
 }
 function drawHoverTile(ctx) {
   if (hoverTile != null) {
-    if (["expel", "deplete", "treason"].includes(turnPhase)) {
+    if (turnPhase != "robber") {
       return;
     }
     if (!locationsEqual(robberLoc, hoverTile.location) && !locationsEqual(pirateLoc, hoverTile.location)) {
@@ -693,7 +740,21 @@ function drawHoverCorner(ctx) {
     if (pieceMatrix[hoverCorner[0]] != null && pieceMatrix[hoverCorner[0]][hoverCorner[1]] != null) {
       piece = pieceMatrix[hoverCorner[0]][hoverCorner[1]];
     }
-    if (knightOption && (moveKnightFromLocation != null || displacedKnight != null)) {  // Moving a knight
+    if (devCardType == "smith") {  // If playing a smith, don't show anything else on hover
+      if (knight == null || knight.player != myIdx) {
+        return;
+      }
+      drawKnight(hoverCorner, playerData[myIdx].color, 0.5, 0, knight.strength+1, knight.active, ctx);
+      return;
+    }
+    if (devCardType == "deception") {  // If using deception, draw opponent's knight as displaced
+      if (knight == null || knight.player == myIdx) {
+        return;
+      }
+      drawKnight(altCorner, playerData[knight.player].color, 0.7, 0, knight.strength, knight.active, ctx);
+      return;
+    }
+    if (knightOption && (moveKnightFromLocation != null || (displacedKnight != null && displacedKnight.player == myIdx))) {  // Moving a knight
       if (altHover) {
         return;
       }
@@ -731,15 +792,21 @@ function drawHoverCorner(ctx) {
       if (knight == null) {  // If there's no knight here, draw the piece
         drawPiece(hoverCorner, 'rgba(127, 127, 127, 0.5)', drawType, false, walls, ctx);
       } else if (knight.player == myIdx) {  // If it's our knight, hover suggests we will activate it.
-        drawKnight(hoverCorner, "gray", 0.5, 0, knight.strength, true, ctx);
+        if (turnPhase == "defect") {  // Unless we're about to remove it
+          drawKnight(hoverCorner, "gray", 0.5, 0, knight.strength, knight.active, ctx);
+        } else {
+          drawKnight(hoverCorner, "gray", 0.5, 0, knight.strength, true, ctx);
+        }
       }
       // Draw nothing for someone else's knight.
     }
     if (piece == null) {  // No piece here - draw the alternate build/promote knight hover.
       if (knight == null || knight.player == myIdx) {  // Draw nothing for opponents' knights.
-        let alpha = altHover ? 0.7 : 0.3;
-        let strength = knight != null ? knight.strength + 1 : 1;
-        drawKnight(altCorner, "gray", alpha, 0, strength, knight != null ? knight.active : false, ctx);
+        if (turnPhase != "defect") {  // Don't draw a promotion if we're removing the knight
+          let alpha = altHover ? 0.7 : 0.3;
+          let strength = knight != null ? knight.strength + 1 : 1;
+          drawKnight(altCorner, "gray", alpha, 0, strength, knight != null ? knight.active : false, ctx);
+        }
       }
     }
   }
@@ -806,6 +873,24 @@ function drawRobber(ctx, loc, alpha, land) {
     ctx.drawImage(robimg, canvasLoc.x - robwidth/2, canvasLoc.y - robheight/2, robwidth, robheight);
   }
 }
+function drawMerchant(ctx, loc, player, alpha) {
+  if (loc == null) {
+    return;
+  }
+  let canvasLoc = coordToCanvasLoc([loc[0]-0.5, loc[1]+0.25]);
+  ctx.save();
+  let radius = tileHeight / 3;
+  ctx.beginPath();
+  ctx.moveTo(canvasLoc.x, canvasLoc.y - radius/2);
+  ctx.ellipse(canvasLoc.x, canvasLoc.y - radius/2, radius, radius, 0, 0.6*Math.PI, 0.4*Math.PI, true);
+  ctx.closePath();
+  ctx.strokeStyle = "black";
+  ctx.fillStyle = playerData[player].color;
+  ctx.globalAlpha = alpha;
+  ctx.fill();
+  ctx.stroke();
+  ctx.restore();
+}
 function onClickTile(event, tileLoc) {
   if (event.button != 0) {
     return;
@@ -862,6 +947,37 @@ function onClickTile(event, tileLoc) {
     maybeShowStatusPopup();
     return;
   }
+  if (devCardType == "inventor") {
+    if (moveNumberFromLocation == null) {
+      moveNumberFromLocation = tileLoc;
+      event.stopPropagation();
+      draw();
+      return;
+    }
+    if (locationsEqual(moveNumberFromLocation, tileLoc)) {
+      moveNumberFromLocation = null;
+      deselectDevCard();
+      return;
+    }
+    let msg = {
+      type: "play_dev",
+      card_type: "inventor",
+      location: moveNumberFromLocation,
+      selection: tileLoc,
+    };
+    ws.send(JSON.stringify(msg));
+    moveNumberFromLocation = null;
+    return;
+  }
+  if (devCardType == "merchant") {
+    let msg = {
+      type: "play_dev",
+      card_type: "merchant",
+      location: tileLoc,
+    };
+    ws.send(JSON.stringify(msg));
+    return;
+  }
   if (moveKnightFromLocation != null && (locationsEqual(tileLoc, robberLoc) || locationsEqual(tileLoc, pirateLoc))) {
     let msg = {
       type: "chase",
@@ -893,10 +1009,49 @@ function onClickCorner(event, cornerLoc) {
   if (event.target != event.currentTarget) {  // Clicked the alternate element
     return;
   }
-  if (turnPhase == "displace") {
+  if (["displace", "defect", "adopt"].includes(turnPhase)) {
     let msg = {
-      type: "displace",
+      type: turnPhase,
       location: cornerLoc,
+    };
+    ws.send(JSON.stringify(msg));
+    return;
+  }
+  if (devCardType == "deception") {
+    let msg = {
+      type: "play_dev",
+      card_type: devCardType,
+      location: cornerLoc,
+    };
+    ws.send(JSON.stringify(msg));
+    return;
+  }
+  if (devCardType == "smith") {
+    if (knightMatrix[cornerLoc[0]] == null || knightMatrix[cornerLoc[0]][cornerLoc[1]] == null) {
+      return;
+    }
+    if (knightMatrix[cornerLoc[0]][cornerLoc[1]].player != myIdx) {
+      return;
+    }
+    if (promoteKnightLocation == null) {  // First knight to be promoted
+      promoteKnightLocation = cornerLoc;
+      event.stopPropagation();
+      draw();
+      maybeShowStatusPopup();
+      return;
+    }
+    if (locationsEqual(promoteKnightLocation, cornerLoc)) {  // Deselect this knight
+      promoteKnightLocation = null;
+      event.stopPropagation();
+      draw();
+      maybeShowStatusPopup();
+      return;
+    }
+    let msg = {
+      type: "play_dev",
+      card_type: "smith",
+      location: promoteKnightLocation,
+      selection: cornerLoc,
     };
     ws.send(JSON.stringify(msg));
     return;
@@ -925,6 +1080,7 @@ function onClickCorner(event, cornerLoc) {
       let msg = {
         type: type,
         location: cornerLoc,
+        selection: devCardType != null ? [devCardType] : null,
       };
       ws.send(JSON.stringify(msg));
       return;
@@ -1113,6 +1269,7 @@ function onclick(event) {
     moveKnightFromLocation = null;
     draw();
   }
+  deselectDevCard();
 }
 function onmove(event) {
   eventX = event.clientX;

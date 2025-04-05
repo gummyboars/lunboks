@@ -237,6 +237,11 @@ div {
   color: black;
 }
 #statuspopup {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+}
+#statustitle {
   text-align: center;
   padding-left: 1em;
   padding-right: 1em;
@@ -274,6 +279,13 @@ div {
 }
 #handselecttitle {
   margin-left: 10px;
+}
+.choosing .selectcard {
+  opacity: 0.5;
+}
+.selectcard.chosen {
+  transform: translateY(30%);
+  opacity: 1;
 }
 .uiselect {
   display: flex;
