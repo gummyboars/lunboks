@@ -3265,7 +3265,7 @@ function updateCurrentCard(current, visual, monster, choice) {
   if (visual != null) {
     let visualCard = newVisual(visual, "card");
     let doneUsing = document.getElementById("doneusing");
-    if (choice == null && doneUsing.style.display != "none" && doneUsing.innerText == "Done Using") {
+    if (choice == null && doneUsing != null && doneUsing.style.display != "none" && doneUsing.innerText == "Done Using") {
       // For cases where the visual is shown because a player may need to decide to use something,
       // clicking the visual should be the equivalent of clicking "done using".
       visualCard.doneUse = true;
