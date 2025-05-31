@@ -1,4 +1,5 @@
 ws = null;
+gameId = null;
 dragged = null;
 characterMarkers = {};
 characterSheets = {};
@@ -186,14 +187,15 @@ function init() {
     showError("No game id specified.");
     return;
   }
-  let gameId = params.get("game_id");
+  gameId = params.get("game_id");
   let promise = loadImages();
-  promise.then(function() { continueInit(gameId); }, showError);
+  promise.then(continueInit, showError);
 }
 
-function continueInit(gameId) {
+function continueInit() {
   ws = new WebSocket("ws://" + window.location.hostname + ":8081/" + gameId);
   ws.onmessage = onmsg;
+  ws.onclose = lostConnection;
   document.getElementById("board").cnvScale = 4;
   renderAssetToDiv(document.getElementById("board"), "board");
   let width = document.getElementById("boardcanvas").width;
@@ -446,26 +448,15 @@ function storeBlobURL(blob, spendable, isDefault) {
 }
 
 // TODO: dedup
-function clearError() {
-  etxt = document.getElementById("errorText")
-  if (etxt.holdSeconds > 0) {
-    etxt.holdSeconds -= 0.1;
-    setTimeout(clearError, 100);
-  } else {
-    newOpac = etxt.style.opacity - 0.02;
-    etxt.style.opacity = newOpac;
-    if (newOpac <= 0.1) {
-      etxt.innerText = null;
-    } else {
-      setTimeout(clearError, 50);
-    }
-  }
+function showError(errText, canRetry) {
+  document.getElementById("errorText").innerText = errText;
+  document.getElementById("errorLink").innerText = canRetry ? "Reconnect" : "";
+  document.getElementById("errorDiv").classList.remove("hidden");
+  document.getElementById("errorDiv").classList.add("shown");
 }
 
-function showError(errText) {
-  document.getElementById("errorText").holdSeconds = 0;
-  document.getElementById("errorText").style.opacity = 1.0;
-  document.getElementById("errorText").innerText = errText;
+function lostConnection(e) {
+  showError(`Connection Lost: ${e.reason}`, true);
 }
 
 function replacer(match, p1) {
@@ -487,13 +478,30 @@ function formatServerString(str) {
   return str.replace(regex, replacer);
 }
 
+function retrySocket() {
+  document.getElementById("errorLink").innerText = "";
+  document.getElementById("errorText").innerText += "\u00A0\u00A0Retrying..";
+  let tempSocket = new WebSocket("ws://" + window.location.hostname + ":8081/" + gameId);
+  tempSocket.onopen = function() { successfulRetry(tempSocket); };
+  tempSocket.onclose = lostConnection;
+}
+
+function successfulRetry(socket) {
+  document.getElementById("errorDiv").classList.remove("hidden");
+  document.getElementById("errorDiv").classList.remove("shown");
+  ws = socket;
+  ws.onmessage = onmsg;
+  ws.onclose = lostConnection;
+}
+
 function onmsg(e) {
   let data = JSON.parse(e.data);
   if (data.type == "error") {
-    document.getElementById("errorText").holdSeconds = 3;
-    document.getElementById("errorText").style.opacity = 1.0;
     document.getElementById("errorText").innerText = formatServerString(data.message);
-    setTimeout(clearError, 100);
+    document.getElementById("errorLink").innerText = "";
+    document.getElementById("errorDiv").classList.remove("hidden");
+    document.getElementById("errorDiv").classList.add("shown");
+    setTimeout(function() { document.getElementById("errorDiv").classList.replace("shown", "hidden"); }, 5);
     return;
   }
   if (stepping || runningAnim.length || messageQueue.length) {
