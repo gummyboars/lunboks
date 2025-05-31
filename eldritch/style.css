@@ -165,6 +165,7 @@ button:disabled {
   text-align: center;
   vertical-align: center;
   background-position: left;
+  font-size: calc(min(1.25vw, 2vh));
 }
 #bottomcenter {
   flex: 0 0 auto;
