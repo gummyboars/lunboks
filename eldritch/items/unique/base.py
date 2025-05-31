@@ -172,21 +172,14 @@ class AlienStatue(Item):
     gain_cond = events.Conditional(owner, gain_choice, "choice_index", {0: spell, 1: clues})
     gain = events.Sequence([gain_choice, gain_cond], owner)
     loss = events.Loss(owner, {"stamina": 2})
-    die = events.DiceRoll(owner, 1)
+    die = events.DiceRoll(owner, 1, name=self.handle)
     cond = events.Conditional(owner, die, "successes", {0: loss, 1: gain})
     spend = values.ExactSpendPrerequisite({"sanity": 1})
     use_choice = events.CardSpendChoice(
       owner, f"Use [{self.name}]?", [self.handle, "Cancel"], spends=[spend, None]
     )
-    use = events.Sequence(
-      [
-        events.ExhaustAsset(owner, self),
-        events.ChangeMovementPoints(owner, -self.movement_cost),
-        die,
-        cond,
-      ],
-      owner,
-    )
+    spend_move = events.ChangeMovementPoints(owner, -self.movement_cost)
+    use = events.Sequence([die, events.ExhaustAsset(owner, self), spend_move, cond], owner)
     use_cond = events.Conditional(owner, use_choice, "choice_index", {0: use, 1: events.Nothing()})
     return events.Sequence([use_choice, use_cond], owner)
 
