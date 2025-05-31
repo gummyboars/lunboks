@@ -4228,7 +4228,7 @@ function updatePossessions(sheet, possessions, isPlayer, spent, chosen, selectTy
     setTimeout(function() { pDiv.removeChild(div); }, 10);
   }
   for (let handle in handleToInfo) {
-    if (handle.startsWith("Bad Credit") || handle.startsWith("Voice Bonus") || handle.startsWith("Stamina Decrease") || handle.startsWith("Sanity Decrease") || ["Streetwise", "Blessed is the Child"].includes(handle)) {
+    if (handle.startsWith("Bad Credit") || handle.startsWith("Voice Bonus") || handle.startsWith("Stamina Decrease") || handle.startsWith("Sanity Decrease") || handle.startsWith("Team Player Bonus") || ["Streetwise", "Blessed is the Child"].includes(handle)) {
       continue;
     }
     let div = createPossession(handleToInfo[handle], isPlayer, pDiv);
