@@ -522,7 +522,7 @@ class GameState:
         output["sliders"][name] = {"selection": value}
 
     if top_event and isinstance(top_event, events.InitialSliders) and not top_event.is_done():
-      slider_char = self.characters[char_idx]
+      slider_char = self.characters[char_idx] if char_idx is not None else None
       if slider_char not in top_event.characters:
         slider_char = next(c for c in top_event.characters if c.name not in top_event.done_chars)
       output["sliders"] = {"prompt": top_event.prompt()}
