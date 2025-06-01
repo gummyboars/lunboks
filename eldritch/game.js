@@ -4017,14 +4017,26 @@ function fixTransformOrigins(sheet) {
   }
   for (let elem of toFix) {
     let totalWidth = elem.offsetParent.offsetWidth;
+    let totalHeight = elem.offsetParent.offsetHeight * 0.368;
     let offsetCenter = elem.offsetLeft + (elem.offsetWidth / 2);
+    let heightCenter = elem.offsetTop - elem.parentElement.offsetTop + (elem.offsetHeight / 2);
+    let leftRight = "left";
+    let topBottom = "center";
     if (offsetCenter / totalWidth < 0.3) {
-      elem.style.transformOrigin = "left center";
+      leftRight = "left";
     } else if (offsetCenter / totalWidth > 0.7) {
-      elem.style.transformOrigin = "right center";
+      leftRight = "right";
     } else {
-      elem.style.transformOrigin = "center";
+      leftRight = "center";
     }
+    if (heightCenter / totalHeight < 0.3) {
+      topBottom = "25%";
+    } else if (heightCenter / totalHeight > 0.7) {
+      topBottom = "bottom";
+    } else {
+      topBottom = "center";
+    }
+    elem.style.transformOrigin = `${leftRight} ${topBottom}`;
   }
 }
 
