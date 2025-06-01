@@ -589,6 +589,8 @@ button:disabled {
   flex-direction: column;
   align-items: flex-start;
   justify-content: flex-start;
+  min-height: 0;
+  max-height: 95%;
 }
 #uichars.notshown {
   transform: translate(-101%, 0);
@@ -1719,9 +1721,16 @@ tbody > tr > td:last-of-type {
   align-items: center;
   background: cornsilk;
   border-bottom: 1px solid black;
+  flex-grow: 0;
+  flex-shrink: 0;
 }
 .player.nochoose {
   filter: grayscale(70%);
+}
+.player.collapsed {
+  min-height: 0;
+  flex-shrink: 1;
+  overflow: hidden;
 }
 .playertop {
   width: 100%;
@@ -1893,6 +1902,9 @@ tbody > tr > td:last-of-type {
   row-gap: calc(min(0.5vw, 0.8vh));
   margin-top: calc(min(0.5vw, 0.8vh));
   margin-bottom: calc(min(0.5vw, 0.8vh));
+  min-height: 0;
+  max-height: calc(min(23vw, 36.8vh));
+  overflow-y: auto;
 }
 .collapsed .possessions {
   max-height: 0;
