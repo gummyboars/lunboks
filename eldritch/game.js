@@ -1198,10 +1198,16 @@ function showMonsters(placeDiv, name) {
     renderAssetToDiv(frontDiv.getElementsByClassName("cnvcontainer")[0], monsterDiv.monsterInfo.name);
     renderMonsterBackToDiv(backDiv.getElementsByClassName("monsterback")[0], monsterDiv.monsterInfo);
   }
+  if (cardsShown) {
+    toggleCards();
+  }
 }
 
 function hideMonsters(e) {
   document.getElementById("monsterdetails").style.display = "none";
+  if (!cardsShown) {
+    toggleCards();
+  }
 }
 
 function updateMonsters(choice, monster_list) {
@@ -1464,6 +1470,9 @@ function toggleCards(e) {
   cardsShown = !cardsShown;
   document.getElementById("cardchoicescroll").classList.toggle("hidden", !cardsShown);
   setCardButtonText();
+  if (cardsShown) {
+    hideMonsters();
+  }
 }
 
 function setCardButtonText() {
