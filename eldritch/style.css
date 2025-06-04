@@ -863,12 +863,24 @@ button:disabled {
   align-items: center;
   justify-content: flex-start;
 }
+#globals.bottom {
+  flex-direction: row;
+  position: absolute;
+  bottom: 0;
+  left: calc(min(15vw, 24vh));
+  height: calc(min(13.5vw, 21.6vh));
+  width: calc(min(60vw, 96vh));
+  align-items: flex-start;
+}
 .mythoscontainer {
   position: relative;
   flex: 0 1 auto;
   width: 87.5%;
   min-height: 0;
   height: calc(min(8.75vw, 14vh) * 2);
+}
+.bottom .mythoscontainer {
+  width: calc(min(15vw, 24vh));
 }
 .mythoscontainer.missing {
   height: 0;
@@ -913,6 +925,11 @@ button:disabled {
   bottom: 0;
   left: 0;
   transform: translateY(100%);
+}
+.bottom .mythosdesc {
+  bottom: unset;
+  top: 0;
+  transform: translateY(-100%);
 }
 .mythoscard:hover .mythosdesc {
   display: block;

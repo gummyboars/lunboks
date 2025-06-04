@@ -115,14 +115,17 @@ function flipBoard() {
     for (let p of document.getElementsByClassName("place")) {
       p.style.transform = "translateX(-50%) translateY(-50%) rotate(90deg)";
     }
+    document.getElementById("globals").classList.add("bottom");
   } else {
     boardRotate = 0;
     for (let p of document.getElementsByClassName("place")) {
       p.style.transform = "translateX(-50%) translateY(-50%) rotate(0deg)";
     }
+    document.getElementById("globals").classList.remove("bottom");
   }
   adjustLocationClasses();
   moveBoard();
+  fixGlobalTransformOrigins();
 }
 function moveBoard() {
   document.getElementById("board").style.transform = "rotate(" + boardRotate + "deg) translate(" + (offsetX+dX) + "px, " + (offsetY+dY) + "px) scale(" + boardScale + ")";
@@ -820,9 +823,9 @@ function setGate(e) {
   ws.send(JSON.stringify({"type": "set_gate", "card": gateName}));
 }
 
-function bringTop(e) {
+function bringTop(e, newIndex) {
   let node = e.currentTarget;
-  node.style.zIndex = 5;
+  node.style.zIndex = newIndex ?? 5;
 }
 
 function returnBottom(e, removeShown) {
@@ -3220,7 +3223,7 @@ function updateGlobals(env, rumor, otherGlobals) {
     globCont.appendChild(globDesc);
     globDiv.appendChild(globCont);
     document.getElementById("globals").appendChild(globDiv);
-    globDiv.onmouseenter = bringTop;
+    globDiv.onmouseenter = function(e) { bringTop(e, 25); };
     globDiv.onmouseleave = function(e) { returnBottom(e, true); };
     renderAssetToDiv(globCont, globName);
   }
@@ -3308,7 +3311,18 @@ function updateCurrentCard(current, visual, monster, choice) {
       setTimeout(finishAnim, 6000);
     }
   }
+  fixGlobalTransformOrigins();
+}
+
+function fixGlobalTransformOrigins() {
   // Set transform origins for all globals (must do this after updating current card).
+  if (document.getElementById("globals").classList.contains("bottom")) {
+    // If it's on the bottom, "center bottom" is good enough for every card.
+    for (let node of document.getElementById("globals").getElementsByClassName("mythoscontainer")) {
+      node.getElementsByClassName("mythoscard")[0].style.transformOrigin = "center bottom";
+    }
+    return;
+  }
   for (let node of document.getElementById("globals").getElementsByClassName("mythoscontainer")) {
     let totalHeight = node.offsetParent.offsetHeight;
     let heightCenter = node.offsetTop - node.parentElement.offsetTop + (node.offsetHeight / 2);
