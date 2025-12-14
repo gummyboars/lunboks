@@ -392,15 +392,7 @@ class Road:
     self.conquered = conquered
 
   def json_repr(self):
-    data = {
-      "location": self.location,
-      "road_type": self.road_type,
-      "player": self.player,
-      "conquered": self.conquered,
-    }
-    if self.road_type == "ship":
-      data.update({"closed": self.closed, "movable": self.movable, "source": self.source})
-    return data
+    return {attr: getattr(self, attr) for attr in self.__dict__}
 
   @staticmethod
   def parse_json(value):
@@ -408,6 +400,7 @@ class Road:
     source = None
     if value["road_type"] == "ship":
       assert value.get("source") is not None
+    if value.get("source") is not None:
       source = CornerLocation(*value["source"])
     return Road(
       value["location"],
@@ -1703,7 +1696,7 @@ class IslandersState:
     for resource, count in resources:
       self.player_data[player].cards[resource] -= count
 
-  def _check_road_building(self, location, player, road_type):
+  def _check_road_building(self, location, player, road_type, ignore=()):
     left_corner = location.corner_left
     right_corner = location.corner_right
     # Validate that the road does not go out of bounds.
@@ -1738,7 +1731,7 @@ class IslandersState:
       # If no settlement at this corner, check for other roads to this corner.
       other_edges = corner.get_edges()
       for edge in other_edges:
-        if edge == location:
+        if edge == location or edge in ignore:
           continue
         if edge not in self.roads:
           continue
@@ -1853,8 +1846,7 @@ class IslandersState:
     self.roads[road.location] = road
 
   def add_road(self, road):
-    if road.road_type == "ship":
-      road.source = self.get_ship_source(road.location, road.player)
+    road.source = self.get_ship_source(road.location, road.player, road.road_type)
     self._add_road(road)
 
     self.discover_treasure(road)
@@ -1865,8 +1857,8 @@ class IslandersState:
     self.player_data[road.player].longest_route = self._calculate_longest_road(road.player)
     self._update_longest_route_player()
 
+    self.recalculate_ships(road.source, road.player, road.road_type)
     if road.road_type == "ship":
-      self.recalculate_ships(road.source, road.player)
       self.built_this_turn.append(road.location)
 
   def _update_longest_route_player(self):
@@ -1966,7 +1958,30 @@ class IslandersState:
       seen_edges.remove(edge)
     return max_depth
 
-  def get_ship_source(self, location, player_idx):
+  def _recompute_road_sources(self):
+    for piece in self.pieces.values():
+      if piece.piece_type in {"settlement", "city"}:
+        self._source_dfs(piece.player, piece.location, "road", set(), piece.location)
+        self._source_dfs(piece.player, piece.location, "ship", set(), piece.location)
+        self.recalculate_ships(piece.location, piece.player, "road")
+        self.recalculate_ships(piece.location, piece.player, "ship")
+
+  def _source_dfs(self, player_idx, corner, road_type, seen_edges, orig_corner):
+    unseen_edges = [edge for edge in corner.get_edges() if edge not in seen_edges]
+    for edge in unseen_edges:
+      if edge not in self.roads:
+        continue
+      road = self.roads[edge]
+      if road.player != player_idx or road.road_type != road_type:
+        continue
+      if road.source is None:
+        road.source = orig_corner
+      other_corner = edge.corner_left if edge.corner_right == corner else edge.corner_right
+      seen_edges.add(edge)
+      self._source_dfs(player_idx, other_corner, road_type, seen_edges, orig_corner)
+      seen_edges.remove(edge)
+
+  def get_ship_source(self, location, player_idx, road_type):
     edges = []
     for corner in [location.corner_left, location.corner_right]:
       maybe_piece = self.pieces.get(corner)
@@ -1977,14 +1992,14 @@ class IslandersState:
       if edge == location:
         continue
       maybe_road = self.roads.get(edge)
-      if maybe_road and maybe_road.player == player_idx and maybe_road.road_type == "ship":
+      if maybe_road and maybe_road.player == player_idx and maybe_road.road_type == road_type:
         return maybe_road.source
-    raise InvalidMove("Ships must be connected to your ship network.")
+    raise InvalidMove(f"{road_type.capitalize()}s must be connected to your {road_type} network.")
 
-  def recalculate_ships(self, source, player_idx):
-    self._ship_dfs_helper(source, player_idx, [], set(), source, None)
+  def recalculate_ships(self, source, player_idx, road_type):
+    self._ship_dfs_helper(source, player_idx, road_type, [], set(), source, None)
 
-  def _ship_dfs_helper(self, source, player_idx, path, seen, corner, prev):
+  def _ship_dfs_helper(self, source, player_idx, road_type, path, seen, corner, prev):
     seen.add(corner)
     edges = corner.get_edges()
     outgoing_edges = []
@@ -1997,7 +2012,7 @@ class IslandersState:
       other_corner = edge.corner_left if edge.corner_right == corner else edge.corner_right
       # If this edge does not have this player's ship on it, skip it.
       maybe_ship = self.roads.get(edge)
-      if not maybe_ship or maybe_ship.road_type != "ship" or maybe_ship.player != player_idx:
+      if not maybe_ship or maybe_ship.road_type != road_type or maybe_ship.player != player_idx:
         continue
       # Now we know there is a ship from corner to other_corner.
       outgoing_edges.append((edge, other_corner))
@@ -2039,7 +2054,7 @@ class IslandersState:
           self.roads[rloc].closed = True
       # Now we know this ship does not create a loop, so we continue to explore the far corner.
       path.append(edge)
-      self._ship_dfs_helper(source, player_idx, path, seen, other_corner, edge)
+      self._ship_dfs_helper(source, player_idx, road_type, path, seen, other_corner, edge)
       path.pop()
     seen.remove(corner)
 
@@ -2071,20 +2086,15 @@ class IslandersState:
       raise InvalidMove("You cannot move a ship that is next to the pirate.")
 
     # Check that this attaches to their existing network, without the original ship.
-    # To do this, remove the old ship first, but restore it if any exception is thrown.
+    self._check_road_building(to_loc, player_idx, "ship", ignore=[from_loc])
     old_ship = self.roads.pop(from_loc)
     old_source = old_ship.source
-    try:
-      self._check_road_building(to_loc, player_idx, "ship")
-      self.add_road(Road(to_loc, "ship", player_idx))
-    except Exception:  # pylint: disable=broad-except
-      self.roads[old_ship.location] = old_ship
-      raise
+    self.add_road(Road(to_loc, "ship", player_idx))
 
     self.event_log.append(Event("move_ship", "{player%s} moved a ship" % player_idx))
     # add_road will automatically recalculate from the new source, but we must still recalculate
     # ships' movable status from the old source in case the two locations are disconnected.
-    self.recalculate_ships(old_source, player_idx)
+    self.recalculate_ships(old_source, player_idx, "ship")
     self.ships_moved = 1
 
   def discover_tiles(self, road):
@@ -2358,7 +2368,8 @@ class IslandersState:
 
     # Calculate whether ships are open or closed.
     if piece.piece_type == "settlement":
-      self.recalculate_ships(piece.location, piece.player)
+      self.recalculate_ships(piece.location, piece.player, "road")
+      self.recalculate_ships(piece.location, piece.player, "ship")
 
     # Compute home islands / foreign landings for this piece.
     if self.game_phase.startswith("place"):
@@ -3248,6 +3259,10 @@ class IslandersState:
     self._compute_coast()
     self._compute_edges()
     self._compute_ports()
+    if any(road.source is None for road in self.roads.values()):
+      self._recompute_road_sources()
+    if any(road.source is None for road in self.roads.values()):
+      raise ValueError("found roads/ships without a source")
 
 
 class Scenario(metaclass=abc.ABCMeta):

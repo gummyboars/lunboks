@@ -2345,7 +2345,7 @@ class TestHandleShipInput(BaseInputHandlerTest):
       self.handle(0, {"type": "ship", "location": [6, 4, 8, 4]})
 
   def testShipsCannotConnectToRoads(self):
-    self.c._add_road(Road([2, 4, 3, 5], "road", 0))
+    self.c.add_road(Road([2, 4, 3, 5], "road", 0))
     with self.assertRaisesRegex(InvalidMove, "must be connected.*ship network"):
       self.handle(0, {"type": "ship", "location": [2, 4, 3, 3]})
     # Verify that you can build a road in that same spot that you can't build a ship.
@@ -3078,16 +3078,18 @@ class TestLongestRouteAssignment(BreakpointTestMixin):
     self.c = islanders.IslandersState.parse_json(json.loads(json_data))
     self.c.add_player("blue", "PlayerA")
     self.c.add_player("green", "PlayerB")
-    self.c._add_road(Road([6, 4, 8, 4], "road", 0))
-    self.c._add_road(Road([8, 4, 9, 5], "road", 0))
+    self.c.add_road(Road([6, 4, 8, 4], "road", 0))
+    self.c.add_road(Road([8, 4, 9, 5], "road", 0))
     self.c.add_road(Road([11, 5, 12, 6], "road", 0))
-    self.c._add_road(Road([5, 3, 6, 2], "road", 1))
-    self.c._add_road(Road([6, 2, 8, 2], "road", 1))
-    self.c._add_road(Road([8, 2, 9, 1], "road", 1))
+    self.c.add_piece(islanders.Piece(5, 3, "settlement", 1))
+    self.c.add_road(Road([5, 3, 6, 2], "road", 1))
+    self.c.add_road(Road([6, 2, 8, 2], "road", 1))
+    self.c.add_road(Road([8, 2, 9, 1], "road", 1))
     self.c.add_road(Road([9, 1, 11, 1], "road", 1))
-    self.c._add_road(Road([5, 7, 6, 8], "road", 2))
-    self.c._add_road(Road([6, 8, 8, 8], "road", 2))
-    self.c._add_road(Road([8, 8, 9, 9], "road", 2))
+    self.c.add_piece(islanders.Piece(5, 7, "settlement", 2))
+    self.c.add_road(Road([5, 7, 6, 8], "road", 2))
+    self.c.add_road(Road([6, 8, 8, 8], "road", 2))
+    self.c.add_road(Road([8, 8, 9, 9], "road", 2))
     self.c.add_road(Road([9, 9, 11, 9], "road", 2))
     for rsrc in islanders.RESOURCES:
       self.c.player_data[2].cards[rsrc] += 1
@@ -3161,7 +3163,10 @@ class TestLongestRouteAssignment(BreakpointTestMixin):
     self.assertEqual(self.c.player_data[0].longest_route, 6)
     self.assertEqual(self.c.player_data[1].longest_route, 5)
     # Break first player's road one road away from the edge, cutting them down to 5.
-    self.c.add_road(Road([8, 4, 9, 3], "road", 2))  # Just here to attach the settlement to.
+    # This settlement and two roads are just here to attach the settlement to.
+    self.c.add_piece(islanders.Piece(11, 3, "settlement", 2))
+    self.c.add_road(Road([9, 3, 11, 3], "road", 2))
+    self.c.add_road(Road([8, 4, 9, 3], "road", 2))
     self.c.handle_settle([8, 4], 2)  # Use handle_settle to create an event log.
     self.assertEqual(self.c.player_data[0].longest_route, 5)
     # They should retain longest route.
@@ -3689,7 +3694,7 @@ class TestHastenInvasion(BaseInputHandlerTest):
     super().setUp()
     for rsrc in islanders.RESOURCES:
       self.c.player_data[0].cards[rsrc] += 3
-    self.c.add_road(Road([17, 9, 18, 8], "road", 0))
+    self.c._add_road(Road([17, 9, 18, 8], "road", 0, source=islanders.CornerLocation(18, 8)))
 
   def testSettlementHastensInvasion(self):
     self.c.handle_settle([18, 8], 0)
@@ -3774,20 +3779,20 @@ class TestInvasion(BaseInputHandlerTest):
     self.c.add_piece(islanders.Piece(15, 3, "settlement", 2))
     self.c.add_piece(islanders.Piece(15, 7, "settlement", 1))
     self.c.add_piece(islanders.Piece(18, 10, "settlement", 0))
-    self.c._add_road(Road([17, 9, 18, 8], "road", 0))
-    self.c._add_road(Road([17, 9, 18, 10], "road", 0))
-    self.c._add_road(Road([15, 7, 17, 7], "road", 0))
-    self.c._add_road(Road([17, 7, 18, 8], "road", 0))
+    self.c.add_road(Road([17, 9, 18, 8], "road", 0))
+    self.c.add_road(Road([17, 9, 18, 10], "road", 0))
+    self.c.add_road(Road([17, 7, 18, 8], "road", 0))
+    self.c.add_road(Road([15, 7, 17, 7], "road", 0))
     self.c.add_road(Road([17, 11, 18, 10], "road", 0))
-    self.c._add_road(Road([12, 6, 14, 6], "road", 1))
-    self.c._add_road(Road([14, 6, 15, 7], "road", 1))
-    self.c._add_road(Road([14, 8, 15, 7], "road", 1))
-    self.c._add_road(Road([14, 8, 15, 9], "road", 1))
     self.c.add_road(Road([15, 9, 17, 9], "road", 1))
-    self.c._add_road(Road([14, 6, 15, 5], "road", 2))
-    self.c._add_road(Road([14, 4, 15, 5], "road", 2))
-    self.c._add_road(Road([14, 4, 15, 3], "road", 2))
-    self.c._add_road(Road([14, 2, 15, 3], "road", 2))
+    self.c.add_road(Road([14, 8, 15, 9], "road", 1))
+    self.c.add_road(Road([14, 8, 15, 7], "road", 1))
+    self.c.add_road(Road([14, 6, 15, 7], "road", 1))
+    self.c.add_road(Road([12, 6, 14, 6], "road", 1))
+    self.c.add_road(Road([14, 6, 15, 5], "road", 2))
+    self.c.add_road(Road([14, 4, 15, 5], "road", 2))
+    self.c.add_road(Road([14, 4, 15, 3], "road", 2))
+    self.c.add_road(Road([14, 2, 15, 3], "road", 2))
     self.c.add_road(Road([12, 2, 14, 2], "road", 2))
     self.c.invasion_countdown = 3
     for tile in self.c.tiles.values():
@@ -3955,20 +3960,20 @@ class TestExpelBarbarians(BaseInputHandlerTest):
     self.c.add_piece(islanders.Piece(15, 3, "settlement", 2))
     self.c.add_piece(islanders.Piece(15, 7, "city", 1))
     self.c.add_piece(islanders.Piece(18, 10, "city", 0))
-    self.c._add_road(Road([17, 9, 18, 8], "road", 0))
-    self.c._add_road(Road([17, 9, 18, 10], "road", 0))
-    self.c._add_road(Road([15, 7, 17, 7], "road", 0))
-    self.c._add_road(Road([17, 7, 18, 8], "road", 0))
+    self.c.add_road(Road([17, 9, 18, 8], "road", 0))
+    self.c.add_road(Road([17, 9, 18, 10], "road", 0))
+    self.c.add_road(Road([17, 7, 18, 8], "road", 0))
+    self.c.add_road(Road([15, 7, 17, 7], "road", 0))
     self.c.add_road(Road([17, 11, 18, 10], "road", 0))
-    self.c._add_road(Road([12, 6, 14, 6], "road", 1))
-    self.c._add_road(Road([14, 6, 15, 7], "road", 1))
-    self.c._add_road(Road([14, 8, 15, 7], "road", 1))
-    self.c._add_road(Road([14, 8, 15, 9], "road", 1))
     self.c.add_road(Road([15, 9, 17, 9], "road", 1))
-    self.c._add_road(Road([14, 6, 15, 5], "road", 2))
-    self.c._add_road(Road([14, 4, 15, 5], "road", 2))
-    self.c._add_road(Road([14, 4, 15, 3], "road", 2))
-    self.c._add_road(Road([14, 2, 15, 3], "road", 2))
+    self.c.add_road(Road([14, 8, 15, 9], "road", 1))
+    self.c.add_road(Road([14, 8, 15, 7], "road", 1))
+    self.c.add_road(Road([14, 6, 15, 7], "road", 1))
+    self.c.add_road(Road([12, 6, 14, 6], "road", 1))
+    self.c.add_road(Road([14, 6, 15, 5], "road", 2))
+    self.c.add_road(Road([14, 4, 15, 5], "road", 2))
+    self.c.add_road(Road([14, 4, 15, 3], "road", 2))
+    self.c.add_road(Road([14, 2, 15, 3], "road", 2))
     self.c.add_road(Road([12, 2, 14, 2], "road", 2))
     self.c.invasion_countdown = 3
     for tile in self.c.tiles.values():
