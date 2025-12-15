@@ -339,6 +339,100 @@ class BishopTest(BaseInputHandlerTest):
       self.handle(2, {"location": [10, 4], "type": "pirate"})
 
 
+class DiplomatTest(BaseInputHandlerTest):
+
+  def setUp(self):
+    super().setUp()
+    self.c.options["knights"].force(True)
+    self.c.options["seafarers"].force(True)
+    self.c.player_data[0].cards["diplomat"] = 1
+
+  def testRemoveOpponentRoad(self):
+    self.handle(0, {"type": "play_dev", "card_type": "diplomat", "location": [5, 5, 6, 6]})
+    self.assertNotIn((5, 5, 6, 6), self.c.roads)
+
+  def testRemoveOwnRoad(self):
+    self.handle(0, {"type": "play_dev", "card_type": "diplomat", "location": [6, 4, 8, 4]})
+    self.assertIn((5, 5, 6, 6), self.c.roads)
+    self.assertNotIn((6, 4, 8, 4), self.c.roads)
+
+  def testMoveOwnRoad(self):
+    self.handle(0, {"type": "play_dev", "card_type": "diplomat", "location": [6, 4, 8, 4], "selection": [8, 4, 9, 5]})
+    self.assertNotIn((6, 4, 8, 4), self.c.roads)
+    self.assertIn((8, 4, 9, 5), self.c.roads)
+    self.assertEqual(self.c.roads[(8, 4, 9, 5)].player, 0)
+
+  def testMovingRoadClaimsTreasure(self):
+    self.c.treasures[CornerLocation(9, 5)] = "collect1"
+    self.handle(0, {"type": "play_dev", "card_type": "diplomat", "location": [6, 4, 8, 4], "selection": [8, 4, 9, 5]})
+    self.assertNotIn((6, 4, 8, 4), self.c.roads)
+    self.assertIn((8, 4, 9, 5), self.c.roads)
+    self.assertEqual(self.c.roads[(8, 4, 9, 5)].player, 0)
+    self.assertEqual(self.c.turn_phase, "collect1")
+
+  def testMovingRoadDiscovers(self):
+    self.c.tiles[(10, 6)].tile_type = "discover"
+    self.c.discoverable_tiles = ["rsrc5"]
+    self.c.discoverable_numbers = [5]
+    self.handle(0, {"type": "play_dev", "card_type": "diplomat", "location": [6, 4, 8, 4], "selection": [8, 4, 9, 5]})
+    self.assertNotIn((6, 4, 8, 4), self.c.roads)
+    self.assertIn((8, 4, 9, 5), self.c.roads)
+    self.assertEqual(self.c.roads[(8, 4, 9, 5)].player, 0)
+    self.assertEqual(self.c.tiles[(10, 6)].tile_type, "rsrc5")
+    self.assertEqual(self.c.tiles[(10, 6)].number, 5)
+
+  def testMovingRoadDoesntConcedeLongestRoute(self):
+    self.c.add_road(Road([5, 3, 6, 4], "road", 0))
+    self.c.add_road(Road([3, 3, 5, 3], "road", 0))
+    self.c.add_road(Road([2, 4, 3, 3], "road", 0))
+    self.c.add_road(Road([2, 4, 3, 5], "road", 0))
+
+    self.c.add_road(Road([5, 7, 6, 6], "road", 1))
+    self.c.add_road(Road([3, 7, 5, 7], "road", 1))
+    self.c.add_road(Road([2, 6, 3, 7], "road", 1))
+    self.c.add_road(Road([2, 6, 3, 5], "road", 1))
+
+    self.assertEqual(self.c.longest_route_player, 0)
+    self.assertEqual(self.c.player_data[0].longest_route, 5)
+    self.assertEqual(self.c.player_data[1].longest_route, 5)
+    self.handle(0, {"type": "play_dev", "card_type": "diplomat", "location": [2, 4, 3, 5], "selection": [8, 4, 9, 5]})
+    self.assertEqual(self.c.longest_route_player, 0)
+    self.assertEqual(self.c.player_data[0].longest_route, 5)
+    self.assertEqual(self.c.player_data[1].longest_route, 5)
+
+  def testMoveOwnShip(self):
+    self.c.add_road(Road([8, 4, 9, 5], "ship", 0))
+    self.handle(0, {"type": "play_dev", "card_type": "diplomat", "location": [8, 4, 9, 5], "selection": [8, 4, 9, 3]})
+    self.assertNotIn((8, 4, 9, 5), self.c.roads)
+    self.assertIn((8, 4, 9, 3), self.c.roads)
+    self.assertEqual(self.c.roads[(8, 4, 9, 3)].player, 0)
+    self.assertEqual(self.c.roads[(8, 4, 9, 3)].road_type, "ship")
+
+  def testInvalidRoadMoves(self):
+    with self.assertRaisesRegex(InvalidMove, "cannot move another player"):
+      self.handle(0, {"type": "play_dev", "card_type": "diplomat", "location": [5, 5, 6, 6], "selection": [8, 4, 9, 5]})
+    with self.assertRaisesRegex(InvalidMove, "on top of an existing"):
+      self.handle(0, {"type": "play_dev", "card_type": "diplomat", "location": [6, 4, 8, 4], "selection": [6, 4, 8, 4]})
+    with self.assertRaisesRegex(InvalidMove, "must be connected"):
+      self.handle(0, {"type": "play_dev", "card_type": "diplomat", "location": [6, 4, 8, 4], "selection": [5, 5, 6, 4]})
+    with self.assertRaisesRegex(InvalidMove, "must choose a valid"):
+      self.handle(0, {"type": "play_dev", "card_type": "diplomat", "location": [8, 4, 9, 5]})
+
+  def testCanOnlyMoveOpenRoads(self):
+    self.c.add_road(Road([5, 3, 6, 4], "road", 0))
+    with self.assertRaisesRegex(InvalidMove, "from the end of a route"):
+      self.handle(0, {"type": "play_dev", "card_type": "diplomat", "location": [6, 4, 8, 4]})
+
+    self.c.add_piece(Piece(5, 3, "settlement", 0))
+    with self.assertRaisesRegex(InvalidMove, "road that connects"):
+      self.handle(0, {"type": "play_dev", "card_type": "diplomat", "location": [5, 3, 6, 4]})
+
+  def testRoadCannotBecomeShip(self):
+    self.c.add_road(Road([8, 4, 9, 5], "ship", 0))
+    with self.assertRaisesRegex(InvalidMove, "must be connected"):
+      self.handle(0, {"type": "play_dev", "card_type": "diplomat", "location": [6, 4, 8, 4], "selection": [8, 6, 9, 5]})
+
+
 class DefectorTest(BaseInputHandlerTest):
 
   def setUp(self):

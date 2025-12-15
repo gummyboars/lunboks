@@ -2753,8 +2753,8 @@ class IslandersState:
       self._handle_bishop(player)
     elif card_type == "defector":
       self._handle_defector(player, selection)
-    elif card_type == "diplomat": #XXX
-      self._handle_diplomat(player, location)
+    elif card_type == "diplomat":
+      self._handle_diplomat(player, location, selection)
     elif card_type == "deception":
       self._handle_deception(player, location)
     elif card_type == "saboteur":
@@ -3519,6 +3519,42 @@ class IslandersState:
     self.affected_player = opponent
     self.action_stack.extend(["adopt", "defect"])
     self.next_action()
+
+  def _handle_diplomat(self, player_idx, loc, to_loc):
+    location = parse_location(loc, EdgeLocation)
+    to_location = parse_location(to_loc, EdgeLocation) if to_loc is not None else None
+    if location not in self.roads:
+      raise InvalidMove("You must choose a valid road or ship.")
+    removed_road = self.roads[location]
+    road_type = removed_road.road_type
+
+    if removed_road.closed:
+      raise InvalidMove(f"You may not move a {road_type} that connects two player settlements.")
+    if not removed_road.movable:
+      raise InvalidMove(f"You must move a {road_type} from the end of a route.")
+    # NOTE: no pirate check for the diplomat according to the FAQ.
+
+    if to_location:
+      if removed_road.player != player_idx:
+        raise InvalidMove(f"You cannot move another player's {road_type}.")
+      if to_location in self.roads:
+        raise InvalidMove(f"You cannot move your {road_type} on top of an existing one.")
+      self._check_road_building(to_location, player_idx, road_type, ignore=[location])
+
+    self.roads.pop(location)
+    if to_location:
+      # add_road will automatically do the longest route calculation.
+      self.add_road(Road(to_location, road_type, player_idx))
+      self.event_log.append(Event("move_ship", "{player%s} moved a %s" % (player_idx, road_type)))
+      # add_road will automatically recalculate from the new source, but we must still recalculate
+      # roads' movable status from the old source in case the two locations are disconnected.
+      self.recalculate_ships(removed_road.source, player_idx, road_type)
+    else:
+      longest_route = self._calculate_longest_road(removed_road.player)
+      self.player_data[removed_road.player].longest_route = longest_route
+      self._update_longest_route_player()
+      self.recalculate_ships(removed_road.source, removed_road.player, road_type)
+      self.event_log.append(Event("move_ship", "{player%s} removed a %s" % (player_idx, road_type)))
 
   def _handle_deception(self, player_idx, loc):
     location = parse_location(loc, CornerLocation)
