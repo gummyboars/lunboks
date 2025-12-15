@@ -214,6 +214,10 @@ function drawRoad(roadLoc, style, road_type, closed, movable, conquered, ctx) {
   ctx.rotate(angle);
   if (road_type.startsWith("coast") && moveShipFromLocation != null) {
     road_type = "ship";
+    let [edgeX, edgeY] = [(moveShipFromLocation[0]+moveShipFromLocation[2])/2, (moveShipFromLocation[1]+moveShipFromLocation[3])/2];
+    if (roadMatrix[edgeX] != null && roadMatrix[edgeX][edgeY] != null) {
+      road_type = roadMatrix[edgeX][edgeY].road_type;
+    }
   }
   if (road_type.endsWith("down")) {
     ctx.rotate(Math.PI);
@@ -1153,14 +1157,27 @@ function onClickEdge(event, edgeLoc) {
   if (moveShipFromLocation != null) {
     if (locationsEqual(moveShipFromLocation, edgeLoc)) {  // Cancel moving ship
       moveShipFromLocation = null;
+      if (devCardType == "diplomat") {
+        deselectDevCard();
+      }
       draw();
       return;
     }
-    let msg = {
-      type: "move_ship",
-      from: moveShipFromLocation,
-      to: edgeLoc,
-    };
+    let msg;
+    if (devCardType == "diplomat") {
+      msg = {
+        type: "play_dev",
+        card_type: "diplomat",
+        location: moveShipFromLocation,
+        selection: edgeLoc,
+      };
+    } else {
+      msg = {
+        type: "move_ship",
+        from: moveShipFromLocation,
+        to: edgeLoc,
+      };
+    }
     ws.send(JSON.stringify(msg));
     moveShipFromLocation = null;
     return;
@@ -1189,6 +1206,22 @@ function onClickEdge(event, edgeLoc) {
     return;
   }
   if (roadMatrix[edgeX] != null && roadMatrix[edgeX][edgeY] != null) {
+    if (devCardType == "diplomat") {
+      if (roadMatrix[edgeX][edgeY].player == myIdx) {
+        moveShipFromLocation = edgeLoc;
+        event.stopPropagation();
+        draw();
+        maybeShowStatusPopup();
+        return;
+      }
+      msg = {
+        type: "play_dev",
+        card_type: "diplomat",
+        location: edgeLoc,
+      };
+      ws.send(JSON.stringify(msg));
+      return;
+    }
     if (roadMatrix[edgeX][edgeY].player == myIdx && roadMatrix[edgeX][edgeY].road_type == "ship") {
       moveShipFromLocation = edgeLoc;
       event.stopPropagation();

@@ -330,6 +330,11 @@ function deselectDevCard() {
     promoteKnightLocation = null;
     draw();
     maybeShowStatusPopup();
+  } else if (devCardType == "diplomat") {
+    devCardType = null;
+    moveShipFromLocation = null;
+    draw();
+    maybeShowStatusPopup();
   } else if (devCardType == "deception") {
     devCardType = null;
     maybeShowStatusPopup();
@@ -1232,6 +1237,26 @@ function maybeShowStatusPopup() {
     }
     return;
   }
+  if (turn == myIdx && devCardType == "diplomat") {
+    statusPopup.style.display = "flex";
+    if (moveShipFromLocation != null) {
+      let roadType = "road";
+      let [edgeX, edgeY] = [(moveShipFromLocation[0]+moveShipFromLocation[2])/2, (moveShipFromLocation[1]+moveShipFromLocation[3])/2];
+      if (roadMatrix[edgeX] != null && roadMatrix[edgeX][edgeY] != null) {
+        roadType = roadMatrix[edgeX][edgeY].road_type;
+      }
+      statusTitle.innerText = `Move your ${roadType} (or 'Done' to remove it).`;
+    } else {
+      statusTitle.innerText = "Choose a road or ship to remove (or move if it's yours).";
+    }
+    statusOk.style.display = "inline-block";
+    if (moveShipFromLocation != null) {
+      enableButton(statusOk);
+    } else {
+      disableButton(statusOk);
+    }
+    return;
+  }
   if (turn == myIdx && devCardType == "deception") {
     statusPopup.style.display = "flex";
     statusTitle.innerText = "Choose a knight to displace.";
@@ -1312,7 +1337,7 @@ function maybeShowStatusPopup() {
   }
 }
 function statusDone(event) {
-  if (!["alchemist", "smith"].includes(devCardType)) {
+  if (!["alchemist", "smith", "diplomat"].includes(devCardType)) {
     return;
   }
   if (devCardType == "smith") {
@@ -1320,6 +1345,18 @@ function statusDone(event) {
       type: "play_dev",
       card_type: "smith",
       location: promoteKnightLocation,
+      selection: null,
+    };
+    ws.send(JSON.stringify(msg));
+    deselectDevCard();
+    draw();
+    return;
+  }
+  if (devCardType == "diplomat") {
+    let msg = {
+      type: "play_dev",
+      card_type: "diplomat",
+      location: moveShipFromLocation,
       selection: null,
     };
     ws.send(JSON.stringify(msg));
@@ -1592,6 +1629,11 @@ function playDevCard(e, cardType) {
     return;
   } else if (cardType == "smith") {
     promoteKnightLocation = null;
+    draw();
+    maybeShowStatusPopup();
+    return;
+  } else if (cardType == "diplomat") {
+    moveShipFromLocation = null;
     draw();
     maybeShowStatusPopup();
     return;
