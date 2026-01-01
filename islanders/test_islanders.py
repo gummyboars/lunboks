@@ -2019,6 +2019,44 @@ class TestHandleSettleInput(BaseInputHandlerTest):
     self.handle(1, {"type": "settle", "location": [6, 6]})
 
 
+class TestSettleOffIslands(BreakpointTestMixin):
+  def setUp(self):
+    self.c = islanders.IslandersState()
+    self.c.add_player("red", "player0")
+    self.c.add_player("blue", "player1")
+    self.c.add_player("green", "player2")
+    islanders.SeafarerDesert.mutate_options(self.c.options)
+    islanders.SeafarerDesert.load_file(self.c, "desert3.json")
+    self.g = islanders.IslandersGame()
+    self.g.game = self.c
+    self.g.scenario = "Through the Desert"
+
+  def testInitialSettleDesertThatIsNotLand(self):
+    self.assertNotIn((21, 5), self.c.corners_to_islands)
+    self.handle(0, {"type": "settle", "location": [21, 5]})
+
+  def testCanSettleDesertThatIsNotLand(self):
+    self.c.add_piece(islanders.Piece(18, 6, "settlement", 0))
+    self.c.add_road(Road((18, 6, 20, 6), "ship", 0))
+    self.c.add_road(Road((20, 6, 21, 5), "ship", 0))
+    self.c.action_stack.clear()
+    self.c.game_phase = "main"
+    for rsrc in islanders.RESOURCES:
+      self.c.player_data[0].cards[rsrc] += 1
+    self.handle(0, {"type": "settle", "location": [21, 5]})
+
+  def testCannotSettleWithoutLand(self):
+    self.c.add_piece(islanders.Piece(5, 11, "settlement", 0))
+    self.c.add_road(Road((5, 11, 6, 12), "ship", 0))
+    self.c.add_road(Road((6, 12, 8, 12), "ship", 0))
+    self.c.action_stack.clear()
+    self.c.game_phase = "main"
+    for rsrc in islanders.RESOURCES:
+      self.c.player_data[0].cards[rsrc] += 1
+    with self.assertRaisesRegex(InvalidMove, "on land"):
+      self.handle(0, {"type": "settle", "location": [8, 12]})
+
+
 class TestInitialSettlement(BaseInputHandlerTest):
   def setUp(self):
     BaseInputHandlerTest.setUp(self)
