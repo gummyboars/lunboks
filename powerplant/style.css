@@ -961,6 +961,9 @@ select {
   justify-content: flex-start;
   position: relative;
 }
+.player.moving {
+  transition: translate 1s;
+}
 .namebg {
   width: 100%;
   display: flex;
@@ -1069,6 +1072,9 @@ select {
 }
 .plantexpand.shown.lower {
   transform: translate(-100%, 0%);
+}
+.moving .plantexpand {
+  visibility: hidden;
 }
 .plantexpandbg {
   position: absolute;
