@@ -905,6 +905,7 @@ function updateJoinWindow(started, host, playerIdx, players, options, colors) {
       document.getElementById(name).value = options[name];
       document.getElementById(name).disabled = !host;
     }
+    renderAssetToDiv(document.getElementById("board"), document.getElementById("region").value);
   }
 }
 
