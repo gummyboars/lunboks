@@ -475,7 +475,7 @@ function renderDefaultToCanvas(cnv, width, height, assetName, variant) {
     return null;
   }
   if (assetName == "coal") {
-    return renderCoal(cnv, width, height, width/2, height/2);
+    return renderCoal(cnv, width*0.9, height*0.9, width/2, height/2);
   }
   if (assetName == "oil") {
     return renderOil(cnv, width, height, width/2, height/2);
@@ -484,7 +484,7 @@ function renderDefaultToCanvas(cnv, width, height, assetName, variant) {
     return renderGas(cnv, width, height, width/2, height/2);
   }
   if (assetName == "uranium") {
-    return renderUranium(cnv, width, height, width/2, height/2);
+    return renderUranium(cnv, width*0.92, height*0.92, width/2, height/2);
   }
   if (assetName == "stage3") {
     return renderStage3(cnv, width, height);
