@@ -205,6 +205,86 @@ div {
 #pending.empty {
   color: darkgreen;
 }
+#stageholder {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%) translateY(-100%);
+  width: min(8vw, 12.8vh);
+  height: min(1.75vw, 2.8vh);
+  overflow: hidden;
+}
+#indicator {
+  background: black;
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(0.5vw, 0.8vh);
+  height: min(0.4vw, 0.64vh);
+  clip-path: polygon(0% 100%, 50% 0%, 100% 100%);
+}
+.circle {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(20vw, 32vh);
+  height: min(20vw, 32vh);
+  transition: transform 2s;
+}
+#stage1circle {
+  background: olivedrab;
+  border-radius: 50%;
+  border: 1px solid black;
+}
+.longanim .circle {
+  transition: transform 6s;
+}
+.circle.third {
+  transform: translateX(-50%) rotate(45deg);
+}
+.circle.ondeck {
+  transform: translateX(-50%) rotate(22.5deg);
+}
+.shifting .circle.ondeck {
+  transform: translateX(-50%) rotate(17.5deg);
+}
+.circle.main {
+  transform: translateX(-50%);
+}
+.shifting .circle.main {
+  transform: translateX(-50%) rotate(-5deg);
+}
+.circle.done {
+  transform: translateX(-50%) rotate(-22.5deg);;
+}
+.shifting .circle.done {
+  transform: translateX(-50%) rotate(-27.5deg);;
+}
+.circle.bye {
+  transform: translateX(-50%) rotate(-45deg);;
+}
+.stage {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(2vw, 3.2vh);
+  height: min(1.5vw, 2.4vh);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.stagetext {
+  color: black;
+  font-size: min(1.5vw, 2.4vh);
+  font-family: Times, serif;
+  font-weight: bold;
+}
+.shifting .ondeck .stagetext {
+  color: firebrick;
+}
 #phaseorder {
   position: absolute;
   bottom: 0;

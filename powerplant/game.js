@@ -829,6 +829,7 @@ function handleData(data) {
   updatePending(data.pending_spend, data.phase);
   updatePlayers(data.players, data.turn_order, data.player_idx, data.pending_spend, data.pending_buy, data.turn_idx, data.phase, data.winner);
   updateMarket(data.market, data.phase);
+  updateStage(data.stage_idx, data.begin_stage_2, data.begin_stage_3);
   updateAuction(data.auction_bid, data.auction_plant_idx, data.turn_order, data.players, data.auction_idx, data.auction_passed, data.auction_bought, data.phase, data.player_idx)
   updateBurn(data.phase, data.player_idx, data.turn_order, data.turn_idx);
   maybeShowExpandedPlants(data.phase, data.player_idx, data.auction_discard_idx);
@@ -1480,6 +1481,84 @@ function updateMarket(market, phase) {
   } else if (shouldShow != null && showBtn.classList.contains("shown") != shouldShow) {
     // If no animations, hide the market to match shouldShow, but only on phase transition.
     toggleMarket(1000);
+  }
+}
+
+function updateStage(stageIdx, beginStage2, beginStage3) {
+  if (stageIdx == null) {
+    return;
+  }
+  let currentStage = document.getElementById("stageholder").getElementsByClassName("main")[0].innerText;
+  let stage = stageIdx + 1;
+  let stageText = stage + "";
+  let shifting = false;
+  let allCircles = ["stage1circle", "stage2circle", "stage3circle"];
+  let allClasses = ["main", "ondeck", "third", "done", "bye"];
+  let origClasses = [null, null, null];
+  for (let [idx, ident] of allCircles.entries()) {
+    for (let className of allClasses) {
+      if (document.getElementById(ident).classList.contains(className)) {
+        origClasses[idx] = className;
+        break;
+      }
+    }
+  }
+  let destClasses = [null, null, null];
+  if (stageText == "1") {
+    destClasses[0] = "main";
+    if (!beginStage3) {
+      destClasses[1] = "ondeck"
+      destClasses[2] = "third"
+    } else {
+      destClasses[2] = "ondeck"
+      destClasses[1] = "third"
+    }
+    shifting = beginStage2 || beginStage3;
+  }
+  if (stageText == "2") {
+    destClasses[0] = "done"
+    destClasses[1] = "main"
+    destClasses[2] = "ondeck"
+    shifting = beginStage3;
+  }
+  if (stageText == "3") {
+    if (document.getElementById("stage2circle").classList.contains("third")) {
+      destClasses[0] = "done"
+      destClasses[1] = "third"
+    } else {
+      destClasses[0] = "bye"
+      destClasses[1] = "done"
+    }
+    destClasses[2] = "main"
+  }
+  let changed = false;
+  let longAnim = false;
+  for (let [idx, orig] of origClasses.entries()) {
+    if (orig == "main" && destClasses[idx] != "main") {
+      changed = true;
+      longAnim = true;
+      break;
+    }
+    if (orig != destClasses[idx]) {
+      changed = true;
+    }
+  }
+  if (changed) {
+    runningAnim.push(true);
+    document.getElementById("stageholder").classList.toggle("longanim", longAnim);
+    document.getElementById("stageholder").classList.toggle("shifting", shifting);
+    for (let [idx, ident] of allCircles.entries()) {
+      document.getElementById(ident).classList.remove("main", "ondeck", "third", "done", "bye");
+      document.getElementById(ident).classList.add(destClasses[idx]);
+    }
+    
+    setTimeout(function() { document.getElementById("stageholder").classList.remove("longanim"); finishAnim(); }, 6000);
+    return;
+  }
+  if (shifting != document.getElementById("stageholder").classList.contains("shifting")) {
+    runningAnim.push(true);
+    document.getElementById("stageholder").classList.toggle("shifting", shifting);
+    setTimeout(function() { finishAnim(); }, 2000);
   }
 }
 
