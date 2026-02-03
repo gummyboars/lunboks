@@ -115,6 +115,18 @@
           <div id="pending" class="empty">COST</div>
           <button id="confirmbtn" class="smallbutton" value="Done" disabled=true onclick="doConfirm()">Done</button>
           <button id="resetbtn" class="smallbutton" value="Reset" disabled=true onclick="doReset()">Reset</button>
+          <div id="stageholder">
+            <div id="stage1circle" class="circle main">
+              <div class="stage"><div class="stagetext">1</div></div>
+            </div>
+            <div id="stage2circle" class="circle ondeck">
+              <div class="stage"><div class="stagetext">2</div></div>
+            </div>
+            <div id="stage3circle" class="circle third">
+              <div class="stage"><div class="stagetext">3</div></div>
+            </div>
+            <div id="indicator"></div>
+          </div>
           <div id="confirmdiscard">
             <span>Discard without &nbsp;moving resources?</span>
             <button id="discardbtn" class="smallbutton" value="YES">YES</button>
