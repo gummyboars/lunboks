@@ -538,6 +538,29 @@ select {
   position: relative;
   width: min(2.5vw, 4vh);
   height: min(2.5vw, 4vh);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+#resupplycoal {
+  position: relative;
+  width: min(2.25vw, 3.6vh);
+  height: min(2.25vw, 3.6vh);
+}
+#resupplyoil {
+  position: relative;
+  width: min(2.25vw, 3.6vh);
+  height: min(2.25vw, 3.6vh);
+}
+#resupplygas {
+  position: relative;
+  width: min(2.25vw, 3.6vh);
+  height: min(2.25vw, 3.6vh);
+}
+#resupplyuranium {
+  position: relative;
+  width: min(2.25vw, 3.6vh);
+  height: min(2.25vw, 3.6vh);
 }
 .resupplyheader {
   width: min(2.5vw, 4vh);
@@ -883,15 +906,31 @@ select {
   width: 1%;
 }
 .resource {
-  width: 90%;
-  height: 90%;
+  width: min(1.75vw, 2.8vh);
+  height: min(1.75vw, 2.8vh);
   position: relative;
   display: block;
   pointer-events: auto;
 }
+.gasbox .resource {
+  width: min(2vw, 3.2vh);
+  height: min(2vw, 3.2vh);
+}
+.oilbox .resource {
+  width: min(1.8vw, 2.88vh);
+  height: min(1.8vw, 2.88vh);
+}
+.utailbox .resource {
+  width: min(1.8vw, 2.88vh);
+  height: min(1.8vw, 2.88vh);
+}
+.coalbox .resource {
+  width: min(1.8vw, 2.88vh);
+  height: min(1.8vw, 2.88vh);
+}
 .usmallbox .resource {
-  width: 70%;
-  height: 70%;
+  width: min(1.8vw, 2.88vh);
+  height: min(1.8vw, 2.88vh);
 }
 .resource.hidden {
   visibility: hidden;
