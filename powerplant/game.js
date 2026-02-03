@@ -210,15 +210,18 @@ function toggleMarket(extraDelay, callback) {
   if (marketDiv.ontransitionend != null) {
     return;
   }
+  if (!regionsDone) {
+    return;
+  }
   let btnRect = btn.getBoundingClientRect();
   let divRect = marketDiv.getBoundingClientRect();
   let scaleX = 100 * btnRect.width / divRect.width;
   let scaleY = 100 * btnRect.height / divRect.height;
   let scale = Math.min(scaleX, scaleY);
-  let diffX = btnRect.left - divRect.left;
-  let diffY = btnRect.top - divRect.top;
-  if (btn.classList.contains("shown")) {
-    btn.classList.remove("shown");
+  let diffX = (btnRect.left + btnRect.right - divRect.left - divRect.right) / 2;
+  let diffY = (btnRect.top + btnRect.bottom - divRect.top - divRect.bottom) / 2;
+  if (btn.classList.contains("pressed")) {
+    btn.classList.remove("pressed");
     runningAnim.push(true);
     marketDiv.ontransitionend = function(e) { doneAnimating(marketDiv); marketDiv.classList.remove("animating", "shown"); marketDiv.style.transform = "none"; callback(); finishAnim(); };
     marketDiv.ontransitioncancel = function(e) { doneAnimating(marketDiv); marketDiv.classList.remove("animating", "shown"); marketDiv.style.transform = "none"; callback(); finishAnim(); };
@@ -227,7 +230,7 @@ function toggleMarket(extraDelay, callback) {
       marketDiv.style.transform = `translate(${diffX}px, ${diffY}px) scale(${scale}%)`;
     }, 5+extraDelay);
   } else {
-    btn.classList.add("shown");
+    btn.classList.add("pressed");
     marketDiv.style.transform = `translate(${diffX}px, ${diffY}px) scale(${scale}%)`;
     marketDiv.classList.add("shown");
     runningAnim.push(true);
@@ -248,16 +251,16 @@ function togglePaySupply() {
   let scaleX = 100 * btnRect.width / divRect.width;
   let scaleY = 100 * btnRect.height / divRect.height;
   let scale = Math.min(scaleX, scaleY);
-  let diffX = btnRect.left - divRect.left;
-  let diffY = btnRect.top - divRect.top;
-  if (btn.classList.contains("shown")) {
-    btn.classList.remove("shown");
+  let diffX = (btnRect.left + btnRect.right - divRect.left - divRect.right) / 2;
+  let diffY = (btnRect.top + btnRect.bottom - divRect.top - divRect.bottom) / 2;
+  if (btn.classList.contains("pressed")) {
+    btn.classList.remove("pressed");
     paySupply.ontransitionend = function(e) { doneAnimating(paySupply); paySupply.classList.remove("animating", "shown"); paySupply.style.transform = "none"; };
     paySupply.ontransitioncancel = function(e) { doneAnimating(paySupply); paySupply.classList.remove("animating", "shown"); paySupply.style.transform = "none"; };
     paySupply.classList.add("animating");
     paySupply.style.transform = `translate(${diffX}px, ${diffY}px) scale(${scale}%)`;
   } else {
-    btn.classList.add("shown");
+    btn.classList.add("pressed");
     paySupply.style.transform = `translate(${diffX}px, ${diffY}px) scale(${scale}%)`;
     paySupply.classList.add("shown");
     paySupply.ontransitionend = function(e) { doneAnimating(paySupply); paySupply.classList.remove("animating"); };
@@ -811,7 +814,9 @@ function finishAnim() {
 
 function finishMarketAnim() {
   if (forcedOpen && messageQueue.length == 0 && runningAnim.length == 1) {
-    toggleMarket(1000);
+    if (document.getElementById("markettoggle").classList.contains("pressed")) {
+      toggleMarket(1000);
+    }
     forcedOpen = false;
   }
   finishAnim();
@@ -842,7 +847,9 @@ function handleData(data) {
     dontWait();
   }
   if (!messageQueue.length && !runningAnim.length && forcedOpen) {
-    toggleMarket(1000);
+    if (document.getElementById("markettoggle").classList.contains("pressed")) {
+      toggleMarket(1000);
+    }
     forcedOpen = false;
   }
   if (messageQueue.length && !runningAnim.length) {
@@ -1467,10 +1474,10 @@ function updateMarket(market, phase) {
     if (oldPlantDivs.length == 0) {
       // If we just started the game, fill the market first, then do the opening animation.
       animateMarketChange();
-      if (shouldShow && !showBtn.classList.contains("shown")) {
+      if (shouldShow && !showBtn.classList.contains("pressed")) {
         toggleMarket();
       }
-    } else if (showBtn.classList.contains("shown")) {
+    } else if (showBtn.classList.contains("pressed")) {
       // If the market is already on the screen, immediately animate the plants moving.
       if (shouldAnimate) {
         animateMarketChange();
@@ -1484,7 +1491,7 @@ function updateMarket(market, phase) {
       forcedOpen = true;
       toggleMarket(0, callback);
     }
-  } else if (shouldShow != null && showBtn.classList.contains("shown") != shouldShow) {
+  } else if (shouldShow != null && showBtn.classList.contains("pressed") != shouldShow) {
     // If no animations, hide the market to match shouldShow, but only on phase transition.
     toggleMarket(1000);
   }
