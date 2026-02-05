@@ -944,7 +944,9 @@ function updateCities(cities, pendingBuild, players, turnIdx) {
         color = players[turnIdx].color;
         owningPlayer = turnIdx;
       }
-      div.getElementsByClassName(ordering[i])[0].children[0].style.background = color;
+      div.getElementsByClassName(ordering[i])[0].children[0].style.backgroundColor = color;
+      // TODO: use the exists class to apply an appropriate background noise to the buildings.
+      div.getElementsByClassName(ordering[i])[0].children[0].classList.toggle("exists", color != null);
       if (owningPlayer != null) {
         playerCityCounts[owningPlayer] = (playerCityCounts[owningPlayer] ?? 0) + 1;
       }
