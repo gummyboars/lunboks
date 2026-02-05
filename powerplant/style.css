@@ -995,7 +995,6 @@ select {
   top: 50%;
   left: 0;
   transform: translate(0%, -50%);
-  background: olivedrab;
   display: flex;
   flex-direction: row;
   align-items: center;
@@ -1021,21 +1020,52 @@ select {
 .plantexpand.shown.lower {
   transform: translate(-100%, 0%);
 }
+.plantexpandbg {
+  position: absolute;
+  z-index: -1;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: olivedrab;
+}
 .forcehide {
   position: absolute;
-  right: 0;
+  left: 0;
   top: 50%;
-  transform: translate(0%, -50%);
-  height: 100%;
+  transform: translate(-95%, -50%);
+  width: min(3vw, 4.8vh);
+  height: min(3vw, 4.8vh);
   display: none;
   align-items: center;
   justify-content: center;
-  background-color: darkkhaki;
-  font-size: min(1.25vw, 2vh);
+  background-color: olivedrab;
+  border-radius: min(0.5vw, 0.8vh) 0 0 min(0.5vw, 0.8vh);
+  font-size: min(2.5vw, 4vh);
+  z-index: -3;
   cursor: pointer;
+}
+.upper .forcehide {
+  top: 0;
+  transform: translate(-95%, 0%);
+}
+.lower .forcehide {
+  top: unset;
+  bottom: 0;
+  transform: translate(-95%, 0%);
+}
+.forcehide:hover {
+  background-color: yellowgreen;
 }
 .defaultshow .forcehide {
   display: flex;
+}
+.forcehide div {
+  filter: grayscale(100%) brightness(0);
+  transform: rotate(90deg);
+}
+.temphide .forcehide div {
+  transform: rotate(270deg);
 }
 .plantcnt {
   position: relative;

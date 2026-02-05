@@ -1079,11 +1079,14 @@ function createPlayer(idx, player) {
   plantExpand.onmouseenter = function(e) { showPlants(plantExpand); };
   plantExpand.onmouseleave = function(e) { hidePlants(plantExpand); };
   div.appendChild(plantExpand);
+  let plantExpandBg = document.createElement("DIV");
+  plantExpandBg.classList.add("plantexpandbg");
+  plantExpand.appendChild(plantExpandBg);
   let forceHide = document.createElement("DIV");
   forceHide.classList.add("forcehide");
   plantExpand.appendChild(forceHide);
   let hideText = document.createElement("DIV");
-  hideText.innerText = "▶️";
+  hideText.innerText = "🔺";
   forceHide.appendChild(hideText);
   forceHide.onclick = function(e) { hideDefaultPlant(plantExpand); };
   document.getElementById("players").appendChild(div);
