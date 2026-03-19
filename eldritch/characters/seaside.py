@@ -35,6 +35,20 @@ class Secretary(core.Character):
     return {"common": 2, "unique": 1, "spells": 1, "skills": 1}
 
 
+class Shaman(core.Character):
+  def __init__(self):
+    super().__init__("Shaman", 3, 7, 5, 1, 4, 1, 5, 0, 1, "Shoppe")
+
+  def abilities(self):
+    return ["Guardian of the Veil", "Secret Rites"]
+
+  def initial_attributes(self):
+    return {"dollars": 3, "clues": 1}
+
+  def random_possessions(self):
+    return {"unique": 1, "spells": 2, "gates": 1, "skills": 1}
+
+
 class Spy(core.BaseCharacter):
   _slider_names = ("fight_sneak", "lore_will", "speed_luck")
 
@@ -93,4 +107,4 @@ class Spy(core.BaseCharacter):
 
 
 def CreateCharacters():
-  return {c.name: c for c in [Farmhand(), Secretary(), Spy()]}
+  return {c.name: c for c in [Farmhand(), Secretary(), Shaman(), Spy()]}

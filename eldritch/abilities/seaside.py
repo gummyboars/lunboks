@@ -4,6 +4,7 @@ from eldritch import cards as assets
 from eldritch import characters
 from eldritch import events
 from eldritch import values
+from eldritch.gates import Gate
 
 if typing.TYPE_CHECKING:
   from eldritch.eldritch import GameState
@@ -141,6 +142,33 @@ class TeamPlayerBonus(assets.Card):
   def get_trigger(self, event, owner, state):
     if isinstance(event, events.Mythos) and event.is_done():
       return events.DiscardSpecific(owner, [self])
+    return None
+
+
+class GuardianOfTheVeil(assets.Asset):
+  def __init__(self):
+    super().__init__("Guardian Of The Veil")
+
+  def get_modifier(self, other, attribute):
+    if isinstance(other, Gate) and attribute == "seal_clues":
+      return -1
+    return None
+
+
+class SecretRites(assets.Asset):
+  def __init__(self):
+    super().__init__("Secret Rites")
+
+  def get_bonus(self, check_type, attributes, owner, state):
+    if check_type in assets.CHECK_TYPES and isinstance(
+      state.event_stack[-1], events.GateCloseAttempt
+    ):
+      return 1
+    return 0
+
+  def get_override(self, other, attribute):
+    if attribute == "can_seal":
+      return True
     return None
 
 

@@ -7,7 +7,10 @@ from eldritch.characters import seaside as seaside_characters
 from eldritch.characters import base as characters
 from eldritch import events
 from eldritch.monsters import base as monsters
+from eldritch.mythos.base import Mythos39 as NoSealMythos
+from eldritch.skills import base as skills
 from eldritch.items.spells import base as spells
+from eldritch.items.unique import base as unique
 
 
 class TestFarmhandAbility(EventTest):
@@ -166,6 +169,35 @@ class TestSecretaryAbilities(EventTest):
       self.state.event_stack.append(combat)
       self.resolve_until_done()
       self.assertEqual(rand.call_count, nun.base_fight() + 1)
+
+
+class TestShamanAbilities(EventTest):
+  def testGiveStartingItems(self):
+    self.state.unique.extend([unique.SilverKey(0), unique.SwordOfGlory(0)])
+    self.state.spells.extend([spells.Wither(0), spells.FleshWard(0)])
+    self.state.skills.extend([skills.Fight(0), skills.Lore(0)])
+    self.char = seaside_characters.Shaman()
+    self.state.give_random_possessions(self.char, self.char.random_possessions())
+
+  def testCanSeal(self):
+    self.char = seaside_characters.Shaman()
+    self.char.clues = 4
+    self.char.lore_luck_slider = 3
+    self.char.possessions.extend([seaside.SecretRites(), seaside.GuardianOfTheVeil()])
+    self.state.environment = NoSealMythos()
+    gate = self.state.gates.pop()
+    self.state.places["Square"].gate = gate
+    cg = events.GateCloseAttempt(self.char, "Square")
+    self.state.event_stack.append(cg)
+    choice = self.resolve_to_choice(events.MultipleChoice)
+    choice.resolve(self.state, "Close with lore")
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)) as rand:
+      choice = self.resolve_to_choice(events.MultipleChoice)
+    choice.resolve(self.state, "Pass")
+    choice = self.resolve_to_choice(events.MultipleChoice)
+    self.spend("clues", 4, choice)
+    choice.resolve(self.state, "Yes")
+    self.resolve_until_done()
 
 
 class TestSpyAbilities(EventTest):

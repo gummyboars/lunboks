@@ -4769,6 +4769,7 @@ class CloseGate(Event):
 
     if self.seal_choice is None:
       seal_clues = 5
+      seal_clues += self.character.get_modifier(self.gate, "seal_clues")
       seal_clues += state.get_modifier(self.gate, "seal_clues")
       spend = values.ExactSpendPrerequisite({"clues": seal_clues})
       self.seal_choice = SpendChoice(

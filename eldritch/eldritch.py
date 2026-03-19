@@ -223,7 +223,7 @@ class GameState:
 
   def give_random_possessions(self, char, possessions):
     err_str = ", ".join(char.random_possessions().keys())
-    assert not char.random_possessions().keys() - assets.Card.DECKS, err_str
+    assert not char.random_possessions().keys() - assets.Card.DECKS - {"gates"}, err_str
     for deck, count in possessions.items():
       for _ in range(count):
         char.possessions.append(getattr(self, deck).popleft())
@@ -243,6 +243,8 @@ class GameState:
   def get_override(self, thing, attribute):
     override = True if attribute.startswith(("can_", "cannot_")) else None
     # Anything not forbidden is permitted
+    if hasattr(thing, "character") and thing.character.get_override(thing, attribute):
+      return True
     for glob in self.globals():
       if not glob:
         continue
