@@ -161,7 +161,7 @@ class SecretRites(assets.Asset):
 
   def get_bonus(self, check_type, attributes, owner, state):
     if check_type in assets.CHECK_TYPES and isinstance(
-      state.event_stack[-1], events.GateCloseAttempt
+      state.event_stack[-2], events.GateCloseAttempt
     ):
       return 1
     return 0

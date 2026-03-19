@@ -193,7 +193,7 @@ class TestShamanAbilities(EventTest):
     choice.resolve(self.state, "Close with lore")
     with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=5)) as rand:
       choice = self.resolve_to_choice(events.MultipleChoice)
-      self.assertEqual(rand.call_count, self.char.base_lore() + 1)
+      self.assertEqual(rand.call_count, self.char.base_lore() + gate.rating(self.state) + 1)
     choice.resolve(self.state, "Pass")
     choice = self.resolve_to_choice(events.MultipleChoice)
     self.spend("clues", 4, choice)
