@@ -67,4 +67,5 @@ ignore = [
   "RUF037",  # unnecessary iterable within a deque
   "B905",    # zip without strict
   "BLE001",  # except Exception
+  "RUF100",  # allow "extra" noqa comments
 ]
