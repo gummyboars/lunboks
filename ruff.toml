@@ -60,4 +60,11 @@ ignore = [
   "SIM117",  # multiple-with-statements
   "PYI024",  # collections-named-tuple
   "PYI041",  # redundant-numeric-union
+  "UP007",   # Union[X,Y] instead of X|Y
+  "UP045",   # Optional[X] instead of X|None
+  "FURB110", # ternary if
+  "FURB171", # single item iterator
+  "RUF037",  # unnecessary iterable within a deque
+  "B905",    # zip without strict
+  "BLE001",  # except Exception
 ]
