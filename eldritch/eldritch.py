@@ -226,8 +226,12 @@ class GameState:
     assert not char.random_possessions().keys() - assets.Card.DECKS - {"gates", "monsters"}, err_str
     for deck, count in possessions.items():
       for _ in range(count):
-        if deck in {"gates", "monsters"}:
-          char.trophies.append(getattr(self, deck).popleft())
+        if deck == "gates":
+          char.trophies.append(self.gates.popleft())
+        elif deck == "monsters":
+          monster: monsters.base.Monster = self.monsters.pop()
+          char.trophies.append(self.monsters.pop())
+          monster.place = None
         else:
           char.possessions.append(getattr(self, deck).popleft())
 
