@@ -150,7 +150,7 @@ class GuardianOfTheVeil(assets.Asset):
     super().__init__("Guardian Of The Veil")
 
   def get_modifier(self, other, attribute):
-    if isinstance(other, Gate) and attribute == "seal_clues":
+    if isinstance(other, events.CloseGate) and attribute == "seal_clues":
       return -1
     return None
 
@@ -200,5 +200,13 @@ class ThickSkulled(assets.Asset):
 
 
 def CreateAbilities():
-  abilities = [Synergy(), TeamPlayer(), BreakingTheLimits(), AbnormalFocus(), ThickSkulled()]
+  abilities = [
+    Synergy(),
+    TeamPlayer(),
+    BreakingTheLimits(),
+    GuardianOfTheVeil(),
+    SecretRites(),
+    AbnormalFocus(),
+    ThickSkulled(),
+  ]
   return {ability.name: ability for ability in abilities}

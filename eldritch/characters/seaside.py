@@ -37,7 +37,7 @@ class Secretary(core.Character):
 
 class Shaman(core.Character):
   def __init__(self):
-    super().__init__("Shaman", 3, 7, 5, 1, 4, 1, 5, 0, 1, "Shoppe")
+    super().__init__("Shaman", 3, 7, 5, 4, 4, 4, 5, 3, 1, "Shoppe")
 
   def abilities(self):
     return ["Guardian of the Veil", "Secret Rites"]

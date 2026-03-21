@@ -234,6 +234,8 @@ class GameState:
 
   def get_modifier(self, thing, attribute):
     modifier = 0
+    if hasattr(thing, "character"):
+      modifier += thing.character.get_modifier(thing, attribute)
     for glob in self.globals():
       if not glob:
         continue
