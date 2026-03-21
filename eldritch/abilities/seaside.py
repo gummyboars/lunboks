@@ -144,6 +144,33 @@ class TeamPlayerBonus(assets.Card):
     return None
 
 
+class GuardianOfTheVeil(assets.Asset):
+  def __init__(self):
+    super().__init__("Guardian Of The Veil")
+
+  def get_modifier(self, other, attribute):
+    if isinstance(other, events.CloseGate) and attribute == "seal_clues":
+      return -1
+    return None
+
+
+class SecretRites(assets.Asset):
+  def __init__(self):
+    super().__init__("Secret Rites")
+
+  def get_bonus(self, check_type, attributes, owner, state):
+    if check_type in assets.CHECK_TYPES and isinstance(
+      state.event_stack[-2], events.GateCloseAttempt
+    ):
+      return 1
+    return 0
+
+  def get_override(self, other, attribute):
+    if attribute == "can_seal":
+      return True
+    return None
+
+
 class ThickSkulledCombat(events.Event):
   def __init__(self, combat):
     super().__init__()
@@ -172,5 +199,13 @@ class ThickSkulled(assets.Asset):
 
 
 def CreateAbilities():
-  abilities = [Synergy(), TeamPlayer(), BreakingTheLimits(), AbnormalFocus(), ThickSkulled()]
+  abilities = [
+    Synergy(),
+    TeamPlayer(),
+    BreakingTheLimits(),
+    GuardianOfTheVeil(),
+    SecretRites(),
+    AbnormalFocus(),
+    ThickSkulled(),
+  ]
   return {ability.name: ability for ability in abilities}

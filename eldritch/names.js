@@ -32,6 +32,7 @@ characterData = {
   "Archaeologist": {"sliders": [1, 3, 2, 3, 1, 5], "focus": 2, "home": "Shop"},
   "Gangster": {"sliders": [2, 4, 3, 4, 0, 3], "focus": 1, "home": "House"},
   "Secretary": {"sliders": [2, 4, 1, 4, 1, 3], "focus": 2, "home": "Hospital"},
+  "Shaman": {"sliders": [2,4,1,4,2,3], "focus": 1, "home": "Shoppe"},
   "Spy": {"sliders": [1,3,2,1,1,0], "focus": 1, "home": "Newspaper"},
   "Farmhand": {"sliders": [2,4,2,3,0,4], "focus": 2, "home": "Store"},
   "Urchin": {"sliders": [2,6,0,3,1,5], "focus": 3, "home": "Bank"},

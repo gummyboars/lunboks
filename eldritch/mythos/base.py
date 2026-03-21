@@ -582,7 +582,7 @@ class Mythos38(Environment):
     )
 
   def get_modifier(self, thing, attribute, state):
-    if isinstance(thing, gates.Gate) and attribute == "seal_clues":
+    if isinstance(thing, events.CloseGate) and attribute == "seal_clues":
       return -2
     return 0
 

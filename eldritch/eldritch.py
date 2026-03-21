@@ -223,10 +223,17 @@ class GameState:
 
   def give_random_possessions(self, char, possessions):
     err_str = ", ".join(char.random_possessions().keys())
-    assert not char.random_possessions().keys() - assets.Card.DECKS, err_str
+    assert not char.random_possessions().keys() - assets.Card.DECKS - {"gates", "monsters"}, err_str
     for deck, count in possessions.items():
       for _ in range(count):
-        char.possessions.append(getattr(self, deck).popleft())
+        if deck == "gates":
+          char.trophies.append(self.gates.popleft())
+        elif deck == "monsters":
+          monster: monsters.base.Monster = self.monsters.pop()
+          char.trophies.append(self.monsters.pop())
+          monster.place = None
+        else:
+          char.possessions.append(getattr(self, deck).popleft())
 
   def expansions(self, option):
     assert option in self.EXPANSION_OPTIONS
@@ -234,6 +241,8 @@ class GameState:
 
   def get_modifier(self, thing, attribute):
     modifier = 0
+    if hasattr(thing, "character"):
+      modifier += thing.character.get_modifier(thing, attribute)
     for glob in self.globals():
       if not glob:
         continue
@@ -243,6 +252,8 @@ class GameState:
   def get_override(self, thing, attribute):
     override = True if attribute.startswith(("can_", "cannot_")) else None
     # Anything not forbidden is permitted
+    if hasattr(thing, "character") and thing.character.get_override(thing, attribute):
+      return True
     for glob in self.globals():
       if not glob:
         continue

@@ -52,7 +52,7 @@ class YellowKing(AncientOne):
   def get_modifier(self, thing, attribute, state):
     if isinstance(thing, monsters.Cultist):
       return {"combatdifficulty": -3}.get(attribute, 0)
-    if isinstance(thing, Gate) and attribute == "seal_clues":
+    if isinstance(thing, events.CloseGate) and attribute == "seal_clues":
       return 3
     return super().get_modifier(thing, attribute, state)
 
