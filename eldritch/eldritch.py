@@ -223,10 +223,13 @@ class GameState:
 
   def give_random_possessions(self, char, possessions):
     err_str = ", ".join(char.random_possessions().keys())
-    assert not char.random_possessions().keys() - assets.Card.DECKS - {"gates"}, err_str
+    assert not char.random_possessions().keys() - assets.Card.DECKS - {"gates", "monsters"}, err_str
     for deck, count in possessions.items():
       for _ in range(count):
-        char.possessions.append(getattr(self, deck).popleft())
+        if deck in {"gates", "monsters"}:
+          char.trophies.append(getattr(self, deck).popleft())
+        else:
+          char.possessions.append(getattr(self, deck).popleft())
 
   def expansions(self, option):
     assert option in self.EXPANSION_OPTIONS
