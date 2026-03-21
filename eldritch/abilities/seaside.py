@@ -4,7 +4,6 @@ from eldritch import cards as assets
 from eldritch import characters
 from eldritch import events
 from eldritch import values
-from eldritch.gates import Gate
 
 if typing.TYPE_CHECKING:
   from eldritch.eldritch import GameState
