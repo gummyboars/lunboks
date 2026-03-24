@@ -52,7 +52,7 @@ def CreateFixedEncounters():
     prereq=lambda char: values.ContainsPrerequisite(
       "specials", "Deputy", error_fmt="Someone else is already the deputy"
     ),
-    spend=lambda char: values.ToughnessOrGatesSpend(10),
+    spend=lambda char: values.DeputizeSpend(char),
     encounter=lambda char, state: events.DrawSpecific(char, "specials", "Deputy"),
   )
 

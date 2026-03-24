@@ -5710,6 +5710,23 @@ class MoveMonster(Event):
     return self.destination is not False
 
 
+class ForceMoveMonsters(Event):
+  def __init__(self, monster, target_location):
+    super().__init__()
+    self.monster = monster
+    self.target_location = target_location
+    self.resolved = False
+
+  def is_resolved(self):
+    return self.resolved
+
+  def log(self, state):
+    pass
+
+  def animated(self):
+    return True
+
+
 class ReturnToCup(Event):
   def __init__(self, *, names=None, from_places=None, handles=None, character=None, to_box=False):
     assert any(arg is not None for arg in [names, from_places, handles])

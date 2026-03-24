@@ -1,6 +1,6 @@
 import typing
 
-from eldritch import cards as assets
+from eldritch import cards as assets, places
 from eldritch import characters
 from eldritch import events
 from eldritch import values
@@ -196,6 +196,49 @@ class ThickSkulled(assets.Asset):
     if isinstance(event, events.Combat) and event.character == owner:
       return ThickSkulledCombat(event)
     return None
+
+
+class Hero(assets.Asset):
+  def __init__(self):
+    super().__init__("Hero")
+
+  def get_interrupt(self, event, owner: characters.Character, state):
+    if isinstance(event, events.Mythos) and isinstance(owner.place, places.CityPlace):
+      adjacent_monsters = [
+        monster
+        for monster in state.monsters
+        if (
+          (owner.place in monster.place.connections)
+          or (isinstance(owner.place, places.Street) and monster.place.name == "Sky")
+        )
+      ]
+
+      move_monster_sequence = [
+        events.BinaryChoice(
+          owner, f"Heroically move {monster.name} to {owner.name}?", events.ForceMovement()
+        )
+        for monster in adjacent_monsters
+      ]
+      if len(adjacent_monsters) == 1:
+        pass
+
+      if len(adjacent_monsters) >= 2:
+        pass
+
+
+class OnTheForce(assets.Asset):
+  def __init__(self):
+    super().__init__("On the Force")
+
+  def get_interrupt(self, event, owner, state):
+    if isinstance(event, events.Arrested) and event.character == owner:
+      return events.CancelEvent(event)
+    return None
+
+  def get_modifier(self, other, attribute):
+    if attribute == "deputize_cost":
+      return -5
+    return 0
 
 
 def CreateAbilities():

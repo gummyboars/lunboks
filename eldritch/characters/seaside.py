@@ -18,6 +18,23 @@ class Farmhand(core.Character):
     return {"common": 2, "unique": 1, "skills": 1}
 
 
+class RookieCop(core.Character):
+  def __init__(self):
+    super().__init__("Rookie Cop", 6, 4, 4, 3, 5, 4, 3, 6, 1, "Police")
+
+  def abilities(self):
+    return ["Hero", "On the Force"]
+
+  def initial_attributes(self):
+    return {"dollars": 2, "clues": 2}
+
+  def fixed_possessions(self):
+    return {"common": ["Map", "Rifle"]}
+
+  def random_possessions(self):
+    return {"common": 2, "unique": 1, "skills": 1}
+
+
 class Secretary(core.Character):
   def __init__(self):
     super().__init__("Secretary", 4, 6, 5, 4, 4, 4, 4, 3, 2, "Hospital")
@@ -107,4 +124,4 @@ class Spy(core.BaseCharacter):
 
 
 def CreateCharacters():
-  return {c.name: c for c in [Farmhand(), Secretary(), Shaman(), Spy()]}
+  return {c.name: c for c in [Farmhand(), RookieCop(), Secretary(), Shaman(), Spy()]}

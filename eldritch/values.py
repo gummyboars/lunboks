@@ -7,6 +7,7 @@ import operator
 from typing import TYPE_CHECKING
 
 from eldritch import places
+from eldritch import characters
 
 if TYPE_CHECKING:
   from eldritch.characters.core import BaseCharacter
@@ -534,6 +535,16 @@ class ToughnessOrGatesSpend(ToughnessSpendBase):
   def __init__(self, toughness):
     assert toughness % 5 == 0
     super().__init__(toughness)
+
+  def spend_types(self):
+    return {"toughness", "gates"}
+
+
+class DeputizeSpend(ToughnessSpendBase):
+  def __init__(self, char: characters.BaseCharacter):
+    self.char = char
+    mod = char.get_modifier(None, "deputize_cost") or 0
+    super().__init__(10 + mod)
 
   def spend_types(self):
     return {"toughness", "gates"}
