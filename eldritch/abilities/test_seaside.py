@@ -12,6 +12,7 @@ from eldritch.skills import base as skills
 from eldritch.items.spells import base as spells
 from eldritch.items.unique import base as unique
 from eldritch import location_specials, specials, values
+from eldritch.mythos import base as mythos
 import game
 
 
@@ -120,9 +121,55 @@ class TestRookieCopAbilities(EventTest):
     self.state.turn_phase = "encounter"
     self.state.turn_number = 0
     self.char.possessions.extend([seaside.Hero(), seaside.OnTheForce()])
+    self.state.mythos.append(mythos.Mythos1())
+    self.state.monsters.extend([monsters.Cultist() for i in range(2)])
+    for monster in self.state.monsters:
+      monster.place = self.state.monster_cup
 
-  def testHero(self):
-    pass
+  def testHeroNoMonsters(self):
+    self.state.event_stack.append(events.Mythos(self.char))
+    self.resolve_until_done()
+
+  def testHeroNoAdjacentMonsters(self):
+    self.state.monsters[0].place = self.state.places["Woods"]
+    self.state.monsters[1].place = self.state.places["Northside"]
+    self.state.event_stack.append(events.Mythos(self.char))
+    self.resolve_until_done()
+
+  def testHeroDeclineMovement(self):
+    self.state.monsters[0].place = self.state.places["Shop"]
+    self.state.monsters[1].place = self.state.places["Newspaper"]
+    self.state.event_stack.append(events.Mythos(self.char))
+    choice = self.resolve_to_choice(events.MonsterChoice)
+    choice.resolve(self.state, "Done")
+    self.resolve_until_done()
+    self.assertEqual(self.state.monsters[0].place.name, "Shop")
+    self.assertEqual(self.state.monsters[1].place.name, "Newspaper")
+
+  def testAttractSingle(self):
+    self.state.monsters[0].place = self.state.places["Shop"]
+    self.state.monsters[1].place = self.state.places["Newspaper"]
+    self.state.event_stack.append(events.Mythos(self.char))
+    choice = self.resolve_to_choice(events.MonsterChoice)
+    choice.resolve(self.state, self.state.monsters[0].handle)
+    choice = self.resolve_to_choice(events.MonsterChoice)
+    choice.resolve(self.state, "Done")
+    self.resolve_until_done()
+    self.assertEqual(self.char.place.name, "Northside")
+    self.assertEqual(self.state.monsters[0].place.name, self.char.place.name)
+    self.assertEqual(self.state.monsters[1].place.name, "Newspaper")
+
+  def testAttractAll(self):
+    self.state.monsters[0].place = self.state.places["Shop"]
+    self.state.monsters[1].place = self.state.places["Newspaper"]
+    self.state.event_stack.append(events.Mythos(self.char))
+    choice = self.resolve_to_choice(events.MonsterChoice)
+    choice.resolve(self.state, self.state.monsters[0].handle)
+    choice = self.resolve_to_choice(events.MonsterChoice)
+    choice.resolve(self.state, self.state.monsters[1].handle)
+    self.resolve_until_done()
+    self.assertEqual(self.state.monsters[0].place.name, self.char.place.name)
+    self.assertEqual(self.state.monsters[1].place.name, self.char.place.name)
 
   # TODO: test Werewolf causes damage
 

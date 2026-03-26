@@ -208,22 +208,57 @@ class Hero(assets.Asset):
         monster
         for monster in state.monsters
         if (
-          (owner.place in monster.place.connections)
+          (monster.place in owner.place.connections)
           or (isinstance(owner.place, places.Street) and monster.place.name == "Sky")
         )
       ]
 
-      move_monster_sequence = [
-        events.BinaryChoice(
-          owner, f"Heroically move {monster.name} to {owner.name}?", events.ForceMovement()
-        )
-        for monster in adjacent_monsters
-      ]
-      if len(adjacent_monsters) == 1:
-        pass
+      if adjacent_monsters:
+        return AttractMonsters(owner, adjacent_monsters)
+    return None
 
-      if len(adjacent_monsters) >= 2:
-        pass
+
+class AttractMonsters(events.Event):
+  def __init__(self, character, monsters):
+    super().__init__()
+    self.character = character
+    self.monsters = monsters
+    self.choice: events.MonsterChoice | None = None
+    self.monsters_moved: bool = False
+    self.annotations = [mon.place.name for mon in monsters]
+
+  def resolve(self, state) -> None:
+    if self.choice is None:
+      self.choice = events.MonsterChoice(
+        self.character,
+        f"Select monsters for {self.character.name} to attract",
+        self.monsters,
+        none_choice="Done",
+        annotations=self.annotations,
+        invalid_annotations=["Moved"],
+        auto_choose=False,
+      )
+      state.event_stack.append(self.choice)
+      return
+
+    monster = self.choice.choice
+    idx = self.monsters.index(monster)
+    self.annotations[idx] = "Moved"
+    state.event_stack.append(events.ForceMonsterMovement(monster, self.character.place))
+
+    self.choice = None
+
+  def is_resolved(self):
+    return (getattr(self.choice, "choice", None) == "Done") or all(
+      annot == "Moved" for annot in self.annotations
+    )
+
+  def log(self, state):
+    if self.cancelled and self.choice is None:
+      return f"[{self.character.name}] did not attract monsters"
+    if not self.is_done():
+      return f"[{self.character.name}] must choose which monsters to attract"
+    return f"[{self.character.name}] is done attracting monsters"
 
 
 class OnTheForce(assets.Asset):
