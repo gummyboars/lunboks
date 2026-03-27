@@ -223,8 +223,8 @@ class AttractMonsters(events.Event):
     super().__init__()
     self.character = character
     self.monsters = monsters
-    self.choice: events.MonsterChoice | None = None
-    self.monster_movement: events.ForceMonsterMovement | None = None
+    self.choice: typing.Optional[events.MonsterChoice] = None
+    self.monster_movement: typing.Optional[events.ForceMonsterMovement] = None
     self.annotations = [mon.place.name for mon in monsters]
 
   def resolve(self, state) -> None:
