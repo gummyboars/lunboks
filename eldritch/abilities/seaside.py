@@ -224,7 +224,7 @@ class AttractMonsters(events.Event):
     self.character = character
     self.monsters = monsters
     self.choice: events.MonsterChoice | None = None
-    self.monsters_moved: bool = False
+    self.monster_movement: events.ForceMonsterMovement | None = None
     self.annotations = [mon.place.name for mon in monsters]
 
   def resolve(self, state) -> None:
@@ -244,13 +244,16 @@ class AttractMonsters(events.Event):
     monster = self.choice.choice
     idx = self.monsters.index(monster)
     self.annotations[idx] = "Moved"
-    state.event_stack.append(events.ForceMonsterMovement(monster, self.character.place))
+    self.monster_movement = events.ForceMonsterMovement(monster, self.character.place)
+    state.event_stack.append(self.monster_movement)
 
     self.choice = None
 
   def is_resolved(self):
-    return (getattr(self.choice, "choice", None) == "Done") or all(
-      annot == "Moved" for annot in self.annotations
+    return (getattr(self.choice, "choice", None) == "Done") or (
+      all(annot == "Moved" for annot in self.annotations)
+      and self.monster_movement is not None
+      and self.monster_movement.is_resolved()
     )
 
   def log(self, state):
