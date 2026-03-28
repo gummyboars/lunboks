@@ -623,7 +623,7 @@ class Mythos(Turn):
   def resolve(self, state):
     first_player = state.characters[state.first_player]
 
-    if self.draw is None:
+    if self.draw is None or self.draw.is_cancelled():
       self.draw = DrawMythosCard(first_player, skip_rumor=self.first_turn)
       state.event_stack.append(self.draw)
       return
@@ -2247,7 +2247,7 @@ class ActivateChosenItems(Event):
       self.idx += 1
     # HACK: allocate an extra hand to an axe if we have an extra hand. Note that you cannot have
     # two extra hands to allocate to axes, since an axe by definition takes at least one hand.
-    if self.character.hands_available() > 0:
+    if self.character.hands_available() > 0 and self.character.weapon_hands_available() > 0:
       axes = [item for item in self.item_choice.chosen if item.name == "Axe"]
       if axes:
         axes[0]._two_handed = True  # pylint: disable=protected-access
@@ -3495,6 +3495,8 @@ class CombatChoice(ItemChoice):
     state.event_stack.append(self.activate)
 
   def validate_choice(self, state, chosen, final):
+    from eldritch import items  # avoid circular import
+
     super().validate_choice(state, chosen, final)
     for pos in chosen:
       if getattr(pos, "hands", None) is None:
@@ -3502,7 +3504,13 @@ class CombatChoice(ItemChoice):
       if getattr(pos, "deck", None) == "spells":
         raise InvalidMove("That spell cannot be cast during combat")
     hands_used = sum(pos.hands for pos in chosen)
-    if hands_used > self.character.hands_available():
+    weapon_hands_used = sum(pos.hands for pos in chosen if isinstance(pos, items.Weapon))
+    spell_hands_used = sum(pos.hands for pos in chosen if isinstance(pos, items.Spell))
+    if (
+      (hands_used > self.character.hands_available())
+      or (weapon_hands_used > self.character.weapon_hands_available())
+      or (spell_hands_used > self.character.spell_hands_available())
+    ):
       raise InvalidMove("You do not have enough hands")
 
   def hands_used(self):

@@ -3,8 +3,7 @@ from collections import OrderedDict
 from collections.abc import Iterable
 import math
 
-from eldritch import events
-from eldritch import gates
+from eldritch import events, gates, items
 from eldritch.monsters import core as monsters
 
 
@@ -191,7 +190,33 @@ class BaseCharacter(metaclass=abc.ABCMeta):
     return die >= 5 - self.bless_curse
 
   def hands_available(self):
-    return 2 - sum(pos.hands_used() for pos in self.possessions if hasattr(pos, "hands_used"))
+    return (
+      2
+      + self.get_modifier(None, "total_hands_available")
+      - sum(pos.hands_used() for pos in self.possessions if hasattr(pos, "hands_used"))
+    )
+
+  def spell_hands_available(self):
+    return (
+      2
+      + self.get_modifier(None, "spell_hands_available")
+      - sum(
+        pos.hands_used()
+        for pos in self.possessions
+        if hasattr(pos, "hands_used") and isinstance(pos, items.Spell)
+      )
+    )
+
+  def weapon_hands_available(self):
+    return (
+      2
+      + self.get_modifier(None, "weapon_hands_available")
+      - sum(
+        pos.hands_used()
+        for pos in self.possessions
+        if hasattr(pos, "hands_used") and isinstance(pos, items.Weapon)
+      )
+    )
 
   def sliders(self):
     return {slider: getattr(self, slider + "_slider") for slider in self._slider_names}
