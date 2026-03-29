@@ -3495,7 +3495,8 @@ class CombatChoice(ItemChoice):
     state.event_stack.append(self.activate)
 
   def validate_choice(self, state, chosen, final):
-    from eldritch import items  # avoid circular import
+    # avoid circular import by importing here
+    from eldritch import items  # noqa:PLC0415
 
     super().validate_choice(state, chosen, final)
     for pos in chosen:

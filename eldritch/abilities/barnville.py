@@ -64,7 +64,7 @@ class Precognition(assets.Asset):
   def __init__(self):
     super().__init__("Precognition")
 
-  def get_trigger(self, event, owner, state):
+  def get_usable_trigger(self, event, owner, state):
     if (
       (len(state.event_stack) > 1)
       and isinstance(state.event_stack[-2], events.Mythos)
@@ -75,8 +75,7 @@ class Precognition(assets.Asset):
       spend = values.ExactSpendPrerequisite({"clues": 2})
       choice = events.SpendChoice(owner, "Draw a new mythos?", ["Yes", "No"], spends=[spend, None])
       cond = events.Conditional(owner, choice, "choice_index", {0: new_mythos, 1: events.Nothing()})
-      seq = events.Sequence([choice, cond], owner)
-      return seq
+      return events.Sequence([choice, cond], owner)
     return None
 
 
