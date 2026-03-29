@@ -3160,7 +3160,6 @@ class MonsterChoice(ChoiceEvent):
     valid_choices = [idx for idx in range(len(self.monsters)) if idx not in self.invalid_choices]
     if self.auto_choose and len(valid_choices) == 1 and not state.usables:
       # Do not auto-choose if player can interrupt.
-      print("!!!!!!!!!!")
       self.choice = self.monsters[valid_choices[0]]
 
   def resolve(self, state, choice=None):

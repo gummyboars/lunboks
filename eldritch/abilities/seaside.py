@@ -209,7 +209,9 @@ class Hero(assets.Asset):
         for monster in state.monsters
         if (
           (monster.place in owner.place.connections)
-          or (isinstance(owner.place, places.Street) and monster.place.name == "Sky")
+          or (
+            isinstance(owner.place, places.Street) and getattr(monster.place, "name", "") == "Sky"
+          )
         )
       ]
 
@@ -223,7 +225,7 @@ class AttractMonsters(events.Event):
     super().__init__()
     self.character = character
     self.monsters = monsters
-    self.choice: typing.Optional[events.MonsterChoice] = None
+    self.choice: events.MonsterChoice | None = None
     self.monster_movement: typing.Optional[events.ForceMonsterMovement] = None
     self.annotations = [mon.place.name for mon in monsters]
 
@@ -231,7 +233,7 @@ class AttractMonsters(events.Event):
     if self.choice is None:
       self.choice = events.MonsterChoice(
         self.character,
-        f"Select monsters for {self.character.name} to attract",
+        f"Select monsters for [{self.character.name}] to attract",
         self.monsters,
         none_choice="Done",
         annotations=self.annotations,
