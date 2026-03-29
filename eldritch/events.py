@@ -3130,7 +3130,16 @@ class FightOrEvadeChoice(MultipleChoice):
 
 
 class MonsterChoice(ChoiceEvent):
-  def __init__(self, character, prompt, monsters, annotations, none_choice=None):
+  def __init__(
+    self,
+    character,
+    prompt,
+    monsters,
+    annotations,
+    none_choice=None,
+    invalid_annotations=("Evaded", "Done"),
+    auto_choose=True,
+  ):
     assert monsters
     assert len(monsters) == len(annotations)
     super().__init__()
@@ -3139,13 +3148,18 @@ class MonsterChoice(ChoiceEvent):
     self.monsters = monsters
     self.none_choice = none_choice
     self._annotations = annotations
+    self.invalid_annotations = invalid_annotations
     self.invalid_choices = {}
     self.choice = None
+    self.auto_choose = auto_choose
 
   def compute_choices(self, state):
-    self.invalid_choices = {idx: True for idx, val in enumerate(self._annotations) if val}
+    self.invalid_choices = {
+      idx: True for idx, val in enumerate(self._annotations) if val in self.invalid_annotations
+    }
     valid_choices = [idx for idx in range(len(self.monsters)) if idx not in self.invalid_choices]
-    if len(valid_choices) == 1 and not state.usables:  # Do not auto-choose if player can interrupt.
+    if self.auto_choose and len(valid_choices) == 1 and not state.usables:
+      # Do not auto-choose if player can interrupt.
       self.choice = self.monsters[valid_choices[0]]
 
   def resolve(self, state, choice=None):
@@ -5617,13 +5631,27 @@ class MoveMonsters(Event):
     return True
 
 
-class MoveMonster(Event):
-  def __init__(self, monster, color):
+class BaseMonsterMovement(Event, metaclass=abc.ABCMeta):
+  def __init__(self, monster):
     super().__init__()
     self.monster = monster
-    self.color = color
     self.source = None
     self.destination = None
+
+  def log(self, state):
+    if self.cancelled and self.destination is None:
+      return f"[{self.monster.name}] did not move"
+    if self.destination is None:
+      return f"[{self.monster.name}] moves"
+    if not self.destination:
+      return f"[{self.monster.name}] did not move"
+    return f"[{self.monster.name}] moved from [{self.source.name}] to [{self.destination.name}]"
+
+
+class MoveMonster(BaseMonsterMovement):
+  def __init__(self, monster, color):
+    super().__init__(monster)
+    self.color = color
     self.move_event: Optional[Event] = None
 
   def resolve(self, state):
@@ -5697,17 +5725,26 @@ class MoveMonster(Event):
   def is_resolved(self):
     return self.destination is not None
 
-  def log(self, state):
-    if self.cancelled and self.destination is None:
-      return f"[{self.monster.name}] did not move"
-    if self.destination is None:
-      return f"[{self.monster.name}] moves"
-    if not self.destination:
-      return f"[{self.monster.name}] did not move"
-    return f"[{self.monster.name}] moved from [{self.source.name}] to [{self.destination.name}]"
-
   def animated(self):
     return self.destination is not False
+
+
+class ForceMonsterMovement(BaseMonsterMovement):
+  def __init__(self, monster: Monster, destination):
+    super().__init__(monster)
+    self.source = monster.place
+    self.destination = destination
+    self.resolved = False
+
+  def is_resolved(self):
+    return self.resolved
+
+  def animated(self):
+    return True
+
+  def resolve(self, state):
+    self.monster.place = self.destination
+    self.resolved = True
 
 
 class ReturnToCup(Event):

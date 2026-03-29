@@ -11,6 +11,10 @@ from eldritch.mythos.base import Mythos39 as NoSealMythos
 from eldritch.skills import base as skills
 from eldritch.items.spells import base as spells
 from eldritch.items.unique import base as unique
+from eldritch.encounters.location import base as encounters
+from eldritch import location_specials, specials, values
+from eldritch.mythos import base as mythos
+import game
 
 
 class TestFarmhandAbility(EventTest):
@@ -104,6 +108,115 @@ class TestFarmhandAbility(EventTest):
     # Too dumb to realize what happened, no horror check
     self.assertIsNone(combat.horror)
     self.assertEqual(self.char.place.name, "Abyss1")
+
+
+class TestRookieCopAbilities(EventTest):
+  def setUp(self):
+    super().setUp()
+    self.char.place = self.state.places["Northside"]
+    self.char.trophies.append(self.state.gates.popleft())
+    facilities = location_specials.CreateFixedEncounters()
+    for location_name, fixed_encounters in facilities.items():
+      self.state.places[location_name].fixed_encounters.extend(fixed_encounters)
+    self.state.game_stage = "slumber"
+    self.state.turn_phase = "encounter"
+    self.state.turn_number = 0
+    self.char.possessions.extend([seaside.Hero(), seaside.OnTheForce()])
+    self.state.mythos.append(mythos.Mythos1())
+    self.add_monsters(*[monsters.Cultist() for i in range(2)])
+    for monster in self.state.monsters:
+      monster.place = self.state.monster_cup
+
+  def testHeroNoMonsters(self):
+    self.state.event_stack.append(events.Mythos(self.char))
+    self.resolve_until_done()
+
+  def testHeroNoAdjacentMonsters(self):
+    self.state.monsters[0].place = self.state.places["Woods"]
+    self.state.monsters[1].place = self.state.places["Northside"]
+    self.state.event_stack.append(events.Mythos(self.char))
+    self.resolve_until_done()
+
+  def testHeroDeclineMovement(self):
+    self.state.monsters[0].place = self.state.places["Shop"]
+    self.state.monsters[1].place = self.state.places["Newspaper"]
+    self.state.event_stack.append(events.Mythos(self.char))
+    choice = self.resolve_to_choice(events.MonsterChoice)
+    choice.resolve(self.state, "Done")
+    self.resolve_until_done()
+    self.assertEqual(self.state.monsters[0].place.name, "Shop")
+    self.assertEqual(self.state.monsters[1].place.name, "Newspaper")
+
+  def testAttractSingle(self):
+    self.state.monsters[0].place = self.state.places["Shop"]
+    self.state.monsters[1].place = self.state.places["Newspaper"]
+    self.state.event_stack.append(events.Mythos(self.char))
+    choice = self.resolve_to_choice(events.MonsterChoice)
+    choice.resolve(self.state, self.state.monsters[0].handle)
+    choice = self.resolve_to_choice(events.MonsterChoice)
+    self.assertIn(self.state.monsters[0], [choice.monsters[idx] for idx in choice.invalid_choices])
+    choice.resolve(self.state, "Done")
+    self.resolve_until_done()
+    self.assertEqual(self.char.place.name, "Northside")
+    self.assertEqual(self.state.monsters[0].place.name, self.char.place.name)
+    self.assertEqual(self.state.monsters[1].place.name, "Newspaper")
+
+  def testAttractAll(self):
+    self.state.monsters[0].place = self.state.places["Shop"]
+    self.state.monsters[1].place = self.state.places["Newspaper"]
+    self.state.event_stack.append(events.Mythos(self.char))
+    choice = self.resolve_to_choice(events.MonsterChoice)
+    choice.resolve(self.state, self.state.monsters[0].handle)
+    choice = self.resolve_to_choice(events.MonsterChoice)
+    choice.resolve(self.state, self.state.monsters[1].handle)
+    self.resolve_until_done()
+    self.assertEqual(self.state.monsters[0].place.name, self.char.place.name)
+    self.assertEqual(self.state.monsters[1].place.name, self.char.place.name)
+
+  def testShop7(self):
+    self.state.turn_phase = "encounter"
+    self.char.place = self.state.places["Shop"]
+    self.state.event_stack.append(encounters.Shop7(self.char))
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
+      self.resolve_until_done()
+    # Should not trigger the ability
+    self.assertEqual(self.char.place.name, "Woods")
+    # In theory, there would be a woods event, but I think the state isn't set up for it.
+
+  # TODO: test Werewolf causes damage
+
+  def testBecomeDeputized(self):
+    self.state.specials.append(specials.Deputy())
+    self.state.tradables.extend([specials.DeputysRevolver(), specials.PatrolWagon()])
+    self.char.place = self.state.places["Police"]
+    self.assertEqual(values.DeputizeSpend(self.char).toughness, 5)
+    self.assertEqual(self.char.get_modifier(None, "deputize_cost"), -5)
+    self.assertEqual(len(self.char.possessions), 2)
+    self.assertEqual(len(self.char.trophies), 1)
+    self.state.event_stack.append(events.EncounterPhase(self.char))
+    event = self.resolve_to_choice(events.CardSpendChoice)
+    self.assertEqual(event.choices, ["Easttown Card", "Deputy"])
+    with self.assertRaisesRegex(game.InvalidMove, "additional 5 toughness"):
+      event.resolve(self.state, "Deputy")
+
+    self.state.handle_use(0, self.char.trophies[0].handle)
+    for _ in self.state.resolve_loop():
+      pass
+
+    event.resolve(self.state, "Deputy")
+    self.resolve_until_done()
+    self.assertEqual(len(self.char.trophies), 0)
+    self.assertEqual(len(self.char.possessions), 5)
+    self.assertCountEqual(
+      [card.name for card in self.char.possessions],
+      ["Hero", "On the Force", "Deputy", "Deputy's Revolver", "Patrol Wagon"],
+    )
+
+  def testCannotBeArrested(self):
+    self.assertIsNone(self.char.arrested_until)
+    self.state.event_stack.append(events.Arrested(self.char))
+    self.resolve_until_done()
+    self.assertIsNone(self.char.arrested_until)
 
 
 class TestSecretaryAbilities(EventTest):

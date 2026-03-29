@@ -1,6 +1,6 @@
 import typing
 
-from eldritch import cards as assets
+from eldritch import cards as assets, places
 from eldritch import characters
 from eldritch import events
 from eldritch import values
@@ -196,6 +196,89 @@ class ThickSkulled(assets.Asset):
     if isinstance(event, events.Combat) and event.character == owner:
       return ThickSkulledCombat(event)
     return None
+
+
+class Hero(assets.Asset):
+  def __init__(self):
+    super().__init__("Hero")
+
+  def get_interrupt(self, event, owner: characters.Character, state):
+    if isinstance(event, events.Mythos) and isinstance(owner.place, places.CityPlace):
+      adjacent_monsters = [
+        monster
+        for monster in state.monsters
+        if (
+          (monster.place in owner.place.connections)
+          or (
+            isinstance(owner.place, places.Street) and getattr(monster.place, "name", "") == "Sky"
+          )
+        )
+      ]
+
+      if adjacent_monsters:
+        return AttractMonsters(owner, adjacent_monsters)
+    return None
+
+
+class AttractMonsters(events.Event):
+  def __init__(self, character, monsters):
+    super().__init__()
+    self.character = character
+    self.monsters = monsters
+    self.choice: events.MonsterChoice | None = None
+    self.monster_movement: typing.Optional[events.ForceMonsterMovement] = None
+    self.annotations = [mon.place.name for mon in monsters]
+
+  def resolve(self, state) -> None:
+    if self.choice is None:
+      self.choice = events.MonsterChoice(
+        self.character,
+        f"Select monsters for [{self.character.name}] to attract",
+        self.monsters,
+        none_choice="Done",
+        annotations=self.annotations,
+        invalid_annotations=["Moved"],
+        auto_choose=False,
+      )
+      state.event_stack.append(self.choice)
+      return
+
+    monster = self.choice.choice
+    idx = self.monsters.index(monster)
+    self.annotations[idx] = "Moved"
+    self.monster_movement = events.ForceMonsterMovement(monster, self.character.place)
+    state.event_stack.append(self.monster_movement)
+
+    self.choice = None
+
+  def is_resolved(self):
+    return (getattr(self.choice, "choice", None) == "Done") or (
+      all(annot == "Moved" for annot in self.annotations)
+      and self.monster_movement is not None
+      and self.monster_movement.is_resolved()
+    )
+
+  def log(self, state):
+    if self.cancelled and self.choice is None:
+      return f"[{self.character.name}] did not attract monsters"
+    if not self.is_done():
+      return f"[{self.character.name}] must choose which monsters to attract"
+    return f"[{self.character.name}] is done attracting monsters"
+
+
+class OnTheForce(assets.Asset):
+  def __init__(self):
+    super().__init__("On the Force")
+
+  def get_interrupt(self, event, owner, state):
+    if isinstance(event, events.Arrested) and event.character == owner:
+      return events.CancelEvent(event)
+    return None
+
+  def get_modifier(self, other, attribute):
+    if attribute == "deputize_cost":
+      return -5
+    return 0
 
 
 def CreateAbilities():
