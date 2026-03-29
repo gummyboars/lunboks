@@ -177,7 +177,8 @@ class TestRookieCopAbilities(EventTest):
     self.state.turn_phase = "encounter"
     self.char.place = self.state.places["Shop"]
     self.state.event_stack.append(encounters.Shop7(self.char))
-    self.resolve_until_done()
+    with mock.patch.object(events.random, "randint", new=mock.MagicMock(return_value=3)):
+      self.resolve_until_done()
     # Should not trigger the ability
     self.assertEqual(self.char.place.name, "Woods")
     # In theory, there would be a woods event, but I think the state isn't set up for it.
@@ -193,11 +194,7 @@ class TestRookieCopAbilities(EventTest):
     self.assertEqual(len(self.char.possessions), 2)
     self.assertEqual(len(self.char.trophies), 1)
     self.state.event_stack.append(events.EncounterPhase(self.char))
-    for _ in self.state.resolve_loop():
-      pass
-    self.assertTrue(self.state.event_stack)
-    event = self.state.event_stack[-1]
-    self.assertIsInstance(event, events.CardSpendChoice)
+    event = self.resolve_to_choice(events.CardSpendChoice)
     self.assertEqual(event.choices, ["Easttown Card", "Deputy"])
     with self.assertRaisesRegex(game.InvalidMove, "additional 5 toughness"):
       event.resolve(self.state, "Deputy")
@@ -205,10 +202,9 @@ class TestRookieCopAbilities(EventTest):
     self.state.handle_use(0, self.char.trophies[0].handle)
     for _ in self.state.resolve_loop():
       pass
+
     event.resolve(self.state, "Deputy")
-    for _ in self.state.resolve_loop():
-      pass
-    self.assertFalse(self.state.event_stack)
+    self.resolve_until_done()
     self.assertEqual(len(self.char.trophies), 0)
     self.assertEqual(len(self.char.possessions), 5)
     self.assertCountEqual(
