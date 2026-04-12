@@ -324,8 +324,12 @@ class BaseCharacter(metaclass=abc.ABCMeta):
     self.focus_points -= focus_spent_to_slide
 
   def potential_spendable_clues(self, state, thing, check_others=True):
-    if getattr(thing, "character", None) == self or not self.get_override("cannot_trade_clues"):
-      spendable_clues = self.clues + [pos.potential_clue_value for pos in self.possessions]
+    if getattr(thing, "character", None) == self or not self.get_override(
+      thing, "cannot_trade_clues"
+    ):
+      spendable_clues = self.clues + sum(
+        pos.potential_clue_value for pos in self.possessions if not pos.exhausted
+      )
     else:
       spendable_clues = 0
     if check_others:

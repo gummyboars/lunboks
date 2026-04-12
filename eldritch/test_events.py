@@ -2766,6 +2766,14 @@ class SpendChoiceTest(EventTest):
     with self.assertRaisesRegex(InvalidMove, "at this time"):
       self.state.handle_use(1, "Research Materials1")
 
+  def testSkipNotEnoughClues(self):
+    self.char.possessions.append(items.ResearchMaterials(0))
+    self.char.clues = 1
+    spend_clue = values.ExactSpendPrerequisite({"clues": 3})
+    choice = SpendChoice(self.char, "choose", ["A", "B"], spends=[spend_clue, None])
+    self.state.event_stack.append(choice)
+    self.resolve_until_done()
+
 
 class ItemChoiceTest(EventTest):
   def setUp(self):

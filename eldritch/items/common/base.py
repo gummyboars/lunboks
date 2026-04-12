@@ -258,6 +258,7 @@ def Motorcycle(idx):
 class ResearchMaterials(Item):
   def __init__(self, idx):
     super().__init__("Research Materials", idx, "common", {}, {}, None, 1)
+    self.potential_clue_value = 1
 
   def get_spend_amount(self, event, owner, state):
     if not isinstance(event, events.SpendMixin) or event.is_done():

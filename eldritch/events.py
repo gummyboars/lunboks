@@ -3101,6 +3101,10 @@ class MultipleChoice(ChoiceEvent):
       raise InvalidMove(prereq_err)
 
   def is_resolved(self):
+    if len(self.choices) == len(self.invalid_choices) + 1:
+      self.choice = next(
+        choice for idx, choice in enumerate(self.choices) if idx not in self.invalid_choices
+      )
     return self.choice is not None
 
   def log(self, state):
@@ -3323,6 +3327,13 @@ class SpendMultiChoiceMixin(SpendMixin):
     super().compute_choices(state)
     self.remaining_spend = [spend.remaining_spend(state) or False for spend in self.spends]
     self.remaining_max = [spend.remaining_max(state) or False for spend in self.spends]
+    self.invalid_choices = getattr(self, "invalid_choices", {})
+    for idx, choice in enumerate(self.spends):
+      if hasattr(self, "character") and (
+        self.character.potential_spendable_clues(state, self)
+        < getattr(choice, "spend_amounts", {}).get("clues", 0)
+      ):
+        self.invalid_choices[idx] = "Not enough clues"
 
   def resolve(self, state, choice=None):
     if choice not in self.choices:
@@ -3640,11 +3651,7 @@ class CardChoice(MultipleChoice):
 
 
 class CardSpendChoice(SpendMultiChoiceMixin, CardChoice):
-  def compute_choices(self, state):
-    super().compute_choices(state)
-    if len(self.choices) == 1 and not state.usables and state.test_mode:
-      self.validate_choice(self.choices[0])
-      self.choice = self.choices[0]
+  pass
 
 
 class MapChoice(ChoiceEvent, metaclass=abc.ABCMeta):
