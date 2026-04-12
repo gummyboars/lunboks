@@ -615,7 +615,7 @@ class OtherWorldPhase(Turn):
 class Mythos(Turn):
   def __init__(self, _, first_turn=False):
     super().__init__()
-    self.draw: Optional[Event] = None
+    self.draw: DrawMythosCard | None = None
     self.action: Optional[Event] = None
     self.first_turn = first_turn
     self.done = False
@@ -623,7 +623,7 @@ class Mythos(Turn):
   def resolve(self, state):
     first_player = state.characters[state.first_player]
 
-    if self.draw is None or self.draw.is_cancelled():
+    if self.draw is None:
       self.draw = DrawMythosCard(first_player, skip_rumor=self.first_turn)
       state.event_stack.append(self.draw)
       return
@@ -1972,6 +1972,42 @@ class MulliganEncounter(Event):
     if self.replacement is not None:
       return f"[{self.character.name}] replaced an encounter card with [{self.replacement.name}]"
     return f"[{self.character.name}] replaced an encounter card"
+
+
+class MulliganMythos(Event):
+  def __init__(self, character, mythos_draw):
+    assert isinstance(mythos_draw, DrawMythosCard)
+    super().__init__()
+    self.character = character
+    self.mythos_draw = mythos_draw
+    self.replacement = None
+
+  def resolve(self, state):
+    while True:
+      card = state.mythos.popleft()
+      state.mythos.append(card)
+      if card.name == "ShuffleMythos":
+        random.shuffle(state.mythos)
+        continue
+      if self.mythos_draw.require_gate and card.gate_location is None:
+        continue
+      if self.mythos_draw.skip_rumor and hasattr(card, "progress"):
+        continue
+      break
+    self.replacement = card
+    self.mythos_draw.card = card
+
+  def is_resolved(self):
+    return self.replacement is not None
+
+  def log(self, state):
+    if self.cancelled:
+      return f"[{self.character.name}] did not replace a mythos card"
+    if not self.replacement:
+      return f"[{self.character.name}] will replace a mythos card"
+    if self.replacement is not None:
+      return f"[{self.character.name}] replaced a mythos card with [{self.replacement.name}]"
+    return f"[{self.character.name}] replaced a mythos card"
 
 
 class GateEncounter(Event):
@@ -3495,9 +3531,6 @@ class CombatChoice(ItemChoice):
     state.event_stack.append(self.activate)
 
   def validate_choice(self, state, chosen, final):
-    # avoid circular import by importing here
-    from eldritch import items  # noqa:PLC0415
-
     super().validate_choice(state, chosen, final)
     for pos in chosen:
       if getattr(pos, "hands", None) is None:
@@ -3505,8 +3538,10 @@ class CombatChoice(ItemChoice):
       if getattr(pos, "deck", None) == "spells":
         raise InvalidMove("That spell cannot be cast during combat")
     hands_used = sum(pos.hands for pos in chosen)
-    weapon_hands_used = sum(pos.hands for pos in chosen if isinstance(pos, items.Weapon))
-    spell_hands_used = sum(pos.hands for pos in chosen if isinstance(pos, items.Spell))
+    weapon_hands_used = sum(
+      pos.hands for pos in chosen if getattr(pos, "item_type", "") == "weapon"
+    )
+    spell_hands_used = sum(pos.hands for pos in chosen if getattr(pos, "item_type", "") == "spell")
     if (
       (hands_used > self.character.hands_available())
       or (weapon_hands_used > self.character.weapon_hands_available())

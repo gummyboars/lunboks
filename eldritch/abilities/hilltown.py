@@ -43,19 +43,26 @@ class Leadership(assets.Asset):
   def get_usable_interrupt(self, event, owner, state):
     if isinstance(event, events.GainOrLoss) and not self.exhausted:
       san_stam = {"sanity", "stamina"}
+      losses = set(stat for stat, amount in event.losses.items() if amount > 0)
       exhaust = events.ExhaustAsset(owner, self)
-      san_prevent = events.Sequence(
-        [events.LossPrevention(owner, event, "sanity", 1), exhaust], owner
-      )
-      stam_prevent = events.Sequence(
-        [events.LossPrevention(owner, event, "stamina", 1), exhaust], owner
-      )
-      if set(event.losses).intersection(san_stam) == {"sanity"}:
+      if set(losses).intersection(san_stam) == {"sanity"}:
+        san_prevent = events.Sequence(
+          [events.LossPrevention(owner, event, "sanity", 1), exhaust], owner
+        )
         return san_prevent
-      if set(event.losses).intersection(san_stam) == {"stamina"}:
+      if set(losses).intersection(san_stam) == {"stamina"}:
+        stam_prevent = events.Sequence(
+          [events.LossPrevention(owner, event, "stamina", 1), exhaust], owner
+        )
         return stam_prevent
-      if set(event.losses).intersection(san_stam) == {"stamina", "sanity"}:
+      if set(losses).intersection(san_stam) == {"stamina", "sanity"}:
         message = (f"What kind of loss to prevent to [{event.character}]?",)
+        san_prevent = events.Sequence(
+          [events.LossPrevention(owner, event, "sanity", 1), exhaust], owner
+        )
+        stam_prevent = events.Sequence(
+          [events.LossPrevention(owner, event, "stamina", 1), exhaust], owner
+        )
         return events.BinaryChoice(owner, message, "Sanity", "Stamina", san_prevent, stam_prevent)
     return None
 
@@ -66,16 +73,19 @@ class Precognition(assets.Asset):
 
   def get_usable_trigger(self, event, owner, state):
     if (
-      (len(state.event_stack) > 1)
-      and isinstance(state.event_stack[-2], events.Mythos)
+      not self.exhausted
+      and state.turn_phase == "mythos"
       and isinstance(event, events.DrawMythosCard)
       and not isinstance(event.card, mythos.core.ShuffleMythos)
     ):
-      new_mythos = events.CancelEvent(event)
+      new_mythos = events.MulliganMythos(owner, event)
       spend = values.ExactSpendPrerequisite({"clues": 2})
-      choice = events.SpendChoice(owner, "Draw a new mythos?", ["Yes", "No"], spends=[spend, None])
+      choice = events.SpendChoice(
+        owner, "Spend 2 clues to draw a new mythos?", ["Yes", "No"], spends=[spend, None]
+      )
       cond = events.Conditional(owner, choice, "choice_index", {0: new_mythos, 1: events.Nothing()})
-      return events.Sequence([choice, cond], owner)
+      exhaust = events.ExhaustAsset(owner, self)
+      return events.Sequence([choice, cond, exhaust], owner)
     return None
 
 

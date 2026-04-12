@@ -131,11 +131,12 @@ class EventTest(unittest.TestCase):
     self.assertIsInstance(self.state.usables[char_idx][handle], event_class)
     return self.state.usables[char_idx][handle]
 
-  def use_handle(self, char_idx, handle):
+  def use_handle(self, char_idx, handle, resolve_to_spend=True):
     self.assertIn(char_idx, self.state.usables)
     self.assertIn(handle, self.state.usables[char_idx])
     self.state.event_stack.append(self.state.usables[char_idx][handle])
-    self.resolve_to_choice(SpendMixin)
+    if resolve_to_spend:
+      return self.resolve_to_choice(SpendMixin)
 
   def add_monsters(self, *monster_list):
     for monster in monster_list:
