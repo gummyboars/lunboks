@@ -2773,6 +2773,10 @@ class SpendChoiceTest(EventTest):
     choice = SpendChoice(self.char, "choose", ["A", "B"], spends=[spend_clue, None])
     self.state.event_stack.append(choice)
     self.resolve_until_done()
+    spend_clue = values.ExactSpendPrerequisite({"clues": 2})
+    choice = SpendChoice(self.char, "choose", ["A", "B"], spends=[spend_clue, None])
+    self.state.event_stack.append(choice)
+    self.resolve_to_choice(events.MultipleChoice)
 
 
 class ItemChoiceTest(EventTest):
