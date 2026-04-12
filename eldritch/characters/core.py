@@ -323,6 +323,22 @@ class BaseCharacter(metaclass=abc.ABCMeta):
   def spend_slider_focus(self, focus_spent_to_slide):
     self.focus_points -= focus_spent_to_slide
 
+  def potential_spendable_clues(self, state, thing, check_others=True):
+    if getattr(thing, "character", None) == self or not self.get_override(
+      thing, "cannot_trade_clues"
+    ):
+      spendable_clues = self.clues + sum(
+        pos.potential_clue_value for pos in self.possessions if not pos.exhausted
+      )
+    else:
+      spendable_clues = 0
+    if check_others:
+      for char in state.characters:
+        if char == self:
+          continue
+        spendable_clues += char.potential_spendable_clues(state, thing, check_others=False)
+    return spendable_clues
+
 
 class Character(BaseCharacter):
   """A character with the standard sliders."""

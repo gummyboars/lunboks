@@ -26,6 +26,7 @@ class Asset:
     self._exhausted = False
     self.tokens = {}
     self.max_tokens = {}
+    self.potential_clue_value = 0
 
   @property
   def name(self):
