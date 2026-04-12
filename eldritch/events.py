@@ -3640,7 +3640,11 @@ class CardChoice(MultipleChoice):
 
 
 class CardSpendChoice(SpendMultiChoiceMixin, CardChoice):
-  pass
+  def compute_choices(self, state):
+    super().compute_choices(state)
+    if len(self.choices) == 1 and not state.usables and state.test_mode:
+      self.validate_choice(self.choices[0])
+      self.choice = self.choices[0]
 
 
 class MapChoice(ChoiceEvent, metaclass=abc.ABCMeta):
