@@ -1,10 +1,13 @@
 from eldritch.abilities import base
+from eldritch.abilities import hilltown
 from eldritch.abilities import clifftown
 from eldritch.abilities import seaside
 
 
 def CreateAbilities(expansions):
   abilities = base.CreateAbilities()
+  if "hilltown" in expansions:
+    abilities.update(hilltown.CreateAbilities())
   if "clifftown" in expansions:
     abilities.update(clifftown.CreateAbilities())
   if "seaside" in expansions:

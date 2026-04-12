@@ -94,10 +94,12 @@ class CombatSpell(Spell):
       return None
     if self.exhausted:
       return None
-    hands_available = owner.hands_available()
+    total_hands_available = owner.hands_available()
+    spell_hands_available = owner.spell_hands_available()
     if isinstance(event, events.CombatChoice):
-      hands_available -= event.hands_used()
-    if hands_available < self.hands:
+      total_hands_available -= event.hands_used()
+      spell_hands_available -= event.hands_used()
+    if total_hands_available < self.hands or spell_hands_available < self.hands:
       return None
     return events.CastSpell(owner, self)
 

@@ -615,7 +615,7 @@ class OtherWorldPhase(Turn):
 class Mythos(Turn):
   def __init__(self, _, first_turn=False):
     super().__init__()
-    self.draw: Optional[Event] = None
+    self.draw: DrawMythosCard | None = None
     self.action: Optional[Event] = None
     self.first_turn = first_turn
     self.done = False
@@ -1974,6 +1974,42 @@ class MulliganEncounter(Event):
     return f"[{self.character.name}] replaced an encounter card"
 
 
+class MulliganMythos(Event):
+  def __init__(self, character, mythos_draw):
+    assert isinstance(mythos_draw, DrawMythosCard)
+    super().__init__()
+    self.character = character
+    self.mythos_draw = mythos_draw
+    self.replacement = None
+
+  def resolve(self, state):
+    while True:
+      card = state.mythos.popleft()
+      state.mythos.append(card)
+      if card.name == "ShuffleMythos":
+        random.shuffle(state.mythos)
+        continue
+      if self.mythos_draw.require_gate and card.gate_location is None:
+        continue
+      if self.mythos_draw.skip_rumor and hasattr(card, "progress"):
+        continue
+      break
+    self.replacement = card
+    self.mythos_draw.card = card
+
+  def is_resolved(self):
+    return self.replacement is not None
+
+  def log(self, state):
+    if self.cancelled:
+      return f"[{self.character.name}] did not replace a mythos card"
+    if not self.replacement:
+      return f"[{self.character.name}] will replace a mythos card"
+    if self.replacement is not None:
+      return f"[{self.character.name}] replaced a mythos card with [{self.replacement.name}]"
+    return f"[{self.character.name}] replaced a mythos card"
+
+
 class GateEncounter(Event):
   def __init__(self, character):
     super().__init__()
@@ -2247,7 +2283,7 @@ class ActivateChosenItems(Event):
       self.idx += 1
     # HACK: allocate an extra hand to an axe if we have an extra hand. Note that you cannot have
     # two extra hands to allocate to axes, since an axe by definition takes at least one hand.
-    if self.character.hands_available() > 0:
+    if self.character.hands_available() > 0 and self.character.weapon_hands_available() > 0:
       axes = [item for item in self.item_choice.chosen if item.name == "Axe"]
       if axes:
         axes[0]._two_handed = True  # pylint: disable=protected-access
@@ -3516,7 +3552,15 @@ class CombatChoice(ItemChoice):
       if getattr(pos, "deck", None) == "spells":
         raise InvalidMove("That spell cannot be cast during combat")
     hands_used = sum(pos.hands for pos in chosen)
-    if hands_used > self.character.hands_available():
+    weapon_hands_used = sum(
+      pos.hands for pos in chosen if getattr(pos, "item_type", "") == "weapon"
+    )
+    spell_hands_used = sum(pos.hands for pos in chosen if getattr(pos, "item_type", "") == "spell")
+    if (
+      (hands_used > self.character.hands_available())
+      or (weapon_hands_used > self.character.weapon_hands_available())
+      or (spell_hands_used > self.character.spell_hands_available())
+    ):
       raise InvalidMove("You do not have enough hands")
 
   def hands_used(self):
