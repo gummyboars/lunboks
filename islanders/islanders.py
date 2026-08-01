@@ -128,7 +128,7 @@ class Options(collections.OrderedDict):
       "Invasion Type", default="riders", forced=True, hidden=True, choices=["riders", "barbarians"]
     )
     self["foreign_island_points"] = GameOption(
-      "", default=0, choices=[0, 1, 2], forced=True, hidden=True
+      "Foreign Island Points", default=0, choices=[0, 1, 2], forced=True, hidden=False
     )
     self["bury_treasure"] = GameOption("Bury Treasure", default=False, forced=True, hidden=True)
     self["norsrc_is_connected"] = GameOption("", default=True, forced=True, hidden=True)
@@ -3783,6 +3783,112 @@ class DesertRiders(SeafarerScenario):
     options["foreign_island_points"].default = 0
 
 
+class SeafarerWasteland(SeafarerScenario):
+  @classmethod
+  def preview(cls, state):
+    cls.load_file(state, "wasteland.json")
+    state.robber = TileLocation(10, 8)
+    state.pirate = TileLocation(19, 9)
+    state.recompute()
+
+  @classmethod
+  def init(cls, state):
+    super().init(state)
+    if len(state.player_data) < 3 or len(state.player_data) > 4:
+      raise InvalidPlayer("Must have 3 or 4 players.")
+    cls.load_file(state, "wasteland.json")
+    state.robber = TileLocation(10, 8)
+    state.pirate = TileLocation(19, 9)
+    state.recompute()
+    state.init_dev_cards()
+    state.placement_islands = [state.corners_to_islands[(9, 5)], state.corners_to_islands[(9, 11)]]
+
+  @classmethod
+  def mutate_options(cls, options):
+    super().mutate_options(options)
+    options["victory_points"].default = 14
+    options["norsrc_is_connected"].force(False)
+
+
+class SeafarerDrought(SeafarerScenario):
+  @classmethod
+  def preview(cls, state):
+    cls.load_file(state, "drought.json")
+    state.robber = TileLocation(13, 9)
+    state.pirate = TileLocation(4, 2)
+    state.recompute()
+
+  @classmethod
+  def init(cls, state):
+    super().init(state)
+    if len(state.player_data) < 3 or len(state.player_data) > 4:
+      raise InvalidPlayer("Must have 3 or 4 players.")
+    cls.load_file(state, "drought.json")
+    state.robber = TileLocation(13, 9)
+    state.pirate = TileLocation(4, 2)
+    state.recompute()
+    state.init_dev_cards()
+    state.placement_islands = [state.corners_to_islands[(6, 6)]]
+
+  @classmethod
+  def mutate_options(cls, options):
+    super().mutate_options(options)
+    options["victory_points"].default = 13
+
+
+class SeafarerTwinHarbors(SeafarerScenario):
+  @classmethod
+  def preview(cls, state):
+    cls.load_file(state, "twinharbors.json")
+    state.robber = None
+    state.pirate = TileLocation(10, 0)
+    state.recompute()
+
+  @classmethod
+  def init(cls, state):
+    super().init(state)
+    if len(state.player_data) < 3 or len(state.player_data) > 4:
+      raise InvalidPlayer("Must have 3 or 4 players.")
+    cls.load_file(state, "twinharbors.json")
+    state.robber = None
+    state.pirate = TileLocation(10, 0)
+    state.recompute()
+    state.init_dev_cards()
+
+  @classmethod
+  def mutate_options(cls, options):
+    super().mutate_options(options)
+    options["victory_points"].default = 10
+    options["foreign_island_points"].default = 0
+
+
+class SeafarerNautilus(SeafarerScenario):
+  @classmethod
+  def preview(cls, state):
+    cls.load_file(state, "nautilus.json")
+    state.robber = TileLocation(7, 9)
+    state.pirate = TileLocation(10, 0)
+    state.recompute()
+
+  @classmethod
+  def init(cls, state):
+    super().init(state)
+    if len(state.player_data) < 3 or len(state.player_data) > 4:
+      raise InvalidPlayer("Must have 3 or 4 players.")
+    cls.load_file(state, "nautilus.json")
+    state.robber = TileLocation(7, 9)
+    state.pirate = TileLocation(10, 0)
+    state.recompute()
+    state.init_dev_cards()
+    state.placement_islands = [state.corners_to_islands[(2, 2)], state.corners_to_islands[(8, 8)]]
+
+  @classmethod
+  def mutate_options(cls, options):
+    super().mutate_options(options)
+    options["victory_points"].default = 12
+    options["foreign_island_points"].default = 1
+
+
 class BarbariansAttack(Scenario):
   @classmethod
   def preview(cls, state):
@@ -3923,6 +4029,10 @@ class IslandersGame(BaseGame):
       ("The Four Islands", SeafarerIslands),
       ("Through the Desert", SeafarerDesert),
       ("The Fog Islands", SeafarerFog),
+      ("Across the Wasteland", SeafarerWasteland),
+      ("Drought", SeafarerDrought),
+      ("Nautilus", SeafarerNautilus),
+      ("Twin Harbors", SeafarerTwinHarbors),
       ("The Treasure Islands", TreasureIslands),
       ("Into the Unknown", IntoTheUnknown),
       ("Greater Islands", GreaterIslands),

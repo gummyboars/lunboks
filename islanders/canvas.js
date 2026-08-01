@@ -23,6 +23,26 @@ moveKnightFromLocation = null;
 moveBarbarianTiles = [];
 barbarianFromCount = 0;
 barbarianToCount = 0;
+defaultColors = ["red", "blue", "darkviolet", "darkorange", "limegreen", "saddlebrown"];
+
+// We sometimes need colors before the game starts, which means not all players are present.
+// This just provides some sane defaults for missing players.
+function getColor(playerIdx) {
+  if (playerIdx < playerData.length) {
+    return playerData[playerIdx].color;
+  }
+  let usedColors = [];
+  for (let pData of playerData) {
+    usedColors.push(pData.color);
+  }
+  let remainingColors = [];
+  for (let color of defaultColors) {
+    if (!usedColors.includes(color)) {
+      remainingColors.push(color);
+    }
+  }
+  return remainingColors[playerIdx - playerData.length];
+}
 
 function locationsEqual(locA, locB) {
   if (locA == null && locB == null) {
@@ -90,13 +110,13 @@ function draw() {
   context.restore();
   for (let i = 0; i < roads.length; i++) {
     // Each road does its own context.save() and context.restore();
-    drawRoad(roads[i].location, playerData[roads[i].player].color, roads[i].road_type,
+    drawRoad(roads[i].location, getColor(roads[i].player), roads[i].road_type,
       roads[i].closed, roads[i].movable, roads[i].conquered, context);
   }
   // Draw pieces over roads.
   for (let i = 0; i < pieces.length; i++) {
     // Each piece does its own context.save() and context.restore();
-    drawPiece(pieces[i].location, playerData[pieces[i].player].color, pieces[i].piece_type, pieces[i].conquered, context);
+    drawPiece(pieces[i].location, getColor(pieces[i].player), pieces[i].piece_type, pieces[i].conquered, context);
   }
   context.save();
   if (landings != null) {
@@ -112,7 +132,7 @@ function draw() {
   context.restore();
   context.save();
   for (let knight of knights) {
-    drawKnight(knight.location, playerData[knight.player].color, knight.movement, context);
+    drawKnight(knight.location, getColor(knight.player), knight.movement, context);
   }
   context.restore();
   context.save();
@@ -271,7 +291,7 @@ function drawLanding(landing, ctx) {
   ctx.moveTo(canvasLoc.x, canvasLoc.y - 3 * pieceRadius / 4);
   ctx.lineTo(canvasLoc.x, canvasLoc.y - 2 * pieceRadius);
   ctx.stroke();
-  ctx.fillStyle = playerData[landing.player].color;
+  ctx.fillStyle = getColor(landing.player);
   ctx.fillRect(canvasLoc.x - pieceRadius, canvasLoc.y - 2*pieceRadius, pieceRadius, pieceRadius/2);
   ctx.strokeRect(canvasLoc.x - pieceRadius, canvasLoc.y - 2*pieceRadius, pieceRadius, pieceRadius/2);
 }
