@@ -886,6 +886,12 @@ class MerchantTest(BaseInputHandlerTest):
     self.assertEqual(self.c._get_ratios(0)["rsrc3"], 2)
     self.assertEqual(self.c.player_data[0].trade_ratios["rsrc3"], 3)
     self.assertEqual(self.c.player_points(0, True), 2)
+    # Make sure the trade ratio is shown in the UI so the player gets the right trades.
+    data = self.c.for_player(0)
+    self.assertEqual(data["player_data"][0]["trade_ratios"]["rsrc3"], 2)
+    # Make sure the updated trade ratio only applies to the player with the merchant
+    p1_data = self.c.for_player(1)
+    self.assertEqual(p1_data["player_data"][1]["trade_ratios"]["rsrc3"], 4)
 
   def testUseTwice(self):
     self.assertEqual(self.c._get_ratios(0)["rsrc1"], 2)
@@ -939,9 +945,17 @@ class ConvoyTest(BaseInputHandlerTest):
     self.assertEqual(self.c._get_ratios(0)["rsrc1"], 2)
     self.assertEqual(self.c._get_ratios(0)["rsrc3"], 2)
     self.assertEqual(self.c.player_data[0].trade_ratios["rsrc3"], 3)  # Not permanently changed
+    # Must also make its way to the UI so that the interface gives this option
+    data = self.c.for_player(0)
+    self.assertEqual(data["player_data"][0]["trade_ratios"]["rsrc3"], 2)
+    # Also make sure this applies only to the player who played the convoy.
+    p1_data = self.c.for_player(1)
+    self.assertEqual(p1_data["player_data"][1]["trade_ratios"]["rsrc3"], 4)
 
     self.c.handle_end_turn()
     self.assertEqual(self.c._get_ratios(0)["rsrc3"], 3)
+    data = self.c.for_player(0)
+    self.assertEqual(data["player_data"][0]["trade_ratios"]["rsrc3"], 3)
 
   def testUseTwoOnTheSameTurn(self):
     self.assertEqual(self.c._get_ratios(0)["rsrc1"], 2)

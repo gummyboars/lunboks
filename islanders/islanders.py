@@ -952,6 +952,7 @@ class IslandersState:
     ret["player_data"] = [player.json_for_player(is_over) for player in self.player_data]
     for idx in range(len(self.player_data)):
       ret["player_data"][idx]["points"] = self.player_points(idx, visible=not is_over)
+      ret["player_data"][idx]["trade_ratios"] = self._get_ratios(idx)
     return ret
 
   def player_points(self, idx, visible):
