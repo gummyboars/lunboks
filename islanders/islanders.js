@@ -2387,8 +2387,10 @@ function updatePlayerData() {
         phaseMarker.innerText = "🎭";
       } else if (["treason", "defect"].includes(turnPhase)) {
         phaseMarker.innerText = "🗡️";
-      } else if (["spy", "peddler"].includes(turnPhase)) {
+      } else if (turnPhase == "peddler") {
         phaseMarker.innerText = "🎴";
+      } else if (turnPhase == "spy") {
+        phaseMarker.innerText = "🤏";
       } else if (turnPhase == "dice") {
         phaseMarker.innerText = "🎲";
       } else if (turnPhase == "main") {
@@ -2408,6 +2410,14 @@ function updatePlayerData() {
     if (["discard", "donate"].includes(turnPhase) && discardPlayers[i]) {
       phaseMarker.style.display = "block";
       phaseMarker.innerText = "🖐️";
+    }
+    if (turnPhase == "displace" && displacedKnight != null && displacedKnight.player == i) {
+      phaseMarker.style.display = "block";
+      phaseMarker.innerText = "👣";
+    }
+    if (turnPhase == "defect" && affectedPlayer == i) {
+      phaseMarker.style.display = "block";
+      phaseMarker.innerText = "🗡️";
     }
     if (turnPhase == "collect" && (collectTurn == i || (collectTurn == null && collectCounts[i]))) {
       phaseMarker.style.display = "block";
