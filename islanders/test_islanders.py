@@ -1472,6 +1472,17 @@ class TestTreasures(BaseInputHandlerTest):
     self.assertDictEqual(new_rsrcs - old_rsrcs, {"rsrc5": 1})
     self.assertDictEqual(old_rsrcs - new_rsrcs, {"rsrc1": 1, "rsrc2": 1})
 
+  def testDiscoverCollectUnaffectedByShortage(self):
+    self.c.shortage_resources = ["rsrc5"]
+    self.c.discoverable_treasures.append("collect1")
+    old_rsrcs = collections.Counter(self.c.player_data[0].cards)
+    self.c.handle_road([2, 6, 3, 7], 0, "ship", [("rsrc1", 1), ("rsrc2", 1)])
+    self.assertEqual(self.c.turn_phase, "collect1")
+    self.c.handle_collect(0, {"rsrc5": 1})
+    new_rsrcs = collections.Counter(self.c.player_data[0].cards)
+    self.assertDictEqual(new_rsrcs - old_rsrcs, {"rsrc5": 1})
+    self.assertDictEqual(old_rsrcs - new_rsrcs, {"rsrc1": 1, "rsrc2": 1})
+
   def testLimitedCollect(self):
     self.c.discoverable_treasures.append("collectpi")
     old_rsrcs = collections.Counter(self.c.player_data[0].cards)

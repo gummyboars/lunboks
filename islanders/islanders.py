@@ -1413,7 +1413,7 @@ class IslandersState:
     if self.turn_phase == "collectpi":
       if sum(selection.get(rsrc, 0) for rsrc in ["rsrc1", "rsrc3", "rsrc4"]) != 1:
         raise InvalidMove("You may only select {rsrc1}, {rsrc3}, or {rsrc4}")
-    if selection.keys() & set(self.shortage_resources):
+    if self.turn_phase == "collect" and selection.keys() & set(self.shortage_resources):
       raise InvalidMove(
         "There is a shortage of {%s}; you cannot collect any."
         % ("}, {".join(self.shortage_resources))
