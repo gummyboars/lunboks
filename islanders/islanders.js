@@ -275,6 +275,7 @@ function confirmSelection(event) {
     selection: resourceSelection,
   };
   ws.send(JSON.stringify(msg));
+  deselectDevCard();
   hideSelectorWindow();
 }
 function clearResourceSelection() {
@@ -318,6 +319,7 @@ function deselectDevCard() {
     moveNumberFromLocation = null;
     devCardType = null;
     draw();
+    maybeShowStatusPopup();
   } else if (devCardType == "defector") {
     devCardType = null;
     maybeShowRobWindow();
@@ -857,7 +859,7 @@ function maybeShowCollectWindow(oldPhase) {
   }
 }
 function maybeShowDiscardWindow() {
-  if (turnPhase == "discard" && discardPlayers[myIdx]) {
+  if (["donate", "discard"].includes(turnPhase) && discardPlayers[myIdx]) {
     showHandSelect(discardPlayers[myIdx]);
   } else if (["spy", "peddler"].includes(turnPhase) && turn == myIdx) {
     showHandSteal();
@@ -867,7 +869,7 @@ function maybeShowDiscardWindow() {
   }
 }
 function showHandSelect(count) {
-  let topText = formatStringWithParam("Choose {} cards to discard.", count);
+  let topText = `Choose ${count} cards to ${turnPhase}.`;
   document.getElementById("handselecttitle").innerText = topText;
   document.getElementById("handpopup").style.display = "flex";
   updateHandSelection();
@@ -905,6 +907,9 @@ function updateHandSelection() {
     }
   }
   document.getElementById("handok").innerText = "Discard";
+  if (turnPhase == "donate") {
+    document.getElementById("handok").innerText = "Donate";
+  }
   if (total == discardPlayers[myIdx]) {
     enableButton(document.getElementById("handok"));
   } else {
@@ -1222,6 +1227,16 @@ function maybeShowStatusPopup() {
     statusOk.style.display = "inline-block";
     return;
   }
+  if (turn == myIdx && devCardType == "inventor") {
+    if (moveNumberFromLocation == null) {
+      statusPopup.style.display = "flex";
+      statusTitle.innerText = "Choose two numbers to swap.";
+      return;
+    }
+    statusPopup.style.display = "flex";
+    statusTitle.innerText = "Choose a number to swap with.";
+    return;
+  }
   if (turn == myIdx && devCardType == "smith") {
     statusPopup.style.display = "flex";
     if (promoteKnightLocation != null) {
@@ -1276,7 +1291,7 @@ function maybeShowStatusPopup() {
     statusPopup.style.display = "none";
     return;
   }
-  if (turn != myIdx || !["knight", "fastknight", "treason", "intrigue", "move_knights", "discard", "adopt"].includes(turnPhase)) {
+  if (turn != myIdx || !["knight", "fastknight", "treason", "intrigue", "move_knights", "discard", "donate", "adopt"].includes(turnPhase)) {
     statusPopup.style.display = "none";
     return;
   }
@@ -1284,6 +1299,15 @@ function maybeShowStatusPopup() {
     if (!discardPlayers[myIdx]) {
       statusPopup.style.display = "flex";
       statusTitle.innerText = "Waiting for players to discard";
+      return;
+    }
+    statusPopup.style.display = "none";
+    return;
+  }
+  if (turnPhase == "donate") {
+    if (turn == myIdx) {
+      statusPopup.style.display = "flex";
+      statusTitle.innerText = "Waiting for players to donate";
       return;
     }
     statusPopup.style.display = "none";
@@ -1388,6 +1412,9 @@ function changeDice(event, color) {
 }
 function rollDice() {
   if (turn != myIdx) {
+    return;
+  }
+  if (devCardType == "alchemist") {  // prevents misclicks
     return;
   }
   let msg = {
@@ -1618,6 +1645,7 @@ function playDevCard(e, cardType) {
     return;
   } else if (tileCards[cardType] != null) {
     draw();
+    maybeShowStatusPopup();
     return;
   } else if (devCardType == "defector") {
     maybeShowRobWindow();
@@ -2349,16 +2377,18 @@ function updatePlayerData() {
       if (gamePhase == "victory") {
         turnMarker.innerText = "🏆";
         phaseMarker.innerText = "🏆";
-      } else if (["robber", "rob", "expel", "knight", "fastknight"].includes(turnPhase)) {
+      } else if (["robber", "rob", "expel", "knight", "fastknight", "adopt"].includes(turnPhase)) {
         phaseMarker.innerText = "💂";
       } else if (turnPhase == "deplete") {
         phaseMarker.innerText = "🔃";
-      } else if (turnPhase == "move_knights") {
+      } else if (["displace", "move_knights"].includes(turnPhase)) {
         phaseMarker.innerText = "👣";
       } else if (turnPhase == "intrigue") {
         phaseMarker.innerText = "🎭";
-      } else if (turnPhase == "treason") {
+      } else if (["treason", "defect"].includes(turnPhase)) {
         phaseMarker.innerText = "🗡️";
+      } else if (["spy", "peddler"].includes(turnPhase)) {
+        phaseMarker.innerText = "🎴";
       } else if (turnPhase == "dice") {
         phaseMarker.innerText = "🎲";
       } else if (turnPhase == "main") {
@@ -2375,7 +2405,7 @@ function updatePlayerData() {
       turnMarker.style.display = "none";
       phaseMarker.style.display = "none";
     }
-    if (turnPhase == "discard" && discardPlayers[i]) {
+    if (["discard", "donate"].includes(turnPhase) && discardPlayers[i]) {
       phaseMarker.style.display = "block";
       phaseMarker.innerText = "🖐️";
     }

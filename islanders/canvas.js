@@ -144,6 +144,9 @@ function draw() {
     if (devCardType == "smith" && locationsEqual(knight.location, hoverCorner) && !locationsEqual(knight.location, promoteKnightLocation)) {
       continue;  // Draw nothing to avoid confusion between strength 2 and strength 3
     }
+    if (turnPhase == "defect" && affectedPlayer == myIdx && locationsEqual(knight.location, hoverCorner)) {
+      continue;  // Draw nothing when the palyer is about to lose this knight
+    }
     let alpha = locationsEqual(moveKnightFromLocation, knight.location) ? 0.5 : 1;
     let strength = knight.strength;
     if (locationsEqual(promoteKnightLocation, knight.location)) {
@@ -751,11 +754,40 @@ function drawHoverCorner(ctx) {
       drawKnight(hoverCorner, playerData[myIdx].color, 0.5, 0, knight.strength+1, knight.active, ctx);
       return;
     }
+    if (turnPhase == "defect" && affectedPlayer == myIdx) {  // If losing a knight, draw it as displaced
+      if (knight == null || knight.player != myIdx) {
+        return;
+      }
+      drawKnight(hoverCorner, "gray", 0.3, 0, knight.strength, knight.active, ctx);
+      drawKnight(altCorner, playerData[knight.player].color, 0.7, 0, knight.strength, knight.active, ctx);
+      return;
+    }
     if (devCardType == "deception") {  // If using deception, draw opponent's knight as displaced
       if (knight == null || knight.player == myIdx) {
         return;
       }
+      drawKnight(hoverCorner, "gray", 0.3, 0, knight.strength, knight.active, ctx);
       drawKnight(altCorner, playerData[knight.player].color, 0.7, 0, knight.strength, knight.active, ctx);
+      return;
+    }
+    if (devCardType == "medicine") {  // If using medicine, just always draw a city
+      if (knight != null) {
+        return;
+      }
+      if (piece == null || piece.player != myIdx || piece.piece_type != "settlement") {
+        return;
+      }
+      drawPiece(hoverCorner, 'rgba(127, 127, 127, 0.5)', "city", false, false, ctx);
+      return;
+    }
+    if (devCardType == "engineer") {  // If using an engineer, always draw city walls
+      if (knight != null) {
+        return;
+      }
+      if (piece == null || piece.player != myIdx || piece.piece_type != "city") {
+        return;
+      }
+      drawPiece(hoverCorner, 'rgba(127, 127, 127, 0.5)', "city", false, true, ctx);
       return;
     }
     if (knightOption && (moveKnightFromLocation != null || (displacedKnight != null && displacedKnight.player == myIdx))) {  // Moving a knight
@@ -796,21 +828,15 @@ function drawHoverCorner(ctx) {
       if (knight == null) {  // If there's no knight here, draw the piece
         drawPiece(hoverCorner, 'rgba(127, 127, 127, 0.5)', drawType, false, walls, ctx);
       } else if (knight.player == myIdx) {  // If it's our knight, hover suggests we will activate it.
-        if (turnPhase == "defect") {  // Unless we're about to remove it
-          drawKnight(hoverCorner, "gray", 0.5, 0, knight.strength, knight.active, ctx);
-        } else {
-          drawKnight(hoverCorner, "gray", 0.5, 0, knight.strength, true, ctx);
-        }
+        drawKnight(hoverCorner, "gray", 0.5, 0, knight.strength, true, ctx);
       }
       // Draw nothing for someone else's knight.
     }
     if (piece == null) {  // No piece here - draw the alternate build/promote knight hover.
       if (knight == null || knight.player == myIdx) {  // Draw nothing for opponents' knights.
-        if (turnPhase != "defect") {  // Don't draw a promotion if we're removing the knight
-          let alpha = altHover ? 0.7 : 0.3;
-          let strength = knight != null ? knight.strength + 1 : 1;
-          drawKnight(altCorner, "gray", alpha, 0, strength, knight != null ? knight.active : false, ctx);
-        }
+        let alpha = altHover ? 0.7 : 0.3;
+        let strength = knight != null ? knight.strength + 1 : 1;
+        drawKnight(altCorner, "gray", alpha, 0, strength, knight != null ? knight.active : false, ctx);
       }
     }
   }
@@ -956,6 +982,7 @@ function onClickTile(event, tileLoc) {
       moveNumberFromLocation = tileLoc;
       event.stopPropagation();
       draw();
+      maybeShowStatusPopup();
       return;
     }
     if (locationsEqual(moveNumberFromLocation, tileLoc)) {
@@ -1128,6 +1155,9 @@ function onClickAlternateCorner(event, cornerLoc) {
   }
   if (pieceMatrix[cornerLoc[0]] != null && pieceMatrix[cornerLoc[0]][cornerLoc[1]] != null) {
     return;  // No alternate click for settlements/cities
+  }
+  if (["displace", "defect", "adopt"].includes(turnPhase) || ["deception", "smith"].includes(devCardType)) {
+    return;  // No promotion when one of these is active
   }
   if (knightMatrix[cornerLoc[0]] != null && knightMatrix[cornerLoc[0]][cornerLoc[1]] != null) {
     if (knightMatrix[cornerLoc[0]][cornerLoc[1]].player == myIdx) {

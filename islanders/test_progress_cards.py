@@ -33,7 +33,7 @@ class AlchemistTest(BaseInputHandlerTest):
   def testPlayAndGetResources(self):
     old_rsrcs = collections.Counter(self.c.player_data[0].cards)
     selection = {"red": 3, "white": 2}
-    self.handle(0, {"type": "play_dev", "card_type": "alchemist", "selection": selection})
+    self.candle(0, {"type": "play_dev", "card_type": "alchemist", "selection": selection})
 
     self.assertEqual(self.c.turn_phase, "main")
     new_rsrcs = collections.Counter(self.c.player_data[0].cards)
@@ -44,7 +44,7 @@ class AlchemistTest(BaseInputHandlerTest):
   def testPlayAndMoveRobber(self):
     old_rsrcs = collections.Counter(self.c.player_data[0].cards)
     selection = {"red": 3, "white": 4}
-    self.handle(0, {"type": "play_dev", "card_type": "alchemist", "selection": selection})
+    self.candle(0, {"type": "play_dev", "card_type": "alchemist", "selection": selection})
 
     self.assertEqual(self.c.turn_phase, "discard")
     self.assertEqual(self.c.action_stack, ["rob", "robber", "discard"])
@@ -92,7 +92,7 @@ class EngineerTest(BaseInputHandlerTest):
 
   def testBuildCityWalls(self):
     old_rsrcs = collections.Counter(self.c.player_data[0].cards)
-    self.handle(0, {"type": "walls", "selection": ["engineer"], "location": [8, 4]})
+    self.candle(0, {"type": "walls", "selection": ["engineer"], "location": [8, 4]})
     self.assertTrue(self.c.pieces[(8, 4)].walls)
     new_rsrcs = collections.Counter(self.c.player_data[0].cards)
     self.assertDictEqual(new_rsrcs - old_rsrcs, {})
@@ -123,7 +123,7 @@ class MedicineTest(BaseInputHandlerTest):
 
   def testBuildCity(self):
     old_rsrcs = collections.Counter(self.c.player_data[0].cards)
-    self.handle(0, {"type": "city", "selection": ["medicine"], "location": [8, 4]})
+    self.candle(0, {"type": "city", "selection": ["medicine"], "location": [8, 4]})
     self.assertEqual(self.c.pieces[(8, 4)].piece_type, "city")
     new_rsrcs = collections.Counter(self.c.player_data[0].cards)
     self.assertDictEqual(new_rsrcs - old_rsrcs, {})
@@ -152,7 +152,7 @@ class InventorTest(BaseInputHandlerTest):
     self.data = {"type": "play_dev", "card_type": "inventor"}
 
   def testSwitchTwo(self):
-    self.handle(0, {"location": [7, 3], "selection": [7, 5], **self.data})
+    self.candle(0, {"location": [7, 3], "selection": [7, 5], **self.data})
     self.assertEqual(self.c.tiles[(7, 3)].number, 5)
     self.assertEqual(self.c.tiles[(7, 5)].number, 9)
     self.assertEqual(self.c.player_data[0].cards["inventor"], 0)
@@ -197,7 +197,7 @@ class GainTwoTestMixin:
   def testGainIsPerTileNotPerPiece(self):
     self.c.add_piece(Piece(5, 3, "settlement", 0))
     old_rsrcs = collections.Counter(self.c.player_data[0].cards)
-    self.handle(0, {"type": "play_dev", "card_type": self.CARD})
+    self.candle(0, {"type": "play_dev", "card_type": self.CARD})
 
     new_rsrcs = collections.Counter(self.c.player_data[0].cards)
     self.assertDictEqual(new_rsrcs - old_rsrcs, {self.RESOURCE: 2})
@@ -206,7 +206,7 @@ class GainTwoTestMixin:
   def testOnePieceCanGainFromMultipleTiles(self):
     self.c.tiles[(7, 5)].tile_type = self.RESOURCE
     old_rsrcs = collections.Counter(self.c.player_data[0].cards)
-    self.handle(0, {"type": "play_dev", "card_type": self.CARD})
+    self.candle(0, {"type": "play_dev", "card_type": self.CARD})
 
     new_rsrcs = collections.Counter(self.c.player_data[0].cards)
     self.assertDictEqual(new_rsrcs - old_rsrcs, {self.RESOURCE: 4})
@@ -216,7 +216,7 @@ class GainTwoTestMixin:
     self.c.player_data[0].cards[self.RESOURCE] = 0
     self.c.player_data[1].cards[self.RESOURCE] = 18
     old_rsrcs = collections.Counter(self.c.player_data[0].cards)
-    self.handle(0, {"type": "play_dev", "card_type": self.CARD})
+    self.candle(0, {"type": "play_dev", "card_type": self.CARD})
 
     new_rsrcs = collections.Counter(self.c.player_data[0].cards)
     self.assertDictEqual(new_rsrcs - old_rsrcs, {self.RESOURCE: 1})
@@ -257,11 +257,12 @@ class SmithTest(BaseInputHandlerTest):
 
   def testTwoKnights(self):
     self.add_knight((3, 3), 0)
+    # FIXME: disallow other clicking (i.e. promote) when smith is active (test this)
     data = {"type": "play_dev", "card_type": "smith"}
     with self.assertRaisesRegex(InvalidMove, "same knight twice"):
       self.handle(0, {"location": [6, 4], "selection": [6, 4], **data})
 
-    self.handle(0, {"location": [6, 4], "selection": [3, 3], **data})
+    self.candle(0, {"location": [6, 4], "selection": [3, 3], **data})
     self.assertEqual(self.c.knights[(6, 4)].strength, 2)
     self.assertEqual(self.c.knights[(3, 3)].strength, 2)
     self.assertEqual(self.c.player_data[0].cards["smith"], 1)
@@ -317,7 +318,7 @@ class BishopTest(BaseInputHandlerTest):
     self.c.turn_idx = 2
 
   def testPlayBishop(self):
-    self.handle(2, {"type": "play_dev", "card_type": "bishop"})
+    self.candle(2, {"type": "play_dev", "card_type": "bishop"})
     self.assertEqual(self.c.action_stack, ["roball", "robber"])
     p0_count = sum(self.c.player_data[0].cards.values())
     p1_count = sum(self.c.player_data[1].cards.values())
@@ -328,7 +329,7 @@ class BishopTest(BaseInputHandlerTest):
     self.assertEqual(self.c.turn_phase, "main")
 
   def testPlayBishopOnePlayer(self):
-    self.handle(2, {"type": "play_dev", "card_type": "bishop"})
+    self.candle(2, {"type": "play_dev", "card_type": "bishop"})
     p0_count = sum(self.c.player_data[0].cards.values())
     p1_count = sum(self.c.player_data[1].cards.values())
     self.handle(2, {"location": [7, 3], "type": "robber"})
@@ -450,7 +451,7 @@ class DefectorTest(BaseInputHandlerTest):
     self.c.knights[location] = Knight(location, player, location, strength=strength)
 
   def testPlayDefector(self):
-    self.handle(0, {"type": "play_dev", "card_type": "defector", "selection": 1})
+    self.candle(0, {"type": "play_dev", "card_type": "defector", "selection": 1})
     self.assertEqual(self.c.action_stack, ["adopt", "defect"])
     self.assertEqual(self.c.affected_player, 1)
     self.assertEqual(self.c.player_data[0].cards["defector"], 0)
@@ -477,7 +478,7 @@ class DefectTest(BaseInputHandlerTest):
     self.c.knights[location] = Knight(location, player, location, strength=strength)
 
   def testDefect(self):
-    self.handle(1, {"type": "defect", "location": [6, 6]})
+    self.candle(1, {"type": "defect", "location": [6, 6]})
     self.assertEqual(self.c.turn_phase, "adopt")
     self.assertNotIn((6, 6), self.c.knights)
     self.assertEqual(self.c.displaced_knight.player, 1)
@@ -541,8 +542,8 @@ class AdoptTest(BaseInputHandlerTest):
     self.c.knights[location] = Knight(location, player, location, strength=strength)
 
   def testAdopt(self):
-    self.handle(1, {"type": "defect", "location": [6, 6]})
-    self.handle(0, {"type": "adopt", "location": [6, 4]})
+    self.candle(1, {"type": "defect", "location": [6, 6]})
+    self.candle(0, {"type": "adopt", "location": [6, 4]})
     self.assertEqual(self.c.turn_phase, "main")
     self.assertIn((6, 4), self.c.knights)
     self.assertEqual(self.c.knights[(6, 4)].player, 0)
@@ -647,7 +648,8 @@ class DeceptionTest(BaseInputHandlerTest):
     self.c.knights[location] = Knight(location, player, location, strength=strength)
 
   def testForceDisplace(self):
-    self.handle(0, {"type": "play_dev", "card_type": "deception", "location": [6, 4]})
+    # FIXME: should the hover UI be better for this?
+    self.candle(0, {"type": "play_dev", "card_type": "deception", "location": [6, 4]})
     self.assertEqual(self.c.turn_phase, "displace")
     self.assertEqual(self.c.displaced_knight.player, 1)
     self.assertEqual(self.c.player_data[0].cards["deception"], 0)
@@ -655,7 +657,7 @@ class DeceptionTest(BaseInputHandlerTest):
 
   def testNoPlaceForDisplacedKnight(self):
     self.add_knight((6, 6), 1)
-    self.handle(0, {"type": "play_dev", "card_type": "deception", "location": [6, 4]})
+    self.candle(0, {"type": "play_dev", "card_type": "deception", "location": [6, 4]})
     self.assertEqual(self.c.turn_phase, "main")
     self.assertIsNone(self.c.displaced_knight)
     self.assertNotIn((6, 4), self.c.knights)
@@ -717,7 +719,7 @@ class SaboteurTest(BaseInputHandlerTest):
   def testPlayersWithFewerPointsUnaffected(self):
     self.c.pieces[(2, 4)].piece_type = "city"
     self.c.pieces[(8, 4)].piece_type = "city"
-    self.handle(2, {"type": "play_dev", "card_type": "saboteur"})
+    self.candle(2, {"type": "play_dev", "card_type": "saboteur"})
     self.assertEqual(self.c.turn_phase, "discard")
     self.assertNotIn(1, self.c.discard_players)
     self.assertIn(0, self.c.discard_players)
@@ -740,11 +742,11 @@ class SpyTest(BaseInputHandlerTest):
     self.c.turn_idx = 2
 
   def testStealACard(self):
-    self.handle(2, {"type": "play_dev", "card_type": "spy", "selection": 1})
+    self.candle(2, {"type": "play_dev", "card_type": "spy", "selection": 1})
     self.assertEqual(self.c.turn_phase, "spy")
     self.assertEqual(self.c.affected_player, 1)
 
-    self.handle(2, {"type": "steal", "selection": {"mining": 1}})
+    self.candle(2, {"type": "steal", "selection": {"mining": 1}})
     self.assertEqual(self.c.player_data[1].cards["mining"], 1)
     self.assertEqual(self.c.player_data[2].cards["mining"], 1)
     self.assertEqual(self.c.player_data[2].cards["spy"], 0)
@@ -801,7 +803,7 @@ class WarlordTest(BaseInputHandlerTest):
   def testActivateAll(self):
     self.assertFalse(self.c.knights[(6, 4)].active)
     self.assertFalse(self.c.knights[(5, 3)].active)
-    self.handle(0, {"type": "play_dev", "card_type": "warlord"})
+    self.candle(0, {"type": "play_dev", "card_type": "warlord"})
     self.assertTrue(self.c.knights[(6, 4)].active)
     self.assertTrue(self.c.knights[(5, 3)].active)
     self.assertIn((6, 4), self.c.activated_this_turn)
@@ -838,13 +840,14 @@ class WeddingTest(BaseInputHandlerTest):
     self.c.turn_idx = 2
 
   def testGetTwoFromEachOpponent(self):
-    self.handle(2, {"type": "play_dev", "card_type": "wedding"})
+    # FIXME: UI for other players looks wrong? like turn phase, no discard window, everything. (test this)
+    self.candle(2, {"type": "play_dev", "card_type": "wedding"})
     self.assertEqual(self.c.turn_phase, "donate")
     self.assertDictEqual(self.c.discard_players, {0: 2, 1: 2})
     with self.assertRaisesRegex(InvalidMove, "cannot play.*right now"):
       self.handle(2, {"type": "play_dev", "card_type": "roadbuilding"})
 
-    self.handle(0, {"type": "discard", "selection": {"rsrc1": 2}})
+    self.candle(0, {"type": "discard", "selection": {"rsrc1": 2}})
     self.assertDictEqual(self.c.discard_players, {1: 2})
 
     with self.assertRaisesRegex(InvalidMove, "Invalid resource selection"):
@@ -856,7 +859,7 @@ class WeddingTest(BaseInputHandlerTest):
     with self.assertRaisesRegex(InvalidMove, "need an extra 1"):
       self.handle(1, {"type": "discard", "selection": {"rsrc4": 2}})
 
-    self.handle(1, {"type": "discard", "selection": {"rsrc2": 2}})
+    self.candle(1, {"type": "discard", "selection": {"rsrc2": 2}})
     self.assertEqual(self.c.turn_phase, "main")
     self.assertDictEqual(self.c.discard_players, {})
     self.assertEqual(self.c.player_data[2].cards["rsrc1"], 2)
@@ -910,7 +913,7 @@ class PeddlerTest(BaseInputHandlerTest):
     self.c.turn_idx = 2
 
   def testStealACard(self):
-    self.handle(2, {"type": "play_dev", "card_type": "peddler", "selection": 1})
+    self.candle(2, {"type": "play_dev", "card_type": "peddler", "selection": 1})
     self.assertEqual(self.c.turn_phase, "peddler")
     self.assertEqual(self.c.affected_player, 1)
 
@@ -970,7 +973,7 @@ class MerchantTest(BaseInputHandlerTest):
   def testTradeRatios(self):
     self.assertEqual(self.c._get_ratios(0)["rsrc1"], 2)
     self.assertEqual(self.c._get_ratios(0)["rsrc3"], 3)
-    self.handle(0, {"type": "play_dev", "card_type": "merchant", "location": [7, 3]})
+    self.candle(0, {"type": "play_dev", "card_type": "merchant", "location": [7, 3]})
     self.assertEqual(self.c._get_ratios(0)["rsrc1"], 2)
     self.assertEqual(self.c._get_ratios(0)["rsrc3"], 2)
     self.assertEqual(self.c.player_data[0].trade_ratios["rsrc3"], 3)
@@ -1029,7 +1032,7 @@ class ConvoyTest(BaseInputHandlerTest):
   def testTradeRatios(self):
     self.assertEqual(self.c._get_ratios(0)["rsrc1"], 2)
     self.assertEqual(self.c._get_ratios(0)["rsrc3"], 3)
-    self.handle(0, {"type": "play_dev", "card_type": "convoy", "selection": {"rsrc3": 1}})
+    self.candle(0, {"type": "play_dev", "card_type": "convoy", "selection": {"rsrc3": 1}})
     self.assertEqual(self.c._get_ratios(0)["rsrc1"], 2)
     self.assertEqual(self.c._get_ratios(0)["rsrc3"], 2)
     self.assertEqual(self.c.player_data[0].trade_ratios["rsrc3"], 3)  # Not permanently changed
@@ -1082,7 +1085,7 @@ class GuildTest(BaseInputHandlerTest):
   def testUseGuild(self):
     self.c.player_data[0].cards["rsrc3"] = 3
     self.c.player_data[1].cards["rsrc3"] = 4
-    self.handle(2, {"type": "play_dev", "card_type": "guild", "selection": {"rsrc3": 1}})
+    self.candle(2, {"type": "play_dev", "card_type": "guild", "selection": {"rsrc3": 1}})
     self.assertEqual(self.c.player_data[2].cards["rsrc3"], 4)
     self.assertEqual(self.c.player_data[0].cards["rsrc3"], 1)
     self.assertEqual(self.c.player_data[1].cards["rsrc3"], 2)
