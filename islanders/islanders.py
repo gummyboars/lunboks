@@ -1280,11 +1280,12 @@ class IslandersState:
     """Selection should be a dict of valid keys -> non-negative values. Return positive entries."""
     if not isinstance(selection, dict):
       raise InvalidMove(f"Invalid {select_type} selection.")
-    if selection.keys() - valid_keys:
-      raise InvalidMove(f"Invalid {select_type} selection - unknown or untradable resource.")
     if not all(isinstance(value, int) and value >= 0 for value in selection.values()):
       raise InvalidMove(f"Invalid {select_type} selection - must be positive integers.")
-    return {key: val for key, val in selection.items() if val}
+    selected = +collections.Counter(selection)
+    if invalid := selected.keys() - valid_keys:
+      raise InvalidMove(f"Invalid {select_type} selection: {', '.join(invalid)}")
+    return selected
 
   def _validate_rsrc_selection(self, selection):
     return self._validate_selection(selection, set(RESOURCES), "resource")
@@ -1442,6 +1443,11 @@ class IslandersState:
   def remaining_resources(self, rsrc):
     return 19 - sum(p.cards[rsrc] for p in self.player_data)
 
+  def check_overdrawn_resources(self, selection):
+    overdrawn = [rsrc for rsrc in selection if selection[rsrc] > self.remaining_resources(rsrc)]
+    if overdrawn:
+      raise InvalidMove("There is not enough {%s} in the bank." % "}, {".join(overdrawn))
+
   def calculate_resource_distribution(self, dice_roll):
     # Figure out which players are due how many resources.
     to_receive = collections.defaultdict(lambda: collections.defaultdict(int))
@@ -1557,10 +1563,7 @@ class IslandersState:
         "There is a shortage of {%s}; you cannot collect any."
         % ("}, {".join(self.shortage_resources))
       )
-    # TODO: dedup with code from year of plenty
-    overdrawn = [rsrc for rsrc in selection if selection[rsrc] > self.remaining_resources(rsrc)]
-    if overdrawn:
-      raise InvalidMove("There is not enough {%s} in the bank." % "}, {".join(overdrawn))
+    self.check_overdrawn_resources(selection)
     for rsrc, value in selection.items():
       self.player_data[player_idx].cards[rsrc] += value
     event_text = ", ".join(["%s {%s}" % (count, rsrc) for rsrc, count in selection.items()])
@@ -1853,6 +1856,25 @@ class IslandersState:
         errors.append("%s {%s}" % (count - self.player_data[player].cards[resource], resource))
     if errors:
       raise InvalidMove("You would need an extra %s to %s." % (", ".join(errors), action_string))
+
+  def _get_required_cards(self, name, base_cost, conversion, selection):
+    if selection is None:
+      return sorted(base_cost.items())
+    if not isinstance(selection, (list, tuple)):
+      raise InvalidInput(f"Selection must be a list of cards to use to help build the {name}.")
+    if not all(isinstance(card, str) for card in selection):
+      raise InvalidInput(f"Selection must be a list of cards to use to help build the {name}.")
+    if len(selection) != 1:
+      raise InvalidInput(f"Invalid selection {selection}.")
+    selected = selection[0]
+    if selected not in conversion:
+      raise InvalidInput(f"Invalid selection {selected}.")
+
+    orig_cost = collections.Counter(base_cost)
+    reduction = collections.Counter(conversion[selected])
+    final_cost = orig_cost - reduction
+    final_cost[selected] = 1
+    return sorted(final_cost.items())
 
   # TODO: use a dict instead of an iterable of tuples for resources?
   def _remove_resources(self, resources, player, build_type):
@@ -2620,21 +2642,12 @@ class IslandersState:
       raise InvalidMove("You have no cities remaining.")
 
     # Check if the player is using a progress card or helper to help build the city.
-    if selection is None:
-      selection = []
-    if not isinstance(selection, (list, tuple)):
-      raise InvalidInput("Selection must be a list of cards to use to help build the city.")
-    if not all(isinstance(card, str) for card in selection):
-      raise InvalidInput("Selection must be a list of cards to use to help build the city.")
-    selected = dict(collections.Counter(selection))
-    if selected and selected != {"medicine": 1}:
-      raise InvalidInput(f"Invalid selection {selection}.")
+    base_cost = {"rsrc3": 2, "rsrc5": 3}
+    medicine = {"medicine": {"rsrc3": 1, "rsrc5": 1}}
+    cost = self._get_required_cards("city", base_cost, medicine, selection)
 
     # Check resources and deduct from player.
-    resources = [("rsrc3", 2), ("rsrc5", 3)]
-    if selected == {"medicine": 1}:
-      resources = [("rsrc3", 1), ("rsrc5", 2), ("medicine", 1)]
-    self._remove_resources(resources, player, "build a city")
+    self._remove_resources(cost, player, "build a city")
 
     self.pieces[loc].piece_type = "city"
     self.event_log.append(Event("city", "{player%s} upgraded a settlement to a city" % player))
@@ -2657,21 +2670,12 @@ class IslandersState:
     if wall_count >= 3:
       raise InvalidMove("You cannot have more than three city walls.")
 
-    # Check if the player is using a progress card or helper to help build the city walls. FIXME: dedup
-    if selection is None:
-      selection = []
-    if not isinstance(selection, (list, tuple)):
-      raise InvalidInput("Selection must be a list of cards to use to help build the city walls.")
-    if not all(isinstance(card, str) for card in selection):
-      raise InvalidInput("Selection must be a list of cards to use to help build the city walls.")
-    selected = dict(collections.Counter(selection))
-    if selected and selected != {"engineer": 1}:
-      raise InvalidInput(f"Invalid selection {selection}.")
+    # Check if the player is using a progress card or helper to help build the city walls.
+    base_cost = {"rsrc4": 2}
+    engineer = {"engineer": {"rsrc4": 2}}
+    cost = self._get_required_cards("city walls", base_cost, engineer, selection)
 
-    resources = [("rsrc4", 2)]
-    if selected == {"engineer": 1}:
-      resources = [("engineer", 1)]
-    self._remove_resources(resources, player, "build a city wall")
+    self._remove_resources(cost, player, "build a city wall")
     self.pieces[loc].walls = True
     self.event_log.append(Event("walls", "{player%s} built a city wall" % player))
 
@@ -2788,14 +2792,6 @@ class IslandersState:
       raise InvalidMove("You cannot steal from anyone right now.")
 
     selection = self._validate_selection(card_selection, set(valid_cards), "card")
-    # FIXME: dedup
-    # if not card_selection or not isinstance(card_selection, dict):
-    #   raise InvalidMove("Invalid card selection.")
-    # if not all(isinstance(value, int) and value >= 0 for value in card_selection.values()):
-    #   raise InvalidMove("Invalid selection - must be positive integers.")
-    # selection = {key: val for key, val in card_selection.items() if val}
-    # if set(selection.keys()) - set(valid_cards):
-    #   raise InvalidMove("Invalid selection - unknown or invalid card.")
 
     available = sum(self.player_data[self.affected_player].cards[name] for name in valid_cards)
     if sum(selection.values()) != min(count, available):
@@ -2870,13 +2866,17 @@ class IslandersState:
       raise InvalidMove("You have no conscript knights remaining.")
     if location in self.pieces or location in self.knights:
       raise InvalidMove("You must place your knight on an empty corner.")
-    nearby_roads = [self.roads[edge] for edge in location.get_edges() if edge in self.roads]
-    if not any(road.player == player_idx and road.road_type == "road" for road in nearby_roads):
-      raise InvalidMove("You must place your knight next to one of your roads.")
+    self._check_nearby_road(location, player_idx, ["road"], "place your")
     resources = [("rsrc1", 1), ("rsrc5", 1)]
     self._remove_resources(resources, player_idx, "buy a knight")
     self.event_log.append(Event("knight", "{player%s} built a knight" % player_idx))
     self.add_knight(Knight(location, player_idx, location, strength=1))
+
+  def _check_nearby_road(self, location, player_idx, road_types, verb):
+    nearby_roads = [self.roads[edge] for edge in location.get_edges() if edge in self.roads]
+    if not any(road.player == player_idx and road.road_type in road_types for road in nearby_roads):
+      type_names = " or ".join([road_type + "s" for road_type in road_types])
+      raise InvalidMove(f"You must {verb} knight next to one of your {type_names}.")
 
   def add_knight(self, knight):
     self.knights[knight.location] = knight
@@ -2892,14 +2892,7 @@ class IslandersState:
   def handle_promote_knight(self, loc, player_idx):
     self._check_main_phase("promote", "promote a knight")
     location = parse_location(loc, CornerLocation)
-    if location not in self.knights:
-      raise InvalidMove("You do not have a knight there.")
-    if self.knights[location].player != player_idx:
-      raise InvalidMove("You can only promote your own knights.")
-    if self.knights[location].strength >= 3:
-      raise InvalidMove("You cannot promote knights beyond elite.")
-    if location in self.promoted_this_turn:
-      raise InvalidMove("You cannot promote a knight more than once per turn.")
+    self._check_knight_promotable(location, player_idx)
     might = self.knights[location].strength + 1
     used = len([k for k in self.knights.values() if k.player == player_idx and k.strength == might])
     if used >= 2:
@@ -2909,6 +2902,16 @@ class IslandersState:
     self.knights[location].strength += 1
     self.promoted_this_turn.append(location)
     self.event_log.append(Event("knight", "{player%s} promoted a knight" % player_idx))
+
+  def _check_knight_promotable(self, location, player_idx):
+    if location not in self.knights:
+      raise InvalidMove("You do not have a knight there.")
+    if self.knights[location].player != player_idx:
+      raise InvalidMove("You can only promote your own knights.")
+    if self.knights[location].strength >= 3:
+      raise InvalidMove("You cannot promote knights beyond elite.")
+    if location in self.promoted_this_turn:
+      raise InvalidMove("You cannot promote a knight more than once per turn.")
 
   def handle_activate_knight(self, loc, player_idx):
     self._check_main_phase("activate", "activate a knight")
@@ -3072,12 +3075,7 @@ class IslandersState:
     location = parse_location(loc, CornerLocation)
     if location in self.knights or location in self.pieces:
       raise InvalidMove("You must choose an empty corner for your knight.")
-    nearby_road = [  # FIXME: dedup
-        self.roads[edge].player == player_idx and self.roads[edge].road_type == "road"
-        for edge in location.get_edges() if edge in self.roads 
-    ]
-    if not any(nearby_road):
-      raise InvalidMove("You must place your knight next to one of your roads.")
+    self._check_nearby_road(location, player_idx, ["road"], "place your")
 
     might = self.displaced_knight.strength
     used = collections.Counter(k.strength for k in self.knights.values() if k.player == player_idx)
@@ -3399,9 +3397,7 @@ class IslandersState:
       raise InvalidMove("There are no resources left in the bank.")
     if sum(selection.values()) != 2:
       raise InvalidMove("You must request exactly two resources.")
-    overdrawn = [rsrc for rsrc in selection if selection[rsrc] > remaining[rsrc]]
-    if overdrawn:
-      raise InvalidMove("There is not enough {%s} in the bank." % "}, {".join(overdrawn))
+    self.check_overdrawn_resources(selection)
 
     received_text = ", ".join(["%s {%s}" % (count, rsrc) for rsrc, count in selection.items()])
     self.event_log.append(Event("yearofplenty", "{player%s} took " % player + received_text))
@@ -3474,15 +3470,8 @@ class IslandersState:
     locations = [loc for loc in [location_a, location_b] if loc]
     if len(locations) != len(set(locations)):
       raise InvalidMove("You cannot choose the same knight twice.")
-    for location in locations:  # FIXME: dedup with handle_promote
-      if location not in self.knights:
-        raise InvalidMove("You do not have a knight there.")
-      if self.knights[location].player != player_idx:
-        raise InvalidMove("You can only promote your own knights.")
-      if self.knights[location].strength >= 3:
-        raise InvalidMove("You cannot promote knights beyond elite.")
-      if location in self.promoted_this_turn:
-        raise InvalidMove("You cannot promote a knight more than once per turn.")
+    for location in locations:
+      self._check_knight_promotable(location, player_idx)
 
     used = collections.Counter(k.strength for k in self.knights.values() if k.player == player_idx)
     # We ignore the strength of the chosen knights, since they're going to be promoted to a
@@ -3562,12 +3551,7 @@ class IslandersState:
       raise InvalidMove("You must choose a knight to displace.")
     if self.knights[location].player == player_idx:
       raise InvalidMove("You cannot choose your own knight to displace.")
-    nearby_road = [
-        self.roads[edge].player == player_idx
-        for edge in location.get_edges() if edge in self.roads 
-    ]
-    if not any(nearby_road):
-      raise InvalidMove("You must displace a knight next to one of your roads or ships.")
+    self._check_nearby_road(location, player_idx, ["road", "ship"], "displace a")
 
     self.displaced_knight = self.knights.pop(location)
     self.action_stack.append("displace")
@@ -3786,9 +3770,7 @@ class IslandersState:
     if not self.options.gold and offer[self.WANT].get("gold", 0):
       raise InvalidMove("There is no gold in this scenario.")
     # Make sure the player cannot receive more resources than the bank has.
-    for rsrc, count in requested_rsrcs.items():
-      if self.remaining_resources(rsrc) < count:
-        raise InvalidMove(f"There is only {self.remaining_resources(rsrc)} {{{rsrc}}} remaining.")
+    self.check_overdrawn_resources(requested_rsrcs)
     # You may only trade gold for resources up to twice per turn.
     if offer[self.GIVE].get("gold", 0) + gold_traded > 4:
       raise InvalidMove("You may only trade gold for resources up to twice per turn.")

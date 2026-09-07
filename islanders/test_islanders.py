@@ -851,6 +851,8 @@ class TestDevCards(BaseInputHandlerTest):
     with self.assertRaisesRegex(InvalidMove, "exactly one resource"):
       self.c.handle_play_dev("monopoly", {"rsrc2": 1, "rsrc1": 1}, None, 0)
     with self.assertRaisesRegex(InvalidMove, "Invalid resource selection"):
+      self.c.handle_play_dev("monopoly", {"gold"}, None, 0)
+    with self.assertRaisesRegex(InvalidMove, "exactly one resource"):
       self.c.handle_play_dev("monopoly", {}, None, 0)
     with self.assertRaisesRegex(InvalidMove, "exactly one resource"):
       self.c.handle_play_dev("monopoly", {"rsrc2": 2}, None, 0)
@@ -3712,7 +3714,7 @@ class TestTradeBank(BaseInputHandlerTest):
 
   def testCannotOverdrawBank(self):
     self.c.player_data[1].cards["rsrc5"] = 18
-    with self.assertRaisesRegex(InvalidMove, "remaining"):
+    with self.assertRaisesRegex(InvalidMove, "not enough {rsrc5} in the bank"):
       self.c.handle_trade_bank({"want": {"rsrc5": 2}, "give": {"rsrc1": 4}}, 0)
     self.c.handle_trade_bank({"want": {"rsrc5": 1}, "give": {"rsrc1": 2}}, 0)
 

@@ -45,13 +45,13 @@ class AlchemistTest(BaseInputHandlerTest):
 
   def testInvalidInputs(self):
     data = {"type": "play_dev", "card_type": "alchemist"}
-    with self.assertRaisesRegex(InvalidInput, "[Ss]election must be"):
+    with self.assertRaisesRegex(InvalidMove, "Invalid dice selection"):
       self.handle(0, {"selection": 7, **data})
-    with self.assertRaisesRegex(InvalidInput, "[Ss]election must be"):
+    with self.assertRaisesRegex(InvalidMove, "Invalid dice selection"):
       self.handle(0, {"selection": [3, 4], **data})
-    with self.assertRaisesRegex(InvalidInput, "[Ss]election must be"):
+    with self.assertRaisesRegex(InvalidMove, "Invalid dice selection"):
       self.handle(0, {"selection": {"red": 3, "white": 3, "blue": 3}, **data})
-    with self.assertRaisesRegex(InvalidInput, "[Ss]election must be"):
+    with self.assertRaisesRegex(InvalidMove, "Invalid dice selection"):
       self.handle(0, {"selection": {"red": 3.5, "white": 3.5}, **data})
     with self.assertRaisesRegex(InvalidInput, "between 1 and 6"):
       self.handle(0, {"selection": {"red": 0, "white": 0}, **data})
@@ -686,8 +686,10 @@ class SpyTest(BaseInputHandlerTest):
 
     with self.assertRaisesRegex(InvalidMove, "that player does not have"):
       self.handle(2, {"type": "steal", "selection": {"warlord": 1}})
-    with self.assertRaisesRegex(InvalidMove, "Invalid selection"):
+    with self.assertRaisesRegex(InvalidMove, "Invalid card selection"):
       self.handle(2, {"type": "steal", "selection": {"rsrc3": 1}})
+    with self.assertRaisesRegex(InvalidMove, "Invalid card selection"):
+      self.handle(2, {"type": "steal", "selection": {"printer": 1}})
     with self.assertRaisesRegex(InvalidMove, "select exactly 1"):
       self.handle(2, {"type": "steal", "selection": {"mining": 2}})
 
@@ -849,7 +851,7 @@ class PeddlerTest(BaseInputHandlerTest):
 
     with self.assertRaisesRegex(InvalidMove, "that player does not have"):
       self.handle(2, {"type": "steal", "selection": {"rsrc4": 2}})
-    with self.assertRaisesRegex(InvalidMove, "Invalid selection"):
+    with self.assertRaisesRegex(InvalidMove, "Invalid card selection"):
       self.handle(2, {"type": "steal", "selection": {"mining": 2}})
     with self.assertRaisesRegex(InvalidMove, "select exactly 2"):
       self.handle(2, {"type": "steal", "selection": {"rsrc4": 1}})
@@ -957,7 +959,7 @@ class ConvoyTest(BaseInputHandlerTest):
     with self.assertRaisesRegex(InvalidMove, "exactly one resource"):
       data = {"type": "play_dev", "card_type": "convoy", "selection": {"rsrc3": 1, "rsrc2": 1}}
       self.handle(0, data)
-    with self.assertRaisesRegex(InvalidMove, "Invalid resource selection"):
+    with self.assertRaisesRegex(InvalidMove, "exactly one resource"):
       self.handle(0, {"type": "play_dev", "card_type": "convoy", "selection": {}})
     with self.assertRaisesRegex(InvalidMove, "Invalid resource selection"):
       self.handle(0, {"type": "play_dev", "card_type": "convoy"})
