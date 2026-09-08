@@ -177,10 +177,14 @@ function draw() {
   }
   drawRobber(context, pirateLoc, robberAlpha, false);
   context.restore();
-  if (devCardType != "merchant") {
-    drawMerchant(context, merchantLoc, merchantPlayer, 1);
-  } else if (hoverTile != null) {
-    drawMerchant(context, hoverTile.location, myIdx, 0.5);
+  let merchantOpacity = devCardType == "merchant" ? 0.3 : 1;
+  if (devCardType == "merchant" && locationsEqual(merchantLoc, hoverTile)) {
+    // Don't draw the merchant when it's going to stay in the same place with a different owner.
+  } else {
+    drawMerchant(context, merchantLoc, merchantPlayer, merchantOpacity);
+  }
+  if (devCardType == "merchant" && hoverTile != null) {
+    drawMerchant(context, hoverTile.location, myIdx, 0.6);
   }
   drawDebug(context);
   context.restore();
@@ -1156,7 +1160,24 @@ function onClickAlternateCorner(event, cornerLoc) {
   if (pieceMatrix[cornerLoc[0]] != null && pieceMatrix[cornerLoc[0]][cornerLoc[1]] != null) {
     return;  // No alternate click for settlements/cities
   }
-  if (["displace", "defect", "adopt"].includes(turnPhase) || ["deception", "smith"].includes(devCardType)) {
+  if (turnPhase == "defect") {
+    let msg = {
+      type: turnPhase,
+      location: cornerLoc,
+    };
+    ws.send(JSON.stringify(msg));
+    return;
+  }
+  if (devCardType == "deception") {
+    let msg = {
+      type: "play_dev",
+      card_type: devCardType,
+      location: cornerLoc,
+    };
+    ws.send(JSON.stringify(msg));
+    return;
+  }
+  if (["displace", "adopt"].includes(turnPhase) || devCardType == "smith") {
     return;  // No promotion when one of these is active
   }
   if (knightMatrix[cornerLoc[0]] != null && knightMatrix[cornerLoc[0]][cornerLoc[1]] != null) {
@@ -1259,6 +1280,12 @@ function onClickEdge(event, edgeLoc) {
       return;
     }
   }
+  if (devCardType == "diplomat") {
+    // Not moving a road, and also not clicking an existing road. Deselect the dev card instead
+    // of letting the player build a road when they thought they were using the diplomat.
+    deselectDevCard();
+    return;
+  }
   if (knightMatrix[edgeX] != null && knightMatrix[edgeX][edgeY] != null) {
     if (turnPhase == "move_knights" && knightMatrix[edgeX][edgeY].player == myIdx) {
       moveKnightFromLocation = knightMatrix[edgeX][edgeY].location;
@@ -1299,6 +1326,12 @@ function onClickTileEdge(event, tileLoc, edgeLoc, rotation) {
       rotation: rotation,
     };
     ws.send(JSON.stringify(msg));
+    return;
+  }
+  if (devCardType == "diplomat") {
+    // Not moving a road, and also not clicking an existing road. Deselect the dev card instead
+    // of letting the player build a road when they thought they were using the diplomat.
+    deselectDevCard();
     return;
   }
   let edgeType = null;

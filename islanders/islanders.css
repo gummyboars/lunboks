@@ -332,6 +332,9 @@ div {
   width: 100%;
   flex: 0 0 100%;
 }
+.selectsummary:empty {
+  border-top: unset;
+}
 .summarypanel {
   flex: 0 1 50%;
   display: flex;

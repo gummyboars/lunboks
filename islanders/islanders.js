@@ -306,6 +306,8 @@ function deselectDevCard() {
     }
   }
   if (found != null) {
+    found.defaultZIndex = found.style.order;
+    found.style.zIndex = found.defaultZIndex;
     found.classList.remove("chosen");
   }
 
@@ -337,14 +339,24 @@ function deselectDevCard() {
     moveShipFromLocation = null;
     draw();
     maybeShowStatusPopup();
-  } else if (devCardType == "deception") {
+  } else if (["deception", "engineer", "medicine"].includes(devCardType)) {
     devCardType = null;
     maybeShowStatusPopup();
   }
   devCardType = null;
 }
 function toggleSelect(e, elemName) {
-  if (discardPlayers[myIdx] == null) {
+  if (discardPlayers[myIdx] != null && e.currentTarget.classList.contains("selectcard")) {
+    let container = document.getElementById("uicards");
+    for (let child of container.children) {
+      if (child.cardType == elemName && child.classList.contains("chosen")) {
+        child.click();
+        break;
+      }
+    }
+    return;
+  }
+  if (!discardPlayers[myIdx]) {
     if (["spy", "peddler"].includes(turnPhase) && turn == myIdx && e.currentTarget.classList.contains("selectcard")) {
     } else {
       return;
@@ -368,10 +380,10 @@ function handResourceHelper(cardType, count) {
   if (handSelection[cardType] < 0) {
     handSelection[cardType] = 0;
   }
-  if (discardPlayers[myIdx] != null) {
+  if (discardPlayers[myIdx]) {
     updateHandSelection();
   } else {
-    updateStealSelection();
+    refreshStealSelection();
   }
 }
 function selectResource(event, windowName, rsrc) {
@@ -894,7 +906,6 @@ function hideHandSelect() {
   }
 }
 function updateHandSelection() {
-  // FIXME: update selection without being destructive
   let container = document.getElementById("handselectcards");
   while (container.children.length) {
     container.removeChild(container.firstChild);
@@ -902,7 +913,8 @@ function updateHandSelection() {
   let total = 0;
   for (let [ordering, rsrc] of cardResources.entries()) {
     for (let i = 0; i < handSelection[rsrc] || 0; i++) {
-      addHandCard(container, rsrc + "card", ordering);
+      let div = addHandCard(container, rsrc + "card", ordering);
+      div.onclick = function(e) { toggleSelect(e, rsrc + "card"); };
       total++;
     }
   }
@@ -917,26 +929,49 @@ function updateHandSelection() {
   }
 }
 function updateStealSelection() {
-  // FIXME: update selection without being destructive
   let container = document.getElementById("handselectcards");
-  while (container.children.length) {
-    container.removeChild(container.firstChild);
-  }
-  let info = stealCards[turnPhase];
-  let total = 0;
-  for (let [ordering, card] of info.cardList.entries()) {
-    for (let i = 0; i < playerData[affectedPlayer][info.cardType][card] || 0; i++) {
-      let div = addHandCard(container, card + info.suffix, ordering);
-      div.classList.add("selectcard");
-      div.onclick = function(e) { toggleSelect(e, card + "card"); };
-      if (i < handSelection[card] || 0) {
-        total++;
-        div.classList.add("chosen");
-      }
+  let oldCounts = {};
+  for (let child of container.children) {
+    if (child.cardName != null) {
+      oldCounts[child.cardName] = (oldCounts[child.cardName] ?? 0) + 1;
     }
   }
-  container.classList.toggle("choosing", total > 0);
+  let info = stealCards[turnPhase];
+  let expectedCounts = {};
+  for (let card of info.cardList) {
+    let cardName = card + info.suffix;
+    expectedCounts[cardName] = playerData[affectedPlayer][info.cardType][card] || 0;
+  }
+  for (let cardName in oldCounts) {
+    let expected = expectedCounts[cardName] || 0;
+    removeHandCards(container, cardName, oldCounts[cardName] - expected);
+  }
+  for (let [ordering, card] of info.cardList.entries()) {
+    let cardName = card + info.suffix;
+    let oldCount = oldCounts[cardName] || 0;
+    for (let i = oldCount; i < expectedCounts[cardName]; i++) {
+      let div = addHandCard(container, cardName, ordering);
+      div.onclick = function(e) { toggleSelect(e, card + "card"); };
+    }
+  }
+  handSelection = {};
+  for (let child of container.children) {
+    if (child.cardName != null && child.classList.contains("chosen")) {
+      let card = child.cardName.substring(0, child.cardName.length - info.suffix.length);
+      handSelection[card] = (handSelection[card] || 0) + 1;
+    }
+  }
   document.getElementById("handok").innerText = "Steal";
+  refreshStealSelection();
+}
+function refreshStealSelection() {
+  let container = document.getElementById("handselectcards");
+  let info = stealCards[turnPhase];
+  let total = 0;
+  for (let card in handSelection) {
+    total += handSelection[card];
+  }
+  container.classList.toggle("choosing", total > 0);
   if (total == info.cardCount) {
     enableButton(document.getElementById("handok"));
   } else {
@@ -950,13 +985,29 @@ function addHandCard(parentNode, rsrc, ordering) {
   cnv.style.display = "block";
   cnv.classList.add("selector");
   let div = document.createElement("DIV");
+  div.classList.add("selectcard");
   div.style.width = cnv.width + "px";
   div.style.height = cnv.height + "px";
   div.style.order = ordering;
+  div.cardName = rsrc;
   div.appendChild(cnv);
   parentNode.appendChild(div);
   renderAssetToCanvas(cnv, rsrc, "");
   return div;
+}
+function removeHandCards(parentNode, cardName, count) {
+  if (count <= 0) {
+    return;
+  }
+  let toRemove = [];
+  for (let child of parentNode.children) {
+    if (child.cardName == cardName) {
+      toRemove.push(child);
+    }
+  }
+  for (let i = 0; i < count && i < toRemove.length; i++) {
+    parentNode.removeChild(toRemove[i]);
+  }
 }
 function okHandSelection(e) {
   if (["spy", "peddler"].includes(turnPhase)) {
@@ -1277,6 +1328,16 @@ function maybeShowStatusPopup() {
     statusTitle.innerText = "Choose a knight to displace.";
     return;
   }
+  if (turn == myIdx && devCardType == "engineer") {
+    statusPopup.style.display = "flex";
+    statusTitle.innerText = "Choose a city to build walls.";
+    return;
+  }
+  if (turn == myIdx && devCardType == "medicine") {
+    statusPopup.style.display = "flex";
+    statusTitle.innerText = "Choose a settlement to upgrade at reduced cost.";
+    return;
+  }
   if (turnPhase == "defect") {
     if (affectedPlayer == myIdx) {
       statusPopup.style.display = "flex";
@@ -1557,6 +1618,7 @@ function addCard(cardContainer, elemId, ordering, clickAction) {
   div.style.height = cardHeight + "px";
   div.style.order = ordering;
   div.style.zIndex = ordering;
+  div.defaultZIndex = ordering;
   div.appendChild(cnv);
   div.onmouseenter = bringforward;
   div.onmouseleave = pushbackward;
@@ -1614,12 +1676,11 @@ function bringforward(e) {
   }
   // TODO: change z-index only when player is not selecting cards.
   e.currentTarget.classList.add("hovered");
-  e.currentTarget.oldZ = e.currentTarget.style.zIndex;
   e.currentTarget.style.zIndex = 50;
 }
 function pushbackward(e) {
   e.currentTarget.classList.remove("hovered");
-  e.currentTarget.style.zIndex = e.currentTarget.oldZ;
+  e.currentTarget.style.zIndex = e.currentTarget.defaultZIndex;
 }
 function buyDevCard() {
   ws.send(JSON.stringify({type: "buy_dev"}));
@@ -1630,15 +1691,21 @@ function playDevCard(e, cardType) {
     e.currentTarget.classList.add("unchosen");
     return;
   }
+  if (turn != myIdx) {  // It is not your turn.
+    return;
+  }
   deselectDevCard();
   devCardType = cardType;
   e.currentTarget.classList.add("chosen");
+  e.currentTarget.defaultZIndex = 49;
+  // Presumably, you hovered this card to click it, so don't set the current z index.
   let selectInfo = resourceSelectionUI[cardType];
   if (selectInfo) {
     clearResourceSelection();
     updateSelectCounts();
     showResourceUI(cardType, null);
   } else if (buildCards.includes(cardType)) {
+    maybeShowStatusPopup();
     return;
   } else if (stealCards[cardType] != null) {
     maybeShowRobWindow();
@@ -2835,7 +2902,7 @@ function onBodyClick(event) {
   if (event.button != 0) {
     return;
   }
-  // FIXME: deselecting dev card should probably go here instead
+  // TODO: deselecting dev card should probably go here instead
   let hideSelector = true;
   let hideTrade = true;
   if (document.getElementById("selectcancel").style.display == "none") {
