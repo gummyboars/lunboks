@@ -2570,6 +2570,36 @@ class TestShipOpenClosedCalculation(BaseInputHandlerTest):
       with self.subTest(loc=loc):
         self.assertTrue(self.c.roads[loc].closed)
 
+  def testCreateNewOrigin(self):
+    # This is the same as return to origin, except that we build the loop first and then place
+    # the settlement in such a way that the loop now starts and ends at the placed settlement.
+    for loc in [islanders.TileLocation(1, 1), islanders.TileLocation(4, 0)]:
+      self.c.tiles[loc] = islanders.Tile(loc[0], loc[1], "space", False, None)
+    locs = [
+        (2, 4, 3, 5), (2, 4, 3, 3),  # these first two will become closed
+        (3, 3, 5, 3), (5, 3, 6, 2), (5, 1, 6, 2), (3, 1, 5, 1), (2, 2, 3, 1), (2, 2, 3, 3)
+    ]  # fmt: skip
+    for loc in locs[:-2]:
+      self.c.add_road(Road(loc, "ship", 0))
+    self.c.add_road(Road(locs[-1], "ship", 0))
+    self.c.add_piece(islanders.Piece(3, 3, "settlement", 0))
+    # Because of a quirk in the way ship sources are calculated, this test only works if the last
+    # ship placed is not adjacent to the newly placed piece.
+    self.c.add_road(Road(locs[-2], "ship", 0))
+
+    for loc in locs[:2]:
+      with self.subTest(loc=loc):
+        self.assertTrue(self.c.roads[loc].closed)
+    for loc in locs[2:]:
+      with self.subTest(loc=loc):
+        self.assertFalse(self.c.roads[loc].closed)
+
+    self.assertTrue(self.c.roads[locs[2]].movable)
+    self.assertTrue(self.c.roads[locs[-1]].movable)
+    for loc in locs[3:-1]:
+      with self.subTest(loc=loc):
+        self.assertFalse(self.c.roads[loc].movable)
+
   def testMakeALoop(self):
     first_loc = (3, 5, 5, 5)
     self.c.add_road(Road(first_loc, "ship", 0))

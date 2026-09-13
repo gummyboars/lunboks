@@ -2028,10 +2028,15 @@ class IslandersState:
     # previous considered unmovable, overriding that decision (because of cycles).
     for edge, other_corner in outgoing_edges:
       if other_corner == source:
-        # Here, we have circled back around to the start. We must mark the two edges at the
-        # beginning and end of the path as movable. We do not touch the rest.
-        self.roads[path[0]].movable = True
+        # Here, we have circled back around to a previously seen piece. We must mark the two
+        # edges at the beginning and end of the path as movable. We do not touch the rest.
         self.roads[edge].movable = True
+        for rloc in reversed(path):
+          if other_corner in [rloc[:2], rloc[2:]]:
+            self.roads[rloc].movable = True
+            break
+        else:
+          raise RuntimeError("What happened here? This shouldn't be physically possible.")
         continue
       if other_corner in seen:
         # Here, we have created a loop. Every ship on this loop may be movable.
@@ -2046,15 +2051,19 @@ class IslandersState:
           self.roads[path[idx]].movable = True
         self.roads[edge].movable = True
         continue
+      new_source = source
       maybe_piece = self.pieces.get(other_corner)
       if maybe_piece and maybe_piece.player == player_idx:
         # Here, we know that there is a shipping route from one of the player's settlements to
         # another. Every ship on this shipping route is considered closed.
         for rloc in path + [edge]:
           self.roads[rloc].closed = True
+        # Additionally, the continuation of the DFS should use this piece as the new source,
+        # so that it accounts for loops that start at the reached piece.
+        new_source = other_corner
       # Now we know this ship does not create a loop, so we continue to explore the far corner.
       path.append(edge)
-      self._ship_dfs_helper(source, player_idx, road_type, path, seen, other_corner, edge)
+      self._ship_dfs_helper(new_source, player_idx, road_type, path, seen, other_corner, edge)
       path.pop()
     seen.remove(corner)
 
