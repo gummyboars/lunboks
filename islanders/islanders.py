@@ -2286,22 +2286,20 @@ class IslandersState:
     for adjacent in loc.get_adjacent_corners():
       if adjacent in self.pieces:
         raise InvalidMove("You cannot place a settlement next to existing settlement.")
-    # Handle special settlement phase.
+    # Check that this is in bounds and next to at least one land tile.
+    piece_type = "settlement"
     if self.turn_phase == "settle":
       piece_type = self.options.placements[self.PLACEMENTS.index(self.game_phase)]
+    if not all(tile_loc in self.tiles for tile_loc in loc.get_tiles()):
+      raise InvalidMove("You must place your %s in bounds." % piece_type)
+    if not any(self.tiles[tile_loc].is_land for tile_loc in loc.get_tiles()):
+      raise InvalidMove("You must place your %s on land." % piece_type)
+    # Handle special settlement phase.
+    if self.turn_phase == "settle":
       if self.placement_islands is not None:
         canonical_corner = self.corners_to_islands.get(loc)
         if canonical_corner not in self.placement_islands:
           raise InvalidMove("You cannot place your starting %s in that area." % piece_type)
-      else:
-        on_land = False
-        for tile_loc in loc.get_tiles():
-          if tile_loc not in self.tiles:
-            raise InvalidMove("You must place your %s in bounds." % piece_type)
-          if self.tiles[tile_loc].is_land:
-            on_land = True
-        if not on_land:
-          raise InvalidMove("You must place your starting %s on land." % piece_type)
       self.add_piece(Piece(loc.x, loc.y, piece_type, player))
       self.event_log.append(Event(piece_type, "{player%s} built a %s" % (player, piece_type)))
       self.action_stack.pop()
@@ -2369,8 +2367,10 @@ class IslandersState:
     else:
       home_settled = [self.corners_to_islands[loc] for loc in self.home_corners[piece.player]]
       foreign_landed = [self.corners_to_islands[loc] for loc in self.foreign_landings[piece.player]]
-      current_island = self.corners_to_islands[piece.location]
-      if current_island not in home_settled + foreign_landed:
+      # NOTE: It is possible to settle on a corner of a desert that is not counted as being part
+      # of any island in the seafarers desert scenario. It does not count as a foreign landing.
+      current_island = self.corners_to_islands.get(piece.location)
+      if current_island is not None and current_island not in home_settled + foreign_landed:
         self.event_log.append(Event("landing", "{player%s} settled on a new island" % piece.player))
         self.foreign_landings[piece.player].append(piece.location)
 
