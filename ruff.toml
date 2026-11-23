@@ -11,6 +11,7 @@ ignore = [
   "I001",  # import order - TODO: turn on again
   "INP001",  # implicit namespace package - TODO: turn on again
   "PT",  # pytest is a plague upon the entire python ecosystem
+  "CPY001",  # copyright notice
   "ANN",  # annotations
   "T20",  # print/pprint
   "TD",  # todos
@@ -29,6 +30,7 @@ ignore = [
   "PLR0912",  # too many branches
   "PLR0913",  # too many arguments
   "PLR0915",  # too many statements
+  "PLR0917",  # too many positional arguments
   "PLR5501",  # collapsible else if
   "N802",  # invalid function name - checked by pylint
   "N806",  # non lowercase variable in function - checked by pylint
@@ -61,6 +63,7 @@ ignore = [
   "PYI024",  # collections-named-tuple
   "PYI041",  # redundant-numeric-union
   "UP007",   # Union[X,Y] instead of X|Y
+  "UP042",   # Inherit from both str and Enum  TODO: turn on again
   "UP045",   # Optional[X] instead of X|None
   "FURB110", # ternary if
   "FURB171", # single item iterator

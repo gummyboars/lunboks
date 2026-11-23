@@ -2830,7 +2830,7 @@ class TestCalculateRobPlayers(BaseInputHandlerTest):
     self.c.player_data[0].cards["gold"] = 1
 
     # Will choose gold if it's in the list; otherwise we don't care.
-    with mock.patch.object(islanders.random, "choice", new=lambda lst: sorted(lst)[0]):
+    with mock.patch.object(islanders.random, "choice", new=min):
       self.handle(2, {"type": "robber", "location": [7, 3]})
     self.assertEqual(self.c.player_data[0].cards["rsrc1"], 0)
     self.assertEqual(self.c.player_data[0].cards["gold"], 1)
