@@ -1570,12 +1570,42 @@ function updateJoinWindow() {
   uiJoin.style.display = "flex";
   updateJoinColors();
   let scenarioSelect = document.getElementById("scenario");
+  let nameToCategory = {
+    "Standard Map": "Standard",
+    "Beginner's Map": "Standard",
+    "Test Map": "",
+    "Heading for New Shores": "Seafarers",
+    "The Four Islands": "Seafarers",
+    "Through the Desert": "Seafarers",
+    "The Fog Islands": "Seafarers",
+    "Across the Wasteland": "Unofficial",
+    "Drought": "Unofficial",
+    "Nautilus": "Unofficial",
+    "Twin Harbors": "Unofficial",
+    "The Treasure Islands": "Adventurers",
+    "Into the Unknown": "Adventurers",
+    "Greater Islands": "Adventurers",
+    "Desert Riders": "Adventurers",
+    "Barbarians Attack": "Barbarians",
+    "Map Maker": "Map Maker",
+  };
   if (!scenarioSelect.children.length) {
     for (let scenarioName of gameScenarios.choices) {
+      let category = nameToCategory[scenarioName];
+      if (category === "") {
+        continue;
+      }
+      let optGroup = document.getElementById("category" + category);
+      if (optGroup == null) {
+        optGroup = document.createElement("OPTGROUP");
+        optGroup.id = "category" + category;
+        optGroup.label = category;
+        scenarioSelect.appendChild(optGroup);
+      }
       let opt = document.createElement("OPTION");
       opt.value = scenarioName;
       opt.text = scenarioName;
-      scenarioSelect.appendChild(opt);
+      optGroup.appendChild(opt);
     }
   }
   document.getElementById("randomslider").optionName = "randomness";
