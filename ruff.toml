@@ -64,6 +64,4 @@ ignore = [
   "PYI041",  # redundant-numeric-union
   "UP007",   # Union[X,Y] instead of X|Y
   "UP045",   # Optional[X] instead of X|None
-  "BLE001",  # except Exception
-  "RUF100",  # allow "extra" noqa comments
 ]

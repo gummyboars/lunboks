@@ -245,7 +245,7 @@ def main(port):
     server = ThreadingHTTPServer(("", port), MyHandler)
     print(f"Started server on port {port}")
     server.serve_forever()
-  except (KeyboardInterrupt, Exception) as err:  # pylint: disable=broad-except
+  except (KeyboardInterrupt, Exception) as err:  # pylint: disable=broad-except  # noqa: BLE001
     if isinstance(err, KeyboardInterrupt):
       print("keyboard interrupt received; shutting down")
     else:
