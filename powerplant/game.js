@@ -998,6 +998,16 @@ function updatePlayers(players, turnOrder, playerIdx, pendingSpend, pendingBuy, 
   if (players == null) {
     return;
   }
+  // Save the old positions of the players.
+  let oldBoxes = [];
+  for (let [idx, player] of players.entries()) {
+    let pdiv = document.getElementById("player" + idx);
+    if (pdiv == null) {
+      continue;
+    }
+    let rect = pdiv.getBoundingClientRect();
+    oldBoxes[idx] = {left: rect.left, top: rect.top};
+  }
   for (let [idx, player] of players.entries()) {
     let pdiv = document.getElementById("player" + idx);
     if (pdiv == null) {
@@ -1017,6 +1027,37 @@ function updatePlayers(players, turnOrder, playerIdx, pendingSpend, pendingBuy, 
     let allPlayerDivs = document.getElementsByClassName("player");
     let lastPlayer = allPlayerDivs[allPlayerDivs.length-1];
     lastPlayer.parentNode.removeChild(lastPlayer);
+  }
+  for (let [idx, player] of players.entries()) {
+    let pdiv = document.getElementById("player" + idx);
+    if (pdiv == null || oldBoxes[idx] == null) {
+      continue;
+    }
+    let rect = pdiv.getBoundingClientRect();
+    let diffX = oldBoxes[idx].left - rect.left;
+    let diffY = oldBoxes[idx].top - rect.top;
+    // Animate the player boxes moving if the distance is not tiny.
+    if (diffX > 1 || diffX < -1 || diffY > 1 || diffY < -1) {
+      pdiv.style.translate = diffX + "px " + diffY + "px";
+      pdiv.ontransitionend = function(e) {
+        if (e.target != pdiv) {
+          return;
+        }
+        pdiv.classList.remove("moving");
+        doneAnimating(pdiv);
+        finishAnim();
+      };
+      pdiv.ontransitioncancel = function(e) { 
+        if (e.target != pdiv) {
+          return;
+        }
+        pdiv.classList.remove("moving");
+        doneAnimating(pdiv);
+        finishAnim();
+      };
+      setTimeout(function() { pdiv.classList.add("moving"); pdiv.style.removeProperty("translate"); }, 10);
+      runningAnim.push(true);
+    }
   }
   // Only after updating everythig should we adjust the upper/lower classes of plantexpand.
   for (let [idx, player] of players.entries()) {
@@ -1789,9 +1830,6 @@ function maybeShowExpandedPlants(phase, playerIdx, discardIdx) {
   let plantExpand = playerDiv.getElementsByClassName("plantexpand")[0];
   let shouldShow = ["bureaucracy", "materials"].includes(phase);
   shouldShow = shouldShow || discardIdx == playerIdx;
-  if (phase != oldPhase || oldDiscard != discardIdx) {
-    plantExpand.classList.toggle("shown", shouldShow);
-  }
   plantExpand.classList.toggle("defaultshow", shouldShow);
   plantExpand.classList.toggle("discard", discardIdx == playerIdx);
   if (discardIdx != playerIdx) {
@@ -1799,6 +1837,36 @@ function maybeShowExpandedPlants(phase, playerIdx, discardIdx) {
     for (let btn of plantExpand.getElementsByClassName("plantdiscard")) {
       btn.classList.remove("pressed");
     }
+  }
+  // If any of the player divs are moving, we will animate this only after the player divs
+  // have moved. All player divs take the same time to move, so just attach to the first one.
+  if (phase != oldPhase || oldDiscard != discardIdx) {
+    for (let pDiv of document.getElementsByClassName("player")) {
+      if (pDiv.ontransitionend == null || pDiv.ontransitioncancel == null) {
+        continue;
+      }
+      let currentEnd = pDiv.ontransitionend;
+      let currentCancel = pDiv.ontransitioncancel;
+      pDiv.ontransitionend = function(e) {
+        if (e.target != pDiv) {
+          return;
+        }
+        pDiv.classList.remove("moving");
+        plantExpand.classList.toggle("shown", shouldShow);
+        currentEnd(e);
+      }
+      pDiv.ontransitioncancel = function(e) {
+        if (e.target != pDiv) {
+          return;
+        }
+        pDiv.classList.remove("moving");
+        plantExpand.classList.toggle("shown", shouldShow);
+        currentCancel(e);
+      }
+      return;
+    }
+    // No animations; just animate now.
+    plantExpand.classList.toggle("shown", shouldShow);
   }
 }
 
