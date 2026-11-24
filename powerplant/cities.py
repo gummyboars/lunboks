@@ -1,10 +1,10 @@
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 
 from powerplant.materials import Resource
 
 
-class Color(str, Enum):
+class Color(StrEnum):
   BLUE = "blue"
   RED = "red"
   YELLOW = "yellow"
