@@ -1,7 +1,7 @@
-from enum import Enum
+from enum import StrEnum
 
 
-class Resource(str, Enum):
+class Resource(StrEnum):
   COAL = "coal"
   OIL = "oil"
   GAS = "gas"

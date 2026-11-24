@@ -13,7 +13,11 @@ import threading
 import urllib
 import uuid
 import websockets
-import websockets.server
+
+try:
+  from websockets.legacy.server import serve  # For websockets 13.0+
+except ImportError:
+  from websockets.server import serve  # Older websockets versions
 
 from eldritch import eldritch
 from islanders import islanders
@@ -234,7 +238,7 @@ def ws_main(loop):
   global GLOBAL_WS_SERVER  # pylint: disable=global-statement # noqa: PLW0603
   asyncio.set_event_loop(loop)
   asyncio.ensure_future(SendGameUpdates())  # noqa: RUF006
-  start_server = websockets.server.serve(HandleWebsocket, "", port)
+  start_server = serve(HandleWebsocket, "", port)
   GLOBAL_WS_SERVER = loop.run_until_complete(start_server)
   print(f"Websocket server started on port {port}")
   loop.run_forever()
@@ -245,7 +249,7 @@ def main(port):
     server = ThreadingHTTPServer(("", port), MyHandler)
     print(f"Started server on port {port}")
     server.serve_forever()
-  except (KeyboardInterrupt, Exception) as err:  # pylint: disable=broad-except
+  except (KeyboardInterrupt, Exception) as err:  # pylint: disable=broad-except  # noqa: BLE001
     if isinstance(err, KeyboardInterrupt):
       print("keyboard interrupt received; shutting down")
     else:

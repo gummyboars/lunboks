@@ -5753,9 +5753,9 @@ class ReturnToCup(Event):
     assert sum(int(arg is not None) for arg in [names, from_places, handles]) == 1
     super().__init__()
     self.character = character
-    self.names = set(names if names else [])
-    self.handles = set(handles if handles else [])
-    self.places = set(from_places if from_places else [])
+    self.names = set(names or [])
+    self.handles = set(handles or [])
+    self.places = set(from_places or [])
     self.to_box = to_box
     self.returned = None
 

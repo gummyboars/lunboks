@@ -1,6 +1,6 @@
 import collections
 from dataclasses import asdict, dataclass, field
-from enum import Enum
+from enum import StrEnum
 import json
 from random import SystemRandom
 
@@ -77,7 +77,7 @@ class Player:
     return cls(**data)
 
 
-class TurnPhase(str, Enum):
+class TurnPhase(StrEnum):
   AUCTION = "auction"
   MATERIALS = "materials"
   BUILDING = "building"
