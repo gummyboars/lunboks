@@ -124,7 +124,7 @@ class GameHandler:
     http_handler.wfile.write(value)
 
   def handle_post(self, event_loop, http_handler, path, args, data):  # pylint: disable=unused-argument
-    if path not in ["/load"]:
+    if path not in ["/load"]:  # noqa: FURB171
       http_handler.send_error(HTTPStatus.NOT_FOUND.value, f"Unknown path {path}")
       return
     try:
