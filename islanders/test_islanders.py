@@ -229,7 +229,7 @@ class TestLoadState(unittest.TestCase):
     try:  # Any iterable
       itera = iter(obja)
       iterb = iter(objb)
-      for idx, pair in enumerate(zip(itera, iterb)):
+      for idx, pair in enumerate(zip(itera, iterb, strict=True)):
         self.recursiveAssertEqual(pair[0], pair[1], path + f"[{idx}]")
       return
     except TypeError:
@@ -1956,7 +1956,7 @@ class TestHandleSettleInput(BaseInputHandlerTest):
     resources = ["rsrc1", "rsrc2", "rsrc3", "rsrc4"]
     counts = [self.c.player_data[0].cards[x] for x in resources]
     self.handle(0, {"type": "settle", "location": [5, 3]})
-    for rsrc, orig_count in zip(resources, counts):
+    for rsrc, orig_count in zip(resources, counts, strict=True):
       self.assertEqual(self.c.player_data[0].cards[rsrc], orig_count - 1)
     self.assertEqual(self.c.event_log[-1].event_type, "settlement")
     self.assertIn("built a settlement", self.c.event_log[-1].public_text)
