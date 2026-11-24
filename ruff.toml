@@ -9,7 +9,6 @@ skip-magic-trailing-comma = true
 select = ["ALL"]
 ignore = [
   "I001",  # import order - TODO: turn on again
-  "INP001",  # implicit namespace package - TODO: turn on again
   "PT",  # pytest is a plague upon the entire python ecosystem
   "CPY001",  # copyright notice
   "ANN",  # annotations
@@ -60,7 +59,7 @@ ignore = [
   "RUF022",  # unsorted-dunder-all
   "SIM102",  # collapsible-if
   "SIM117",  # multiple-with-statements
-  "PYI024",  # collections-named-tuple
+  "PYI024",  # collections-named-tuple  TODO: turn on again
   "PYI041",  # redundant-numeric-union
   "UP007",   # Union[X,Y] instead of X|Y
   "UP045",   # Optional[X] instead of X|None
