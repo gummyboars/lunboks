@@ -2167,7 +2167,6 @@ class IslandersState:
       for _ in range(2):
         if self.action_stack and self.action_stack[-1] == "dev_road":
           self.action_stack.pop()
-      self.next_action()
     # All other treasures - remove the top action.
     elif self.action_stack:
       self.action_stack.pop()
@@ -3642,6 +3641,7 @@ class IntoTheUnknown(SeafarerScenario):
       raise InvalidPlayer("Must have 3 or 4 players.")
     land = [loc for loc, tile in state.tiles.items() if tile.tile_type in RESOURCES]
     state.shuffle_land_tiles(land)
+    state.placement_islands = [state.corners_to_islands[(-1, 3)]]
     state.recompute()
     state.init_dev_cards()
 
