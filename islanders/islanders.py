@@ -714,7 +714,7 @@ class IslandersState:
     # Special values for counter-offers: not present in dictionary means they have not
     # yet made a counter-offer. An null/None counter-offer indicates that they have
     # rejected the trade offer. A counter-offer equal to the original means they accept.
-    self.event_log = collections.deque([], 50)
+    self.event_log = collections.deque(maxlen=50)
     # Game Options
     self.options = Options()
 
