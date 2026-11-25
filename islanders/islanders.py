@@ -136,6 +136,7 @@ class Options(collections.OrderedDict):
     self["placements"] = GameOption(
       "", default=("settlement", "settlement"), forced=True, hidden=True, choices=schoices
     )
+    self["city_walls"] = GameOption("City Walls", default=False)
     self["extra_build"] = GameOption("5-6 Players", default=False, forced=True)
     self["debug"] = GameOption("Debug", default=False)
 
@@ -442,12 +443,13 @@ class Knight:
 class Piece:
   TYPES = ("settlement", "city")
 
-  def __init__(self, x, y, piece_type, player, *, conquered=False):
+  def __init__(self, x, y, piece_type, player, *, conquered=False, walls=False):
     assert piece_type in self.TYPES
     self.location = CornerLocation(x, y)
     self.piece_type = piece_type
     self.player = player
     self.conquered = conquered
+    self.walls = walls
 
   def json_repr(self):
     return {
@@ -455,6 +457,7 @@ class Piece:
       "piece_type": self.piece_type,
       "player": self.player,
       "conquered": self.conquered,
+      "walls": self.walls,
     }
 
   @staticmethod
@@ -465,6 +468,7 @@ class Piece:
       value["piece_type"],
       value["player"],
       conquered=value.get("conquered", False),
+      walls=value.get("walls", False),
     )
 
   def __str__(self):
@@ -597,10 +601,11 @@ class Player:
       }
     return ret
 
-  def too_many_cards(self):
+  def too_many_cards(self, walls):
     threshold = 8
     if self.buried_treasure >= 1:
       threshold += 2
+    threshold += 2 * walls
     return self.resource_card_count() >= threshold
 
   def resource_card_count(self):
@@ -653,7 +658,7 @@ class IslandersState:
       "options",
     }
   )
-  EXTRA_BUILD_ACTIONS = ("settle", "city", "buy_dev", "road", "ship", "end_extra_build")
+  EXTRA_BUILD_ACTIONS = ("settle", "city", "walls", "buy_dev", "road", "ship", "end_extra_build")
 
   def __init__(self):
     # Player data is a sequential list of Player objects; players are identified by index.
@@ -1120,6 +1125,8 @@ class IslandersState:
       return self.handle_settle(location, player_idx)
     if move_type == "city":
       return self.handle_city(location, player_idx)
+    if move_type == "walls":
+      return self.handle_walls(location, player_idx)
     if move_type == "trade_offer":
       return self.handle_trade_offer(data.get("offer"), player_idx)
     if move_type == "accept_counter":
@@ -1426,10 +1433,11 @@ class IslandersState:
     self.next_action()
 
   def _get_players_with_too_many_resources(self):
+    walls = collections.Counter(piece.player for piece in self.pieces.values() if piece.walls)
     return {
       idx: player.resource_card_count() // 2
       for idx, player in enumerate(self.player_data)
-      if player.too_many_cards()
+      if player.too_many_cards(walls[idx])
     }
 
   def handle_discard(self, selection, player):
@@ -2449,6 +2457,28 @@ class IslandersState:
     self.pieces[loc].piece_type = "city"
     self.event_log.append(Event("city", "{player%s} upgraded a settlement to a city" % player))
     self.hasten_invasion()
+
+  def handle_walls(self, location, player):
+    if not self.options.city_walls:
+      raise InvalidMove("City walls are not enabled.")
+    loc = parse_location(location, CornerLocation)
+    self._check_main_phase("walls", "build a city wall")
+    piece = self.pieces.get(loc)
+    if not piece or piece.piece_type != "city":
+      raise InvalidMove("City walls may only be placed on a city.")
+    if piece.player != player:
+      raise InvalidMove("You can only build city walls in one of your cities.")
+    if piece.walls:
+      raise InvalidMove("That city already has a wall.")
+
+    wall_count = len([p for p in self.pieces.values() if p.player == player and p.walls])
+    if wall_count >= 3:
+      raise InvalidMove("You cannot have more than three city walls.")
+
+    resources = [("rsrc4", 2)]
+    self._remove_resources(resources, player, "build a city wall")
+    self.pieces[loc].walls = True
+    self.event_log.append(Event("walls", "{player%s} built a city wall" % player))
 
   def handle_buy_dev(self, player):
     # Check that this is the right part of the turn.

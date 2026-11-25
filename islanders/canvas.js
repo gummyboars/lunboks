@@ -116,7 +116,7 @@ function draw() {
   // Draw pieces over roads.
   for (let i = 0; i < pieces.length; i++) {
     // Each piece does its own context.save() and context.restore();
-    drawPiece(pieces[i].location, getColor(pieces[i].player), pieces[i].piece_type, pieces[i].conquered, context);
+    drawPiece(pieces[i].location, getColor(pieces[i].player), pieces[i].piece_type, pieces[i].conquered, pieces[i].walls, context);
   }
   context.save();
   if (landings != null) {
@@ -295,10 +295,22 @@ function drawLanding(landing, ctx) {
   ctx.fillRect(canvasLoc.x - pieceRadius, canvasLoc.y - 2*pieceRadius, pieceRadius, pieceRadius/2);
   ctx.strokeRect(canvasLoc.x - pieceRadius, canvasLoc.y - 2*pieceRadius, pieceRadius, pieceRadius/2);
 }
-function drawPiece(pieceLoc, style, pieceType, conquered, ctx) {
+function drawPiece(pieceLoc, style, pieceType, conquered, walls, ctx) {
   ctx.save();
   let canvasLoc = coordToCanvasLoc(pieceLoc);
   ctx.fillStyle = style;
+  if (walls) {
+    let radius = pieceRadius * 2;
+    ctx.beginPath();
+    ctx.ellipse(canvasLoc.x, canvasLoc.y + pieceRadius*.75, radius, radius/3, 0, 0, 2*Math.PI);
+    ctx.closePath();
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = "black";
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(canvasLoc.x, canvasLoc.y + pieceRadius*.75, radius, radius/3, 0, Math.PI, 2*Math.PI);
+    ctx.stroke();
+  }
   if (pieceType == "settlement") {
     ctx.beginPath();
     ctx.moveTo(canvasLoc.x - pieceRadius, canvasLoc.y + pieceRadius * 3/2);
@@ -349,6 +361,18 @@ function drawPiece(pieceLoc, style, pieceType, conquered, ctx) {
       ctx.lineTo(canvasLoc.x - pieceRadius/2, canvasLoc.y + 5*pieceRadius/4);
       ctx.stroke();
     }
+  }
+  if (walls) {
+    let radius = pieceRadius * 2;
+    ctx.beginPath();
+    ctx.ellipse(canvasLoc.x, canvasLoc.y + pieceRadius*.75, radius, radius/3, 0, 0, Math.PI);
+    ctx.lineTo(canvasLoc.x - radius, canvasLoc.y + pieceRadius*1.2);
+    ctx.ellipse(canvasLoc.x, canvasLoc.y + pieceRadius*1.2, radius, radius/3, 0, Math.PI, 2*Math.PI, true);
+    ctx.closePath();
+    ctx.fill();
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = "black";
+    ctx.stroke();
   }
   ctx.restore();
 }
@@ -629,9 +653,13 @@ function drawHover(ctx) {
   }
   if (hoverCorner != null) {
     let drawType = null;
+    let walls = false;
     if (pieceMatrix[hoverCorner[0]] != null && pieceMatrix[hoverCorner[0]][hoverCorner[1]] != null) {
       if (pieceMatrix[hoverCorner[0]][hoverCorner[1]].player == myIdx) {
         drawType = "city";
+        if (pieceMatrix[hoverCorner[0]][hoverCorner[1]].piece_type == "city") {
+          walls = true;
+        }
       }
     }
     if (drawType == null) {
@@ -640,7 +668,7 @@ function drawHover(ctx) {
       }
     }
     if (drawType != null) {
-      drawPiece(hoverCorner, 'rgba(127, 127, 127, 0.5)', drawType, false, ctx);
+      drawPiece(hoverCorner, 'rgba(127, 127, 127, 0.5)', drawType, false, walls, ctx);
     }
     return;
   }
@@ -781,8 +809,12 @@ function onClickCorner(event, cornerLoc) {
   }
   if (pieceMatrix[cornerLoc[0]] != null && pieceMatrix[cornerLoc[0]][cornerLoc[1]] != null) {
     if (pieceMatrix[cornerLoc[0]][cornerLoc[1]].player == myIdx) {
+      let type = "city";
+      if (pieceMatrix[cornerLoc[0]][cornerLoc[1]].piece_type == "city") {
+        type = "walls";
+      }
       let msg = {
-        type: "city",
+        type: type,
         location: cornerLoc,
       };
       ws.send(JSON.stringify(msg));
