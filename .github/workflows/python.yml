@@ -78,7 +78,7 @@ jobs:
     - name: Get changed files
       id: changed-files
       if: github.event_name == 'pull_request'
-      uses: tj-actions/changed-files@v45
+      uses: tj-actions/changed-files@v47
       with:
         files: |
           **.py
@@ -107,3 +107,39 @@ jobs:
     - name: Run Tests
       run: |
         python -m unittest
+  check-requirements:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        fetch-depth: 2
+    - name: Get changed files
+      id: changed-files
+      uses: tj-actions/changed-files@v47
+      with:
+        files: |
+          pyproject.toml
+          requirements*.txt
+    - name: Set up Python 3.11
+      if: steps.changed-files.outputs.any_changed == 'true'
+      uses: actions/setup-python@v2
+      with:
+        python-version: "3.11"
+    - name: Regenerate requirements
+      if: steps.changed-files.outputs.any_changed == 'true'
+      run: |
+        python - << 'EOF'
+        import tomllib
+        from pathlib import Path
+        toml = tomllib.loads(Path("pyproject.toml").read_text())
+        Path("requirements.txt").write_text("\n".join([*toml["project"]["dependencies"], ""]))
+        Path("requirements-dev.txt").write_text("\n".join(["-r requirements.txt", *toml["dependency-groups"]["dev"], ""]))
+        EOF
+    - name: Check for differences
+      if: steps.changed-files.outputs.any_changed == 'true'
+      run: |
+        if [ -n "$(git status --porcelain)" ]; then
+          echo "::error::pyproject.toml does not match requirements[-dev].txt"
+          git diff --color=always
+          exit 1
+        fi
