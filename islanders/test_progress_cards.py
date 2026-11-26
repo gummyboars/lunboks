@@ -9,12 +9,19 @@ import unittest
 if os.path.abspath(sys.path[0]) == os.path.dirname(os.path.abspath(__file__)):
   sys.path[0] = os.path.dirname(sys.path[0])
 
-from islanders.islanders import InvalidMove, InvalidInput, Piece, CornerLocation, Knight, NotYourTurn, Road
+from islanders.islanders import (
+  InvalidMove,
+  InvalidInput,
+  Piece,
+  CornerLocation,
+  Knight,
+  NotYourTurn,
+  Road,
+)
 from islanders.test_islanders import BaseInputHandlerTest
 
 
 class AlchemistTest(BaseInputHandlerTest):
-
   def setUp(self):
     super().setUp()
     self.c.action_stack.append("dice")
@@ -70,7 +77,6 @@ class AlchemistTest(BaseInputHandlerTest):
 
 
 class EngineerTest(BaseInputHandlerTest):
-
   def setUp(self):
     super().setUp()
     self.c.player_data[0].cards["engineer"] = 1
@@ -104,7 +110,6 @@ class EngineerTest(BaseInputHandlerTest):
 
 
 class MedicineTest(BaseInputHandlerTest):
-
   def setUp(self):
     super().setUp()
     self.c.player_data[0].cards["medicine"] = 2
@@ -138,7 +143,6 @@ class MedicineTest(BaseInputHandlerTest):
 
 
 class InventorTest(BaseInputHandlerTest):
-
   def setUp(self):
     super().setUp()
     self.c.player_data[0].cards["inventor"] = 1
@@ -169,7 +173,6 @@ class InventorTest(BaseInputHandlerTest):
 
 
 class GainTwoTestMixin:
-
   def setUp(self):
     super().setUp()
     self.c.player_data[0].cards[self.CARD] = 2
@@ -233,7 +236,6 @@ class MiningTest(GainTwoTestMixin, BaseInputHandlerTest):
 
 
 class SmithTest(BaseInputHandlerTest):
-
   def setUp(self):
     super().setUp()
     self.c.options["knights"].force(True)
@@ -303,7 +305,6 @@ class SmithTest(BaseInputHandlerTest):
 
 
 class BishopTest(BaseInputHandlerTest):
-
   def setUp(self):
     super().setUp()
     self.c.options["pirate"].force(True)
@@ -318,8 +319,8 @@ class BishopTest(BaseInputHandlerTest):
     p0_count = sum(self.c.player_data[0].cards.values())
     p1_count = sum(self.c.player_data[1].cards.values())
     self.handle(2, {"location": [7, 5], "type": "robber"})
-    self.assertEqual(sum(self.c.player_data[0].cards.values()), p0_count-1)
-    self.assertEqual(sum(self.c.player_data[1].cards.values()), p1_count-1)
+    self.assertEqual(sum(self.c.player_data[0].cards.values()), p0_count - 1)
+    self.assertEqual(sum(self.c.player_data[1].cards.values()), p1_count - 1)
     self.assertEqual(sum(self.c.player_data[2].cards.values()), 2)
     self.assertEqual(self.c.turn_phase, "main")
 
@@ -328,7 +329,7 @@ class BishopTest(BaseInputHandlerTest):
     p0_count = sum(self.c.player_data[0].cards.values())
     p1_count = sum(self.c.player_data[1].cards.values())
     self.handle(2, {"location": [7, 3], "type": "robber"})
-    self.assertEqual(sum(self.c.player_data[0].cards.values()), p0_count-1)
+    self.assertEqual(sum(self.c.player_data[0].cards.values()), p0_count - 1)
     self.assertEqual(sum(self.c.player_data[1].cards.values()), p1_count)
     self.assertEqual(sum(self.c.player_data[2].cards.values()), 1)
     self.assertEqual(self.c.turn_phase, "main")
@@ -340,12 +341,12 @@ class BishopTest(BaseInputHandlerTest):
 
 
 class DiplomatTest(BaseInputHandlerTest):
-
   def setUp(self):
     super().setUp()
     self.c.options["knights"].force(True)
     self.c.options["seafarers"].force(True)
     self.c.player_data[0].cards["diplomat"] = 1
+    self.play_diplomat = {"type": "play_dev", "card_type": "diplomat"}
 
   def testRemoveOpponentRoad(self):
     self.handle(0, {"type": "play_dev", "card_type": "diplomat", "location": [5, 5, 6, 6]})
@@ -357,14 +358,14 @@ class DiplomatTest(BaseInputHandlerTest):
     self.assertNotIn((6, 4, 8, 4), self.c.roads)
 
   def testMoveOwnRoad(self):
-    self.handle(0, {"type": "play_dev", "card_type": "diplomat", "location": [6, 4, 8, 4], "selection": [8, 4, 9, 5]})
+    self.handle(0, {"location": [6, 4, 8, 4], "selection": [8, 4, 9, 5], **self.play_diplomat})
     self.assertNotIn((6, 4, 8, 4), self.c.roads)
     self.assertIn((8, 4, 9, 5), self.c.roads)
     self.assertEqual(self.c.roads[(8, 4, 9, 5)].player, 0)
 
   def testMovingRoadClaimsTreasure(self):
     self.c.treasures[CornerLocation(9, 5)] = "collect1"
-    self.handle(0, {"type": "play_dev", "card_type": "diplomat", "location": [6, 4, 8, 4], "selection": [8, 4, 9, 5]})
+    self.handle(0, {"location": [6, 4, 8, 4], "selection": [8, 4, 9, 5], **self.play_diplomat})
     self.assertNotIn((6, 4, 8, 4), self.c.roads)
     self.assertIn((8, 4, 9, 5), self.c.roads)
     self.assertEqual(self.c.roads[(8, 4, 9, 5)].player, 0)
@@ -374,7 +375,7 @@ class DiplomatTest(BaseInputHandlerTest):
     self.c.tiles[(10, 6)].tile_type = "discover"
     self.c.discoverable_tiles = ["rsrc5"]
     self.c.discoverable_numbers = [5]
-    self.handle(0, {"type": "play_dev", "card_type": "diplomat", "location": [6, 4, 8, 4], "selection": [8, 4, 9, 5]})
+    self.handle(0, {"location": [6, 4, 8, 4], "selection": [8, 4, 9, 5], **self.play_diplomat})
     self.assertNotIn((6, 4, 8, 4), self.c.roads)
     self.assertIn((8, 4, 9, 5), self.c.roads)
     self.assertEqual(self.c.roads[(8, 4, 9, 5)].player, 0)
@@ -395,14 +396,14 @@ class DiplomatTest(BaseInputHandlerTest):
     self.assertEqual(self.c.longest_route_player, 0)
     self.assertEqual(self.c.player_data[0].longest_route, 5)
     self.assertEqual(self.c.player_data[1].longest_route, 5)
-    self.handle(0, {"type": "play_dev", "card_type": "diplomat", "location": [2, 4, 3, 5], "selection": [8, 4, 9, 5]})
+    self.handle(0, {"location": [2, 4, 3, 5], "selection": [8, 4, 9, 5], **self.play_diplomat})
     self.assertEqual(self.c.longest_route_player, 0)
     self.assertEqual(self.c.player_data[0].longest_route, 5)
     self.assertEqual(self.c.player_data[1].longest_route, 5)
 
   def testMoveOwnShip(self):
     self.c.add_road(Road([8, 4, 9, 5], "ship", 0))
-    self.handle(0, {"type": "play_dev", "card_type": "diplomat", "location": [8, 4, 9, 5], "selection": [8, 4, 9, 3]})
+    self.handle(0, {"location": [8, 4, 9, 5], "selection": [8, 4, 9, 3], **self.play_diplomat})
     self.assertNotIn((8, 4, 9, 5), self.c.roads)
     self.assertIn((8, 4, 9, 3), self.c.roads)
     self.assertEqual(self.c.roads[(8, 4, 9, 3)].player, 0)
@@ -410,11 +411,11 @@ class DiplomatTest(BaseInputHandlerTest):
 
   def testInvalidRoadMoves(self):
     with self.assertRaisesRegex(InvalidMove, "cannot move another player"):
-      self.handle(0, {"type": "play_dev", "card_type": "diplomat", "location": [5, 5, 6, 6], "selection": [8, 4, 9, 5]})
+      self.handle(0, {"location": [5, 5, 6, 6], "selection": [8, 4, 9, 5], **self.play_diplomat})
     with self.assertRaisesRegex(InvalidMove, "on top of an existing"):
-      self.handle(0, {"type": "play_dev", "card_type": "diplomat", "location": [6, 4, 8, 4], "selection": [6, 4, 8, 4]})
+      self.handle(0, {"location": [6, 4, 8, 4], "selection": [6, 4, 8, 4], **self.play_diplomat})
     with self.assertRaisesRegex(InvalidMove, "must be connected"):
-      self.handle(0, {"type": "play_dev", "card_type": "diplomat", "location": [6, 4, 8, 4], "selection": [5, 5, 6, 4]})
+      self.handle(0, {"location": [6, 4, 8, 4], "selection": [5, 5, 6, 4], **self.play_diplomat})
     with self.assertRaisesRegex(InvalidMove, "must choose a valid"):
       self.handle(0, {"type": "play_dev", "card_type": "diplomat", "location": [8, 4, 9, 5]})
 
@@ -430,11 +431,10 @@ class DiplomatTest(BaseInputHandlerTest):
   def testRoadCannotBecomeShip(self):
     self.c.add_road(Road([8, 4, 9, 5], "ship", 0))
     with self.assertRaisesRegex(InvalidMove, "must be connected"):
-      self.handle(0, {"type": "play_dev", "card_type": "diplomat", "location": [6, 4, 8, 4], "selection": [8, 6, 9, 5]})
+      self.handle(0, {"location": [6, 4, 8, 4], "selection": [8, 6, 9, 5], **self.play_diplomat})
 
 
 class DefectorTest(BaseInputHandlerTest):
-
   def setUp(self):
     super().setUp()
     self.c.options["knights"].force(True)
@@ -553,7 +553,6 @@ class AdoptTest(BaseInputHandlerTest):
 
 
 class DeceptionTest(BaseInputHandlerTest):
-
   def setUp(self):
     super().setUp()
     self.c.options["knights"].force(True)
@@ -659,7 +658,7 @@ class SpyTest(BaseInputHandlerTest):
     self.assertEqual(self.c.turn_phase, "main")
 
   def testStealingWorksAfterChangingYourMind(self):
-    """This can happen if the player selects one card, deselects it, and then selects another."""
+    """Handle the player selecting one card, deselecting it, and then selecting another."""
     self.handle(2, {"type": "play_dev", "card_type": "spy", "selection": 1})
 
     self.handle(2, {"type": "steal", "selection": {"mining": 1, "constitution": 0}})
@@ -695,7 +694,6 @@ class SpyTest(BaseInputHandlerTest):
 
 
 class WarlordTest(BaseInputHandlerTest):
-
   def setUp(self):
     super().setUp()
     self.c.options["knights"].force(True)
@@ -738,7 +736,6 @@ class WarlordTest(BaseInputHandlerTest):
 
 
 class WeddingTest(BaseInputHandlerTest):
-
   def setUp(self):
     super().setUp()
     self.c.options["knights"].force(True)
@@ -826,7 +823,7 @@ class PeddlerTest(BaseInputHandlerTest):
 
     old_count = self.c.player_data[1].cards["rsrc1"]
     self.handle(2, {"type": "steal", "selection": {"rsrc1": 2}})
-    self.assertEqual(self.c.player_data[1].cards["rsrc1"], old_count-2)
+    self.assertEqual(self.c.player_data[1].cards["rsrc1"], old_count - 2)
     self.assertEqual(self.c.player_data[2].cards["rsrc1"], 2)
     self.assertEqual(self.c.player_data[2].cards["spy"], 0)
     self.assertEqual(self.c.turn_phase, "main")
@@ -871,7 +868,6 @@ class PeddlerTest(BaseInputHandlerTest):
 
 
 class MerchantTest(BaseInputHandlerTest):
-
   def setUp(self):
     super().setUp()
     self.c.player_data[0].cards["merchant"] = 2
@@ -932,7 +928,6 @@ class MerchantTest(BaseInputHandlerTest):
 
 
 class ConvoyTest(BaseInputHandlerTest):
-
   def setUp(self):
     super().setUp()
     self.c.player_data[0].cards["convoy"] = 2

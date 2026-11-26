@@ -620,7 +620,9 @@ class Player:
       "points": 0,
     }
     ret["trade_ratios"]["default"] = self.trade_ratios.default_factory()
-    ret["dev_cards"] = {name: self.cards[name] for name in SHOWN_VICTORY_CARDS if self.cards.get(name)}
+    ret["dev_cards"] = {
+      name: self.cards[name] for name in SHOWN_VICTORY_CARDS if self.cards.get(name)
+    }
     ret["dev_cards"]["devcard"] = self.hidden_dev_card_count()
     if is_over:
       ret["dev_cards"] = {
@@ -1070,22 +1072,28 @@ class IslandersState:
       return
     if self.turn_phase == "adopt":
       might = self.displaced_knight.strength
-      used = collections.Counter(k.strength for k in self.knights.values() if k.player == self.turn_idx)
+      used = collections.Counter(
+        k.strength for k in self.knights.values() if k.player == self.turn_idx
+      )
       if used[might] >= 2 and used[1] >= 2:  # If the player has no knights left at either strength
-        text = "{player%s} could not accept a defector from {player%s} because they had no knights left" % (self.turn_idx, self.displaced_knight.player)
+        text = (
+          "{player%s} could not accept a defector from {player%s} because they had no knights left"
+          % (self.turn_idx, self.displaced_knight.player)
+        )
         self.event_log.append(Event("defect", text))
         self.displaced_knight = None
         self.action_stack.pop()
         self.next_action()
         return
       road_corners = [
-          [edge.corner_left, edge.corner_right]
-          for edge, road in self.roads.items()
-          if road.player == self.turn_idx and road.road_type == "road"
+        [edge.corner_left, edge.corner_right]
+        for edge, road in self.roads.items()
+        if road.player == self.turn_idx and road.road_type == "road"
       ]
       road_corners = sum(road_corners, [])
       if all(corner in self.pieces or corner in self.knights for corner in road_corners):
-        text = "{player%s} could not accept a defector from {player%s} because they had no room" % (self.turn_idx, self.displaced_knight.player)
+        tmpl = "{player%s} could not accept a defector from {player%s} because they had no room"
+        text = tmpl % (self.turn_idx, self.displaced_knight.player)
         self.event_log.append(Event("defect", text))
         self.displaced_knight = None
         self.action_stack.pop()
@@ -1234,7 +1242,9 @@ class IslandersState:
     if move_type == "buy_dev":
       return self.handle_buy_dev(player_idx)
     if move_type == "play_dev":
-      return self.handle_play_dev(data.get("card_type"), data.get("selection"), location, player_idx)
+      return self.handle_play_dev(
+        data.get("card_type"), data.get("selection"), location, player_idx
+      )
     if move_type == "steal":
       return self.handle_steal(data.get("selection"), player_idx)
     if move_type == "knight":
@@ -1601,12 +1611,14 @@ class IslandersState:
     if self.turn_phase == "discard":
       self.event_log.append(Event("discard", "{player%s} discarded %s" % (player, discarded)))
     else:  # donate
-      self.event_log.append(Event(
-        "donate",
-        "{player%s} donated %s cards" % (player, discard_count),
-        "{player%s} donated %s" % (player, discarded),
-        [player, self.turn_idx],
-      ))
+      self.event_log.append(
+        Event(
+          "donate",
+          "{player%s} donated %s cards" % (player, discard_count),
+          "{player%s} donated %s" % (player, discarded),
+          [player, self.turn_idx],
+        )
+      )
       for resource, count in selection.items():
         self.player_data[self.turn_idx].cards[resource] += count
 
@@ -2768,7 +2780,7 @@ class IslandersState:
       self._handle_spy(player, selection)
     elif card_type == "warlord":
       self._handle_warlord(player)
-    elif card_type == "wedding": 
+    elif card_type == "wedding":
       self._handle_wedding(player)
     elif card_type == "peddler":
       self._handle_peddler(player, selection)
@@ -2800,7 +2812,7 @@ class IslandersState:
     player_cards = collections.Counter(self.player_data[self.affected_player].cards)
     missing = collections.Counter(selection) - player_cards
     if missing.total():
-      raise InvalidMove(f"You cannot take cards which that player does not have.")
+      raise InvalidMove("You cannot take cards which that player does not have.")
 
     for name, count in selection.items():
       self.player_data[self.affected_player].cards[name] -= count
@@ -3485,7 +3497,8 @@ class IslandersState:
     for might, count in new_mights.items():
       remaining = 2 - used[might]
       if remaining < count:
-        raise InvalidMove(f"You have insufficient {'elite' if might == 3 else 'veteran'} knights remaining.")
+        strength = "elite" if might == 3 else "veteran"
+        raise InvalidMove(f"You have insufficient {strength} knights remaining.")
 
     for location in locations:
       self.knights[location].strength += 1
