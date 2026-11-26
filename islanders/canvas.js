@@ -18,6 +18,7 @@ hoverTile = null;  // The tile object
 hoverCorner = null;  // The location x, y coordinates
 hoverEdge = null;  // An edge object with a location and an edge_type
 hoverTileEdge = null;  // An object with tile, edge, and rotation
+altHover = false;
 moveShipFromLocation = null;
 moveKnightFromLocation = null;
 moveBarbarianTiles = [];
@@ -132,17 +133,33 @@ function draw() {
   context.restore();
   context.save();
   for (let knight of knights) {
-    drawKnight(knight.location, getColor(knight.player), knight.movement, context);
+    if (moveKnightFromLocation != null && locationsEqual(knight.location, hoverCorner) && !locationsEqual(knight.location, moveKnightFromLocation) && !altHover) {
+      continue;  // Draw nothing when we're hovering over this knight about to displace it
+    }
+    let alpha = locationsEqual(moveKnightFromLocation, knight.location) ? 0.5 : 1;
+    drawKnight(knight.location, getColor(knight.player), alpha, knight.movement, knight.strength, knight.active, context);
+  }
+  if (displacedKnight != null) {
+    let altCorner = [displacedKnight.location[0] % 3 == 0 ? displacedKnight.location[0] - 0.66 : displacedKnight.location[0] + 0.66, displacedKnight.location[1]];
+    drawKnight(altCorner, getColor(displacedKnight.player), 0.5, displacedKnight.movement, displacedKnight.strength, displacedKnight.active, context);
   }
   context.restore();
   context.save();
   drawHover(context);
   context.restore();
   context.save();
-  if (robberLoc != null) {
-    drawRobber(context, [robberLoc[0]+1, robberLoc[1]], 1, true);
+  let robberAlpha = 1;
+  if (moveKnightFromLocation != null && hoverTile != null && locationsEqual(robberLoc, hoverTile.location)) {
+    robberAlpha = 0.5;
   }
-  drawRobber(context, pirateLoc, 1, false);
+  if (robberLoc != null) {
+    drawRobber(context, [robberLoc[0]+1, robberLoc[1]], robberAlpha, true);
+  }
+  robberAlpha = 1;
+  if (moveKnightFromLocation != null && hoverTile != null && locationsEqual(pirateLoc, hoverTile.location)) {
+    robberAlpha = 0.5;
+  }
+  drawRobber(context, pirateLoc, robberAlpha, false);
   context.restore();
   drawDebug(context);
   context.restore();
@@ -399,19 +416,22 @@ function drawTreasure(loc, ctx) {
   ctx.lineTo(canvasLoc.x - pieceRadius * 3/2, canvasLoc.y - pieceRadius * 1/3);
   ctx.stroke();
 }
-function drawKnight(loc, color, movement, ctx) {
-  let leftCorner = coordToCanvasLoc([loc[0], loc[1]]);
-  let rightCorner = coordToCanvasLoc([loc[2], loc[3]]);
-  let canvasLoc = {x: (leftCorner.x+rightCorner.x)/2, y: (leftCorner.y+rightCorner.y)/2};
+function drawKnight(loc, color, alpha, movement, strength, active, ctx) {
+  let canvasLoc;
+  if (loc.length > 2) {
+    let leftCorner = coordToCanvasLoc([loc[0], loc[1]]);
+    let rightCorner = coordToCanvasLoc([loc[2], loc[3]]);
+    canvasLoc = {x: (leftCorner.x+rightCorner.x)/2, y: (leftCorner.y+rightCorner.y)/2};
+  } else {
+    canvasLoc = coordToCanvasLoc(loc);
+  }
   let radius = pieceRadius * 1.25;
   ctx.save();
   ctx.translate(canvasLoc.x, canvasLoc.y);
   ctx.fillStyle = color;
   ctx.strokeStyle = "black";
   ctx.lineWidth = 1;
-  if (locationsEqual(moveKnightFromLocation, loc)) {
-    ctx.globalAlpha = 0.5;
-  }
+  ctx.globalAlpha = alpha;
   ctx.beginPath();
   ctx.moveTo(-radius, -radius);
   ctx.lineTo(radius, -radius);
@@ -422,26 +442,26 @@ function drawKnight(loc, color, movement, ctx) {
   ctx.stroke();
   ctx.clip();
   ctx.fillStyle = "black";
-  if (movement > 0) {
+  if (movement > 0 || strength > 1) {
     ctx.beginPath();
     ctx.moveTo(5*pieceRadius/6, -pieceRadius/2);
     ctx.ellipse(pieceRadius/2, -pieceRadius/2, pieceRadius/3, pieceRadius/3, 0, 0, 2*Math.PI);
     ctx.closePath();
-    ctx.fill();
+    (movement > 0 || active) ? ctx.fill() : ctx.stroke();
   }
-  if (movement > 2) {
+  if (movement > 2 || strength == 1 || strength >= 3) {
     ctx.beginPath();
     ctx.moveTo(pieceRadius/3, pieceRadius/3);
     ctx.ellipse(0, pieceRadius/3, pieceRadius/3, pieceRadius/3, 0, 0, 2*Math.PI);
     ctx.closePath();
-    ctx.fill();
+    (movement > 0 || active) ? ctx.fill() : ctx.stroke();
   }
-  if (movement > 1) {
+  if (movement > 1 || strength > 1) {
     ctx.beginPath();
     ctx.moveTo(-5*pieceRadius/6, -pieceRadius/2);
     ctx.ellipse(-pieceRadius/2, -pieceRadius/2, pieceRadius/3, pieceRadius/3, 0, Math.PI, 3*Math.PI);
     ctx.closePath();
-    ctx.fill();
+    (movement > 0 || active) ? ctx.fill() : ctx.stroke();
   }
   if (movement < 0) {
     ctx.lineWidth = 2;
@@ -631,13 +651,19 @@ function drawNumber(tileData, ctx) {
   ctx.restore();
 }
 function drawHover(ctx) {
-  if (extraBuildTurn != null && extraBuildTurn != myIdx) {
-    return;
+  if (turnPhase != "displace") {
+    if (extraBuildTurn != null && extraBuildTurn != myIdx) {
+      return;
+    }
+    if (extraBuildTurn == null && turn != myIdx) {
+      return;
+    }
   }
-  if (extraBuildTurn == null && turn != myIdx) {
-    return;
-  }
-  let canvas = document.getElementById("myCanvas");
+  drawHoverTile(ctx);
+  drawHoverCorner(ctx);
+  drawHoverEdge(ctx);
+}
+function drawHoverTile(ctx) {
   if (hoverTile != null) {
     if (["expel", "deplete", "treason"].includes(turnPhase)) {
       return;
@@ -651,27 +677,74 @@ function drawHover(ctx) {
     }
     return;
   }
+}
+function drawHoverCorner(ctx) {
   if (hoverCorner != null) {
+    if (cornerMatrix[hoverCorner[0]] == null || cornerMatrix[hoverCorner[0]][hoverCorner[1]] == null) {
+      return;
+    }
+    let knightOption = gameOptions["knights"] != null && gameOptions["knights"].value;
+    let altCorner = [hoverCorner[0] % 3 == 0 ? hoverCorner[0] - 0.66 : hoverCorner[0] + 0.66, hoverCorner[1]];
+    let knight = null;
+    if (knightMatrix[hoverCorner[0]] != null && knightMatrix[hoverCorner[0]][hoverCorner[1]] != null) {
+      knight = knightMatrix[hoverCorner[0]][hoverCorner[1]];
+    }
+    let piece = null;
+    if (pieceMatrix[hoverCorner[0]] != null && pieceMatrix[hoverCorner[0]][hoverCorner[1]] != null) {
+      piece = pieceMatrix[hoverCorner[0]][hoverCorner[1]];
+    }
+    if (knightOption && (moveKnightFromLocation != null || displacedKnight != null)) {  // Moving a knight
+      if (altHover) {
+        return;
+      }
+      if (piece != null) {
+        return;
+      }
+      if (knight != null && knight.player == myIdx) {
+        return;
+      }
+      // Moving the knight or displacing a knight
+      let movedKnight = displacedKnight != null ? displacedKnight : knightMatrix[moveKnightFromLocation[0]][moveKnightFromLocation[1]];
+      if (knight == null || displacedKnight == null) {
+        // Only draw this knight displacing another if it's not being displaced itself.
+        drawKnight(hoverCorner, getColor(myIdx), 0.7, 0, movedKnight.strength, displacedKnight != null ? movedKnight.active : false, ctx);
+      }
+      if (knight != null && displacedKnight == null) {  // Displace an opponent's knight
+        drawKnight(altCorner, getColor(knight.player), 0.7, 0, knight.strength, knight.active, ctx);
+      }
+      return;
+    }
     let drawType = null;
     let walls = false;
-    if (pieceMatrix[hoverCorner[0]] != null && pieceMatrix[hoverCorner[0]][hoverCorner[1]] != null) {
-      if (pieceMatrix[hoverCorner[0]][hoverCorner[1]].player == myIdx) {
+    if (piece != null) {
+      if (piece.player == myIdx) {
         drawType = "city";
-        if (pieceMatrix[hoverCorner[0]][hoverCorner[1]].piece_type == "city") {
+        if (piece.piece_type == "city") {
           walls = true;
         }
       }
     }
     if (drawType == null) {
-      if (cornerMatrix[hoverCorner[0]] != null && cornerMatrix[hoverCorner[0]][hoverCorner[1]] != null) {
-        drawType = "settlement";
+      drawType = "settlement";
+    }
+    if (!altHover) {
+      if (knight == null) {  // If there's no knight here, draw the piece
+        drawPiece(hoverCorner, 'rgba(127, 127, 127, 0.5)', drawType, false, walls, ctx);
+      } else if (knight.player == myIdx) {  // If it's our knight, hover suggests we will activate it.
+        drawKnight(hoverCorner, "gray", 0.5, 0, knight.strength, true, ctx);
+      }
+      // Draw nothing for someone else's knight.
+    }
+    if (piece == null) {  // No piece here - draw the alternate build/promote knight hover.
+      if (knight == null || knight.player == myIdx) {  // Draw nothing for opponents' knights.
+        let alpha = altHover ? 0.7 : 0.3;
+        let strength = knight != null ? knight.strength + 1 : 1;
+        drawKnight(altCorner, "gray", alpha, 0, strength, knight != null ? knight.active : false, ctx);
       }
     }
-    if (drawType != null) {
-      drawPiece(hoverCorner, 'rgba(127, 127, 127, 0.5)', drawType, false, walls, ctx);
-    }
-    return;
   }
+}
+function drawHoverEdge(ctx) {
   let edgeType = null;
   if (hoverTileEdge != null) {
     if (turnPhase == "placeport" && placementPort != null) {
@@ -705,7 +778,7 @@ function drawHover(ctx) {
   if ((edgeType == null || !edgeType.startsWith("coast")) && hoverEdge != null) {
     if (["knight", "fastknight", "move_knights"].includes(turnPhase)) {
       if (hoverEdge.edge_type != "ship") {
-        drawKnight(hoverEdge.location, 'rgba(127, 127, 127, 0.5)', 0, ctx);
+        drawKnight(hoverEdge.location, 'rgba(127, 127, 127, 0.5)', 1, 0, 0, 0, ctx);
       }
       return;
     }
@@ -789,6 +862,16 @@ function onClickTile(event, tileLoc) {
     maybeShowStatusPopup();
     return;
   }
+  if (moveKnightFromLocation != null && (locationsEqual(tileLoc, robberLoc) || locationsEqual(tileLoc, pirateLoc))) {
+    let msg = {
+      type: "chase",
+      knight: moveKnightFromLocation,
+      location: tileLoc,
+    };
+    ws.send(JSON.stringify(msg));
+    moveKnightFromLocation = null;
+    return;
+  }
   let clickType = (tileMatrix[tileLoc[0]][tileLoc[1]].is_land ? "robber" : "pirate");
   if (["expel", "deplete", "intrigue"].includes(turnPhase)) {
     clickType = turnPhase;
@@ -807,6 +890,32 @@ function onClickCorner(event, cornerLoc) {
     ignoreNextClick = false;
     return;
   }
+  if (event.target != event.currentTarget) {  // Clicked the alternate element
+    return;
+  }
+  if (turnPhase == "displace") {
+    let msg = {
+      type: "displace",
+      location: cornerLoc,
+    };
+    ws.send(JSON.stringify(msg));
+    return;
+  }
+  if (moveKnightFromLocation != null) {
+    if (locationsEqual(moveKnightFromLocation, cornerLoc)) {  // Cancel moving knight
+      moveKnightFromLocation = null;
+      draw();
+      return;
+    }
+    let msg = {
+      type: "move_knight",
+      from: moveKnightFromLocation,
+      to: cornerLoc,
+    };
+    ws.send(JSON.stringify(msg));
+    moveKnightFromLocation = null;
+    return;
+  }
   if (pieceMatrix[cornerLoc[0]] != null && pieceMatrix[cornerLoc[0]][cornerLoc[1]] != null) {
     if (pieceMatrix[cornerLoc[0]][cornerLoc[1]].player == myIdx) {
       let type = "city";
@@ -821,8 +930,58 @@ function onClickCorner(event, cornerLoc) {
       return;
     }
   }
+  if (knightMatrix[cornerLoc[0]] != null && knightMatrix[cornerLoc[0]][cornerLoc[1]] != null) {
+    let knight = knightMatrix[cornerLoc[0]][cornerLoc[1]];
+    if (knight.player == myIdx) {
+      if (knight.active) {
+        moveKnightFromLocation = cornerLoc;
+        event.stopPropagation();
+        draw();
+        return;
+      } else {
+        let msg = {
+          type: "activate",
+          location: cornerLoc,
+        };
+        ws.send(JSON.stringify(msg));
+        return;
+      }
+    }
+    return;
+  }
   let msg = {
     type: "settle",
+    location: cornerLoc,
+  };
+  ws.send(JSON.stringify(msg));
+}
+function onClickAlternateCorner(event, cornerLoc) {
+  if (event.button != 0) {
+    return;
+  }
+  if (ignoreNextClick) {
+    ignoreNextClick = false;
+    return;
+  }
+  if (gameOptions["knights"] == null || !gameOptions["knights"].value) {
+    return;
+  }
+  if (pieceMatrix[cornerLoc[0]] != null && pieceMatrix[cornerLoc[0]][cornerLoc[1]] != null) {
+    return;  // No alternate click for settlements/cities
+  }
+  if (knightMatrix[cornerLoc[0]] != null && knightMatrix[cornerLoc[0]][cornerLoc[1]] != null) {
+    if (knightMatrix[cornerLoc[0]][cornerLoc[1]].player == myIdx) {
+      let msg = {
+        type: "promote",
+        location: cornerLoc,
+      };
+      ws.send(JSON.stringify(msg));
+    }
+    return;
+  }
+  // No city/settlement/knight - build a knight
+  let msg = {
+    type: "knight",
     location: cornerLoc,
   };
   ws.send(JSON.stringify(msg));
@@ -852,7 +1011,7 @@ function onClickEdge(event, edgeLoc) {
   }
   if (moveKnightFromLocation != null) {
     if (locationsEqual(moveKnightFromLocation, edgeLoc)) {  // Cancel moving knight
-      moveKnightFromLocation  = null;
+      moveKnightFromLocation = null;
       draw();
       return;
     }
@@ -1217,5 +1376,20 @@ function createCornerBox(grid, x, y, i, j) {
     }
   };
   elem.onclick = function(event) { onClickCorner(event, [x, y]); };
+  let inner = document.createElement("DIV");
+  inner.classList.add("altelem");
+  inner.classList.toggle("leftelem", x % 3 == 0);
+  inner.classList.toggle("rightelem", x % 3 != 0);
+  inner.style.width = tileHeight / 5 + "px";
+  inner.style.height = tileHeight / 5 + "px";
+  inner.onmouseenter = function() { altHover = true; draw(); };
+  inner.onmouseleave = function() {
+    if (locationsEqual(hoverCorner, [x, y])) {
+      altHover = false;
+      draw();
+    }
+  }
+  inner.onclick = function(event) { onClickAlternateCorner(event, [x, y], true); };
+  elem.appendChild(inner);
   grid.appendChild(elem);
 }
