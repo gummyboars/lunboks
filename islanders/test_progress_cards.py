@@ -17,6 +17,7 @@ from islanders.islanders import (
   Knight,
   NotYourTurn,
   Road,
+  TileLocation,
 )
 from islanders.test_islanders import BaseInputHandlerTest
 
@@ -481,6 +482,38 @@ class DefectTest(BaseInputHandlerTest):
     self.assertEqual(self.c.displaced_knight.strength, 1)
     self.assertIsNone(self.c.affected_player)
 
+  def testDefectingKnightRecalculatesLongestRoad(self):
+    self.c.knights[(6, 6)].player = 0
+    self.c.affected_player = 0
+
+    self.c.add_player("green", "Player3")
+    self.c.add_piece(Piece(5, 3, "settlement", 2))
+    self.c.add_road(Road([5, 3, 6, 4], "road", 2))
+    self.c.add_road(Road([5, 5, 6, 4], "road", 2))
+    self.c.add_road(Road([5, 3, 6, 2], "road", 2))
+    self.c.add_road(Road([6, 2, 8, 2], "road", 2))
+    self.c.add_road(Road([8, 2, 9, 3], "road", 2))
+    self.c.add_road(Road([5, 7, 6, 6], "road", 1))
+    self.c.add_road(Road([3, 7, 5, 7], "road", 1))
+    self.c.add_road(Road([2, 6, 3, 7], "road", 1))
+    self.c.add_road(Road([2, 6, 3, 5], "road", 1))
+    self.c.add_road(Road([2, 4, 3, 5], "road", 1))
+    self.c.add_road(Road([8, 4, 9, 5], "road", 0))
+    self.c.add_road(Road([8, 6, 9, 5], "road", 0))
+    self.c.add_road(Road([6, 6, 8, 6], "road", 0))
+
+    self.assertEqual(self.c.player_data[0].longest_route, 4)
+    self.assertEqual(self.c.player_data[1].longest_route, 5)
+    self.assertEqual(self.c.player_data[2].longest_route, 5)
+    # Player 2 got longest route first, so they still have it despite the tie.
+    self.assertEqual(self.c.longest_route_player, 2)
+
+    self.handle(0, {"type": "defect", "location": [6, 6]})
+    self.assertEqual(self.c.player_data[0].longest_route, 4)
+    self.assertEqual(self.c.player_data[1].longest_route, 6)
+    self.assertEqual(self.c.player_data[2].longest_route, 5)
+    self.assertEqual(self.c.longest_route_player, 1)
+
   def testInvalidDefections(self):
     self.add_knight((6, 4), 0)
     with self.assertRaisesRegex(InvalidMove, "tuple of size 2"):
@@ -525,6 +558,16 @@ class AdoptTest(BaseInputHandlerTest):
     with self.assertRaisesRegex(NotYourTurn, "not your turn"):
       self.handle(1, {"type": "adopt", "location": [6, 6]})
 
+  def testAdoptedKnightCanBeUsedImmediately(self):
+    self.c.robber = TileLocation(7, 3)
+    self.c.knights[(6, 6)].active = True
+    self.handle(1, {"type": "defect", "location": [6, 6]})
+    self.handle(0, {"type": "adopt", "location": [6, 4]})
+    self.assertEqual(self.c.turn_phase, "main")
+    self.assertIn((6, 4), self.c.knights)
+    self.assertTrue(self.c.knights[(6, 4)].active)
+    self.c.handle_chase([7, 3], [6, 4], 0)
+
   def testAdoptStrongerKnight(self):
     self.c.knights[(6, 6)].strength = 2
     self.handle(1, {"type": "defect", "location": [6, 6]})
@@ -550,6 +593,43 @@ class AdoptTest(BaseInputHandlerTest):
     self.assertEqual(self.c.turn_phase, "main")
     self.assertEqual(len([k for k in self.c.knights.values() if k.player == 0]), 2)
     self.assertIsNone(self.c.displaced_knight)
+
+  def testAdoptWithoutAnyAvailableCorners(self):
+    self.add_knight((6, 4), 0, strength=1)
+    self.handle(1, {"type": "defect", "location": [6, 6]})
+    self.assertEqual(self.c.turn_phase, "main")
+    self.assertEqual(len([k for k in self.c.knights.values() if k.player == 0]), 1)
+    self.assertIsNone(self.c.displaced_knight)
+
+  def testAdoptedKnightRecalculatesLongestRoad(self):
+    self.c.add_player("green", "Player3")
+    self.c.add_piece(Piece(5, 3, "settlement", 2))
+    self.c.add_road(Road([5, 3, 6, 4], "road", 2))
+    self.c.add_road(Road([5, 5, 6, 4], "road", 2))
+    self.c.add_road(Road([5, 3, 6, 2], "road", 2))
+    self.c.add_road(Road([6, 2, 8, 2], "road", 2))
+    self.c.add_road(Road([8, 2, 9, 3], "road", 2))
+    self.c.add_road(Road([5, 7, 6, 6], "road", 1))
+    self.c.add_road(Road([3, 7, 5, 7], "road", 1))
+    self.c.add_road(Road([2, 6, 3, 7], "road", 1))
+    self.c.add_road(Road([2, 6, 3, 5], "road", 1))
+    self.c.add_road(Road([8, 4, 9, 5], "road", 0))
+    self.c.add_road(Road([8, 6, 9, 5], "road", 0))
+    self.c.add_road(Road([6, 6, 8, 6], "road", 0))
+
+    self.assertEqual(self.c.player_data[0].longest_route, 4)
+    self.assertEqual(self.c.player_data[1].longest_route, 5)
+    self.assertEqual(self.c.player_data[2].longest_route, 5)
+    self.assertEqual(self.c.longest_route_player, 2)
+
+    self.handle(1, {"type": "defect", "location": [6, 6]})
+    self.assertEqual(self.c.longest_route_player, 2)
+
+    self.handle(0, {"type": "adopt", "location": [6, 4]})
+    self.assertEqual(self.c.player_data[0].longest_route, 4)
+    self.assertEqual(self.c.player_data[1].longest_route, 5)
+    self.assertEqual(self.c.player_data[2].longest_route, 4)
+    self.assertEqual(self.c.longest_route_player, 1)
 
 
 class DeceptionTest(BaseInputHandlerTest):
@@ -577,6 +657,17 @@ class DeceptionTest(BaseInputHandlerTest):
     self.assertEqual(self.c.turn_phase, "main")
     self.assertIsNone(self.c.displaced_knight)
     self.assertNotIn((6, 4), self.c.knights)
+
+  def testDisplacedKnightUpdatesLongestRoad(self):
+    self.c.add_road(Road([5, 3, 6, 4], "road", 0))
+    self.c.add_road(Road([5, 3, 6, 2], "road", 0))
+    self.c.add_road(Road([6, 2, 8, 2], "road", 0))
+    self.c.add_road(Road([8, 2, 9, 3], "road", 0))
+    self.assertEqual(self.c.player_data[0].longest_route, 4)
+
+    self.handle(0, {"type": "play_dev", "card_type": "deception", "location": [6, 4]})
+    self.assertEqual(self.c.player_data[0].longest_route, 5)
+    self.assertEqual(self.c.longest_route_player, 0)
 
   def testInvalidDisplacements(self):
     self.add_knight((6, 6), 1)

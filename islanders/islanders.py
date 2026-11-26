@@ -2902,6 +2902,17 @@ class IslandersState:
       self.player_data[idx].longest_route = self._calculate_longest_road(idx)
     self._update_longest_route_player()
 
+  def pop_knight(self, location):
+    knight = self.knights.pop(location)
+    if not isinstance(knight.location, CornerLocation):  # Only corner knights affect longest road.
+      return knight
+
+    to_check = {self.roads[edge].player for edge in location.get_edges() if edge in self.roads}
+    for idx in to_check:
+      self.player_data[idx].longest_route = self._calculate_longest_road(idx)
+    self._update_longest_route_player()
+    return knight
+
   def handle_promote_knight(self, loc, player_idx):
     self._check_main_phase("promote", "promote a knight")
     location = parse_location(loc, CornerLocation)
@@ -3023,6 +3034,8 @@ class IslandersState:
 
     if to_location in self.knights:
       self.displaced_knight = self.knights[to_location]
+    # NOTE: pop_knight is not used here, as we want to update the longest route player only once.
+    # i.e. picking up the knight and putting it down somewhere else are not two separate actions.
     knight = self.knights.pop(from_location)
     knight.active = False
     knight.location = to_location
@@ -3077,8 +3090,9 @@ class IslandersState:
     if self.knights[location].player != player_idx:
       raise InvalidMove("You must choose one of your own knights.")
 
-    self.displaced_knight = self.knights.pop(location)  # Reusing displaced_knight for this
+    self.displaced_knight = self.pop_knight(location)  # Reusing displaced_knight for this
     self.affected_player = None
+
     self.action_stack.pop()
     self.next_action()
 
@@ -3096,10 +3110,9 @@ class IslandersState:
       might = 1  # If the player has no available knighs at this strength, they can use a conscript.
 
     if used[might] < 2:  # This should always be the case because of next_action()
-      self.knights[location] = Knight(location, player_idx, location, strength=might)
-      self.knights[location].active = self.displaced_knight.active
-      if self.displaced_knight.active:
-        self.activated_this_turn.append(location)
+      knight = Knight(location, player_idx, location, strength=might)
+      knight.active = self.displaced_knight.active
+      self.add_knight(knight)
 
     self.displaced_knight = None
     self.action_stack.pop()
@@ -3567,7 +3580,7 @@ class IslandersState:
       raise InvalidMove("You cannot choose your own knight to displace.")
     self._check_nearby_road(location, player_idx, ["road", "ship"], "displace a")
 
-    self.displaced_knight = self.knights.pop(location)
+    self.displaced_knight = self.pop_knight(location)
     self.action_stack.append("displace")
     self.next_action()
 
