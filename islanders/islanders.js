@@ -18,6 +18,11 @@ selectCardHeight = summaryCardHeight * 3;
 cardResources = ["rsrc1", "rsrc2", "rsrc3", "rsrc4", "rsrc5"];
 tradables = [...cardResources, "gold"];
 devCards = ["knight", "roadbuilding", "yearofplenty", "monopoly", "palace", "chapel", "university", "library", "market"];
+devCards.push(
+  "alchemist", "engineer", "inventor", "irrigation", "medicine", "mining", "printer", "smith",
+  "bishop", "constitution", "defector", "diplomat", "deception", "saboteur", "spy", "warlord", "wedding",
+  "peddler", "merchant", "convoy", "guild",
+);
 tradeSelectionUI = {
   tradeOffer: {
     topPanelText: "You Want",
@@ -52,9 +57,33 @@ resourceSelectionUI = {
     okText: "OK",
     cancelText: "Cancel",
   },
+  convoy: {
+    topText: "Choose one resource to trade at a 2:1 ratio.",
+    okText: "OK",
+    cancelText: "Cancel",
+  },
   collect: {
     topText: "Choose {} to collect.",
     okText: "OK",
+  },
+};
+resourceSelectionUI["guild"] = resourceSelectionUI["monopoly"];
+buildCards = ["engineer", "medicine"];
+tileCards = {"merchant": 1, "inventor": 2};
+stealCards = {
+  spy: {
+    titleText: "Choose a player to steal from.",
+    cardType: "dev_cards",
+    cardCount: 1,
+    cardList: devCards,
+    suffix: "",
+  },
+  peddler: {
+    titleText: "Choose a player to steal from.",
+    cardType: "resource_cards",
+    cardCount: 2,
+    cardList: cardResources,
+    suffix: "card",
   },
 };
 var snd1 = new Audio("/beep.mp3");
@@ -94,6 +123,9 @@ extraBuildTurn = null;
 diceRoll = null;
 robberLoc = null;
 pirateLoc = null;
+merchantLoc = null;
+merchantPlayer = null;
+affectedPlayer = null;
 targetTile = null;
 placementPort = null;
 tradeOffer = null;
@@ -113,6 +145,7 @@ tradeSelection = {"top": {}, "bottom": {}};
 tradeActiveOffer = {"want": {}, "give": {}};  // null until someone makes an offer.
 counterOffers = [];
 handSelection = {};
+diceSelection = {"red": null, "white": null};
 devCardType = null;  // knight, yearofplenty, roadbuilding, monopoly
 draggedWin = null;
 sizeTimeout = null;
@@ -242,6 +275,7 @@ function confirmSelection(event) {
     selection: resourceSelection,
   };
   ws.send(JSON.stringify(msg));
+  deselectDevCard();
   hideSelectorWindow();
 }
 function clearResourceSelection() {
@@ -257,11 +291,76 @@ function cancelSelection(event) {
     return;
   } else {
     hideSelectorWindow();
+    deselectDevCard();
   }
 }
-function toggleSelect(e, elemName) {
-  if (discardPlayers[myIdx] == null) {
+function deselectDevCard() {
+  if (devCardType == null) {
     return;
+  }
+  let found = null;
+  for (let elem of document.getElementsByClassName("chosen")) {
+    if (elem.cardType == devCardType) {
+      found = elem;
+      break;
+    }
+  }
+  if (found != null) {
+    found.defaultZIndex = found.style.order;
+    found.style.zIndex = found.defaultZIndex;
+    found.classList.remove("chosen");
+  }
+
+  if (resourceSelectionUI[devCardType] != null) {
+    devCardType = null;
+    cancelSelection();
+  } else if (stealCards[devCardType] != null) {
+    devCardType = null;
+    maybeShowRobWindow();
+  } else if (tileCards[devCardType] != null) {
+    moveNumberFromLocation = null;
+    devCardType = null;
+    draw();
+    maybeShowStatusPopup();
+  } else if (devCardType == "defector") {
+    devCardType = null;
+    maybeShowRobWindow();
+  } else if (devCardType == "alchemist") {
+    devCardType = null;
+    updateDice();
+    maybeShowStatusPopup();
+  } else if (devCardType == "smith") {
+    devCardType = null;
+    promoteKnightLocation = null;
+    draw();
+    maybeShowStatusPopup();
+  } else if (devCardType == "diplomat") {
+    devCardType = null;
+    moveShipFromLocation = null;
+    draw();
+    maybeShowStatusPopup();
+  } else if (["deception", "engineer", "medicine"].includes(devCardType)) {
+    devCardType = null;
+    maybeShowStatusPopup();
+  }
+  devCardType = null;
+}
+function toggleSelect(e, elemName) {
+  if (discardPlayers[myIdx] != null && e.currentTarget.classList.contains("selectcard")) {
+    let container = document.getElementById("uicards");
+    for (let child of container.children) {
+      if (child.cardType == elemName && child.classList.contains("chosen")) {
+        child.click();
+        break;
+      }
+    }
+    return;
+  }
+  if (!discardPlayers[myIdx]) {
+    if (["spy", "peddler"].includes(turnPhase) && turn == myIdx && e.currentTarget.classList.contains("selectcard")) {
+    } else {
+      return;
+    }
   }
   let cardType = elemName.substring(0, elemName.length - 4);
   let cardTarget = e.currentTarget;
@@ -281,7 +380,11 @@ function handResourceHelper(cardType, count) {
   if (handSelection[cardType] < 0) {
     handSelection[cardType] = 0;
   }
-  updateHandSelection();
+  if (discardPlayers[myIdx]) {
+    updateHandSelection();
+  } else {
+    refreshStealSelection();
+  }
 }
 function selectResource(event, windowName, rsrc) {
   // Ignore right/middle-click.
@@ -768,18 +871,27 @@ function maybeShowCollectWindow(oldPhase) {
   }
 }
 function maybeShowDiscardWindow() {
-  if (turnPhase == "discard" && discardPlayers[myIdx]) {
+  if (["donate", "discard"].includes(turnPhase) && discardPlayers[myIdx]) {
     showHandSelect(discardPlayers[myIdx]);
+  } else if (["spy", "peddler"].includes(turnPhase) && turn == myIdx) {
+    showHandSteal();
   } else {
     handSelection = {};
     hideHandSelect();
   }
 }
 function showHandSelect(count) {
-  let topText = formatStringWithParam("Choose {} cards to discard.", count);
+  let topText = `Choose ${count} cards to ${turnPhase}.`;
   document.getElementById("handselecttitle").innerText = topText;
   document.getElementById("handpopup").style.display = "flex";
   updateHandSelection();
+}
+function showHandSteal() {
+  let count = turnPhase == "spy" ? 1 : 2;
+  let topText = `Choose ${count} cards to steal.`;
+  document.getElementById("handselecttitle").innerText = topText;
+  document.getElementById("handpopup").style.display = "flex";
+  updateStealSelection();
 }
 function hideHandSelect() {
   document.getElementById("handpopup").style.display = "none";
@@ -788,7 +900,9 @@ function hideHandSelect() {
     toDeselect.push(elem);
   }
   for (let elem of toDeselect) {
-    elem.classList.remove("chosen");
+    if (devCardType == null || elem.cardType != devCardType) {
+      elem.classList.remove("chosen");
+    }
   }
 }
 function updateHandSelection() {
@@ -799,11 +913,66 @@ function updateHandSelection() {
   let total = 0;
   for (let [ordering, rsrc] of cardResources.entries()) {
     for (let i = 0; i < handSelection[rsrc] || 0; i++) {
-      addHandCard(container, rsrc, ordering);
+      let div = addHandCard(container, rsrc + "card", ordering);
+      div.onclick = function(e) { toggleSelect(e, rsrc + "card"); };
       total++;
     }
   }
+  document.getElementById("handok").innerText = "Discard";
+  if (turnPhase == "donate") {
+    document.getElementById("handok").innerText = "Donate";
+  }
   if (total == discardPlayers[myIdx]) {
+    enableButton(document.getElementById("handok"));
+  } else {
+    disableButton(document.getElementById("handok"));
+  }
+}
+function updateStealSelection() {
+  let container = document.getElementById("handselectcards");
+  let oldCounts = {};
+  for (let child of container.children) {
+    if (child.cardName != null) {
+      oldCounts[child.cardName] = (oldCounts[child.cardName] ?? 0) + 1;
+    }
+  }
+  let info = stealCards[turnPhase];
+  let expectedCounts = {};
+  for (let card of info.cardList) {
+    let cardName = card + info.suffix;
+    expectedCounts[cardName] = playerData[affectedPlayer][info.cardType][card] || 0;
+  }
+  for (let cardName in oldCounts) {
+    let expected = expectedCounts[cardName] || 0;
+    removeHandCards(container, cardName, oldCounts[cardName] - expected);
+  }
+  for (let [ordering, card] of info.cardList.entries()) {
+    let cardName = card + info.suffix;
+    let oldCount = oldCounts[cardName] || 0;
+    for (let i = oldCount; i < expectedCounts[cardName]; i++) {
+      let div = addHandCard(container, cardName, ordering);
+      div.onclick = function(e) { toggleSelect(e, card + "card"); };
+    }
+  }
+  handSelection = {};
+  for (let child of container.children) {
+    if (child.cardName != null && child.classList.contains("chosen")) {
+      let card = child.cardName.substring(0, child.cardName.length - info.suffix.length);
+      handSelection[card] = (handSelection[card] || 0) + 1;
+    }
+  }
+  document.getElementById("handok").innerText = "Steal";
+  refreshStealSelection();
+}
+function refreshStealSelection() {
+  let container = document.getElementById("handselectcards");
+  let info = stealCards[turnPhase];
+  let total = 0;
+  for (let card in handSelection) {
+    total += handSelection[card];
+  }
+  container.classList.toggle("choosing", total > 0);
+  if (total == info.cardCount) {
     enableButton(document.getElementById("handok"));
   } else {
     disableButton(document.getElementById("handok"));
@@ -816,14 +985,39 @@ function addHandCard(parentNode, rsrc, ordering) {
   cnv.style.display = "block";
   cnv.classList.add("selector");
   let div = document.createElement("DIV");
+  div.classList.add("selectcard");
   div.style.width = cnv.width + "px";
   div.style.height = cnv.height + "px";
   div.style.order = ordering;
+  div.cardName = rsrc;
   div.appendChild(cnv);
   parentNode.appendChild(div);
-  renderAssetToCanvas(cnv, rsrc + "card", "");
+  renderAssetToCanvas(cnv, rsrc, "");
+  return div;
+}
+function removeHandCards(parentNode, cardName, count) {
+  if (count <= 0) {
+    return;
+  }
+  let toRemove = [];
+  for (let child of parentNode.children) {
+    if (child.cardName == cardName) {
+      toRemove.push(child);
+    }
+  }
+  for (let i = 0; i < count && i < toRemove.length; i++) {
+    parentNode.removeChild(toRemove[i]);
+  }
 }
 function okHandSelection(e) {
+  if (["spy", "peddler"].includes(turnPhase)) {
+    let msg = {
+      type: "steal",
+      selection: handSelection,
+    };
+    ws.send(JSON.stringify(msg));
+    return;
+  }
   let msg = {
     type: "discard",
     selection: handSelection,
@@ -831,69 +1025,111 @@ function okHandSelection(e) {
   ws.send(JSON.stringify(msg));
 }
 function maybeShowRobWindow() {
-  let playerpopup = document.getElementById("playerpopup");
+  let clickFn = function(i) {
+    let msg = {
+      type: "play_dev",
+      card_type: devCardType,
+      selection: i,
+    };
+    ws.send(JSON.stringify(msg));
+    deselectDevCard();
+  };
   if (turnPhase == "rob" && turn == myIdx) {
-    while (playerpopup.firstChild) {
-      playerpopup.removeChild(playerpopup.firstChild);
+    let robFn = function(i) {
+      let msg = {
+        type: "rob",
+        player: i,
+      };
+      ws.send(JSON.stringify(msg));
+    };
+    showPlayerPopup(robPlayers, ["resource_cards"], "Select a player to steal from", robFn);
+  } else if (devCardType == "defector") {
+    let validPlayers = [];
+    for (let knight of knights) {
+      if (!validPlayers.includes[knight.player]) {
+        validPlayers.push(knight.player);
+      }
     }
-    let titleDiv = document.createElement("DIV");
-    titleDiv.innerText = "Select a player to steal from";
-    titleDiv.style.padding = "5px";
-    playerpopup.appendChild(titleDiv);
-    for (let i = 0; i < playerData.length; i++) {
-      let playerIdx = i;  // capture for onclick function.
-      if (!robPlayers.includes(i)) {
+    showPlayerPopup(validPlayers, [], "Select a player to steal a knight from", clickFn);
+  } else if (stealCards[devCardType] != null) {
+    let validPlayers = [];
+    let cardType = stealCards[devCardType].cardType;
+    for (let [idx, player] of playerData.entries()) {
+      if (idx == myIdx) {
         continue;
       }
-      let selectDiv = document.createElement("DIV");
-      selectDiv.classList.add("selectsummary");
-      selectDiv.classList.add("selectable");
-      selectDiv.classList.add("acceptable");
-      selectDiv.style.position = "relative";
-      selectDiv.style.padding = "5px 0px 5px 0px";
-      let nameOuter = document.createElement("DIV");
-      nameOuter.style.flexGrow = "0";
-      nameOuter.style.flexShrink = "0";
-      nameOuter.style.flexBasis = "auto";
-      nameOuter.style.margin = "0px 5px 0px 5px";
-      let nameDiv = document.createElement("DIV");
-      nameDiv.style.display = "flex";
-      nameDiv.style.flexDirection = "row";
-      nameDiv.style.justifyContent = "flex-start";
-      nameDiv.style.color = playerData[i].color;
-      nameDiv.style.fontWeight = "bold";
-      nameDiv.innerText = playerData[i].name;
-      nameOuter.appendChild(nameDiv);
-      let cardsOuter = document.createElement("DIV");
-      cardsOuter.classList.add("summarypanel");
-      cardsOuter.style.width = "100%";
-      cardsOuter.style.flexBasis = "100%";
-      cardsOuter.style.margin = "0px 5px 0px 5px";
-      let cardsDiv = document.createElement("DIV");
-      cardsDiv.style.display = "flex";
-      cardsDiv.style.flexDirection = "row";
-      cardsDiv.style.justifyContent = "flex-end";
-      cardsDiv.style.width = "100%";
-      updatePlayerCardInfo(i, cardsDiv, true);
-      cardsOuter.appendChild(cardsDiv);
-      selectDiv.appendChild(nameOuter);
-      selectDiv.appendChild(cardsOuter);
-      selectDiv.onclick = function(e) {
-        let msg = {
-          type: "rob",
-          player: playerIdx,
-        };
-        ws.send(JSON.stringify(msg));
+      if (Number.isInteger(player[cardType])) {
+        if (player[cardType]) {
+          validPlayers.push(idx);
+        }
+        continue;
       }
-      playerpopup.appendChild(selectDiv);
+      for (let name in player[cardType]) {
+        if (player[cardType][name] > 0) {  // TODO: unstealable victory cards
+          validPlayers.push(idx);
+          break;
+        }
+      }
     }
-    popupMaxWidth = selectCardWidth * 5 + 100;
-    playerpopup.style.display = 'flex';
-    if (playerpopup.offsetWidth > popupMaxWidth) {
-      playerpopup.style.width = popupMaxWidth + "px";
-    }
+    showPlayerPopup(validPlayers, [cardType], stealCards[devCardType].titleText, clickFn);
   } else {
-    playerpopup.style.display = 'none';
+    document.getElementById("playerpopup").style.display = 'none';
+  }
+}
+function showPlayerPopup(validPlayers, cardType, titleText, clickFn) {
+  let playerpopup = document.getElementById("playerpopup");
+  while (playerpopup.firstChild) {
+    playerpopup.removeChild(playerpopup.firstChild);
+  }
+  let titleDiv = document.createElement("DIV");
+  titleDiv.innerText = titleText;
+  titleDiv.style.padding = "5px";
+  playerpopup.appendChild(titleDiv);
+  for (let i = 0; i < playerData.length; i++) {
+    let playerIdx = i;  // capture for onclick function.
+    if (!validPlayers.includes(i)) {
+      continue;
+    }
+    let selectDiv = document.createElement("DIV");
+    selectDiv.classList.add("selectsummary");
+    selectDiv.classList.add("selectable");
+    selectDiv.classList.add("acceptable");
+    selectDiv.style.position = "relative";
+    selectDiv.style.padding = "5px 0px 5px 0px";
+    let nameOuter = document.createElement("DIV");
+    nameOuter.style.flexGrow = "0";
+    nameOuter.style.flexShrink = "0";
+    nameOuter.style.flexBasis = "auto";
+    nameOuter.style.margin = "0px 5px 0px 5px";
+    let nameDiv = document.createElement("DIV");
+    nameDiv.style.display = "flex";
+    nameDiv.style.flexDirection = "row";
+    nameDiv.style.justifyContent = "flex-start";
+    nameDiv.style.color = playerData[i].color;
+    nameDiv.style.fontWeight = "bold";
+    nameDiv.innerText = playerData[i].name;
+    nameOuter.appendChild(nameDiv);
+    let cardsOuter = document.createElement("DIV");
+    cardsOuter.classList.add("summarypanel");
+    cardsOuter.style.width = "100%";
+    cardsOuter.style.flexBasis = "100%";
+    cardsOuter.style.margin = "0px 5px 0px 5px";
+    let cardsDiv = document.createElement("DIV");
+    cardsDiv.style.display = "flex";
+    cardsDiv.style.flexDirection = "row";
+    cardsDiv.style.justifyContent = "flex-end";
+    cardsDiv.style.width = "100%";
+    updatePlayerCardInfo(i, cardsDiv, cardType);
+    cardsOuter.appendChild(cardsDiv);
+    selectDiv.appendChild(nameOuter);
+    selectDiv.appendChild(cardsOuter);
+    selectDiv.onclick = function(e) { clickFn(playerIdx); };
+    playerpopup.appendChild(selectDiv);
+  }
+  popupMaxWidth = selectCardWidth * 5 + 100;
+  playerpopup.style.display = 'flex';
+  if (playerpopup.offsetWidth > popupMaxWidth) {
+    playerpopup.style.width = popupMaxWidth + "px";
   }
 }
 function maybeShowBuryWindow() {
@@ -1021,26 +1257,128 @@ function maybeShowPortWindow() {
 }
 function maybeShowStatusPopup() {
   let statusPopup = document.getElementById("statuspopup");
+  let statusTitle = document.getElementById("statustitle");
+  let statusOk = document.getElementById("statusok");
+  statusOk.style.display = "none";
   if (turnPhase == "displace") {
     if (displacedKnight != null && displacedKnight.player == myIdx) {
       statusPopup.style.display = "flex";
-      statusPopup.innerText = "Choose where to place your displaced knight.";
+      statusTitle.innerText = "Choose where to place your displaced knight.";
     } else if (turn == myIdx) {
       statusPopup.style.display = "flex";
-      statusPopup.innerText = "Waiting for a player to move their displaced knight.";
+      statusTitle.innerText = "Waiting for a player to move their displaced knight.";
     } else {
       statusPopup.style.display = "none";
     }
     return;
   }
-  if (turn != myIdx || !["knight", "fastknight", "treason", "intrigue", "move_knights", "discard"].includes(turnPhase)) {
+  if (turn == myIdx && devCardType == "alchemist") {
+    statusPopup.style.display = "flex";
+    statusTitle.innerText = "Choose the next dice roll.";
+    statusOk.style.display = "inline-block";
+    return;
+  }
+  if (turn == myIdx && devCardType == "inventor") {
+    if (moveNumberFromLocation == null) {
+      statusPopup.style.display = "flex";
+      statusTitle.innerText = "Choose two numbers to swap.";
+      return;
+    }
+    statusPopup.style.display = "flex";
+    statusTitle.innerText = "Choose a number to swap with.";
+    return;
+  }
+  if (turn == myIdx && devCardType == "smith") {
+    statusPopup.style.display = "flex";
+    if (promoteKnightLocation != null) {
+      statusTitle.innerText = "Choose one more knight to promote (or 'Done').";
+    } else {
+      statusTitle.innerText = "Choose one or two knights to promote.";
+    }
+    statusOk.style.display = "inline-block";
+    if (promoteKnightLocation != null) {
+      enableButton(statusOk);
+    } else {
+      disableButton(statusOk);
+    }
+    return;
+  }
+  if (turn == myIdx && devCardType == "diplomat") {
+    statusPopup.style.display = "flex";
+    if (moveShipFromLocation != null) {
+      let roadType = "road";
+      let [edgeX, edgeY] = [(moveShipFromLocation[0]+moveShipFromLocation[2])/2, (moveShipFromLocation[1]+moveShipFromLocation[3])/2];
+      if (roadMatrix[edgeX] != null && roadMatrix[edgeX][edgeY] != null) {
+        roadType = roadMatrix[edgeX][edgeY].road_type;
+      }
+      statusTitle.innerText = `Move your ${roadType} (or 'Done' to remove it).`;
+    } else {
+      statusTitle.innerText = "Choose a road or ship to remove (or move if it's yours).";
+    }
+    statusOk.style.display = "inline-block";
+    if (moveShipFromLocation != null) {
+      enableButton(statusOk);
+    } else {
+      disableButton(statusOk);
+    }
+    return;
+  }
+  if (turn == myIdx && devCardType == "deception") {
+    statusPopup.style.display = "flex";
+    statusTitle.innerText = "Choose a knight to displace.";
+    return;
+  }
+  if (turn == myIdx && devCardType == "engineer") {
+    statusPopup.style.display = "flex";
+    statusTitle.innerText = "Choose a city to build walls.";
+    return;
+  }
+  if (turn == myIdx && devCardType == "medicine") {
+    statusPopup.style.display = "flex";
+    statusTitle.innerText = "Choose a settlement to upgrade at reduced cost.";
+    return;
+  }
+  if (turnPhase == "defect") {
+    if (affectedPlayer == myIdx) {
+      statusPopup.style.display = "flex";
+      statusTitle.innerText = "Choose a knight to lose";
+      return;
+    }
+    if (turn == myIdx) {
+      statusPopup.style.display = "flex";
+      statusTitle.innerText = "Waiting for the player to choose a knight to lose";
+      return;
+    }
+    statusPopup.style.display = "none";
+    return;
+  }
+  if (turn != myIdx || !["knight", "fastknight", "treason", "intrigue", "move_knights", "discard", "donate", "adopt"].includes(turnPhase)) {
     statusPopup.style.display = "none";
     return;
   }
   if (turnPhase == "discard") {
     if (!discardPlayers[myIdx]) {
       statusPopup.style.display = "flex";
-      statusPopup.innerText = "Waiting for players to discard";
+      statusTitle.innerText = "Waiting for players to discard";
+      return;
+    }
+    statusPopup.style.display = "none";
+    return;
+  }
+  if (turnPhase == "donate") {
+    if (turn == myIdx) {
+      statusPopup.style.display = "flex";
+      statusTitle.innerText = "Waiting for players to donate";
+      return;
+    }
+    statusPopup.style.display = "none";
+    return;
+  }
+  if (turnPhase == "adopt") {
+    if (turn == myIdx) {
+      statusPopup.style.display = "flex";
+      statusTitle.innerText = "Choose where to place your stolen knight";
+      displacedKnight.player = myIdx;  // Minor hack: should be drawn in this player's color
       return;
     }
     statusPopup.style.display = "none";
@@ -1048,43 +1386,96 @@ function maybeShowStatusPopup() {
   }
   statusPopup.style.display = "flex";
   if (turnPhase == "knight") {
-    statusPopup.innerText = "Place a knight next to the castle";
+    statusTitle.innerText = "Place a knight next to the castle";
   } else if (turnPhase == "fastknight") {
-    statusPopup.innerText = "Place a knight on the board";
+    statusTitle.innerText = "Place a knight on the board";
   } else if (turnPhase == "intrigue") {
-    statusPopup.innerText = "Choose a barbarian to capture";
+    statusTitle.innerText = "Choose a barbarian to capture";
   } else if (turnPhase == "move_knights") {
-    statusPopup.innerText = "Move your knights";
+    statusTitle.innerText = "Move your knights";
   } else if (turnPhase == "treason") {
     if (moveBarbarianTiles.length == 0) {
       if (barbarianFromCount == 2) {
-        statusPopup.innerText = "Choose two barbarians to move";
+        statusTitle.innerText = "Choose two barbarians to move";
       } else if (barbarianFromCount == 1) {
-        statusPopup.innerText = "Choose one barbarian to move";
+        statusTitle.innerText = "Choose one barbarian to move";
       }
     } else if (moveBarbarianTiles.length == 1) {
       if (barbarianFromCount == 2) {
-        statusPopup.innerText = "Choose one more barbarian to move";
+        statusTitle.innerText = "Choose one more barbarian to move";
       } else if (barbarianFromCount == 1) {
-        statusPopup.innerText = "Choose one barbarian to move";
+        statusTitle.innerText = "Choose one barbarian to move";
       }
     } else if (moveBarbarianTiles.length == 2) {
       if (barbarianToCount == 2) {
-        statusPopup.innerText = "Choose two tiles to move barbarians to";
+        statusTitle.innerText = "Choose two tiles to move barbarians to";
       } else if (barbarianToCount == 1) {
-        statusPopup.innerText = "Choose where to move the barbarian to";
+        statusTitle.innerText = "Choose where to move the barbarian to";
       }
     } else if (moveBarbarianTiles.length == 3) {
       if (barbarianToCount == 2) {
-        statusPopup.innerText = "Choose one more tile to move barbarians to";
+        statusTitle.innerText = "Choose one more tile to move barbarians to";
       } else if (barbarianToCount == 1) {
-        statusPopup.style.display = "none";
+        statusTitle.style.display = "none";
       }
     }
   }
 }
+function statusDone(event) {
+  if (!["alchemist", "smith", "diplomat"].includes(devCardType)) {
+    return;
+  }
+  if (devCardType == "smith") {
+    let msg = {
+      type: "play_dev",
+      card_type: "smith",
+      location: promoteKnightLocation,
+      selection: null,
+    };
+    ws.send(JSON.stringify(msg));
+    deselectDevCard();
+    draw();
+    return;
+  }
+  if (devCardType == "diplomat") {
+    let msg = {
+      type: "play_dev",
+      card_type: "diplomat",
+      location: moveShipFromLocation,
+      selection: null,
+    };
+    ws.send(JSON.stringify(msg));
+    deselectDevCard();
+    draw();
+    return;
+  }
+  let msg = {
+    type: "play_dev",
+    card_type: "alchemist",
+    selection: diceSelection,
+  };
+  ws.send(JSON.stringify(msg));
+  deselectDevCard();
+}
+function changeDice(event, color) {
+  if (devCardType != "alchemist") {
+    return;
+  }
+  event.stopPropagation();
+  if (diceSelection[color] == null) {
+    diceSelection[color] = 0;
+  }
+  diceSelection[color] = (diceSelection[color] + 1) % 6;
+  if (diceSelection[color] == 0) {
+    diceSelection[color] = 6;
+  }
+  updateDice();
+}
 function rollDice() {
   if (turn != myIdx) {
+    return;
+  }
+  if (devCardType == "alchemist") {  // prevents misclicks
     return;
   }
   let msg = {
@@ -1227,6 +1618,7 @@ function addCard(cardContainer, elemId, ordering, clickAction) {
   div.style.height = cardHeight + "px";
   div.style.order = ordering;
   div.style.zIndex = ordering;
+  div.defaultZIndex = ordering;
   div.appendChild(cnv);
   div.onmouseenter = bringforward;
   div.onmouseleave = pushbackward;
@@ -1284,25 +1676,68 @@ function bringforward(e) {
   }
   // TODO: change z-index only when player is not selecting cards.
   e.currentTarget.classList.add("hovered");
-  e.currentTarget.oldZ = e.currentTarget.style.zIndex;
-  e.currentTarget.style.zIndex = 15;
+  e.currentTarget.style.zIndex = 50;
 }
 function pushbackward(e) {
   e.currentTarget.classList.remove("hovered");
-  e.currentTarget.style.zIndex = e.currentTarget.oldZ;
+  e.currentTarget.style.zIndex = e.currentTarget.defaultZIndex;
 }
 function buyDevCard() {
   ws.send(JSON.stringify({type: "buy_dev"}));
 }
 function playDevCard(e, cardType) {
+  if (e.currentTarget.classList.contains("chosen")) {  // Just deselecting currently selected card
+    deselectDevCard();
+    e.currentTarget.classList.add("unchosen");
+    return;
+  }
+  if (turn != myIdx) {  // It is not your turn.
+    return;
+  }
+  deselectDevCard();
   devCardType = cardType;
+  e.currentTarget.classList.add("chosen");
+  e.currentTarget.defaultZIndex = 49;
+  // Presumably, you hovered this card to click it, so don't set the current z index.
   let selectInfo = resourceSelectionUI[cardType];
   if (selectInfo) {
     clearResourceSelection();
     updateSelectCounts();
     showResourceUI(cardType, null);
+  } else if (buildCards.includes(cardType)) {
+    maybeShowStatusPopup();
+    return;
+  } else if (stealCards[cardType] != null) {
+    maybeShowRobWindow();
+    return;
+  } else if (tileCards[cardType] != null) {
+    draw();
+    maybeShowStatusPopup();
+    return;
+  } else if (devCardType == "defector") {
+    maybeShowRobWindow();
+    return;
+  } else if (cardType == "alchemist") {
+    diceSelection = {red: 1, white: 1};
+    updateDice();
+    maybeShowStatusPopup();
+    return;
+  } else if (cardType == "smith") {
+    promoteKnightLocation = null;
+    draw();
+    maybeShowStatusPopup();
+    return;
+  } else if (cardType == "diplomat") {
+    moveShipFromLocation = null;
+    draw();
+    maybeShowStatusPopup();
+    return;
+  } else if (cardType == "deception") {
+    maybeShowStatusPopup();
+    return;
   } else {
     ws.send(JSON.stringify({type: "play_dev", card_type: cardType}));
+    devCardType = null;
   }
 }
 function showResourceUI(uiType, param) {
@@ -1398,6 +1833,8 @@ function onmsg(event) {
   updateElems(edges, edgeMatrix, data.edges);
   robberLoc = data.robber;
   pirateLoc = data.pirate;
+  merchantLoc = data.merchant;
+  merchantPlayer = data.merchant_idx;
   targetTile = data.target_tile;
   cards = data.cards;
   devCardCount = data.dev_cards;
@@ -1414,6 +1851,7 @@ function onmsg(event) {
   displacedKnight = data.displaced_knight;
   extraBuildTurn = data.extra_build_idx;
   discardPlayers = data.discard_players;
+  affectedPlayer = data.affected_player;
   let oldActiveOffer = tradeActiveOffer;
   tradeActiveOffer = data.trade_offer;
   counterOffers = data.counter_offers;
@@ -1479,6 +1917,9 @@ function onmsg(event) {
   } else {
     myTurn = turn == myIdx;
     if (turnPhase == "displace" && displacedKnight != null && displacedKnight.player == myIdx) {
+      myTurn = true;
+    }
+    if (turnPhase == "defect" && affectedPlayer == myIdx) {
       myTurn = true;
     }
   }
@@ -1559,18 +2000,22 @@ function updateEndTurn() {
   }
 }
 function updateDice() {
-  diceEl = document.getElementById("uidice");
+  let diceEl = document.getElementById("uidice");
   if (diceRoll == null && turnPhase != "dice") {
     diceEl.style.display = "none";
   } else {
     diceEl.style.display = "block";
   }
-  if (diceRoll == null) {
+  let roll = diceRoll;
+  if (devCardType == "alchemist") {
+    roll = [diceSelection.red, diceSelection.white];
+  }
+  if (roll == null) {
     document.getElementById("reddie").firstChild.firstChild.innerText = "?";
     document.getElementById("whitedie").firstChild.firstChild.innerText = "?";
   } else {
-    document.getElementById("reddie").firstChild.firstChild.innerText = diceRoll[0];
-    document.getElementById("whitedie").firstChild.firstChild.innerText = diceRoll[1];
+    document.getElementById("reddie").firstChild.firstChild.innerText = roll[0];
+    document.getElementById("whitedie").firstChild.firstChild.innerText = roll[1];
   }
   if (turn != myIdx) {
     diceEl.classList.remove("selectable");
@@ -1999,16 +2444,20 @@ function updatePlayerData() {
       if (gamePhase == "victory") {
         turnMarker.innerText = "🏆";
         phaseMarker.innerText = "🏆";
-      } else if (["robber", "rob", "expel", "knight", "fastknight"].includes(turnPhase)) {
+      } else if (["robber", "rob", "expel", "knight", "fastknight", "adopt"].includes(turnPhase)) {
         phaseMarker.innerText = "💂";
       } else if (turnPhase == "deplete") {
         phaseMarker.innerText = "🔃";
-      } else if (turnPhase == "move_knights") {
+      } else if (["displace", "move_knights"].includes(turnPhase)) {
         phaseMarker.innerText = "👣";
       } else if (turnPhase == "intrigue") {
         phaseMarker.innerText = "🎭";
-      } else if (turnPhase == "treason") {
+      } else if (["treason", "defect"].includes(turnPhase)) {
         phaseMarker.innerText = "🗡️";
+      } else if (turnPhase == "peddler") {
+        phaseMarker.innerText = "🎴";
+      } else if (turnPhase == "spy") {
+        phaseMarker.innerText = "🤏";
       } else if (turnPhase == "dice") {
         phaseMarker.innerText = "🎲";
       } else if (turnPhase == "main") {
@@ -2025,9 +2474,17 @@ function updatePlayerData() {
       turnMarker.style.display = "none";
       phaseMarker.style.display = "none";
     }
-    if (turnPhase == "discard" && discardPlayers[i]) {
+    if (["discard", "donate"].includes(turnPhase) && discardPlayers[i]) {
       phaseMarker.style.display = "block";
       phaseMarker.innerText = "🖐️";
+    }
+    if (turnPhase == "displace" && displacedKnight != null && displacedKnight.player == i) {
+      phaseMarker.style.display = "block";
+      phaseMarker.innerText = "👣";
+    }
+    if (turnPhase == "defect" && affectedPlayer == i) {
+      phaseMarker.style.display = "block";
+      phaseMarker.innerText = "🗡️";
     }
     if (turnPhase == "collect" && (collectTurn == i || (collectTurn == null && collectCounts[i]))) {
       phaseMarker.style.display = "block";
@@ -2038,7 +2495,7 @@ function updatePlayerData() {
       phaseMarker.innerText = "⚒️ ";
     }
     let cardDiv = playerDiv.getElementsByClassName("cardinfo")[0];
-    updatePlayerCardInfo(i, cardDiv, false);
+    updatePlayerCardInfo(i, cardDiv);
     let dataDiv = playerDiv.getElementsByClassName("otherinfo")[0];
     updatePlayerInfo(i, dataDiv);
   }
@@ -2049,7 +2506,14 @@ function updatePlayerInfo(idx, dataDiv) {
     dataDiv.removeChild(dataDiv.firstChild);
   }
   let cardCount = document.createElement("DIV");
-  cardCount.innerText = playerData[idx].resource_cards + " 🎴";
+  let numCards = playerData[idx].resource_cards;
+  if (!Number.isInteger(numCards)) {
+    numCards = 0;
+    for (let rsrc in playerData[idx].resource_cards) {
+      numCards += playerData[idx].resource_cards[rsrc];
+    }
+  }
+  cardCount.innerText = numCards + " 🎴";
   cardCount.classList.add("otheritem");
   let points = document.createElement("DIV");
   points.innerText = playerData[idx].points + " ⭐";
@@ -2086,12 +2550,13 @@ function updatePlayerInfo(idx, dataDiv) {
   dataDiv.appendChild(armySize);
   dataDiv.appendChild(longRoute);
 }
-function updatePlayerCardInfo(idx, cardDiv, onlyResources) {
+function updatePlayerCardInfo(idx, cardDiv, typeList) {
+  typeList = typeList || ["resource_cards", "gold", "dev_cards"];
   while (cardDiv.firstChild) {
     cardDiv.removeChild(cardDiv.firstChild);
   }
   let numSeparators = 0;
-  if (!onlyResources) {
+  if (typeList.length > 1) {
     numSeparators += playerData[idx].resource_cards ? 1 : 0;
     numSeparators += playerData[idx].gold ? 1 : 0;
     numSeparators += playerData[idx].dev_cards ? 1 : 0;
@@ -2107,10 +2572,6 @@ function updatePlayerCardInfo(idx, cardDiv, onlyResources) {
   }
   let orders = {resource_cards: 0, gold: 2, dev_cards: 4};
   let imgs = {resource_cards: "cardback", gold: "goldcard", dev_cards: "devcard"};
-  let typeList = ["resource_cards", "gold", "dev_cards"];
-  if (onlyResources) {
-    typeList = ["resource_cards"];
-  }
   for (let cardType of typeList) {
     if (Number.isInteger(playerData[idx][cardType])) {
       let count = playerData[idx][cardType];
@@ -2130,7 +2591,7 @@ function updatePlayerCardInfo(idx, cardDiv, onlyResources) {
       }
     }
   }
-  if (onlyResources) {
+  if (typeList.length <= 1) {
     return;
   }
   if (longestRoutePlayer === idx) {
@@ -2441,6 +2902,7 @@ function onBodyClick(event) {
   if (event.button != 0) {
     return;
   }
+  // TODO: deselecting dev card should probably go here instead
   let hideSelector = true;
   let hideTrade = true;
   if (document.getElementById("selectcancel").style.display == "none") {

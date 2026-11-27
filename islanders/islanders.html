@@ -68,8 +68,8 @@
           <div id="uileft" class="noclick">
             <div id="leftcontainer" class="noclick">
               <div id="uidice" class="clickable" onclick="rollDice()">
-                <div id="reddie" class="die"><div class="diecontainer"><p style="margin: 0">?</p></div></div>
-                <div id="whitedie" class="die"><div class="diecontainer"><p style="margin: 0">?</p></div></div>
+                <div id="reddie" class="die" onclick="changeDice(event, 'red')"><div class="diecontainer"><p style="margin: 0">?</p></div></div>
+                <div id="whitedie" class="die" onclick="changeDice(event, 'white')"><div class="diecontainer"><p style="margin: 0">?</p></div></div>
               </div>
               <div style="display: block;" id="buydev" class="clickable selectable" onclick="buyDevCard()"></div>
               <select id="skinchoice" onchange="chooseSkin(event)" class="clickable">
@@ -91,7 +91,10 @@
         <div id="uipopup" class="centerizer">
           <div id="playerpopup" class="clickable uiselect" onmousedown="windown(event)">
           </div>
-          <div id="statuspopup" class="clickable selectinner" onmousedown="windown(event)"></div>
+          <div id="statuspopup" class="clickable selectinner" onmousedown="windown(event)">
+            <div id="statustitle"></div>
+            <div id="statusok" class="rightbutton"><button class="takeoverbutton button clickable" onclick="statusDone(event)">Done</button></div>
+          </div>
           <div id="portpopup" class="clickable selectinner" onmousedown="windown(event)">
             <div id="portselecttitle"></div>
             <div id="portselect"></div>
