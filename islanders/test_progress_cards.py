@@ -9,6 +9,8 @@ import unittest
 if os.path.abspath(sys.path[0]) == os.path.dirname(os.path.abspath(__file__)):
   sys.path[0] = os.path.dirname(sys.path[0])
 
+# pylint: disable=protected-access
+
 from islanders.islanders import (
   InvalidMove,
   InvalidInput,

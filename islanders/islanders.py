@@ -3468,7 +3468,7 @@ class IslandersState:
     event_text = ", ".join(["%s from {player%s}" % (count, opp) for opp, count in counts.items()])
     self.event_log.append(Event("monopoly", "{player%s} took " % player + event_text))
 
-  def _handle_alchemist(self, player_idx, selection):
+  def _handle_alchemist(self, unused_player_idx, selection):
     self._validate_selection(selection, {"red", "white"}, "dice")
     if selection.keys() ^ {"red", "white"}:
       raise InvalidInput("Selection must be a red die and a white die.")
