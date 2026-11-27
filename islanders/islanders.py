@@ -2663,7 +2663,9 @@ class IslandersState:
     self._remove_resources(cost, player, "build a city")
 
     self.pieces[loc].piece_type = "city"
-    self.event_log.append(Event("city", "{player%s} upgraded a settlement to a city" % player))
+    assist = f" with {selection[0]}" if selection else ""
+    text = "{player%s} upgraded a settlement to a city%s" % (player, assist)
+    self.event_log.append(Event("city", text))
     self.hasten_invasion()
 
   def handle_walls(self, location, selection, player):
@@ -2690,7 +2692,8 @@ class IslandersState:
 
     self._remove_resources(cost, player, "build a city wall")
     self.pieces[loc].walls = True
-    self.event_log.append(Event("walls", "{player%s} built a city wall" % player))
+    assist = f" with an {selection[0]}" if selection else ""
+    self.event_log.append(Event("walls", "{player%s} built a city wall%s" % (player, assist)))
 
   def handle_buy_dev(self, player):
     # Check that this is the right part of the turn.
@@ -2807,8 +2810,9 @@ class IslandersState:
     selection = self._validate_selection(card_selection, set(valid_cards), "card")
 
     available = sum(self.player_data[self.affected_player].cards[name] for name in valid_cards)
-    if sum(selection.values()) != min(count, available):
-      raise InvalidMove(f"You must select exactly {min(count, available)} cards.")
+    num_steal = min(count, available)
+    if sum(selection.values()) != num_steal:
+      raise InvalidMove(f"You must select exactly {num_steal} cards.")
     player_cards = collections.Counter(self.player_data[self.affected_player].cards)
     missing = collections.Counter(selection) - player_cards
     if missing.total():
@@ -2818,6 +2822,15 @@ class IslandersState:
       self.player_data[self.affected_player].cards[name] -= count
       self.player_data[player_idx].cards[name] += count
 
+    stolen = ", ".join(["%s {%s}" % (count, rsrc) for rsrc, count in selection.items()])
+    self.event_log.append(
+      Event(
+        "steal",
+        "{player%s} stole %s cards from {player%s}" % (player_idx, num_steal, self.affected_player),
+        "{player%s} stole %s from {player%s}" % (player_idx, stolen, self.affected_player),
+        [player_idx, self.affected_player],
+      )
+    )
     self.affected_player = None
     self.action_stack.pop()
     self.next_action()
@@ -3113,6 +3126,9 @@ class IslandersState:
       knight = Knight(location, player_idx, location, strength=might)
       knight.active = self.displaced_knight.active
       self.add_knight(knight)
+      opponent = self.displaced_knight.player
+      text = "{player%s} accepted a defector from {player%s}" % (player_idx, opponent)
+      self.event_log.append(Event("defector", text))
 
     self.displaced_knight = None
     self.action_stack.pop()
@@ -3478,6 +3494,8 @@ class IslandersState:
     from_number, to_number = self.tiles[from_location].number, self.tiles[to_location].number
     self.tiles[from_location].number = to_number
     self.tiles[to_location].number = from_number
+    text = "{player%s} used the inventor to swap %d and %d" % (player_idx, from_number, to_number)
+    self.event_log.append(Event("inventor", text))
 
   def _handle_gain_two(self, player_idx, rsrc, name):
     player_owned = [piece for piece in self.pieces.values() if piece.player == player_idx]
@@ -3487,7 +3505,8 @@ class IslandersState:
       raise InvalidMove("You have no settlements/cities next to {%s}" % rsrc)
     count = min(count, self.remaining_resources(rsrc))
 
-    self.event_log.append(Event(name, "{player%s} took %s {%s}" % (player_idx, count, rsrc)))
+    text = "{player%s} used %s to take %s {%s}" % (player_idx, name, count, rsrc)
+    self.event_log.append(Event(name, text))
     self.player_data[player_idx].cards[rsrc] += count
 
   def _handle_smith(self, player_idx, loc_a, loc_b):
@@ -3516,7 +3535,8 @@ class IslandersState:
     for location in locations:
       self.knights[location].strength += 1
       self.promoted_this_turn.append(location)
-      self.event_log.append(Event("knight", "{player%s} promoted a knight" % player_idx))
+      text = "{player%s} used a smith to promote a knight" % player_idx
+      self.event_log.append(Event("knight", text))
 
   def _handle_bishop(self, player_idx):
     self.event_log.append(Event("bishop", "{player%s} played a bishop" % player_idx))
@@ -3533,6 +3553,8 @@ class IslandersState:
       raise InvalidMove("You must choose a player that has at least one knight.")
 
     self.affected_player = opponent
+    text = "{player%s} played a defector targeting {player%s}" % (player_idx, opponent)
+    self.event_log.append(Event("defector", text))
     self.action_stack.extend(["adopt", "defect"])
     self.next_action()
 
@@ -3561,7 +3583,8 @@ class IslandersState:
     if to_location:
       # add_road will automatically do the longest route calculation.
       self.add_road(Road(to_location, road_type, player_idx))
-      self.event_log.append(Event("move_ship", "{player%s} moved a %s" % (player_idx, road_type)))
+      text = "{player%s} used the diplomat to move a %s" % (player_idx, road_type)
+      self.event_log.append(Event("move_ship", text))
       # add_road will automatically recalculate from the new source, but we must still recalculate
       # roads' movable status from the old source in case the two locations are disconnected.
       self.recalculate_ships(removed_road.source, player_idx, road_type)
@@ -3581,6 +3604,8 @@ class IslandersState:
     self._check_nearby_road(location, player_idx, ["road", "ship"], "displace a")
 
     self.displaced_knight = self.pop_knight(location)
+    text = "{player%s} used deception to displace a knight" % player_idx
+    self.event_log.append(Event("deception", text))
     self.action_stack.append("displace")
     self.next_action()
 
@@ -3606,6 +3631,8 @@ class IslandersState:
       raise InvalidMove("You must steal from a player with progress cards.")
 
     self.affected_player = opponent
+    text = "{player%s} played a spy targeting {player%s}" % (player_idx, opponent)
+    self.event_log.append(Event("spy", text))
     self.action_stack.append("spy")
     self.next_action()
 
@@ -3642,6 +3669,8 @@ class IslandersState:
       raise InvalidMove("You must steal from a player with at least one card.")
 
     self.affected_player = opponent
+    text = "{player%s} played a peddler targeting {player%s}" % (player_idx, opponent)
+    self.event_log.append(Event("peddler", text))
     self.action_stack.append("peddler")
     self.next_action()
 
@@ -3655,7 +3684,8 @@ class IslandersState:
     if not any(cloc in self.pieces and self.pieces[cloc].player == player_idx for cloc in corners):
       raise InvalidMove("You must place the merchant next to one of your settlements or cities.")
 
-    self.event_log.append(Event("merchant", "{player%s} took control of the merchant" % player_idx))
+    text = "{player%s} moved and took control of the merchant" % player_idx
+    self.event_log.append(Event("merchant", text))
     self.merchant = location
     self.merchant_idx = player_idx
 
