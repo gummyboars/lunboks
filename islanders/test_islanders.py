@@ -7,7 +7,6 @@ import sys
 import threading
 import unittest
 from unittest import mock
-import uuid
 
 # Hack to allow the test to be run directly instead of invoking python from the base dir.
 if os.path.abspath(sys.path[0]) == os.path.dirname(os.path.abspath(__file__)):
@@ -241,9 +240,6 @@ class TestLoadState(unittest.TestCase):
 
 class BreakpointTestMixin(unittest.TestCase):
   def breakpoint(self):
-    for idx in range(len(self.c.player_data)):
-      if idx not in self.g.player_sessions.values():
-        self.g.player_sessions[uuid.uuid4()] = idx
     t = threading.Thread(target=server.ws_main, args=(server.GLOBAL_LOOP,))
     t.start()
     server.GAMES["test"] = game.GameHandler("test", islanders.IslandersGame)
@@ -253,11 +249,6 @@ class BreakpointTestMixin(unittest.TestCase):
 
   def handle(self, player_idx, data):
     return [*self.c.handle(player_idx, data)]  # Loop through generator results
-
-  def candle(self, player, data):
-    print(f"\n{self.__class__.__name__}.{self._testMethodName}\n")
-    print(f"{player=} {data=}")
-    self.breakpoint()
 
 
 class CornerComputationTest(unittest.TestCase):
