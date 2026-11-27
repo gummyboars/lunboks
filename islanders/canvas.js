@@ -1280,9 +1280,9 @@ function onClickEdge(event, edgeLoc) {
       return;
     }
   }
-  if (devCardType == "diplomat") {
+  if (["engineer", "medicine", "merchant", "smith", "diplomat"].includes(devCardType)) {
     // Not moving a road, and also not clicking an existing road. Deselect the dev card instead
-    // of letting the player build a road when they thought they were using the diplomat.
+    // of letting the player build a road when they thought they were using a dev card.
     deselectDevCard();
     return;
   }
@@ -1328,9 +1328,9 @@ function onClickTileEdge(event, tileLoc, edgeLoc, rotation) {
     ws.send(JSON.stringify(msg));
     return;
   }
-  if (devCardType == "diplomat") {
+  if (["engineer", "medicine", "merchant", "smith", "diplomat"].includes(devCardType)) {
     // Not moving a road, and also not clicking an existing road. Deselect the dev card instead
-    // of letting the player build a road when they thought they were using the diplomat.
+    // of letting the player build a road when they thought they were using a dev card.
     deselectDevCard();
     return;
   }
