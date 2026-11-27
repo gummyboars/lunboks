@@ -322,6 +322,15 @@ class TestDisplacedKnight(BaseInputHandlerTest):
     self.assertIsNone(self.c.displaced_knight)
     self.assertEqual(self.c.knights[(6, 4)].player, 0)
 
+  def testMustDisplaceToEmptyCorner(self):
+    self.c.add_knight(islanders.Knight((5, 3), 1, (5, 3), strength=1, active=True))
+    self.c.handle_move_knight([9, 5], [6, 4], 0)
+    self.assertEqual(self.c.turn_phase, "displace")
+    with self.assertRaisesRegex(InvalidMove, "empty corner"):
+      self.c.handle_displace([5, 3], 1)
+    with self.assertRaisesRegex(InvalidMove, "empty corner"):
+      self.c.handle_displace([5, 5], 1)
+
   def testMustMoveWithinSameRoadNetwork(self):
     self.c.add_piece(islanders.Piece(3, 3, "settlement", 1))
     self.c.add_road(islanders.Road([2, 4, 3, 3], "road", 1))
@@ -365,6 +374,10 @@ class TestChaseRobber(BaseInputHandlerTest):
     self.assertEqual(self.c.action_stack[0], "rob")
     self.assertIn((5, 3), self.c.knights)
     self.assertFalse(self.c.knights[(5, 3)].active)
+
+  def testMustChaseTheRobbersLocation(self):
+    with self.assertRaisesRegex(InvalidMove, "must choose the robber"):
+      self.c.handle_chase([4, 4], [5, 3], 0)
 
   def testMustBeNextToChasedRobber(self):
     self.c.robber = islanders.TileLocation(7, 5)

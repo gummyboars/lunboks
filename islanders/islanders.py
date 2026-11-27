@@ -25,7 +25,13 @@ random = SystemRandom()
 RESOURCES = ["rsrc1", "rsrc2", "rsrc3", "rsrc4", "rsrc5"]
 TRADABLES = RESOURCES + ["gold"]
 PLAYABLE_DEV_CARDS = ["yearofplenty", "monopoly", "roadbuilding", "knight"]
+PROGRESS_CARDS = [  # skipped: crane, trade monopoly (cartel), harbor
+  *("bishop", "defector", "diplomat", "deception", "saboteur", "spy", "warlord", "wedding"),
+  *("peddler", "merchant", "convoy", "guild", "smith"),
+  *("alchemist", "engineer", "inventor", "irrigation", "medicine", "mining", "roadbuilding"),
+]
 VICTORY_CARDS = ["palace", "chapel", "university", "market", "library"]
+SHOWN_VICTORY_CARDS = ["printer", "constitution"]
 TREASURES = ["collect1", "collect2", "collectpi", "roadbuilding", "takedev"]
 TILE_NUMBERS = [5, 2, 6, 3, 8, 10, 9, 12, 11, 4, 8, 10, 9, 4, 5, 6, 3, 11]
 EXTRA_NUMBERS = [
@@ -610,16 +616,19 @@ class Player:
       "captured_barbarians": self.captured_barbarians,
       "resource_cards": self.resource_card_count(),
       "gold": self.cards.get("gold", 0),
-      "dev_cards": self.dev_card_count(),
       "trade_ratios": {rsrc: self.trade_ratios[rsrc] for rsrc in RESOURCES},
       "points": 0,
     }
     ret["trade_ratios"]["default"] = self.trade_ratios.default_factory()
+    ret["dev_cards"] = {
+      name: self.cards[name] for name in SHOWN_VICTORY_CARDS if self.cards.get(name)
+    }
+    ret["dev_cards"]["devcard"] = self.hidden_dev_card_count()
     if is_over:
       ret["dev_cards"] = {
         name: count
         for name, count in self.cards.items()
-        if name in (PLAYABLE_DEV_CARDS + VICTORY_CARDS)
+        if name in (PLAYABLE_DEV_CARDS + PROGRESS_CARDS + VICTORY_CARDS + SHOWN_VICTORY_CARDS)
       }
     return ret
 
@@ -633,8 +642,8 @@ class Player:
   def resource_card_count(self):
     return sum(self.cards[x] for x in RESOURCES)
 
-  def dev_card_count(self):
-    return sum(self.cards[x] for x in PLAYABLE_DEV_CARDS + VICTORY_CARDS)
+  def hidden_dev_card_count(self):
+    return sum(self.cards[x] for x in set(PLAYABLE_DEV_CARDS + PROGRESS_CARDS + VICTORY_CARDS))
 
 
 class IslandersState:
@@ -696,6 +705,8 @@ class IslandersState:
     self.knights: dict[EdgeLocation, Knight] = {}
     self.robber: Optional[TileLocation] = None
     self.pirate: Optional[TileLocation] = None
+    self.merchant: Optional[TileLocation] = None
+    self.merchant_idx: Optional[int] = None
     self.treasures: dict[CornerLocation, str] = {}
     self.num_dev: collections.Counter[str] = collections.Counter()
     self.dev_cards: list[str] = []
@@ -712,7 +723,7 @@ class IslandersState:
     self.game_phase: str = "place1"  # valid values are place1, place2, place3, main, victory
     # settle, road, dice, collect, discard, robber, rob, dev_road, deplete, expel, main, extra_build
     # collect1, collect2, collectpi, takedev, bury, placeport, knight, fastknight, treason, intrigue
-    # move_knights, check_recapture, displace
+    # move_knights, check_recapture, displace, donate, roball, defect, adopt, spy, peddler
     self.action_stack: list[str] = ["road", "settle"]
     self.turn_idx: int = 0
     self.collect_idx: Optional[int] = None
@@ -726,13 +737,15 @@ class IslandersState:
     self.promoted_this_turn: list[CornerLocation] = []  # Locations of knight promotion this turn.
     self.discard_players: dict[int, int] = {}  # Map of player to number of cards they must discard.
     self.rob_players: list[int] = []  # List of players that can be robbed by this robber.
+    self.affected_player: Optional[int] = None  # Player affected by defector, spy, or peddler.
     self.shortage_resources: list[str] = []
     self.collect_counts: dict[int, int] = collections.defaultdict(int)
+    self.convoy: list[str] = []
     self.target_tile: Optional[TileLocation] = None
     self.displaced_knight: Optional[Knight] = None
     self.home_corners: dict[int, list[CornerLocation]] = collections.defaultdict(list)
     self.foreign_landings: dict[int, list[CornerLocation]] = collections.defaultdict(list)
-    self.next_die_roll: Optional[int] = None
+    self.next_die_roll: Optional[tuple[int, int]] = None
     # Trade Information
     self.trade_offer = None
     self.counter_offers = {}  # Map of player to counter offer.
@@ -788,6 +801,8 @@ class IslandersState:
       cstate.robber = TileLocation(*cstate.robber)
     if cstate.pirate is not None:
       cstate.pirate = TileLocation(*cstate.pirate)
+    if cstate.merchant is not None:
+      cstate.merchant = TileLocation(*cstate.merchant)
     if cstate.target_tile is not None:
       cstate.target_tile = TileLocation(*cstate.target_tile)
 
@@ -880,6 +895,15 @@ class IslandersState:
     if player_idx is not None:
       data["you"] = player_idx
       data["cards"] = self.player_data[player_idx].cards
+    if player_idx == self.turn_idx and self.affected_player is not None:
+      opponent = self.player_data[self.affected_player]
+      if self.turn_phase == "spy":
+        shown_cards = PLAYABLE_DEV_CARDS + VICTORY_CARDS + PROGRESS_CARDS + SHOWN_VICTORY_CARDS
+        dev_cards = {name: opponent.cards[name] for name in shown_cards if opponent.cards[name]}
+        data["player_data"][self.affected_player]["dev_cards"] = dev_cards
+      if self.turn_phase == "peddler":
+        resource_cards = {name: opponent.cards[name] for name in RESOURCES if opponent.cards[name]}
+        data["player_data"][self.affected_player]["resource_cards"] = resource_cards
     events = data.pop("event_log")
     data["event_log"] = []
     for event in events:
@@ -930,6 +954,7 @@ class IslandersState:
     ret["player_data"] = [player.json_for_player(is_over) for player in self.player_data]
     for idx in range(len(self.player_data)):
       ret["player_data"][idx]["points"] = self.player_points(idx, visible=not is_over)
+      ret["player_data"][idx]["trade_ratios"] = self._get_ratios(idx)
     return ret
 
   def player_points(self, idx, visible):
@@ -944,10 +969,13 @@ class IslandersState:
       count += 2
     if self.longest_route_player == idx:
       count += 2
+    if self.merchant_idx == idx:
+      count += 1
     count += max(self.player_data[idx].buried_treasure - 2, 0)
     count += self.player_data[idx].captured_barbarians // 2
     if not visible:
       count += sum(self.player_data[idx].cards[card] for card in VICTORY_CARDS)
+    count += sum(self.player_data[idx].cards[card] for card in SHOWN_VICTORY_CARDS)
     count += len(self.foreign_landings[idx]) * self.options.foreign_island_points
     return count
 
@@ -975,6 +1003,7 @@ class IslandersState:
     if self.turn_phase not in [
       "collect",
       "rob",
+      "roball",
       "dev_road",
       "deplete",
       "takedev",
@@ -984,6 +1013,7 @@ class IslandersState:
       "intrigue",
       "treason",
       "displace",
+      "adopt",
       "chaserobber",
       "chasepirate",
     ]:
@@ -1029,8 +1059,8 @@ class IslandersState:
         self.handle_treason(None, None, None, None, self.turn_idx)
         return
     if self.turn_phase == "displace":
+      knight = self.displaced_knight  # Check that this knight has somewhere to go.
       try:
-        knight = self.displaced_knight  # Check that this knight has somewhere to go.
         self._dfs_depth(knight.player, knight.location, set(), None, 0)
       except TargetFound:
         return
@@ -1040,6 +1070,35 @@ class IslandersState:
       self.action_stack.pop()
       self.next_action()
       return
+    if self.turn_phase == "adopt":
+      might = self.displaced_knight.strength
+      used = collections.Counter(
+        k.strength for k in self.knights.values() if k.player == self.turn_idx
+      )
+      if used[might] >= 2 and used[1] >= 2:  # If the player has no knights left at either strength
+        text = (
+          "{player%s} could not accept a defector from {player%s} because they had no knights left"
+          % (self.turn_idx, self.displaced_knight.player)
+        )
+        self.event_log.append(Event("defect", text))
+        self.displaced_knight = None
+        self.action_stack.pop()
+        self.next_action()
+        return
+      road_corners = [
+        [edge.corner_left, edge.corner_right]
+        for edge, road in self.roads.items()
+        if road.player == self.turn_idx and road.road_type == "road"
+      ]
+      road_corners = sum(road_corners, [])
+      if all(corner in self.pieces or corner in self.knights for corner in road_corners):
+        tmpl = "{player%s} could not accept a defector from {player%s} because they had no room"
+        text = tmpl % (self.turn_idx, self.displaced_knight.player)
+        self.event_log.append(Event("defect", text))
+        self.displaced_knight = None
+        self.action_stack.pop()
+        self.next_action()
+        return
     if self.turn_phase == "takedev":
       if self.options.shuffle_discards and not self.dev_cards:
         self.reshuffle_dev_cards()
@@ -1065,8 +1124,17 @@ class IslandersState:
         self.next_action()
         return
       if len(self.rob_players) == 1:
-        self._rob_player(self.rob_players[0], self.turn_idx)
+        self._rob_player(self.rob_players.pop(), self.turn_idx)
+        self.action_stack.pop()
+        self.next_action()
         return
+    if self.turn_phase == "roball":
+      for player in self.rob_players:
+        self._rob_player(player, self.turn_idx)
+      self.rob_players = []
+      self.action_stack.pop()
+      self.next_action()
+      return
     if self.turn_phase == "deplete":
       if not self._depletable_tiles():
         self.target_tile = None
@@ -1114,6 +1182,10 @@ class IslandersState:
       if player_idx != self.displaced_knight.player:
         raise NotYourTurn("Waiting for a player to move their displaced knight.")
       return
+    if self.turn_phase == "defect":
+      if player_idx != self.affected_player:
+        raise NotYourTurn("Waiting for a player to choose a knight to defect.")
+      return
     if self.turn_phase == "collect" and move_type == "collect":
       if not self.collect_counts.get(player_idx):
         raise NotYourTurn("You are not eligible to collect any resources.")
@@ -1140,6 +1212,8 @@ class IslandersState:
       return self.handle_counter_offer(data.get("offer"), player_idx)
     if move_type == "displace":
       return self.handle_displace(data.get("location"), player_idx)
+    if move_type == "defect":
+      return self.handle_defect(data.get("location"), player_idx)
     location = data.get("location")
     if move_type == "roll_dice":
       return self.handle_roll_dice()
@@ -1168,7 +1242,11 @@ class IslandersState:
     if move_type == "buy_dev":
       return self.handle_buy_dev(player_idx)
     if move_type == "play_dev":
-      return self.handle_play_dev(data.get("card_type"), data.get("selection"), player_idx)
+      return self.handle_play_dev(
+        data.get("card_type"), data.get("selection"), location, player_idx
+      )
+    if move_type == "steal":
+      return self.handle_steal(data.get("selection"), player_idx)
     if move_type == "knight":
       return self.handle_place_knight(location, player_idx)
     if move_type == "promote":
@@ -1177,6 +1255,8 @@ class IslandersState:
       return self.handle_activate_knight(location, player_idx)
     if move_type == "move_knight":
       return self.handle_move_knight(data.get("from"), data.get("to"), player_idx)
+    if move_type == "adopt":
+      return self.handle_adopt(location, player_idx)
     if move_type == "treason":
       return self.handle_treason(data["froma"], data["fromb"], data["toa"], data["tob"], player_idx)
     if move_type == "intrigue":
@@ -1188,9 +1268,9 @@ class IslandersState:
     if move_type == "settle":
       return self.handle_settle(location, player_idx)
     if move_type == "city":
-      return self.handle_city(location, player_idx)
+      return self.handle_city(location, data.get("selection"), player_idx)
     if move_type == "walls":
-      return self.handle_walls(location, player_idx)
+      return self.handle_walls(location, data.get("selection"), player_idx)
     if move_type == "trade_offer":
       return self.handle_trade_offer(data.get("offer"), player_idx)
     if move_type == "accept_counter":
@@ -1207,14 +1287,19 @@ class IslandersState:
       return self.handle_end_turn()
     raise UnknownMove(f"Unknown move {move_type}")
 
-  def _validate_selection(self, selection):
-    """Selection should be a dict of rsrc -> count."""
-    if not selection or not isinstance(selection, dict):
-      raise InvalidMove("Invalid resource selection.")
-    if set(selection.keys()) - set(RESOURCES):
-      raise InvalidMove("Invalid resource selection - unknown or untradable resource.")
+  def _validate_selection(self, selection, valid_keys, select_type):
+    """Selection should be a dict of valid keys -> non-negative values. Return positive entries."""
+    if not isinstance(selection, dict):
+      raise InvalidMove(f"Invalid {select_type} selection.")
     if not all(isinstance(value, int) and value >= 0 for value in selection.values()):
-      raise InvalidMove("Invalid resource selection - must be positive integers.")
+      raise InvalidMove(f"Invalid {select_type} selection - must be positive integers.")
+    selected = +collections.Counter(selection)
+    if invalid := selected.keys() - valid_keys:
+      raise InvalidMove(f"Invalid {select_type} selection: {', '.join(invalid)}")
+    return selected
+
+  def _validate_rsrc_selection(self, selection):
+    return self._validate_selection(selection, set(RESOURCES), "resource")
 
   def rename_player(self, player_idx, data):
     _validate_name(self.player_data[player_idx].name, [p.name for p in self.player_data], data)
@@ -1285,6 +1370,7 @@ class IslandersState:
     self.activated_this_turn.clear()
     self.promoted_this_turn.clear()
     self.shortage_resources.clear()
+    self.convoy = []
     self.trade_offer = {}
     self.counter_offers.clear()
     if self.game_phase == "main":
@@ -1315,7 +1401,11 @@ class IslandersState:
   def handle_roll_dice(self):
     if self.turn_phase != "dice":
       raise InvalidMove("You cannot roll the dice right now.")
-    if self.dice_cards is not None:
+    if self.next_die_roll is not None:
+      red, white = self.next_die_roll
+      self.next_die_roll = None
+      text = "{player%s} used the alchemist for a %s" % (self.turn_idx, red + white)
+    elif self.dice_cards is not None:
       verb = "drew"
       if len(self.dice_cards) <= self.options.randomness:  # Reshuffle
         self.init_dice_cards()
@@ -1323,13 +1413,8 @@ class IslandersState:
       red, white = self.dice_cards.pop()
       text = "{player%s} %s a %s" % (self.turn_idx, verb, red + white)
     else:
-      if self.next_die_roll is not None:
-        red = self.next_die_roll // 2
-        white = (self.next_die_roll + 1) // 2
-        self.next_die_roll = None
-      else:
-        red = random.randint(1, 6)
-        white = random.randint(1, 6)
+      red = random.randint(1, 6)
+      white = random.randint(1, 6)
       text = "{player%s} rolled a %s" % (self.turn_idx, red + white)
     self.dice_roll = (red, white)
     self.event_log.append(Event("dice", text))
@@ -1355,7 +1440,7 @@ class IslandersState:
   def handle_force_dice(self, value):
     if not self.options.debug:
       raise InvalidMove("You may only force dice rolls when debug mode is enabled.")
-    self.next_die_roll = value
+    self.next_die_roll = value // 2, (value + 1) // 2
 
   def handle_debug_roll_dice(self, count):
     if not self.options.debug:
@@ -1368,6 +1453,11 @@ class IslandersState:
 
   def remaining_resources(self, rsrc):
     return 19 - sum(p.cards[rsrc] for p in self.player_data)
+
+  def check_overdrawn_resources(self, selection):
+    overdrawn = [rsrc for rsrc in selection if selection[rsrc] > self.remaining_resources(rsrc)]
+    if overdrawn:
+      raise InvalidMove("There is not enough {%s} in the bank." % "}, {".join(overdrawn))
 
   def calculate_resource_distribution(self, dice_roll):
     # Figure out which players are due how many resources.
@@ -1468,7 +1558,7 @@ class IslandersState:
     self.next_action()
 
   def handle_collect(self, player_idx, selection):
-    self._validate_selection(selection)
+    self._validate_rsrc_selection(selection)
     expected_count = self.collect_counts.get(player_idx, 0)
     if self.turn_phase in ["collect1", "collectpi"]:
       expected_count = 1
@@ -1484,10 +1574,7 @@ class IslandersState:
         "There is a shortage of {%s}; you cannot collect any."
         % ("}, {".join(self.shortage_resources))
       )
-    # TODO: dedup with code from year of plenty
-    overdrawn = [rsrc for rsrc in selection if selection[rsrc] > self.remaining_resources(rsrc)]
-    if overdrawn:
-      raise InvalidMove("There is not enough {%s} in the bank." % "}, {".join(overdrawn))
+    self.check_overdrawn_resources(selection)
     for rsrc, value in selection.items():
       self.player_data[player_idx].cards[rsrc] += value
     event_text = ", ".join(["%s {%s}" % (count, rsrc) for rsrc, count in selection.items()])
@@ -1506,21 +1593,35 @@ class IslandersState:
       if player.too_many_cards(walls[idx])
     }
 
-  def handle_discard(self, selection, player):
-    if self.turn_phase != "discard":
+  def handle_discard(self, selected, player):
+    if self.turn_phase not in ["discard", "donate"]:
       raise InvalidMove("You cannot discard cards right now.")
-    self._validate_selection(selection)
+    selection = self._validate_rsrc_selection(selected)
     if not self.discard_players.get(player):
-      raise InvalidMove("You do not need to discard any cards.")
-    discard_count = sum(selection.get(rsrc, 0) for rsrc in RESOURCES)
+      raise InvalidMove(f"You do not need to {self.turn_phase} any cards.")
+    discard_count = sum(selection.values())
     if discard_count != self.discard_players[player]:
       raise InvalidMove(
-        "You have %s resource cards and must discard %s."
+        f"You have %s resource cards and must {self.turn_phase} %s."
         % (self.player_data[player].resource_card_count(), self.discard_players[player])
       )
-    self._remove_resources(selection.items(), player, "discard those cards")
+
+    self._remove_resources(selection.items(), player, f"{self.turn_phase} those cards")
     discarded = ", ".join(["%s {%s}" % (count, rsrc) for rsrc, count in selection.items()])
-    self.event_log.append(Event("discard", "{player%s} discarded %s" % (player, discarded)))
+    if self.turn_phase == "discard":
+      self.event_log.append(Event("discard", "{player%s} discarded %s" % (player, discarded)))
+    else:  # donate
+      self.event_log.append(
+        Event(
+          "donate",
+          "{player%s} donated %s cards" % (player, discard_count),
+          "{player%s} donated %s" % (player, discarded),
+          [player, self.turn_idx],
+        )
+      )
+      for resource, count in selection.items():
+        self.player_data[self.turn_idx].cards[resource] += count
+
     del self.discard_players[player]
     if sum(self.discard_players.values()) == 0:
       self.action_stack.pop()
@@ -1568,6 +1669,8 @@ class IslandersState:
   def handle_pirate(self, player_idx, location):
     if not self.options.pirate:
       raise InvalidMove("The pirate is not used in this scenario.")
+    if len(self.action_stack) >= 2 and self.action_stack[-2] == "roball":
+      raise InvalidMove("The bishop cannot move the pirate.")
     pirate_loc = self.validate_robber_location(location, "pirate", land=False)
     adjacent_players = {
       self.roads[edge].player
@@ -1602,6 +1705,9 @@ class IslandersState:
         raise InvalidMove("You cannot rob from a player that has no cards.")
       raise InvalidMove("You cannot rob from that player with that robber placement.")
     self._rob_player(rob_player, current_player)
+    self.rob_players = []  # Reset after successful rob.
+    self.action_stack.pop()
+    self.next_action()
 
   def _rob_player(self, rob_player, current_player):
     all_rsrc_cards = []
@@ -1620,9 +1726,6 @@ class IslandersState:
         [current_player, rob_player],
       )
     )
-    self.rob_players = []  # Reset after successful rob.
-    self.action_stack.pop()
-    self.next_action()
 
   def hasten_invasion(self):
     if self.options.invasion_type == "barbarians":
@@ -1766,6 +1869,25 @@ class IslandersState:
         errors.append("%s {%s}" % (count - self.player_data[player].cards[resource], resource))
     if errors:
       raise InvalidMove("You would need an extra %s to %s." % (", ".join(errors), action_string))
+
+  def _get_required_cards(self, name, base_cost, conversion, selection):
+    if selection is None:
+      return sorted(base_cost.items())
+    if not isinstance(selection, (list, tuple)):
+      raise InvalidInput(f"Selection must be a list of cards to use to help build the {name}.")
+    if not all(isinstance(card, str) for card in selection):
+      raise InvalidInput(f"Selection must be a list of cards to use to help build the {name}.")
+    if len(selection) != 1:
+      raise InvalidInput(f"Invalid selection {selection}.")
+    selected = selection[0]
+    if selected not in conversion:
+      raise InvalidInput(f"Invalid selection {selected}.")
+
+    orig_cost = collections.Counter(base_cost)
+    reduction = collections.Counter(conversion[selected])
+    final_cost = orig_cost - reduction
+    final_cost[selected] = 1
+    return sorted(final_cost.items())
 
   # TODO: use a dict instead of an iterable of tuples for resources?
   def _remove_resources(self, resources, player, build_type):
@@ -1998,10 +2120,11 @@ class IslandersState:
     return max_length
 
   def _dfs_depth(self, player, corner, seen_edges, prev_edge, destination):
-    if corner == destination:
-      raise TargetFound  # Slight hack to reuse this helper for knight movement.
-    if destination == 0 and corner not in self.pieces and corner not in self.knights:
-      raise TargetFound  # This is a lot of hackery.
+    if prev_edge is not None:  # The starting corner does not count.
+      if corner == destination:
+        raise TargetFound  # Slight hack to reuse this helper for knight movement.
+      if destination == 0 and corner not in self.pieces and corner not in self.knights:
+        raise TargetFound  # This is a lot of hackery.
     # First, use the type of the piece at this corner to set a baseline. If it belongs to
     # another player, the route ends. If it belongs to this player, the next edge in the route
     # may be either a road or a ship. If there is no piece, then the type of the next edge
@@ -2509,7 +2632,7 @@ class IslandersState:
     text = ", ".join(["%s {%s}" % (count, rsrc) for rsrc, count in received.items()])
     self.event_log.append(Event("collect", "{player%s} received %s" % (player, text)))
 
-  def handle_city(self, location, player):
+  def handle_city(self, location, selection, player):
     loc = parse_location(location, CornerLocation)
     # Check that this is the right part of the turn.
     self._check_main_phase("city", "build a city")
@@ -2530,15 +2653,22 @@ class IslandersState:
     )
     if city_count >= self.options.max_cities:
       raise InvalidMove("You have no cities remaining.")
+
+    # Check if the player is using a progress card or helper to help build the city.
+    base_cost = {"rsrc3": 2, "rsrc5": 3}
+    medicine = {"medicine": {"rsrc3": 1, "rsrc5": 1}}
+    cost = self._get_required_cards("city", base_cost, medicine, selection)
+
     # Check resources and deduct from player.
-    resources = [("rsrc3", 2), ("rsrc5", 3)]
-    self._remove_resources(resources, player, "build a city")
+    self._remove_resources(cost, player, "build a city")
 
     self.pieces[loc].piece_type = "city"
-    self.event_log.append(Event("city", "{player%s} upgraded a settlement to a city" % player))
+    assist = f" with {selection[0]}" if selection else ""
+    text = "{player%s} upgraded a settlement to a city%s" % (player, assist)
+    self.event_log.append(Event("city", text))
     self.hasten_invasion()
 
-  def handle_walls(self, location, player):
+  def handle_walls(self, location, selection, player):
     if not self.options.city_walls:
       raise InvalidMove("City walls are not enabled.")
     loc = parse_location(location, CornerLocation)
@@ -2555,10 +2685,15 @@ class IslandersState:
     if wall_count >= 3:
       raise InvalidMove("You cannot have more than three city walls.")
 
-    resources = [("rsrc4", 2)]
-    self._remove_resources(resources, player, "build a city wall")
+    # Check if the player is using a progress card or helper to help build the city walls.
+    base_cost = {"rsrc4": 2}
+    engineer = {"engineer": {"rsrc4": 2}}
+    cost = self._get_required_cards("city walls", base_cost, engineer, selection)
+
+    self._remove_resources(cost, player, "build a city wall")
     self.pieces[loc].walls = True
-    self.event_log.append(Event("walls", "{player%s} built a city wall" % player))
+    assist = f" with an {selection[0]}" if selection else ""
+    self.event_log.append(Event("walls", "{player%s} built a city wall%s" % (player, assist)))
 
   def handle_buy_dev(self, player):
     # Check that this is the right part of the turn.
@@ -2589,39 +2724,116 @@ class IslandersState:
   def add_dev_card(self, player):
     card_type = self.dev_cards.pop()
     self.player_data[player].cards[card_type] += 1
-    self.player_data[player].unusable[card_type] += 1
+    if not self.options.knights:
+      self.player_data[player].unusable[card_type] += 1
     return card_type
 
-  def handle_play_dev(self, card_type, resource_selection, player):
-    if card_type not in PLAYABLE_DEV_CARDS:
-      raise InvalidMove("%s is not a playable development card." % card_type)
+  def handle_play_dev(self, card_type, selection, location, player):
+    category = "progress" if self.options.knights else "development"
+    if card_type not in PLAYABLE_DEV_CARDS + PROGRESS_CARDS:
+      raise InvalidMove(f"{card_type} is not a playable {category} card.")
     if card_type == "knight":
       if self.turn_phase not in ["dice", "main"]:
         raise InvalidMove(
           "You must play the knight before you roll the dice or during the "
           "build/trade part of your turn."
         )
+    elif card_type == "alchemist":
+      if self.turn_phase != "dice":
+        raise InvalidMove("You must play the alchemist before rolling the dice.")
     else:
-      self._check_main_phase("play_dev", "play a development card")
+      self._check_main_phase("play_dev", f"play a {category} card")
     if self.player_data[player].cards[card_type] < 1:
       raise InvalidMove("You do not have any %s cards." % card_type)
     if self.player_data[player].cards[card_type] - self.player_data[player].unusable[card_type] < 1:
       raise InvalidMove("You cannot play development cards on the turn you buy them.")
-    if self.played_dev:
+    if self.played_dev and not self.options.knights:
       raise InvalidMove("You cannot play more than one development card per turn.")
     if card_type == "knight":
       self._handle_knight(player)
     elif card_type == "yearofplenty":
-      self._handle_year_of_plenty(player, resource_selection)
-    elif card_type == "monopoly":
-      self._handle_monopoly(player, resource_selection)
+      self._handle_year_of_plenty(player, selection)
+    elif card_type in ["monopoly", "guild"]:
+      self._handle_monopoly(player, selection)
     elif card_type == "roadbuilding":
       self._handle_road_building(player)
+    elif card_type in ["engineer", "medicine"]:
+      raise InvalidMove("You must play that card while building the corresponding improvement.")
+    elif card_type == "alchemist":
+      self._handle_alchemist(player, selection)
+    elif card_type == "inventor":
+      self._handle_inventor(player, location, selection)
+    elif card_type == "irrigation":
+      self._handle_gain_two(player, "rsrc3", "irrigation")
+    elif card_type == "mining":
+      self._handle_gain_two(player, "rsrc5", "mining")
+    elif card_type == "smith":
+      self._handle_smith(player, location, selection)
+    elif card_type == "bishop":
+      self._handle_bishop(player)
+    elif card_type == "defector":
+      self._handle_defector(player, selection)
+    elif card_type == "diplomat":
+      self._handle_diplomat(player, location, selection)
+    elif card_type == "deception":
+      self._handle_deception(player, location)
+    elif card_type == "saboteur":
+      self._handle_saboteur(player)
+    elif card_type == "spy":
+      self._handle_spy(player, selection)
+    elif card_type == "warlord":
+      self._handle_warlord(player)
+    elif card_type == "wedding":
+      self._handle_wedding(player)
+    elif card_type == "peddler":
+      self._handle_peddler(player, selection)
+    elif card_type == "merchant":
+      self._handle_merchant(player, location)
+    elif card_type == "convoy":
+      self._handle_convoy(player, selection)
     else:
       # How would this even happen?
       raise InvalidMove("%s is not a playable development card." % card_type)
     self.player_data[player].cards[card_type] -= 1
     self.played_dev += 1
+
+  def handle_steal(self, card_selection, player_idx):
+    if self.turn_phase == "spy":
+      valid_cards = PROGRESS_CARDS
+      count = 1
+    elif self.turn_phase == "peddler":
+      valid_cards = RESOURCES
+      count = 2
+    else:
+      raise InvalidMove("You cannot steal from anyone right now.")
+
+    selection = self._validate_selection(card_selection, set(valid_cards), "card")
+
+    available = sum(self.player_data[self.affected_player].cards[name] for name in valid_cards)
+    num_steal = min(count, available)
+    if sum(selection.values()) != num_steal:
+      raise InvalidMove(f"You must select exactly {num_steal} cards.")
+    player_cards = collections.Counter(self.player_data[self.affected_player].cards)
+    missing = collections.Counter(selection) - player_cards
+    if missing.total():
+      raise InvalidMove("You cannot take cards which that player does not have.")
+
+    for name, count in selection.items():
+      self.player_data[self.affected_player].cards[name] -= count
+      self.player_data[player_idx].cards[name] += count
+
+    stolen = ", ".join(["%s {%s}" % (count, rsrc) for rsrc, count in selection.items()])
+    self.event_log.append(
+      Event(
+        "steal",
+        "{player%s} stole %s cards from {player%s}" % (player_idx, num_steal, self.affected_player),
+        "{player%s} stole %s from {player%s}" % (player_idx, stolen, self.affected_player),
+        [player_idx, self.affected_player],
+      )
+    )
+    self.affected_player = None
+    self.action_stack.pop()
+    self.next_action()
 
   def _handle_knight(self, player_idx):
     if self.invasion_countdown is not None:
@@ -2680,13 +2892,17 @@ class IslandersState:
       raise InvalidMove("You have no conscript knights remaining.")
     if location in self.pieces or location in self.knights:
       raise InvalidMove("You must place your knight on an empty corner.")
-    nearby_roads = [self.roads[edge] for edge in location.get_edges() if edge in self.roads]
-    if not any(road.player == player_idx and road.road_type == "road" for road in nearby_roads):
-      raise InvalidMove("You must place your knight next to one of your roads.")
+    self._check_nearby_road(location, player_idx, ["road"], "place your")
     resources = [("rsrc1", 1), ("rsrc5", 1)]
     self._remove_resources(resources, player_idx, "buy a knight")
     self.event_log.append(Event("knight", "{player%s} built a knight" % player_idx))
     self.add_knight(Knight(location, player_idx, location, strength=1))
+
+  def _check_nearby_road(self, location, player_idx, road_types, verb):
+    nearby_roads = [self.roads[edge] for edge in location.get_edges() if edge in self.roads]
+    if not any(road.player == player_idx and road.road_type in road_types for road in nearby_roads):
+      type_names = " or ".join([road_type + "s" for road_type in road_types])
+      raise InvalidMove(f"You must {verb} knight next to one of your {type_names}.")
 
   def add_knight(self, knight):
     self.knights[knight.location] = knight
@@ -2699,17 +2915,21 @@ class IslandersState:
       self.player_data[idx].longest_route = self._calculate_longest_road(idx)
     self._update_longest_route_player()
 
+  def pop_knight(self, location):
+    knight = self.knights.pop(location)
+    if not isinstance(knight.location, CornerLocation):  # Only corner knights affect longest road.
+      return knight
+
+    to_check = {self.roads[edge].player for edge in location.get_edges() if edge in self.roads}
+    for idx in to_check:
+      self.player_data[idx].longest_route = self._calculate_longest_road(idx)
+    self._update_longest_route_player()
+    return knight
+
   def handle_promote_knight(self, loc, player_idx):
     self._check_main_phase("promote", "promote a knight")
     location = parse_location(loc, CornerLocation)
-    if location not in self.knights:
-      raise InvalidMove("You do not have a knight there.")
-    if self.knights[location].player != player_idx:
-      raise InvalidMove("You can only promote your own knights.")
-    if self.knights[location].strength >= 3:
-      raise InvalidMove("You cannot promote knights beyond elite.")
-    if location in self.promoted_this_turn:
-      raise InvalidMove("You cannot promote a knight more than once per turn.")
+    self._check_knight_promotable(location, player_idx)
     might = self.knights[location].strength + 1
     used = len([k for k in self.knights.values() if k.player == player_idx and k.strength == might])
     if used >= 2:
@@ -2719,6 +2939,16 @@ class IslandersState:
     self.knights[location].strength += 1
     self.promoted_this_turn.append(location)
     self.event_log.append(Event("knight", "{player%s} promoted a knight" % player_idx))
+
+  def _check_knight_promotable(self, location, player_idx):
+    if location not in self.knights:
+      raise InvalidMove("You do not have a knight there.")
+    if self.knights[location].player != player_idx:
+      raise InvalidMove("You can only promote your own knights.")
+    if self.knights[location].strength >= 3:
+      raise InvalidMove("You cannot promote knights beyond elite.")
+    if location in self.promoted_this_turn:
+      raise InvalidMove("You cannot promote a knight more than once per turn.")
 
   def handle_activate_knight(self, loc, player_idx):
     self._check_main_phase("activate", "activate a knight")
@@ -2817,6 +3047,8 @@ class IslandersState:
 
     if to_location in self.knights:
       self.displaced_knight = self.knights[to_location]
+    # NOTE: pop_knight is not used here, as we want to update the longest route player only once.
+    # i.e. picking up the knight and putting it down somewhere else are not two separate actions.
     knight = self.knights.pop(from_location)
     knight.active = False
     knight.location = to_location
@@ -2856,6 +3088,48 @@ class IslandersState:
     self.event_log.append(Event("knight", "{player%s} moved their displaced knight" % player_idx))
     self.displaced_knight.location = location
     self.add_knight(self.displaced_knight)
+    self.displaced_knight = None
+    self.action_stack.pop()
+    self.next_action()
+
+  def handle_defect(self, loc, player_idx):
+    if self.turn_phase != "defect":
+      raise NotYourTurn("You cannot choose a knight to defect right now.")
+    if player_idx != self.affected_player:
+      raise NotYourTurn("It is not your turn to choose a knight to defect.")
+    location = parse_location(loc, CornerLocation)
+    if location not in self.knights:
+      raise InvalidMove("You do not have a knight there.")
+    if self.knights[location].player != player_idx:
+      raise InvalidMove("You must choose one of your own knights.")
+
+    self.displaced_knight = self.pop_knight(location)  # Reusing displaced_knight for this
+    self.affected_player = None
+
+    self.action_stack.pop()
+    self.next_action()
+
+  def handle_adopt(self, loc, player_idx):
+    if self.turn_phase != "adopt":
+      raise NotYourTurn("You cannot adopt a defector right now.")
+    location = parse_location(loc, CornerLocation)
+    if location in self.knights or location in self.pieces:
+      raise InvalidMove("You must choose an empty corner for your knight.")
+    self._check_nearby_road(location, player_idx, ["road"], "place your")
+
+    might = self.displaced_knight.strength
+    used = collections.Counter(k.strength for k in self.knights.values() if k.player == player_idx)
+    if used[might] >= 2:
+      might = 1  # If the player has no available knighs at this strength, they can use a conscript.
+
+    if used[might] < 2:  # This should always be the case because of next_action()
+      knight = Knight(location, player_idx, location, strength=might)
+      knight.active = self.displaced_knight.active
+      self.add_knight(knight)
+      opponent = self.displaced_knight.player
+      text = "{player%s} accepted a defector from {player%s}" % (player_idx, opponent)
+      self.event_log.append(Event("defector", text))
+
     self.displaced_knight = None
     self.action_stack.pop()
     self.next_action()
@@ -3157,25 +3431,23 @@ class IslandersState:
     self.action_stack.extend(["dev_road", "dev_road"])
     self.next_action()
 
-  def _handle_year_of_plenty(self, player, selection):
-    self._validate_selection(selection)
+  def _handle_year_of_plenty(self, player, selected):
+    selection = self._validate_rsrc_selection(selected)
     remaining = {rsrc: self.remaining_resources(rsrc) for rsrc in RESOURCES}
     # TODO: if there is one resource left, do we allow the player to collect just one?
     if sum(remaining.values()) < 2:
       raise InvalidMove("There are no resources left in the bank.")
     if sum(selection.values()) != 2:
       raise InvalidMove("You must request exactly two resources.")
-    overdrawn = [rsrc for rsrc in selection if selection[rsrc] > remaining[rsrc]]
-    if overdrawn:
-      raise InvalidMove("There is not enough {%s} in the bank." % "}, {".join(overdrawn))
+    self.check_overdrawn_resources(selection)
 
     received_text = ", ".join(["%s {%s}" % (count, rsrc) for rsrc, count in selection.items()])
     self.event_log.append(Event("yearofplenty", "{player%s} took " % player + received_text))
     for rsrc, value in selection.items():
       self.player_data[player].cards[rsrc] += value
 
-  def _handle_monopoly(self, player, resource_selection):
-    self._validate_selection(resource_selection)
+  def _handle_monopoly(self, player, selection):
+    resource_selection = self._validate_rsrc_selection(selection)
     if len(resource_selection) != 1 or sum(resource_selection.values()) != 1:
       raise InvalidMove("You must choose exactly one resource to monopolize.")
     card_type = next(iter(resource_selection.keys()))
@@ -3187,12 +3459,243 @@ class IslandersState:
       if player == opponent_idx:
         continue
       opp_count = opponent.cards[card_type]
+      if self.options.knights:  # This card changes when it's a progress card
+        opp_count = min(opp_count, 2)
       if opp_count:
         counts[opponent_idx] = opp_count
       opponent.cards[card_type] -= opp_count
       self.player_data[player].cards[card_type] += opp_count
     event_text = ", ".join(["%s from {player%s}" % (count, opp) for opp, count in counts.items()])
     self.event_log.append(Event("monopoly", "{player%s} took " % player + event_text))
+
+  def _handle_alchemist(self, unused_player_idx, selection):
+    self._validate_selection(selection, {"red", "white"}, "dice")
+    if selection.keys() ^ {"red", "white"}:
+      raise InvalidInput("Selection must be a red die and a white die.")
+    if not all(1 <= val <= 6 for val in selection.values()):
+      raise InvalidInput("Dice must be between 1 and 6.")
+    self.next_die_roll = selection["red"], selection["white"]
+    self.handle_roll_dice()
+
+  def _handle_inventor(self, player_idx, from_loc, to_loc):
+    from_location = parse_location(from_loc, TileLocation)
+    to_location = parse_location(to_loc, TileLocation)
+    if from_location not in self.tiles or to_location not in self.tiles:
+      raise InvalidMove("You must choose two tiles on the board.")
+    if not all(self.tiles[loc].is_land for loc in [from_location, to_location]):
+      raise InvalidMove("You must choose numbered land tiles.")
+    if not all(self.tiles[loc].number for loc in [from_location, to_location]):
+      raise InvalidMove("You must choose numbered land tiles.")
+    if any(self.tiles[loc].number in [2, 6, 8, 12] for loc in [from_location, to_location]):
+      raise InvalidMove("You cannot choose 2, 6, 8, or 12.")
+    if from_location == to_location:
+      raise InvalidMove("You must choose two distinct tiles.")
+
+    from_number, to_number = self.tiles[from_location].number, self.tiles[to_location].number
+    self.tiles[from_location].number = to_number
+    self.tiles[to_location].number = from_number
+    text = "{player%s} used the inventor to swap %d and %d" % (player_idx, from_number, to_number)
+    self.event_log.append(Event("inventor", text))
+
+  def _handle_gain_two(self, player_idx, rsrc, name):
+    player_owned = [piece for piece in self.pieces.values() if piece.player == player_idx]
+    surrounding = {loc for piece in player_owned for loc in piece.location.get_tiles()}
+    count = 2 * len([loc for loc in surrounding if self.tiles[loc].tile_type == rsrc])
+    if not count:
+      raise InvalidMove("You have no settlements/cities next to {%s}" % rsrc)
+    count = min(count, self.remaining_resources(rsrc))
+
+    text = "{player%s} used %s to take %s {%s}" % (player_idx, name, count, rsrc)
+    self.event_log.append(Event(name, text))
+    self.player_data[player_idx].cards[rsrc] += count
+
+  def _handle_smith(self, player_idx, loc_a, loc_b):
+    location_a = parse_location(loc_a, CornerLocation)
+    location_b = parse_location(loc_b, CornerLocation) if loc_b is not None else None
+    locations = [loc for loc in [location_a, location_b] if loc]
+    if len(locations) != len(set(locations)):
+      raise InvalidMove("You cannot choose the same knight twice.")
+    for location in locations:
+      self._check_knight_promotable(location, player_idx)
+
+    used = collections.Counter(k.strength for k in self.knights.values() if k.player == player_idx)
+    # We ignore the strength of the chosen knights, since they're going to be promoted to a
+    # different strength. i.e. if you have a conscript and 2 veterans, you may promote the conscript
+    # as long as you also promote one of the two veterans.
+    for location in locations:
+      used[self.knights[location].strength] -= 1
+
+    new_mights = collections.Counter(self.knights[location].strength + 1 for location in locations)
+    for might, count in new_mights.items():
+      remaining = 2 - used[might]
+      if remaining < count:
+        strength = "elite" if might == 3 else "veteran"
+        raise InvalidMove(f"You have insufficient {strength} knights remaining.")
+
+    for location in locations:
+      self.knights[location].strength += 1
+      self.promoted_this_turn.append(location)
+      text = "{player%s} used a smith to promote a knight" % player_idx
+      self.event_log.append(Event("knight", text))
+
+  def _handle_bishop(self, player_idx):
+    self.event_log.append(Event("bishop", "{player%s} played a bishop" % player_idx))
+    self.action_stack.extend(["roball", "robber"])
+    self.next_action()
+
+  def _handle_defector(self, player_idx, opponent):
+    if opponent not in range(len(self.player_data)):
+      raise InvalidInput(f"Invalid player {opponent}")
+    if opponent == player_idx:
+      raise InvalidMove("You cannot choose yourself to defect.")
+    count = len([k for k in self.knights.values() if k.player == opponent])
+    if not count:
+      raise InvalidMove("You must choose a player that has at least one knight.")
+
+    self.affected_player = opponent
+    text = "{player%s} played a defector targeting {player%s}" % (player_idx, opponent)
+    self.event_log.append(Event("defector", text))
+    self.action_stack.extend(["adopt", "defect"])
+    self.next_action()
+
+  def _handle_diplomat(self, player_idx, loc, to_loc):
+    location = parse_location(loc, EdgeLocation)
+    to_location = parse_location(to_loc, EdgeLocation) if to_loc is not None else None
+    if location not in self.roads:
+      raise InvalidMove("You must choose a valid road or ship.")
+    removed_road = self.roads[location]
+    road_type = removed_road.road_type
+
+    if removed_road.closed:
+      raise InvalidMove(f"You may not move a {road_type} that connects two player settlements.")
+    if not removed_road.movable:
+      raise InvalidMove(f"You must move a {road_type} from the end of a route.")
+    # NOTE: no pirate check for the diplomat according to the FAQ.
+
+    if to_location:
+      if removed_road.player != player_idx:
+        raise InvalidMove(f"You cannot move another player's {road_type}.")
+      if to_location in self.roads:
+        raise InvalidMove(f"You cannot move your {road_type} on top of an existing one.")
+      self._check_road_building(to_location, player_idx, road_type, ignore=[location])
+
+    self.roads.pop(location)
+    if to_location:
+      # add_road will automatically do the longest route calculation.
+      self.add_road(Road(to_location, road_type, player_idx))
+      text = "{player%s} used the diplomat to move a %s" % (player_idx, road_type)
+      self.event_log.append(Event("move_ship", text))
+      # add_road will automatically recalculate from the new source, but we must still recalculate
+      # roads' movable status from the old source in case the two locations are disconnected.
+      self.recalculate_ships(removed_road.source, player_idx, road_type)
+    else:
+      longest_route = self._calculate_longest_road(removed_road.player)
+      self.player_data[removed_road.player].longest_route = longest_route
+      self._update_longest_route_player()
+      self.recalculate_ships(removed_road.source, removed_road.player, road_type)
+      self.event_log.append(Event("move_ship", "{player%s} removed a %s" % (player_idx, road_type)))
+
+  def _handle_deception(self, player_idx, loc):
+    location = parse_location(loc, CornerLocation)
+    if location not in self.knights:
+      raise InvalidMove("You must choose a knight to displace.")
+    if self.knights[location].player == player_idx:
+      raise InvalidMove("You cannot choose your own knight to displace.")
+    self._check_nearby_road(location, player_idx, ["road", "ship"], "displace a")
+
+    self.displaced_knight = self.pop_knight(location)
+    text = "{player%s} used deception to displace a knight" % player_idx
+    self.event_log.append(Event("deception", text))
+    self.action_stack.append("displace")
+    self.next_action()
+
+  def _handle_saboteur(self, player_idx):
+    limit = self.player_points(player_idx, True)
+    losers = [idx for idx in range(len(self.player_data)) if self.player_points(idx, True) >= limit]
+    counts = {idx: self.player_data[idx].resource_card_count() // 2 for idx in losers}
+    self.discard_players = {idx: num for idx, num in counts.items() if num and idx != player_idx}
+    if not sum(self.discard_players.values()):
+      self.discard_players.clear()
+      raise InvalidMove("There are no players who would have to discard.")
+    self.event_log.append(Event("saboteur", "{player%s} played a saboteur" % player_idx))
+    self.action_stack.append("discard")
+    self.next_action()
+
+  def _handle_spy(self, player_idx, opponent):
+    if opponent not in range(len(self.player_data)):
+      raise InvalidInput(f"Invalid player {opponent}")
+    if opponent == player_idx:
+      raise InvalidMove("You cannot choose yourself to steal from.")
+    count = sum(self.player_data[opponent].cards[name] for name in PROGRESS_CARDS)
+    if not count:
+      raise InvalidMove("You must steal from a player with progress cards.")
+
+    self.affected_player = opponent
+    text = "{player%s} played a spy targeting {player%s}" % (player_idx, opponent)
+    self.event_log.append(Event("spy", text))
+    self.action_stack.append("spy")
+    self.next_action()
+
+  def _handle_warlord(self, player_idx):
+    if not any(knight.player == player_idx for knight in self.knights.values()):
+      raise InvalidMove("You have no knights.")
+    for knight in self.knights.values():
+      if knight.player == player_idx and not knight.active:
+        knight.active = True
+        self.activated_this_turn.append(knight.location)
+    self.event_log.append(Event("warlord", "{player%s} played a warlord" % player_idx))
+
+  def _handle_wedding(self, player_idx):
+    limit = self.player_points(player_idx, True)
+    players = [idx for idx in range(len(self.player_data)) if self.player_points(idx, True) > limit]
+    counts = {idx: min(self.player_data[idx].resource_card_count(), 2) for idx in players}
+    self.discard_players = {idx: count for idx, count in counts.items() if count}
+    if not sum(self.discard_players.values()):
+      self.discard_players.clear()
+      raise InvalidMove("There are no eligible players to donate cards to you.")
+
+    self.event_log.append(Event("wedding", "{player%s} played a wedding" % player_idx))
+    self.action_stack.append("donate")
+    self.next_action()
+
+  def _handle_peddler(self, player_idx, opponent):
+    if opponent not in range(len(self.player_data)):
+      raise InvalidInput(f"Invalid player {opponent}")
+    if opponent == player_idx:
+      raise InvalidMove("You cannot choose yourself to steal from.")
+    if self.player_points(opponent, True) <= self.player_points(player_idx, True):
+      raise InvalidMove("You must steal from an opponent who has more victory points than you.")
+    if not self.player_data[opponent].resource_card_count():
+      raise InvalidMove("You must steal from a player with at least one card.")
+
+    self.affected_player = opponent
+    text = "{player%s} played a peddler targeting {player%s}" % (player_idx, opponent)
+    self.event_log.append(Event("peddler", text))
+    self.action_stack.append("peddler")
+    self.next_action()
+
+  def _handle_merchant(self, player_idx, loc):
+    location = parse_location(loc, TileLocation)
+    if location not in self.tiles:
+      raise InvalidMove(f"Invalid tile location {location}")
+    if not self.tiles[location].is_land:
+      raise InvalidMove("You must move the merchant to a land tile.")
+    corners = location.get_corner_locations()
+    if not any(cloc in self.pieces and self.pieces[cloc].player == player_idx for cloc in corners):
+      raise InvalidMove("You must place the merchant next to one of your settlements or cities.")
+
+    text = "{player%s} moved and took control of the merchant" % player_idx
+    self.event_log.append(Event("merchant", text))
+    self.merchant = location
+    self.merchant_idx = player_idx
+
+  def _handle_convoy(self, player_idx, selection):
+    resource_selection = self._validate_rsrc_selection(selection)
+    if len(resource_selection) != 1 or sum(resource_selection.values()) != 1:
+      raise InvalidMove("You must choose exactly one resource.")
+    rsrc = next(iter(resource_selection.keys()))
+    self.convoy.append(rsrc)
+    self.event_log.append(Event("convoy", "{player%s} used a convoy for {%s}" % (player_idx, rsrc)))
 
   def _validate_trade(self, offer, player):
     """Validates a well-formed trade & that the player has enough resources."""
@@ -3286,9 +3789,7 @@ class IslandersState:
   def handle_trade_bank(self, offer, player):
     self._check_main_phase("trade_bank", "make a trade")
     self._validate_trade(offer, player)
-    self._validate_bank_trade(
-      offer, self.player_data[player].trade_ratios, self.player_data[player].gold_traded
-    )
+    self._validate_bank_trade(offer, self._get_ratios(player), self.player_data[player].gold_traded)
 
     gave_txt = ", ".join(f"{count} {{{rsrc}}}" for rsrc, count in offer[self.GIVE].items() if count)
     recv_txt = ", ".join(f"{count} {{{rsrc}}}" for rsrc, count in offer[self.WANT].items() if count)
@@ -3302,6 +3803,15 @@ class IslandersState:
       self.player_data[player].cards[rsrc] -= give
     # Keep track of how much gold the player has traded for resources this turn.
     self.player_data[player].gold_traded += offer[self.GIVE].get("gold", 0)
+
+  def _get_ratios(self, player_idx):
+    ratios = self.player_data[player_idx].trade_ratios.copy()
+    if self.merchant_idx == player_idx:
+      ratios[self.tiles[self.merchant].tile_type] = 2
+    if self.turn_idx == player_idx:
+      for rsrc in self.convoy:
+        ratios[rsrc] = 2
+    return ratios
 
   def _validate_bank_trade(self, offer, ratios, gold_traded):
     """Match up the player's exports with the imports, based on trade ratios.
@@ -3317,9 +3827,7 @@ class IslandersState:
     if not self.options.gold and offer[self.WANT].get("gold", 0):
       raise InvalidMove("There is no gold in this scenario.")
     # Make sure the player cannot receive more resources than the bank has.
-    for rsrc, count in requested_rsrcs.items():
-      if self.remaining_resources(rsrc) < count:
-        raise InvalidMove(f"There is only {self.remaining_resources(rsrc)} {{{rsrc}}} remaining.")
+    self.check_overdrawn_resources(requested_rsrcs)
     # You may only trade gold for resources up to twice per turn.
     if offer[self.GIVE].get("gold", 0) + gold_traded > 4:
       raise InvalidMove("You may only trade gold for resources up to twice per turn.")
@@ -3416,6 +3924,13 @@ class IslandersState:
       tile_data.land_rotations = lands
 
   def dev_card_counts(self):
+    if self.options.knights:
+      counts = {card: 2 for card in PROGRESS_CARDS}
+      counts.update({"engineer": 1, "spy": 3, "merchant": 6, "guild": 4})
+      counts.update({card: 1 for card in SHOWN_VICTORY_CARDS})
+      if not self.options.city_walls:
+        counts["engineer"] = 0
+      return collections.Counter(counts)
     counts = {"knight": 14, "monopoly": 2, "roadbuilding": 2, "yearofplenty": 2}
     counts.update({card: 1 for card in VICTORY_CARDS})
     if self.options.extra_build:
