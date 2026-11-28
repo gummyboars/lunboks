@@ -637,6 +637,8 @@ class GameState:
       self.handle_set_card(data.get("card"))
     elif data.get("type") == "set_gate":
       self.handle_set_card(data.get("card"))
+    elif data.get("type") == "cancel_top":
+      self.handle_cancel_top()
     else:
       raise UnknownMove(data.get("type"))
 
@@ -1316,6 +1318,9 @@ class GameState:
       break
     else:
       raise InvalidMove(f"Card {name} not found")
+
+  def handle_cancel_top(self):
+    self.event_stack[-1].cancelled = True
 
   def handle_slider(self, char_idx, name, value):
     assert self.event_stack

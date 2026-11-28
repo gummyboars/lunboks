@@ -823,6 +823,10 @@ function setGate(e) {
   ws.send(JSON.stringify({"type": "set_gate", "card": gateName}));
 }
 
+function cancelTopEvent(e) {
+  ws.send(JSON.stringify({"type": "cancel_top"}));
+}
+
 function bringTop(e, newIndex) {
   let node = e.currentTarget;
   node.style.zIndex = newIndex ?? 5;
