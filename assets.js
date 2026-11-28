@@ -124,8 +124,9 @@ function clearAssetFromDiv(div) {
   div.assetName = null;
   div.variant = null;
   let cnv = div.getElementsByTagName("CANVAS")[0];
-  cnv.width = div.offsetWidth;
-  cnv.height = div.offsetHeight;
+  let cnvScale = div.cnvScale || 1;
+  cnv.width = div.offsetWidth * cnvScale;
+  cnv.height = div.offsetHeight * cnvScale;
   let ctx = cnv.getContext("2d");
   ctx.clearRect(0, 0, cnv.width, cnv.height);
 }

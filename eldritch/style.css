@@ -862,10 +862,15 @@ button:disabled {
   flex-direction: column;
   align-items: center;
   justify-content: flex-start;
-  cursor: zoom-in;
 }
-#globals.zoomed {
-  cursor: zoom-out;
+#globals.bottom {
+  flex-direction: row;
+  position: absolute;
+  bottom: 0;
+  left: calc(min(15vw, 24vh));
+  height: calc(min(13.5vw, 21.6vh));
+  width: calc(min(60vw, 96vh));
+  align-items: flex-start;
 }
 .mythoscontainer {
   position: relative;
@@ -873,6 +878,9 @@ button:disabled {
   width: 87.5%;
   min-height: 0;
   height: calc(min(8.75vw, 14vh) * 2);
+}
+.bottom .mythoscontainer {
+  width: calc(min(15vw, 24vh));
 }
 .mythoscontainer.missing {
   height: 0;
@@ -884,14 +892,50 @@ button:disabled {
   width: calc(min(8.75vw, 14vh));
   height: calc(min(8.75vw, 14vh) * 3 / 2);
   pointer-events: auto;
+  transform-origin: left top;
+  transition: transform 0.3s;
 }
 .mythoscontainer.missing .mythoscard {
   pointer-events: none;
 }
+.mythoscard:hover {
+  transform: scale(2.5);
+}
+.mythoscard.shown {
+  transform: scale(2.5);
+  z-index: 4;
+}
 .mythoscnv {
   position: absolute;
-  top: 0;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0.4);
+  transition: transform 0.3s;
+}
+.mythosdesc {
+  display: none;
+  width: 100%;
+  font-size: calc(min(1vw, 1.6vh));
+  text-align: center;
+  box-shadow: 0 0 0 min(0.0625vw, 0.1vh) inset black;
+  background: linear-gradient(to right, white 50%, silver 50%);
+  background-size: 200% 100%;
+  background-position: left;
+  position: absolute;
+  bottom: 0;
   left: 0;
+  transform: translateY(100%);
+}
+.bottom .mythosdesc {
+  bottom: unset;
+  top: 0;
+  transform: translateY(-100%);
+}
+.mythoscard:hover .mythosdesc {
+  display: block;
+}
+.mythoscard.shown .mythosdesc {
+  display: block;
 }
 #ancientone {
   flex: 0 0 auto;

@@ -115,14 +115,17 @@ function flipBoard() {
     for (let p of document.getElementsByClassName("place")) {
       p.style.transform = "translateX(-50%) translateY(-50%) rotate(90deg)";
     }
+    document.getElementById("globals").classList.add("bottom");
   } else {
     boardRotate = 0;
     for (let p of document.getElementsByClassName("place")) {
       p.style.transform = "translateX(-50%) translateY(-50%) rotate(0deg)";
     }
+    document.getElementById("globals").classList.remove("bottom");
   }
   adjustLocationClasses();
   moveBoard();
+  fixGlobalTransformOrigins();
 }
 function moveBoard() {
   document.getElementById("board").style.transform = "rotate(" + boardRotate + "deg) translate(" + (offsetX+dX) + "px, " + (offsetY+dY) + "px) scale(" + boardScale + ")";
@@ -820,14 +823,17 @@ function setGate(e) {
   ws.send(JSON.stringify({"type": "set_gate", "card": gateName}));
 }
 
-function bringTop(e) {
+function bringTop(e, newIndex) {
   let node = e.currentTarget;
-  node.style.zIndex = 5;
+  node.style.zIndex = newIndex ?? 5;
 }
 
-function returnBottom(e) {
+function returnBottom(e, removeShown) {
   let node = e.currentTarget;
   node.style.removeProperty("z-index");
+  if (removeShown) {
+    node.classList.remove("shown");
+  }
 }
 
 function makeChoice(val) {
@@ -1195,10 +1201,16 @@ function showMonsters(placeDiv, name) {
     renderAssetToDiv(frontDiv.getElementsByClassName("cnvcontainer")[0], monsterDiv.monsterInfo.name);
     renderMonsterBackToDiv(backDiv.getElementsByClassName("monsterback")[0], monsterDiv.monsterInfo);
   }
+  if (cardsShown) {
+    toggleCards();
+  }
 }
 
 function hideMonsters(e) {
   document.getElementById("monsterdetails").style.display = "none";
+  if (!cardsShown) {
+    toggleCards();
+  }
 }
 
 function updateMonsters(choice, monster_list) {
@@ -1461,6 +1473,9 @@ function toggleCards(e) {
   cardsShown = !cardsShown;
   document.getElementById("cardchoicescroll").classList.toggle("hidden", !cardsShown);
   setCardButtonText();
+  if (cardsShown) {
+    hideMonsters();
+  }
 }
 
 function setCardButtonText() {
@@ -2977,7 +2992,7 @@ function updateActivity(placeName, activity) {
     if (cardName == "Mythos65") {
       actDiv.onclick = function(e) { toggleMonsters(document.getElementById("placeMythos65monsters"), "Mythos65"); };
     } else {
-      actDiv.onclick = function(e) { toggleGlobals(null, cardName) };
+      actDiv.onclick = function(e) { showGlobal(cardName) };
     }
   }
   for (let cardName in toRemove) {
@@ -3144,6 +3159,8 @@ function updateGlobals(env, rumor, otherGlobals) {
     envDiv.classList.remove("missing");
     envDiv.name = env.name;
     envDiv.annotation = "Environment";
+    envDiv.getElementsByClassName("mythosdesc")[0].innerText = "Environment";
+    envCnt.cnvScale = 2.5;
     renderAssetToDiv(envCnt, envDiv.name);
   }
   if (rumor == null) {
@@ -3163,7 +3180,10 @@ function updateGlobals(env, rumor, otherGlobals) {
     rumorDiv.classList.remove("missing");
     rumorDiv.name = rumor.name;
     rumorDiv.annotation = "Rumor: " + rumor.progress + "/" + rumor.max_progress;
+    rumorDiv.getElementsByClassName("mythosdesc")[0].innerText = rumorDiv.annotation;
+    rumorCnt.cnvScale = 2.5;
     rumorDiv.percent = 100 - (100 * rumor.progress / rumor.max_progress);
+    rumorDiv.getElementsByClassName("mythosdesc")[0].style.backgroundPosition = "left " + rumorDiv.percent + "% top";
     rumorDiv.failed = null;
     if (rumorDiv.percent != oldPercent) {
       if (document.getElementById("eventlog").children.length) {  // Hack to not do this on the first message.
@@ -3191,23 +3211,26 @@ function updateGlobals(env, rumor, otherGlobals) {
     globDiv.classList.add("mythoscontainer");
     globDiv.name = globName;
     globDiv.annotation = typeof(glob) == "string" ? null : glob.annotation;
+    let globDesc = document.createElement("DIV");
+    globDesc.classList.add("mythosdesc");
+    globDesc.innerText = globDiv.annotation ?? "";
     let globCont = document.createElement("DIV");
     globCont.classList.add("mythoscard", "cnvcontainer");
+    globCont.cnvScale = 2.5;
     let globCnv = document.createElement("CANVAS");
     globCnv.classList.add("mythoscnv");
     globCont.appendChild(globCnv);
+    globCont.appendChild(globDesc);
     globDiv.appendChild(globCont);
     document.getElementById("globals").appendChild(globDiv);
+    globDiv.onmouseenter = function(e) { bringTop(e, 25); };
+    globDiv.onmouseleave = function(e) { returnBottom(e, true); };
     renderAssetToDiv(globCont, globName);
   }
   for (let name in toRemove) {
     toRemove[name].parentNode.removeChild(toRemove[name]);
   }
-  let globalBox = document.getElementById("globals");
-  if (globalBox.classList.contains("zoomed")) {
-    globalBox.classList.remove("zoomed");
-    toggleGlobals(null);
-  }
+  // Transform origins will be updated inside of updateCurrentCard()
 }
 
 function updateBottomCards(bottom) {
@@ -3258,6 +3281,8 @@ function updateCurrentCard(current, visual, monster, choice) {
     currDiv.classList.remove("missing");
     currDiv.name = current;
     currDiv.annotation = current.startsWith("Mythos") ? "Mythos" : "Encounter";
+    currDiv.getElementsByClassName("mythosdesc")[0].innerText = currDiv.annotation;
+    currCnt.cnvScale = 2.5;
     renderAssetToDiv(currCnt, current);
   }
   // If we're not showing anything, prioritize showing the monster the player is fighting.
@@ -3286,78 +3311,40 @@ function updateCurrentCard(current, visual, monster, choice) {
       setTimeout(finishAnim, 6000);
     }
   }
+  fixGlobalTransformOrigins();
 }
 
-function toggleGlobals(e, frontCard) {
-  let globalBox = document.getElementById("globals");
-  let globalScroll = document.getElementById("globalscroll");
-  let globalCards = document.getElementById("globalcards");
-  let toAnimate = [];
-  if (globalBox.classList.contains("zoomed")) {
-    for (let holder of globalCards.getElementsByClassName("cardholder")) {
-      let found = false;
-      for (let cont of document.getElementById("globals").getElementsByClassName("mythoscontainer")) {
-        if (holder.handle == cont.name) {
-          // Use the mythoscard container, as the mythoscontainer can be compressed/stretched.
-          toAnimate.push([cont.getElementsByClassName("mythoscard")[0], holder]);
-          found = true;
-          break;
-        }
-      }
-      if (!found) {
-        toAnimate.push([null, holder]);
-      }
+function fixGlobalTransformOrigins() {
+  // Set transform origins for all globals (must do this after updating current card).
+  if (document.getElementById("globals").classList.contains("bottom")) {
+    // If it's on the bottom, "center bottom" is good enough for every card.
+    for (let node of document.getElementById("globals").getElementsByClassName("mythoscontainer")) {
+      node.getElementsByClassName("mythoscard")[0].style.transformOrigin = "center bottom";
     }
-    // Animate
-    for (let [dest, source] of toAnimate) {
-      if (dest == null) {
-        setTimeout(function() { source.parentNode.removeChild(source); }, 1);
-        continue;
-      }
-      setTimeout(function() { translateNode(source, dest); }, 1);
-    }
-    globalBox.classList.remove("zoomed");
-    setTimeout(function() { globalScroll.style.display = "none"; }, 820);
     return;
   }
+  for (let node of document.getElementById("globals").getElementsByClassName("mythoscontainer")) {
+    let totalHeight = node.offsetParent.offsetHeight;
+    let heightCenter = node.offsetTop - node.parentElement.offsetTop + (node.offsetHeight / 2);
+    if (heightCenter / totalHeight < 0.3) {
+      node.getElementsByClassName("mythoscard")[0].style.transformOrigin = "left top";
+    } else if (heightCenter / totalHeight > 0.7) {
+      node.getElementsByClassName("mythoscard")[0].style.transformOrigin = "left bottom";
+    } else {
+      node.getElementsByClassName("mythoscard")[0].style.transformOrigin = "left center";
+    }
+  }
+}
 
-  globalBox.classList.add("zoomed");
-  globalScroll.style.display = "flex";
-  while (globalCards.getElementsByClassName("cardholder").length) {
-    globalCards.removeChild(globalCards.getElementsByClassName("cardholder")[0]);
-  }
-  let count = 0;
-  let toDisplay = null;
-  for (let cont of document.getElementById("globals").getElementsByClassName("mythoscontainer")) {
-    if (!cont.name) {
-      continue;
+function showGlobal(frontCard) {
+  let globalBox = document.getElementById("globals");
+  for (let cont of globalBox.getElementsByClassName("mythoscontainer")) {
+    let card = cont.getElementsByClassName("mythoscard")[0];
+    if (cont.name == frontCard) {
+      card.classList.toggle("shown");
+    } else {
+      card.classList.remove("shown");
     }
-    count++;
-    let visual = newVisual(cont.name, "mythos", {"descText": cont.annotation, "backgroundPct": cont.percent});
-    if (frontCard != null && cont.name != frontCard) {
-      visual.classes.push("unchoosable");
-    }
-    let holder = createVisual(globalCards, visual);
-    if (frontCard != null && cont.name == frontCard) {
-      toDisplay = holder;
-    }
-    toAnimate.push([cont.getElementsByClassName("mythoscard")[0], holder]);
-  }
-  if (count > 4) {
-    globalScroll.classList.add("overflowing");
-    if (toDisplay != null) {
-      // toDisplay.scrollIntoView({"inline": "center"}); TODO: this scrolls the entire document
-      // instead, use scrollTo() after calculating the coords using getBoundingClientRect()
-    }
-  } else {
-    globalScroll.classList.remove("overflowing");
-  }
-
-  // Animate
-  for (let [source, dest] of toAnimate) {
-    dest.classList.add("noanimate");
-    translateNode(dest, source);
-    setTimeout(function() { dest.classList.remove("noanimate"); dest.style.removeProperty("transform"); }, 1);
   }
 }
 
